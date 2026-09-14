@@ -97,4 +97,20 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual(250, options.ReadTimeoutMs);
         Assert.AreEqual(LineEnding.Cr, options.LineEnding);
     }
+
+    [TestMethod]
+    public void Bind_ListPorts_DefaultsToFalse()
+    {
+        var options = Bind();
+
+        Assert.IsFalse(options.ListPorts);
+    }
+
+    [TestMethod]
+    public void Bind_ListPortsFlag_RequiresAnExplicitValue()
+    {
+        var options = Bind("--listports", "true");
+
+        Assert.IsTrue(options.ListPorts);
+    }
 }

@@ -13,6 +13,9 @@ public sealed class CliOptions
 {
     public string Transport { get; set; } = "serial";
 
+    /// <summary>List available serial ports and exit, skipping normal validation/connection entirely.</summary>
+    public bool ListPorts { get; set; }
+
     public string Presenter { get; set; } = "hex";
 
     /// <summary>Appended to each typed line before sending, for presenters that support sending. See <see cref="LineEnding"/>.</summary>

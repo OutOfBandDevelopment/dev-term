@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddOptions<SerialTransportOptions>().ValidateDataAnnotations().ValidateOnStart();
         services.AddSingleton<ISerialPortFactory, SystemSerialPortFactory>();
+        services.AddSingleton<ISerialPortDiscovery, SystemSerialPortDiscovery>();
         services.AddTransient<ITransport, SerialTransport>();
         return services;
     }

@@ -1,4 +1,5 @@
 using System.IO.Ports;
+using System.Net.Sockets;
 using DevTerm.Console;
 using DevTerm.Core.Hosting;
 using DevTerm.Core.Presenters;
@@ -15,9 +16,23 @@ using Microsoft.Extensions.Options;
 const string Usage =
     "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>]"
+    + "\n   or: dev-term --listports true"
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
     + "\nCommand-line arguments always win, then environment variables, then the settings file.";
+
+// A plain command-line peek, ahead of the full host/config pipeline: listing ports is a one-off
+// action, not something that should go through the profile/env-var layering or transport
+// validation (which would otherwise demand a --port that the user is trying to discover).
+if (new ConfigurationBuilder().AddCommandLine(args).Build().GetValue<bool>(nameof(CliOptions.ListPorts)))
+{
+    foreach (var portName in new SystemSerialPortDiscovery().GetPortNames())
+    {
+        Console.WriteLine(portName);
+    }
+
+    return 0;
+}
 
 var cliOptions = new CliOptions();
 
@@ -102,7 +117,17 @@ using (host)
 
     session.Output += (_, output) => Console.WriteLine($"[{output.PresenterName}] {output.Text}");
 
-    await session.OpenAsync();
+    try
+    {
+        await session.OpenAsync();
+    }
+    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
+        or InvalidOperationException or SocketException)
+    {
+        Console.Error.WriteLine(ConnectionErrorMessages.For(cliOptions.Transport, ex));
+        return 1;
+    }
+
     var connectionDescription = string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase)
         ? cliOptions.Listen
             ? $"TCP listener on port {cliOptions.TcpPort}"
