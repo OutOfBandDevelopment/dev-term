@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "DevTerm.Console": {
+      "commandName": "Project"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "COM3 4800 ASCII": {
+      "commandName": "Project",
+      "commandLineArgs": "--port COM3 --baud 4800 --presenter ascii"
+    }
+  }
+}
