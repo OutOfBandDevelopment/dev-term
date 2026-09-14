@@ -8,16 +8,12 @@ public interface ISerialPort : IDisposable
 {
     bool IsOpen { get; }
 
-    event EventHandler<SerialPortDataReceivedEventArgs>? DataReceived;
+    /// <summary>The readable/writable stream <see cref="SerialTransport"/> pumps into a pipe (see <see cref="DevTerm.Core.Transports.StreamToPipePump"/>).</summary>
+    Stream BaseStream { get; }
 
     void Open();
 
     void Close();
 
     void Write(byte[] buffer, int offset, int count);
-}
-
-public sealed class SerialPortDataReceivedEventArgs(ReadOnlyMemory<byte> data) : EventArgs
-{
-    public ReadOnlyMemory<byte> Data { get; } = data;
 }

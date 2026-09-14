@@ -17,12 +17,11 @@ public sealed class SystemSerialPort : ISerialPort
         {
             Handshake = options.Handshake,
         };
-        _port.DataReceived += OnDataReceived;
     }
 
     public bool IsOpen => _port.IsOpen;
 
-    public event EventHandler<SerialPortDataReceivedEventArgs>? DataReceived;
+    public Stream BaseStream => _port.BaseStream;
 
     public void Open() => _port.Open();
 
@@ -30,22 +29,5 @@ public sealed class SystemSerialPort : ISerialPort
 
     public void Write(byte[] buffer, int offset, int count) => _port.Write(buffer, offset, count);
 
-    private void OnDataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
-    {
-        var bytesToRead = _port.BytesToRead;
-        if (bytesToRead <= 0)
-        {
-            return;
-        }
-
-        var buffer = new byte[bytesToRead];
-        var read = _port.Read(buffer, 0, bytesToRead);
-        DataReceived?.Invoke(this, new SerialPortDataReceivedEventArgs(buffer.AsMemory(0, read)));
-    }
-
-    public void Dispose()
-    {
-        _port.DataReceived -= OnDataReceived;
-        _port.Dispose();
-    }
+    public void Dispose() => _port.Dispose();
 }

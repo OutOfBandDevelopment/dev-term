@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.IO.Pipelines;
 using DevTerm.Core.Transports;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -10,10 +12,23 @@ public sealed class TcpTransportTests
     private static IOptions<TcpTransportOptions> Options(TcpTransportMode mode, string? host = "device.local", int port = 502) =>
         Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = mode, Host = host, Port = port });
 
+    /// <summary>
+    /// A connection double whose <see cref="ITcpConnection.Stream"/> is backed by a real
+    /// <see cref="Pipe"/>: the transport's background pump reads from it for real, and the test
+    /// plays "bytes arrived on the wire" by writing to <c>WirePipe.Writer</c>.
+    /// </summary>
+    private static (Mock<ITcpConnection> Connection, Pipe WirePipe) CreateConnection()
+    {
+        var wirePipe = new Pipe();
+        var connection = new Mock<ITcpConnection>();
+        connection.SetupGet(c => c.Stream).Returns(wirePipe.Reader.AsStream());
+        return (connection, wirePipe);
+    }
+
     [TestMethod]
     public async Task OpenAsync_InClientMode_DialsOutViaConnectionSource()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, _) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
@@ -25,12 +40,14 @@ public sealed class TcpTransportTests
         source.Verify(s => s.ConnectAsync(It.Is<TcpTransportOptions>(o => o.Host == "device.local"), It.IsAny<CancellationToken>()), Times.Once);
         source.Verify(s => s.AcceptAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.AreEqual(ConnectionState.Open, transport.State);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
     public async Task OpenAsync_InListenerMode_AcceptsViaConnectionSource()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, _) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.AcceptAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
@@ -42,14 +59,17 @@ public sealed class TcpTransportTests
         source.Verify(s => s.AcceptAsync(It.Is<TcpTransportOptions>(o => o.Port == 9000), It.IsAny<CancellationToken>()), Times.Once);
         source.Verify(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.AreEqual(ConnectionState.Open, transport.State);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
     public async Task OpenAsync_RaisesStateChangedThroughOpeningToOpen()
     {
+        var (connection, _) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Mock.Of<ITcpConnection>());
+            .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
         var states = new List<ConnectionState>();
@@ -58,6 +78,8 @@ public sealed class TcpTransportTests
         await transport.OpenAsync();
 
         CollectionAssert.AreEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
@@ -84,7 +106,7 @@ public sealed class TcpTransportTests
     [TestMethod]
     public async Task WriteAsync_WhenOpen_WritesBytesToConnection()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, _) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
@@ -96,49 +118,60 @@ public sealed class TcpTransportTests
         await transport.WriteAsync(payload);
 
         connection.Verify(c => c.Write(payload, 0, payload.Length), Times.Once);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
-    public async Task ConnectionDataReceived_IsForwardedAsTransportDataReceived()
+    public async Task IncomingBytes_AreAvailableThroughInput()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, wirePipe) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
         await transport.OpenAsync();
-
-        ReadOnlyMemory<byte>? received = null;
-        transport.DataReceived += (_, e) => received = e.Data;
 
         var payload = new byte[] { 0xDE, 0xAD };
-        connection.Raise(c => c.DataReceived += null, connection.Object, new TcpDataReceivedEventArgs(payload));
+        await wirePipe.Writer.WriteAsync(payload);
 
-        Assert.IsTrue(received.HasValue);
-        CollectionAssert.AreEqual(payload, received!.Value.ToArray());
+        var result = await transport.Input.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        CollectionAssert.AreEqual(payload, result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
-    public async Task ConnectionClosed_TransitionsTransportToClosed()
+    public async Task RemoteClosesTheConnection_TransportTransitionsToClosed()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, wirePipe) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
+        var closedTcs = new TaskCompletionSource();
+        transport.StateChanged += (_, e) =>
+        {
+            if (e.Current == ConnectionState.Closed)
+            {
+                closedTcs.TrySetResult();
+            }
+        };
+
         await transport.OpenAsync();
+        await wirePipe.Writer.CompleteAsync();
 
-        connection.Raise(c => c.Closed += null, connection.Object, EventArgs.Empty);
-
+        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
 
     [TestMethod]
     public async Task CloseAsync_ClosesAndDisposesConnection()
     {
-        var connection = new Mock<ITcpConnection>();
+        var (connection, _) = CreateConnection();
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(connection.Object);
@@ -146,7 +179,7 @@ public sealed class TcpTransportTests
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
         await transport.OpenAsync();
 
-        await transport.CloseAsync();
+        await transport.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
 
         connection.Verify(c => c.Dispose(), Times.Once);
         Assert.AreEqual(ConnectionState.Closed, transport.State);

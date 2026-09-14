@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using DevTerm.Core.Presenters;
 
@@ -7,7 +8,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
 {
     public string Name => "ascii";
 
-    public string Render(ReadOnlyMemory<byte> data) => Encoding.ASCII.GetString(data.Span);
+    public string Render(ReadOnlySequence<byte> data) => Encoding.ASCII.GetString(data.ToContiguousSpan());
 
     public byte[] Parse(string input) => Encoding.ASCII.GetBytes(input);
 }

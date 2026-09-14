@@ -1,3 +1,5 @@
+using System.IO.Pipelines;
+
 namespace DevTerm.Core.Transports;
 
 /// <summary>
@@ -10,7 +12,13 @@ public interface ITransport : IAsyncDisposable
 
     event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
 
-    event EventHandler<TransportDataReceivedEventArgs>? DataReceived;
+    /// <summary>
+    /// Incoming bytes from the device. Backed by a <see cref="System.IO.Pipelines.Pipe"/> so a
+    /// consumer (see <see cref="StreamToPipePump"/>) can read directly into the pipe's pooled
+    /// buffers instead of the transport allocating and copying a new array per read. Valid once
+    /// <see cref="State"/> reaches <see cref="ConnectionState.Open"/>.
+    /// </summary>
+    PipeReader Input { get; }
 
     Task OpenAsync(CancellationToken cancellationToken = default);
 

@@ -1,3 +1,4 @@
+using System.Buffers;
 using DevTerm.Core.Presenters;
 using Moq;
 
@@ -11,15 +12,15 @@ public sealed class PipelineTests
     {
         var hex = new Mock<IPresenter>();
         hex.SetupGet(p => p.Name).Returns("hex");
-        hex.Setup(p => p.Render(It.IsAny<ReadOnlyMemory<byte>>())).Returns("48 49");
+        hex.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("48 49");
 
         var ascii = new Mock<IPresenter>();
         ascii.SetupGet(p => p.Name).Returns("ascii");
-        ascii.Setup(p => p.Render(It.IsAny<ReadOnlyMemory<byte>>())).Returns("HI");
+        ascii.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("HI");
 
         var pipeline = new Pipeline([hex.Object, ascii.Object]);
 
-        var outputs = pipeline.Render(new byte[] { 0x48, 0x49 });
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48, 0x49 }));
 
         CollectionAssert.AreEqual(
             new[] { new PresenterOutput("hex", "48 49"), new PresenterOutput("ascii", "HI") },
@@ -31,7 +32,7 @@ public sealed class PipelineTests
     {
         var pipeline = new Pipeline([]);
 
-        var outputs = pipeline.Render(new byte[] { 1, 2, 3 });
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 1, 2, 3 }));
 
         Assert.IsEmpty(outputs);
     }

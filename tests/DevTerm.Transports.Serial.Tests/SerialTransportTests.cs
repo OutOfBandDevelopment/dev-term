@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.IO.Pipelines;
 using DevTerm.Core.Transports;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -10,10 +12,24 @@ public sealed class SerialTransportTests
     private static IOptions<SerialTransportOptions> Options(string portName = "COM1") =>
         Microsoft.Extensions.Options.Options.Create(new SerialTransportOptions { PortName = portName });
 
+    /// <summary>
+    /// A port double whose <see cref="ISerialPort.BaseStream"/> is backed by a real
+    /// <see cref="Pipe"/>: the transport's background pump reads from it for real, and the test
+    /// plays "bytes arrived on the wire" by writing to <c>DevicePipe.Writer</c> — no need to
+    /// simulate the read side by mocking a <see cref="Stream"/> or raising events.
+    /// </summary>
+    private static (Mock<ISerialPort> Port, Pipe DevicePipe) CreatePort()
+    {
+        var devicePipe = new Pipe();
+        var port = new Mock<ISerialPort>();
+        port.SetupGet(p => p.BaseStream).Returns(devicePipe.Reader.AsStream());
+        return (port, devicePipe);
+    }
+
     [TestMethod]
     public async Task OpenAsync_CreatesAndOpensPortFromFactory()
     {
-        var port = new Mock<ISerialPort>();
+        var (port, _) = CreatePort();
         var factory = new Mock<ISerialPortFactory>();
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
@@ -24,12 +40,14 @@ public sealed class SerialTransportTests
         factory.Verify(f => f.Create(It.Is<SerialTransportOptions>(o => o.PortName == "COM3")), Times.Once);
         port.Verify(p => p.Open(), Times.Once);
         Assert.AreEqual(ConnectionState.Open, transport.State);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
     public async Task OpenAsync_RaisesStateChangedThroughOpeningToOpen()
     {
-        var port = new Mock<ISerialPort>();
+        var (port, _) = CreatePort();
         var factory = new Mock<ISerialPortFactory>();
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
@@ -40,6 +58,8 @@ public sealed class SerialTransportTests
         await transport.OpenAsync();
 
         CollectionAssert.AreEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
@@ -68,7 +88,7 @@ public sealed class SerialTransportTests
     [TestMethod]
     public async Task WriteAsync_WhenOpen_WritesBytesToPort()
     {
-        var port = new Mock<ISerialPort>();
+        var (port, _) = CreatePort();
         var factory = new Mock<ISerialPortFactory>();
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
@@ -79,39 +99,65 @@ public sealed class SerialTransportTests
         await transport.WriteAsync(payload);
 
         port.Verify(p => p.Write(payload, 0, payload.Length), Times.Once);
+
+        await transport.CloseAsync();
     }
 
     [TestMethod]
-    public async Task PortDataReceived_IsForwardedAsTransportDataReceived()
+    public async Task IncomingBytes_AreAvailableThroughInput()
     {
-        var port = new Mock<ISerialPort>();
+        var (port, devicePipe) = CreatePort();
         var factory = new Mock<ISerialPortFactory>();
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
         var transport = new SerialTransport(factory.Object, Options());
         await transport.OpenAsync();
 
-        ReadOnlyMemory<byte>? received = null;
-        transport.DataReceived += (_, e) => received = e.Data;
-
         var payload = new byte[] { 0xDE, 0xAD };
-        port.Raise(p => p.DataReceived += null, port.Object, new SerialPortDataReceivedEventArgs(payload));
+        await devicePipe.Writer.WriteAsync(payload);
 
-        Assert.IsTrue(received.HasValue);
-        CollectionAssert.AreEqual(payload, received!.Value.ToArray());
+        var result = await transport.Input.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        CollectionAssert.AreEqual(payload, result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync();
+    }
+
+    [TestMethod]
+    public async Task DeviceClosesTheConnection_TransportTransitionsToClosed()
+    {
+        var (port, devicePipe) = CreatePort();
+        var factory = new Mock<ISerialPortFactory>();
+        factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
+
+        var transport = new SerialTransport(factory.Object, Options());
+        var closedTcs = new TaskCompletionSource();
+        transport.StateChanged += (_, e) =>
+        {
+            if (e.Current == ConnectionState.Closed)
+            {
+                closedTcs.TrySetResult();
+            }
+        };
+
+        await transport.OpenAsync();
+        await devicePipe.Writer.CompleteAsync();
+
+        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
 
     [TestMethod]
     public async Task CloseAsync_ClosesAndDisposesPort()
     {
-        var port = new Mock<ISerialPort>();
+        var (port, _) = CreatePort();
         var factory = new Mock<ISerialPortFactory>();
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
         var transport = new SerialTransport(factory.Object, Options());
         await transport.OpenAsync();
 
-        await transport.CloseAsync();
+        await transport.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
 
         port.Verify(p => p.Close(), Times.Once);
         port.Verify(p => p.Dispose(), Times.Once);

@@ -1,3 +1,4 @@
+using System.Buffers;
 using DevTerm.Core.Presenters;
 
 namespace DevTerm.Presenters.Text;
@@ -6,7 +7,7 @@ public sealed class HexPresenter : IPresenter, IPresenterInput
 {
     public string Name => "hex";
 
-    public string Render(ReadOnlyMemory<byte> data) => Convert.ToHexString(data.Span);
+    public string Render(ReadOnlySequence<byte> data) => Convert.ToHexString(data.ToContiguousSpan());
 
     public byte[] Parse(string input)
     {

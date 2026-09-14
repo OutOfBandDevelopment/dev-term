@@ -4,15 +4,7 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
 
 ## In progress
 
-- [ ] Rework the transport read path to use `System.IO.Pipelines` (`PipeReader`/`PipeWriter`)
-      end-to-end instead of per-chunk `byte[]` copies.
-  - [ ] `DevTerm.Core`: `ITransport.Input` as `PipeReader`, `IPresenter.Render(ReadOnlySequence<byte>)`,
-        a shared `StreamToPipePump`, `Session` read loop pumping over `PipeReader`.
-  - [ ] `DevTerm.Presenters.Text`: update all presenters to `ReadOnlySequence<byte>` with a
-        zero-copy single-segment fast path.
-  - [ ] `DevTerm.Transports.Serial`: simplify `ISerialPort`/`SerialTransport` to stream + pump.
-  - [ ] `DevTerm.Transports.Tcp`: simplify `ITcpConnection`/`TcpTransport` to stream + pump.
-  - [ ] Update all affected unit tests (Pipe-based simulation instead of event-raising).
+_(none right now — pick the next item from the backlog)_
 
 ## Backlog (not started)
 

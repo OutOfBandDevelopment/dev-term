@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace DevTerm.Core.Presenters;
 
 /// <summary>
@@ -16,7 +18,7 @@ public sealed class Pipeline
 
     public IReadOnlyList<IPresenter> Presenters => _presenters;
 
-    public IReadOnlyList<PresenterOutput> Render(ReadOnlyMemory<byte> data)
+    public IReadOnlyList<PresenterOutput> Render(ReadOnlySequence<byte> data)
     {
         var results = new List<PresenterOutput>(_presenters.Count);
         foreach (var presenter in _presenters)

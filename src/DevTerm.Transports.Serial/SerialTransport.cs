@@ -1,3 +1,4 @@
+using System.IO.Pipelines;
 using DevTerm.Core.Transports;
 using Microsoft.Extensions.Options;
 
@@ -12,6 +13,9 @@ public sealed class SerialTransport : ITransport
     private readonly IOptions<SerialTransportOptions> _options;
     private ISerialPort? _port;
     private ConnectionState _state = ConnectionState.Closed;
+    private Pipe? _pipe;
+    private CancellationTokenSource? _pumpCts;
+    private Task? _pumpTask;
 
     public SerialTransport(ISerialPortFactory portFactory, IOptions<SerialTransportOptions> options)
     {
@@ -40,7 +44,7 @@ public sealed class SerialTransport : ITransport
 
     public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
 
-    public event EventHandler<TransportDataReceivedEventArgs>? DataReceived;
+    public PipeReader Input => _pipe?.Reader ?? throw new InvalidOperationException("The serial transport has not been opened.");
 
     public Task OpenAsync(CancellationToken cancellationToken = default)
     {
@@ -52,7 +56,6 @@ public sealed class SerialTransport : ITransport
         State = ConnectionState.Opening;
 
         var port = _portFactory.Create(_options.Value);
-        port.DataReceived += OnPortDataReceived;
 
         try
         {
@@ -60,33 +63,60 @@ public sealed class SerialTransport : ITransport
         }
         catch
         {
-            port.DataReceived -= OnPortDataReceived;
             port.Dispose();
             State = ConnectionState.Faulted;
             throw;
         }
 
         _port = port;
+        _pipe = new Pipe();
+        _pumpCts = new CancellationTokenSource();
+
+        var pipe = _pipe;
+        _pumpTask = Task.Run(() => StreamToPipePump.RunAsync(port.BaseStream, pipe.Writer, _pumpCts.Token), CancellationToken.None);
+        _ = _pumpTask.ContinueWith(
+            _ =>
+            {
+                // The pump ends either because we're deliberately closing (State already moved
+                // past Open by then) or because the port faulted/disconnected underneath us.
+                if (State == ConnectionState.Open)
+                {
+                    State = ConnectionState.Closed;
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
         State = ConnectionState.Open;
         return Task.CompletedTask;
     }
 
-    public Task CloseAsync(CancellationToken cancellationToken = default)
+    public async Task CloseAsync(CancellationToken cancellationToken = default)
     {
         if (_port is null)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         State = ConnectionState.Closing;
 
-        _port.DataReceived -= OnPortDataReceived;
+        _pumpCts?.Cancel();
+        if (_pumpTask is not null)
+        {
+            await _pumpTask.ConfigureAwait(false);
+        }
+
+        _pumpCts?.Dispose();
+        _pumpCts = null;
+        _pumpTask = null;
+        _pipe = null;
+
         _port.Close();
         _port.Dispose();
         _port = null;
 
         State = ConnectionState.Closed;
-        return Task.CompletedTask;
     }
 
     public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
@@ -100,9 +130,6 @@ public sealed class SerialTransport : ITransport
         _port.Write(buffer, 0, buffer.Length);
         return Task.CompletedTask;
     }
-
-    private void OnPortDataReceived(object? sender, SerialPortDataReceivedEventArgs e) =>
-        DataReceived?.Invoke(this, new TransportDataReceivedEventArgs(e.Data));
 
     public async ValueTask DisposeAsync()
     {

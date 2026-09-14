@@ -1,3 +1,5 @@
+using static DevTerm.Presenters.Text.Tests.TestSequence;
+
 namespace DevTerm.Presenters.Text.Tests;
 
 [TestClass]
@@ -10,7 +12,7 @@ public sealed class AsciiPresenterTests
 
     [TestMethod]
     public void Render_DecodesAsciiBytes() =>
-        Assert.AreEqual("Hi!", _presenter.Render(new byte[] { 0x48, 0x69, 0x21 }));
+        Assert.AreEqual("Hi!", _presenter.Render(Of(0x48, 0x69, 0x21)));
 
     [TestMethod]
     public void Parse_EncodesAsciiBytes() =>
@@ -21,7 +23,7 @@ public sealed class AsciiPresenterTests
     {
         const string original = "Hello, dev-term!";
 
-        var result = _presenter.Render(_presenter.Parse(original));
+        var result = _presenter.Render(Of(_presenter.Parse(original)));
 
         Assert.AreEqual(original, result);
     }

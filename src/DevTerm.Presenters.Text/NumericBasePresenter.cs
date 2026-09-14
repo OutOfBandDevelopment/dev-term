@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using DevTerm.Core.Presenters;
 
@@ -10,9 +11,9 @@ namespace DevTerm.Presenters.Text;
 /// </summary>
 internal static class NumericBasePresenter
 {
-    public static string Render(ReadOnlyMemory<byte> data, int toBase, int width)
+    public static string Render(ReadOnlySequence<byte> data, int toBase, int width)
     {
-        var span = data.Span;
+        var span = data.ToContiguousSpan();
         var sb = new StringBuilder();
         for (var i = 0; i < span.Length; i++)
         {

@@ -10,62 +10,22 @@ namespace DevTerm.Transports.Tcp;
 public sealed class SystemTcpConnection : ITcpConnection
 {
     private readonly TcpClient _client;
-    private readonly NetworkStream _stream;
-    private readonly CancellationTokenSource _readLoopCts = new();
-    private readonly Task _readLoop;
 
     public SystemTcpConnection(TcpClient client)
     {
         ArgumentNullException.ThrowIfNull(client);
 
         _client = client;
-        _stream = client.GetStream();
-        _readLoop = Task.Run(() => ReadLoopAsync(_readLoopCts.Token));
+        Stream = client.GetStream();
     }
 
-    public event EventHandler<TcpDataReceivedEventArgs>? DataReceived;
+    public Stream Stream { get; }
 
-    public event EventHandler? Closed;
-
-    public void Write(byte[] buffer, int offset, int count) => _stream.Write(buffer, offset, count);
-
-    private async Task ReadLoopAsync(CancellationToken cancellationToken)
-    {
-        var buffer = new byte[4096];
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var read = await _stream.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-                if (read == 0)
-                {
-                    break;
-                }
-
-                DataReceived?.Invoke(this, new TcpDataReceivedEventArgs(buffer[..read]));
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch (IOException)
-        {
-            // Connection reset/aborted by the remote peer; fall through to Closed below.
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
-
-        Closed?.Invoke(this, EventArgs.Empty);
-    }
+    public void Write(byte[] buffer, int offset, int count) => Stream.Write(buffer, offset, count);
 
     public void Dispose()
     {
-        _readLoopCts.Cancel();
-        _stream.Dispose();
+        Stream.Dispose();
         _client.Dispose();
-        _readLoopCts.Dispose();
     }
 }

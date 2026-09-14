@@ -7,15 +7,8 @@ namespace DevTerm.Transports.Tcp;
 /// </summary>
 public interface ITcpConnection : IDisposable
 {
-    event EventHandler<TcpDataReceivedEventArgs>? DataReceived;
-
-    /// <summary>Raised when the remote end closes the connection or the read loop faults.</summary>
-    event EventHandler? Closed;
+    /// <summary>The connection's byte stream, pumped into a pipe (see <see cref="DevTerm.Core.Transports.StreamToPipePump"/>).</summary>
+    Stream Stream { get; }
 
     void Write(byte[] buffer, int offset, int count);
-}
-
-public sealed class TcpDataReceivedEventArgs(ReadOnlyMemory<byte> data) : EventArgs
-{
-    public ReadOnlyMemory<byte> Data { get; } = data;
 }

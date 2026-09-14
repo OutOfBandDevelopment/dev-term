@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace DevTerm.Core.Presenters;
 
 /// <summary>
@@ -11,11 +13,13 @@ public interface IPresenter
     string Name { get; }
 
     /// <remarks>
-    /// Takes <see cref="ReadOnlyMemory{T}"/> rather than <see cref="ReadOnlySpan{T}"/> so the
-    /// method stays mockable (Moq/Castle cannot proxy a ref struct parameter); implementations
-    /// that only need synchronous, allocation-free access can use <c>data.Span</c> internally.
+    /// Takes a <see cref="ReadOnlySequence{T}"/> — the shape a <see cref="System.IO.Pipelines.PipeReader"/>
+    /// hands back, and a plain struct so the method stays mockable (Moq/Castle cannot proxy a
+    /// ref struct parameter like <see cref="ReadOnlySpan{T}"/>). Use
+    /// <see cref="PresenterDataExtensions.ToContiguousSpan"/> for zero-copy access in the common
+    /// single-segment case.
     /// </remarks>
-    string Render(ReadOnlyMemory<byte> data);
+    string Render(ReadOnlySequence<byte> data);
 }
 
 /// <summary>

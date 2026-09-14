@@ -11,6 +11,8 @@ public sealed class Session : IAsyncDisposable
 {
     private readonly ITransport _transport;
     private readonly Pipeline _pipeline;
+    private readonly CancellationTokenSource _readLoopCts = new();
+    private Task? _readLoopTask;
 
     public Session(ITransport transport, Pipeline pipeline)
     {
@@ -19,7 +21,6 @@ public sealed class Session : IAsyncDisposable
 
         _transport = transport;
         _pipeline = pipeline;
-        _transport.DataReceived += OnTransportDataReceived;
     }
 
     public ConnectionState State => _transport.State;
@@ -28,26 +29,65 @@ public sealed class Session : IAsyncDisposable
 
     public event EventHandler<PresenterOutput>? Output;
 
-    public Task OpenAsync(CancellationToken cancellationToken = default) =>
-        _transport.OpenAsync(cancellationToken);
+    public async Task OpenAsync(CancellationToken cancellationToken = default)
+    {
+        await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+        _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token));
+    }
 
-    public Task CloseAsync(CancellationToken cancellationToken = default) =>
-        _transport.CloseAsync(cancellationToken);
+    public Task CloseAsync(CancellationToken cancellationToken = default) => StopAsync(cancellationToken);
 
     public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default) =>
         _transport.WriteAsync(data, cancellationToken);
 
-    private void OnTransportDataReceived(object? sender, TransportDataReceivedEventArgs e)
+    private async Task PumpAsync(CancellationToken cancellationToken)
     {
-        foreach (var output in _pipeline.Render(e.Data))
+        var reader = _transport.Input;
+        try
         {
-            Output?.Invoke(this, output);
+            while (true)
+            {
+                var result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                var buffer = result.Buffer;
+
+                if (!buffer.IsEmpty)
+                {
+                    foreach (var output in _pipeline.Render(buffer))
+                    {
+                        Output?.Invoke(this, output);
+                    }
+                }
+
+                reader.AdvanceTo(buffer.End);
+
+                if (result.IsCompleted || result.IsCanceled)
+                {
+                    break;
+                }
+            }
         }
+        catch (OperationCanceledException)
+        {
+            // Expected when CloseAsync/DisposeAsync cancels the read loop.
+        }
+    }
+
+    private async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _readLoopCts.Cancel();
+        if (_readLoopTask is not null)
+        {
+            await _readLoopTask.ConfigureAwait(false);
+            _readLoopTask = null;
+        }
+
+        await _transport.CloseAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
-        _transport.DataReceived -= OnTransportDataReceived;
+        await StopAsync(CancellationToken.None).ConfigureAwait(false);
+        _readLoopCts.Dispose();
         await _transport.DisposeAsync();
     }
 }

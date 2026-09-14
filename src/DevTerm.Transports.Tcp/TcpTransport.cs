@@ -1,3 +1,4 @@
+using System.IO.Pipelines;
 using DevTerm.Core.Transports;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +14,9 @@ public sealed class TcpTransport : ITransport
     private readonly IOptions<TcpTransportOptions> _options;
     private ITcpConnection? _connection;
     private ConnectionState _state = ConnectionState.Closed;
+    private Pipe? _pipe;
+    private CancellationTokenSource? _pumpCts;
+    private Task? _pumpTask;
 
     public TcpTransport(ITcpConnectionSource connectionSource, IOptions<TcpTransportOptions> options)
     {
@@ -41,7 +45,7 @@ public sealed class TcpTransport : ITransport
 
     public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
 
-    public event EventHandler<TransportDataReceivedEventArgs>? DataReceived;
+    public PipeReader Input => _pipe?.Reader ?? throw new InvalidOperationException("The TCP transport has not been opened.");
 
     public async Task OpenAsync(CancellationToken cancellationToken = default)
     {
@@ -66,28 +70,53 @@ public sealed class TcpTransport : ITransport
             throw;
         }
 
-        connection.DataReceived += OnConnectionDataReceived;
-        connection.Closed += OnConnectionClosed;
         _connection = connection;
+        _pipe = new Pipe();
+        _pumpCts = new CancellationTokenSource();
+
+        var pipe = _pipe;
+        _pumpTask = Task.Run(() => StreamToPipePump.RunAsync(connection.Stream, pipe.Writer, _pumpCts.Token), CancellationToken.None);
+        _ = _pumpTask.ContinueWith(
+            _ =>
+            {
+                // The pump ends either because we're deliberately closing (State already moved
+                // past Open by then) or because the remote peer disconnected underneath us.
+                if (State == ConnectionState.Open)
+                {
+                    State = ConnectionState.Closed;
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
         State = ConnectionState.Open;
     }
 
-    public Task CloseAsync(CancellationToken cancellationToken = default)
+    public async Task CloseAsync(CancellationToken cancellationToken = default)
     {
         if (_connection is null)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         State = ConnectionState.Closing;
 
-        _connection.DataReceived -= OnConnectionDataReceived;
-        _connection.Closed -= OnConnectionClosed;
+        _pumpCts?.Cancel();
+        if (_pumpTask is not null)
+        {
+            await _pumpTask.ConfigureAwait(false);
+        }
+
+        _pumpCts?.Dispose();
+        _pumpCts = null;
+        _pumpTask = null;
+        _pipe = null;
+
         _connection.Dispose();
         _connection = null;
 
         State = ConnectionState.Closed;
-        return Task.CompletedTask;
     }
 
     public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
@@ -101,11 +130,6 @@ public sealed class TcpTransport : ITransport
         _connection.Write(buffer, 0, buffer.Length);
         return Task.CompletedTask;
     }
-
-    private void OnConnectionDataReceived(object? sender, TcpDataReceivedEventArgs e) =>
-        DataReceived?.Invoke(this, new TransportDataReceivedEventArgs(e.Data));
-
-    private void OnConnectionClosed(object? sender, EventArgs e) => State = ConnectionState.Closed;
 
     public async ValueTask DisposeAsync()
     {

@@ -1,3 +1,5 @@
+using static DevTerm.Presenters.Text.Tests.TestSequence;
+
 namespace DevTerm.Presenters.Text.Tests;
 
 [TestClass]
@@ -13,7 +15,7 @@ public sealed class Utf8PresenterTests
     {
         const string original = "café — 日本語";
 
-        var result = _presenter.Render(_presenter.Parse(original));
+        var result = _presenter.Render(Of(_presenter.Parse(original)));
 
         Assert.AreEqual(original, result);
     }
