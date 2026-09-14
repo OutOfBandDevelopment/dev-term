@@ -7,6 +7,13 @@ namespace DevTerm.Core.Transports;
 /// intermediate array allocation per read: each read lands directly in a buffer rented from the
 /// pipe's pool via <see cref="PipeWriter.GetMemory"/>. Shared by any transport whose underlying
 /// I/O is stream-shaped (serial, TCP, ...). See docs/design/platform.md.
+///
+/// Relies on <paramref name="source"/>'s <c>ReadAsync</c> properly honoring
+/// <paramref name="cancellationToken"/> to notice a close/cancel promptly. Not every stream does
+/// this reliably (verified against real hardware that <see cref="System.IO.Ports.SerialPort"/>'s
+/// <c>BaseStream</c> does not) — such a transport should wrap its stream so cancellation works
+/// before handing it to this pump, rather than this shared helper working around one stream's
+/// quirk. See <c>DevTerm.Transports.Serial.CancellableReadStream</c>.
 /// </summary>
 public static class StreamToPipePump
 {

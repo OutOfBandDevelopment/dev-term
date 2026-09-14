@@ -60,6 +60,11 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual(Parity.None, options.Parity);
         Assert.AreEqual(StopBits.One, options.StopBits);
         Assert.AreEqual(Handshake.None, options.Handshake);
+        Assert.AreEqual(5000, options.WriteTimeoutMs);
+        Assert.AreEqual(1000, options.ReadTimeoutMs);
+        Assert.IsTrue(options.Dtr);
+        Assert.IsTrue(options.Rts);
+        Assert.AreEqual(LineEnding.None, options.LineEnding);
         Assert.IsNull(options.Port);
         Assert.IsNull(options.Host);
         Assert.AreEqual(0, options.TcpPort);
@@ -77,5 +82,19 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual(Parity.Even, options.Parity);
         Assert.AreEqual(StopBits.Two, options.StopBits);
         Assert.AreEqual(Handshake.RequestToSend, options.Handshake);
+    }
+
+    [TestMethod]
+    public void Bind_DtrRtsAndTimeouts_OverrideDefaults()
+    {
+        var options = Bind(
+            "--port", "COM3", "--dtr", "false", "--rts", "false",
+            "--writetimeoutms", "2000", "--readtimeoutms", "250", "--lineending", "Cr");
+
+        Assert.IsFalse(options.Dtr);
+        Assert.IsFalse(options.Rts);
+        Assert.AreEqual(2000, options.WriteTimeoutMs);
+        Assert.AreEqual(250, options.ReadTimeoutMs);
+        Assert.AreEqual(LineEnding.Cr, options.LineEnding);
     }
 }

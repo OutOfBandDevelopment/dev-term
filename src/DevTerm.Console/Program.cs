@@ -13,8 +13,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--presenter <name>]"
-    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>]"
+    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>]"
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
     + "\nCommand-line arguments always win, then environment variables, then the settings file.";
@@ -62,6 +62,10 @@ var hostBuilder = Host.CreateDefaultBuilder(args)
                 o.Parity = cliOptions.Parity;
                 o.StopBits = cliOptions.StopBits;
                 o.Handshake = cliOptions.Handshake;
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
+                o.DtrEnable = cliOptions.Dtr;
+                o.RtsEnable = cliOptions.Rts;
             });
         }
     });
@@ -136,7 +140,15 @@ using (host)
 
         if (presenter is IPresenterInput input)
         {
-            await session.SendAsync(input.Parse(line));
+            try
+            {
+                await session.SendAsync(cliOptions.LineEnding.Append(input.Parse(line)));
+            }
+            catch (TimeoutException)
+            {
+                Console.Error.WriteLine(
+                    "Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+            }
         }
         else
         {
