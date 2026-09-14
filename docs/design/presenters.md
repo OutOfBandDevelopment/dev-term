@@ -1,0 +1,121 @@
+# Presenters & Encodings
+
+## Purpose
+
+Defines how raw bytes from a device are turned into something a developer can read, act on, and export — and, where applicable, turned back into bytes to send.
+
+## Three categories
+
+### 1. Raw/text & numeric-base presenters
+
+Always available, need no knowledge of the connected device. This is what makes dev-term useful for "just talk to the device" scenarios even before any protocol-specific decoder exists:
+
+- Text encodings: ASCII, UTF-8, UTF-16 (LE/BE), Latin-1, and other codepages as needed.
+- Numeric-base views: hexadecimal, decimal, octal, and binary, both for viewing incoming bytes and for composing outgoing bytes (e.g., type `0xFF 0x02` or `11111111 00000010` and send it).
+
+### 2. Protocol decoders (structured, textual)
+
+Stateful, pluggable parsers that interpret a raw byte stream as a specific device/protocol's framing and message structure (e.g., a custom binary protocol, NMEA 0183, Modbus RTU/TCP, SLIP/COBS-framed streams, or an application-layer network protocol such as MQTT or a custom TCP/UDP wire format). A decoder is transport-agnostic: a Modbus TCP decoder doesn't care whether the bytes arrived over the TCP transport or were replayed from a capture file — it only depends on `ITransport` producing bytes, never on which transport plugin produced them. A decoder:
+
+- Consumes bytes (and/or already-framed messages from an upstream decoder) and produces structured, named messages/fields for display.
+- Always produces a **human-readable text rendering** as a baseline — a formatted line or block (e.g., `FC=03 addr=0x0010 value=1024 "PumpSpeed"`) that reads sensibly on its own, not just a bag of raw field/value pairs. Structured (tree/table) or graphical output, where a decoder also provides it, is additive on top of this baseline, not a replacement for it — so even a minimal or partially-understood decoder is useful, and every decoder works reasonably in a plain-text-only front end (e.g., piped CLI output).
+- May optionally support encoding structured input back into bytes to send, for interactive protocol testing — though a decoder can be receive-only if that doesn't make sense for the protocol.
+- Can be chained: e.g., a COBS/SLIP unframer feeds a higher-level decoder.
+
+### 3. Rendering presenters (graphical output & export)
+
+Some presenters interpret a byte stream as a *drawing* or a *plot* rather than as text/fields, and need to offer a "save this" action, not just a live view. The motivating example is an **HPGL presenter**: it displays the raw HPGL command stream as text (like any protocol decoder), *and* renders the plotter commands to a graphical canvas, *and* lets the user export what's been received as either a vector file (SVG) or a raster image (PNG/JPG).
+
+This category is deliberately broader than one plotter language. It's expected to cover, over time:
+
+- Other page-description / printer command languages — **PostScript**, **PCL**, and similar — which share the same shape as HPGL: a command stream that both displays as text and renders as a page/drawing, exportable as vector (SVG, or a page-native vector format) or raster (PNG/JPG).
+- **Telemetry plots** — a presenter that reads a raw numeric stream (e.g., ADC samples, sensor readings) and renders it as a time-series line/scatter chart rather than a static drawing, with the same expectation of exporting a snapshot as a raster image (and potentially the plotted data as a vector/SVG chart too).
+
+Both are "rendering presenters" in the same sense, they just target different renderable shapes (a static vector drawing vs. a live/scrolling chart), so the contract should describe *what kind* of renderable a presenter produces rather than assuming it's always a fixed drawing:
+
+- A presenter declares what representation(s) it produces — plain text, structured tree/table, and/or a renderable (drawing, or plot/chart) — so front ends can pick an appropriate way to display it without needing decoder-specific code. A CLI front end might only surface the text view and the export command; a GUI or TUI-with-graphics front end can show the live canvas/chart too.
+- A renderable presenter exposes an **export** capability: one or more output formats (e.g., SVG for vector, PNG/JPG for raster) that the current rendered state can be saved to, independent of which front end triggered it.
+- Rendering presenters are still fed by the same raw byte stream as any other presenter, and can sit alongside a plain hex/ASCII view of the same session for cross-checking.
+
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+
+[Raw byte stream] as Raw
+[Rendering Presenter\n(HPGL / PostScript / PCL / telemetry plot)] as Render
+[Text view] as Text
+[Drawing / plot canvas] as Canvas
+[SVG export] as SVG
+[PNG / JPG export] as Raster
+
+Raw --> Render
+Render --> Text : always
+Render --> Canvas : where supported
+Canvas --> SVG : export (vector)
+Canvas --> Raster : export (raster)
+@enduml
+```
+
+### 4. Composite / channelized decoders
+
+Not every device sends one homogeneous stream. Telemetry in particular is often **interlaced**: a single stream (or a single frame) carries multiple channels that are each encoded differently — e.g., a header byte selects which channel follows, or channels are assigned fixed time slots — and one channel's payload might be plain text while another is binary, hex-encoded, decimal, or something else entirely.
+
+A composite decoder handles this by:
+
+- **Demultiplexing** the incoming stream/frame into named channels, keyed by whatever discriminates them for that device (a header/id byte, a fixed time slot, a length-prefixed field, etc.) — this splitting logic is itself device-specific and lives in the composite decoder.
+- **Delegating** each channel's payload to its own sub-presenter, reusing the existing presenter set — a channel can be rendered as ASCII text, as hex/decimal/binary, or handed to another nested decoder (which could itself be a composite decoder, for deeply structured frames).
+- **Recombining** the per-channel output into one view (e.g., a table of channels-over-time, or a synchronized multi-pane view), so the user sees the whole frame/stream coherently rather than as disjoint fragments.
+
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+
+[Raw byte stream] as Raw
+[Composite Decoder\n(demux by header / time-slot)] as Composite
+[Channel: ASCII text] as Ch1
+[Channel: Hex / decimal / binary] as Ch2
+[Channel: Nested decoder] as Ch3
+[Combined channel view] as Combined
+
+Raw --> Composite
+Composite --> Ch1
+Composite --> Ch2
+Composite --> Ch3
+Ch1 --> Combined
+Ch2 --> Combined
+Ch3 --> Combined
+@enduml
+```
+
+This makes presenter composition recursive by design: a composite decoder is just a presenter that happens to be implemented in terms of other presenters, rather than a separate mechanism bolted on top.
+
+### 5. Mappable presenters (external name/label/unit mapping)
+
+Rather than hardcoding every field name, enum label, unit, or channel meaning inside a compiled decoder, a presenter can be **mappable**: it accepts an external, user-editable mapping that translates raw identifiers/values into human-readable names — without needing a new plugin per device. This is what makes one generic decoder reusable across many similar devices instead of forking a plugin for each:
+
+- A **Modbus** decoder is generic to the protocol, but a *register map* (address → name, e.g. `0x0010 → "PumpSpeed"`, plus optional scale/unit) is what turns raw register numbers into something meaningful for a specific device — supplied as mapping data, not code.
+- A **composite/channelized decoder**'s channel map (see above: which byte/time-slot is which channel, and which sub-presenter/encoding applies) is itself a mapping, and can also carry per-channel names and units (e.g., channel 2 → "Temperature (°C)" → decimal presenter).
+- Enum/status codes (a mode byte, an error code) map to short human labels the same way (e.g., `0x02 → "Calibrating"`), regardless of which decoder or channel they appear in.
+- A rendering presenter can use a mapping too — e.g., an HPGL pen number → a color name/RGB value for on-screen rendering and export.
+
+A mapping is loaded per-session (or per saved device profile) rather than compiled in, so the same decoder plugin serves many devices, and users can build/edit/share a mapping for a new device without writing code. Mappings are plain data (not logic), so they don't need the plugin isolation/versioning machinery that code plugins do — see [plugin-model.md](plugin-model.md).
+
+## Presenter contract shape (conceptual)
+
+- `IPresenter` — byte stream in → rendered representation out, for display. Declares its representation kind(s) (text / structured / renderable drawing / renderable plot).
+- `IPresenterInput` (where applicable) — user-facing representation in → bytes out, for sending.
+- `IExportable` (where applicable) — the presenter's current state can be saved to one or more file formats (e.g., an HPGL or PostScript/PCL presenter offering SVG/PNG/JPG export, a telemetry presenter offering a chart snapshot); front ends surface this uniformly (a "save/export" action) without knowing the specific formats ahead of time — the presenter advertises them.
+- `ICompositeDecoder` (where applicable) — declares the set of channels it demultiplexes a stream/frame into, and the (possibly per-channel-configurable) sub-presenter used for each, so a front end can show per-channel structure generically instead of the composite decoder needing custom UI.
+- `IMappable` (where applicable) — accepts an external mapping (raw identifier/value → name, and optionally unit/scale/color/sub-presenter) that a front end can present as an editable table, independent of the specific decoder; a decoder that doesn't implement it simply always shows raw identifiers.
+
+## Composability
+
+A single session can run more than one presenter over the same stream at once (e.g., raw hex + ASCII side-by-side + an HPGL render), since debugging often means cross-checking the raw bytes against the interpreted or rendered view. Composite decoders extend this: each channel they expose is, from the pipeline's point of view, just another presenter output that can be viewed, cross-checked, or further decoded.
+
+## Open questions
+
+- Standard structured-message model that all textual protocol decoders emit into, so front ends can render any decoder generically (vs. decoders bringing their own rendering).
+- Standard drawing/canvas and plot/chart models that rendering presenters target (so the GUI/TUI/export path is shared, e.g. an internal scene graph that both on-screen views and the SVG/PNG/JPG exporters consume), rather than each rendering presenter drawing and exporting independently.
+- A common **mapping file format** (e.g., JSON/YAML) and schema shared across decoder types — a Modbus register map, a composite decoder's channel map, and an HPGL pen-color map are all instances of the same underlying "raw key → name/attributes" mapping concept, and ideally use one format/tool rather than each decoder inventing its own.
+- Where mappings/device profiles live and how they're shared (per-session file, a project-level profile directory, an importable/exportable single file) — and whether a mapping can be scoped to reuse (e.g., the same status-code table referenced from two different decoders).
+- Whether raster export (PNG/JPG) is a core service (render the shared scene graph at a given size/DPI) or something each rendering presenter implements itself.
