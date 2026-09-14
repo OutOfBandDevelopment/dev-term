@@ -4,11 +4,13 @@
     <Project Path="src/DevTerm.Core/DevTerm.Core.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
+    <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DevTerm.Console.Tests/DevTerm.Console.Tests.csproj" />
     <Project Path="tests/DevTerm.Core.Tests/DevTerm.Core.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
+    <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
   </Folder>
 </Solution>

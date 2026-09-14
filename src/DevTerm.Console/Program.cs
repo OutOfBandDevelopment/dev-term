@@ -5,6 +5,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Serial;
+using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -16,7 +17,9 @@ try
 catch (ArgumentException ex)
 {
     Console.Error.WriteLine(ex.Message);
-    Console.Error.WriteLine("Usage: dev-term --port <name> [--baud <rate>] [--presenter <name>]");
+    Console.Error.WriteLine(
+        "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--presenter <name>]"
+        + "\n   or: dev-term --transport tcp (--host <host> | --listen) --tcp-port <port> [--presenter <name>]");
     return 1;
 }
 
@@ -25,12 +28,27 @@ using var host = Host.CreateDefaultBuilder(args)
     {
         services.AddDevTermCore();
         services.AddTextPresenters();
-        services.AddSerialTransport();
-        services.Configure<SerialTransportOptions>(o =>
+
+        switch (cliArguments.Transport)
         {
-            o.PortName = cliArguments.PortName;
-            o.BaudRate = cliArguments.BaudRate;
-        });
+            case TransportKind.Serial:
+                services.AddSerialTransport();
+                services.Configure<SerialTransportOptions>(o =>
+                {
+                    o.PortName = cliArguments.SerialPortName!;
+                    o.BaudRate = cliArguments.SerialBaudRate;
+                });
+                break;
+            case TransportKind.Tcp:
+                services.AddTcpTransport();
+                services.Configure<TcpTransportOptions>(o =>
+                {
+                    o.Mode = cliArguments.TcpListen ? TcpTransportMode.Listener : TcpTransportMode.Client;
+                    o.Host = cliArguments.TcpHost;
+                    o.Port = cliArguments.TcpPort;
+                });
+                break;
+        }
     })
     .Build();
 
@@ -49,7 +67,12 @@ await using var session = sessionFactory.Create(transport, new Pipeline([present
 session.Output += (_, output) => Console.WriteLine($"[{output.PresenterName}] {output.Text}");
 
 await session.OpenAsync();
-Console.WriteLine($"Connected to {cliArguments.PortName} at {cliArguments.BaudRate} baud using '{presenter.Name}'.");
+var connectionDescription = cliArguments.Transport == TransportKind.Serial
+    ? $"{cliArguments.SerialPortName} at {cliArguments.SerialBaudRate} baud"
+    : cliArguments.TcpListen
+        ? $"TCP listener on port {cliArguments.TcpPort}"
+        : $"TCP {cliArguments.TcpHost}:{cliArguments.TcpPort}";
+Console.WriteLine($"Connected to {connectionDescription} using '{presenter.Name}'.");
 Console.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
 
 using var cts = new CancellationTokenSource();
