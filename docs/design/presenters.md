@@ -39,20 +39,24 @@ Both are "rendering presenters" in the same sense, they just target different re
 
 ```plantuml
 @startuml
-skinparam componentStyle rectangle
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-[Raw byte stream] as Raw
-[Rendering Presenter\n(HPGL / PostScript / PCL / telemetry plot)] as Render
-[Text view] as Text
-[Drawing / plot canvas] as Canvas
-[SVG export] as SVG
-[PNG / JPG export] as Raster
+Container_Boundary(pipeline, "Session Pipeline") {
+  Component(raw, "Raw Byte Stream", "Session", "Bytes from the transport")
+  Component(render, "Rendering Presenter", "Plugin", "HPGL / PostScript / PCL / telemetry plot")
+  Component(text, "Text View", "Presenter output", "Human-readable baseline")
+  Component(canvas, "Drawing / Plot Canvas", "Presenter output", "Renderable scene")
+  Component(svg, "SVG Export", "Exporter", "Vector output")
+  Component(raster, "PNG/JPG Export", "Exporter", "Raster output")
+}
 
-Raw --> Render
-Render --> Text : always
-Render --> Canvas : where supported
-Canvas --> SVG : export (vector)
-Canvas --> Raster : export (raster)
+Rel(raw, render, "Feeds")
+Rel(render, text, "Always produces")
+Rel(render, canvas, "Where supported")
+Rel(canvas, svg, "Exports as")
+Rel(canvas, raster, "Exports as")
+
+SHOW_LEGEND()
 @enduml
 ```
 
@@ -68,22 +72,26 @@ A composite decoder handles this by:
 
 ```plantuml
 @startuml
-skinparam componentStyle rectangle
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-[Raw byte stream] as Raw
-[Composite Decoder\n(demux by header / time-slot)] as Composite
-[Channel: ASCII text] as Ch1
-[Channel: Hex / decimal / binary] as Ch2
-[Channel: Nested decoder] as Ch3
-[Combined channel view] as Combined
+Container_Boundary(pipeline, "Session Pipeline") {
+  Component(raw, "Raw Byte Stream", "Session", "Bytes from the transport")
+  Component(composite, "Composite Decoder", "Plugin", "Demultiplexes by header/time-slot")
+  Component(ch1, "Channel: ASCII Text", "Sub-presenter")
+  Component(ch2, "Channel: Hex/Decimal/Binary", "Sub-presenter")
+  Component(ch3, "Channel: Nested Decoder", "Sub-presenter", "May itself be composite")
+  Component(combined, "Combined Channel View", "Pipeline output", "Recombined per-channel output")
+}
 
-Raw --> Composite
-Composite --> Ch1
-Composite --> Ch2
-Composite --> Ch3
-Ch1 --> Combined
-Ch2 --> Combined
-Ch3 --> Combined
+Rel(raw, composite, "Feeds")
+Rel(composite, ch1, "Demuxes to")
+Rel(composite, ch2, "Demuxes to")
+Rel(composite, ch3, "Demuxes to")
+Rel(ch1, combined, "Contributes to")
+Rel(ch2, combined, "Contributes to")
+Rel(ch3, combined, "Contributes to")
+
+SHOW_LEGEND()
 @enduml
 ```
 

@@ -12,8 +12,9 @@ Working on embedded or protocol-level code usually means switching between sever
 
 - **Modular transports** — serial/UART, TCP (client and listener), UDP (target and listener), USB HID, and BLE out of the box, with a plugin contract so new transports (CAN, SPI/I2C bridges, custom sockets, etc.) can be added without touching the core.
 - **Modular presenters** — view and send raw bytes as ASCII, UTF-8/UTF-16, and other text encodings, or as hexadecimal, decimal, octal, and binary; a decoder plugin contract for protocol-specific decoders (device protocols, network protocols) that always produce a human-readable text rendering; rendering presenters that turn a stream into a drawing or plot (e.g., HPGL, PostScript, PCL, telemetry plots) and export it as SVG/PNG/JPG; composite/channelized decoders for interlaced telemetry where different fields of the same frame are encoded differently (text, binary, hex, decimal, ...); and mappable presenters that use externally-supplied name/label/unit maps so one decoder serves many devices.
-- **Two front ends, one engine** — a console app providing both a scriptable CLI and a full-screen TUI, plus a WPF desktop GUI for richer graphical views (renderers, plots) — both built on the same core engine via dependency injection.
-- **Extensibility first** — transports, presenters, and decoders are all plugins against the same core contracts; adding support for a new device or protocol should not require forking the app.
+- **Device control modules** — plugins that don't just decode a stream but actively drive equipment: a control surface for outbound commands/parameters (e.g., controlling serial-based test equipment) bundled with telemetry decode/present/plot for whatever comes back, built from the same transport/presenter contracts as everything else.
+- **Two front ends, one engine** — a console app providing both a scriptable CLI and a full-screen TUI, plus a WPF desktop GUI for richer graphical views (renderers, plots, device control panels) — both built on the same core engine via dependency injection.
+- **Extensibility first** — transports, presenters, decoders, and control modules are all plugins against the same core contracts; adding support for a new device or protocol should not require forking the app.
 
 ## Technology
 
@@ -30,6 +31,7 @@ Early design phase — no application code yet. See [`docs/design/`](docs/design
 - [Transport layer](docs/design/transports.md)
 - [Presenters & encodings](docs/design/presenters.md)
 - [Plugin model](docs/design/plugin-model.md)
+- [Device control modules](docs/design/device-control-modules.md)
 - [Front ends (console CLI/TUI + WPF GUI)](docs/design/frontends.md)
 - [Platform, hosting & configuration](docs/design/platform.md)
 

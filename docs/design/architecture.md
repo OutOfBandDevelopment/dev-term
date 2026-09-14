@@ -32,6 +32,10 @@ A session's pipeline is a chain of presenters/decoders that a raw byte stream fl
 
 The pipeline isn't always a straight line: a **composite/channelized decoder** can demultiplex a single stream into several named channels (split by a header/discriminator byte, a time slot, or similar framing), each of which is then handed to its own sub-presenter — which might itself be a different text encoding, a different numeric base, or another nested decoder. See [presenters.md](presenters.md) for detail; this is the model for interlaced telemetry where different fields of the same frame carry differently-encoded data.
 
+### Device control modules
+
+Not every plugin is passive. A **device control module** composes a control surface (outbound commands/parameters that encode to bytes) with one or more presenters (typically a telemetry decoder and a rendering/plot presenter for the response) into one packaged plugin for driving and monitoring a specific piece of equipment — e.g., serial-based test equipment. It's built entirely out of the existing transport/presenter contracts rather than a separate pipeline mechanism. See [device-control-modules.md](device-control-modules.md).
+
 ### Plugin host
 
 Transports and presenters are discovered and loaded as plugins against versioned contracts, registering themselves into the shared DI container rather than being compiled into the core or the front ends. See [plugin-model.md](plugin-model.md).
@@ -40,43 +44,90 @@ Transports and presenters are discovered and loaded as plugins against versioned
 
 Two deployable applications sharing the same core engine and DI composition: a console app (offering both CLI and TUI modes) and a WPF app (GUI). They share sessions, transports, and presenter plugins, differing only in how they render and how the user interacts. See [frontends.md](frontends.md) and [platform.md](platform.md).
 
-## Data flow
+## Architecture diagrams (C4)
+
+Structural diagrams in these docs follow the [C4 model](https://c4model.com) using the standard [C4-PlantUML](https://github.com/plantuml-stdlib/C4-PlantUML) macros (`Person`, `System`, `Container`, `Component`, `Rel`, ...), included from the stdlib rather than drawn as plain boxes.
+
+### System context
 
 ```plantuml
 @startuml
-skinparam componentStyle rectangle
-skinparam linetype ortho
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
-package "Plugins" {
-  [Transport Plugin\n(Serial / TCP / UDP / HID / BLE)] as Transport
-  [Presenter Plugin\n(text, numeric-base, decoder,\nrendering, composite)] as Presenter
+Person(developer, "Developer", "Debugs, drives, and monitors hardware/network devices")
+
+System(devterm, "dev-term", "Modular, extensible development terminal")
+
+System_Ext(serialDevice, "Serial Device", "UART-connected board/instrument")
+System_Ext(networkDevice, "Network Device / Service", "TCP/UDP endpoint")
+System_Ext(hidDevice, "USB HID Device", "Control/debug interface over HID reports")
+System_Ext(bleDevice, "BLE Peripheral", "GATT-based device")
+System_Ext(testEquipment, "Serial Test Equipment", "Bench instrument driven via a device control module")
+
+Rel(developer, devterm, "Opens sessions, sends commands, views/exports telemetry")
+Rel(devterm, serialDevice, "Reads/writes bytes", "Serial/UART")
+Rel(devterm, networkDevice, "Reads/writes bytes", "TCP/UDP (client or listener)")
+Rel(devterm, hidDevice, "Reads/writes reports", "USB HID")
+Rel(devterm, bleDevice, "Reads/writes characteristics", "BLE/GATT")
+Rel(devterm, testEquipment, "Sends commands, receives telemetry", "Serial + control surface")
+
+SHOW_LEGEND()
+@enduml
+```
+
+### Containers
+
+```plantuml
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(developer, "Developer")
+
+System_Boundary(devterm, "dev-term") {
+  Container(consoleApp, "Console App", ".NET 10, Generic Host", "CLI (scriptable) and TUI (full-screen) modes")
+  Container(wpfApp, "WPF App", ".NET 10, WPF, Generic Host", "GUI: rendering presenters, plots, device control panels")
+  Container(core, "Core Engine", ".NET 10 class library", "Session, Pipeline, Plugin Host, DI composition")
+  Container(plugins, "Plugins", ".NET assemblies, DI-registered", "Transports, presenters/decoders, control surfaces")
 }
 
-package "Core Engine" {
-  [Plugin Host] as Host
-  [Session] as Session
-  [Pipeline] as Pipeline
+System_Ext(devices, "Devices", "Serial / TCP / UDP / USB HID / BLE / test equipment")
+
+Rel(developer, consoleApp, "Uses", "Terminal")
+Rel(developer, wpfApp, "Uses", "Desktop UI")
+Rel(consoleApp, core, "Uses", "In-process")
+Rel(wpfApp, core, "Uses", "In-process")
+Rel(core, plugins, "Discovers, loads, registers into DI")
+Rel(plugins, devices, "Reads/writes bytes", "Transport-specific")
+
+SHOW_LEGEND()
+@enduml
+```
+
+### Core Engine components
+
+```plantuml
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Container(consoleApp, "Console App", ".NET 10", "CLI + TUI")
+Container(wpfApp, "WPF App", ".NET 10, WPF", "GUI")
+Container(plugins, "Plugins", ".NET assemblies", "Transports, presenters, control surfaces")
+
+Container_Boundary(core, "Core Engine") {
+  Component(pluginHost, "Plugin Host", "AssemblyLoadContext", "Discovers, validates, and loads plugins; registers them into DI")
+  Component(session, "Session", ".NET", "Binds one Transport to a Pipeline for one logical device connection")
+  Component(pipeline, "Pipeline", ".NET", "Chains/fans out presenters over a session's byte stream; supports demux for composite decoders")
+  Component(options, "Options/Configuration", "Microsoft.Extensions.Options", "Layered settings for transports, plugins, and front ends")
 }
 
-package "Front Ends" {
-  [Console App\n(CLI + TUI modes)] as ConsoleApp
-  [WPF App\n(GUI)] as WpfApp
-}
+Rel(consoleApp, session, "Opens/controls sessions")
+Rel(wpfApp, session, "Opens/controls sessions")
+Rel(pluginHost, plugins, "Loads, registers into DI")
+Rel(session, pipeline, "Feeds raw bytes through")
+Rel(pipeline, plugins, "Invokes presenter/transport instances")
+Rel(session, options, "Reads configuration")
 
-Host ..> Transport : discovers / loads\n(registers into DI)
-Host ..> Presenter : discovers / loads\n(registers into DI)
-
-Transport -right-> Session : raw bytes in
-Session -right-> Pipeline
-Pipeline -right-> Presenter : raw bytes
-Presenter -right-> Pipeline : rendered view(s) / export
-
-Pipeline -down-> ConsoleApp
-Pipeline -down-> WpfApp
-
-ConsoleApp -up-> Session : send / export commands
-WpfApp -up-> Session : send / export commands
-Session -left-> Transport : bytes out
+SHOW_LEGEND()
 @enduml
 ```
 

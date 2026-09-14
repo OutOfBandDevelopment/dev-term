@@ -9,8 +9,9 @@ Describes how transports, presenters, and decoders are packaged, discovered, and
 Extension points, each a small interface package with no dependency on the core engine's internals or on any specific front end:
 
 - Transport contract (see [transports.md](transports.md)).
-- Presenter/decoder contract, including the optional renderable and exportable capabilities (see [presenters.md](presenters.md)).
-- (Possible future) front-end widget contract, if the GUI/TUI need plugin-supplied custom views beyond what the shared drawing/canvas model covers.
+- Presenter/decoder contract, including the optional renderable, exportable, composite, and mappable capabilities (see [presenters.md](presenters.md)).
+- Control surface contract, for device control modules that need to declare outbound commands/parameters generically (see [device-control-modules.md](device-control-modules.md)). A device control module plugin typically registers a control surface alongside one or more presenters.
+- (Possible future) front-end widget contract, if the GUI/TUI need plugin-supplied custom views beyond what the shared drawing/canvas model and the control-surface metadata cover.
 
 ## Packaging & discovery
 
