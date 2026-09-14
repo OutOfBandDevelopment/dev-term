@@ -9,7 +9,7 @@
     },
     "COM3 4800 ASCII": {
       "commandName": "Project",
-      "commandLineArgs": "--transport serial --port COM3 --baud 4800 --databits 8 --parity None --stopbits One --presenter ascii"
+      "commandLineArgs": "--transport serial --port COM3 --baud 4800 --databits 8 --parity None --stopbits One --handshake RequestToSend --presenter ascii"
     }
   }
 }
