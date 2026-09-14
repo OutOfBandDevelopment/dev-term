@@ -18,3 +18,7 @@ TestResults/
 # NuGet
 *.nupkg
 .nuget/
+
+# Personal/local machine profiles (device ports, addresses) — never committed.
+appsettings.Local.json
+appsettings.*.Local.json

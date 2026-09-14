@@ -1,3 +1,4 @@
+using System.IO.Ports;
 using DevTerm.Console;
 using DevTerm.Core.Hosting;
 using DevTerm.Core.Presenters;
@@ -12,17 +13,20 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--presenter <name>]"
-    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>]";
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--presenter <name>]"
+    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>]"
+    + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
+    + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
+    + "\nCommand-line arguments always win, then environment variables, then the settings file.";
 
 var cliOptions = new CliOptions();
 
 var hostBuilder = Host.CreateDefaultBuilder(args)
+    .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
     .ConfigureServices((context, services) =>
     {
-        // Host.CreateDefaultBuilder already layers command-line args into IConfiguration
-        // (highest precedence); bind + validate them here via the Options pattern instead of a
-        // hand-rolled parser.
+        // Bind + validate the layered configuration (files, env vars, command line — see
+        // DevTermConfiguration) here via the Options pattern instead of a hand-rolled parser.
         context.Configuration.Bind(cliOptions);
 
         services.AddOptions<CliOptions>().Bind(context.Configuration).ValidateOnStart();
@@ -54,6 +58,10 @@ var hostBuilder = Host.CreateDefaultBuilder(args)
             {
                 o.PortName = cliOptions.Port!;
                 o.BaudRate = cliOptions.Baud;
+                o.DataBits = cliOptions.DataBits;
+                o.Parity = cliOptions.Parity;
+                o.StopBits = cliOptions.StopBits;
+                o.Handshake = cliOptions.Handshake;
             });
         }
     });
@@ -95,7 +103,7 @@ using (host)
         ? cliOptions.Listen
             ? $"TCP listener on port {cliOptions.TcpPort}"
             : $"TCP {cliOptions.Host}:{cliOptions.TcpPort}"
-        : $"{cliOptions.Port} at {cliOptions.Baud} baud";
+        : $"{cliOptions.Port} at {cliOptions.Baud} baud ({cliOptions.DataBits}{cliOptions.Parity.ToString()[0]}{(cliOptions.StopBits == StopBits.One ? 1 : cliOptions.StopBits == StopBits.Two ? 2 : 1.5)})";
     Console.WriteLine($"Connected to {connectionDescription} using '{presenter.Name}'.");
     Console.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
 
@@ -106,9 +114,21 @@ using (host)
         cts.Cancel();
     };
 
-    while (!cts.IsCancellationRequested)
+    while (true)
     {
-        var line = Console.ReadLine();
+        string? line;
+        try
+        {
+            // A plain Console.ReadLine() blocks on the OS read and ignores cts entirely, so
+            // Ctrl+C would set the flag but never unblock the loop; ReadLineAsync(CancellationToken)
+            // actually interrupts a pending interactive console read.
+            line = await Console.In.ReadLineAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            break;
+        }
+
         if (line is null)
         {
             break;

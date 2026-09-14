@@ -1,3 +1,4 @@
+using System.IO.Ports;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Console.Tests;
@@ -55,9 +56,26 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual("serial", options.Transport);
         Assert.AreEqual("hex", options.Presenter);
         Assert.AreEqual(9600, options.Baud);
+        Assert.AreEqual(8, options.DataBits);
+        Assert.AreEqual(Parity.None, options.Parity);
+        Assert.AreEqual(StopBits.One, options.StopBits);
+        Assert.AreEqual(Handshake.None, options.Handshake);
         Assert.IsNull(options.Port);
         Assert.IsNull(options.Host);
         Assert.AreEqual(0, options.TcpPort);
         Assert.IsFalse(options.Listen);
+    }
+
+    [TestMethod]
+    public void Bind_SerialFraming_BindsEnumsByName()
+    {
+        var options = Bind(
+            "--port", "COM3", "--baud", "4800",
+            "--databits", "7", "--parity", "Even", "--stopbits", "Two", "--handshake", "RequestToSend");
+
+        Assert.AreEqual(7, options.DataBits);
+        Assert.AreEqual(Parity.Even, options.Parity);
+        Assert.AreEqual(StopBits.Two, options.StopBits);
+        Assert.AreEqual(Handshake.RequestToSend, options.Handshake);
     }
 }
