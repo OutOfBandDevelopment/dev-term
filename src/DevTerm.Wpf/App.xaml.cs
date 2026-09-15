@@ -6,7 +6,6 @@ using DevTerm.Core.Transports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace DevTerm.Wpf;
 
@@ -24,43 +23,42 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Don't quit when the startup DeviceProfilesWindow below closes (WPF's default
+        // ShutdownMode is OnLastWindowClose) - there's no MainWindow yet at that point, so the
+        // app would exit before ever getting to open one. Restored once MainWindow is actually set.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         var args = e.Args;
+
+        // Bind CliOptions from the same layered sources the host will use, but before building the
+        // host at all — building it eagerly wires a transport from cliOptions (AddDevTermFrontEnd),
+        // so an invalid CliOptions has to be caught here, ahead of that, to show the Device
+        // Profiles editor instead of hard-failing — see docs/design/connection-profiles.md's
+        // startup flow (mirrors DevTerm.Console's Program.cs).
+        var earlyConfigBuilder = new ConfigurationBuilder();
+        DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
         var cliOptions = new CliOptions();
+        earlyConfigBuilder.Build().Bind(cliOptions);
+
+        var validation = new CliOptionsValidator().Validate(null, cliOptions);
+        if (validation.Failed)
+        {
+            var editor = new DeviceProfilesWindow(new ConnectionProfileStore(), cliOptions, string.Join(" ", validation.Failures));
+            var accepted = editor.ShowDialog();
+            if (accepted != true || editor.Result is null)
+            {
+                Shutdown(0);
+                return;
+            }
+
+            cliOptions = editor.Result;
+        }
 
         var hostBuilder = Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
-            .ConfigureServices((context, services) =>
-            {
-                context.Configuration.Bind(cliOptions);
+            .ConfigureServices((_, services) => services.AddDevTermFrontEnd(cliOptions));
 
-                services.AddOptions<CliOptions>().Bind(context.Configuration).ValidateOnStart();
-                services.AddSingleton<IValidateOptions<CliOptions>, CliOptionsValidator>();
-
-                var validation = new CliOptionsValidator().Validate(null, cliOptions);
-                if (validation.Failed)
-                {
-                    throw new OptionsValidationException(nameof(CliOptions), typeof(CliOptions), validation.Failures);
-                }
-
-                services.AddDevTermFrontEnd(cliOptions);
-            });
-
-        IHost host;
-        try
-        {
-            host = hostBuilder.Build();
-        }
-        catch (OptionsValidationException ex)
-        {
-            MessageBox.Show(
-                string.Join(Environment.NewLine, ex.Failures),
-                "dev-term — invalid configuration",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown(1);
-            return;
-        }
-
+        var host = hostBuilder.Build();
         _host = host;
 
         var catalog = host.Services.GetRequiredService<PresenterCatalog>();
@@ -81,6 +79,7 @@ public partial class App : Application
 
         var window = new MainWindow(session, presenter, cliOptions);
         MainWindow = window;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 

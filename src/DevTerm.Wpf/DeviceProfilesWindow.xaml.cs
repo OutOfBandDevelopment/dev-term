@@ -1,46 +1,62 @@
 using System.Windows;
 using DevTerm.Configuration;
+using Microsoft.Win32;
 
 namespace DevTerm.Wpf;
 
 /// <summary>
-/// Lets the user pick a saved <see cref="ConnectionProfileStore"/> profile and apply it as the
-/// untracked default (<see cref="DevTermConfiguration.SaveLocalProfile"/>) — mirrors the TUI's
-/// <c>ConfigureMode</c> "Device Profiles..." menu item at the same scope: applying a profile saves
-/// it as the default and asks for a restart, rather than live-swapping the running session's
-/// transport (a bigger change — see docs/design/connection-profiles.md's still-open menu-driven
-/// switching item).
+/// A full connection editor — pick a saved profile to load, edit any field by hand, save it under
+/// a name, import/export a profile as a standalone JSON file, or connect with the current fields.
+/// All of that logic lives in <see cref="ConnectionEditorViewModel"/>, shared with the TUI's
+/// <c>ConfigureMode</c>: this window is just XAML bound to it (<c>Command="{Binding ...}"</c>), no
+/// business logic in code-behind — the one exception is the native file-browse dialog, which has
+/// no pure-binding equivalent. See docs/design/connection-profiles.md.
 /// </summary>
 public partial class DeviceProfilesWindow : Window
 {
-    private readonly ConnectionProfileStore _store;
+    public ConnectionEditorViewModel ViewModel { get; }
 
-    public DeviceProfilesWindow(ConnectionProfileStore store)
+    /// <summary>
+    /// Set once the user presses Connect with fields that validate; <see langword="null"/> if they
+    /// close the window instead. What "Connect" means depends on the caller: at startup, with no
+    /// valid configuration yet, it's used directly to build the DI host and connect immediately
+    /// (see <see cref="App"/>). From <see cref="MainWindow"/>'s "Device Profiles..." menu item
+    /// (already connected), it's saved as the default profile and a restart is requested instead —
+    /// see docs/design/connection-profiles.md's note on why this doesn't live-swap the running
+    /// session's transport.
+    /// </summary>
+    public CliOptions? Result => ViewModel.Result;
+
+    public DeviceProfilesWindow(ConnectionProfileStore store, CliOptions initial, string? statusText = null)
     {
         InitializeComponent();
-        _store = store;
-
-        foreach (var name in _store.List())
+        ViewModel = new ConnectionEditorViewModel(store, initial, statusText);
+        DataContext = ViewModel;
+        ViewModel.CloseRequested += (_, _) =>
         {
-            ProfilesList.Items.Add(name);
-        }
+            try
+            {
+                // Setting DialogResult both closes the window and makes ShowDialog() return true -
+                // both real callers (App/MainWindow) need that. It throws if this window wasn't
+                // actually shown via ShowDialog() though, which is exactly the case in tests that
+                // drive ViewModel.ConnectCommand directly without ever showing the window (the same
+                // "don't Show() a window under direct test" convention MainWindowTests already
+                // follows, just hitting WPF's dialog-specific version of it) - ViewModel.Result is
+                // already set correctly by that point regardless, so there's nothing else to do.
+                DialogResult = true;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        };
     }
 
-    private void Apply_Click(object sender, RoutedEventArgs e)
+    private void Browse_Click(object sender, RoutedEventArgs e)
     {
-        if (ProfilesList.SelectedItem is not string name)
+        var dialog = new OpenFileDialog { Filter = "dev-term connection profile (*.json)|*.json" };
+        if (dialog.ShowDialog(this) == true)
         {
-            MessageBox.Show(this, "Select a profile first.", "dev-term", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            ViewModel.ImportExportPath = dialog.FileName;
         }
-
-        var options = _store.Load(name);
-        DevTermConfiguration.SaveLocalProfile(options);
-        MessageBox.Show(
-            this,
-            $"Saved '{ConnectionDescription.For(options)}' as the default profile — restart dev-term to connect with it.",
-            "dev-term",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
     }
 }

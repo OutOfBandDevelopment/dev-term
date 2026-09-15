@@ -170,6 +170,49 @@ public sealed class ConnectionProfileStoreTests
         }
     }
 
+    [TestMethod]
+    public void ExportToFile_ThenLoadFromFile_RoundTripsConnectionFields()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var path = Path.Combine(directory, "exported.json");
+
+            ConnectionProfileStore.ExportToFile(path, BuildSerialOptions());
+            var loaded = ConnectionProfileStore.LoadFromFile(path);
+
+            Assert.AreEqual("serial", loaded.Transport);
+            Assert.AreEqual("COM3", loaded.Port);
+            Assert.AreEqual(4800, loaded.Baud);
+            Assert.AreEqual("ascii", loaded.Presenter);
+            Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
+            Assert.AreEqual("tek-2230", loaded.ManifestName);
+
+            // Same exclusions as a named profile save — see BuildSerialOptions' comment.
+            Assert.IsTrue(loaded.Tui);
+            Assert.IsFalse(loaded.Cli);
+            Assert.IsFalse(loaded.ListPorts);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadFromFile_MissingFile_Throws()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            Assert.ThrowsExactly<FileNotFoundException>(() => ConnectionProfileStore.LoadFromFile(Path.Combine(directory, "missing.json")));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-profile-tests", Path.GetRandomFileName());

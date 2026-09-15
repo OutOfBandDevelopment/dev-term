@@ -200,4 +200,59 @@ public sealed class ConfigureModeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void ExportButton_ThenImportButton_RoundTripsFieldsThroughAFile()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var exportPath = Path.Combine(directory, "exported.json");
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" };
+
+            RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
+            {
+                parts.PathField.Text = exportPath;
+                Click(parts.ExportButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Exported to");
+                Assert.IsTrue(File.Exists(exportPath));
+            });
+
+            RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", new ConnectionProfileStore(directory), parts =>
+            {
+                parts.PathField.Text = exportPath;
+                Click(parts.ImportButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Imported");
+                Assert.AreEqual("tcp", parts.TransportField.Text);
+                Assert.AreEqual("192.168.0.108", parts.HostField.Text);
+                Assert.AreEqual("23", parts.TcpPortField.Text);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportButton_MissingFile_ShowsErrorWithoutThrowing()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                parts.PathField.Text = Path.Combine(directory, "does-not-exist.json");
+                Click(parts.ImportButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Could not import");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

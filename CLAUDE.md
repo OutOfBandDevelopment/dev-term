@@ -189,6 +189,20 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   a regression test confirmed to fail without this fix). Both `TuiMode`/`MainWindow`'s
   `ToggleConnectionAsync` methods call `Session.OpenAsync`/`CloseAsync` repeatedly on the same
   `Session` instance, so this matters for any future code doing the same.
+- **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
+  `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
+  view-model property that already had a value at construction time still read back empty
+  immediately afterward, in a test that (deliberately, per the convention below) never calls
+  `Show()`. A single `StaTestRunner.DoEvents()` pump after construction is enough; property-change-
+  driven updates *after* that initial pump apply synchronously as normal. See
+  `DevTerm.Wpf.Tests.DeviceProfilesWindowTests`.
+- **`Window.DialogResult` throws `InvalidOperationException` unless the window was actually shown
+  via `ShowDialog()`** — relevant because `DeviceProfilesWindow` sets it when its shared
+  `ConnectionEditorViewModel.CloseRequested` fires, and tests drive that view model directly without
+  ever calling `ShowDialog()` (the same "don't `Show()` a window under direct test" convention
+  below, just hitting WPF's dialog-specific version of it). The window catches and ignores that
+  specific exception there — `ConnectionEditorViewModel.Result` is already set correctly regardless
+  of whether `DialogResult` could be set.
 - **A `MenuItem`'s `Key`/`InputGestureText` argument (Terminal.Gui) or `InputGestureText` (WPF)
   only labels a keyboard shortcut for display — neither registers a live accelerator by itself.**
   `TuiMode`'s Ctrl+Q previously did nothing despite being advertised in the title bar; the real fix

@@ -181,8 +181,19 @@ public partial class MainWindow : Window
 
     private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
     {
-        var window = new DeviceProfilesWindow(new ConnectionProfileStore()) { Owner = this };
+        var window = new DeviceProfilesWindow(new ConnectionProfileStore(), _cliOptions) { Owner = this };
         window.ShowDialog();
+
+        if (window.Result is { } chosen)
+        {
+            DevTermConfiguration.SaveLocalProfile(chosen);
+            MessageBox.Show(
+                this,
+                $"Saved '{ConnectionDescription.For(chosen)}' as the default profile — restart dev-term to connect with it.",
+                "dev-term",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();

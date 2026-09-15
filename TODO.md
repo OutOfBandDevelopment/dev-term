@@ -94,10 +94,27 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   without the fix). Sending while disconnected is guarded in both front ends. 187 tests across the
   solution now (183 pass by default).
 
+  **Update, 2026-09-15**: WPF's connection editor is now a full, editable form (it previously only
+  let you pick from existing profiles) — and, per explicit direction, its logic was factored out
+  into a new shared `DevTerm.Configuration.ConnectionEditorViewModel` (validation, load/save/import/
+  export, `RelayCommand`-based commands) rather than living in code-behind, so WPF's
+  `DeviceProfilesWindow` is now real XAML `{Binding ...}`/`Command="{Binding ...}"` with no business
+  logic of its own, and the TUI's `ConfigureMode` builds the *same* view model, syncing Terminal.Gui
+  field values to/from it around each button press since Terminal.Gui has no data-binding system to
+  do that automatically. Also landed: import/export a profile as a standalone JSON file in both
+  front ends (`ConnectionProfileStore.ExportToFile`/`LoadFromFile`); WPF's startup flow now mirrors
+  the TUI's — an invalid `CliOptions` opens the connection editor instead of showing an error and
+  exiting (`App.xaml.cs` restructured the same way `Program.cs` was earlier today). Two real WPF
+  gotchas found doing this: `{Binding ...}` doesn't populate a never-`Show()`n window's controls
+  synchronously from a constructor-assigned `DataContext` (needs one dispatcher pump first), and
+  `Window.DialogResult` throws unless the window was shown via `ShowDialog()` (relevant since tests
+  drive the view model directly without ever showing the window) — see CLAUDE.md's constraints list.
+  203 tests across the solution now (199 pass by default).
+
   **Still not built**: the warn-and-fall-back-to-default-presenter behavior for a `ManifestName`
-  that doesn't resolve (the resolution helper exists, nothing calls it yet), and the WPF equivalent
-  of the TUI's Configure screen (WPF still hard-fails on invalid config exactly like before — only
-  its Device Profiles/Connect-Disconnect menu items landed this round).
+  that doesn't resolve (the resolution helper exists, nothing calls it yet), and live mid-session
+  profile *switching* (today's Device Profiles menu item saves as the default and asks for a
+  restart in both front ends, not a live transport swap).
 
 - **Test automation for CLI/TUI/WPF + test categorization**, landed 2026-09-15 — see
   docs/design/testing.md. Every test class now carries `[TestCategory("UNIT"|"INTEGRATION"|"DEV-LOCAL")]`

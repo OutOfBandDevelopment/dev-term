@@ -11,19 +11,23 @@ namespace DevTerm.Console;
 /// Shown instead of hard-failing when the bound <see cref="CliOptions"/> doesn't validate (see
 /// <see cref="CliOptionsValidator"/>) and the TUI is the active mode — lets the user pick a saved
 /// connection profile (<see cref="ConnectionProfileStore"/>) or fill in a transport's fields by
-/// hand, and optionally save the result as a new named profile. See
-/// docs/design/connection-profiles.md.
+/// hand, and optionally save the result as a new named profile, or import/export one as a
+/// standalone file. See docs/design/connection-profiles.md.
 /// </summary>
 /// <remarks>
 /// A first stub, not the full design: all fields are always visible rather than shown/hidden per
 /// selected transport, and there's no live device-manifest picker yet (a manifest is still
 /// referenced by typing its name, matching <c>--manifestname</c>). See
 /// docs/design/frontends.md's startup/configure flow note for the target.
+///
+/// All connect/load/save/import/export logic lives in the shared <see cref="ConnectionEditorViewModel"/>
+/// (also used by WPF's <c>DeviceProfilesWindow</c> via XAML command bindings) — this class only
+/// builds Terminal.Gui controls and copies values to/from the view model around each button press,
+/// since Terminal.Gui has no data-binding system of its own to do that automatically the way WPF's
+/// <c>{Binding ...}</c> does.
 /// </remarks>
 public static class ConfigureMode
 {
-    private static readonly CliOptionsValidator Validator = new();
-
     /// <returns>Valid <see cref="CliOptions"/> once the user presses Connect with something that validates; <see langword="null"/> if they quit instead.</returns>
     public static CliOptions? Run(CliOptions initial, string? validationError)
     {
@@ -49,6 +53,7 @@ public static class ConfigureMode
     /// </summary>
     internal static ConfigureWindowParts BuildWindow(CliOptions initial, string? validationError, ConnectionProfileStore profileStore)
     {
+        var viewModel = new ConnectionEditorViewModel(profileStore, initial, validationError);
 
         var window = new Window
         {
@@ -75,7 +80,7 @@ public static class ConfigureMode
             Width = 30,
             Height = 4,
         };
-        profilesList.SetSource(new ObservableCollection<string>(profileStore.List()));
+        profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
 
         var loadButton = new Button { X = Pos.Right(profilesList) + 1, Y = Pos.Top(profilesList), Text = "Load" };
 
@@ -107,7 +112,12 @@ public static class ConfigureMode
         var saveNameField = new TextField { X = Pos.Right(saveNameLabel) + 1, Y = Pos.Top(saveNameLabel), Width = 20 };
         var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile" };
 
-        var connectButton = new Button { X = 0, Y = Pos.Bottom(saveNameLabel) + 1, Text = "Connect", IsDefault = true };
+        var pathLabel = new Label { X = 0, Y = Pos.Bottom(saveNameLabel) + 1, Text = "Import/export file path:" };
+        var pathField = new TextField { X = Pos.Right(pathLabel) + 1, Y = Pos.Top(pathLabel), Width = 30 };
+        var importButton = new Button { X = Pos.Right(pathField) + 1, Y = Pos.Top(pathLabel), Text = "Import" };
+        var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(pathLabel), Text = "Export" };
+
+        var connectButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Connect", IsDefault = true };
         var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
 
         var parts = new ConfigureWindowParts
@@ -128,115 +138,100 @@ public static class ConfigureMode
             LineEndingField = lineEndingField,
             SaveNameField = saveNameField,
             SaveButton = saveButton,
+            PathField = pathField,
+            ImportButton = importButton,
+            ExportButton = exportButton,
             ConnectButton = connectButton,
             QuitButton = quitButton,
         };
 
-        CliOptions BuildOptionsFromFields()
+        // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
+        // model explicitly around each button press, rather than staying continuously in sync the
+        // way WPF's {Binding ...} does for DeviceProfilesWindow.
+        void PushFieldsIntoViewModel()
         {
-            var options = new CliOptions
-            {
-                Transport = transportField.Text.Trim(),
-                Port = portField.Text.Trim() is { Length: > 0 } p ? p : null,
-                Host = hostField.Text.Trim() is { Length: > 0 } h ? h : null,
-                Listen = listenCheckBox.Value == CheckState.Checked,
-                Presenter = presenterField.Text.Trim() is { Length: > 0 } pr ? pr : "hex",
-            };
-
-            if (int.TryParse(baudField.Text, out var baud))
-            {
-                options.Baud = baud;
-            }
-
-            if (int.TryParse(tcpPortField.Text, out var tcpPort))
-            {
-                options.TcpPort = tcpPort;
-            }
-
-            if (int.TryParse(hidVendorField.Text, out var vendorId))
-            {
-                options.HidVendorId = vendorId;
-            }
-
-            if (int.TryParse(hidProductField.Text, out var productId))
-            {
-                options.HidProductId = productId;
-            }
-
-            if (Enum.TryParse<LineEnding>(lineEndingField.Text, ignoreCase: true, out var lineEnding))
-            {
-                options.LineEnding = lineEnding;
-            }
-
-            return options;
+            viewModel.Transport = transportField.Text;
+            viewModel.Port = portField.Text;
+            viewModel.Baud = baudField.Text;
+            viewModel.Host = hostField.Text;
+            viewModel.TcpPort = tcpPortField.Text;
+            viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
+            viewModel.HidVendorId = hidVendorField.Text;
+            viewModel.HidProductId = hidProductField.Text;
+            viewModel.Presenter = presenterField.Text;
+            viewModel.LineEndingText = lineEndingField.Text;
+            viewModel.SaveName = saveNameField.Text;
+            viewModel.ImportExportPath = pathField.Text;
         }
 
-        void LoadIntoFields(CliOptions options)
+        void PullFieldsFromViewModel()
         {
-            transportField.Text = options.Transport;
-            portField.Text = options.Port ?? string.Empty;
-            baudField.Text = options.Baud.ToString();
-            hostField.Text = options.Host ?? string.Empty;
-            tcpPortField.Text = options.TcpPort.ToString();
-            listenCheckBox.Value = options.Listen ? CheckState.Checked : CheckState.UnChecked;
-            hidVendorField.Text = options.HidVendorId.ToString();
-            hidProductField.Text = options.HidProductId.ToString();
-            presenterField.Text = options.Presenter;
-            lineEndingField.Text = options.LineEnding.ToString();
+            transportField.Text = viewModel.Transport;
+            portField.Text = viewModel.Port;
+            baudField.Text = viewModel.Baud;
+            hostField.Text = viewModel.Host;
+            tcpPortField.Text = viewModel.TcpPort;
+            listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
+            hidVendorField.Text = viewModel.HidVendorId;
+            hidProductField.Text = viewModel.HidProductId;
+            presenterField.Text = viewModel.Presenter;
+            lineEndingField.Text = viewModel.LineEndingText;
+            saveNameField.Text = viewModel.SaveName;
+            errorLabel.Text = viewModel.StatusMessage;
+            profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
         }
+
+        viewModel.CloseRequested += (_, _) =>
+        {
+            parts.Result = viewModel.Result;
+            Application.RequestStop();
+        };
 
         loadButton.Accepting += (_, e) =>
         {
-            if (profilesList.Source is null || profilesList.SelectedItem is not int index || index < 0)
+            if (profilesList.Source is null || profilesList.SelectedItem is not int index || index < 0 || index >= viewModel.Profiles.Count)
             {
                 errorLabel.Text = "Select a profile first.";
+                e.Handled = true;
                 return;
             }
 
-            var name = profileStore.List()[index];
-            try
-            {
-                LoadIntoFields(profileStore.Load(name));
-                errorLabel.Text = $"Loaded profile '{name}'.";
-            }
-            catch (Exception ex)
-            {
-                errorLabel.Text = $"Could not load profile '{name}': {ex.Message}";
-            }
-
+            viewModel.SelectedProfileName = viewModel.Profiles[index];
+            viewModel.LoadCommand.Execute(null);
+            PullFieldsFromViewModel();
             e.Handled = true;
         };
 
         saveButton.Accepting += (_, e) =>
         {
-            var name = saveNameField.Text.Trim();
-            if (name.Length == 0)
-            {
-                errorLabel.Text = "Type a name to save this connection as a profile.";
-                e.Handled = true;
-                return;
-            }
+            PushFieldsIntoViewModel();
+            viewModel.SaveCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
 
-            profileStore.Save(name, BuildOptionsFromFields());
-            profilesList.SetSource(new ObservableCollection<string>(profileStore.List()));
-            errorLabel.Text = $"Saved profile '{name}'.";
+        importButton.Accepting += (_, e) =>
+        {
+            PushFieldsIntoViewModel();
+            viewModel.ImportCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
+        exportButton.Accepting += (_, e) =>
+        {
+            PushFieldsIntoViewModel();
+            viewModel.ExportCommand.Execute(null);
+            PullFieldsFromViewModel();
             e.Handled = true;
         };
 
         connectButton.Accepting += (_, e) =>
         {
-            var options = BuildOptionsFromFields();
-            var validation = Validator.Validate(null, options);
-            if (validation.Failed)
-            {
-                errorLabel.Text = string.Join(" ", validation.Failures);
-                e.Handled = true;
-                return;
-            }
-
-            parts.Result = options;
+            PushFieldsIntoViewModel();
+            viewModel.ConnectCommand.Execute(null);
+            PullFieldsFromViewModel();
             e.Handled = true;
-            Application.RequestStop();
         };
 
         quitButton.Accepting += (_, e) =>
@@ -254,6 +249,7 @@ public static class ConfigureMode
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField,
             presenterLabel, presenterField, lineEndingLabel, lineEndingField,
             saveNameLabel, saveNameField, saveButton,
+            pathLabel, pathField, importButton, exportButton,
             connectButton, quitButton);
 
         return parts;
@@ -294,6 +290,12 @@ internal sealed class ConfigureWindowParts
     public required TextField SaveNameField { get; init; }
 
     public required Button SaveButton { get; init; }
+
+    public required TextField PathField { get; init; }
+
+    public required Button ImportButton { get; init; }
+
+    public required Button ExportButton { get; init; }
 
     public required Button ConnectButton { get; init; }
 

@@ -119,6 +119,34 @@ while disconnected is guarded in both front ends (a message in the TUI's output 
 list, not a crash). This is intentionally a different, smaller feature than mid-session *profile
 switching* above — it reconnects with the exact same settings, it doesn't pick a different profile.
 
+**Editor logic is shared between front ends, 2026-09-15**: `DevTerm.Configuration.ConnectionEditorViewModel`
+holds all the connect/load/save/import/export logic (validation, `ConnectionProfileStore` I/O) once,
+not duplicated per front end. WPF's `DeviceProfilesWindow` is now XAML bound directly to it
+(`Command="{Binding ConnectCommand}"`, `Text="{Binding Transport, UpdateSourceTrigger=PropertyChanged}"`,
+etc.) with no business logic left in code-behind. The TUI's `ConfigureMode` builds the same view
+model but, since Terminal.Gui has no data-binding system of its own, copies field values to/from it
+explicitly around each button press (`PushFieldsIntoViewModel`/`PullFieldsFromViewModel`) rather
+than staying continuously in sync the way WPF's bindings do. `RelayCommand` (a small, from-scratch
+`ICommand`) makes this possible — `ICommand` itself is a base-class-library type, not WPF-specific,
+so a plain class library can implement and expose it, and the TUI side just calls `Execute(null)`
+directly instead of going through WPF's command-binding machinery.
+
+**Import/export, same day**: both the TUI's `ConfigureMode` and WPF's `DeviceProfilesWindow` can
+save the current fields to a standalone JSON file and load one back — `ConnectionProfileStore.ExportToFile`/
+`LoadFromFile`, the same shape (and the same `Bind()`-based serialization) a named profile already
+uses, so an exported file can also just be dropped into `~/.dev-term/profiles/` by hand. WPF adds a
+"Browse..." file-picker button on top (unavoidable to have *some* code-behind for a native dialog);
+the TUI takes a typed path instead, since Terminal.Gui has no native file-picker used here.
+
+**Startup flow parity, same day**: WPF's `App.xaml.cs` now mirrors the console app's `Program.cs`
+restructuring from earlier today — `CliOptions` is bound and validated *before* the DI host is
+built, and an invalid configuration opens `DeviceProfilesWindow` (via a new `Result`/`CloseRequested`
+pair mirroring the TUI's `ConfigureMode.Run`) instead of showing an error and exiting. Needed one
+WPF-specific fix: the default `ShutdownMode` (`OnLastWindowClose`) would quit the whole app the
+moment that startup editor window closed, since there's no `MainWindow` yet at that point — set to
+`OnExplicitShutdown` for the startup window, then back to `OnMainWindowClose` once the real
+`MainWindow` is actually shown.
+
 **A missing manifest is a warning, not a hard failure**: if `ManifestName` doesn't resolve under
 either manifest location (see "Shape" above), the connection still proceeds using the default text
 presenters — the manifest only adds device-specific commands/UI on top of a connection that works

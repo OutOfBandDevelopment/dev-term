@@ -34,6 +34,24 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
             throw new FileNotFoundException($"No connection profile named '{name}' was found.", path);
         }
 
+        return LoadFromFile(path);
+    }
+
+    public void Save(string name, CliOptions options)
+    {
+        Directory.CreateDirectory(_profilesDirectory);
+        File.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
+    }
+
+    /// <summary>
+    /// Reads a <see cref="CliOptions"/>-shaped JSON file directly by path, rather than by name from
+    /// this store's own <see cref="DevTermUserDataPaths.ProfilesDirectory"/> — for importing a
+    /// profile exported/shared as a standalone file (see <see cref="ExportToFile"/>), which uses
+    /// the exact same shape, so an imported file is also just a normal profile once saved with
+    /// <see cref="Save"/>.
+    /// </summary>
+    public static CliOptions LoadFromFile(string path)
+    {
         // The same Microsoft.Extensions.Configuration.Json + Bind() pipeline that loads
         // appsettings.Local.json, not a separate parser — a profile is just a CliOptions-shaped
         // JSON file (see DevTermConfiguration.ToProfileJson).
@@ -43,11 +61,9 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         return options;
     }
 
-    public void Save(string name, CliOptions options)
-    {
-        Directory.CreateDirectory(_profilesDirectory);
-        File.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
-    }
+    /// <summary>Writes <paramref name="options"/> to <paramref name="path"/> as a standalone JSON file, the same shape <see cref="Save"/> writes under a profile name — for exporting/sharing a profile outside <see cref="DevTermUserDataPaths.ProfilesDirectory"/>.</summary>
+    public static void ExportToFile(string path, CliOptions options) =>
+        File.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
 
     /// <returns><see langword="true"/> if a profile with that name existed and was deleted; <see langword="false"/> if there was nothing to delete.</returns>
     public bool Delete(string name)
