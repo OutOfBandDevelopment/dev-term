@@ -74,24 +74,29 @@ priorité, `D4`–`D7` unused.
 
 ```plantuml
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
 
-Container_Boundary(pipeline, "Session Pipeline") {
-  Component(raw, "Raw Byte Stream", "Session", "20mA current loop via RS-232/485 converter")
-  Component(framer, "Favero Framer", "internal", "0xFF start marker, 10-byte fixed packet, checksum validate")
-  Component(composite, "Favero Composite Decoder", "ICompositeDecoder", "Demuxes score/time/lamps/match/cards")
-  Component(lamps, "Lamp Channels (x6)", "Sub-presenter", "Boolean, named per bit")
-  Component(cards, "Penalty Card Channels (x4)", "Sub-presenter", "Boolean, named per bit")
-  Component(text, "Human-readable text baseline", "Presenter output", "e.g. \"R:6 L:12 2:56 | RED(L) | M2 L-Priority\"")
+package "Session Pipeline" {
+  [Raw Byte Stream] <<Session>> as raw
+  note bottom of raw : 20mA current loop via\nRS-232/485 converter
+  [Favero Framer] <<internal>> as framer
+  note bottom of framer : 0xFF start marker, 10-byte\nfixed packet, checksum validate
+  [Favero Composite Decoder] <<ICompositeDecoder>> as composite
+  note bottom of composite : Demuxes score/time/\nlamps/match/cards
+  [Lamp Channels (x6)] <<Sub-presenter>> as lamps
+  note bottom of lamps : Boolean, named per bit
+  [Penalty Card Channels (x4)] <<Sub-presenter>> as cards
+  note bottom of cards : Boolean, named per bit
+  [Human-readable text baseline] <<Presenter output>> as text
+  note bottom of text : e.g. "R:6 L:12 2:56 |\nRED(L) | M2 L-Priority"
 }
 
-Rel(raw, framer, "Feeds")
-Rel(framer, composite, "Validated 9-byte payload")
-Rel(composite, lamps, "byte 6 bits")
-Rel(composite, cards, "byte 9 bits")
-Rel(composite, text, "Recombines into one line")
-
-SHOW_LEGEND()
+raw --> framer : Feeds
+framer --> composite : Validated 9-byte payload
+composite --> lamps : byte 6 bits
+composite --> cards : byte 9 bits
+composite --> text : Recombines into one line
 @enduml
 ```
 

@@ -59,26 +59,30 @@ SCPI is textual, not binary — this is a much softer decoder problem than Radex
 
 ```plantuml
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
 
-Person(user, "User", "WPF panel / TUI form / CLI flags")
+actor "User" as user
+note right of user : WPF panel / TUI form / CLI flags
 
-Container_Boundary(module, "SCPI Instrument Control Module (plugin)") {
-  Component(surface, "SCPI Control Surface", "IControlSurface", "Per-instrument command set (IDN?, MEAS?, SOUR:VOLT, OUTP ON/OFF, ...)")
-  Component(decoder, "SCPI Reply Decoder", "IPresenter", "Parses ASCII replies to *IDN?/MEAS?/status queries")
-  Component(mapping, "Instrument Profile", "IMappable data", "Per-model command set + reply grammar, not code")
+package "SCPI Instrument Control Module (plugin)" {
+  [SCPI Control Surface] <<IControlSurface>> as surface
+  note bottom of surface : Per-instrument command set\n(IDN?, MEAS?, SOUR:VOLT, OUTP ON/OFF, ...)
+  [SCPI Reply Decoder] <<IPresenter>> as decoder
+  note bottom of decoder : Parses ASCII replies to\n*IDN?/MEAS?/status queries
+  [Instrument Profile] <<IMappable data>> as mapping
+  note bottom of mapping : Per-model command set +\nreply grammar, not code
 }
 
-Container(transport, "Session / Transport", "ITransport", "Serial (RS-232/USB-CDC) or TCP (LXI)")
+[Session / Transport] <<ITransport>> as transport
+note right of transport : Serial (RS-232/USB-CDC) or TCP (LXI)
 
-Rel(user, surface, "Invokes command (e.g. Set Voltage 5.0V)")
-Rel(surface, transport, "ASCII command + terminator")
-Rel(transport, decoder, "ASCII reply bytes")
-Rel(mapping, surface, "Declares available commands per model")
-Rel(mapping, decoder, "Declares reply parsing per model")
-Rel(decoder, user, "Human-readable text baseline")
-
-SHOW_LEGEND()
+user --> surface : Invokes command\n(e.g. Set Voltage 5.0V)
+surface --> transport : ASCII command + terminator
+transport --> decoder : ASCII reply bytes
+mapping --> surface : Declares available\ncommands per model
+mapping --> decoder : Declares reply\nparsing per model
+decoder --> user : Human-readable text baseline
 @enduml
 ```
 

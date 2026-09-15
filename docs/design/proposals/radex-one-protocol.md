@@ -64,26 +64,30 @@ silently not take effect).
 
 ```plantuml
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
 
-Person(user, "User", "WPF panel / TUI form / CLI flags")
+actor "User" as user
+note right of user : WPF panel / TUI form / CLI flags
 
-Container_Boundary(module, "Radex One Device Control Module (plugin)") {
-  Component(surface, "Radex One Control Surface", "IControlSurface", "Read Data / Read Serial+Version / Read+Write Settings")
-  Component(framer, "Radex One Framer", "internal", "Shared request/response packet framing + checksum")
-  Component(decoder, "Radex One Decoder", "IPresenter", "Ambient / Accumulated / CPM; alarm mode + threshold")
+package "Radex One Device Control Module (plugin)" {
+  [Radex One Control Surface] <<IControlSurface>> as surface
+  note bottom of surface : Read Data / Read Serial+Version /\nRead+Write Settings
+  [Radex One Framer] <<internal>> as framer
+  note bottom of framer : Shared request/response packet\nframing + checksum
+  [Radex One Decoder] <<IPresenter>> as decoder
+  note bottom of decoder : Ambient / Accumulated / CPM;\nalarm mode + threshold
 }
 
-Container(transport, "Session / Transport", "ITransport", "Serial, 2400-8-N-1")
+[Session / Transport] <<ITransport>> as transport
+note right of transport : Serial, 2400-8-N-1
 
-Rel(user, surface, "Invokes command (e.g. Read Data, Set Threshold)")
-Rel(surface, framer, "Builds request packet")
-Rel(framer, transport, "Framed bytes out")
-Rel(transport, framer, "Framed bytes in")
-Rel(framer, decoder, "Parsed fields")
-Rel(decoder, user, "Human-readable text baseline (e.g. \"CPM=15 Ambient=18 Accum=18\")")
-
-SHOW_LEGEND()
+user --> surface : Invokes command\n(e.g. Read Data, Set Threshold)
+surface --> framer : Builds request packet
+framer --> transport : Framed bytes out
+transport --> framer : Framed bytes in
+framer --> decoder : Parsed fields
+decoder --> user : Human-readable text baseline\n(e.g. "CPM=15 Ambient=18 Accum=18")
 @enduml
 ```
 
