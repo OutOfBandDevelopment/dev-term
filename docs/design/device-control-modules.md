@@ -56,9 +56,17 @@ A device control module doesn't introduce a new transport — it rides on whatev
 - **Console (TUI)** — a text-based form (labelled fields, a command palette) for the same commands, degrading gracefully like other rendering presenters (see [frontends.md](frontends.md)).
 - **Console (CLI)** — commands become scriptable flags/subcommands (e.g., `dev-term send --command set-voltage --value 5`), so instrument control is automatable the same way telemetry export already is.
 
+## Declarative command/response schema (candidate direction for the "assembled declaratively" question below)
+
+For simple query/response devices (most bench gear — a command string in, a formatted response string back, e.g. this project's own test device answering `ID?\r` with `ID TEK/2230,V81.1,VERS:14;`), a full code plugin is more than necessary. The candidate shape is a small, dev-term-specific schema — not a general-purpose external DSL — describing per command: its name, parameters (name/type/range/unit), the byte template to send, and how to recognize/parse the response (a literal pattern, a delimiter-based split, or, for genuinely binary responses, a reference to a [Kaitai Struct](https://kaitai.io/) (`.ksy`) definition). This reuses the mapping-file precedent already established in [presenters.md](presenters.md) (raw key → name/attributes) rather than inventing a second, unrelated data format:
+
+- **Kaitai Struct** is the right tool specifically for *binary* response layouts (byte-level fields, conditionals, repeats, bit widths) — it's a mature, cross-language DSL with a C# code-generation target and a web IDE that overlays the parsed structure on a real captured hex dump, useful for reverse-engineering an unfamiliar binary protocol from a capture. It has no concept of *sending* a command, though — it's read/parse-only, so it only ever covers the response half.
+- For plain ASCII query/response gear, a heavyweight external DSL is unwarranted; a lightweight dev-term-owned schema (send template + response pattern) covers it without a new dependency.
+- **SCPI** (Standard Commands for Programmable Instruments) is worth a built-in baseline, not a DSL but a *convention*: most bench instruments answer a common command subset (`*IDN?`, `*RST`, `*CLS`, `*OPC?`) regardless of vendor, so a generic "SCPI baseline" control surface/decoder could work across many devices with zero per-device authoring, falling back to a device-specific schema/plugin only for the vendor-specific command set beyond that baseline.
+
 ## Open questions
 
 - How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters).
 - Whether commands can declare an expected reply pattern (request/response pairing) so a "Query Status" command can show its answer inline, versus everything staying async/stream-oriented like the rest of the pipeline.
-- Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic.
+- Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic — see the candidate direction above (a dev-term-specific schema, with Kaitai Struct as the binary-layout piece and an SCPI baseline as a zero-authoring fallback).
 - Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?

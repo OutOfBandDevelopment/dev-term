@@ -22,13 +22,20 @@ Working on embedded or protocol-level code usually means switching between sever
 
 ## Status
 
-Early design phase — no application code yet. See [`docs/design/`](docs/design/) for the architecture and design documents driving the initial implementation.
+Actively under development. Serial and TCP transports, the text/numeric-base presenters, and the
+console CLI are built, unit-tested, and verified against real hardware (a bench oscilloscope over
+both a direct serial connection and a serial-to-Ethernet bridge). TUI and WPF front ends, dynamic
+plugin loading, protocol decoders, rendering presenters, device control modules, RFC 2217, and the
+UDP/HID/BLE transports are designed in [`docs/design/`](docs/design/) but not yet built — see
+[`TODO.md`](TODO.md) for current backlog/in-progress status and `docs/changes/` for a dated log of
+completed work.
 
 ## Documentation
 
 - [Design docs index](docs/design/README.md)
 - [Architecture overview](docs/design/architecture.md)
 - [Transport layer](docs/design/transports.md)
+- [RFC 2217](docs/design/rfc2217.md)
 - [Presenters & encodings](docs/design/presenters.md)
 - [Plugin model](docs/design/plugin-model.md)
 - [Device control modules](docs/design/device-control-modules.md)

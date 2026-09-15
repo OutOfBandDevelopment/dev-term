@@ -1,12 +1,12 @@
-# Front Ends: TUI, CLI, GUI
+# Front Ends: CLI, TUI, GUI
 
 ## Purpose
 
-Describes the three user-facing shells over the shared core engine, and how responsibilities split between them.
+Describes the three user-facing modes over the shared core engine — CLI and TUI (both in the console app) and GUI (WPF) — and how responsibilities split between them.
 
 ## Shared foundation
 
-All three front ends operate on the same session/transport/presenter model from the core engine (see [architecture.md](architecture.md)). None of them talk to a transport or presenter plugin directly — they go through the core, so a plugin written once (a transport, a text/numeric presenter, a protocol decoder, a rendering presenter, a composite decoder) works identically in all three.
+All three modes operate on the same session/transport/presenter model from the core engine (see [architecture.md](architecture.md)). None of them talk to a transport or presenter plugin directly — they go through the core, so a plugin written once (a transport, a text/numeric presenter, a protocol decoder, a rendering presenter, a composite decoder) works identically in all three.
 
 ## Executables
 
@@ -14,8 +14,6 @@ There are two deployable front-end applications, not three — TUI and CLI are t
 
 - **Console app** — a single console executable providing both the CLI (scriptable/non-interactive) and TUI (full-screen interactive) modes described below. Mode selection is a startup concern (an explicit flag, or auto-detecting an interactive terminal vs. redirected/piped input/output) — see open questions. Built on .NET's Generic Host like every other part of the app (see [platform.md](platform.md)), so it composes the same core services as the WPF app.
 - **WPF app** — the GUI front end, built with WPF. This makes the GUI Windows-only by choice, while the console app (CLI + TUI) has no such constraint and can run cross-platform — a deliberate scoping trade-off: full graphical rendering (HPGL/PostScript/PCL drawings, telemetry plots) is a Windows-first feature, and non-Windows users still get the full core functionality through the console app's text views and export commands.
-
-## TUI (full-screen terminal UI)
 
 ## TUI (full-screen terminal UI)
 
@@ -49,6 +47,8 @@ The primary interactive mode for day-to-day device work: multiple panes (e.g., r
 ## CLI (scriptable, non-interactive)
 
 A command-line mode for automation, CI, and scripting: open a session, apply a transport + presenter configuration, and stream decoded output to stdout (or raw bytes, for piping into other tools), with exit codes and flags suited to scripting rather than an interactive human. This is also the natural place to trigger an export non-interactively (e.g., "decode this capture as HPGL and write out.svg").
+
+**Implemented** (`DevTerm.Console`): connects using a transport/presenter/config chosen via `CliOptions` (command-line args, env vars, or a saved `appsettings.Local.json` profile — see [platform.md](platform.md)), prints `[presenter] text` per line of output, and reads stdin for lines to send — so today's CLI is actually interactive-by-default (a REPL-like loop) rather than the pure batch/pipe mode described above; a dedicated non-interactive/scripted mode (env-driven, no stdin loop, explicit exit) is still just this section's original intent, not yet split out as its own thing.
 
 ## GUI (graphical desktop app, WPF)
 
