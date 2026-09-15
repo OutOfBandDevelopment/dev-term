@@ -1,5 +1,6 @@
 namespace DevTerm.Configuration.Tests;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class ConnectionErrorMessagesTests
 {

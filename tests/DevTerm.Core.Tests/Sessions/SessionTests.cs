@@ -7,6 +7,7 @@ using Moq;
 
 namespace DevTerm.Core.Tests.Sessions;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class SessionTests
 {

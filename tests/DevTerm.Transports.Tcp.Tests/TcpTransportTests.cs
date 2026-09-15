@@ -6,6 +6,7 @@ using Moq;
 
 namespace DevTerm.Transports.Tcp.Tests;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class TcpTransportTests
 {

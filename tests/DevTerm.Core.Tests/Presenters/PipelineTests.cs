@@ -4,6 +4,7 @@ using Moq;
 
 namespace DevTerm.Core.Tests.Presenters;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class PipelineTests
 {

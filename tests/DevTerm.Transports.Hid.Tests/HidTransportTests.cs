@@ -6,6 +6,7 @@ using Moq;
 
 namespace DevTerm.Transports.Hid.Tests;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class HidTransportTests
 {

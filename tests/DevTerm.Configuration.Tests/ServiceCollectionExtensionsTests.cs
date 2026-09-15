@@ -14,6 +14,7 @@ namespace DevTerm.Configuration.Tests;
 /// every front end (console CLI/TUI, WPF) relies on: the right <see cref="ITransport"/> for the
 /// selected transport, configured from <see cref="CliOptions"/>, plus the shared presenter set.
 /// </summary>
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class ServiceCollectionExtensionsTests
 {

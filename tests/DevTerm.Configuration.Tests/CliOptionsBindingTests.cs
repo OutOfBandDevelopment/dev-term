@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration.Tests;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class CliOptionsBindingTests
 {

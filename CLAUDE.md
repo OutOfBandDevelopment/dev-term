@@ -16,6 +16,9 @@ dotnet build                          # whole solution (DevTerm.slnx)
 dotnet test                           # whole solution — currently fast (well under a second per project)
 dotnet test tests/DevTerm.Core.Tests  # one project
 dotnet test --filter "FullyQualifiedName~AsciiPresenterTests"   # one class, any project
+dotnet test --filter "TestCategory=UNIT"          # fast, hardware-free (the default CI-safe subset)
+dotnet test --filter "TestCategory=INTEGRATION"   # spawns real processes/sockets, still no real hardware
+dotnet test --filter "TestCategory=DEV-LOCAL" --settings devterm.runsettings   # needs real hardware — see "Testing" below
 dotnet run --project src/DevTerm.Console -- --listports true    # list serial ports
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
@@ -101,6 +104,19 @@ protocol decoders, rendering presenters, device control modules, RFC 2217, UDP/H
 TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progress state:
 [`TODO.md`](TODO.md). Daily change log: `docs/changes/YYYY-MM-DD.md`.
 
+## Testing
+
+Every test class carries a `[TestCategory]` — `UNIT` (fast, hardware-free, the default subset once
+a CI pipeline exists), `INTEGRATION` (spawns a real process and/or a real local socket, but no real
+external hardware — see `DevTerm.Console.Tests.ConsoleAppCliTests`), or `DEV-LOCAL` (needs an
+actual physical device reachable from wherever the test runs — see `RealHardwareCliTests`/
+`RealHardwareMainWindowTests`, opt-in via `devterm.runsettings` at the repo root; without a
+settings file they report `Assert.Inconclusive`, not a failure). Full rationale, including two
+real WPF/async gotchas found building the `DEV-LOCAL` WPF tests (a missing
+`DispatcherSynchronizationContext` sends `await` continuations to the wrong thread; showing a
+`MainWindow` that's already been connected manually double-opens the session and corrupts the
+single-reader `PipeReader`): see [`docs/design/testing.md`](docs/design/testing.md).
+
 ## Non-obvious constraints worth knowing before touching related code
 
 - **Moq/Castle cannot mock a method taking `Span<T>`/`ReadOnlySpan<T>`** (a ref struct can't back
@@ -143,6 +159,18 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
   (see `DevTerm.UiDefinitions`, `DevTerm.DeviceManifests`) uses a plain `List<T>` of a small
   Key/Value class instead of a dictionary, which both serializers handle natively with no
   special-casing.
+- **A WPF `Window` created on a manually-spun-up STA thread (no `Application.Run()`) needs a real
+  `DispatcherSynchronizationContext` installed and a `Dispatcher.PushFrame` loop actually running**
+  — without both, `await` continuations after genuine async I/O resume on an arbitrary thread-pool
+  thread instead of the STA thread that owns the UI, throwing "The calling thread cannot access
+  this object because a different thread owns it." Only shows up with real I/O, not a fake
+  transport whose "async" calls complete synchronously — see `DevTerm.Wpf.Tests.StaTestRunner` and
+  [`docs/design/testing.md`](docs/design/testing.md).
+- **Don't both call `MainWindow.Show()` and `MainWindow.ConnectAsync()` from the same caller** —
+  `Show()` fires the real `Loaded` event, which calls `ConnectAsync` on its own; calling it again
+  opens the session twice concurrently, and two concurrent readers on one `PipeReader` corrupts its
+  internal state (throws "Writing is not allowed after writer was completed" from a seemingly
+  unrelated later call, not from the double-open itself).
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

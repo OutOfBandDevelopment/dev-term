@@ -3,6 +3,7 @@ using static DevTerm.Presenters.Text.Tests.TestSequence;
 
 namespace DevTerm.Presenters.Text.Tests;
 
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class AsciiPresenterTests
 {

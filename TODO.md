@@ -17,10 +17,10 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   2.5.0's static `Application` API (`Init`/`Run`/`Invoke`/`Shutdown`) is marked obsolete in favor of
   an instance-based `IApplication` — left as-is for this stub since the static API still works and
   the replacement is a bigger, unproven-in-this-project API surface; revisit if/when Terminal.Gui
-  actually removes it. Not yet done: real-hardware verification of either UI (only smoke-tested
-  that they launch without crashing), a `TuiMode`/`MainWindow` test project (Terminal.Gui/WPF UI
-  code is awkward to unit test — headless/automation approach TBD), and the multi-session-lifetime
-  issue below.
+  actually removes it. **Update**: `MainWindow` now has real test coverage (`DevTerm.Wpf.Tests`),
+  including opt-in automation against real hardware — see the test-automation entry below. `TuiMode`
+  still has none; Terminal.Gui's own headless-testing support hasn't been investigated yet. The
+  multi-session-lifetime issue below is also still open.
 
 - **UI Definitions model** (`DevTerm.UiDefinitions`), landed 2026-09-15 — a framework-agnostic,
   JSON/XML-serializable model for declaring a device control panel once (`UiDefinition` →
@@ -72,6 +72,28 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   at startup; and the warn-and-fall-back-to-default-presenter behavior for a `ManifestName` that
   doesn't resolve (the resolution helper exists, nothing calls it yet). All still design-only in
   docs/design/connection-profiles.md beyond what's listed above as landed.
+
+- **Test automation for CLI/TUI/WPF + test categorization**, landed 2026-09-15 — see
+  docs/design/testing.md. Every test class now carries `[TestCategory("UNIT"|"INTEGRATION"|"DEV-LOCAL")]`
+  (`dotnet test --filter "TestCategory=..."` runs a subset — matters more once a CI/CD pipeline
+  exists, since it could run `UNIT`+`INTEGRATION` and skip `DEV-LOCAL` entirely). New:
+  `DevTerm.Console.Tests.ConsoleAppCliTests` (`INTEGRATION` — spawns the real built console app
+  against a real local TCP loopback socket); `DevTerm.Wpf.Tests` (new test project — `MainWindowTests`,
+  `UNIT`, drives a real `MainWindow` via its testable `ConnectAsync`/`SendCurrentInputAsync` entry
+  points against a `FakeTransport`); `RealHardwareCliTests`/`RealHardwareMainWindowTests`
+  (`DEV-LOCAL` — opt-in via `devterm.runsettings` at the repo root, verified live against the real
+  Tek 2230 over both `.107` and `.108`). Found and fixed two real WPF/async bugs building this (see
+  CLAUDE.md's constraints list and docs/design/testing.md): a missing `DispatcherSynchronizationContext`
+  sends `await` continuations to the wrong thread for real (not faked) async I/O; showing a
+  `MainWindow` that's already been connected manually double-opens the session and corrupts the
+  single-reader `PipeReader`. Also found real WPF cross-test parallelism flakiness, fixed with
+  `[DoNotParallelize]` on the WPF test classes (confirmed stable across several repeated runs).
+  172 tests across the solution now (4 more — the `DEV-LOCAL` ones — run and pass with `--settings devterm.runsettings` against the real device; they report Skipped/Inconclusive without it, not counted as failures).
+
+  **Not yet built**: Terminal.Gui (TUI) automation — v2.5.0 has internal test-support types
+  suggesting a headless driver is possible, not investigated in depth yet; and the user guide with
+  real screenshots (`docs/user-guide/`) that was requested alongside this — the WPF harness could
+  double as a screenshot generator (`RenderTargetBitmap`) but that hasn't been built either.
 
 ## Backlog (not started)
 

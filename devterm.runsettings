@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Opt-in real-hardware test parameters (see CLAUDE.md's "Testing" section). Not used unless a test
+  run explicitly passes this file via dotnet test's "settings" option followed by this file's path
+  (the literal flag spelling isn't written here because XML comments can't contain two consecutive
+  hyphens, which that flag needs).
+
+  Tests that read these (RealHardware*Tests classes) report Assert.Inconclusive - not a failure -
+  when run without this file, so the default `dotnet test` (no settings flag) stays hardware-free.
+  These are the same real devices already referenced by src/DevTerm.Console/Properties/launchSettings.json's
+  "TCP 192.168.0.107:23 ASCII" / "TCP 192.168.0.108:23 ASCII" profiles (a real Tektronix 2230
+  oscilloscope, reachable over a serial-to-Ethernet bridge) - override the values below (or pass
+  your own settings file) if those two hosts aren't reachable from wherever this runs.
+-->
+<RunSettings>
+  <TestRunParameters>
+    <Parameter name="RealTcpDeviceHost1" value="192.168.0.107" />
+    <Parameter name="RealTcpDeviceHost2" value="192.168.0.108" />
+    <Parameter name="RealTcpDevicePort" value="23" />
+  </TestRunParameters>
+</RunSettings>

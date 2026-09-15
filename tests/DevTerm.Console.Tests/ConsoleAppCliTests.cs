@@ -1,0 +1,104 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+
+namespace DevTerm.Console.Tests;
+
+/// <summary>
+/// Process-level automation of the real, built console app — spawns the actual
+/// <c>DevTerm.Console.dll</c> (via the sibling <c>src/DevTerm.Console/bin/&lt;config&gt;/&lt;tfm&gt;</c>
+/// output this test's own build lays down next to), pipes real stdin/stdout, and for the
+/// end-to-end case drives it against a real local TCP socket this test controls — no real
+/// hardware, but a real transport and a real process, not a call into internal methods.
+/// </summary>
+[TestCategory("INTEGRATION")]
+[TestClass]
+public sealed class ConsoleAppCliTests
+{
+    private static readonly string ConsoleAppDirectory = AppContext.BaseDirectory.Replace(
+        Path.Combine("tests", "DevTerm.Console.Tests"),
+        Path.Combine("src", "DevTerm.Console"));
+
+    private static ProcessStartInfo BuildStartInfo(string arguments) => new("dotnet", $"\"{Path.Combine(ConsoleAppDirectory, "DevTerm.Console.dll")}\" {arguments}")
+    {
+        RedirectStandardInput = true,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true,
+    };
+
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
+
+    [TestMethod]
+    public async Task ListPorts_ExitsZeroWithoutCrashing()
+    {
+        using var process = Process.Start(BuildStartInfo("--listports true"))!;
+        await process.StandardOutput.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(0, process.ExitCode);
+    }
+
+    [TestMethod]
+    public async Task ListHidDevices_ExitsZeroWithoutCrashing()
+    {
+        using var process = Process.Start(BuildStartInfo("--listhiddevices true"))!;
+        await process.StandardOutput.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(0, process.ExitCode);
+    }
+
+    [TestMethod]
+    public async Task UnknownTransport_PrintsErrorAndUsage_ExitsOne()
+    {
+        using var process = Process.Start(BuildStartInfo("--transport carrier-pigeon --cli true"))!;
+        var stderr = await process.StandardError.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(1, process.ExitCode);
+        StringAssert.Contains(stderr, "Unknown transport");
+        StringAssert.Contains(stderr, "Usage:");
+    }
+
+    [TestMethod]
+    public async Task CliMode_OverTcp_SendsTypedLineAndPrintsDecodedReply()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var acceptTask = listener.AcceptTcpClientAsync();
+
+        using var process = Process.Start(BuildStartInfo(
+            $"--transport tcp --host 127.0.0.1 --tcpport {port} --presenter ascii --lineending Cr --cli true"))!;
+
+        using var client = await acceptTask.WaitAsync(Timeout);
+        using var stream = client.GetStream();
+
+        await process.StandardInput.WriteLineAsync("ID?");
+        await process.StandardInput.FlushAsync();
+
+        var requestBuffer = new byte[64];
+        var requestLength = await stream.ReadAsync(requestBuffer).AsTask().WaitAsync(Timeout);
+        Assert.AreEqual("ID?\r", Encoding.ASCII.GetString(requestBuffer, 0, requestLength),
+            "The CLI should append the configured Cr line ending to what was typed.");
+
+        await stream.WriteAsync(Encoding.ASCII.GetBytes("ID TESTDEVICE\r"));
+
+        string? line;
+        do
+        {
+            line = await process.StandardOutput.ReadLineAsync().WaitAsync(Timeout);
+        }
+        while (line is not null && !line.Contains("ID TESTDEVICE", StringComparison.Ordinal));
+
+        Assert.IsNotNull(line, "Expected the decoded reply to appear on stdout before the process ran out of output.");
+        StringAssert.Contains(line, "[ascii]");
+
+        process.StandardInput.Close();
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+        Assert.AreEqual(0, process.ExitCode);
+    }
+}

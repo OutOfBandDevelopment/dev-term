@@ -24,6 +24,12 @@ There are two deployable front-end applications, not three — TUI and CLI are t
 - **Console app** — a single console executable providing both the CLI (scriptable/non-interactive) and TUI (full-screen interactive) modes described below. Mode selection is a startup concern (an explicit flag, or auto-detecting an interactive terminal vs. redirected/piped input/output) — see open questions. Built on .NET's Generic Host like every other part of the app (see [platform.md](platform.md)), so it composes the same core services as the WPF app.
 - **WPF app** — the GUI front end, built with WPF. This makes the GUI Windows-only by choice, while the console app (CLI + TUI) has no such constraint and can run cross-platform — a deliberate scoping trade-off: full graphical rendering (HPGL/PostScript/PCL drawings, telemetry plots) is a Windows-first feature, and non-Windows users still get the full core functionality through the console app's text views and export commands.
 
+**A fourth deployment shape, low priority** (noted 2026-09-15, given three front ends already
+exist): a web server exposing the core engine over WebSockets, proxying configured connections to
+a separate .NET MAUI front end — the same core (session/transport/presenter) behind a network
+boundary instead of an in-process DI graph, for cross-platform mobile/desktop reach beyond what
+WPF (Windows-only) and the console app (text-only) cover. Not designed further than this note.
+
 ## TUI (full-screen terminal UI)
 
 The primary interactive mode for day-to-day device work: multiple panes (e.g., raw view, decoded view, send/command line), session switching, and live plugin selection, all inside the terminal. Closest in spirit to tools like a modern serial terminal or `tmux`-style multi-pane session. Rendering presenters (drawings, plots) degrade to a text/ASCII-art or summary representation where the terminal can't show real graphics, with a hint to use the GUI or export for the full rendering.

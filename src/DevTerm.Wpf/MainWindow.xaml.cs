@@ -33,7 +33,14 @@ public partial class MainWindow : Window
         Closing += OnClosing;
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
+
+    /// <summary>
+    /// The connect logic <see cref="OnLoaded"/> triggers, exposed as an awaitable method (rather
+    /// than only reachable through the <c>async void</c> event handler) so tests can drive and
+    /// await it deterministically.
+    /// </summary>
+    internal async Task ConnectAsync()
     {
         try
         {
@@ -71,13 +78,18 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.Enter)
         {
-            Send();
+            _ = SendCurrentInputAsync();
         }
     }
 
-    private void Send_Click(object sender, RoutedEventArgs e) => Send();
+    private void Send_Click(object sender, RoutedEventArgs e) => _ = SendCurrentInputAsync();
 
-    private async void Send()
+    /// <summary>
+    /// Sends whatever's currently in <see cref="SendBox"/>, exposed as an awaitable method (rather
+    /// than only reachable through the fire-and-forget UI event handlers) so tests can drive and
+    /// await it deterministically.
+    /// </summary>
+    internal async Task SendCurrentInputAsync()
     {
         var line = SendBox.Text;
         SendBox.Clear();
@@ -87,13 +99,26 @@ public partial class MainWindow : Window
             return;
         }
 
+        var payload = _cliOptions.LineEnding.Append(input.Parse(line));
+        if (payload.Length == 0)
+        {
+            return;
+        }
+
         try
         {
-            await _session.SendAsync(_cliOptions.LineEnding.Append(input.Parse(line)));
+            await _session.SendAsync(payload);
         }
         catch (TimeoutException)
         {
             OutputList.Items.Add("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            // Matches CliMode/TuiMode's send-path handling (see docs/changes/2026-09-15.md): a
+            // generic text presenter's typed input can't guarantee it matches a specific device's
+            // framing requirements, so report the failure instead of crashing.
+            OutputList.Items.Add($"Send failed: {ex.Message}");
         }
     }
 

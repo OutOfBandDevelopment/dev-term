@@ -1,0 +1,63 @@
+using DevTerm.Configuration;
+using DevTerm.Core.Presenters;
+using DevTerm.Core.Sessions;
+using DevTerm.Presenters.Text;
+using DevTerm.Transports.Tcp;
+using Microsoft.Extensions.Options;
+
+namespace DevTerm.Wpf.Tests;
+
+/// <summary>
+/// Opt-in <see cref="MainWindow"/> automation against real hardware — same device and same
+/// <c>.runsettings</c>-based opt-in as <c>DevTerm.Console.Tests.RealHardwareCliTests</c>, using a
+/// real <see cref="TcpTransport"/> instead of <see cref="FakeTransport"/>. Reports
+/// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
+/// </summary>
+[TestCategory("DEV-LOCAL")]
+[TestClass]
+[DoNotParallelize]
+public sealed class RealHardwareMainWindowTests
+{
+    public TestContext TestContext { get; set; } = null!;
+
+    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(10);
+
+    [TestMethod]
+    [DataRow("RealTcpDeviceHost1")]
+    [DataRow("RealTcpDeviceHost2")]
+    public void MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
+    {
+        var host = TestContext.Properties.ContainsKey(hostParameterName) ? TestContext.Properties[hostParameterName] as string : null;
+        var portText = TestContext.Properties.ContainsKey("RealTcpDevicePort") ? TestContext.Properties["RealTcpDevicePort"] as string : null;
+        if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
+        {
+            Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort' — run with a settings file (see devterm.runsettings) to exercise this against real hardware.");
+            return;
+        }
+
+        StaTestRunner.Run(async () =>
+        {
+            var transport = new TcpTransport(
+                new SystemTcpConnectionSource(),
+                Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = TcpTransportMode.Client, Host = host, Port = port }));
+            var presenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+            var session = new Session(transport, new Pipeline([presenter]));
+            var window = new MainWindow(session, presenter, new CliOptions { Transport = "tcp", Host = host, TcpPort = port, LineEnding = LineEnding.Cr })
+            {
+                ShowInTaskbar = false,
+            };
+
+            await window.ConnectAsync();
+            window.SendBox.Text = "ID?";
+            await window.SendCurrentInputAsync();
+
+            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+
+            Assert.IsTrue(appeared, $"Expected a decoded reply from the real device at {host}:{port}.");
+            StringAssert.Contains((string)window.OutputList.Items[0]!, "TEK/2230");
+
+            await session.CloseAsync();
+            await session.DisposeAsync();
+        });
+    }
+}

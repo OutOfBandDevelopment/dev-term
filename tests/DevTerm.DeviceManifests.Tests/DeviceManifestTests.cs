@@ -8,6 +8,7 @@ namespace DevTerm.DeviceManifests.Tests;
 /// docs/design/proposals/scpi-instrument-control.md's actual target hardware — rather than a
 /// synthetic minimal example.
 /// </summary>
+[TestCategory("UNIT")]
 [TestClass]
 public sealed class DeviceManifestTests
 {
