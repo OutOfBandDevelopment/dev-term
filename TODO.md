@@ -244,3 +244,52 @@ ordered against the rest.
   already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
   fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
   itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
+
+## Architect Notes
+
+- Connection Editor
+  - serial should include more fields
+    - stop bits
+    - parity type
+    - data bits
+    - port 
+      - should be a combobox where you can type whatever you want or pick from an enumerated list... the list should have the long and short name of the port
+  - there should be an export all / export selected option
+    - this would create a zipfile with the selected profiles
+    - importing one of these zip files should add the values to the existing list
+      - if imported names already exist should get the option to ignore, rename, replace
+      - on import should have the option to delete all and replace with imported
+    - there should be the ability to remove profiles
+  - presenters should be multi-select
+  - input field should have the option to use different parsers with a defailt provided by the connection profile
+  - there should be description field
+  - for tcp
+    - ensure that named values can be used as well as ipv4 and ipv6
+  - for usb-hid
+    - vendor id should be a combobox that enumerates the id and names on the location machine as well as allows the user to type in something else
+    - product id should be a combobox that enumerates the id and names on the location machine as well as allows the user to type in something else
+    - should beable to toggle between decimal and hex
+  - if a inputs are dirty should get a ok/cancel dialog on load, close, connect
+    - load should set the "save as porfile named:"
+    - on save if name matches then prompt overwrite warning
+  - this should either have a file watcher or a refresh button on the profile folder
+  - as the screen is expanded the "saved profiles" list should grow/shrink in height
+  - for "TUI" 
+    - is there a file browser that can be used with the path field?
+    - is there a scroll box with a glyph of a scrollbar?
+- for the hp34401a this software reads the 9600 8n2 correctly
+  - https://github.com/Niravk1997/HP-Agilent-Keysight-34401A-Control-and-Data-Logging-Software/releases
+- once we add the device manifest support we should have and editor
+  - it would be nice to have a presentation editor or at least a default render for request/response messages
+  - additional field types
+    - bar graph
+      - bar per channel
+    - strip/roll chart recoder
+      - should be 1 or more channels
+    - x/y/z/h/s/v 
+    - x/y/h/s/v 
+    - r/theta
+    - r/theta/h/s/v
+- Id like a logger mode
+  - messages should have direction prefix and sequence 
+- would be nice to have a mode that can playback logger with realtime, fast, slow, rewind, fast-forward, pause as well as trim, markup

@@ -76,7 +76,47 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     /// </summary>
     public CliOptions? Result { get; private set; }
 
-    public string Transport { get => _transport; set => SetField(ref _transport, value); }
+    /// <summary>
+    /// The valid values for <see cref="Transport"/>/<see cref="Presenter"/>/<see cref="LineEndingText"/>
+    /// — instance properties (not static) purely so WPF's <c>{Binding TransportOptions}</c> can find
+    /// them on the DataContext directly; the lists themselves are fixed and shared. Matches
+    /// <see cref="CliOptionsValidator"/>'s own switch (transports), every presenter
+    /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
+    /// and every <see cref="Configuration.LineEnding"/> member, respectively.
+    /// </summary>
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid"];
+
+    public IReadOnlyList<string> PresenterOptions { get; } = ["ascii", "utf8", "hex", "decimal", "octal", "binary"];
+
+    public IReadOnlyList<string> LineEndingOptions { get; } = Enum.GetNames<LineEnding>();
+
+    public string Transport
+    {
+        get => _transport;
+        set
+        {
+            if (_transport == value)
+            {
+                return;
+            }
+
+            SetField(ref _transport, value);
+
+            // Not raised by SetField's [CallerMemberName] (that only fires for "Transport" itself)
+            // - these three exist so each front end's Serial/TCP/USB HID field group can bind its
+            // own visibility to "is this the selected transport" without re-deriving that
+            // comparison itself (see CliOptions' [Category] grouping this mirrors).
+            OnPropertyChanged(nameof(IsSerialTransport));
+            OnPropertyChanged(nameof(IsTcpTransport));
+            OnPropertyChanged(nameof(IsHidTransport));
+        }
+    }
+
+    public bool IsSerialTransport => string.Equals(Transport, "serial", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsTcpTransport => string.Equals(Transport, "tcp", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsHidTransport => string.Equals(Transport, "hid", StringComparison.OrdinalIgnoreCase);
 
     public string Port { get => _port; set => SetField(ref _port, value); }
 
@@ -272,6 +312,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
     }
+
+    private void OnPropertyChanged(string? propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

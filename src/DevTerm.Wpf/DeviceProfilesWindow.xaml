@@ -3,6 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="dev-term — Device Profiles" Height="600" Width="460"
         WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
     <DockPanel Margin="8">
         <TextBlock DockPanel.Dock="Top" Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="DarkRed" />
 
@@ -24,64 +27,70 @@
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Transport (serial/tcp/hid):" VerticalAlignment="Center" />
-                    <TextBox x:Name="TransportBox" Grid.Column="1" Text="{Binding Transport, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="Transport:" VerticalAlignment="Center" />
+                    <ComboBox x:Name="TransportBox" Grid.Column="1" ItemsSource="{Binding TransportOptions}" SelectedItem="{Binding Transport}" />
                 </Grid>
 
-                <TextBlock Text="Serial" FontWeight="Bold" Margin="0,8,0,2" />
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Port:" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Baud:" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding Baud, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
+                <StackPanel x:Name="SerialPanel" Visibility="{Binding IsSerialTransport, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Serial" FontWeight="Bold" Margin="0,8,0,2" />
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Port:" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Baud:" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Baud, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </StackPanel>
 
-                <TextBlock Text="TCP" FontWeight="Bold" Margin="0,8,0,2" />
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Host:" VerticalAlignment="Center" />
-                    <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Port:" VerticalAlignment="Center" />
-                    <TextBox x:Name="TcpPortBox" Grid.Column="1" Text="{Binding TcpPort, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <CheckBox Content="Listen (server mode)" IsChecked="{Binding Listen}" Margin="140,0,0,4" />
+                <StackPanel x:Name="TcpPanel" Visibility="{Binding IsTcpTransport, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="TCP" FontWeight="Bold" Margin="0,8,0,2" />
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Host:" VerticalAlignment="Center" />
+                        <TextBox x:Name="HostBox" Grid.Column="1" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Port:" VerticalAlignment="Center" />
+                        <TextBox x:Name="TcpPortBox" Grid.Column="1" Text="{Binding TcpPort, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                    <CheckBox Content="Listen (server mode)" IsChecked="{Binding Listen}" Margin="140,0,0,4" />
+                </StackPanel>
 
-                <TextBlock Text="USB HID" FontWeight="Bold" Margin="0,8,0,2" />
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Vendor ID (decimal):" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding HidVendorId, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Product ID (decimal):" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding HidProductId, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
+                <StackPanel x:Name="HidPanel" Visibility="{Binding IsHidTransport, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="USB HID" FontWeight="Bold" Margin="0,8,0,2" />
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Vendor ID (decimal):" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding HidVendorId, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Product ID (decimal):" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding HidProductId, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </StackPanel>
 
                 <TextBlock Text="Presentation" FontWeight="Bold" Margin="0,8,0,2" />
                 <Grid Margin="0,0,0,4">
@@ -90,15 +99,15 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Presenter:" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding Presenter, UpdateSourceTrigger=PropertyChanged}" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding PresenterOptions}" SelectedItem="{Binding Presenter}" />
                 </Grid>
                 <Grid Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Line ending (None/Cr/Lf/CrLf):" VerticalAlignment="Center" />
-                    <TextBox Grid.Column="1" Text="{Binding LineEndingText, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="Line ending:" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding LineEndingOptions}" SelectedItem="{Binding LineEndingText}" />
                 </Grid>
 
                 <DockPanel Margin="0,12,0,0">

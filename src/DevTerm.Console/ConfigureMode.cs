@@ -15,10 +15,13 @@ namespace DevTerm.Console;
 /// standalone file. See docs/design/connection-profiles.md.
 /// </summary>
 /// <remarks>
-/// A first stub, not the full design: all fields are always visible rather than shown/hidden per
-/// selected transport, and there's no live device-manifest picker yet (a manifest is still
-/// referenced by typing its name, matching <c>--manifestname</c>). See
-/// docs/design/frontends.md's startup/configure flow note for the target.
+/// A first stub, not the full design: there's no live device-manifest picker yet (a manifest is
+/// still referenced by typing its name, matching <c>--manifestname</c>), and hiding a transport's
+/// irrelevant field group doesn't reflow the layout to close the gap it leaves (Terminal.Gui's
+/// <c>Pos.Bottom(view)</c> positioning is computed from a view's frame regardless of its
+/// <c>Visible</c> state, so the Presentation/Save/Import-export/Connect section below always sits
+/// where it would if every group were shown). See docs/design/frontends.md's startup/configure
+/// flow note for the target.
 ///
 /// All connect/load/save/import/export logic lives in the shared <see cref="ConnectionEditorViewModel"/>
 /// (also used by WPF's <c>DeviceProfilesWindow</c> via XAML command bindings) — this class only
@@ -28,6 +31,25 @@ namespace DevTerm.Console;
 /// </remarks>
 public static class ConfigureMode
 {
+    /// <summary>Terminal.Gui's <c>OptionSelector&lt;TEnum&gt;</c> needs an enum (its <c>Values</c> are derived from <c>Enum.GetValues&lt;TEnum&gt;()</c> and can't be set directly) — <see cref="ConnectionEditorViewModel.Transport"/> is a plain string shared with WPF, so this exists purely to drive that one Terminal.Gui widget.</summary>
+    internal enum TransportChoice
+    {
+        Serial,
+        Tcp,
+        Hid,
+    }
+
+    /// <summary>Same reasoning as <see cref="TransportChoice"/>, for <see cref="ConnectionEditorViewModel.Presenter"/>.</summary>
+    internal enum PresenterChoice
+    {
+        Ascii,
+        Utf8,
+        Hex,
+        Decimal,
+        Octal,
+        Binary,
+    }
+
     /// <returns>Valid <see cref="CliOptions"/> once the user presses Connect with something that validates; <see langword="null"/> if they quit instead.</returns>
     public static CliOptions? Run(CliOptions initial, string? validationError)
     {
@@ -84,8 +106,14 @@ public static class ConfigureMode
 
         var loadButton = new Button { X = Pos.Right(profilesList) + 1, Y = Pos.Top(profilesList), Text = "Load" };
 
-        var transportLabel = new Label { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Transport (serial/tcp/hid):" };
-        var transportField = new TextField { X = Pos.Right(transportLabel) + 1, Y = Pos.Top(transportLabel), Width = 12, Text = initial.Transport };
+        var transportLabel = new Label { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Transport:" };
+        var transportSelector = new OptionSelector<TransportChoice>
+        {
+            X = Pos.Right(transportLabel) + 1,
+            Y = Pos.Top(transportLabel),
+            Orientation = Orientation.Horizontal,
+            HorizontalSpace = 2,
+        };
 
         var portLabel = new Label { X = 0, Y = Pos.Bottom(transportLabel) + 1, Text = "Serial port:" };
         var portField = new TextField { X = Pos.Right(portLabel) + 1, Y = Pos.Top(portLabel), Width = 12, Text = initial.Port ?? string.Empty };
@@ -104,11 +132,24 @@ public static class ConfigureMode
         var hidProductField = new TextField { X = Pos.Right(hidProductLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidProductId.ToString() };
 
         var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Presenter:" };
-        var presenterField = new TextField { X = Pos.Right(presenterLabel) + 1, Y = Pos.Top(presenterLabel), Width = 12, Text = initial.Presenter };
-        var lineEndingLabel = new Label { X = Pos.Right(presenterField) + 3, Y = Pos.Top(presenterLabel), Text = "Line ending (None/Cr/Lf/CrLf):" };
-        var lineEndingField = new TextField { X = Pos.Right(lineEndingLabel) + 1, Y = Pos.Top(presenterLabel), Width = 8, Text = initial.LineEnding.ToString() };
+        var presenterSelector = new OptionSelector<PresenterChoice>
+        {
+            X = Pos.Right(presenterLabel) + 1,
+            Y = Pos.Top(presenterLabel),
+            Orientation = Orientation.Horizontal,
+            HorizontalSpace = 2,
+        };
 
-        var saveNameLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "Save as profile named:" };
+        var lineEndingLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "Line ending:" };
+        var lineEndingSelector = new OptionSelector<LineEnding>
+        {
+            X = Pos.Right(lineEndingLabel) + 1,
+            Y = Pos.Top(lineEndingLabel),
+            Orientation = Orientation.Horizontal,
+            HorizontalSpace = 2,
+        };
+
+        var saveNameLabel = new Label { X = 0, Y = Pos.Bottom(lineEndingLabel) + 1, Text = "Save as profile named:" };
         var saveNameField = new TextField { X = Pos.Right(saveNameLabel) + 1, Y = Pos.Top(saveNameLabel), Width = 20 };
         var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile" };
 
@@ -126,7 +167,7 @@ public static class ConfigureMode
             ErrorLabel = errorLabel,
             ProfilesList = profilesList,
             LoadButton = loadButton,
-            TransportField = transportField,
+            TransportSelector = transportSelector,
             PortField = portField,
             BaudField = baudField,
             HostField = hostField,
@@ -134,8 +175,8 @@ public static class ConfigureMode
             ListenCheckBox = listenCheckBox,
             HidVendorField = hidVendorField,
             HidProductField = hidProductField,
-            PresenterField = presenterField,
-            LineEndingField = lineEndingField,
+            PresenterSelector = presenterSelector,
+            LineEndingSelector = lineEndingSelector,
             SaveNameField = saveNameField,
             SaveButton = saveButton,
             PathField = pathField,
@@ -145,12 +186,21 @@ public static class ConfigureMode
             QuitButton = quitButton,
         };
 
+        // Only the fields for the currently-selected transport are relevant - showing all three
+        // groups at once regardless of selection was confusing (a real complaint, not a guess).
+        void UpdateTransportVisibility(TransportChoice selected)
+        {
+            portLabel.Visible = portField.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
+            hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
+            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = selected == TransportChoice.Hid;
+        }
+
         // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
         // model explicitly around each button press, rather than staying continuously in sync the
         // way WPF's {Binding ...} does for DeviceProfilesWindow.
         void PushFieldsIntoViewModel()
         {
-            viewModel.Transport = transportField.Text;
+            viewModel.Transport = (transportSelector.Value ?? TransportChoice.Serial).ToString().ToLowerInvariant();
             viewModel.Port = portField.Text;
             viewModel.Baud = baudField.Text;
             viewModel.Host = hostField.Text;
@@ -158,15 +208,16 @@ public static class ConfigureMode
             viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
             viewModel.HidVendorId = hidVendorField.Text;
             viewModel.HidProductId = hidProductField.Text;
-            viewModel.Presenter = presenterField.Text;
-            viewModel.LineEndingText = lineEndingField.Text;
+            viewModel.Presenter = (presenterSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
+            viewModel.LineEndingText = (lineEndingSelector.Value ?? DevTerm.Configuration.LineEnding.None).ToString();
             viewModel.SaveName = saveNameField.Text;
             viewModel.ImportExportPath = pathField.Text;
         }
 
         void PullFieldsFromViewModel()
         {
-            transportField.Text = viewModel.Transport;
+            var transportChoice = Enum.TryParse<TransportChoice>(viewModel.Transport, ignoreCase: true, out var t) ? t : TransportChoice.Serial;
+            transportSelector.Value = transportChoice;
             portField.Text = viewModel.Port;
             baudField.Text = viewModel.Baud;
             hostField.Text = viewModel.Host;
@@ -174,12 +225,17 @@ public static class ConfigureMode
             listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
             hidVendorField.Text = viewModel.HidVendorId;
             hidProductField.Text = viewModel.HidProductId;
-            presenterField.Text = viewModel.Presenter;
-            lineEndingField.Text = viewModel.LineEndingText;
+            presenterSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Presenter, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
+            lineEndingSelector.Value = Enum.TryParse<DevTerm.Configuration.LineEnding>(viewModel.LineEndingText, ignoreCase: true, out var le) ? le : DevTerm.Configuration.LineEnding.None;
             saveNameField.Text = viewModel.SaveName;
             errorLabel.Text = viewModel.StatusMessage;
             profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
+            UpdateTransportVisibility(transportChoice);
         }
+
+        PullFieldsFromViewModel();
+
+        transportSelector.ValueChanged += (_, _) => UpdateTransportVisibility(transportSelector.Value ?? TransportChoice.Serial);
 
         viewModel.CloseRequested += (_, _) =>
         {
@@ -243,11 +299,11 @@ public static class ConfigureMode
 
         window.Add(
             errorLabel, profilesLabel, profilesList, loadButton,
-            transportLabel, transportField,
+            transportLabel, transportSelector,
             portLabel, portField, baudLabel, baudField,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField,
-            presenterLabel, presenterField, lineEndingLabel, lineEndingField,
+            presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, importButton, exportButton,
             connectButton, quitButton);
@@ -267,7 +323,7 @@ internal sealed class ConfigureWindowParts
 
     public required Button LoadButton { get; init; }
 
-    public required TextField TransportField { get; init; }
+    public required View TransportSelector { get; init; }
 
     public required TextField PortField { get; init; }
 
@@ -283,9 +339,9 @@ internal sealed class ConfigureWindowParts
 
     public required TextField HidProductField { get; init; }
 
-    public required TextField PresenterField { get; init; }
+    public required View PresenterSelector { get; init; }
 
-    public required TextField LineEndingField { get; init; }
+    public required View LineEndingSelector { get; init; }
 
     public required TextField SaveNameField { get; init; }
 

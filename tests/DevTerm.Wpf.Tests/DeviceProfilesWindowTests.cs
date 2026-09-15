@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using DevTerm.Configuration;
 
 namespace DevTerm.Wpf.Tests;
@@ -92,6 +93,42 @@ public sealed class DeviceProfilesWindowTests
                 window.ViewModel.Host = "192.168.0.108";
 
                 Assert.AreEqual("192.168.0.108", window.HostBox.Text);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectingATransport_TogglesWhichFieldGroupIsVisible()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "serial" }) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                Assert.AreEqual(Visibility.Visible, window.SerialPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+
+                window.ViewModel.Transport = "tcp";
+
+                Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.TcpPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+
+                window.ViewModel.Transport = "hid";
+
+                Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.HidPanel.Visibility);
 
                 await Task.CompletedTask;
             });
