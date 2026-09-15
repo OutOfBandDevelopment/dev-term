@@ -37,7 +37,11 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG).
 - Device control modules (control surface + telemetry decode/plot) — see the declarative-schema
-  item above for the command/response definition piece specifically.
+  item above for the command/response definition piece specifically. Three concrete, real-hardware
+  proposals ready to build against, in rough suggested order: [Radex One](docs/design/proposals/radex-one-protocol.md)
+  (fully-specified binary protocol, good first decoder), [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md)
+  (textual, first real declarative-schema candidate), [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md)
+  (continuous bitfield-packed stream, first real `ICompositeDecoder` candidate).
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.

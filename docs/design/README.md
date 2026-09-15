@@ -13,6 +13,17 @@ Living design docs for dev-term, written during the pre-implementation design ph
 
 These documents describe intent and direction, not a finished spec — update them as design decisions are made or revisited, rather than letting the code and the docs drift apart.
 
+## Proposals
+
+[`proposals/`](proposals/) holds concrete feature proposals for specific transports, decoders, or
+device control modules — narrower and more actionable than the docs above, which describe the
+general contracts these proposals build on, and each grounded in an actual piece of target
+hardware rather than a hypothetical. Each proposal notes where it came from at the top.
+
+- [Radex One geiger counter protocol](proposals/radex-one-protocol.md) — a fully-specified binary protocol (framing, checksum, four command types; decoder + control surface) for a USB geiger counter, sourced from a finished reverse-engineering writeup in `mwwhited-notes/shared`. Proposed as a first real (non-toy) protocol decoder — small and self-contained enough to validate the decoder contract shape before tackling something more involved.
+- [SCPI bench instrument control module](proposals/scpi-instrument-control.md) — a device control module for SCPI-compatible bench test equipment (HP 34401A, Rigol DM3058E/DG1022(Z), Korad power supplies), sourced from a planning-stage project in `mwwhited-notes/shared`. Textual rather than binary, and a candidate first real instance of the declarative command/response schema discussed in [device-control-modules.md](device-control-modules.md), given how standardized SCPI's grammar already is.
+- [Favero fencing apparatus protocol](proposals/favero-fencing-protocol.md) — a continuous, unidirectional, bitfield-packed telemetry stream (score/time/lamps/match/penalty cards) from a fencing scoring apparatus, sourced from a production project (ScoreMachine, deployed 2018–present) in `mwwhited-notes/shared`. The most protocol-interesting of the three — a strong candidate for dev-term's first real `ICompositeDecoder`, demultiplexing individual bitfields within single bytes rather than across multiple messages/time slots.
+
 ## Diagrams
 
 Diagrams are embedded directly in the markdown as fenced ` ```plantuml ` code blocks. Structural/architecture diagrams (system context, containers, components) follow the [C4 model](https://c4model.com) using the standard [C4-PlantUML](https://github.com/plantuml-stdlib/C4-PlantUML) macros, pulled in via `!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/...` — rendering these requires a PlantUML setup that allows remote `!include`s (the public PlantUML server does; a fully offline renderer needs a local copy of the C4-PlantUML stdlib instead). Sequence diagrams use plain `@startuml`/`@enduml`, and UI wireframes use `@startsalt`/`@endsalt` — neither needs the C4 include.
