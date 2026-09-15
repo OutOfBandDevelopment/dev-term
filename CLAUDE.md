@@ -45,6 +45,12 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
   implementations. Each is independently testable via a fake stream (see "Testing" below), never
   real hardware/sockets.
 - `DevTerm.Presenters.Text` — ASCII (line-buffered), UTF-8, hex, decimal, octal, binary.
+- `DevTerm.UiDefinitions` — a framework-agnostic, JSON/XML-serializable model for declaring a
+  device control panel once (`UiDefinition` → `UiSection`s → `UiControl`s: button/toggle/slider/
+  numeric/choice/textField/indicator) so every front end can render it generically instead of
+  hand-coding a UI per device per front end. See docs/design/ui-definitions.md. Model + round-trip
+  serialization only so far — nothing yet reads this model to actually produce Terminal.Gui/WPF
+  controls, and it isn't wired to a live device (`IControlSurface` itself is still design-only).
 - `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
   `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
   `ConnectionDescription`, and `AddDevTermFrontEnd` (the one place that wires core + text

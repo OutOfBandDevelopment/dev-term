@@ -22,6 +22,21 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   code is awkward to unit test — headless/automation approach TBD), and the multi-session-lifetime
   issue below.
 
+- **UI Definitions model** (`DevTerm.UiDefinitions`), landed 2026-09-15 — a framework-agnostic,
+  JSON/XML-serializable model for declaring a device control panel once (`UiDefinition` →
+  `UiSection`s → seven `UiControl` kinds: button/toggle/slider/numeric/choice/textField/indicator),
+  so every front end can render it generically instead of hand-coding UI per device per front end.
+  Built from real device mockups already written (Kuando Busylight, Velleman K8055, EByte, Zoom
+  H4n), not designed in the abstract — see docs/design/ui-definitions.md. Polymorphic serialization
+  uses the framework's own support (`System.Text.Json`'s `[JsonDerivedType]`, `XmlSerializer`'s
+  `[XmlElement]` per derived type on the collection) rather than hand-rolled discriminator parsing.
+  Round-trip tested against a full real panel (the Busylight mockup, reproduced as data). **This is
+  step one only**: nothing yet reads this model to produce real Terminal.Gui or WPF controls, and
+  it isn't wired to `IControlSurface` (still design-only) or any live device. Next real targets to
+  build the actual TUI/WPF renderers against, per explicit plan: the K8055 (plugged in) and the
+  Busylight (already verified both directions) — both already have `@startsalt` mockups this model
+  needs to be able to reproduce as real, working controls.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of

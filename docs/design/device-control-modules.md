@@ -14,7 +14,7 @@ A device control module is a plugin that **composes**, rather than replaces, the
 
 - A **command set** — the outbound side: named commands/parameters (e.g., "Set Voltage" with a numeric parameter and unit; "Trigger" with no parameters; "Query Status" with a decoded reply) that encode to bytes over the session's transport, reusing the same send path presenters already use for sending (`IPresenterInput`, see [presenters.md](presenters.md)).
 - One or more **presenters** for the inbound side — typically a protocol/telemetry decoder (with its human-readable text baseline) and a rendering presenter for a live telemetry plot — exactly the presenter types already described in presenters.md, just bundled with the command set instead of assembled ad hoc.
-- A **control surface declaration** — a generic, declarative description of the module's commands/parameters (name, type, range/enum/unit, grouping) that front ends render as an actual control panel (buttons, sliders, dropdowns, numeric fields) without the module hand-building UI per front end. This is the control-surface analog of how composite decoders declare channels generically, and mappable presenters declare their mapping schema generically (see [presenters.md](presenters.md)): the module describes *what* controls exist, the front end decides *how* to draw them.
+- A **control surface declaration** — a generic, declarative description of the module's commands/parameters (name, type, range/enum/unit, grouping) that front ends render as an actual control panel (buttons, sliders, dropdowns, numeric fields) without the module hand-building UI per front end. This is the control-surface analog of how composite decoders declare channels generically, and mappable presenters declare their mapping schema generically (see [presenters.md](presenters.md)): the module describes *what* controls exist, the front end decides *how* to draw them. See [ui-definitions.md](ui-definitions.md) for the concrete, serializable shape this takes (`DevTerm.UiDefinitions`) — built from real device mockups (Kuando Busylight, Velleman K8055, EByte, Zoom H4n), though not yet wired to `IControlSurface` itself.
 
 ```plantuml
 @startuml
@@ -66,7 +66,7 @@ For simple query/response devices (most bench gear — a command string in, a fo
 
 ## Open questions
 
-- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters).
+- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — partially answered by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet); see that doc's own open questions for what's still undecided.
 - Whether commands can declare an expected reply pattern (request/response pairing) so a "Query Status" command can show its answer inline, versus everything staying async/stream-oriented like the rest of the pipeline.
 - Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic — see the candidate direction above (a dev-term-specific schema, with Kaitai Struct as the binary-layout piece and an SCPI baseline as a zero-authoring fallback).
 - Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?

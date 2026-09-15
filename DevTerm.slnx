@@ -7,6 +7,7 @@
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
     <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
+    <Project Path="src/DevTerm.UiDefinitions/DevTerm.UiDefinitions.csproj" />
     <Project Path="src/DevTerm.Wpf/DevTerm.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -17,5 +18,6 @@
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
+    <Project Path="tests/DevTerm.UiDefinitions.Tests/DevTerm.UiDefinitions.Tests.csproj" />
   </Folder>
 </Solution>
