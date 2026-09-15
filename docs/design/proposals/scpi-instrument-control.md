@@ -41,11 +41,15 @@ oscilloscope section is the one worth flagging — it records no interface at al
 (only Model/Bandwidth/Channels/etc.), so nothing there can be assumed SCPI-capable without
 checking further:
 
-- **Rigol DS1102E** — worth checking; Rigol scopes of this era commonly do USBTMC, but that's not
-  confirmed for this specific unit from the inventory alone.
-- **Tektronix TDS2024** — the inventory's own "Legacy Interfaces" note says only a Centronics
-  (printer) module is fitted, not a command interface — likely not remotely controllable at all as
-  currently equipped.
+- **Rigol DS1102E** — has USB (confirmed directly); Rigol scopes of this era commonly do USBTMC
+  over that port, matching the [USBTMC](../transports.md) gap already noted for the DG1022 family
+  — same "needs its own raw-USB transport" dependency as that device, not the existing serial/TCP
+  transports.
+- **Tektronix TDS2024** — confirmed to support **GPIB and serial** as fitted options; the
+  Centronics module currently installed is for faster print/screen-capture output, not the only
+  interface available, just the one currently equipped in place of a GPIB module. Once
+  [GPIB via a Prologix-protocol controller](../transports.md) exists, this becomes a real target —
+  either by swapping in a GPIB option module, or via its serial option if that's easier to source.
 - **Hitachi V-1150** (analog) and **DSO201/DSO Nano** (pocket DSO) — no remote interface exists on
   either by design.
 - **Digilent Analog Discovery 2** — USB, but via Digilent's own WaveForms SDK, not SCPI/USBTMC/a
