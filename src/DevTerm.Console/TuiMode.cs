@@ -33,80 +33,9 @@ public static class TuiMode
         Application.Init();
         try
         {
-            var window = new Window
-            {
-                Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name}) — Ctrl+Q to quit",
-                X = 0,
-                Y = 0,
-                Width = Dim.Fill(),
-                Height = Dim.Fill(),
-            };
-
-            var output = new TextView
-            {
-                X = 0,
-                Y = 0,
-                Width = Dim.Fill(),
-                Height = Dim.Fill(1),
-                ReadOnly = true,
-                Text = string.Empty,
-            };
-
-            var sendLabel = new Label
-            {
-                Text = "Send:",
-                X = 0,
-                Y = Pos.Bottom(output),
-                Width = 6,
-            };
-
-            var sendField = new TextField
-            {
-                X = Pos.Right(sendLabel),
-                Y = Pos.Bottom(output),
-                Width = Dim.Fill(),
-            };
-
-            void AppendOutput(string line)
-            {
-                Application.Invoke(() =>
-                {
-                    output.Text += output.Text.Length == 0 ? line : "\n" + line;
-                    output.MoveEnd();
-                });
-            }
-
-            session.Output += (_, presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
-
-            sendField.KeyDown += (_, key) =>
-            {
-                if (key != Key.Enter)
-                {
-                    return;
-                }
-
-                key.Handled = true;
-                var line = sendField.Text;
-                sendField.Text = string.Empty;
-
-                if (line.Length == 0)
-                {
-                    return;
-                }
-
-                if (presenter is not IPresenterInput input)
-                {
-                    AppendOutput($"Presenter '{presenter.Name}' does not support sending.");
-                    return;
-                }
-
-                _ = SendAsync(session, cliOptions, input, line, AppendOutput);
-            };
-
-            window.Add(output, sendLabel, sendField);
-            sendField.SetFocus();
-
-            Application.Run(window);
+            var parts = BuildWindow(session, presenter, cliOptions);
+            parts.SendField.SetFocus();
+            Application.Run(parts.Window);
         }
         finally
         {
@@ -117,7 +46,90 @@ public static class TuiMode
         return 0;
     }
 
-    private static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput)
+    /// <summary>
+    /// Builds the window and wires it to <paramref name="session"/>, without touching
+    /// <c>Application.Init</c>/<c>Run</c>/<c>Shutdown</c> — split out so tests can drive the same
+    /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
+    /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
+    /// </summary>
+    internal static TuiWindowParts BuildWindow(Session session, IPresenter presenter, CliOptions cliOptions)
+    {
+        var window = new Window
+        {
+            Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name}) — Ctrl+Q to quit",
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+        };
+
+        var output = new TextView
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(1),
+            ReadOnly = true,
+            Text = string.Empty,
+        };
+
+        var sendLabel = new Label
+        {
+            Text = "Send:",
+            X = 0,
+            Y = Pos.Bottom(output),
+            Width = 6,
+        };
+
+        var sendField = new TextField
+        {
+            X = Pos.Right(sendLabel),
+            Y = Pos.Bottom(output),
+            Width = Dim.Fill(),
+        };
+
+        void AppendOutput(string line)
+        {
+            Application.Invoke(() =>
+            {
+                output.Text += output.Text.Length == 0 ? line : "\n" + line;
+                output.MoveEnd();
+            });
+        }
+
+        session.Output += (_, presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
+
+        sendField.KeyDown += (_, key) =>
+        {
+            if (key != Key.Enter)
+            {
+                return;
+            }
+
+            key.Handled = true;
+            var line = sendField.Text;
+            sendField.Text = string.Empty;
+
+            if (line.Length == 0)
+            {
+                return;
+            }
+
+            if (presenter is not IPresenterInput input)
+            {
+                AppendOutput($"Presenter '{presenter.Name}' does not support sending.");
+                return;
+            }
+
+            _ = SendAsync(session, cliOptions, input, line, AppendOutput);
+        };
+
+        window.Add(output, sendLabel, sendField);
+
+        return new TuiWindowParts(window, output, sendField);
+    }
+
+    internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput)
     {
         var payload = cliOptions.LineEnding.Append(input.Parse(line));
         if (payload.Length == 0)
@@ -139,3 +151,6 @@ public static class TuiMode
         }
     }
 }
+
+/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>.</summary>
+internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField);

@@ -80,11 +80,46 @@ redirected stdin/stdout/stderr. The one true end-to-end case (`CliMode_OverTcp_.
 local `TcpListener` the test controls, so the whole path — process → `CliOptions` → `TcpTransport`
 → `Session` → `AsciiPresenter` → stdout — runs for real without needing an actual device.
 
+## TUI automation: Terminal.Gui's own official testing API, two run modes
+
+Terminal.Gui v2.5.0 ships a whole `Terminal.Gui.Testing` namespace (`IInputInjector`,
+`InputInjector`, `TestInputSource`) plus a public `IOutputBuffer`/`Cell[,]` screen-buffer contract —
+found by reflecting over the installed package (its docs/samples are still v1-flavored; the actual
+shape had to be checked against the DLL, same approach `CLAUDE.md` already calls for). Confirmed
+working with a real, throwaway console app before committing to the approach (not just from
+signatures): `Application.Init("dotnet")` (the managed, cross-platform driver — confirmed to work
+even with fully redirected/piped stdout, no real terminal needed), building a real `Window`/
+`TextView`/`TextField`, injecting keys via `IApplication.GetInputInjector()`, and reading back the
+exact rendered character grid via `Application.Driver.GetOutputBuffer().Contents[row, col].Grapheme`.
+
+`DevTerm.Console.Tests.TuiModeTests` drives a real `TuiMode` window — via `TuiMode.BuildWindow`,
+split out from `TuiMode.RunAsync` the same way `MainWindow.xaml.cs` exposes `ConnectAsync`/
+`SendCurrentInputAsync` for WPF — through `TuiTestRunner`, which needed **two different run modes**
+for two things that turned out not to work together, both found by actually running code, not
+suspected from docs:
+
+- **Headless (`TuiTestRunner.RunHeadless`)** — single-threaded: `Application.Init` → `Begin` →
+  manual `LayoutAndDraw`, no `Application.Run()` loop at all. Key injection
+  (`GetInputInjector().InjectKey`/`ProcessQueue()`) only works reliably here. Use for anything that
+  types into the send field, and for reading back the screen buffer as a plain-text "screenshot".
+- **Looped (`TuiTestRunner.RunWithLoop`)** — a dedicated background thread runs the real, blocking
+  `Application.Run()`; the test thread marshals in via `Application.Invoke` (mirrors
+  `DevTerm.Wpf.Tests.StaTestRunner`'s dedicated STA thread + pumped dispatcher). Needed because
+  `Application.Invoke` silently queues forever and is never drained unless a real `Run()` loop is
+  actively pumping somewhere — confirmed by calling it from a background thread with no loop running
+  and finding neither `LayoutAndDraw` nor `RaiseIteration` ever flush it. Since `TuiMode`'s own
+  `AppendOutput` uses `Application.Invoke` to marshal `Session.Output` events (raised on `Session`'s
+  own background read-loop `Task`) onto the UI, exercising that specific wiring needs a real loop.
+
+The two modes don't compose: injecting through `IInputInjector` while a real `Application.Run()`
+loop is simultaneously pumping on another thread was tried and the injected keys never reached the
+focused view, even marshaled onto the loop thread via `Application.Invoke` with `ProcessQueue()`
+called explicitly right there — so a headless test never starts a loop, and a looped test never
+injects keys, rather than trying to make one mode do both.
+
 ## Not yet built
 
-- Terminal.Gui (TUI) automation — Terminal.Gui v2.5.0 has internal test-support types
-  (`TestInputSource`, `ITestableInput<T>`, `IOutputBuffer`) suggesting a headless driver is
-  possible, but wiring one hasn't been investigated in depth yet.
-- A user guide with real screenshots for CLI/TUI/WPF (`docs/user-guide/`) — the WPF harness here
-  could double as a screenshot generator (`RenderTargetBitmap` against a real, laid-out
-  `MainWindow`), not yet built.
+- A user guide with real screenshots for CLI/TUI/WPF (`docs/user-guide/`) — the WPF harness could
+  double as a screenshot generator (`RenderTargetBitmap` against a real, laid-out `MainWindow`), and
+  `TuiTestRunner.DumpBuffer()` already produces a text-mode equivalent for the TUI; neither is wired
+  up to actually produce the docs yet.

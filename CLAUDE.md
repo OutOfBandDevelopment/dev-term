@@ -107,15 +107,18 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
 ## Testing
 
 Every test class carries a `[TestCategory]` — `UNIT` (fast, hardware-free, the default subset once
-a CI pipeline exists), `INTEGRATION` (spawns a real process and/or a real local socket, but no real
-external hardware — see `DevTerm.Console.Tests.ConsoleAppCliTests`), or `DEV-LOCAL` (needs an
-actual physical device reachable from wherever the test runs — see `RealHardwareCliTests`/
-`RealHardwareMainWindowTests`, opt-in via `devterm.runsettings` at the repo root; without a
-settings file they report `Assert.Inconclusive`, not a failure). Full rationale, including two
-real WPF/async gotchas found building the `DEV-LOCAL` WPF tests (a missing
-`DispatcherSynchronizationContext` sends `await` continuations to the wrong thread; showing a
-`MainWindow` that's already been connected manually double-opens the session and corrupts the
-single-reader `PipeReader`): see [`docs/design/testing.md`](docs/design/testing.md).
+a CI pipeline exists — includes `DevTerm.Console.Tests.TuiModeTests`, which drives a real
+`TuiMode` window headlessly via Terminal.Gui's own testing API), `INTEGRATION` (spawns a real
+process and/or a real local socket, but no real external hardware — see
+`DevTerm.Console.Tests.ConsoleAppCliTests`), or `DEV-LOCAL` (needs an actual physical device
+reachable from wherever the test runs — see `RealHardwareCliTests`/`RealHardwareMainWindowTests`,
+opt-in via `devterm.runsettings` at the repo root; without a settings file they report
+`Assert.Inconclusive`, not a failure). Full rationale, including two real WPF/async gotchas found
+building the `DEV-LOCAL` WPF tests (a missing `DispatcherSynchronizationContext` sends `await`
+continuations to the wrong thread; showing a `MainWindow` that's already been connected manually
+double-opens the session and corrupts the single-reader `PipeReader`) and the two Terminal.Gui
+`Application.Invoke`/`IInputInjector` gotchas below: see
+[`docs/design/testing.md`](docs/design/testing.md).
 
 ## Non-obvious constraints worth knowing before touching related code
 
@@ -171,6 +174,13 @@ single-reader `PipeReader`): see [`docs/design/testing.md`](docs/design/testing.
   opens the session twice concurrently, and two concurrent readers on one `PipeReader` corrupts its
   internal state (throws "Writing is not allowed after writer was completed" from a seemingly
   unrelated later call, not from the double-open itself).
+- **Terminal.Gui v2.5.0's `Application.Invoke` silently queues forever unless a real
+  `Application.Run()` loop is actively pumping somewhere** — calling it from a background thread
+  with no loop running, and then calling `LayoutAndDraw`/`RaiseIteration` manually, never flushes
+  it. Conversely, `IInputInjector.InjectKey`/`ProcessQueue()` only reliably reaches the focused view
+  when there's *no* `Application.Run()` loop running concurrently on another thread — the two don't
+  compose. See `DevTerm.Console.Tests.TuiTestRunner`'s two separate run modes
+  (`RunHeadless`/`RunWithLoop`) and [`docs/design/testing.md`](docs/design/testing.md).
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

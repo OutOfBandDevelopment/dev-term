@@ -90,10 +90,23 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   `[DoNotParallelize]` on the WPF test classes (confirmed stable across several repeated runs).
   172 tests across the solution now (4 more — the `DEV-LOCAL` ones — run and pass with `--settings devterm.runsettings` against the real device; they report Skipped/Inconclusive without it, not counted as failures).
 
-  **Not yet built**: Terminal.Gui (TUI) automation — v2.5.0 has internal test-support types
-  suggesting a headless driver is possible, not investigated in depth yet; and the user guide with
-  real screenshots (`docs/user-guide/`) that was requested alongside this — the WPF harness could
-  double as a screenshot generator (`RenderTargetBitmap`) but that hasn't been built either.
+  **Update, 2026-09-15**: Terminal.Gui (TUI) automation landed — `DevTerm.Console.Tests.TuiModeTests`
+  (4 tests, `UNIT`) drives a real `TuiMode` window (split out via a new `TuiMode.BuildWindow`, the
+  same seam WPF's `ConnectAsync`/`SendCurrentInputAsync` provide) using Terminal.Gui v2.5.0's own
+  official `Terminal.Gui.Testing` API (`IInputInjector`, real screen-buffer readback via
+  `IOutputBuffer`) — no OS-level UI Automation, no real terminal needed. Needed two different run
+  modes (`DevTerm.Console.Tests.TuiTestRunner.RunHeadless`/`RunWithLoop`) because key injection and
+  cross-thread `Application.Invoke` turned out not to work at the same time — see
+  `docs/design/testing.md` and `CLAUDE.md`'s constraints list for both real gotchas found building
+  this. 176 tests across the solution now (172 pass by default; the remaining 4 `DEV-LOCAL` ones need
+  real hardware via `devterm.runsettings`, reporting Skipped without it). **Still not built**: the user guide with real screenshots
+  (`docs/user-guide/`) — the WPF harness could double as a screenshot generator
+  (`RenderTargetBitmap`), and `TuiTestRunner.DumpBuffer()` now produces a text-mode equivalent for
+  the TUI, but neither is wired up to actually produce the docs yet. Also not done: a
+  `RealHardwareCliTests`-style test for the Tektronix TDS2024 now reachable at 192.168.0.110:23
+  (reserved as `RealTcpDeviceHost3` in `devterm.runsettings`) — it's SCPI-based and answers `*IDN?`,
+  not the pre-SCPI `ID?` the existing 2230-specific assertion expects, so it needs its own test
+  rather than a third `DataRow` on the existing one.
 
 ## Backlog (not started)
 

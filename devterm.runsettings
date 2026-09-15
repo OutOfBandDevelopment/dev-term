@@ -11,11 +11,18 @@
   "TCP 192.168.0.107:23 ASCII" / "TCP 192.168.0.108:23 ASCII" profiles (a real Tektronix 2230
   oscilloscope, reachable over a serial-to-Ethernet bridge) - override the values below (or pass
   your own settings file) if those two hosts aren't reachable from wherever this runs.
+
+  RealTcpDeviceHost3 is a real Tektronix TDS2024 oscilloscope, also over a serial-to-Ethernet
+  bridge - a different, SCPI-based device family: it identifies via "*IDN?" (SCPI standard), not
+  the "ID?" the pre-SCPI 2230s above use - not yet wired into RealHardwareCliTests' TEK/2230-
+  specific assertion; reserved here so a TDS2024-specific test can pick it up without another
+  runsettings change.
 -->
 <RunSettings>
   <TestRunParameters>
     <Parameter name="RealTcpDeviceHost1" value="192.168.0.107" />
     <Parameter name="RealTcpDeviceHost2" value="192.168.0.108" />
+    <Parameter name="RealTcpDeviceHost3" value="192.168.0.110" />
     <Parameter name="RealTcpDevicePort" value="23" />
   </TestRunParameters>
 </RunSettings>
