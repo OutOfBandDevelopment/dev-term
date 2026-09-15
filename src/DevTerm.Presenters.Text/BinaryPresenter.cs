@@ -7,7 +7,7 @@ public sealed class BinaryPresenter : IPresenter, IPresenterInput
 {
     public string Name => "binary";
 
-    public string Render(ReadOnlySequence<byte> data) => NumericBasePresenter.Render(data, toBase: 2, width: 8);
+    public IReadOnlyList<string> Render(ReadOnlySequence<byte> data) => [NumericBasePresenter.Render(data, toBase: 2, width: 8)];
 
     public byte[] Parse(string input) => NumericBasePresenter.Parse(input, fromBase: 2);
 }

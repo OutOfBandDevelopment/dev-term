@@ -1,14 +1,92 @@
 using System.Buffers;
+using System.Runtime.InteropServices;
 using System.Text;
 using DevTerm.Core.Presenters;
 
 namespace DevTerm.Presenters.Text;
 
+/// <summary>
+/// Decodes bytes as ASCII text, buffering internally until a line terminator (CR, LF, or CRLF —
+/// treated as one terminator, not two) or <see cref="MaxLineLength"/> is reached, rather than
+/// rendering whatever happened to arrive in a single read. Serial reads in particular routinely
+/// deliver one byte at a time, which would otherwise mean one output line per character.
+/// </summary>
+/// <remarks>
+/// Stateful, unlike the other text/numeric-base presenters — holds a partial line across calls.
+/// One instance is meant to back one session's pipeline at a time; sharing an instance across
+/// concurrent sessions would interleave their partial lines.
+/// </remarks>
 public sealed class AsciiPresenter : IPresenter, IPresenterInput
 {
+    public const int DefaultMaxLineLength = 4096;
+
+    private const byte LineFeed = (byte)'\n';
+    private const byte CarriageReturn = (byte)'\r';
+
+    private readonly List<byte> _buffer = [];
+    private bool _pendingCr;
+
+    public AsciiPresenter(int maxLineLength = DefaultMaxLineLength)
+    {
+        if (maxLineLength < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxLineLength), maxLineLength, "Must be at least 1.");
+        }
+
+        MaxLineLength = maxLineLength;
+    }
+
+    public int MaxLineLength { get; }
+
     public string Name => "ascii";
 
-    public string Render(ReadOnlySequence<byte> data) => Encoding.ASCII.GetString(data.ToContiguousSpan());
+    public IReadOnlyList<string> Render(ReadOnlySequence<byte> data)
+    {
+        List<string>? lines = null;
+
+        foreach (var segment in data)
+        {
+            foreach (var b in segment.Span)
+            {
+                if (b == LineFeed)
+                {
+                    if (_pendingCr)
+                    {
+                        // The second half of a CRLF pair already flushed by the CR — swallow it.
+                        _pendingCr = false;
+                        continue;
+                    }
+
+                    (lines ??= []).Add(Flush());
+                    continue;
+                }
+
+                _pendingCr = false;
+
+                if (b == CarriageReturn)
+                {
+                    (lines ??= []).Add(Flush());
+                    _pendingCr = true;
+                    continue;
+                }
+
+                _buffer.Add(b);
+                if (_buffer.Count >= MaxLineLength)
+                {
+                    (lines ??= []).Add(Flush());
+                }
+            }
+        }
+
+        return lines ?? [];
+    }
 
     public byte[] Parse(string input) => Encoding.ASCII.GetBytes(input);
+
+    private string Flush()
+    {
+        var text = Encoding.ASCII.GetString(CollectionsMarshal.AsSpan(_buffer));
+        _buffer.Clear();
+        return text;
+    }
 }

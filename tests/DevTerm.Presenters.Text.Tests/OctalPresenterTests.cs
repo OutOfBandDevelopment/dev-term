@@ -12,14 +12,14 @@ public sealed class OctalPresenterTests
 
     [TestMethod]
     public void Render_PadsEachByteToThreeDigits() =>
-        Assert.AreEqual("000 007 377", _presenter.Render(Of(0, 7, 255)));
+        Assert.AreEqual("000 007 377", _presenter.Render(Of(0, 7, 255)).Single());
 
     [TestMethod]
     public void RoundTrip_RenderThenParse_ReturnsOriginalBytes()
     {
         byte[] original = [0, 7, 255, 64];
 
-        var result = _presenter.Parse(_presenter.Render(Of(original)));
+        var result = _presenter.Parse(_presenter.Render(Of(original)).Single());
 
         CollectionAssert.AreEqual(original, result);
     }

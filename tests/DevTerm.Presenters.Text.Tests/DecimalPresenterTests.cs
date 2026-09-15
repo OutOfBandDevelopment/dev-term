@@ -12,7 +12,7 @@ public sealed class DecimalPresenterTests
 
     [TestMethod]
     public void Render_SpaceSeparatesEachByte() =>
-        Assert.AreEqual("0 128 255", _presenter.Render(Of(0, 128, 255)));
+        Assert.AreEqual("0 128 255", _presenter.Render(Of(0, 128, 255)).Single());
 
     [TestMethod]
     public void Parse_SplitsOnSpaces() =>
@@ -23,7 +23,7 @@ public sealed class DecimalPresenterTests
     {
         byte[] original = [1, 2, 3, 254];
 
-        var result = _presenter.Parse(_presenter.Render(Of(original)));
+        var result = _presenter.Parse(_presenter.Render(Of(original)).Single());
 
         CollectionAssert.AreEqual(original, result);
     }

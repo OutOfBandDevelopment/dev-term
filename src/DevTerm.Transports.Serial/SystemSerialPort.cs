@@ -31,7 +31,7 @@ public sealed class SystemSerialPort : ISerialPort
 
     public bool IsOpen => _port.IsOpen;
 
-    public Stream BaseStream => new CancellableReadStream(_port.BaseStream);
+    public Stream BaseStream => new SerialPortReadStream(_port);
 
     public void Open() => _port.Open();
 

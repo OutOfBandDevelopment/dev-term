@@ -13,20 +13,15 @@ public interface IPresenter
     string Name { get; }
 
     /// <remarks>
-    /// Takes a <see cref="ReadOnlySequence{T}"/> — the shape a <see cref="System.IO.Pipelines.PipeReader"/>
+    /// Returns zero or more complete renderings for this call. A presenter is free to buffer
+    /// partial data internally (e.g. accumulating text until a line terminator, or a protocol
+    /// decoder accumulating a partial frame) and emit nothing until it has something complete —
+    /// or more than one item, if more than one boundary arrived within a single read. Takes a
+    /// <see cref="ReadOnlySequence{T}"/> — the shape a <see cref="System.IO.Pipelines.PipeReader"/>
     /// hands back, and a plain struct so the method stays mockable (Moq/Castle cannot proxy a
     /// ref struct parameter like <see cref="ReadOnlySpan{T}"/>). Use
-    /// <see cref="PresenterDataExtensions.ToContiguousSpan"/> for zero-copy access in the common
-    /// single-segment case.
+    /// <see cref="PresenterDataExtensions.ToContiguousSpan"/> for zero-copy access to the whole
+    /// chunk in the common single-segment case.
     /// </remarks>
-    string Render(ReadOnlySequence<byte> data);
-}
-
-/// <summary>
-/// Optional companion to <see cref="IPresenter"/> for presenters that can also turn
-/// user-facing input back into bytes to send.
-/// </summary>
-public interface IPresenterInput
-{
-    byte[] Parse(string input);
+    IReadOnlyList<string> Render(ReadOnlySequence<byte> data);
 }

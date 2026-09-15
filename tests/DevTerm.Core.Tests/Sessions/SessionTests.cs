@@ -64,11 +64,11 @@ public sealed class SessionTests
 
         var hex = new Mock<IPresenter>();
         hex.SetupGet(p => p.Name).Returns("hex");
-        hex.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("2A");
+        hex.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["2A"]);
 
         var ascii = new Mock<IPresenter>();
         ascii.SetupGet(p => p.Name).Returns("ascii");
-        ascii.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("*");
+        ascii.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["*"]);
 
         await using var session = new Session(transport.Object, new Pipeline([hex.Object, ascii.Object]));
 

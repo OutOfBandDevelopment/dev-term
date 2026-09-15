@@ -23,7 +23,10 @@ public sealed class Pipeline
         var results = new List<PresenterOutput>(_presenters.Count);
         foreach (var presenter in _presenters)
         {
-            results.Add(new PresenterOutput(presenter.Name, presenter.Render(data)));
+            foreach (var text in presenter.Render(data))
+            {
+                results.Add(new PresenterOutput(presenter.Name, text));
+            }
         }
 
         return results;

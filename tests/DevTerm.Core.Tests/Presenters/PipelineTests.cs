@@ -12,11 +12,11 @@ public sealed class PipelineTests
     {
         var hex = new Mock<IPresenter>();
         hex.SetupGet(p => p.Name).Returns("hex");
-        hex.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("48 49");
+        hex.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["48 49"]);
 
         var ascii = new Mock<IPresenter>();
         ascii.SetupGet(p => p.Name).Returns("ascii");
-        ascii.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns("HI");
+        ascii.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["HI"]);
 
         var pipeline = new Pipeline([hex.Object, ascii.Object]);
 
@@ -24,6 +24,36 @@ public sealed class PipelineTests
 
         CollectionAssert.AreEqual(
             new[] { new PresenterOutput("hex", "48 49"), new PresenterOutput("ascii", "HI") },
+            outputs.ToArray());
+    }
+
+    [TestMethod]
+    public void Render_PresenterReturningNoLines_ProducesNoOutput()
+    {
+        var buffering = new Mock<IPresenter>();
+        buffering.SetupGet(p => p.Name).Returns("buffering");
+        buffering.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns([]);
+
+        var pipeline = new Pipeline([buffering.Object]);
+
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+
+        Assert.IsEmpty(outputs);
+    }
+
+    [TestMethod]
+    public void Render_PresenterReturningMultipleLines_ProducesOneOutputPerLine()
+    {
+        var buffering = new Mock<IPresenter>();
+        buffering.SetupGet(p => p.Name).Returns("buffering");
+        buffering.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["one", "two"]);
+
+        var pipeline = new Pipeline([buffering.Object]);
+
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+
+        CollectionAssert.AreEqual(
+            new[] { new PresenterOutput("buffering", "one"), new PresenterOutput("buffering", "two") },
             outputs.ToArray());
     }
 

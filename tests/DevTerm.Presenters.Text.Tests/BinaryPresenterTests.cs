@@ -12,14 +12,14 @@ public sealed class BinaryPresenterTests
 
     [TestMethod]
     public void Render_PadsEachByteToEightBits() =>
-        Assert.AreEqual("00000000 00000001 11111111", _presenter.Render(Of(0, 1, 255)));
+        Assert.AreEqual("00000000 00000001 11111111", _presenter.Render(Of(0, 1, 255)).Single());
 
     [TestMethod]
     public void RoundTrip_RenderThenParse_ReturnsOriginalBytes()
     {
         byte[] original = [0, 1, 255, 170];
 
-        var result = _presenter.Parse(_presenter.Render(Of(original)));
+        var result = _presenter.Parse(_presenter.Render(Of(original)).Single());
 
         CollectionAssert.AreEqual(original, result);
     }

@@ -7,7 +7,7 @@ public sealed class HexPresenter : IPresenter, IPresenterInput
 {
     public string Name => "hex";
 
-    public string Render(ReadOnlySequence<byte> data) => Convert.ToHexString(data.ToContiguousSpan());
+    public IReadOnlyList<string> Render(ReadOnlySequence<byte> data) => [Convert.ToHexString(data.ToContiguousSpan())];
 
     public byte[] Parse(string input)
     {

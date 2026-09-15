@@ -12,7 +12,7 @@ public sealed class HexPresenterTests
 
     [TestMethod]
     public void Render_UppercasesAndConcatenatesWithoutSeparators() =>
-        Assert.AreEqual("FF00A5", _presenter.Render(Of(0xFF, 0x00, 0xA5)));
+        Assert.AreEqual("FF00A5", _presenter.Render(Of(0xFF, 0x00, 0xA5)).Single());
 
     [TestMethod]
     public void Parse_AcceptsUnprefixedHex() =>

@@ -15,7 +15,7 @@ public sealed class Utf8PresenterTests
     {
         const string original = "café — 日本語";
 
-        var result = _presenter.Render(Of(_presenter.Parse(original)));
+        var result = _presenter.Render(Of(_presenter.Parse(original))).Single();
 
         Assert.AreEqual(original, result);
     }
