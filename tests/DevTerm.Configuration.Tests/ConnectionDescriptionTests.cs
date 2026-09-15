@@ -60,4 +60,20 @@ public sealed class ConnectionDescriptionTests
 
         StringAssert.StartsWith(ConnectionDescription.For(options), "TCP ");
     }
+
+    [TestMethod]
+    public void For_Hid_DescribesVendorAndProductIdInHex()
+    {
+        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA };
+
+        Assert.AreEqual("USB HID VID 0x1915 PID 0xAFDA", ConnectionDescription.For(options));
+    }
+
+    [TestMethod]
+    public void For_HidWithSerialNumber_IncludesIt()
+    {
+        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+
+        Assert.AreEqual("USB HID VID 0x1915 PID 0xAFDA serial '12345'", ConnectionDescription.For(options));
+    }
 }

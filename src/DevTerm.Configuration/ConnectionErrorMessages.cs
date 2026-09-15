@@ -12,9 +12,12 @@ public static class ConnectionErrorMessages
     {
         ArgumentNullException.ThrowIfNull(exception);
 
-        var hint = string.Equals(transport, "serial", StringComparison.OrdinalIgnoreCase)
-            ? " Run with --listports to see available serial ports."
-            : string.Empty;
+        var hint = transport.ToLowerInvariant() switch
+        {
+            "serial" => " Run with --listports to see available serial ports.",
+            "hid" => " Run with --listhiddevices to see available USB HID devices.",
+            _ => string.Empty,
+        };
 
         return $"Could not open the connection: {exception.Message}{hint}";
     }

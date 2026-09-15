@@ -1,6 +1,7 @@
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,21 @@ public sealed class ServiceCollectionExtensionsTests
         var options = provider.GetRequiredService<IOptions<TcpTransportOptions>>().Value;
 
         Assert.AreEqual(TcpTransportMode.Listener, options.Mode);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_HidTransport_ResolvesHidTransportConfiguredFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<HidTransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<HidTransport>(transport);
+        Assert.AreEqual(0x1915, options.VendorId);
+        Assert.AreEqual(0xAFDA, options.ProductId);
+        Assert.AreEqual("12345", options.SerialNumber);
     }
 
     [TestMethod]

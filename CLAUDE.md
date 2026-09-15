@@ -17,7 +17,9 @@ dotnet test                           # whole solution — currently fast (well 
 dotnet test tests/DevTerm.Core.Tests  # one project
 dotnet test --filter "FullyQualifiedName~AsciiPresenterTests"   # one class, any project
 dotnet run --project src/DevTerm.Console -- --listports true    # list serial ports
+dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr
+dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018
 ```
 
 There is no separate lint step; `dotnet build` surfaces analyzer warnings (MSTest analyzers included).
@@ -39,8 +41,9 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 
 **Project layout**:
 - `DevTerm.Core` — the abstractions above, plus `AddDevTermCore()`.
-- `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` — `ITransport` implementations. Each is
-  independently testable via a fake stream (see "Testing" below), never real hardware/sockets.
+- `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` / `DevTerm.Transports.Hid` — `ITransport`
+  implementations. Each is independently testable via a fake stream (see "Testing" below), never
+  real hardware/sockets.
 - `DevTerm.Presenters.Text` — ASCII (line-buffered), UTF-8, hex, decimal, octal, binary.
 - `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
   `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
@@ -100,6 +103,22 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
   `Terminal.Gui`), and `View.KeyDown` hands out a `Key` directly rather than a `KeyEventEventArgs`
   wrapper. v1-era examples/docs don't apply. When the installed version's actual API shape is in
   doubt, check it directly (e.g. reflect over the installed package's DLL) rather than guessing.
+- **HidSharp's `HidStream` has the same cancellation hazard as `SerialPort.BaseStream`** — no event
+  analogous to `DataReceived`, and its `Read`/`Write` are `BeginRead`/`EndRead`-backed under the
+  default `Stream.ReadAsync`, which doesn't meaningfully honor a `CancellationToken` mid-read.
+  `DevTerm.Transports.Hid`'s `HidReadStream` uses a dedicated background thread (owned, joined on
+  close, bounded by `ReadTimeout`) handing reports to a `Channel<byte[]>` instead — never reintroduce
+  a `Task.Run`-wrapped blocking read per call here for the same reason it was rejected for serial.
+- **A zero-length `Stream.Write` is invalid on Windows HID, unlike serial/TCP** — a HID report is a
+  fixed, non-zero, device-defined length; writing zero bytes throws a raw Win32 `IOException`
+  instead of being a no-op (verified against real hardware: an empty typed line crashed the whole
+  app before this was fixed). `HidTransport.WriteAsync` no-ops on empty data; a wrong *non-zero*
+  length is a real, expected device-specific framing failure and still throws — see the next point.
+- **`CliMode`/`TuiMode`'s send path catches any device I/O failure, not just `TimeoutException`** —
+  a generic text presenter's typed input has no way to guarantee it matches a specific device's
+  framing requirements (a HID report's exact length, for one), so a send can legitimately fail for
+  reasons that aren't a timeout; catch broadly (`ConnectionErrorMessages.IsConnectionFailure`) and
+  report it instead of letting it crash the process, the same way `OpenAsync` failures already are.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
-  this codebase (the two above) were only caught by testing against an actual serial device, not
-  by unit tests alone. `docs/changes/` records what was verified this way.
+  this codebase (all of the above) were only caught by testing against actual devices, not by unit
+  tests alone. `docs/changes/` records what was verified this way.

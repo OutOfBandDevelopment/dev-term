@@ -1,5 +1,6 @@
 using DevTerm.Core.Hosting;
 using DevTerm.Presenters.Text;
+using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,16 @@ public static class ServiceCollectionExtensions
                 o.Mode = cliOptions.Listen ? TcpTransportMode.Listener : TcpTransportMode.Client;
                 o.Host = cliOptions.Host;
                 o.Port = cliOptions.TcpPort;
+            });
+        }
+        else if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHidTransport();
+            services.Configure<HidTransportOptions>(o =>
+            {
+                o.VendorId = cliOptions.HidVendorId;
+                o.ProductId = cliOptions.HidProductId;
+                o.SerialNumber = cliOptions.HidSerialNumber;
             });
         }
         else

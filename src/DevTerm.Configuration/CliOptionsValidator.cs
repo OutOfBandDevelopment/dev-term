@@ -34,8 +34,21 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
+            case "hid":
+                if (options.HidVendorId is < 1 or > 0xFFFF)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--hidvendorid' for the HID transport (expected 1-65535, decimal).");
+                }
+
+                if (options.HidProductId is < 1 or > 0xFFFF)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--hidproductid' for the HID transport (expected 1-65535, decimal).");
+                }
+
+                break;
+
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial' or 'tcp'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', or 'hid'.");
         }
 
         return ValidateOptionsResult.Success;

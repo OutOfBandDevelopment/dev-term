@@ -3,6 +3,7 @@ using DevTerm.Console;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,19 +13,34 @@ using Microsoft.Extensions.Options;
 const string Usage =
     "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--tui <bool>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--tui <bool>]"
+    + "\n   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--tui <bool>]"
     + "\n   or: dev-term --listports true"
+    + "\n   or: dev-term --listhiddevices true"
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
     + "\nCommand-line arguments always win, then environment variables, then the settings file.";
 
-// A plain command-line peek, ahead of the full host/config pipeline: listing ports is a one-off
-// action, not something that should go through the profile/env-var layering or transport
-// validation (which would otherwise demand a --port that the user is trying to discover).
-if (new ConfigurationBuilder().AddCommandLine(args).Build().GetValue<bool>(nameof(CliOptions.ListPorts)))
+// A plain command-line peek, ahead of the full host/config pipeline: listing ports/devices is a
+// one-off action, not something that should go through the profile/env-var layering or transport
+// validation (which would otherwise demand e.g. a --port that the user is trying to discover).
+var earlyConfig = new ConfigurationBuilder().AddCommandLine(args).Build();
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPorts)))
 {
     foreach (var portName in new SystemSerialPortDiscovery().GetPortNames())
     {
         Console.WriteLine(portName);
+    }
+
+    return 0;
+}
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
+{
+    foreach (var device in new SystemHidDeviceDiscovery().GetDevices())
+    {
+        var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
+        Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {device.ProductName ?? "(unknown)"}{serial}");
     }
 
     return 0;

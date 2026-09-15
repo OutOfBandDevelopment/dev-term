@@ -16,6 +16,12 @@ public static class ConnectionDescription
                 : $"TCP {cliOptions.Host}:{cliOptions.TcpPort}";
         }
 
+        if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
+        {
+            var serial = cliOptions.HidSerialNumber is null ? string.Empty : $" serial '{cliOptions.HidSerialNumber}'";
+            return $"USB HID VID 0x{cliOptions.HidVendorId:X4} PID 0x{cliOptions.HidProductId:X4}{serial}";
+        }
+
         var stopBits = cliOptions.StopBits switch
         {
             StopBits.One => "1",

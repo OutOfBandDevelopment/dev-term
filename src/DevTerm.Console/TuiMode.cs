@@ -119,13 +119,23 @@ public static class TuiMode
 
     private static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput)
     {
+        var payload = cliOptions.LineEnding.Append(input.Parse(line));
+        if (payload.Length == 0)
+        {
+            return;
+        }
+
         try
         {
-            await session.SendAsync(cliOptions.LineEnding.Append(input.Parse(line)));
+            await session.SendAsync(payload);
         }
         catch (TimeoutException)
         {
             appendOutput("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            appendOutput($"Send failed: {ex.Message}");
         }
     }
 }

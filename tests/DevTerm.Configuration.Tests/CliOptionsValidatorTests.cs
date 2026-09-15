@@ -54,6 +54,30 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_HidWithVendorAndProductId_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    public void Validate_HidWithoutVendorId_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0, HidProductId = 0xAFDA });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_HidWithoutProductId_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
     public void Validate_UnknownTransport_Fails()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "carrier-pigeon" });

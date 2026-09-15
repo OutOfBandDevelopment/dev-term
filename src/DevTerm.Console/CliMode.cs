@@ -56,14 +56,32 @@ public static class CliMode
 
             if (presenter is IPresenterInput input)
             {
+                // An empty typed line has no coherent "send" for any transport, and for HID it's
+                // actively invalid (report writes must match a fixed, non-zero device-defined
+                // length; a real device surfaced this as an unhandled Win32 error before this
+                // guard existed) - matches the equivalent guard already in TuiMode.
+                var payload = cliOptions.LineEnding.Append(input.Parse(line));
+                if (payload.Length == 0)
+                {
+                    continue;
+                }
+
                 try
                 {
-                    await session.SendAsync(cliOptions.LineEnding.Append(input.Parse(line)));
+                    await session.SendAsync(payload);
                 }
                 catch (TimeoutException)
                 {
                     System.Console.Error.WriteLine(
                         "Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+                }
+                catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+                {
+                    // E.g. a HID write whose length doesn't match the device's exact report size
+                    // - framing a valid report for a specific device is a device-specific
+                    // decoder/control-surface concern, not something a generic text presenter's
+                    // raw typed input can guarantee, so report it rather than crash.
+                    System.Console.Error.WriteLine($"Send failed: {ex.Message}");
                 }
             }
             else

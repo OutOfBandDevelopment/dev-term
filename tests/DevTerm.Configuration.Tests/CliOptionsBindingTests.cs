@@ -130,4 +130,31 @@ public sealed class CliOptionsBindingTests
 
         Assert.IsTrue(options.ListPorts);
     }
+
+    [TestMethod]
+    public void Bind_HidArguments_PopulatesOptions()
+    {
+        var options = Bind("--transport", "hid", "--hidvendorid", "6421", "--hidproductid", "45018", "--hidserialnumber", "12345");
+
+        Assert.AreEqual("hid", options.Transport);
+        Assert.AreEqual(6421, options.HidVendorId);
+        Assert.AreEqual(45018, options.HidProductId);
+        Assert.AreEqual("12345", options.HidSerialNumber);
+    }
+
+    [TestMethod]
+    public void Bind_ListHidDevices_DefaultsToFalse()
+    {
+        var options = Bind();
+
+        Assert.IsFalse(options.ListHidDevices);
+    }
+
+    [TestMethod]
+    public void Bind_ListHidDevicesFlag_RequiresAnExplicitValue()
+    {
+        var options = Bind("--listhiddevices", "true");
+
+        Assert.IsTrue(options.ListHidDevices);
+    }
 }

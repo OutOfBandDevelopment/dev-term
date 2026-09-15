@@ -22,16 +22,40 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   code is awkward to unit test — headless/automation approach TBD), and the multi-session-lifetime
   issue below.
 
+- **USB HID transport** (`DevTerm.Transports.Hid`), landed 2026-09-15 — [HidSharp](https://www.nuget.org/packages/HidSharp)
+  2.6.4, cross-platform. `HidTransport`/`SystemHidDevice`/`IHidDeviceFactory`/`IHidDeviceDiscovery`
+  mirror the serial transport's shape exactly. The interesting piece is `HidReadStream`: HidSharp
+  gives no event analogous to `SerialPort.DataReceived`, and its `Read`/`Write` are plain
+  `BeginRead`/`EndRead`-backed, which (like `SerialPort.BaseStream.ReadAsync`) doesn't reliably
+  honor a `CancellationToken` on an in-flight read — same class of problem already hit for serial.
+  Fixed with a dedicated background thread (not a `Task.Run`-wrapped call per read, which was
+  already rejected for serial for the same "orphaned unobserved background work" reason) that
+  blocks on `HidStream.Read` bounded by `ReadTimeout`, handing completed reports to a
+  `Channel<byte[]>` — the actual async-facing `ReadAsync` only ever awaits the channel, so
+  cancellation is immediate and correct regardless of the background thread's own (bounded,
+  best-effort) shutdown. **Not verified against real hardware for the read path specifically**
+  (opened/wrote to/closed a real device — a mouse's RGB control interface — successfully, but
+  never got real inbound reports flowing to confirm the read-thread/channel handoff end-to-end);
+  the open/write/close path *did* surface and fix a real bug: a zero-length write (an empty typed
+  line with no line ending) throws a raw Win32 `IOException` on Windows HID (unlike serial/TCP,
+  where it's a harmless no-op) — fixed as a no-op in `HidTransport.WriteAsync`, and separately
+  widened `CliMode`/`TuiMode`'s send-path exception handling (previously only caught
+  `TimeoutException`) to catch any device I/O failure and report it instead of crashing, since a
+  wrong *non-zero* length (a real device-specific framing constraint, not something a generic text
+  presenter can guess) still legitimately fails and needs to fail cleanly. Wired end-to-end: new
+  `--transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>]` CLI options (plus
+  `--listhiddevices true` discovery, mirroring `--listports`), `CliOptionsValidator`,
+  `ConnectionDescription`, `ConnectionErrorMessages` hint, `AddDevTermFrontEnd` wiring — all with
+  test coverage (136 tests across the solution now). Next: real hardware verification of the read
+  path against an actual report-based device (Radex One, once its HID report framing is
+  understood — see that proposal's open questions).
+
 ## Backlog (not started)
 
-Prioritized per direction given 2026-09-15: USB HID and BLE serial are the next transports to
-build (ahead of RFC 2217/UDP), since real target hardware exists for both. GPIB and USBTMC are
-newly-scoped, not yet ordered against the rest.
+Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
+RFC 2217/UDP), since real target hardware exists. GPIB and USBTMC are newly-scoped, not yet
+ordered against the rest.
 
-- **USB HID transport** (`DevTerm.Transports.Hid`) — [HidSharp](https://www.nuget.org/packages/HidSharp),
-  cross-platform. Unblocks [Radex One](docs/design/proposals/radex-one-protocol.md) once built
-  (report ID/framing over HID still needs verifying against a real capture — see that proposal's
-  open questions).
 - **BLE transport** (`DevTerm.Transports.Ble`), cross-platform by design via a pluggable per-OS
   adapter seam (Windows via `Windows.Devices.Bluetooth` first; Linux/BlueZ and macOS/CoreBluetooth
   addable later, including as community/self-contributed adapters) — see
@@ -80,9 +104,11 @@ newly-scoped, not yet ordered against the rest.
   first target — textual, first real declarative-schema candidate, and needs no new transport for
   its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
   [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
-  transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)
-  is gated on the USB HID transport above. [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md)
-  is **deprioritized** — no hardware access to test against anymore; kept as a documented proposal only.
+  transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
+  transport dependency (USB HID) is now built, but it still needs its HID report-framing question
+  resolved (see that proposal's open questions) before implementing the decoder.
+  [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md) is **deprioritized** —
+  no hardware access to test against anymore; kept as a documented proposal only.
   A Tektronix-codes (pre-SCPI) decoder is also in scope — the project's own Tek 2230 test device
   (`ID?` → `ID TEK/2230,V81.1,VERS:14;`) is this "precursor protocol" family; worth its own proposal
   doc when picked up.

@@ -64,4 +64,18 @@ public sealed class CliOptions
     public int TcpPort { get; set; }
 
     public bool Listen { get; set; }
+
+    // USB HID transport.
+
+    /// <summary>USB Vendor ID, decimal (Device Manager shows hex, e.g. "VID_1915" is 6421 decimal).</summary>
+    public int HidVendorId { get; set; }
+
+    /// <summary>USB Product ID, decimal (Device Manager shows hex, e.g. "PID_AFDA" is 45018 decimal).</summary>
+    public int HidProductId { get; set; }
+
+    /// <summary>Disambiguates when more than one connected device matches <see cref="HidVendorId"/>/<see cref="HidProductId"/>.</summary>
+    public string? HidSerialNumber { get; set; }
+
+    /// <summary>List available USB HID devices and exit, skipping normal validation/connection entirely.</summary>
+    public bool ListHidDevices { get; set; }
 }
