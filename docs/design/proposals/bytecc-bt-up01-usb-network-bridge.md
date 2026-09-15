@@ -14,7 +14,12 @@ Treat everything below as "the landscape," not "the spec."
 
 [BYTECC BT-UP01](https://www.bytecc.com/) ("USB Net Share Station") — a small box with a
 10/100 Mbps Ethernet port and a USB 2.0 port (backward-compatible with USB 1.1), marketed for
-sharing a USB device (originally aimed at printers) across a network.
+sharing a USB device (originally aimed at printers) across a network. **Windows-only as far as
+public information goes**: the one driver package that turns up (`BT-US711.rar`) is distributed
+through Windows driver repositories, with no indication anywhere of Linux/macOS support or
+`usbip` compatibility — checked directly (2026-09-15), nothing found either way in official docs or
+community sources. This matters for Option A below: it's not just "does the vendor client make the
+device look local," it's "only on Windows, unless proven otherwise."
 
 ## Why this is a fundamentally different kind of proposal than everything else here
 

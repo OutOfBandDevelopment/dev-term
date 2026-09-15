@@ -101,7 +101,11 @@ ordered against the rest.
 ## Research (not backlog-ready)
 
 - [BYTECC BT-UP01 USB-over-network bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) —
-  not a build item yet, unlike everything above: no protocol reverse-engineering has been done and
+  **low priority for now**, by choice (2026-09-15): pursuing the "reverse-engineer it directly"
+  route (network sniffer + decompiling the vendor client) rather than the boring-but-reliable
+  Raspberry-Pi-running-`usbip` fallback, but only once a real capture exists — nothing to act on
+  until then. Not a build item yet, unlike everything above: no protocol reverse-engineering has
+  been done and
   none exists publicly. Two cheap checks needed before deciding whether this is even a
   reverse-engineering project at all: does the vendor's own client software just make the remote
   USB device appear local (making it a non-issue for dev-term entirely), and does the box happen to
