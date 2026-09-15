@@ -51,6 +51,13 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
   hand-coding a UI per device per front end. See docs/design/ui-definitions.md. Model + round-trip
   serialization only so far — nothing yet reads this model to actually produce Terminal.Gui/WPF
   controls, and it isn't wired to a live device (`IControlSurface` itself is still design-only).
+- `DevTerm.DeviceManifests` — a no-code, JSON/XML `DeviceManifest` (identity, a transport hint, the
+  declarative command/response schema from device-control-modules.md, and a `UiDefinition`) plus
+  `DeviceManifestLoader`, which loads one from a single file, a folder (`device.json` at its root),
+  or a `.zip` of one (extracted then loaded as a folder — no separate zip-handling logic anywhere
+  else). See docs/design/device-manifests.md. Referenced `.ksy`/UI files are resolved relative to
+  the manifest's own location. Model + loader only — not wired to anything that opens a real
+  connection or reads a `.ksy` file yet.
 - `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
   `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
   `ConnectionDescription`, and `AddDevTermFrontEnd` (the one place that wires core + text
@@ -125,6 +132,12 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
   framing requirements (a HID report's exact length, for one), so a send can legitimately fail for
   reasons that aren't a timeout; catch broadly (`ConnectionErrorMessages.IsConnectionFailure`) and
   report it instead of letting it crash the process, the same way `OpenAsync` failures already are.
+- **`System.Xml.Serialization.XmlSerializer` cannot serialize `Dictionary<TKey,TValue>`** — it
+  throws `NotSupportedException` ("implements IDictionary") at first-use reflection time, not at
+  compile time. Any type meant to round-trip through both `System.Text.Json` and `XmlSerializer`
+  (see `DevTerm.UiDefinitions`, `DevTerm.DeviceManifests`) uses a plain `List<T>` of a small
+  Key/Value class instead of a dictionary, which both serializers handle natively with no
+  special-casing.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

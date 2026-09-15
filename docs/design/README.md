@@ -9,6 +9,7 @@ Living design docs for dev-term, written during the pre-implementation design ph
 - [Plugin model](plugin-model.md) — how transports and presenters are packaged, discovered, versioned, loaded, and registered into the DI container.
 - [Device control modules](device-control-modules.md) — plugins that bundle an outbound control surface (commands/parameters, e.g. for driving test equipment) with telemetry decode/present/plot for the response, composed from the existing transport/presenter contracts.
 - [UI definitions](ui-definitions.md) — a framework-agnostic, JSON/XML-serializable model (`DevTerm.UiDefinitions`) for declaring a control panel's layout once so every front end renders it generically. First step only (model + serialization, built and tested against real device mockups); not yet wired to `IControlSurface` or to any actual TUI/WPF rendering.
+- [Device manifests](device-manifests.md) — a no-code way to fully configure dev-term for a device: one JSON file (or a folder/zip of one, when a binary Kaitai `.ksy` reference is needed) bundling the declarative command/response schema from [device-control-modules.md](device-control-modules.md) together with a [UI definition](ui-definitions.md). Design only so far.
 - [Front ends](frontends.md) — the console app (CLI + TUI modes) and the WPF GUI app, and how they share the core engine.
 - [Platform, hosting & configuration](platform.md) — .NET 10+, dependency injection/Generic Host as the composition root, and the Options pattern for settings.
 

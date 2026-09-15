@@ -58,6 +58,11 @@ A device control module doesn't introduce a new transport — it rides on whatev
 
 ## Declarative command/response schema (candidate direction for the "assembled declaratively" question below)
 
+See [device-manifests.md](device-manifests.md) for the concrete file-format realization of this
+section: a single JSON manifest (or a folder/zip of one, when a binary `.ksy` reference is needed)
+bundling this command/response schema together with a [UI definition](ui-definitions.md), loadable
+with no code.
+
 For simple query/response devices (most bench gear — a command string in, a formatted response string back, e.g. this project's own test device answering `ID?\r` with `ID TEK/2230,V81.1,VERS:14;`), a full code plugin is more than necessary. The candidate shape is a small, dev-term-specific schema — not a general-purpose external DSL — describing per command: its name, parameters (name/type/range/unit), the byte template to send, and how to recognize/parse the response (a literal pattern, a delimiter-based split, or, for genuinely binary responses, a reference to a [Kaitai Struct](https://kaitai.io/) (`.ksy`) definition). This reuses the mapping-file precedent already established in [presenters.md](presenters.md) (raw key → name/attributes) rather than inventing a second, unrelated data format:
 
 - **Kaitai Struct** is the right tool specifically for *binary* response layouts (byte-level fields, conditionals, repeats, bit widths) — it's a mature, cross-language DSL with a C# code-generation target and a web IDE that overlays the parsed structure on a real captured hex dump, useful for reverse-engineering an unfamiliar binary protocol from a capture. It has no concept of *sending* a command, though — it's read/parse-only, so it only ever covers the response half.

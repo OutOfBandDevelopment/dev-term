@@ -57,6 +57,8 @@ Host -> Services: BuildServiceProvider()
 
 The initial text-encoding and numeric-base presenters, and the initial transports (serial, TCP, and eventually UDP/USB HID/BLE), ship in-box but are implemented against the exact same contracts as third-party plugins — the core makes no distinction between "built-in" and "external" beyond how they're distributed. This is descriptive of intent, not current fact: dynamic plugin loading itself isn't built yet (see open questions below and `TODO.md`) — today's built-in transports/presenters are wired by hand in each front end's `Program.cs`, against the same `ITransport`/`IPresenter` contracts a real plugin would use, but not actually loaded as plugins. An HPGL-style rendering presenter is expected to be an ordinary plugin, not a special case, once loading exists.
 
+A separate, no-code path exists alongside this one for simple devices: see [device-manifests.md](device-manifests.md) — a declarative JSON manifest (or folder/zip of one) rather than a compiled plugin. The two aren't competing mechanisms; a device manifest is for gear simple enough not to need real code at all, and still needs *this* plugin model (once built) to actually load/discover the manifest files themselves.
+
 ## Open questions
 
 - In-process vs. out-of-process plugin hosting (isolation/crash-resilience vs. complexity/perf).

@@ -87,6 +87,72 @@ UiControl <|-- IndicatorControl
 @enduml
 ```
 
+## Example
+
+The [Kuando Busylight](proposals/kuando-busylight-protocol.md) panel, as both a mockup and the
+model that would produce it — this is the actual definition round-trip-tested against both JSON
+and XML serializers:
+
+```plantuml
+@startsalt
+{
+  {* File | Device | Help}
+  {
+    Color: | [ ] Red [ ] Green [ ] Blue [ ] Yellow [ ] Off | [Custom...]
+  }
+  {
+    Blink: | ()Solid ()Slow ()Fast | On: "1000" ms | Off: "0" ms
+  }
+  {
+    Sound: | [ ] Mute | Track: <Funky|Nordic|Quiet|Open Office|Kuando> | Volume: [-----|----]
+  }
+  {
+    [Apply] | [Program Sequence...]
+  }
+}
+@endsalt
+```
+
+```json
+{
+  "name": "Kuando Busylight",
+  "sections": [
+    {
+      "label": "Color",
+      "controls": [
+        { "kind": "choice", "id": "color", "label": "Color", "style": "RadioGroup",
+          "options": ["Red", "Green", "Blue", "Yellow", "Off"], "defaultValue": "Off" },
+        { "kind": "button", "id": "customColor", "label": "Custom..." }
+      ]
+    },
+    {
+      "label": "Blink",
+      "controls": [
+        { "kind": "choice", "id": "blinkMode", "label": "Blink", "style": "RadioGroup",
+          "options": ["Solid", "Slow", "Fast"], "defaultValue": "Solid" },
+        { "kind": "numeric", "id": "onMs", "label": "On", "unit": "ms", "defaultValue": 1000 },
+        { "kind": "numeric", "id": "offMs", "label": "Off", "unit": "ms", "defaultValue": 0 }
+      ]
+    },
+    {
+      "label": "Sound",
+      "controls": [
+        { "kind": "toggle", "id": "mute", "label": "Mute" },
+        { "kind": "choice", "id": "track", "label": "Track",
+          "options": ["Funky", "Nordic", "Quiet", "Open Office", "Kuando"] },
+        { "kind": "slider", "id": "volume", "label": "Volume", "minimum": 0, "maximum": 7 }
+      ]
+    },
+    {
+      "controls": [
+        { "kind": "button", "id": "apply", "label": "Apply" },
+        { "kind": "button", "id": "programSequence", "label": "Program Sequence..." }
+      ]
+    }
+  ]
+}
+```
+
 ## Why a flat one-level Section→Control structure, not deeper nesting
 
 Every real mockup written against actual devices so far (Busylight, K8055, EByte, H4n) needed at
@@ -108,3 +174,7 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
   out of scope for a first declarative version and require a real code-based control surface
   instead.
 - Whether `Sections` should ever nest — deferred per above until a real device actually needs it.
+
+See [device-manifests.md](device-manifests.md) for how a `UiDefinition` fits into a complete,
+no-code device configuration (inline in a single-file manifest, or by reference in a folder/zip
+one) — that doc's own open questions cover the packaging side of this, not repeated here.

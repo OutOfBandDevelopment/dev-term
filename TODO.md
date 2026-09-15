@@ -37,6 +37,21 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   Busylight (already verified both directions) — both already have `@startsalt` mockups this model
   needs to be able to reproduce as real, working controls.
 
+- **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
+  (identity, a transport hint, the declarative command/response schema already sketched in
+  device-control-modules.md, and a `UiDefinition`) plus a `DeviceManifestLoader` handling all three
+  shapes from docs/design/device-manifests.md: a single JSON file, a folder (`device.json` at its
+  root, referenced files resolved relative to it), or a `.zip` of one (extracted, then loaded
+  exactly like a folder). Found and fixed a real bug immediately via testing: `XmlSerializer`
+  can't serialize `Dictionary<string,string>` at all (throws at reflection time) — switched
+  `TransportHint.Options` to a `List<TransportOption>` Key/Value pair list, which both JSON and XML
+  handle natively; noted in `CLAUDE.md` as a constraint for any future XML-round-tripped type.
+  7 tests (JSON/XML round-trip with an inline UI, folder-mode with an external UI file, zip-mode,
+  missing-referenced-file failures) — 147 tests across the solution now. **Step one only, same as
+  UI Definitions**: the manifest only *references* a Kaitai `.ksy` file by path, doesn't parse one;
+  nothing turns a loaded manifest into a working `IControlSurface`/decoder pair or opens a
+  connection from it.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
