@@ -9,29 +9,44 @@ as prior art:
 
 - [`shared/projects/radex-one-protocol-reverse-engineering/README.md`](https://github.com/mwwhited-notes/shared/tree/main/projects/radex-one-protocol-reverse-engineering) — complete, finished protocol reverse-engineering writeup (status: **Completed**)
 
-Unlike the SCPI proposal (planning-stage, no wire format yet), this source project is a finished
-reverse-engineering effort with a fully documented binary framing, checksum, and four command
-types — it can be implemented directly against the spec below without further protocol research.
+This source project is a finished reverse-engineering effort with a fully documented binary
+framing, checksum, and four command types — but see the correction under "Device" below: the
+transport it assumed (a virtual COM port) turned out to be wrong, so the *packet* format is
+believed solid but how it's carried over USB HID still needs verifying before implementation.
 
 ## Device
 
 [Radex One](https://quartarad.com/product/radex-one/) — a portable USB geiger counter from
-Quarta, exposed as a USB virtual COM port. Serial parameters: 2400 baud, 8-N-1.
+Quarta. **Correction:** despite the source doc's framing (below) reading like a serial protocol,
+the device actually enumerates as a **USB HID device**, not a virtual COM port — confirmed
+directly, overriding what's written in the source repo/this doc's original draft. This means the
+byte-level packet shape below may still be correct as the *payload* carried inside HID reports,
+but how it's wrapped (report IDs, feature vs. input/output reports, fixed report length padding)
+is unverified and needs checking against the source repo's own USB capture/notes, or a fresh
+capture, before implementation.
 
-## Why this is a good first protocol decoder
+## Why this is no longer a good *first* protocol decoder
+
+This was originally proposed as the best first decoder to build, on the assumption it needed only
+the already-built serial transport. That assumption was wrong — being HID means it depends on the
+**USB HID transport**, which is still design-only (see [transports.md](../transports.md)'s "USB
+HID" section — no VID/PID discovery, no report I/O, nothing implemented). So this proposal is now
+gated on a transport that doesn't exist yet, not just on decoder work. [SCPI](scpi-instrument-control.md)
+needs no new transport (serial + TCP already work) and is the better first target; see that
+proposal and the ordering note in `TODO.md`.
+
+What's still true and still worth keeping about this protocol once the HID transport exists:
 
 - **Fully specified, symmetric framing** — request and response share one packet shape
   (prefix, type, length, packet number, reserved, checksum, variable extension), just with
   different prefix bytes (`7B FF` outbound, `7A FF` inbound) and type codes. A single framing
-  parser covers both directions.
+  parser covers both directions (modulo the HID-wrapping question above).
 - **Both halves of a device control module already exist in the source**: a decoder (Read Data,
   Read Serial/Version) *and* a control surface (Write Settings — alarm mode + threshold), so this
-  doubles as a second worked example for [device-control-modules.md](../device-control-modules.md)
-  alongside the SCPI proposal, but for a genuinely binary, non-textual protocol.
+  doubles as a worked example for [device-control-modules.md](../device-control-modules.md) for a
+  genuinely binary, non-textual protocol.
 - **Small and self-contained** — four command types, no chaining, no composite/multi-channel
-  demuxing needed — a reasonable first real (non-toy) protocol decoder to validate the
-  `IPresenter`/decoder contract shape against, before tackling something as involved as Favero's
-  bitfield-packed telemetry (see the sibling proposal) or a standard like Modbus.
+  demuxing needed.
 
 ## Protocol summary (full detail in the source doc)
 
@@ -80,7 +95,7 @@ package "Radex One Device Control Module (plugin)" {
 }
 
 [Session / Transport] <<ITransport>> as transport
-note right of transport : Serial, 2400-8-N-1
+note right of transport : USB HID (not yet built —\nsee transports.md)
 
 user --> surface : Invokes command\n(e.g. Read Data, Set Threshold)
 surface --> framer : Builds request packet
@@ -109,6 +124,12 @@ decoder --> user : Human-readable text baseline\n(e.g. "CPM=15 Ambient=18 Accum=
 
 ## Open questions
 
+- **How the packet format below is actually wrapped in HID reports** — report ID(s) used, fixed
+  report length (HID reports are usually fixed-size, so the variable-length Read Serial/Version
+  reply and variable extension need padding/continuation handling), and whether requests go out as
+  Output or Feature reports. Needs a fresh USB capture or the source repo's own notes on this,
+  since the framing below was written assuming a plain byte stream (virtual COM port), which turned
+  out to be wrong.
 - Whether the 3×-repeat-on-write behavior should be handled generically (an `IControlSurface`
   "repeat N times, no reply-based confirmation" command mode) or is Radex-One-specific glue inside
   this module — it's plausible other simple embedded devices have similar no-ack-just-retry

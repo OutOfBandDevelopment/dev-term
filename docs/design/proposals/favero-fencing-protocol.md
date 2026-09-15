@@ -1,5 +1,10 @@
 # Proposal: Favero Fencing Scoring Apparatus — Protocol Decoder
 
+> **Status: deprioritized.** No longer have access to a Favero scoring apparatus to test against,
+> so this isn't actionable right now — kept as a documented proposal (the protocol is fully
+> specified and the composite-decoder design point it makes is still valid) in case hardware access
+> comes back, but don't pick it up as active work. See [SCPI](scpi-instrument-control.md) instead.
+
 ## Source
 
 This proposal is derived from an existing (separate) project tracked in the
