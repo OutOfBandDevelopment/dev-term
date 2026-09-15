@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace DevTerm.Console;
+namespace DevTerm.Configuration;
 
 public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 {

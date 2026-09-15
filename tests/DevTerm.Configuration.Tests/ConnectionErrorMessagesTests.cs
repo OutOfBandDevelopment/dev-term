@@ -1,4 +1,4 @@
-namespace DevTerm.Console.Tests;
+namespace DevTerm.Configuration.Tests;
 
 [TestClass]
 public sealed class ConnectionErrorMessagesTests

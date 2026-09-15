@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-namespace DevTerm.Console;
+namespace DevTerm.Configuration;
 
 /// <summary>
-/// Composes the CLI mode's configuration sources explicitly (rather than relying on
+/// Composes a front end's configuration sources explicitly (rather than relying on
 /// <see cref="Host.CreateDefaultBuilder(string[])"/>'s built-in chain) so a personal, untracked
 /// settings file sits at exactly the precedence a "saved profile" needs: below environment
-/// variables and command-line overrides, but above the shipped defaults.
+/// variables and command-line overrides, but above the shipped defaults. Shared by every front
+/// end so the same profile works whichever one you run.
 /// </summary>
 public static class DevTermConfiguration
 {

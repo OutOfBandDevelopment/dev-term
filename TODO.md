@@ -4,15 +4,23 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
 
 ## In progress
 
-- **TUI + WPF front ends, stubbing out.** Plan: extract the shared CLI-config pieces (`CliOptions`,
-  `CliOptionsValidator`, `DevTermConfiguration`, `ConnectionErrorMessages`, `LineEnding`) out of
-  `DevTerm.Console` into the new `DevTerm.Configuration` project so both front ends bind the same
-  profiles/env-vars/CLI-args config, rather than duplicating it — this is what makes a saved
-  `appsettings.Local.json` profile usable from either front end. Then: add a TUI mode to
-  `DevTerm.Console` (candidate library: Terminal.Gui v2), and scaffold a new `DevTerm.Wpf` project
-  reusing the same `DevTerm.Configuration` bootstrapping. Status so far: `DevTerm.Configuration` and
-  `DevTerm.Configuration.Tests` projects scaffolded and wired into the solution, but the actual file
-  moves/DI wiring/TUI/WPF code haven't landed yet.
+- **TUI + WPF front ends.** Landed: the shared CLI-config pieces (`CliOptions`,
+  `CliOptionsValidator`, `DevTermConfiguration`, `ConnectionErrorMessages`, `LineEnding`) moved out
+  of `DevTerm.Console` into `DevTerm.Configuration`, plus a new `AddDevTermFrontEnd`/
+  `ConnectionDescription` shared by every front end — a saved `appsettings.Local.json` profile now
+  works from any of them. `DevTerm.Console` gained a `--tui <bool>` flag dispatching to a new
+  `TuiMode` (Terminal.Gui v2.5.0: a `Window` with a `TextView` output pane and a `TextField` send
+  box) alongside the existing `CliMode`. A new `DevTerm.Wpf` project (WPF, `net10.0-windows`) mirrors
+  this with a `ListBox` output + send box, composing the DI graph itself in `App.xaml.cs` (WPF has
+  no `Main`/host-builder entry point of its own) and linking the console app's
+  `appsettings(.Local).json` into its own output so the same saved profile applies. Terminal.Gui
+  2.5.0's static `Application` API (`Init`/`Run`/`Invoke`/`Shutdown`) is marked obsolete in favor of
+  an instance-based `IApplication` — left as-is for this stub since the static API still works and
+  the replacement is a bigger, unproven-in-this-project API surface; revisit if/when Terminal.Gui
+  actually removes it. Not yet done: real-hardware verification of either UI (only smoke-tested
+  that they launch without crashing), a `TuiMode`/`MainWindow` test project (Terminal.Gui/WPF UI
+  code is awkward to unit test — headless/automation approach TBD), and the multi-session-lifetime
+  issue below.
 
 ## Backlog (not started)
 

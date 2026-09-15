@@ -6,6 +6,7 @@
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
     <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
+    <Project Path="src/DevTerm.Wpf/DevTerm.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DevTerm.Configuration.Tests/DevTerm.Configuration.Tests.csproj" />

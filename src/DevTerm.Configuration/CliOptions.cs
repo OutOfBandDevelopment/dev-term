@@ -1,13 +1,14 @@
 using System.IO.Ports;
 
-namespace DevTerm.Console;
+namespace DevTerm.Configuration;
 
 /// <summary>
-/// The CLI mode's settings, bound from configuration (command-line args, environment
+/// A front end's connection settings, bound from configuration (command-line args, environment
 /// variables, and JSON settings files layered via the standard
 /// <c>Microsoft.Extensions.Configuration</c> extensions — see <see cref="DevTermConfiguration"/>)
 /// via the Options pattern rather than a hand-rolled parser. Property names double as the
-/// (case-insensitive) argument/setting names: <c>--transport tcp --tcpport 502</c>.
+/// (case-insensitive) argument/setting names: <c>--transport tcp --tcpport 502</c>. Shared by
+/// every front end (console CLI/TUI, WPF) so the same saved profile works from any of them.
 /// </summary>
 public sealed class CliOptions
 {
@@ -15,6 +16,9 @@ public sealed class CliOptions
 
     /// <summary>List available serial ports and exit, skipping normal validation/connection entirely.</summary>
     public bool ListPorts { get; set; }
+
+    /// <summary>Run the console app's full-screen TUI instead of the plain scriptable CLI loop. See docs/design/frontends.md.</summary>
+    public bool Tui { get; set; }
 
     public string Presenter { get; set; } = "hex";
 

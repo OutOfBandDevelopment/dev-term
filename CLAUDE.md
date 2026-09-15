@@ -42,11 +42,18 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` — `ITransport` implementations. Each is
   independently testable via a fake stream (see "Testing" below), never real hardware/sockets.
 - `DevTerm.Presenters.Text` — ASCII (line-buffered), UTF-8, hex, decimal, octal, binary.
-- `DevTerm.Console` — the CLI front end (`Host.CreateDefaultBuilder` + DI, wires the chosen
-  transport/presenter from configuration).
-- `DevTerm.Configuration` — shared front-end bootstrapping (CLI options, config layering) meant to
-  be reused by every front end, not just the console app — see TODO.md for current status; this is
-  actively being split out of `DevTerm.Console` as TUI/WPF front ends are added.
+- `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
+  `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
+  `ConnectionDescription`, and `AddDevTermFrontEnd` (the one place that wires core + text
+  presenters + the selected transport from `CliOptions`) — every front end below calls this instead
+  of duplicating the wiring, which is what makes one saved `appsettings.Local.json` profile work
+  from any of them.
+- `DevTerm.Console` — the console front end: `Program.cs` builds the DI host (`Host.CreateDefaultBuilder`)
+  and dispatches to `CliMode` (the scriptable/interactive line-based loop) or `TuiMode`
+  (a full-screen Terminal.Gui UI) based on `--tui <bool>`.
+- `DevTerm.Wpf` — the GUI front end (WPF, `net10.0-windows`, Windows-only). `App.xaml.cs` builds the
+  same kind of DI host itself (a WPF app has no `Main`/host-builder entry point), then hands the
+  resolved `Session` to `MainWindow`.
 
 **Read path**: transports read via `System.IO.Pipelines` (`ITransport.Input` is a `PipeReader`) —
 a shared `StreamToPipePump` (`DevTerm.Core.Transports`) pumps a `Stream` into a `PipeWriter`'s
@@ -88,6 +95,11 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
   pyserial) — plenty of devices stay silent without DTR asserted. dev-term defaults both to `true`.
 - **`Microsoft.Extensions.Configuration.CommandLine` has no bare-boolean-flag support** — a
   standalone `--listen` is not a valid boolean `true`; it must be `--listen true`.
+- **Terminal.Gui v2 is not source-compatible with v1** — namespaces are split
+  (`Terminal.Gui.App`, `.Views`, `.ViewBase`, `.Input`, `.Drivers`, ... instead of one flat
+  `Terminal.Gui`), and `View.KeyDown` hands out a `Key` directly rather than a `KeyEventEventArgs`
+  wrapper. v1-era examples/docs don't apply. When the installed version's actual API shape is in
+  doubt, check it directly (e.g. reflect over the installed package's DLL) rather than guessing.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (the two above) were only caught by testing against an actual serial device, not
   by unit tests alone. `docs/changes/` records what was verified this way.

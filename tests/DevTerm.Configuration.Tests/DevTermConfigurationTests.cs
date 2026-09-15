@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace DevTerm.Console.Tests;
+namespace DevTerm.Configuration.Tests;
 
 /// <summary>
 /// Verifies the precedence a saved "profile" relies on: a settings file provides defaults,

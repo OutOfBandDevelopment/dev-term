@@ -1,21 +1,17 @@
-using System.IO.Ports;
-using System.Net.Sockets;
+using DevTerm.Configuration;
 using DevTerm.Console;
-using DevTerm.Core.Hosting;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Presenters.Text;
 using DevTerm.Transports.Serial;
-using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>]"
-    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--tui <bool>]"
+    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--tui <bool>]"
     + "\n   or: dev-term --listports true"
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
@@ -53,37 +49,7 @@ var hostBuilder = Host.CreateDefaultBuilder(args)
             throw new OptionsValidationException(nameof(CliOptions), typeof(CliOptions), validation.Failures);
         }
 
-        services.AddDevTermCore();
-        services.AddTextPresenters();
-        services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
-
-        if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddTcpTransport();
-            services.Configure<TcpTransportOptions>(o =>
-            {
-                o.Mode = cliOptions.Listen ? TcpTransportMode.Listener : TcpTransportMode.Client;
-                o.Host = cliOptions.Host;
-                o.Port = cliOptions.TcpPort;
-            });
-        }
-        else
-        {
-            services.AddSerialTransport();
-            services.Configure<SerialTransportOptions>(o =>
-            {
-                o.PortName = cliOptions.Port!;
-                o.BaudRate = cliOptions.Baud;
-                o.DataBits = cliOptions.DataBits;
-                o.Parity = cliOptions.Parity;
-                o.StopBits = cliOptions.StopBits;
-                o.Handshake = cliOptions.Handshake;
-                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
-                o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
-                o.DtrEnable = cliOptions.Dtr;
-                o.RtsEnable = cliOptions.Rts;
-            });
-        }
+        services.AddDevTermFrontEnd(cliOptions);
     });
 
 IHost host;
@@ -116,72 +82,7 @@ using (host)
     var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
     await using var session = sessionFactory.Create(transport, new Pipeline([presenter]));
 
-    session.Output += (_, output) => Console.WriteLine($"[{output.PresenterName}] {output.Text}");
-
-    try
-    {
-        await session.OpenAsync();
-    }
-    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
-        or InvalidOperationException or SocketException)
-    {
-        Console.Error.WriteLine(ConnectionErrorMessages.For(cliOptions.Transport, ex));
-        return 1;
-    }
-
-    var connectionDescription = string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase)
-        ? cliOptions.Listen
-            ? $"TCP listener on port {cliOptions.TcpPort}"
-            : $"TCP {cliOptions.Host}:{cliOptions.TcpPort}"
-        : $"{cliOptions.Port} at {cliOptions.Baud} baud ({cliOptions.DataBits}{cliOptions.Parity.ToString()[0]}{(cliOptions.StopBits == StopBits.One ? 1 : cliOptions.StopBits == StopBits.Two ? 2 : 1.5)})";
-    Console.WriteLine($"Connected to {connectionDescription} using '{presenter.Name}'.");
-    Console.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
-
-    using var cts = new CancellationTokenSource();
-    Console.CancelKeyPress += (_, e) =>
-    {
-        e.Cancel = true;
-        cts.Cancel();
-    };
-
-    while (true)
-    {
-        string? line;
-        try
-        {
-            // A plain Console.ReadLine() blocks on the OS read and ignores cts entirely, so
-            // Ctrl+C would set the flag but never unblock the loop; ReadLineAsync(CancellationToken)
-            // actually interrupts a pending interactive console read.
-            line = await Console.In.ReadLineAsync(cts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            break;
-        }
-
-        if (line is null)
-        {
-            break;
-        }
-
-        if (presenter is IPresenterInput input)
-        {
-            try
-            {
-                await session.SendAsync(cliOptions.LineEnding.Append(input.Parse(line)));
-            }
-            catch (TimeoutException)
-            {
-                Console.Error.WriteLine(
-                    "Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
-            }
-        }
-        else
-        {
-            Console.Error.WriteLine($"Presenter '{presenter.Name}' does not support sending.");
-        }
-    }
-
-    await session.CloseAsync();
-    return 0;
+    return cliOptions.Tui
+        ? await TuiMode.RunAsync(session, presenter, cliOptions)
+        : await CliMode.RunAsync(session, presenter, cliOptions);
 }

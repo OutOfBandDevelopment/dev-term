@@ -1,4 +1,4 @@
-namespace DevTerm.Console;
+namespace DevTerm.Configuration;
 
 /// <summary>
 /// What to append to a typed line before sending it, when the presenter can encode outgoing

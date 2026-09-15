@@ -1,7 +1,7 @@
 using System.IO.Ports;
 using Microsoft.Extensions.Configuration;
 
-namespace DevTerm.Console.Tests;
+namespace DevTerm.Configuration.Tests;
 
 [TestClass]
 public sealed class CliOptionsBindingTests
