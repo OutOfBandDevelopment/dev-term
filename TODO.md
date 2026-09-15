@@ -97,3 +97,14 @@ ordered against the rest.
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
+
+## Research (not backlog-ready)
+
+- [BYTECC BT-UP01 USB-over-network bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) —
+  not a build item yet, unlike everything above: no protocol reverse-engineering has been done and
+  none exists publicly. Two cheap checks needed before deciding whether this is even a
+  reverse-engineering project at all: does the vendor's own client software just make the remote
+  USB device appear local (making it a non-issue for dev-term entirely), and does the box happen to
+  already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
+  fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
+  itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
