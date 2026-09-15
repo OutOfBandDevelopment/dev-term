@@ -117,9 +117,11 @@ focused view, even marshaled onto the loop thread via `Application.Invoke` with 
 called explicitly right there — so a headless test never starts a loop, and a looped test never
 injects keys, rather than trying to make one mode do both.
 
-## Not yet built
+## User guide
 
-- A user guide with real screenshots for CLI/TUI/WPF (`docs/user-guide/`) — the WPF harness could
-  double as a screenshot generator (`RenderTargetBitmap` against a real, laid-out `MainWindow`), and
-  `TuiTestRunner.DumpBuffer()` already produces a text-mode equivalent for the TUI; neither is wired
-  up to actually produce the docs yet.
+[`docs/user-guide/`](../user-guide/README.md) has task-oriented walkthroughs for each front end,
+with real captured output rather than hand-typed mockups: [`cli.md`](../user-guide/cli.md) embeds
+real stdin/stdout transcripts from the built app, and [`tui.md`](../user-guide/tui.md) embeds real
+screen buffers read back via `TuiTestRunner.DumpBuffer()`. [`wpf.md`](../user-guide/wpf.md) is a
+stub — deferred since it needs a `RenderTargetBitmap` capture against `MainWindowTests`' existing
+harness rather than a new investigation, not yet built.

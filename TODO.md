@@ -99,14 +99,17 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   cross-thread `Application.Invoke` turned out not to work at the same time — see
   `docs/design/testing.md` and `CLAUDE.md`'s constraints list for both real gotchas found building
   this. 176 tests across the solution now (172 pass by default; the remaining 4 `DEV-LOCAL` ones need
-  real hardware via `devterm.runsettings`, reporting Skipped without it). **Still not built**: the user guide with real screenshots
-  (`docs/user-guide/`) — the WPF harness could double as a screenshot generator
-  (`RenderTargetBitmap`), and `TuiTestRunner.DumpBuffer()` now produces a text-mode equivalent for
-  the TUI, but neither is wired up to actually produce the docs yet. Also not done: a
-  `RealHardwareCliTests`-style test for the Tektronix TDS2024 now reachable at 192.168.0.110:23
-  (reserved as `RealTcpDeviceHost3` in `devterm.runsettings`) — it's SCPI-based and answers `*IDN?`,
-  not the pre-SCPI `ID?` the existing 2230-specific assertion expects, so it needs its own test
-  rather than a third `DataRow` on the existing one.
+  real hardware via `devterm.runsettings`, reporting Skipped without it).
+
+  **Update, 2026-09-15**: `docs/user-guide/` landed for CLI and TUI — `cli.md` embeds real
+  stdin/stdout transcripts from the built app, `tui.md` embeds real Terminal.Gui screen buffers via
+  `TuiTestRunner.DumpBuffer()`, neither hand-typed. `docs/user-guide/wpf.md` is still a stub,
+  deferred by choice: its screenshot generation just needs `RenderTargetBitmap` against
+  `MainWindowTests`' existing real, laid-out `MainWindow`, not a new investigation like the TUI
+  needed. Also not done: a `RealHardwareCliTests`-style test for the Tektronix TDS2024 now reachable
+  at 192.168.0.110:23 (reserved as `RealTcpDeviceHost3` in `devterm.runsettings`) — it's SCPI-based
+  and answers `*IDN?`, not the pre-SCPI `ID?` the existing 2230-specific assertion expects, so it
+  needs its own test rather than a third `DataRow` on the existing one.
 
 ## Backlog (not started)
 
