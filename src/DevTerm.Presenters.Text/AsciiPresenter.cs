@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Text;
 using DevTerm.Core.Presenters;
+using Microsoft.Extensions.Options;
 
 namespace DevTerm.Presenters.Text;
 
@@ -26,11 +27,19 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
     private readonly List<byte> _buffer = [];
     private bool _pendingCr;
 
-    public AsciiPresenter(int maxLineLength = DefaultMaxLineLength)
+    /// <remarks>
+    /// <see cref="AsciiPresenterOptions.MaxLineLength"/> flushes the accumulated line once it
+    /// reaches that many bytes, even without a terminator. <c>0</c> means unbounded — wait for a
+    /// terminator no matter how long the line gets.
+    /// </remarks>
+    public AsciiPresenter(IOptions<AsciiPresenterOptions> options)
     {
-        if (maxLineLength < 1)
+        ArgumentNullException.ThrowIfNull(options);
+
+        var maxLineLength = options.Value.MaxLineLength;
+        if (maxLineLength < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxLineLength), maxLineLength, "Must be at least 1.");
+            throw new ArgumentOutOfRangeException(nameof(options), maxLineLength, "MaxLineLength must be 0 (unbounded) or a positive maximum length.");
         }
 
         MaxLineLength = maxLineLength;
@@ -71,7 +80,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
                 }
 
                 _buffer.Add(b);
-                if (_buffer.Count >= MaxLineLength)
+                if (MaxLineLength > 0 && _buffer.Count >= MaxLineLength)
                 {
                     (lines ??= []).Add(Flush());
                 }

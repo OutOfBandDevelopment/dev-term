@@ -18,12 +18,12 @@ The core engine, every plugin, and both front ends are composed through standard
 
 ## Settings via the Options pattern
 
-All configurable settings — transport defaults (e.g., default baud rate), plugin host settings (plugins directory, contract compatibility policy), front-end preferences (theme, default layout) — are modeled with `Microsoft.Extensions.Options`, not ad hoc config classes:
+All configurable settings — transport defaults (e.g., default baud rate), presenter tuning (e.g. the ASCII presenter's line-buffering limit), plugin host settings (plugins directory, contract compatibility policy), front-end preferences (theme, default layout) — are modeled with `Microsoft.Extensions.Options`, not ad hoc config classes:
 
-- Each configurable component defines its own options class (e.g., `SerialTransportOptions`, `PluginHostOptions`) and consumes it via `IOptions<T>` (fixed at startup), `IOptionsSnapshot<T>` (per-scope, e.g. per-request-ish in the WPF/console lifetime), or `IOptionsMonitor<T>` (live-reloadable) as appropriate to whether that setting can sensibly change while the app is running.
-- Registration follows the standard `services.Configure<TOptions>(configuration.GetSection("..."))` pattern; plugins register their own options sections the same way as core components do.
-- Configuration sources are layered in the usual .NET order: `appsettings.json` (defaults shipped with the app) → a per-user config file (user overrides, e.g. `%APPDATA%`/`~/.config`) → environment variables → command-line arguments (highest precedence) — so the console front end's CLI flags naturally override the same settings the WPF front end reads from the user config file.
-- Options with constraints (e.g., a valid baud rate, a resolvable host:port) are validated with `IValidateOptions<T>`/data annotations so bad configuration fails fast at startup with a clear error, rather than surfacing as a confusing runtime failure once a session tries to open.
+- Each configurable component defines its own options class (e.g., `SerialTransportOptions`, `AsciiPresenterOptions`, `PluginHostOptions`) and consumes it via `IOptions<T>` (fixed at startup), `IOptionsSnapshot<T>` (per-scope, e.g. per-request-ish in the WPF/console lifetime), or `IOptionsMonitor<T>` (live-reloadable) as appropriate to whether that setting can sensibly change while the app is running. The component takes `IOptions<T>` directly in its constructor rather than a plain primitive parameter, so a bare `services.AddSingleton<TInterface, TImplementation>()` (or `AddTransient`) resolves it correctly with no factory lambda needed.
+- Registration follows the standard `services.Configure<TOptions>(...)` pattern; plugins register their own options sections the same way as core components do.
+- **Implemented** configuration layering (console app, via `DevTermConfiguration`, still composed from the standard `Microsoft.Extensions.Configuration` extensions rather than hand-rolled): `appsettings.json` (shipped defaults) → `appsettings.<environment>.json` → `appsettings.Local.json` (an untracked, per-machine saved profile — e.g. "COM3, 4800, 8N1, ascii" — sitting next to the built app, copied there on build if present in the source tree) → environment variables (`DEVTERM_` prefix, to avoid colliding with unrelated ones) → command-line arguments (highest precedence). This is what makes a "saved profile" nothing more than a settings file at the right precedence, no bespoke profile mechanism needed.
+- Options with constraints (e.g., a valid baud rate, a resolvable host:port, a non-negative buffer length) are validated with `IValidateOptions<T>`/data annotations so bad configuration fails fast at startup with a clear error, rather than surfacing as a confusing runtime failure once a session tries to open.
 
 ### Options vs. mapping/device profiles
 
@@ -31,5 +31,5 @@ The Options pattern is for **structural application/plugin settings** (how the a
 
 ## Open questions
 
-- Exact user-config file location/format convention (single file vs. one file per plugin) and whether it's meant to be hand-edited or only written by the app.
-- Whether plugin options sections need namespacing/collision rules (e.g., prefixing by plugin id) so two plugins can't accidentally bind to the same configuration section.
+- Whether plugin options sections need namespacing/collision rules (e.g., prefixing by plugin id) so two plugins can't accidentally bind to the same configuration section — the console app's own settings are currently all flat/top-level (see `CliOptions`), which won't scale once plugin-contributed options join the same file.
+- Whether the single-file `appsettings.Local.json` profile convention should grow into multiple *named* profiles (`--profile <name>`) once someone needs to switch between several saved devices, or whether "one file, edit it" stays sufficient.

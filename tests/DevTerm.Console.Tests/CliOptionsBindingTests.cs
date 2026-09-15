@@ -65,6 +65,7 @@ public sealed class CliOptionsBindingTests
         Assert.IsTrue(options.Dtr);
         Assert.IsTrue(options.Rts);
         Assert.AreEqual(LineEnding.None, options.LineEnding);
+        Assert.AreEqual(DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength, options.AsciiMaxLineLength);
         Assert.IsNull(options.Port);
         Assert.IsNull(options.Host);
         Assert.AreEqual(0, options.TcpPort);
@@ -96,6 +97,22 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual(2000, options.WriteTimeoutMs);
         Assert.AreEqual(250, options.ReadTimeoutMs);
         Assert.AreEqual(LineEnding.Cr, options.LineEnding);
+    }
+
+    [TestMethod]
+    public void Bind_AsciiMaxLineLength_OverridesDefault()
+    {
+        var options = Bind("--port", "COM3", "--asciimaxlinelength", "512");
+
+        Assert.AreEqual(512, options.AsciiMaxLineLength);
+    }
+
+    [TestMethod]
+    public void Bind_AsciiMaxLineLengthZero_IsAllowed()
+    {
+        var options = Bind("--port", "COM3", "--asciimaxlinelength", "0");
+
+        Assert.AreEqual(0, options.AsciiMaxLineLength);
     }
 
     [TestMethod]

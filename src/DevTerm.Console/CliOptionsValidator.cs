@@ -6,6 +6,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 {
     public ValidateOptionsResult Validate(string? name, CliOptions options)
     {
+        if (options.AsciiMaxLineLength < 0)
+        {
+            return ValidateOptionsResult.Fail("'--asciimaxlinelength' must be 0 (unbounded) or a positive maximum length.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":

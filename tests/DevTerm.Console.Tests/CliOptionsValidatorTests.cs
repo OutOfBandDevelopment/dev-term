@@ -68,4 +68,20 @@ public sealed class CliOptionsValidatorTests
 
         Assert.IsTrue(result.Succeeded);
     }
+
+    [TestMethod]
+    public void Validate_NegativeAsciiMaxLineLength_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", AsciiMaxLineLength = -1 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_AsciiMaxLineLengthZero_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", AsciiMaxLineLength = 0 });
+
+        Assert.IsTrue(result.Succeeded);
+    }
 }

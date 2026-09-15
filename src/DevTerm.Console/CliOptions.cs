@@ -21,6 +21,9 @@ public sealed class CliOptions
     /// <summary>Appended to each typed line before sending, for presenters that support sending. See <see cref="LineEnding"/>.</summary>
     public LineEnding LineEnding { get; set; } = LineEnding.None;
 
+    /// <summary>See <see cref="DevTerm.Presenters.Text.AsciiPresenterOptions.MaxLineLength"/>. 0 means unbounded (wait for a line terminator only).</summary>
+    public int AsciiMaxLineLength { get; set; } = DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength;
+
     // Serial transport.
     public string? Port { get; set; }
 

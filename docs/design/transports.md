@@ -15,7 +15,13 @@ Defines the `ITransport` contract and the initial set of transport plugins.
 
 ### Serial / UART
 
-The most common case for embedded dev boards. Config: port, baud rate, data bits, parity, stop bits, flow control. Discovery via platform-native serial enumeration.
+The most common case for embedded dev boards. Config: port, baud rate, data bits, parity, stop bits, flow control. Discovery via platform-native serial enumeration (`--listports` in the CLI).
+
+**Implementation notes learned against real hardware** (a bench oscilloscope over RS-232), each a genuine requirement now baked into `DevTerm.Transports.Serial`, not just a design intention:
+
+- **DTR/RTS must often be asserted explicitly.** `System.IO.Ports.SerialPort` defaults both `DtrEnable` and `RtsEnable` to `false`, unlike common terminal tools (and pyserial, which asserts DTR on open by default) — plenty of devices treat DTR as a "terminal is present" signal and simply never respond without it. dev-term defaults both to `true` (configurable) specifically to avoid a silently-connected-but-unresponsive device being the default experience.
+- **`SerialPort.BaseStream.ReadAsync(Memory<byte>, CancellationToken)` does not reliably honor cancellation on an in-flight read**, at least on the driver tested. Relying on it meant Close/Ctrl+C could hang indefinitely waiting for a read that was never going to notice it was canceled. The transport instead reads via the `SerialPort.DataReceived` event: a pending read is a plain `TaskCompletionSource` that the caller's `CancellationToken` can complete directly, and the actual (fast, non-blocking) `Read` only happens once data is already known to be buffered. No polling, no background work item that can outlive whoever's waiting on it.
+- **Writes need a bounded timeout.** With hardware (RTS/CTS) flow control on, a device that never asserts CTS makes `Write` block forever with the default infinite `WriteTimeout`. A finite default (`WriteTimeoutMs`, 5s) turns a silent hang into a catchable `TimeoutException` with an actionable CLI message instead.
 
 ### TCP
 

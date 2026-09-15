@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using static DevTerm.Presenters.Text.Tests.TestSequence;
 
 namespace DevTerm.Presenters.Text.Tests;
@@ -5,7 +6,10 @@ namespace DevTerm.Presenters.Text.Tests;
 [TestClass]
 public sealed class AsciiPresenterTests
 {
-    private readonly AsciiPresenter _presenter = new();
+    private readonly AsciiPresenter _presenter = Create();
+
+    private static AsciiPresenter Create(int maxLineLength = AsciiPresenter.DefaultMaxLineLength) =>
+        new(Options.Create(new AsciiPresenterOptions { MaxLineLength = maxLineLength }));
 
     [TestMethod]
     public void Name_IsAscii() => Assert.AreEqual("ascii", _presenter.Name);
@@ -79,7 +83,7 @@ public sealed class AsciiPresenterTests
     [TestMethod]
     public void Render_MaxLineLengthReached_FlushesWithoutATerminator()
     {
-        var presenter = new AsciiPresenter(maxLineLength: 3);
+        var presenter = Create(maxLineLength: 3);
 
         var result = presenter.Render(Of("abcdef"u8.ToArray()));
 
@@ -87,8 +91,21 @@ public sealed class AsciiPresenterTests
     }
 
     [TestMethod]
-    public void Constructor_NonPositiveMaxLineLength_Throws() =>
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new AsciiPresenter(maxLineLength: 0));
+    public void Render_MaxLineLengthZero_IsUnboundedAndWaitsForTerminator()
+    {
+        var presenter = Create(maxLineLength: 0);
+
+        var longRun = presenter.Render(Of(new string('a', 10_000).Select(c => (byte)c).ToArray()));
+        Assert.IsEmpty(longRun, "Length alone should never flush when MaxLineLength is 0.");
+
+        var afterTerminator = presenter.Render(Of((byte)'\n'));
+        Assert.HasCount(1, afterTerminator);
+        Assert.AreEqual(10_000, afterTerminator[0].Length);
+    }
+
+    [TestMethod]
+    public void Constructor_NegativeMaxLineLength_Throws() =>
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => Create(maxLineLength: -1));
 
     [TestMethod]
     public void RoundTrip_ParseThenRenderWithTerminator_ReturnsOriginalText()
