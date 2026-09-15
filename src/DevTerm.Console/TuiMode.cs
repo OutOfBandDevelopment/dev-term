@@ -1,6 +1,7 @@
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.Transports;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
@@ -86,6 +87,7 @@ public static class TuiMode
             X = Pos.Right(sendLabel),
             Y = Pos.Bottom(output),
             Width = Dim.Fill(),
+            Enabled = session.State == ConnectionState.Open,
         };
 
         void AppendOutput(string line)
@@ -97,10 +99,17 @@ public static class TuiMode
             });
         }
 
+        var connectMenuItem = new MenuItem(
+            session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
+            string.Empty,
+            () => { });
+        connectMenuItem.Action = () => _ = ToggleConnectionAsync(session, cliOptions, connectMenuItem, sendField, AppendOutput);
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
             [
+                connectMenuItem,
                 new MenuItem("_Device Profiles...", string.Empty, () =>
                 {
                     var configureParts = ConfigureMode.BuildWindow(cliOptions, null, new ConnectionProfileStore());
@@ -159,6 +168,12 @@ public static class TuiMode
                 return;
             }
 
+            if (session.State != ConnectionState.Open)
+            {
+                AppendOutput("Not connected — use File > Connect.");
+                return;
+            }
+
             if (presenter is not IPresenterInput input)
             {
                 AppendOutput($"Presenter '{presenter.Name}' does not support sending.");
@@ -170,7 +185,46 @@ public static class TuiMode
 
         window.Add(menuBar, output, sendLabel, sendField);
 
-        return new TuiWindowParts(window, output, sendField);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem);
+    }
+
+    /// <summary>
+    /// The File > Connect/Disconnect menu item's action: closes an open session, or reopens a
+    /// closed one, updating the menu item's own label (Terminal.Gui's <c>MenuItem.Title</c> is
+    /// mutable, unlike its <c>Key</c> shortcut argument — see the Ctrl+Q comment above) and the
+    /// send field's enabled state to match. Exposed as a testable method (not just reachable
+    /// through the menu item's <c>Action</c> delegate) the same way <see cref="SendAsync"/> is.
+    /// </summary>
+    internal static async Task ToggleConnectionAsync(Session session, CliOptions cliOptions, MenuItem connectMenuItem, TextField sendField, Action<string> appendOutput)
+    {
+        if (session.State == ConnectionState.Open)
+        {
+            await session.CloseAsync();
+            Application.Invoke(() =>
+            {
+                connectMenuItem.Title = "_Connect";
+                sendField.Enabled = false;
+            });
+            appendOutput("Disconnected.");
+            return;
+        }
+
+        try
+        {
+            await session.OpenAsync();
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            appendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
+            return;
+        }
+
+        Application.Invoke(() =>
+        {
+            connectMenuItem.Title = "_Disconnect";
+            sendField.Enabled = true;
+        });
+        appendOutput($"Connected to {ConnectionDescription.For(cliOptions)}.");
     }
 
     internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput)
@@ -197,4 +251,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>.</summary>
-internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField);
+internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem);

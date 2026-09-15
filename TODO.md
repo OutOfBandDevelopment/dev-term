@@ -81,11 +81,23 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   constraints list for the full account, including the two separate bugs found and fixed landing
   the TUI's menu: Ctrl+Q was advertised in the title bar since it was first added but never actually
   wired to anything, and a `MenuItem`'s `Key` argument turned out to only label the shortcut for
-  display, not register it. 182 tests across the solution now (178 pass by default). **Still not
-  built**: the warn-and-fall-back-to-default-presenter
-  behavior for a `ManifestName` that doesn't resolve (the resolution helper exists, nothing calls it
-  yet), and the WPF equivalent of the TUI's Configure screen (WPF still hard-fails on invalid
-  config exactly like before — only its Device Profiles menu item landed this round).
+  display, not register it. 182 tests across the solution now (178 pass by default).
+
+  **Update, 2026-09-15**: a separate "File > Connect"/"Disconnect" menu item landed in both front
+  ends (`TuiMode.ToggleConnectionAsync`/`MainWindow.ToggleConnectionAsync`) — closes or reopens the
+  *same* session/transport, distinct from the Device Profiles menu above (no profile switching
+  involved). Found and fixed a real bug in `Session` itself along the way: it created its read-loop
+  `CancellationTokenSource` once, in the constructor, reused for the object's whole lifetime, but a
+  CTS can only be cancelled once — so re-opening after a close silently never restarted the read
+  loop. Now creates a fresh one per `OpenAsync`; see `CLAUDE.md`'s constraints list and the new
+  `SessionTests.OpenAsync_AfterClose_RestartsTheReadLoopForRealIncomingData` (confirmed to fail
+  without the fix). Sending while disconnected is guarded in both front ends. 187 tests across the
+  solution now (183 pass by default).
+
+  **Still not built**: the warn-and-fall-back-to-default-presenter behavior for a `ManifestName`
+  that doesn't resolve (the resolution helper exists, nothing calls it yet), and the WPF equivalent
+  of the TUI's Configure screen (WPF still hard-fails on invalid config exactly like before — only
+  its Device Profiles/Connect-Disconnect menu items landed this round).
 
 - **Test automation for CLI/TUI/WPF + test categorization**, landed 2026-09-15 — see
   docs/design/testing.md. Every test class now carries `[TestCategory("UNIT"|"INTEGRATION"|"DEV-LOCAL")]`

@@ -106,6 +106,19 @@ constraints list for what made both take more than expected: a `MenuItem`'s `Key
 argument only labels the shortcut for display in both Terminal.Gui and WPF, it doesn't register a
 live accelerator by itself.
 
+**Also landed, same day**: a separate "File > Connect"/"Disconnect" menu item (a single item whose
+label flips, not two) in both front ends, closing or reopening the *same* `Session`/transport
+without touching profiles at all — `TuiMode.ToggleConnectionAsync`/`MainWindow.ToggleConnectionAsync`.
+This surfaced a real bug in `Session` itself: it created its read-loop `CancellationTokenSource`
+once, in the constructor, and only ever cancelled it — so reopening after a close started the new
+read loop with an already-cancelled token, ending it immediately and silently. Fixed by creating a
+fresh one on every `OpenAsync` instead; see `CLAUDE.md`'s constraints list and
+`DevTerm.Core.Tests.SessionTests.OpenAsync_AfterClose_RestartsTheReadLoopForRealIncomingData` (a
+regression test confirmed to fail without the fix, not just a passing test written after). Sending
+while disconnected is guarded in both front ends (a message in the TUI's output pane / WPF's output
+list, not a crash). This is intentionally a different, smaller feature than mid-session *profile
+switching* above — it reconnects with the exact same settings, it doesn't pick a different profile.
+
 **A missing manifest is a warning, not a hard failure**: if `ManifestName` doesn't resolve under
 either manifest location (see "Shape" above), the connection still proceeds using the default text
 presenters — the manifest only adds device-specific commands/UI on top of a connection that works

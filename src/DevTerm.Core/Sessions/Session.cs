@@ -11,7 +11,7 @@ public sealed class Session : IAsyncDisposable
 {
     private readonly ITransport _transport;
     private readonly Pipeline _pipeline;
-    private readonly CancellationTokenSource _readLoopCts = new();
+    private CancellationTokenSource? _readLoopCts;
     private Task? _readLoopTask;
 
     public Session(ITransport transport, Pipeline pipeline)
@@ -32,6 +32,12 @@ public sealed class Session : IAsyncDisposable
     public async Task OpenAsync(CancellationToken cancellationToken = default)
     {
         await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        // A fresh CancellationTokenSource each time, not one reused for the Session's whole
+        // lifetime: a CTS can only ever be cancelled once, so re-opening after a Close (a real
+        // scenario now that front ends have a Connect/Disconnect menu item) would otherwise start
+        // the new read loop with an already-cancelled token, ending it immediately.
+        _readLoopCts = new CancellationTokenSource();
         _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token));
     }
 
@@ -74,12 +80,15 @@ public sealed class Session : IAsyncDisposable
 
     private async Task StopAsync(CancellationToken cancellationToken)
     {
-        _readLoopCts.Cancel();
+        _readLoopCts?.Cancel();
         if (_readLoopTask is not null)
         {
             await _readLoopTask.ConfigureAwait(false);
             _readLoopTask = null;
         }
+
+        _readLoopCts?.Dispose();
+        _readLoopCts = null;
 
         await _transport.CloseAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -87,7 +96,6 @@ public sealed class Session : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
-        _readLoopCts.Dispose();
         await _transport.DisposeAsync();
     }
 }

@@ -135,6 +135,37 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    public async Task OpenAsync_AfterClose_RestartsTheReadLoopForRealIncomingData()
+    {
+        // Regression test: Session used to create its read-loop CancellationTokenSource once, in
+        // the constructor, and only ever cancel it (never recreate it) - so re-opening after a
+        // Close started the new read loop with an already-cancelled token, ending it immediately
+        // and silently. A real scenario now that both front ends have a Connect/Disconnect menu
+        // item, not just a hypothetical.
+        var currentPipe = new Pipe();
+        var transport = new Mock<ITransport>();
+        transport.SetupGet(t => t.Input).Returns(() => currentPipe.Reader);
+
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("hex");
+        presenter.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["2A"]);
+
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+
+        await session.OpenAsync();
+        await session.CloseAsync();
+
+        currentPipe = new Pipe();
+        await session.OpenAsync();
+
+        var received = new TaskCompletionSource();
+        session.Output += (_, _) => received.TrySetResult();
+        await currentPipe.Writer.WriteAsync(new byte[] { 0x2A });
+
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [TestMethod]
     public void State_ReflectsTransportState()
     {
         var transport = new Mock<ITransport>();

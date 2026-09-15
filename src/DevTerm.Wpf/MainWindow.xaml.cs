@@ -4,6 +4,7 @@ using System.Windows.Input;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.Transports;
 
 namespace DevTerm.Wpf;
 
@@ -70,9 +71,47 @@ public partial class MainWindow : Window
         }
 
         Title = $"dev-term — {ConnectionDescription.For(_cliOptions)} ({_presenter.Name})";
+        ConnectMenuItem.Header = "_Disconnect";
         SendBox.IsEnabled = _presenter is IPresenterInput;
         SendBox.Focus();
     }
+
+    /// <summary>
+    /// The File > Connect/Disconnect menu item's action: closes an open session, or reopens a
+    /// closed one, updating the menu item's own label and <see cref="SendBox"/>'s enabled state to
+    /// match — the WPF equivalent of <c>TuiMode.ToggleConnectionAsync</c>.
+    /// </summary>
+    internal async Task ToggleConnectionAsync()
+    {
+        if (_session.State == ConnectionState.Open)
+        {
+            await _session.CloseAsync();
+            ConnectMenuItem.Header = "_Connect";
+            SendBox.IsEnabled = false;
+            OutputList.Items.Add("Disconnected.");
+            return;
+        }
+
+        try
+        {
+            await _session.OpenAsync();
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            MessageBox.Show(
+                ConnectionErrorMessages.For(_cliOptions.Transport, ex),
+                "dev-term — connection failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        ConnectMenuItem.Header = "_Disconnect";
+        SendBox.IsEnabled = _presenter is IPresenterInput;
+        OutputList.Items.Add($"Connected to {ConnectionDescription.For(_cliOptions)}.");
+    }
+
+    private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => _ = ToggleConnectionAsync();
 
     private void OnSessionOutput(object? sender, PresenterOutput output)
     {
@@ -114,6 +153,12 @@ public partial class MainWindow : Window
         var payload = _cliOptions.LineEnding.Append(input.Parse(line));
         if (payload.Length == 0)
         {
+            return;
+        }
+
+        if (_session.State != ConnectionState.Open)
+        {
+            OutputList.Items.Add("Not connected — use File > Connect.");
             return;
         }
 

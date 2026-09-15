@@ -181,6 +181,14 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   when there's *no* `Application.Run()` loop running concurrently on another thread — the two don't
   compose. See `DevTerm.Console.Tests.TuiTestRunner`'s two separate run modes
   (`RunHeadless`/`RunWithLoop`) and [`docs/design/testing.md`](docs/design/testing.md).
+- **`Session` recreates its read-loop `CancellationTokenSource` on every `OpenAsync`, not once for
+  the object's lifetime** — a `CancellationTokenSource` can only ever be cancelled once, so reusing
+  the same one across a Close-then-reopen would start the new read loop with an already-cancelled
+  token, ending it immediately and silently (found while adding a Connect/Disconnect menu item —
+  see `DevTerm.Core.Tests.SessionTests.OpenAsync_AfterClose_RestartsTheReadLoopForRealIncomingData`,
+  a regression test confirmed to fail without this fix). Both `TuiMode`/`MainWindow`'s
+  `ToggleConnectionAsync` methods call `Session.OpenAsync`/`CloseAsync` repeatedly on the same
+  `Session` instance, so this matters for any future code doing the same.
 - **A `MenuItem`'s `Key`/`InputGestureText` argument (Terminal.Gui) or `InputGestureText` (WPF)
   only labels a keyboard shortcut for display — neither registers a live accelerator by itself.**
   `TuiMode`'s Ctrl+Q previously did nothing despite being advertised in the title bar; the real fix

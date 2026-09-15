@@ -9,6 +9,7 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
+                <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
                 <MenuItem Header="_Device Profiles..." Click="DeviceProfiles_Click" />
                 <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />

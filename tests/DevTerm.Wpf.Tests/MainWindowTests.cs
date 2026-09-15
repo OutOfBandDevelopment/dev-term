@@ -111,4 +111,43 @@ public sealed class MainWindowTests
             Assert.IsEmpty(transport.WrittenPayloads);
         });
     }
+
+    [TestMethod]
+    public void ToggleConnectionAsync_DisconnectsThenReconnects()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+            await window.ConnectAsync();
+
+            Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
+            Assert.IsTrue(window.SendBox.IsEnabled);
+
+            await window.ToggleConnectionAsync();
+
+            Assert.AreEqual("_Connect", window.ConnectMenuItem.Header);
+            Assert.IsFalse(window.SendBox.IsEnabled);
+
+            await window.ToggleConnectionAsync();
+
+            Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
+            Assert.IsTrue(window.SendBox.IsEnabled);
+        });
+    }
+
+    [TestMethod]
+    public void SendCurrentInputAsync_WhileDisconnected_DoesNotWriteToTheTransport()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.Cr });
+            await window.ConnectAsync();
+            await window.ToggleConnectionAsync();
+            window.SendBox.Text = "ID?";
+
+            await window.SendCurrentInputAsync();
+
+            Assert.IsEmpty(transport.WrittenPayloads);
+        });
+    }
 }
