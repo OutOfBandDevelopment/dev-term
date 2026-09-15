@@ -13,9 +13,11 @@
 [Velleman K8055](https://www.velleman.eu/) — a generic USB experimenter I/O board (2 analog
 outputs, 8 digital outputs, 5 digital inputs, 2 analog inputs, 2 pulse counters). **Already owned**
 — it's in the local equipment inventory (`shared/.personal/incoming/test-equipment.md`, "Data
-Acquisition" category). USB HID, VID `0x10CF`, PID `0x5500`–`0x5507` (the low 3 bits are a
-DIP-switch-selectable board address, so up to 8 units can coexist on one PC — the source code
-matches this with a product-ID mask (`0x5500` base, `0xFFF8` mask) rather than one fixed PID).
+Acquisition" category). USB HID, VID `0x10CF`; **the board address is a 2-position DIP switch, so
+only 4 PIDs are actually selectable in hardware** (`0x5500`–`0x5503`) despite the source code's
+product-ID mask (`0x5500` base, `0xFFF8` mask) technically spanning 8 values — the mask is just
+broader than what the physical switch can produce, confirmed directly rather than assumed from the
+mask alone.
 
 ## Why this is a good decoder + control-surface candidate
 
@@ -32,6 +34,30 @@ matches this with a product-ID mask (`0x5500` base, `0xFFF8` mask) rather than o
 - **Small, fully out in the open command set** — three commands, 8-byte reports, no
   checksum/framing complexity at all, unlike the other binary proposals in this directory. A good
   "simplest possible" decoder to pair against something more involved.
+
+## Real-hardware finding (2026-09-15)
+
+Connected via `dotnet run ... --transport hid --hidvendorid 4303 --hidproductid 21762 --presenter
+hex` (VID `0x10CF` PID `0x5502` — a different board address than the notes' own `0x5503` example,
+confirming the PID-range hypothesis directly). **The device streams its input report continuously
+and unprompted** — no `0x06` "read" command needed at all; reports just kept arriving one after
+another. A representative pair, back to back:
+
+```
+0000034C4C00000000
+0000034B4C00000000
+```
+
+Both are 9 bytes (not 8 — inbound and outbound report lengths differ). Reading against the known
+capabilities (5 digital in, 2 analog in, 2×16-bit counters): byte 2 is a constant `0x03`; byte 3
+tracks between `0x4B`/`0x4C` (75/76) across consecutive reports — exactly what an unconnected,
+electrically-floating analog input pin looks like — while byte 4 sits constant at `0x4C`; the
+trailing four bytes are `00 00 00 00`, consistent with two zeroed 16-bit counters (nothing wired to
+count). This reads as `[00, 00, 03, AnalogIn1, AnalogIn2, CounterLo1, CounterHi1, CounterLo2,
+CounterHi2]`, though digital-input bit positions weren't exercised (nothing was wired to them) and
+byte 0/1's role isn't confirmed beyond "zero when no digital inputs are active." Confirms the
+overall shape guessed at below; the `0x06` command's exact role (if it does anything beyond what
+the device already sends unprompted) is now the more interesting open question, not the reverse.
 
 ## Protocol summary
 
@@ -84,9 +110,8 @@ decoder --> user : Human-readable text baseline\n(e.g. "IN: D1=on D2=off A1=128 
 @enduml
 ```
 
-- **No new transport work** — `DevTerm.Transports.Hid` already exists and this is a real,
-  currently-owned device to verify it against (alongside [Kuando Busylight](kuando-busylight-protocol.md),
-  for the read-path specifically).
+- **No new transport work** — `DevTerm.Transports.Hid` already exists and this device already
+  verified the read path live (see above), the same day as [Kuando Busylight](kuando-busylight-protocol.md).
 
 A generic I/O board is a natural fit for a live GUI panel — toggles/sliders for outputs, indicator
 lamps/counters for inputs, all updating in real time rather than reading a text log:
@@ -111,7 +136,7 @@ lamps/counters for inputs, all updating in real time rather than reading a text 
     Counter 1: 4213 | [Reset] | Counter 2: 0 | [Reset]
   }
   {
-    VID 0x10CF PID 0x5503 | Connected
+    VID 0x10CF PID 0x5502 | Connected
   }
 }
 @endsalt
@@ -122,10 +147,11 @@ lamps/counters for inputs, all updating in real time rather than reading a text 
 - The exact meaning/units of the two trailing bytes on the Set Analog/Digital command (labeled
   duration/debounce above, per the source notes' own inline comments like "(10ms, 0ms)" — needs
   confirming against the real board, not just the informal notes.
-- The full layout of the `0x06` "read" report/response — the source notes mark this as an inferred
-  command, not a confirmed one; needs verifying what a real read response actually contains
-  (presumably digital inputs, both analog inputs, and both 16-bit counter values, given the
-  device's known capabilities, but not yet confirmed byte-for-byte).
+- **Now the more interesting question, given the device streams unprompted**: what `0x06` actually
+  does, if anything — request an immediate report out of cycle? Change the streaming rate? Needs a
+  real test (send it, see if anything changes) rather than assuming it's a "read command" at all.
+- Byte-for-byte confirmation of the input report's first two bytes (digital inputs) — not exercised
+  in the real test above since nothing was wired to the digital input pins.
 - Whether `HidTransportOptions` should eventually support a PID mask/range (this device is the
   concrete motivating case) — not urgent for a single board, but worth remembering if a second
   device with the same DIP-switch-address pattern shows up.
