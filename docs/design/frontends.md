@@ -8,6 +8,15 @@ Describes the three user-facing modes over the shared core engine — CLI and TU
 
 All three modes operate on the same session/transport/presenter model from the core engine (see [architecture.md](architecture.md)). None of them talk to a transport or presenter plugin directly — they go through the core, so a plugin written once (a transport, a text/numeric presenter, a protocol decoder, a rendering presenter, a composite decoder) works identically in all three.
 
+**Startup/configure flow, TUI and GUI only** (CLI keeps today's hard-fail-on-bad-config behavior,
+since there's no one to interact with a form): if the bound `CliOptions` already validates, both
+skip straight to the execution model — the connect-and-interact screen each already has. If not,
+both show a Configure screen instead of exiting with an error, and both also get a **"Device
+Profiles" menu** (available at any time, not just at startup) for picking a named, saved connection
+— see [connection-profiles.md](connection-profiles.md) for the full shape, including how a profile
+can reference a [device manifest](device-manifests.md) so picking one also loads what that specific
+device can do. Design only so far, not yet built.
+
 ## Executables
 
 There are two deployable front-end applications, not three — TUI and CLI are two *modes* of the same console executable, since both are text-only and share the same terminal-hosting concerns:
@@ -57,6 +66,6 @@ A richer visual front end for cases where a graphical view adds real value beyon
 ## Open questions
 
 - How much session state (open connections, chosen presenters) is shareable/handoff-able between front ends (e.g., start a session in the console app, attach to it from the WPF app).
-- Whether the console app selects CLI vs. TUI mode via an explicit flag, auto-detection of an interactive terminal (isatty-style), or both (auto-detect with an override flag).
+- ~~Whether the console app selects CLI vs. TUI mode via an explicit flag, auto-detection of an interactive terminal (isatty-style), or both.~~ **Decided**: an explicit flag, and TUI is the default — `dev-term` with no mode flag opens the TUI; `--cli true` forces the plain scriptable loop instead (e.g. for automation/CI). No terminal auto-detection.
 - Whether GUI (WPF) ships in the same initial milestone as the console app (CLI/TUI) or follows later, given it's a separate, Windows-only executable.
 - How much of a rendering presenter's live drawing/plot the TUI should attempt to approximate vs. simply pointing the user at the WPF app or an exported file.

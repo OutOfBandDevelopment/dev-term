@@ -93,3 +93,7 @@ stop
 - Whether a single-file manifest should be allowed to *also* reference an external `.ksy` (accepting
   that it's then not really "single file" in practice) or whether that combination should be
   rejected outright to keep the two modes' guarantees clean and unambiguous.
+
+See [connection-profiles.md](connection-profiles.md) for how a manifest gets *reached* in practice
+— a saved connection profile references one by path, so picking a profile from a menu is what
+actually loads a manifest, not something manifests trigger on their own.

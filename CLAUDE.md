@@ -18,9 +18,14 @@ dotnet test tests/DevTerm.Core.Tests  # one project
 dotnet test --filter "FullyQualifiedName~AsciiPresenterTests"   # one class, any project
 dotnet run --project src/DevTerm.Console -- --listports true    # list serial ports
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
-dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr
-dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018
+dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
+dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018 --cli true
 ```
+
+**The full-screen TUI is the console app's default mode** — omitting `--cli true` above opens the
+TUI instead of the scriptable REPL loop (useful interactively, but not what you want when piping
+commands via a shell for a quick real-hardware check, which is what most of this file's examples
+are for). `--tui false` is equivalent to `--cli true`.
 
 There is no separate lint step; `dotnet build` surfaces analyzer warnings (MSTest analyzers included).
 

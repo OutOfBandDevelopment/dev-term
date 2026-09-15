@@ -71,6 +71,67 @@ public sealed class DevTermConfigurationTests
     }
 
     [TestMethod]
+    public void ToProfileJson_SerialTransport_BindsBackToTheSameConnectionFields()
+    {
+        var options = new CliOptions
+        {
+            Transport = "serial",
+            Port = "COM3",
+            Baud = 4800,
+            Handshake = System.IO.Ports.Handshake.RequestToSend,
+            Presenter = "ascii",
+            LineEnding = LineEnding.Cr,
+            ManifestName = "tek-2230",
+            Tui = false,
+            ListPorts = true,
+        };
+
+        var json = DevTermConfiguration.ToProfileJson(options);
+
+        var configuration = new ConfigurationBuilder().AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json))).Build();
+        var roundTripped = new CliOptions();
+        configuration.Bind(roundTripped);
+
+        Assert.AreEqual("COM3", roundTripped.Port);
+        Assert.AreEqual(4800, roundTripped.Baud);
+        Assert.AreEqual(System.IO.Ports.Handshake.RequestToSend, roundTripped.Handshake);
+        Assert.AreEqual("ascii", roundTripped.Presenter);
+        Assert.AreEqual(LineEnding.Cr, roundTripped.LineEnding);
+        Assert.AreEqual("tek-2230", roundTripped.ManifestName);
+        Assert.IsTrue(roundTripped.Tui, "One-shot/mode flags shouldn't be projected into the saved profile.");
+        Assert.IsFalse(roundTripped.ListPorts);
+    }
+
+    [TestMethod]
+    public void SaveLocalProfile_WritesAppsettingsLocalJsonNextToTheApp()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, DevTermConfiguration.LocalSettingsFileName);
+        var original = File.Exists(path) ? File.ReadAllText(path) : null;
+        try
+        {
+            DevTermConfiguration.SaveLocalProfile(new CliOptions { Transport = "serial", Port = "COM7", Baud = 19200 });
+
+            var configuration = new ConfigurationBuilder().AddJsonFile(path, optional: false).Build();
+            var options = new CliOptions();
+            configuration.Bind(options);
+
+            Assert.AreEqual("COM7", options.Port);
+            Assert.AreEqual(19200, options.Baud);
+        }
+        finally
+        {
+            if (original is null)
+            {
+                File.Delete(path);
+            }
+            else
+            {
+                File.WriteAllText(path, original);
+            }
+        }
+    }
+
+    [TestMethod]
     public void EnvironmentVariables_WithoutThePrefix_AreIgnored()
     {
         const string unprefixed = "BAUD";

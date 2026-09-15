@@ -70,6 +70,34 @@ public sealed class CliOptionsBindingTests
         Assert.IsNull(options.Host);
         Assert.AreEqual(0, options.TcpPort);
         Assert.IsFalse(options.Listen);
+        Assert.IsTrue(options.Tui, "The TUI is the console app's default mode.");
+        Assert.IsFalse(options.Cli);
+        Assert.IsNull(options.ManifestName);
+    }
+
+    [TestMethod]
+    public void Bind_CliFlag_ForcesCliModeWithoutChangingTuiDefault()
+    {
+        var options = Bind("--cli", "true");
+
+        Assert.IsTrue(options.Cli);
+        Assert.IsTrue(options.Tui, "Cli is a separate override, not the inverse of Tui's stored value.");
+    }
+
+    [TestMethod]
+    public void Bind_TuiFalse_AlsoAvailableToForceCliMode()
+    {
+        var options = Bind("--tui", "false");
+
+        Assert.IsFalse(options.Tui);
+    }
+
+    [TestMethod]
+    public void Bind_ManifestName_IsBoundAsAName()
+    {
+        var options = Bind("--manifestname", "radex-one");
+
+        Assert.AreEqual("radex-one", options.ManifestName);
     }
 
     [TestMethod]

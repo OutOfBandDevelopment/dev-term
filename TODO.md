@@ -52,6 +52,27 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   nothing turns a loaded manifest into a working `IControlSurface`/decoder pair or opens a
   connection from it.
 
+- **Connection profiles + default-mode flip**, landed 2026-09-15 — see
+  docs/design/connection-profiles.md. Landed today: `CliOptions.ManifestName` (a device manifest
+  *name*, resolved via `DevTermUserDataPaths.ResolveManifestDirectory` — checks
+  `~/.dev-term/manifests/{name}` first, then `./manifests/{name}` for pre-packaged ones — not a
+  literal path, so a saved profile stays portable); `ConnectionProfileStore` (save/list/load/delete
+  named, `CliOptions`-shaped JSON profiles under `~/.dev-term/profiles/`, reusing the same
+  `Microsoft.Extensions.Configuration.Json` + `Bind()` pipeline that already loads
+  `appsettings.Local.json` rather than a parallel type); `DevTermConfiguration.SaveLocalProfile`/
+  `ToProfileJson` (projects just the connection-relevant fields, excluding one-shot/mode flags).
+  Also: **the TUI is now the console app's default mode** — `--cli true` (or `--tui false`) forces
+  the plain scriptable loop; verified live against real hardware both ways. 160 tests across the
+  solution now.
+
+  **Not yet built** (the actual interactive pieces this all supports): a Configure screen for TUI
+  and WPF, shown instead of hard-failing when the bound configuration doesn't validate (today both
+  still hard-fail exactly like before — only the underlying save/load/paths plumbing exists so
+  far); a menu-driven "Device Profiles" picker in both front ends, available at any time, not just
+  at startup; and the warn-and-fall-back-to-default-presenter behavior for a `ManifestName` that
+  doesn't resolve (the resolution helper exists, nothing calls it yet). All still design-only in
+  docs/design/connection-profiles.md beyond what's listed above as landed.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of

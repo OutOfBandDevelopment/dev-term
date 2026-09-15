@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -32,5 +33,67 @@ public static class DevTermConfiguration
         config.AddJsonFile(LocalSettingsFileName, optional: true, reloadOnChange: false);
         config.AddEnvironmentVariables(EnvironmentVariablePrefix);
         config.AddCommandLine(args);
+    }
+
+    /// <summary>Overwrites the untracked default profile (<see cref="LocalSettingsFileName"/>) with the connection-relevant subset of <paramref name="options"/> — see <see cref="ToProfileJson"/>.</summary>
+    public static void SaveLocalProfile(CliOptions options) =>
+        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, LocalSettingsFileName), ToProfileJson(options));
+
+    /// <summary>
+    /// Projects the connection-relevant subset of <paramref name="options"/> — transport settings,
+    /// presenter, line ending, and an optional device-manifest name — as indented JSON, in the
+    /// same shape whether saved as the untracked default profile or a named one (see
+    /// docs/design/connection-profiles.md; both are bound back via the same
+    /// <c>Microsoft.Extensions.Configuration.Json</c> + <c>Bind()</c> pipeline, not a separate
+    /// parallel type). Deliberately excludes one-shot action/mode flags
+    /// (<see cref="CliOptions.ListPorts"/>, <see cref="CliOptions.Tui"/>, <see cref="CliOptions.Cli"/>,
+    /// <see cref="CliOptions.ListHidDevices"/>) — those describe how this particular run was
+    /// invoked, not the device connection itself.
+    /// </summary>
+    public static string ToProfileJson(CliOptions options)
+    {
+        var profile = new Dictionary<string, object?>
+        {
+            [nameof(CliOptions.Transport)] = options.Transport,
+            [nameof(CliOptions.Presenter)] = options.Presenter,
+            [nameof(CliOptions.LineEnding)] = options.LineEnding.ToString(),
+            [nameof(CliOptions.AsciiMaxLineLength)] = options.AsciiMaxLineLength,
+        };
+
+        if (string.Equals(options.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.Host)] = options.Host;
+            profile[nameof(CliOptions.TcpPort)] = options.TcpPort;
+            profile[nameof(CliOptions.Listen)] = options.Listen;
+        }
+        else if (string.Equals(options.Transport, "hid", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.HidVendorId)] = options.HidVendorId;
+            profile[nameof(CliOptions.HidProductId)] = options.HidProductId;
+            if (options.HidSerialNumber is not null)
+            {
+                profile[nameof(CliOptions.HidSerialNumber)] = options.HidSerialNumber;
+            }
+        }
+        else
+        {
+            profile[nameof(CliOptions.Port)] = options.Port;
+            profile[nameof(CliOptions.Baud)] = options.Baud;
+            profile[nameof(CliOptions.DataBits)] = options.DataBits;
+            profile[nameof(CliOptions.Parity)] = options.Parity.ToString();
+            profile[nameof(CliOptions.StopBits)] = options.StopBits.ToString();
+            profile[nameof(CliOptions.Handshake)] = options.Handshake.ToString();
+            profile[nameof(CliOptions.Dtr)] = options.Dtr;
+            profile[nameof(CliOptions.Rts)] = options.Rts;
+            profile[nameof(CliOptions.WriteTimeoutMs)] = options.WriteTimeoutMs;
+            profile[nameof(CliOptions.ReadTimeoutMs)] = options.ReadTimeoutMs;
+        }
+
+        if (options.ManifestName is not null)
+        {
+            profile[nameof(CliOptions.ManifestName)] = options.ManifestName;
+        }
+
+        return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
     }
 }

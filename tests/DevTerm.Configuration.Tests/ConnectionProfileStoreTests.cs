@@ -1,0 +1,178 @@
+using System.IO.Ports;
+
+namespace DevTerm.Configuration.Tests;
+
+[TestClass]
+public sealed class ConnectionProfileStoreTests
+{
+    private static CliOptions BuildSerialOptions() => new()
+    {
+        Transport = "serial",
+        Port = "COM3",
+        Baud = 4800,
+        DataBits = 8,
+        Parity = Parity.None,
+        StopBits = StopBits.One,
+        Handshake = Handshake.RequestToSend,
+        Presenter = "ascii",
+        LineEnding = LineEnding.Cr,
+        AsciiMaxLineLength = 512,
+        ManifestName = "tek-2230",
+        // One-shot/mode flags should not survive a save/load round trip.
+        Tui = false,
+        Cli = true,
+        ListPorts = true,
+    };
+
+    [TestMethod]
+    public void SaveThenLoad_RoundTripsConnectionFields()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", BuildSerialOptions());
+
+            var loaded = store.Load("tek2230");
+
+            Assert.AreEqual("serial", loaded.Transport);
+            Assert.AreEqual("COM3", loaded.Port);
+            Assert.AreEqual(4800, loaded.Baud);
+            Assert.AreEqual(Handshake.RequestToSend, loaded.Handshake);
+            Assert.AreEqual("ascii", loaded.Presenter);
+            Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
+            Assert.AreEqual(512, loaded.AsciiMaxLineLength);
+            Assert.AreEqual("tek-2230", loaded.ManifestName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SaveThenLoad_DoesNotPersistOneShotOrModeFlags()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", BuildSerialOptions());
+
+            var loaded = store.Load("tek2230");
+
+            Assert.IsTrue(loaded.Tui, "Tui should come back as CliOptions' own default, not the saved value.");
+            Assert.IsFalse(loaded.Cli);
+            Assert.IsFalse(loaded.ListPorts);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Save_TcpTransport_OnlySavesTcpFields()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("bridge", new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 });
+
+            var loaded = store.Load("bridge");
+
+            Assert.AreEqual("192.168.0.107", loaded.Host);
+            Assert.AreEqual(23, loaded.TcpPort);
+            Assert.IsNull(loaded.Port, "A TCP profile shouldn't carry serial-specific fields.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void List_ReturnsSavedProfileNamesAlphabetically()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("zebra", BuildSerialOptions());
+            store.Save("alpha", BuildSerialOptions());
+
+            CollectionAssert.AreEqual(new[] { "alpha", "zebra" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void List_WhenDirectoryDoesNotExist_ReturnsEmpty()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "devterm-profile-tests", Path.GetRandomFileName());
+        var store = new ConnectionProfileStore(directory);
+
+        Assert.IsEmpty(store.List());
+    }
+
+    [TestMethod]
+    public void Load_UnknownProfile_Throws()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+
+            Assert.ThrowsExactly<FileNotFoundException>(() => store.Load("does-not-exist"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Delete_ExistingProfile_RemovesItAndReturnsTrue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", BuildSerialOptions());
+
+            Assert.IsTrue(store.Delete("tek2230"));
+            CollectionAssert.DoesNotContain(store.List().ToArray(), "tek2230");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Delete_UnknownProfile_ReturnsFalse()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+
+            Assert.IsFalse(store.Delete("does-not-exist"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static string CreateTempDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devterm-profile-tests", Path.GetRandomFileName());
+        Directory.CreateDirectory(path);
+        return path;
+    }
+}

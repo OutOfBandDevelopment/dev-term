@@ -17,8 +17,15 @@ public sealed class CliOptions
     /// <summary>List available serial ports and exit, skipping normal validation/connection entirely.</summary>
     public bool ListPorts { get; set; }
 
-    /// <summary>Run the console app's full-screen TUI instead of the plain scriptable CLI loop. See docs/design/frontends.md.</summary>
-    public bool Tui { get; set; }
+    /// <summary>
+    /// Run the console app's full-screen TUI. Defaults to <c>true</c> — the TUI is the console
+    /// app's default mode; pass <see cref="Cli"/> to force the plain scriptable loop instead. See
+    /// docs/design/frontends.md.
+    /// </summary>
+    public bool Tui { get; set; } = true;
+
+    /// <summary>Force the plain scriptable CLI loop instead of the default full-screen TUI — e.g. for automation/CI. See docs/design/frontends.md.</summary>
+    public bool Cli { get; set; }
 
     public string Presenter { get; set; } = "hex";
 
@@ -78,4 +85,13 @@ public sealed class CliOptions
 
     /// <summary>List available USB HID devices and exit, skipping normal validation/connection entirely.</summary>
     public bool ListHidDevices { get; set; }
+
+    /// <summary>
+    /// Names a device manifest to load alongside this connection — <b>a name, not a path</b>;
+    /// resolves to <c>~/.dev-term/manifests/{ManifestName}</c> or this app's own
+    /// <c>./manifests/{ManifestName}</c> (see <see cref="DevTermUserDataPaths.ResolveManifestDirectory"/>),
+    /// so a saved profile stays portable instead of embedding a filesystem path. A name that
+    /// doesn't resolve is a warning, not a connection failure — see docs/design/connection-profiles.md.
+    /// </summary>
+    public string? ManifestName { get; set; }
 }
