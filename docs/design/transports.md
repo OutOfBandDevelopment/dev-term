@@ -51,7 +51,7 @@ Connect to a peripheral by address/name, then read/write/subscribe to specific G
 
 ## Extensibility
 
-New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes, etc.) implement the same `ITransport` contract and are picked up via the plugin host — no core changes required.
+New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes, etc.) implement the same `ITransport` contract and are picked up via the plugin host — no core changes required. RFC 2217 (a remote-controllable serial port over Telnet) is a concrete planned one — see [rfc2217.md](rfc2217.md), including a real-world caveat about vendor-specific variants that don't actually match the IETF standard despite the name.
 
 ## Open questions
 

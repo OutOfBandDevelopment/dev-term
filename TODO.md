@@ -8,6 +8,13 @@ _(none right now — pick the next item from the backlog)_
 
 ## Backlog (not started)
 
+- RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
+  `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
+  `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
+  differently-shaped bridge, not a transport — build second).
+- RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
+  remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
+  default per the security note in that doc.
 - UDP transport (target + listener modes).
 - USB HID transport.
 - BLE transport.
