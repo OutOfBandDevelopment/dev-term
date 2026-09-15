@@ -83,10 +83,12 @@ internal static class TuiTestRunner
         Application.LayoutAndDraw(true);
     }
 
-    public static void PressEnter()
+    public static void PressEnter() => PressKey(Key.Enter);
+
+    public static void PressKey(Key key)
     {
         var injector = Application.Instance!.GetInputInjector();
-        injector.InjectKey(Key.Enter, new InputInjectionOptions());
+        injector.InjectKey(key, new InputInjectionOptions());
         injector.ProcessQueue();
         Application.LayoutAndDraw(true);
     }

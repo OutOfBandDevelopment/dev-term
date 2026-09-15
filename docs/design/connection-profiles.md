@@ -93,6 +93,19 @@ and loads its referenced manifest if it has one. This is the same action the Con
 "load a profile" option triggers; the menu is just always available, not gated on the current
 config being invalid.
 
+**Landed at a reduced scope, 2026-09-15**: both front ends now have a real "File > Device
+Profiles..." menu item (TUI: `TuiMode.BuildWindow`'s `MenuBar`, reusing `ConfigureMode.BuildWindow`
+as a nested modal; WPF: a new `DeviceProfilesWindow`) — but picking a profile **saves it as the
+untracked default (`appsettings.Local.json`) and asks for a restart**, rather than live-swapping
+the running session's transport as designed above. Live mid-session switching needs the DI-composed
+transport rebuilt (today built once, eagerly, in `Program.cs`/`App.xaml.cs`, before either front end
+even starts) — a bigger change than adding the menu itself, still not done. The TUI's menu also
+picked up a real Ctrl+Q shortcut while landing this (previously advertised in the title bar but
+never actually wired to anything) — see `docs/design/testing.md`'s TUI section and `CLAUDE.md`'s
+constraints list for what made both take more than expected: a `MenuItem`'s `Key`/`InputGestureText`
+argument only labels the shortcut for display in both Terminal.Gui and WPF, it doesn't register a
+live accelerator by itself.
+
 **A missing manifest is a warning, not a hard failure**: if `ManifestName` doesn't resolve under
 either manifest location (see "Shape" above), the connection still proceeds using the default text
 presenters — the manifest only adds device-specific commands/UI on top of a connection that works

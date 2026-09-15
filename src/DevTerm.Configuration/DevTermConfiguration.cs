@@ -24,12 +24,21 @@ public static class DevTermConfiguration
     /// &lt; appsettings.Local.json (a personal saved profile) &lt; environment variables (DEVTERM_*)
     /// &lt; command-line arguments.
     /// </summary>
-    public static void Configure(HostBuilderContext context, IConfigurationBuilder config, string[] args)
+    public static void Configure(HostBuilderContext context, IConfigurationBuilder config, string[] args) =>
+        Configure(config, args, context.HostingEnvironment.EnvironmentName);
+
+    /// <summary>
+    /// Same layering as the <see cref="HostBuilderContext"/> overload, usable before a
+    /// <see cref="IHost"/> exists — e.g. to bind and validate <see cref="CliOptions"/> early enough
+    /// to decide whether to show a Configure screen instead of building the DI graph at all. See
+    /// docs/design/connection-profiles.md's startup flow.
+    /// </summary>
+    public static void Configure(IConfigurationBuilder config, string[] args, string environmentName)
     {
         config.Sources.Clear();
         config.SetBasePath(AppContext.BaseDirectory);
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
-        config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+        config.AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false);
         config.AddJsonFile(LocalSettingsFileName, optional: true, reloadOnChange: false);
         config.AddEnvironmentVariables(EnvironmentVariablePrefix);
         config.AddCommandLine(args);

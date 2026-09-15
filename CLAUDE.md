@@ -181,6 +181,13 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   when there's *no* `Application.Run()` loop running concurrently on another thread — the two don't
   compose. See `DevTerm.Console.Tests.TuiTestRunner`'s two separate run modes
   (`RunHeadless`/`RunWithLoop`) and [`docs/design/testing.md`](docs/design/testing.md).
+- **A `MenuItem`'s `Key`/`InputGestureText` argument (Terminal.Gui) or `InputGestureText` (WPF)
+  only labels a keyboard shortcut for display — neither registers a live accelerator by itself.**
+  `TuiMode`'s Ctrl+Q previously did nothing despite being advertised in the title bar; the real fix
+  needed an explicit handler on the global `Application.KeyDown` event (a per-view `Window.KeyDown`
+  handler doesn't reliably see a key already routed to a focused child first — the send field
+  normally has focus). `MainWindow`'s WPF menu needed the equivalent: an explicit `PreviewKeyDown`
+  check, not just `MenuItem.InputGestureText`.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

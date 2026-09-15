@@ -48,43 +48,44 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
     return 0;
 }
 
+// Bind cliOptions from the same layered sources the host will use, but before building the host
+// at all — building the host eagerly wires a transport from cliOptions (AddDevTermFrontEnd), so an
+// invalid CliOptions has to be caught here, ahead of that, to decide whether to hard-fail (CLI) or
+// show a Configure screen instead (TUI) — see docs/design/connection-profiles.md's startup flow.
+var earlyConfigBuilder = new ConfigurationBuilder();
+DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
 var cliOptions = new CliOptions();
+earlyConfigBuilder.Build().Bind(cliOptions);
+
+var useTui = cliOptions.Tui && !cliOptions.Cli;
+var validation = new CliOptionsValidator().Validate(null, cliOptions);
+if (validation.Failed)
+{
+    if (!useTui)
+    {
+        foreach (var failure in validation.Failures)
+        {
+            Console.Error.WriteLine(failure);
+        }
+
+        Console.Error.WriteLine(Usage);
+        return 1;
+    }
+
+    var configured = ConfigureMode.Run(cliOptions, string.Join(" ", validation.Failures));
+    if (configured is null)
+    {
+        return 0;
+    }
+
+    cliOptions = configured;
+}
 
 var hostBuilder = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
-    .ConfigureServices((context, services) =>
-    {
-        // Bind + validate the layered configuration (files, env vars, command line — see
-        // DevTermConfiguration) here via the Options pattern instead of a hand-rolled parser.
-        context.Configuration.Bind(cliOptions);
+    .ConfigureServices((_, services) => services.AddDevTermFrontEnd(cliOptions));
 
-        services.AddOptions<CliOptions>().Bind(context.Configuration).ValidateOnStart();
-        services.AddSingleton<IValidateOptions<CliOptions>, CliOptionsValidator>();
-
-        var validation = new CliOptionsValidator().Validate(null, cliOptions);
-        if (validation.Failed)
-        {
-            throw new OptionsValidationException(nameof(CliOptions), typeof(CliOptions), validation.Failures);
-        }
-
-        services.AddDevTermFrontEnd(cliOptions);
-    });
-
-IHost host;
-try
-{
-    host = hostBuilder.Build();
-}
-catch (OptionsValidationException ex)
-{
-    foreach (var failure in ex.Failures)
-    {
-        Console.Error.WriteLine(failure);
-    }
-
-    Console.Error.WriteLine(Usage);
-    return 1;
-}
+var host = hostBuilder.Build();
 
 using (host)
 {
@@ -100,8 +101,9 @@ using (host)
     var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
     await using var session = sessionFactory.Create(transport, new Pipeline([presenter]));
 
-    // TUI is the default mode; --cli true (or --tui false) forces the plain scriptable loop.
-    var useTui = cliOptions.Tui && !cliOptions.Cli;
+    // TUI is the default mode; --cli true (or --tui false) forces the plain scriptable loop —
+    // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
+    // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
         ? await TuiMode.RunAsync(session, presenter, cliOptions)
         : await CliMode.RunAsync(session, presenter, cliOptions);

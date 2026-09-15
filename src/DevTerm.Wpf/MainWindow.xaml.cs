@@ -31,6 +31,18 @@ public partial class MainWindow : Window
         _session.Output += OnSessionOutput;
         Loaded += OnLoaded;
         Closing += OnClosing;
+
+        // MenuItem.InputGestureText only labels the shortcut in the menu - it doesn't register a
+        // live accelerator by itself (same gotcha found for Terminal.Gui's MenuItem.Key building
+        // the TUI's own menu - see TuiMode.BuildWindow), so Ctrl+Q needs an explicit handler too.
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Q && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
@@ -121,6 +133,14 @@ public partial class MainWindow : Window
             OutputList.Items.Add($"Send failed: {ex.Message}");
         }
     }
+
+    private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new DeviceProfilesWindow(new ConnectionProfileStore()) { Owner = this };
+        window.ShowDialog();
+    }
+
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 
     private async void OnClosing(object? sender, CancelEventArgs e)
     {

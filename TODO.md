@@ -65,13 +65,27 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   the plain scriptable loop; verified live against real hardware both ways. 160 tests across the
   solution now.
 
-  **Not yet built** (the actual interactive pieces this all supports): a Configure screen for TUI
-  and WPF, shown instead of hard-failing when the bound configuration doesn't validate (today both
-  still hard-fail exactly like before — only the underlying save/load/paths plumbing exists so
-  far); a menu-driven "Device Profiles" picker in both front ends, available at any time, not just
-  at startup; and the warn-and-fall-back-to-default-presenter behavior for a `ManifestName` that
-  doesn't resolve (the resolution helper exists, nothing calls it yet). All still design-only in
-  docs/design/connection-profiles.md beyond what's listed above as landed.
+  **Update, 2026-09-15**: the TUI's Configure screen landed — `DevTerm.Console.ConfigureMode`, a
+  real Terminal.Gui form (transport/connection fields, a saved-profiles `ListView` with Load, a
+  Save-as-profile field, Connect/Quit) shown instead of hard-failing when `CliOptions` doesn't
+  validate; `Program.cs` now binds+validates `CliOptions` *before* building the DI host so it can
+  make that call ahead of ever wiring a transport. Both front ends also got a real "File > Device
+  Profiles..." menu item (TUI: a new `MenuBar` in `TuiMode.BuildWindow`, reusing `ConfigureMode` as
+  a nested modal; WPF: a new `DeviceProfilesWindow`) — landed at a reduced scope from the design
+  doc's live mid-session switching: picking a profile saves it as the default and asks for a
+  restart, since live-swapping the running session's transport needs the DI-composed transport
+  rebuilt, a bigger change on its own. 5 new `ConfigureModeTests` (`UNIT`) needed a third distinct
+  Terminal.Gui test-automation technique beyond the two `TuiTestRunner` already has —
+  `View.InvokeCommand(Command.Accept)` — after both `SetFocus()`-then-inject and Tab-navigation
+  proved unreliable for simulating a button click; see docs/design/testing.md and CLAUDE.md's
+  constraints list for the full account, including the two separate bugs found and fixed landing
+  the TUI's menu: Ctrl+Q was advertised in the title bar since it was first added but never actually
+  wired to anything, and a `MenuItem`'s `Key` argument turned out to only label the shortcut for
+  display, not register it. 182 tests across the solution now (178 pass by default). **Still not
+  built**: the warn-and-fall-back-to-default-presenter
+  behavior for a `ManifestName` that doesn't resolve (the resolution helper exists, nothing calls it
+  yet), and the WPF equivalent of the TUI's Configure screen (WPF still hard-fails on invalid
+  config exactly like before — only its Device Profiles menu item landed this round).
 
 - **Test automation for CLI/TUI/WPF + test categorization**, landed 2026-09-15 — see
   docs/design/testing.md. Every test class now carries `[TestCategory("UNIT"|"INTEGRATION"|"DEV-LOCAL")]`

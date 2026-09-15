@@ -117,6 +117,30 @@ focused view, even marshaled onto the loop thread via `Application.Invoke` with 
 called explicitly right there — so a headless test never starts a loop, and a looped test never
 injects keys, rather than trying to make one mode do both.
 
+Two more real gotchas found landing the TUI's menu bar and Ctrl+Q shortcut, both confirmed by
+reflecting over a real running window's own `KeyBindings`, not assumed:
+
+- **A `MenuItem`'s `Key` constructor argument only labels the shortcut in the menu's display text —
+  it doesn't register a live key binding by itself.** After building a menu with a Ctrl+Q
+  `MenuItem`, neither the `Window`'s nor the `MenuBar`'s own `KeyBindings.GetBindings()` contained a
+  Ctrl+Q entry at all. `TuiMode.BuildWindow` instead subscribes an explicit handler to it.
+- **A per-view `KeyDown` handler on the `Window` doesn't reliably see a key already routed to a
+  focused child first.** A `window.KeyDown` handler for Ctrl+Q fired when nothing else had focus,
+  but not once the send field (which normally has focus) did. The fix was the global,
+  static `Application.KeyDown` event instead, which fires ahead of per-view focus routing.
+- Testing this needed yet another input-injection variant: `IInputInjector`/`ProcessQueue()`
+  (reliable for typed text and button clicks elsewhere in this same headless mode) proved unreliable
+  specifically for this global-event case once several other tests' Init/Shutdown cycles had already
+  run earlier in the same test process — passed reliably alone, failed once run after the others.
+  `Application.RaiseKeyDownEvent(key)` (a direct, documented dispatch call) didn't show the same
+  degradation and is what `TuiModeTests.CtrlQ_RequestsStop` uses.
+- Button clicks needed their own fix along the way, for a related reason: `View.SetFocus()` makes
+  `HasFocus` report `true` without fully registering the view for command routing (a button focused
+  this way then sent an injected Enter/Space did nothing), and Tab-navigating focus onto a button
+  worked alone but not once several tests ran in the same process. `View.InvokeCommand(Command.Accept)`
+  — a direct, documented way to invoke a view's command — is what `DevTerm.Console.Tests.ConfigureModeTests`
+  uses instead; see its own `Click` helper for the full account.
+
 ## User guide
 
 [`docs/user-guide/`](../user-guide/README.md) has task-oriented walkthroughs for each front end,

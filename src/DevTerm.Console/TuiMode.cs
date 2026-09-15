@@ -56,7 +56,7 @@ public static class TuiMode
     {
         var window = new Window
         {
-            Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name}) — Ctrl+Q to quit",
+            Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name})",
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
@@ -66,7 +66,7 @@ public static class TuiMode
         var output = new TextView
         {
             X = 0,
-            Y = 0,
+            Y = 1,
             Width = Dim.Fill(),
             Height = Dim.Fill(1),
             ReadOnly = true,
@@ -97,6 +97,50 @@ public static class TuiMode
             });
         }
 
+        var menuBar = new MenuBar(
+        [
+            new MenuBarItem("_File",
+            [
+                new MenuItem("_Device Profiles...", string.Empty, () =>
+                {
+                    var configureParts = ConfigureMode.BuildWindow(cliOptions, null, new ConnectionProfileStore());
+                    Application.Run(configureParts.Window);
+
+                    if (configureParts.Result is { } chosen)
+                    {
+                        DevTermConfiguration.SaveLocalProfile(chosen);
+                        AppendOutput($"Saved '{ConnectionDescription.For(chosen)}' as the default profile — restart dev-term to connect with it.");
+                    }
+                }),
+                new MenuItem("_Quit", "Ctrl+Q", () => Application.RequestStop(), Key.Q.WithCtrl),
+            ]),
+        ]);
+
+        // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
+        // display text - it doesn't register a live, always-active key binding by itself (checked
+        // directly: after building this exact menu, neither the Window's nor the MenuBar's own
+        // KeyBindings contained a Ctrl+Q entry). A window-level KeyDown handler, the same pattern
+        // sendField's own Enter handling already uses below, is what actually makes Ctrl+Q work
+        // from anywhere in the window, not just while the menu itself is open.
+        // Application.KeyDown (global) rather than window.KeyDown: a plain per-view KeyDown
+        // handler on the window doesn't reliably see keys that were already routed to a focused
+        // child first (sendField has focus in normal use) - checked directly, Ctrl+Q reached
+        // window.KeyDown when nothing else had focus but not once sendField did. Application.KeyDown
+        // fires ahead of per-view focus routing, so it works regardless of what's currently focused.
+        EventHandler<Key>? quitOnCtrlQ = null;
+        quitOnCtrlQ = (_, key) =>
+        {
+            if (key != Key.Q.WithCtrl)
+            {
+                return;
+            }
+
+            key.Handled = true;
+            Application.RequestStop();
+        };
+        Application.KeyDown += quitOnCtrlQ;
+        window.Disposing += (_, _) => Application.KeyDown -= quitOnCtrlQ;
+
         session.Output += (_, presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
 
         sendField.KeyDown += (_, key) =>
@@ -124,7 +168,7 @@ public static class TuiMode
             _ = SendAsync(session, cliOptions, input, line, AppendOutput);
         };
 
-        window.Add(output, sendLabel, sendField);
+        window.Add(menuBar, output, sendLabel, sendField);
 
         return new TuiWindowParts(window, output, sendField);
     }

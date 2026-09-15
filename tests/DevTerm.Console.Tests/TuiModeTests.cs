@@ -89,6 +89,40 @@ public sealed class TuiModeTests
     }
 
     [TestMethod]
+    public async Task CtrlQ_RequestsStop()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+
+        TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+        {
+            // The Quit MenuItem's own "Ctrl+Q" argument only labels the shortcut in the menu's
+            // display text - checked directly, it doesn't register a live key binding by itself
+            // (neither the Window's nor the MenuBar's own KeyBindings contained a Ctrl+Q entry
+            // after building this exact menu). TuiMode.BuildWindow instead subscribes to the
+            // global Application.KeyDown event: a per-view window.KeyDown handler doesn't
+            // reliably see keys already routed to a focused child first (sendField normally has
+            // focus) - checked directly, Ctrl+Q reached window.KeyDown when nothing else had focus
+            // but not once sendField did, while Application.KeyDown fires ahead of focus routing.
+            //
+            // Application.RaiseKeyDownEvent (not TuiTestRunner.PressKey's IInputInjector-based
+            // route) is used here specifically: the injector path proved unreliable once several
+            // Init/Shutdown cycles had already run earlier in the same test process (this test
+            // passed reliably alone, then failed once run after the others in this class) -
+            // RaiseKeyDownEvent dispatches directly and didn't show the same degradation.
+            var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
+            Assert.IsFalse(runnable.StopRequested);
+
+            Terminal.Gui.App.Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
+
+            Assert.IsTrue(runnable.StopRequested, "Ctrl+Q should call Application.RequestStop(), setting the window's StopRequested.");
+        });
+
+        await session.CloseAsync();
+    }
+
+    [TestMethod]
     public async Task IncomingBytes_AppearInOutputThroughTheRealSessionPipeline()
     {
         var (session, transport, presenter) = CreateSession();
