@@ -35,7 +35,25 @@ inbound replies/telemetry, bundled as one plugin per [device-control-modules.md]
 
 Full current inventory (specs, acquisition dates, status): `shared/.personal/incoming/test-equipment.md`
 — gitignored in the source repo (synced from a private submodule per that repo's
-`PERSONAL-PROTOCOL.md`), so not directly linkable here; ask for a current export if needed.
+`PERSONAL-PROTOCOL.md`), so not directly linkable here, but checked directly (2026-09-15) for
+other candidates: the wider equipment list has 44 items across categories, and of those, the
+oscilloscope section is the one worth flagging — it records no interface at all for most units
+(only Model/Bandwidth/Channels/etc.), so nothing there can be assumed SCPI-capable without
+checking further:
+
+- **Rigol DS1102E** — worth checking; Rigol scopes of this era commonly do USBTMC, but that's not
+  confirmed for this specific unit from the inventory alone.
+- **Tektronix TDS2024** — the inventory's own "Legacy Interfaces" note says only a Centronics
+  (printer) module is fitted, not a command interface — likely not remotely controllable at all as
+  currently equipped.
+- **Hitachi V-1150** (analog) and **DSO201/DSO Nano** (pocket DSO) — no remote interface exists on
+  either by design.
+- **Digilent Analog Discovery 2** — USB, but via Digilent's own WaveForms SDK, not SCPI/USBTMC/a
+  serial protocol at all; a fundamentally different integration path (P/Invoke against their C
+  library) if ever pursued, out of scope for this proposal.
+- The already-verified **Tektronix 2230 (×2)** remains the one confirmed real oscilloscope target,
+  via its own pre-SCPI "codes" protocol, not SCPI — see the note in `TODO.md` about a
+  Tektronix-codes decoder proposal.
 
 ## Why SCPI fits the existing contracts cleanly
 
