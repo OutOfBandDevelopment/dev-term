@@ -22,34 +22,6 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   code is awkward to unit test — headless/automation approach TBD), and the multi-session-lifetime
   issue below.
 
-- **USB HID transport** (`DevTerm.Transports.Hid`), landed 2026-09-15 — [HidSharp](https://www.nuget.org/packages/HidSharp)
-  2.6.4, cross-platform. `HidTransport`/`SystemHidDevice`/`IHidDeviceFactory`/`IHidDeviceDiscovery`
-  mirror the serial transport's shape exactly. The interesting piece is `HidReadStream`: HidSharp
-  gives no event analogous to `SerialPort.DataReceived`, and its `Read`/`Write` are plain
-  `BeginRead`/`EndRead`-backed, which (like `SerialPort.BaseStream.ReadAsync`) doesn't reliably
-  honor a `CancellationToken` on an in-flight read — same class of problem already hit for serial.
-  Fixed with a dedicated background thread (not a `Task.Run`-wrapped call per read, which was
-  already rejected for serial for the same "orphaned unobserved background work" reason) that
-  blocks on `HidStream.Read` bounded by `ReadTimeout`, handing completed reports to a
-  `Channel<byte[]>` — the actual async-facing `ReadAsync` only ever awaits the channel, so
-  cancellation is immediate and correct regardless of the background thread's own (bounded,
-  best-effort) shutdown. **Not verified against real hardware for the read path specifically**
-  (opened/wrote to/closed a real device — a mouse's RGB control interface — successfully, but
-  never got real inbound reports flowing to confirm the read-thread/channel handoff end-to-end);
-  the open/write/close path *did* surface and fix a real bug: a zero-length write (an empty typed
-  line with no line ending) throws a raw Win32 `IOException` on Windows HID (unlike serial/TCP,
-  where it's a harmless no-op) — fixed as a no-op in `HidTransport.WriteAsync`, and separately
-  widened `CliMode`/`TuiMode`'s send-path exception handling (previously only caught
-  `TimeoutException`) to catch any device I/O failure and report it instead of crashing, since a
-  wrong *non-zero* length (a real device-specific framing constraint, not something a generic text
-  presenter can guess) still legitimately fails and needs to fail cleanly. Wired end-to-end: new
-  `--transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>]` CLI options (plus
-  `--listhiddevices true` discovery, mirroring `--listports`), `CliOptionsValidator`,
-  `ConnectionDescription`, `ConnectionErrorMessages` hint, `AddDevTermFrontEnd` wiring — all with
-  test coverage (136 tests across the solution now). Next: real hardware verification of the read
-  path against an actual report-based device (Radex One, once its HID report framing is
-  understood — see that proposal's open questions).
-
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -91,7 +63,10 @@ ordered against the rest.
 - RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
-- UDP transport (target + listener modes).
+- UDP transport (target + listener modes). Real target hardware once built:
+  [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
+  discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
+  resolving against a fresh capture before implementing, not just the existing notes.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
@@ -112,6 +87,13 @@ ordered against the rest.
   A Tektronix-codes (pre-SCPI) decoder is also in scope — the project's own Tek 2230 test device
   (`ID?` → `ID TEK/2230,V81.1,VERS:14;`) is this "precursor protocol" family; worth its own proposal
   doc when picked up.
+  Three more real, HID/serial-only (no new transport needed) targets, sourced from a local prior-art
+  decoder library (`dotex/Incoming/BinaryDecoders`), each with a real-hardware-verified or
+  cross-referenced protocol: [Kuando Busylight](docs/design/proposals/kuando-busylight-protocol.md)
+  (its single-command report format is confirmed working live against real hardware; its
+  batch-program format is not — see that proposal's open question), [Velleman K8055](docs/design/proposals/velleman-k8055-protocol.md)
+  (already owned, simplest of the binary proposals), and [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md)
+  (plain serial via an already-built adapter cable, buildable today like SCPI).
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
