@@ -478,6 +478,28 @@ public sealed class ConfigureModeTests
     }
 
     [TestMethod]
+    public void SaveAsButton_IsWiredNextToTheExportButton()
+    {
+        // Same "structural, never actually click it" convention as BrowseButton_IsWiredNextToThePathField
+        // above - this one opens a real, native Terminal.Gui SaveDialog via a nested
+        // Application.Run(dialog), the save-style counterpart to Browse/OpenDialog (lets you type a
+        // brand-new filename that doesn't exist yet, for Export specifically).
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.AreEqual("Save As...", parts.SaveAsButton.Text);
+                Assert.IsNotNull(parts.SaveAsButton.SuperView);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void DetectPortButton_IsWiredNextToThePortField()
     {
         // Same "structural, never actually click it" convention as BrowseButton_IsWiredNextToThePathField

@@ -86,4 +86,16 @@ public partial class DeviceProfilesWindow : Window
             ViewModel.ImportExportPath = dialog.FileName;
         }
     }
+
+    // The save-style counterpart to Browse: unlike OpenFileDialog, SaveFileDialog lets you type a
+    // brand-new filename that doesn't exist yet - for Export specifically. Browse/OpenFileDialog
+    // stays as the picker for Import (an existing file only).
+    private void SaveAs_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog { Filter = "dev-term connection profile (*.json)|*.json" };
+        if (dialog.ShowDialog(this) == true)
+        {
+            ViewModel.ImportExportPath = dialog.FileName;
+        }
+    }
 }

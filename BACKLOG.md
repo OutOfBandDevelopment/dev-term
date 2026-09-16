@@ -95,8 +95,6 @@ ordered against the rest.
     raises a real design question for the send path (which presenter encodes a typed line, if more
     than one is active). Needs its own design pass.
   - **Per-input-line parser selection**, with a default supplied by the connection profile.
-  - **A save-style picker for a not-yet-existing export filename** — both front ends' Browse
-    buttons use an open-style dialog (must pick an existing file) for both Import and Export.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
     connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
     IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.

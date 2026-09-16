@@ -183,7 +183,10 @@
 
                     <DockPanel Margin="0,12,0,0">
                         <TextBlock DockPanel.Dock="Top" Text="Import/export file path:" Margin="0,0,0,4" />
-                        <Button DockPanel.Dock="Right" Content="Browse..." Padding="8,2" Click="Browse_Click" />
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Browse..." Padding="8,2" Margin="0,0,4,0" Click="Browse_Click" />
+                            <Button Content="Save As..." Padding="8,2" Click="SaveAs_Click" />
+                        </StackPanel>
                         <TextBox Margin="0,0,8,0" Text="{Binding ImportExportPath, UpdateSourceTrigger=PropertyChanged}" />
                     </DockPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">

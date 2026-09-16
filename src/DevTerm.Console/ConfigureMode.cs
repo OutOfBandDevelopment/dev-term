@@ -201,6 +201,7 @@ public static class ConfigureMode
         var browseButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Browse..." };
         var importButton = new Button { X = Pos.Right(browseButton) + 1, Y = Pos.Top(browseButton), Text = "Import" };
         var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(browseButton), Text = "Export" };
+        var saveAsButton = new Button { X = Pos.Right(exportButton) + 1, Y = Pos.Top(browseButton), Text = "Save As..." };
 
         var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true };
         var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
@@ -237,6 +238,7 @@ public static class ConfigureMode
             BrowseButton = browseButton,
             ImportButton = importButton,
             ExportButton = exportButton,
+            SaveAsButton = saveAsButton,
             ConnectButton = connectButton,
             QuitButton = quitButton,
         };
@@ -426,6 +428,23 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        // The save-style counterpart to Browse: a real Terminal.Gui SaveDialog, which - unlike
+        // OpenDialog - lets you type a brand-new filename that doesn't exist yet, for Export
+        // specifically (confirmed via a headless probe against the installed v2.5.0 package that
+        // SaveDialog.FileName, not .Path, holds the accepted full path once its own "Save" button
+        // is clicked). Browse/OpenDialog stays as the picker for Import (an existing file only).
+        saveAsButton.Accepting += (_, e) =>
+        {
+            var dialog = new SaveDialog { Path = pathField.Text };
+            Application.Run(dialog);
+            if (!dialog.Canceled && dialog.FileName is { Length: > 0 } fileName)
+            {
+                pathField.Text = fileName;
+            }
+
+            e.Handled = true;
+        };
+
         // A small nested modal picker for "type it yourself, or pick from what's actually attached"
         // - the same Application.Run(dialog)/read-result-after pattern as OpenDialog above, built
         // from a plain Dialog+ListView instead of a Terminal.Gui built-in since there's no built-in
@@ -570,7 +589,7 @@ public static class ConfigureMode
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
             presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
-            pathLabel, pathField, browseButton, importButton, exportButton,
+            pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton,
             connectButton, quitButton);
         window.Add(formContent);
 
@@ -695,6 +714,8 @@ internal sealed class ConfigureWindowParts
     public required Button ImportButton { get; init; }
 
     public required Button ExportButton { get; init; }
+
+    public required Button SaveAsButton { get; init; }
 
     public required Button ConnectButton { get; init; }
 

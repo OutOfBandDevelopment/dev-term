@@ -42,7 +42,7 @@ Shown in two situations:
 | Presenter | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | `hex` | n/a (fixed set, every presenter `AddTextPresenters` registers) | Single-select today — see Open items |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
-| Import/export file path | free text (+ "Browse..." in WPF) | empty | Must be non-empty to import/export | Same file, same JSON shape, for both directions |
+| Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | Same file, same JSON shape, for both directions |
 | Saved profiles | list, one name per saved profile | populated from `ConnectionProfileStore.List()` at construction | n/a | Double-clicking a row loads it — same as selecting it and pressing Load, not a separate action |
 
 ## Actions
@@ -110,9 +110,13 @@ Shown in two situations:
   field — WPF's opens a native `OpenFileDialog` (code-behind, the one exception to pure command
   binding, since a native dialog has no binding equivalent); the TUI's opens a real
   `Terminal.Gui.Views.OpenDialog` the same way (`Application.Run(dialog)`, then reads `dialog.FilePaths`
-  if not `dialog.Canceled`) — both use an open-style picker (requires an existing file) for *both*
-  Import and Export, so exporting to a new filename means picking a folder then hand-editing the
-  filename in the path field afterward.
+  if not `dialog.Canceled`) — an open-style picker (requires an existing file), the right fit for
+  Import. A second "Save As..." button next to it is the save-style counterpart, for Export
+  specifically: WPF's native `SaveFileDialog`, the TUI's `Terminal.Gui.Views.SaveDialog` (reading
+  `dialog.FileName`, not `.Path`, once accepted) — both let you type or navigate to a brand-new
+  filename that doesn't exist yet, not just pick among existing ones. Browse still works for Export
+  too (if the target file already exists); Save As isn't meant for Import (nothing stops picking a
+  non-existent path there, but Import will just report the resulting "file not found").
 - **The TUI's form scrolls; WPF's doesn't need to** — the TUI form (~33 rows) routinely exceeds a
   default terminal window, so its content sits in a `View` with a real Terminal.Gui viewport/scrollbar
   (`SetContentSize` + `ViewportSettings |= AllowNegativeY | HasVerticalScrollBar`), scrollable via
@@ -180,7 +184,3 @@ Requested but not yet built, in the order they came up:
   one profile, one JSON file, no conflict handling beyond the single-profile Save overwrite prompt —
   a real, larger feature (multi-select in the profiles list, zip creation/extraction, a conflict-
   resolution UI), not implemented yet.
-- **A picker for choosing a not-yet-existing export filename.** Both front ends' Browse buttons use
-  an open-style dialog (must pick an existing file); there's no save-style picker, so exporting to a
-  brand-new filename still means hand-typing it (or browsing to the right folder and editing just
-  the filename afterward).

@@ -28,9 +28,10 @@ renamed by the other front end (or by hand) automatically, refreshing the list o
 
 ## Import / Export
 
-Type, or press **Browse...** to pick an existing file (both front ends now have this — the TUI's
-opens a real Terminal.Gui `OpenDialog`, WPF's a native `OpenFileDialog`; both require an existing
-file, so exporting to a brand-new filename still means typing it by hand), then:
+Type, or pick a path with one of two buttons (both front ends have both): **Browse...** for an
+existing file (the TUI's opens a real Terminal.Gui `OpenDialog`, WPF's a native `OpenFileDialog`),
+or **Save As...** for a brand-new filename that doesn't exist yet (`SaveDialog`/`SaveFileDialog`) —
+handy for Export specifically, since Browse alone would otherwise mean hand-typing a new name. Then:
 
 - **Export** writes the *current fields* (validated first) to that path as JSON — the same shape a
   saved profile uses, just as a standalone file instead of going into `~/.dev-term/profiles`. Handy
