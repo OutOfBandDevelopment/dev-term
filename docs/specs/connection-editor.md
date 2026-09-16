@@ -17,8 +17,10 @@ Shown in two situations:
    [connection-profiles.md](../design/connection-profiles.md)'s startup flow) — instead of
    hard-failing. `Result`, once set, is used directly to build the DI host and connect immediately.
 2. **From "File > Device Profiles..."** in either front end, at any time, already connected —
-   `Result`, once set, is saved as the untracked default profile and a restart is requested (see
-   "Open items" for why this doesn't live-swap the running session's transport).
+   `Result`, once set, is saved as the untracked default profile *and* live-switched to
+   immediately (`DevTermSessionBuilder`/`MainWindow.SwitchProfileAsync`/`TuiMode.BuildWindow`'s
+   `SwitchProfileAsync`) — the running session tears down and the new one opens in place, no
+   restart needed.
 
 ## Fields
 

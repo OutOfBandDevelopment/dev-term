@@ -49,6 +49,26 @@ public sealed class MainWindowTests
     }
 
     [TestMethod]
+    public void Constructor_WithAManifestNameThatDoesNotResolve_AddsAWarningToTheOutputList()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow(new CliOptions
+            {
+                Transport = "tcp",
+                Host = "127.0.0.1",
+                TcpPort = 23,
+                ManifestName = "definitely-does-not-exist-" + Guid.NewGuid().ToString("N"),
+            });
+
+            Assert.HasCount(1, window.OutputList.Items);
+            StringAssert.Contains((string)window.OutputList.Items[0]!, "Warning:");
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void ConnectAsync_OpensSessionAndSetsTitleAndEnablesSendBox()
     {
         StaTestRunner.Run(async () =>

@@ -24,6 +24,11 @@ public static class CliMode
             return 1;
         }
 
+        if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
+        {
+            System.Console.Error.WriteLine(manifestWarning);
+        }
+
         System.Console.WriteLine($"Connected to {ConnectionDescription.For(cliOptions)} using '{presenter.Name}'.");
         System.Console.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
 

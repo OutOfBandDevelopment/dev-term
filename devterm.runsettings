@@ -14,9 +14,16 @@
 
   RealTcpDeviceHost3 is a real Tektronix TDS2024 oscilloscope, also over a serial-to-Ethernet
   bridge - a different, SCPI-based device family: it identifies via "*IDN?" (SCPI standard), not
-  the "ID?" the pre-SCPI 2230s above use - not yet wired into RealHardwareCliTests' TEK/2230-
-  specific assertion; reserved here so a TDS2024-specific test can pick it up without another
-  runsettings change.
+  the "ID?" the pre-SCPI 2230s above use.
+
+  The *Query and *ExpectedReply values below are each host's identity-query text and expected reply
+  substring, read by RealHardwareCliTests as separate parameters (not baked into the test as
+  literals) so a new real device can be added later with only new parameters plus one new DataRow,
+  no code change - and so an unverified guess can be corrected here instead of in code.
+  RealTcpDeviceHost3ExpectedReply ("TEKTRONIX", the standard *IDN? response's manufacturer field)
+  has NOT been confirmed against this specific real unit yet - tighten it once it has been (e.g.
+  the full model/firmware string), or clear it to make that DataRow report Inconclusive instead of
+  asserting an unverified value.
 -->
 <RunSettings>
   <TestRunParameters>
@@ -24,5 +31,11 @@
     <Parameter name="RealTcpDeviceHost2" value="192.168.0.108" />
     <Parameter name="RealTcpDeviceHost3" value="192.168.0.110" />
     <Parameter name="RealTcpDevicePort" value="23" />
+    <Parameter name="RealTcpDeviceHost1Query" value="ID?" />
+    <Parameter name="RealTcpDeviceHost2Query" value="ID?" />
+    <Parameter name="RealTcpDeviceHost3Query" value="*IDN?" />
+    <Parameter name="RealTcpDeviceHost1ExpectedReply" value="TEK/2230" />
+    <Parameter name="RealTcpDeviceHost2ExpectedReply" value="TEK/2230" />
+    <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX" />
   </TestRunParameters>
 </RunSettings>

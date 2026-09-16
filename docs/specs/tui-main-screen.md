@@ -46,9 +46,10 @@ points:
 - **`MenuItem.Title` is mutable at runtime** (unlike its `Key` shortcut argument) — the
   Connect/Disconnect item flips in place rather than needing two separate items shown/hidden.
 - **Device Profiles reuses `ConfigureMode.BuildWindow` as a nested `Application.Run` modal**, not a
-  separate dialog type — picking a profile there saves it as the untracked default and asks for a
-  restart (see [`docs/design/connection-profiles.md`](../design/connection-profiles.md)); it does
-  not live-swap this window's own session.
+  separate dialog type — picking a profile there saves it as the untracked default *and*
+  live-switches this window's own session to it immediately (`DevTermSessionBuilder`, a
+  `SwitchProfileAsync` local function inside `BuildWindow` exposed via `TuiWindowParts`), no
+  restart — see [`docs/design/connection-profiles.md`](../design/connection-profiles.md).
 
 ## Open items
 

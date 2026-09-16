@@ -16,9 +16,9 @@ namespace DevTerm.Wpf;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly Session _session;
-    private readonly IPresenter _presenter;
-    private readonly CliOptions _cliOptions;
+    private Session _session;
+    private IPresenter _presenter;
+    private CliOptions _cliOptions;
     private bool _closeConfirmed;
 
     public MainWindow(Session session, IPresenter presenter, CliOptions cliOptions)
@@ -28,6 +28,11 @@ public partial class MainWindow : Window
         _session = session;
         _presenter = presenter;
         _cliOptions = cliOptions;
+
+        if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
+        {
+            OutputList.Items.Add(manifestWarning);
+        }
 
         _session.Output += OnSessionOutput;
         Loaded += OnLoaded;
@@ -187,13 +192,70 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
-            MessageBox.Show(
-                this,
-                $"Saved '{ConnectionDescription.For(chosen)}' as the default profile — restart dev-term to connect with it.",
-                "dev-term",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            _ = SwitchProfileAsync(chosen);
         }
+    }
+
+    /// <summary>
+    /// Tears down the current session/transport and opens a new one composed from
+    /// <paramref name="newOptions"/> — live, without restarting the app, unlike the
+    /// save-as-default-and-ask-for-a-restart this replaced. Exposed as an awaitable method (rather
+    /// than only reachable through <see cref="DeviceProfiles_Click"/>'s fire-and-forget call) so
+    /// tests can drive and await it deterministically, the same convention as
+    /// <see cref="ConnectAsync"/>/<see cref="ToggleConnectionAsync"/>.
+    /// </summary>
+    /// <returns><see langword="true"/> if the new connection opened successfully.</returns>
+    internal async Task<bool> SwitchProfileAsync(CliOptions newOptions)
+    {
+        DevTermSessionBuilder.Result built;
+        try
+        {
+            built = DevTermSessionBuilder.Build(newOptions);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+
+        _session.Output -= OnSessionOutput;
+        await _session.CloseAsync();
+        await _session.DisposeAsync();
+
+        _session = built.Session;
+        _presenter = built.Presenter;
+        _cliOptions = newOptions;
+        _session.Output += OnSessionOutput;
+
+        // A different profile means a different device/connection - clearing prior output avoids
+        // mixing readings from the old connection in with the new one.
+        OutputList.Items.Clear();
+        if (ManifestNameWarning.For(newOptions) is { } manifestWarning)
+        {
+            OutputList.Items.Add(manifestWarning);
+        }
+
+        try
+        {
+            await _session.OpenAsync();
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            MessageBox.Show(
+                ConnectionErrorMessages.For(_cliOptions.Transport, ex),
+                "dev-term — connection failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            ConnectMenuItem.Header = "_Connect";
+            SendBox.IsEnabled = false;
+            return false;
+        }
+
+        Title = $"dev-term — {ConnectionDescription.For(_cliOptions)} ({_presenter.Name})";
+        ConnectMenuItem.Header = "_Disconnect";
+        SendBox.IsEnabled = _presenter is IPresenterInput;
+        OutputList.Items.Add($"Switched to {ConnectionDescription.For(_cliOptions)}.");
+        return true;
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();

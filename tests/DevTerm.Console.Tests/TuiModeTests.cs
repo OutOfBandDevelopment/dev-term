@@ -35,6 +35,27 @@ public sealed class TuiModeTests
     }
 
     [TestMethod]
+    public async Task BuildWindow_WithAManifestNameThatDoesNotResolve_ShowsAWarningInOutput()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions
+        {
+            Transport = "tcp",
+            Host = "127.0.0.1",
+            TcpPort = 23,
+            ManifestName = "definitely-does-not-exist-" + Guid.NewGuid().ToString("N"),
+        };
+
+        TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+        {
+            StringAssert.Contains(parts.Output.Text, "Warning:");
+        });
+
+        await session.CloseAsync();
+    }
+
+    [TestMethod]
     public async Task BuildWindow_RendersTitleAndSendPrompt()
     {
         var (session, _, presenter) = CreateSession();

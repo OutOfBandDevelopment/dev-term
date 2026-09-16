@@ -95,16 +95,32 @@ config being invalid.
 
 **Landed at a reduced scope, 2026-09-15**: both front ends now have a real "File > Device
 Profiles..." menu item (TUI: `TuiMode.BuildWindow`'s `MenuBar`, reusing `ConfigureMode.BuildWindow`
-as a nested modal; WPF: a new `DeviceProfilesWindow`) — but picking a profile **saves it as the
-untracked default (`appsettings.Local.json`) and asks for a restart**, rather than live-swapping
-the running session's transport as designed above. Live mid-session switching needs the DI-composed
-transport rebuilt (today built once, eagerly, in `Program.cs`/`App.xaml.cs`, before either front end
-even starts) — a bigger change than adding the menu itself, still not done. The TUI's menu also
-picked up a real Ctrl+Q shortcut while landing this (previously advertised in the title bar but
-never actually wired to anything) — see `docs/design/testing.md`'s TUI section and `CLAUDE.md`'s
-constraints list for what made both take more than expected: a `MenuItem`'s `Key`/`InputGestureText`
-argument only labels the shortcut for display in both Terminal.Gui and WPF, it doesn't register a
-live accelerator by itself.
+as a nested modal; WPF: a new `DeviceProfilesWindow`) — at first, picking a profile saved it as the
+untracked default (`appsettings.Local.json`) and asked for a restart rather than live-swapping the
+running session's transport as designed above (see the live-switching update further below for how
+this was later closed). The TUI's menu also picked up a real Ctrl+Q shortcut while landing this
+(previously advertised in the title bar but never actually wired to anything) — see
+`docs/design/testing.md`'s TUI section and `CLAUDE.md`'s constraints list for what made both take
+more than expected: a `MenuItem`'s `Key`/`InputGestureText` argument only labels the shortcut for
+display in both Terminal.Gui and WPF, it doesn't register a live accelerator by itself.
+
+**Live mid-session switching landed, 2026-09-15**: picking a profile now tears down the running
+session/transport and opens the picked one in place, no restart — closing the reduced-scope gap
+above. `DevTermSessionBuilder.Build(CliOptions)` (`DevTerm.Configuration`) composes a fresh
+`Session`+`IPresenter` pair through its own small throwaway `IServiceProvider`, built the exact same
+way `AddDevTermFrontEnd` composes the app's real, long-lived host — necessary because that host has
+no API to re-register a transport into itself once built, and is only ever built once, eagerly, in
+`Program.cs`/`App.xaml.cs`, before either front end starts. `MainWindow.SwitchProfileAsync` and a
+`SwitchProfileAsync` local function inside `TuiMode.BuildWindow` (Terminal.Gui has no object to hang
+an equivalent method on, so it's exposed via `TuiWindowParts` for tests instead) both: unsubscribe
+the old session's `Output` handler, close and dispose it, swap in the new session/presenter/options,
+resubscribe, then open the new session — reporting a connection failure the same way `Connect`/
+`ToggleConnectionAsync` already do, without reverting to the old (already-closed) session. The
+throwaway `IServiceProvider` itself is deliberately never disposed — see
+`DevTermSessionBuilder.Result`'s own doc comment for why that's safe (the transport it composed is
+already disposed directly by `Session.DisposeAsync`, and every transport's own `CloseAsync`/
+`DisposeAsync` already guards against being called twice), not an oversight. Verified end-to-end
+against a real local TCP loopback socket in both front ends — not yet against real hardware.
 
 **Also landed, same day**: a separate "File > Connect"/"Disconnect" menu item (a single item whose
 label flips, not two) in both front ends, closing or reopening the *same* `Session`/transport
@@ -179,8 +195,12 @@ about intent and `docs/user-guide/` is about how to use it.
 
 ## Open questions
 
-- Whether switching profiles mid-session (via the menu) should warn/confirm if a session is
-  actively connected, or just tear down and reconnect silently.
+- ~~Whether switching profiles mid-session (via the menu) should warn/confirm if a session is
+  actively connected, or just tear down and reconnect silently.~~ Resolved when live switching
+  landed (2026-09-15): tears down and reconnects silently, no confirmation prompt — matches
+  Connect/Disconnect's own no-confirmation precedent. Worth revisiting once the dirty-field-
+  confirmation Connection Editor backlog item (see `TODO.md`) lands, if the same "are you sure"
+  pattern should extend here too.
 - Whether the Configure screen and the menu should share one underlying "profile picker" component
   (a list + load action) rather than two separate implementations of the same idea — likely yes,
   worth designing that way from the start once actually built.

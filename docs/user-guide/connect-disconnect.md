@@ -1,10 +1,11 @@
 # Connecting and disconnecting without restarting
 
 **File > Connect/Disconnect** in the TUI and WPF toggles the *same* session/transport open or
-closed, without restarting the app or touching which profile is loaded — different from
+closed, without touching which profile is loaded — different from
 [Managing connection profiles](managing-profiles.md)'s Device Profiles menu, which switches to a
-different saved connection (and does need a restart). The CLI has no equivalent: it's a single
-session for the life of the process, Ctrl+C to end it.
+*different* saved connection entirely (also live, also no restart, just a different transport/
+device instead of the same one). The CLI has no equivalent: it's a single session for the life of
+the process, Ctrl+C to end it.
 
 ## TUI
 

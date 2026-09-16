@@ -71,7 +71,7 @@ public static class TuiMode
             Width = Dim.Fill(),
             Height = Dim.Fill(1),
             ReadOnly = true,
-            Text = string.Empty,
+            Text = ManifestNameWarning.For(cliOptions) ?? string.Empty,
         };
 
         var sendLabel = new Label
@@ -118,7 +118,7 @@ public static class TuiMode
                     if (configureParts.Result is { } chosen)
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
-                        AppendOutput($"Saved '{ConnectionDescription.For(chosen)}' as the default profile — restart dev-term to connect with it.");
+                        _ = SwitchProfileAsync(chosen);
                     }
                 }),
                 new MenuItem("_Quit", "Ctrl+Q", () => Application.RequestStop(), Key.Q.WithCtrl),
@@ -150,7 +150,77 @@ public static class TuiMode
         Application.KeyDown += quitOnCtrlQ;
         window.Disposing += (_, _) => Application.KeyDown -= quitOnCtrlQ;
 
-        session.Output += (_, presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
+        // A named handler, not an inline lambda, so SwitchProfileAsync below can unsubscribe it
+        // from the old session before subscribing it to the new one.
+        void OnSessionOutput(object? _, PresenterOutput presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
+        session.Output += OnSessionOutput;
+
+        // Tears down the current session/transport and opens a new one composed from
+        // newOptions - live, without restarting the app, unlike the save-as-default-and-ask-for-a-
+        // restart this replaced. Reassigns the session/presenter/cliOptions *parameters* directly
+        // (not a wrapper object) - every other closure in this method (sendField.KeyDown,
+        // connectMenuItem.Action, this same menu handler on a later invocation) reads those same
+        // captured parameters, so C#'s normal closure-over-a-shared-variable semantics means they
+        // all see the switch without needing to be individually re-wired. Must run under a real
+        // Application.Run() loop (RunWithLoop in tests, never RunHeadless) - it calls
+        // Application.Invoke like ToggleConnectionAsync below, which silently never flushes
+        // otherwise (see CLAUDE.md).
+        async Task<bool> SwitchProfileAsync(CliOptions newOptions)
+        {
+            DevTermSessionBuilder.Result built;
+            try
+            {
+                built = DevTermSessionBuilder.Build(newOptions);
+            }
+            catch (Exception ex)
+            {
+                AppendOutput($"Could not switch profile: {ex.Message}");
+                return false;
+            }
+
+            session.Output -= OnSessionOutput;
+            await session.CloseAsync();
+            await session.DisposeAsync();
+
+            session = built.Session;
+            presenter = built.Presenter;
+            cliOptions = newOptions;
+            session.Output += OnSessionOutput;
+
+            Application.Invoke(() =>
+            {
+                window.Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name})";
+                output.Text = string.Empty;
+            });
+
+            if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
+            {
+                AppendOutput(manifestWarning);
+            }
+
+            try
+            {
+                await session.OpenAsync();
+            }
+            catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+            {
+                AppendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
+                Application.Invoke(() =>
+                {
+                    connectMenuItem.Title = "_Connect";
+                    sendField.Enabled = false;
+                });
+                return false;
+            }
+
+            Application.Invoke(() =>
+            {
+                connectMenuItem.Title = "_Disconnect";
+                sendField.Enabled = presenter is IPresenterInput;
+            });
+            AppendOutput($"Switched to {ConnectionDescription.For(cliOptions)}.");
+            return true;
+        }
 
         sendField.KeyDown += (_, key) =>
         {
@@ -185,7 +255,7 @@ public static class TuiMode
 
         window.Add(menuBar, output, sendLabel, sendField);
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync);
     }
 
     /// <summary>
@@ -250,5 +320,5 @@ public static class TuiMode
     }
 }
 
-/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>.</summary>
-internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem);
+/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, or drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls).</summary>
+internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync);

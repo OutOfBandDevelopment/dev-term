@@ -111,10 +111,25 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   drive the view model directly without ever showing the window) — see CLAUDE.md's constraints list.
   203 tests across the solution now (199 pass by default).
 
-  **Still not built**: the warn-and-fall-back-to-default-presenter behavior for a `ManifestName`
-  that doesn't resolve (the resolution helper exists, nothing calls it yet), and live mid-session
-  profile *switching* (today's Device Profiles menu item saves as the default and asks for a
-  restart in both front ends, not a live transport swap).
+  **Update, 2026-09-15**: both remaining items above landed. `ManifestNameWarning.For(CliOptions)`
+  (new, `DevTerm.Configuration`) calls the existing `DevTermUserDataPaths.ResolveManifestDirectory`
+  resolution helper and returns a warning string when a set `ManifestName` doesn't resolve — wired
+  into all three front ends (`CliMode`'s startup banner, `TuiMode.BuildWindow`'s initial output
+  text, `MainWindow`'s constructor appending to `OutputList`), each showing the same message rather
+  than each front end resolving/formatting it separately. Live mid-session profile *switching* also
+  landed: new `DevTermSessionBuilder.Build(CliOptions)` composes a fresh `Session`+`IPresenter` pair
+  through its own small throwaway `IServiceProvider` (the same `AddDevTermFrontEnd` wiring the app's
+  real host uses, just built again for the new options — the running host has no API to
+  re-register a transport into itself). `MainWindow.SwitchProfileAsync`/a new `SwitchProfileAsync`
+  local function inside `TuiMode.BuildWindow` (exposed via `TuiWindowParts` for tests) both close +
+  dispose the old session, swap in the new one, and reopen it — the "File > Device Profiles..." menu
+  item now calls this instead of saving-as-default-and-asking-for-a-restart. Deliberately does *not*
+  dispose the throwaway `IServiceProvider` itself (see `DevTermSessionBuilder.Result`'s own doc
+  comment for why that's safe, not an oversight). Verified end-to-end against a real local TCP
+  loopback socket in both front ends (`DevTerm.Wpf.Tests.MainWindowSwitchProfileTests`,
+  `DevTerm.Console.Tests.TuiModeSwitchProfileTests`, both `INTEGRATION` — a real transport, not a
+  `FakeTransport`, since the builder always composes a real one) — not yet verified against real
+  hardware. 236 tests across the solution now (231 pass by default).
 
 - **Test automation for CLI/TUI/WPF + test categorization**, landed 2026-09-15 — see
   docs/design/testing.md. Every test class now carries `[TestCategory("UNIT"|"INTEGRATION"|"DEV-LOCAL")]`
@@ -166,7 +181,7 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   that transport's field group. `CliOptions` gained `[Category]`/`[DisplayName]` attributes
   documenting the same field groupings (metadata only, not yet consumed by the editor via
   reflection). New: [`docs/specs/`](docs/specs/README.md) — one spec per screen/flow
-  (`connection-editor.md` written; `tui-main-screen.md`/`wpf-main-window.md` still pending), the
+  (`connection-editor.md`, `tui-main-screen.md`, `wpf-main-window.md` all written), the
   precise field/action/state reference `docs/design/`/`docs/user-guide/` don't try to be. Also new:
   a `.claude/skills/docs-sync/` skill codifying the "update the spec/user-guide/changelog in the
   same change" workflow.
@@ -300,6 +315,43 @@ ordered against the rest.
   beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart
   recorder (1+ channels), and the vector/coordinate families x/y/z/h/s/v, x/y/h/s/v, r/theta,
   r/theta/h/s/v.
+- **Low priority: consolidate hand-coded settings forms onto `DevTerm.UiDefinitions`' own model,
+  driven by metadata on the model class itself, instead of maintaining separate ad-hoc forms per
+  screen.** Today there are two disconnected ways dev-term describes "a form": `DevTerm.UiDefinitions`'
+  `UiSection`/`UiControl` vocabulary (built for device manifests, not yet wired to any renderer),
+  and the `[Category]`/`[DisplayName]` `System.ComponentModel` attributes added to `CliOptions` this
+  session (pure documentation metadata today — nothing reads them). Meanwhile the Connection
+  Editor's actual fields are hand-built twice, once per front end (`ConfigureMode`'s Terminal.Gui
+  controls, `DeviceProfilesWindow`'s XAML), with no shared declarative source at all. The idea:
+  define a small set of attributes (reusing or extending `UiDefinitions`' existing control-kind
+  vocabulary — button/toggle/slider/numeric/choice/textField/indicator — rather than inventing a
+  second one) that can annotate *any* model's properties (`CliOptions` included), a reflection-based
+  generator that turns an annotated model into the same `UiDefinition` a device manifest already
+  produces, and exactly one render engine per front end (Terminal.Gui, WPF) that turns a
+  `UiDefinition` into real controls regardless of whether it came from a device manifest's JSON or
+  from reflecting over `CliOptions`. Design once, render everywhere — the render engine work this
+  unlocks is also the actual blocker on `UiDefinitions`' own "step one only" status and on the
+  device-manifest editor item above, so it isn't purely a Connection Editor cleanup. Real scope
+  questions before starting: whether `UiDefinition`'s current one-level-of-grouping shape (built
+  from device mockups, not a settings form) covers the Connection Editor's transport-conditional
+  field groups without extension, and whether the Connection Editor's existing
+  `ConnectionEditorViewModel`/`RelayCommand` binding layer sits *under* the render engine (rendered
+  controls still bind to the same view model) or gets subsumed by it.
+- **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
+  front ends.** Neither has any theme support today; both currently just take whatever colors their
+  framework defaults to. Two separate investigations before designing anything, per this project's
+  own "check before assuming" habit:
+  - **WPF**: .NET's newer Fluent theme for WPF (`ThemeMode` = Light/Dark/System) may already cover
+    light/dark for free on `net10.0-windows` — needs confirming against this project's actual TFM/
+    styles before assuming it's available, not assumed from memory of the feature's announcement.
+  - **TUI**: Terminal.Gui v2.5.0 has its own `Scheme`/`Attribute` system with real RGB colors (not
+    just 16 named ones — confirmed this session via `Cell.Attribute.Foreground`/`Background` while
+    building `TuiScreenshot`) and a `Color.Colors16`/`ColorName16` palette; check whether it already
+    ships swappable named schemes before building light/dark switching from scratch.
+  - **Custom profiles** (a user-defined named palette, not just a light/dark toggle) is the bigger
+    ask on top of either — likely wants its own saved-profile mechanism, possibly modeled on how
+    `ConnectionProfileStore` already saves/lists/loads named JSON files under `~/.dev-term/`, rather
+    than a new storage pattern.
 - A logger mode — capture every sent/received message with a direction prefix and a sequence
   number, for later review (not the same as the rendering-presenter export formats above).
 
