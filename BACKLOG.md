@@ -81,11 +81,9 @@ ordered against the rest.
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
-- **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entries
-  for what already landed from this list — serial fields, description, delete/refresh, overwrite
-  confirmation, dropdowns, grow/shrink list, dirty-field confirmation, double-click-to-load,
-  file-watcher auto-refresh, TUI Browse button + scrolling, serial-port/HID detected-device
-  pickers). Still open:
+- **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
+  for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
+  detail on each increment). Still open:
   - **A decimal/hex display toggle for HID Vendor/Product ID** — both fields (and the new "Detected
     devices" picker's underlying value) are decimal-only; Device Manager/vendor docs show hex.
   - **A long/short name for a detected serial port** — the new "Detected ports" picker lists short
