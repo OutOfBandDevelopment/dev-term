@@ -56,7 +56,7 @@ checking further:
   serial protocol at all; a fundamentally different integration path (P/Invoke against their C
   library) if ever pursued, out of scope for this proposal.
 - The already-verified **Tektronix 2230 (×2)** remains the one confirmed real oscilloscope target,
-  via its own pre-SCPI "codes" protocol, not SCPI — see the note in `TODO.md` about a
+  via its own pre-SCPI "codes" protocol, not SCPI — see the note in `BACKLOG.md` about a
   Tektronix-codes decoder proposal.
 
 ## Why SCPI fits the existing contracts cleanly

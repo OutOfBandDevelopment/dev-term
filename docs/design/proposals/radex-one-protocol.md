@@ -33,7 +33,7 @@ the already-built serial transport. That assumption was wrong — being HID mean
 HID" section — no VID/PID discovery, no report I/O, nothing implemented). So this proposal is now
 gated on a transport that doesn't exist yet, not just on decoder work. [SCPI](scpi-instrument-control.md)
 needs no new transport (serial + TCP already work) and is the better first target; see that
-proposal and the ordering note in `TODO.md`.
+proposal and the ordering note in `BACKLOG.md`.
 
 What's still true and still worth keeping about this protocol once the HID transport exists:
 

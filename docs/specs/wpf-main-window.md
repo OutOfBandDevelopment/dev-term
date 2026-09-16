@@ -57,6 +57,6 @@ menu — the WPF equivalent of the TUI's main screen.
 - **`OutputList` mixes device output and status/error lines** with no visual distinction — same as
   the TUI's output pane.
 - **Only one session per window/process** — see `docs/design/presenters.md`'s stateful-presenter
-  lifetime issue in `TODO.md`'s backlog.
+  lifetime issue in `BACKLOG.md`.
 - **The `Closing` reentrancy edge case above** hasn't been root-caused or fixed — only worked around
   in test automation by not exercising it.

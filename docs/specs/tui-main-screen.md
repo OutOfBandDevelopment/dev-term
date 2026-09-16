@@ -59,4 +59,4 @@ points:
 - **No visual indicator of connection state** beyond the `Send:` field's enabled/disabled look and
   the menu item's label — no status bar, no colored indicator.
 - **Only one session per process** — `docs/design/presenters.md`'s stateful-presenter-vs-DI-singleton
-  lifetime issue blocks multiple concurrent sessions in one TUI process (see `TODO.md`'s backlog).
+  lifetime issue blocks multiple concurrent sessions in one TUI process (see `BACKLOG.md`).

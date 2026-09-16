@@ -106,8 +106,9 @@ parser. `CliOptions` property names double as CLI flag names (case-insensitive).
 
 Full architecture/rationale, including what's designed but not yet built (dynamic plugin loading,
 protocol decoders, rendering presenters, device control modules, RFC 2217, UDP/HID/BLE transports,
-TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progress state:
-[`TODO.md`](TODO.md). Daily change log: `docs/changes/YYYY-MM-DD.md`.
+TUI, WPF): see [`docs/design/`](docs/design/README.md). Current in-progress state:
+[`TODO.md`](TODO.md); not-yet-started backlog/research: [`BACKLOG.md`](BACKLOG.md). Daily change
+log: `docs/changes/YYYY-MM-DD.md`.
 
 ## Testing
 

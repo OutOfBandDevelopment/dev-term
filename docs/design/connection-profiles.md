@@ -198,9 +198,9 @@ about intent and `docs/user-guide/` is about how to use it.
 - ~~Whether switching profiles mid-session (via the menu) should warn/confirm if a session is
   actively connected, or just tear down and reconnect silently.~~ Resolved when live switching
   landed (2026-09-15): tears down and reconnects silently, no confirmation prompt — matches
-  Connect/Disconnect's own no-confirmation precedent. Worth revisiting once the dirty-field-
-  confirmation Connection Editor backlog item (see `TODO.md`) lands, if the same "are you sure"
-  pattern should extend here too.
+  Connect/Disconnect's own no-confirmation precedent. Worth revisiting now that dirty-field
+  confirmation has landed (2026-09-16 — see `docs/changes/2026-09-16.md`), if the same "are you
+  sure" pattern should extend to mid-session profile switching too.
 - Whether the Configure screen and the menu should share one underlying "profile picker" component
   (a list + load action) rather than two separate implementations of the same idea — likely yes,
   worth designing that way from the start once actually built.

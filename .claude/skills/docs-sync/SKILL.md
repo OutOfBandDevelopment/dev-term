@@ -1,6 +1,6 @@
 ---
 name: docs-sync
-description: Use after any change to a dev-term UI screen, command/flag, or shared behavior (ConnectionEditorViewModel, TuiMode, MainWindow, CliOptions, transports/presenters) — keeps docs/specs, docs/user-guide (including real screenshots), CLAUDE.md, docs/design, TODO.md, and the daily changelog in sync with the code in the same change, instead of as a follow-up that never happens.
+description: Use after any change to a dev-term UI screen, command/flag, or shared behavior (ConnectionEditorViewModel, TuiMode, MainWindow, CliOptions, transports/presenters) — keeps docs/specs, docs/user-guide (including real screenshots), CLAUDE.md, docs/design, TODO.md, BACKLOG.md, and the daily changelog in sync with the code in the same change, instead of as a follow-up that never happens.
 ---
 
 # Keeping dev-term's docs aligned with its code
@@ -16,7 +16,8 @@ separate follow-up:
 | `CLAUDE.md` | Non-obvious constraints that will bite the next change if forgotten | You hit a real, non-googleable gotcha (an API restriction, a threading/lifecycle hazard, a serialization limitation) — verified empirically, not guessed |
 | `docs/design/*.md` | Why a feature exists, the shared architecture behind it | The architecture or rationale changes (new shared component, new cross-cutting concern) |
 | `docs/changes/YYYY-MM-DD.md` | Daily log of what was verified and how | Any non-trivial change, especially anything verified against real hardware |
-| `TODO.md` | Current backlog/in-progress state | A backlog item is finished, or a new one is identified |
+| `TODO.md` | Current in-progress state (active work only) | An in-progress item's status changes, or work starts on a new one |
+| `BACKLOG.md` | Not-yet-started backlog/research, kept out of `TODO.md` to keep it lean | A backlog item is finished (remove it, note it landed in `TODO.md`'s narrative), or a new one is identified |
 
 ## Screenshots are tests, not manual chores
 
@@ -56,7 +57,10 @@ When a screen's layout changes:
 5. If you hit a real gotcha while doing 1-2 (not a hypothetical one), add it to `CLAUDE.md`'s
    constraints list with what was verified and how.
 6. If the change is architectural (not just a screen tweak), update the relevant `docs/design/*.md`.
-7. Update `TODO.md`: move the finished item, add any new backlog items you deliberately deferred.
+7. Update `TODO.md`: record what landed in the relevant "In progress" item's narrative (a dated
+   `**Update, YYYY-MM-DD**:` paragraph, matching the existing style). Remove the finished item from
+   `BACKLOG.md` if it was tracked there; add any new backlog items you deliberately deferred to
+   `BACKLOG.md`, not `TODO.md`.
 8. Add an entry to today's `docs/changes/YYYY-MM-DD.md` (create it if it doesn't exist).
 9. Run the full test suite (`dotnet test`) before committing.
 

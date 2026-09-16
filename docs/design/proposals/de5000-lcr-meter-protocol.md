@@ -44,7 +44,7 @@ This isn't "plug in a cable" — three link-layer hops sit between the meter and
    connected via a direct wired IR-to-USB adapter instead.
 
 This means the proposal is gated on the **BLE Serial transport** (backlog, cross-platform,
-adapter-seam design already decided) being built first — see `TODO.md`. Unlike Radex One (gated on
+adapter-seam design already decided) being built first — see `BACKLOG.md`. Unlike Radex One (gated on
 a transport not yet designed in any real detail) and Favero (gated on hardware access that's gone),
 this one is gated on a transport that's already scoped and has real target hardware pushing for it.
 
