@@ -27,9 +27,17 @@
                 <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top">
                     <Button Content="Load" Padding="8,2" Margin="0,0,0,4" Command="{Binding LoadCommand}" />
                     <Button Content="Delete" Padding="8,2" Margin="0,0,0,4" Command="{Binding DeleteCommand}" />
-                    <Button Content="Refresh" Padding="8,2" Command="{Binding RefreshCommand}" />
+                    <Button Content="Refresh" Padding="8,2" Margin="0,0,0,4" Command="{Binding RefreshCommand}" />
+                    <Button Content="Export Selected" Padding="8,2" Margin="0,0,0,4" Command="{Binding ExportSelectedProfilesCommand}" />
+                    <Button Content="Export All" Padding="8,2" Command="{Binding ExportAllProfilesCommand}" />
                 </StackPanel>
-                <ListBox x:Name="ProfilesList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}" Margin="0,0,8,0">
+                <!-- SelectionMode="Extended" (ctrl/shift-click, like Explorer) is what "Export Selected"
+                     needs - ListBox.SelectedItems has no dependency property of its own to bind
+                     two-way in pure XAML, so SelectionChanged pushes it into the view model's
+                     SelectedProfileNames from code-behind instead (see DeviceProfilesWindow.xaml.cs).
+                     SelectedItem stays bound as before - Load/Delete only ever act on one profile. -->
+                <ListBox x:Name="ProfilesList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}"
+                         SelectionMode="Extended" SelectionChanged="ProfilesList_SelectionChanged" Margin="0,0,8,0">
                     <ListBox.InputBindings>
                         <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />
                     </ListBox.InputBindings>

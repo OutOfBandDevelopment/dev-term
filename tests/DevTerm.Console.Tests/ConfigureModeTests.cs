@@ -500,6 +500,119 @@ public sealed class ConfigureModeTests
     }
 
     [TestMethod]
+    public void ExportSelectedButton_WithNothingMarked_ShowsStatusMessage()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                parts.PathField.Text = Path.Combine(directory, "export.zip");
+                Click(parts.ExportSelectedButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Select one or more saved profiles");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ExportSelectedButton_WithAMarkedProfile_ExportsOnlyThatProfileAsAZip()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+
+            RunHeadless(new CliOptions(), null, store, parts =>
+            {
+                // MarkUnmarkSelectedItem is the same marking mechanism the real SPACE key drives
+                // (confirmed against the installed Terminal.Gui v2.5.0 package's ListView docs) -
+                // driving it directly here rather than via key injection for the same reliability
+                // reason PageDown_ScrollsToRevealControlsBelowTheFold uses Application.RaiseKeyDownEvent
+                // instead of TuiTestRunner.PressKey.
+                // Profiles list alphabetical (see ConnectionProfileStore.List): "other" then "tek2230".
+                parts.ProfilesList.SelectedItem = 1;
+                parts.ProfilesList.MarkUnmarkSelectedItem();
+
+                var zipPath = Path.Combine(directory, "export.zip");
+                parts.PathField.Text = zipPath;
+                Click(parts.ExportSelectedButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Exported 1 profile(s)");
+                Assert.IsTrue(File.Exists(zipPath));
+
+                var importStore = new ConnectionProfileStore(CreateTempProfilesDirectory());
+                var result = importStore.ImportZip(zipPath);
+                Assert.AreEqual(1, result.Imported);
+                CollectionAssert.AreEqual(new[] { "tek2230" }, importStore.List().ToArray());
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ExportAllButton_ExportsEveryProfileRegardlessOfMarks()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+
+            RunHeadless(new CliOptions(), null, store, parts =>
+            {
+                var zipPath = Path.Combine(directory, "all.zip");
+                parts.PathField.Text = zipPath;
+                Click(parts.ExportAllButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Exported 2 profile(s)");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportButton_ZipPath_ImportsProfilesAndRefreshesTheList()
+    {
+        var sourceDirectory = CreateTempProfilesDirectory();
+        var destDirectory = CreateTempProfilesDirectory();
+        try
+        {
+            var source = new ConnectionProfileStore(sourceDirectory);
+            source.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var zipPath = Path.Combine(sourceDirectory, "export.zip");
+            source.ExportZip(zipPath, ["tek2230"]);
+
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(destDirectory), parts =>
+            {
+                parts.PathField.Text = zipPath;
+                Click(parts.ImportButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Imported 1 profile(s)");
+                Assert.Contains("tek2230", parts.ViewModel.Profiles);
+            });
+        }
+        finally
+        {
+            Directory.Delete(sourceDirectory, recursive: true);
+            Directory.Delete(destDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void DetectPortButton_IsWiredNextToThePortField()
     {
         // Same "structural, never actually click it" convention as BrowseButton_IsWiredNextToThePathField

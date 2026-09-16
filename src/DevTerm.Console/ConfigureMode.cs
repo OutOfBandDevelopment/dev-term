@@ -98,7 +98,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 36;
+        const int ContentHeight = 38;
         var formContent = new View
         {
             X = 0,
@@ -124,6 +124,15 @@ public static class ConfigureMode
             Y = Pos.Bottom(profilesLabel),
             Width = 30,
             Height = 4,
+
+            // Marking (checkbox-style, since MarkMultiple = true) is what makes "Export Selected"
+            // below mean anything - checked directly against the installed Terminal.Gui v2.5.0
+            // package that ListWrapper<T> (what SetSource below builds) already implements
+            // IsMarked/SetMark itself, so this is the only wiring multi-select needs; the SPACE key
+            // toggles a mark regardless of ShowMarks, per that property's own doc comment - ShowMarks
+            // just adds the visible checkbox glyph so a user can tell which rows are marked.
+            MarkMultiple = true,
+            ShowMarks = true,
         };
         profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
 
@@ -131,7 +140,13 @@ public static class ConfigureMode
         var deleteButton = new Button { X = Pos.Right(loadButton) + 1, Y = Pos.Top(profilesList), Text = "Delete" };
         var refreshButton = new Button { X = Pos.Right(deleteButton) + 1, Y = Pos.Top(profilesList), Text = "Refresh" };
 
-        var transportLabel = new Label { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Transport:" };
+        // Own row below the list rather than crowding onto the Load/Delete/Refresh row - the same
+        // "doesn't fit an 80-column window without clipping" reasoning already applied to
+        // Browse/Import/Export/Save As below.
+        var exportSelectedButton = new Button { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Export Selected" };
+        var exportAllButton = new Button { X = Pos.Right(exportSelectedButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Export All" };
+
+        var transportLabel = new Label { X = 0, Y = Pos.Bottom(exportSelectedButton) + 1, Text = "Transport:" };
         var transportSelector = new OptionSelector<TransportChoice>
         {
             X = Pos.Right(transportLabel) + 1,
@@ -215,6 +230,8 @@ public static class ConfigureMode
             LoadButton = loadButton,
             DeleteButton = deleteButton,
             RefreshButton = refreshButton,
+            ExportSelectedButton = exportSelectedButton,
+            ExportAllButton = exportAllButton,
             TransportSelector = transportSelector,
             DescriptionField = descriptionField,
             PortField = portField,
@@ -312,6 +329,13 @@ public static class ConfigureMode
             MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
         viewModel.ConfirmDiscardChanges = () =>
             MessageBox.Query(Application.Instance!, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
+        viewModel.ResolveZipImportConflict = name =>
+            MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists.", ["Replace", "Rename", "Skip"]) switch
+            {
+                1 => ZipImportConflictResolution.Rename,
+                2 => ZipImportConflictResolution.Skip,
+                _ => ZipImportConflictResolution.Replace,
+            };
 
         // The watcher fires on a background thread - Application.Invoke marshals onto the UI loop
         // thread (needs a real Application.Run() loop actively pumping to ever flush - see
@@ -553,6 +577,39 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        // Reads marks directly off profilesList rather than tracking them as marks change (there's
+        // no Terminal.Gui event for that - marking is driven by ListView's own SPACE-key command
+        // binding) - the same "copy into the view model right before the button's own command runs"
+        // pattern SelectProfileIntoViewModel already uses for the single-select case above.
+        void PushMarkedProfilesIntoViewModel()
+        {
+            viewModel.SelectedProfileNames.Clear();
+            foreach (var index in profilesList.GetAllMarkedItems())
+            {
+                if (index >= 0 && index < viewModel.Profiles.Count)
+                {
+                    viewModel.SelectedProfileNames.Add(viewModel.Profiles[index]);
+                }
+            }
+        }
+
+        exportSelectedButton.Accepting += (_, e) =>
+        {
+            PushFieldsIntoViewModel();
+            PushMarkedProfilesIntoViewModel();
+            viewModel.ExportSelectedProfilesCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
+        exportAllButton.Accepting += (_, e) =>
+        {
+            PushFieldsIntoViewModel();
+            viewModel.ExportAllProfilesCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
         connectButton.Accepting += (_, e) =>
         {
             PushFieldsIntoViewModel();
@@ -581,6 +638,7 @@ public static class ConfigureMode
 
         formContent.Add(
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
+            exportSelectedButton, exportAllButton,
             transportLabel, transportSelector,
             descriptionLabel, descriptionField,
             portLabel, portField, detectPortButton, baudLabel, baudField,
@@ -668,6 +726,10 @@ internal sealed class ConfigureWindowParts
     public required Button DeleteButton { get; init; }
 
     public required Button RefreshButton { get; init; }
+
+    public required Button ExportSelectedButton { get; init; }
+
+    public required Button ExportAllButton { get; init; }
 
     public required OptionSelector<ConfigureMode.TransportChoice> TransportSelector { get; init; }
 

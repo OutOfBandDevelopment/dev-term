@@ -37,17 +37,37 @@ handy for Export specifically, since Browse alone would otherwise mean hand-typi
   saved profile uses, just as a standalone file instead of going into `~/.dev-term/profiles`. Handy
   for handing a working connection to someone else, or backing one up outside the profiles folder.
 - **Import** reads that JSON back into the fields — it does **not** save it as a profile by itself;
-  review the fields, then Save if you want to keep it.
+  review the fields, then Save if you want to keep it. Pointing it at a `.zip` file instead (see
+  below) imports straight into the profiles folder rather than into the fields.
 
 A missing or malformed file reports an error in the status line rather than throwing.
 
+## Exporting/importing several profiles at once as a zip
+
+The saved-profiles list supports selecting more than one row: click-drag or ctrl/shift-click in
+WPF, or press SPACE on a row in the TUI (a checkmark shows which rows are marked). With one or more
+selected:
+
+- **Export Selected** writes just those profiles to the Import/export path as a single `.zip` (one
+  `{name}.json` per profile).
+- **Export All** does the same for every saved profile, regardless of what's selected.
+
+Importing a `.zip` (via Import, same button as a single-file JSON import — it's detected by the
+`.zip` extension) writes every profile it contains straight into `~/.dev-term/profiles`, refreshing
+the list. If an incoming name already matches a saved profile, both front ends ask what to do —
+**Replace** the existing one, **Rename** the incoming one (e.g. `name (2)`), or **Skip** it — once
+per conflicting name.
+
 ## What's not built yet
 
-Two Architect Notes items are still open, worth knowing if you're looking for them:
+A few Architect Notes items are still open, worth knowing if you're looking for them:
 
-- **Exporting several profiles at once** as a single zip, with per-name conflict handling on import
-  (ignore/rename/replace/replace-all) — today it's strictly one profile per file.
-- **Deleting** is per-profile via the Delete button shown above — there's no bulk delete.
+- **Bulk delete** — Delete is still per-profile via the button shown above, even though the list now
+  supports multi-select for Export Selected.
+- **A wholesale "delete all existing profiles, then import everything"** shortcut for a zip import
+  with several conflicts — today only the per-name Replace/Rename/Skip choice exists.
+- **Multi-select Presenter** and **per-input-line parser selection** — both need their own design
+  pass before they're built; see `docs/specs/connection-editor.md`'s Open items.
 
-See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full
-list, including a decimal/hex display toggle and multi-select presenters.
+See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full,
+prioritized list.

@@ -42,8 +42,8 @@ Shown in two situations:
 | Presenter | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | `hex` | n/a (fixed set, every presenter `AddTextPresenters` registers) | Single-select today — see Open items |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
-| Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | Same file, same JSON shape, for both directions |
-| Saved profiles | list, one name per saved profile | populated from `ConnectionProfileStore.List()` at construction | n/a | Double-clicking a row loads it — same as selecting it and pressing Load, not a separate action |
+| Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | A single-profile JSON path for Import/Export, or a `.zip` path (detected by extension) for Import/Export Selected/Export All — see Actions |
+| Saved profiles | list, one name per saved profile, multi-select | populated from `ConnectionProfileStore.List()` at construction | n/a | Double-clicking a row loads it — same as selecting it and pressing Load, not a separate action. Multiple rows can be marked/selected at once — see Export Selected below — independent of the single-item selection Load/Delete use |
 
 ## Actions
 
@@ -55,8 +55,10 @@ Shown in two situations:
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
 | **Delete** | Deletes the selected saved profile; refreshes the list; clears the selection | A profile must be selected | "Select a profile first." |
 | **Refresh** | Re-reads the profiles directory (picks up a profile saved by another process, e.g. the other front end) | None | n/a — mostly redundant now that a real `FileSystemWatcher` does this automatically (see States), kept as a manual fallback |
-| **Import** | Reads a `CliOptions`-shaped JSON file at the given path into the fields — does **not** save it as a profile by itself, review then Save | Path must be non-empty | "Could not import '{path}': {message}" — a missing/malformed file doesn't throw, it reports and leaves fields untouched |
+| **Import** | If the path ends in `.zip`, imports every `*.json` entry straight into the profile store (see Export Selected/Export All) and refreshes the list — does **not** load anything into the fields. Otherwise, reads a single `CliOptions`-shaped JSON file at the given path into the fields — does **not** save it as a profile by itself, review then Save | Path must be non-empty | "Could not import '{path}': {message}" — a missing/malformed file doesn't throw, it reports and leaves fields untouched |
 | **Export** | Validates the current fields; writes them to the given path as JSON (same shape a saved profile uses) | Path must be non-empty; fields must validate | Validation message |
+| **Export Selected** | Writes every profile marked/selected in the saved-profiles list to the given path as a single zip (one `{name}.json` entry per profile, the exact bytes already on disk, not a re-serialized round trip) | Path must be non-empty; at least one profile must be marked/selected | "Select one or more saved profiles to export first." / the underlying I/O exception's message |
+| **Export All** | Same as Export Selected, but always writes every saved profile regardless of what's marked/selected | Path must be non-empty | Same as Export Selected |
 
 ## States
 
@@ -166,21 +168,45 @@ Shown in two situations:
   subscribes `profilesList.Accepting` to the same local `LoadSelectedProfile()` function the Load
   button's own `Accepting` handler calls — one shared code path, not a duplicated one.
 
+- **Export Selected's multi-select is a separate collection from the single-item `SelectedProfileName`
+  Load/Delete use** (`ConnectionEditorViewModel.SelectedProfileNames`, a plain `ObservableCollection<string>`
+  each front end populates itself, since neither front end's list control notifies the view model
+  live as marks/selection change). WPF's `ListBox` uses `SelectionMode="Extended"` (ctrl/shift-click)
+  with a code-behind `SelectionChanged` handler mirroring `SelectedItems` into it — `ListBox.SelectedItems`
+  has no dependency property of its own to bind two-way in pure XAML, the one other code-behind
+  exception besides the native file dialogs. The TUI's `ListView` uses `MarkMultiple`/`ShowMarks`
+  (checkbox-style marks, SPACE to toggle — confirmed against the installed Terminal.Gui v2.5.0
+  package that `ListWrapper<T>`, what `SetSource` builds, already implements the `IsMarked`/`SetMark`
+  storage needed) with no live-sync event at all; `ConfigureMode` just reads `GetAllMarkedItems()`
+  right before the Export Selected button's own command runs, the same "copy into the view model
+  right before the command executes" pattern already used for the single-item case.
+- **A zip import's per-name conflict resolution is a `Func<string, ZipImportConflictResolution>`
+  hook** (`ConnectionEditorViewModel.ResolveZipImportConflict`), called once per name already in the
+  store — same "front end supplies a native dialog, view model has no UI dependency" shape as
+  `ConfirmOverwrite`/`ConfirmDiscardChanges`. WPF maps a three-way `MessageBox.Show` (Yes/No/Cancel)
+  onto Replace/Rename/Skip; the TUI maps a three-button `MessageBox.Query` the same way. Left
+  unwired (e.g. in a test), every conflict defaults to Replace, matching the existing "proceed
+  without asking" convention for the other two confirmation hooks.
+
 ## Open items
 
-Requested but not yet built, in the order they came up:
+Requested but not yet built, prioritized 2026-09-16:
 
-- **A long/short name for a detected serial port.** The "Detected ports" picker lists whatever
-  `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every platform — no
-  cross-platform equivalent of Windows' WMI-based friendly name (`"USB Serial Device (COM3)"`) was
-  wired up, to avoid a Windows-only code path in an otherwise cross-platform discovery.
 - **Multi-select Presenter.** Today it's single-select, even though the underlying `Pipeline`
   already supports fanning bytes out to multiple presenters at once — `CliOptions.Presenter` itself
   would need to become a list, which also touches `AddDevTermFrontEnd`'s single-presenter lookup and
   raises a real design question for the send path (which presenter encodes a typed line for sending,
   if more than one is active). Needs its own design pass, not a quick UI change.
-- **Export-selected/export-all as a single zip, with per-name import conflict resolution**
-  (ignore/rename/replace per profile, or "delete all and replace" wholesale). Today import/export is
-  one profile, one JSON file, no conflict handling beyond the single-profile Save overwrite prompt —
-  a real, larger feature (multi-select in the profiles list, zip creation/extraction, a conflict-
-  resolution UI), not implemented yet.
+- **Per-input-line parser selection**, with a default supplied by the connection profile. Needs its
+  own design clarification — no "parser" concept distinct from a presenter exists in the codebase yet.
+- **Lower priority: a long/short name for a detected serial port.** The "Detected ports" picker
+  lists whatever `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every
+  platform — no cross-platform equivalent of Windows' WMI-based friendly name
+  (`"USB Serial Device (COM3)"`) was wired up, to avoid a Windows-only code path in an otherwise
+  cross-platform discovery.
+- **Bulk profile removal** — Delete is still per-profile even though the saved-profiles list now
+  supports multi-select (added for Export Selected, see Actions/per-front-end notes below); there's
+  no "Delete Selected" yet.
+- A "delete all existing profiles, then import everything" wholesale alternative to Import's
+  per-name conflict resolution (see per-front-end notes below) — today only the per-name Skip/
+  Rename/Replace choice exists.

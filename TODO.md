@@ -50,16 +50,19 @@ Completed work is logged by date under `docs/changes/`.
   `FileSystemWatcher` for saved-list auto-refresh; a TUI file picker (Browse...) and a scrollable
   TUI form; "type it or pick from what's attached" pickers for the serial port and HID
   vendor/product ID; a decimal/hex display toggle for HID Vendor/Product ID (a separate `*Display`
-  property per field, so the canonical value stays decimal regardless of what's currently shown);
-  and, most recently, a "Save As..." button (a real `SaveDialog`/`SaveFileDialog`) next to Browse,
-  so exporting to a brand-new filename no longer means hand-typing it. Test automation for CLI/TUI/WPF
-  (including Terminal.Gui's own headless testing API) and a `[TestCategory]` coding standard, both
-  prerequisites for landing the above with confidence, are also done — see
+  property per field, so the canonical value stays decimal regardless of what's currently shown); a
+  "Save As..." button (a real `SaveDialog`/`SaveFileDialog`) next to Browse, so exporting to a
+  brand-new filename no longer means hand-typing it; and, most recently, multi-select in the
+  saved-profiles list (WPF `ListBox.SelectionMode="Extended"`, the TUI `ListView`'s own
+  `MarkMultiple`/`ShowMarks`) plus Export Selected/Export All (a zip, one `{name}.json` per profile)
+  and zip-aware Import with per-name Replace/Rename/Skip conflict resolution. Test automation for
+  CLI/TUI/WPF (including Terminal.Gui's own headless testing API) and a `[TestCategory]` coding
+  standard, both prerequisites for landing the above with confidence, are also done — see
   `docs/design/testing.md`/`docs/coding-standards.md`.
 
-  Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a long/short name for a detected serial
-  port, export-selected/export-all as a zip with per-name import conflict resolution, multi-select
-  Presenter, and per-input-line parser selection.
+  Still open (see [`BACKLOG.md`](BACKLOG.md) for detail), prioritized 2026-09-16: multi-select
+  Presenter, per-input-line parser selection, bulk profile removal now that multi-select exists, and
+  (lower priority) a long/short name for a detected serial port.
 
 ## Backlog / research
 

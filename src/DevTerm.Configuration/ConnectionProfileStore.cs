@@ -1,6 +1,23 @@
+using System.IO.Compression;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration;
+
+/// <summary>How <see cref="ConnectionProfileStore.ImportZip"/> handles a zip entry whose name already matches a saved profile.</summary>
+public enum ZipImportConflictResolution
+{
+    /// <summary>Leave the existing profile alone; don't import this entry.</summary>
+    Skip,
+
+    /// <summary>Import this entry under a new, non-conflicting name (e.g. <c>"name (2)"</c>).</summary>
+    Rename,
+
+    /// <summary>Overwrite the existing profile with this entry.</summary>
+    Replace,
+}
+
+/// <summary>Counts from a completed <see cref="ConnectionProfileStore.ImportZip"/> call, for a front end's summary status message.</summary>
+public readonly record struct ZipImportResult(int Imported, int Skipped, int Renamed);
 
 /// <summary>
 /// Saves/lists/loads named connection profiles — <see cref="CliOptions"/>-shaped JSON files under
@@ -67,6 +84,97 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
     /// <summary>Writes <paramref name="options"/> to <paramref name="path"/> as a standalone JSON file, the same shape <see cref="Save"/> writes under a profile name — for exporting/sharing a profile outside <see cref="DevTermUserDataPaths.ProfilesDirectory"/>.</summary>
     public static void ExportToFile(string path, CliOptions options) =>
         File.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
+
+    /// <summary>
+    /// Writes several saved profiles to a single zip file at <paramref name="zipPath"/>, one
+    /// <c>{name}.json</c> entry per name — the exact bytes already on disk, not a re-serialized
+    /// round trip, so exporting doesn't reformat a profile someone else hand-edited. For "export
+    /// selected"/"export all" from a front end's multi-select profiles list; see
+    /// <see cref="ConnectionEditorViewModel.SelectedProfileNames"/>.
+    /// </summary>
+    public void ExportZip(string zipPath, IEnumerable<string> names)
+    {
+        if (File.Exists(zipPath))
+        {
+            // ZipFile.Open(..., Create) throws if the file already exists - Export/Save As already
+            // let the user pick an existing filename to overwrite, same as the single-profile
+            // ExportToFile above (a plain unconditional File.WriteAllText).
+            File.Delete(zipPath);
+        }
+
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var name in names)
+        {
+            var path = GetPath(name);
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"No connection profile named '{name}' was found.", path);
+            }
+
+            archive.CreateEntryFromFile(path, $"{name}.json");
+        }
+    }
+
+    /// <summary>
+    /// Reads every <c>*.json</c> entry from a zip previously written by <see cref="ExportZip"/> (or
+    /// hand-built the same way) into this store, asking <paramref name="resolveConflict"/> what to
+    /// do whenever an entry's name already matches a saved profile. Left <see langword="null"/>,
+    /// every conflict resolves to <see cref="ZipImportConflictResolution.Replace"/> — same "proceed
+    /// without asking" convention as <see cref="ConnectionEditorViewModel.ConfirmOverwrite"/> when a
+    /// caller doesn't wire a real dialog (e.g. a test).
+    /// </summary>
+    public ZipImportResult ImportZip(string zipPath, Func<string, ZipImportConflictResolution>? resolveConflict = null)
+    {
+        Directory.CreateDirectory(_profilesDirectory);
+        var existing = new HashSet<string>(List(), StringComparer.OrdinalIgnoreCase);
+        var imported = 0;
+        var skipped = 0;
+        var renamed = 0;
+
+        using var archive = ZipFile.OpenRead(zipPath);
+        foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
+        {
+            var name = Path.GetFileNameWithoutExtension(entry.Name);
+            var targetName = name;
+
+            if (existing.Contains(name))
+            {
+                var resolution = resolveConflict?.Invoke(name) ?? ZipImportConflictResolution.Replace;
+                if (resolution == ZipImportConflictResolution.Skip)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                if (resolution == ZipImportConflictResolution.Rename)
+                {
+                    targetName = MakeUniqueName(name, existing);
+                    renamed++;
+                }
+            }
+
+            using var reader = new StreamReader(entry.Open());
+            File.WriteAllText(GetPath(targetName), reader.ReadToEnd());
+            existing.Add(targetName);
+            imported++;
+        }
+
+        return new ZipImportResult(imported, skipped, renamed);
+    }
+
+    private static string MakeUniqueName(string name, HashSet<string> existing)
+    {
+        var suffix = 2;
+        string candidate;
+        do
+        {
+            candidate = $"{name} ({suffix})";
+            suffix++;
+        }
+        while (existing.Contains(candidate));
+
+        return candidate;
+    }
 
     /// <returns><see langword="true"/> if a profile with that name existed and was deleted; <see langword="false"/> if there was nothing to delete.</returns>
     public bool Delete(string name)

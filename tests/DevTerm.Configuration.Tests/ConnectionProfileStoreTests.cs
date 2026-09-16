@@ -213,6 +213,127 @@ public sealed class ConnectionProfileStoreTests
         }
     }
 
+    [TestMethod]
+    public void ExportZip_ThenImportZip_RoundTripsSelectedProfilesOnly()
+    {
+        var sourceDirectory = CreateTempDirectory();
+        var destDirectory = CreateTempDirectory();
+        try
+        {
+            var source = new ConnectionProfileStore(sourceDirectory);
+            source.Save("alpha", BuildSerialOptions());
+            source.Save("beta", BuildSerialOptions());
+            source.Save("gamma", BuildSerialOptions());
+            var zipPath = Path.Combine(sourceDirectory, "export.zip");
+
+            source.ExportZip(zipPath, ["alpha", "beta"]);
+
+            var dest = new ConnectionProfileStore(destDirectory);
+            var result = dest.ImportZip(zipPath);
+
+            Assert.AreEqual(2, result.Imported);
+            Assert.AreEqual(0, result.Skipped);
+            Assert.AreEqual(0, result.Renamed);
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, dest.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(sourceDirectory, recursive: true);
+            Directory.Delete(destDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ExportZip_UnknownProfileName_Throws()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+
+            Assert.ThrowsExactly<FileNotFoundException>(() => store.ExportZip(Path.Combine(directory, "export.zip"), ["does-not-exist"]));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportZip_ConflictingName_DefaultsToReplaceWhenNoResolverGiven()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "serial", Port = "COM9" });
+            var zipPath = Path.Combine(directory, "export.zip");
+            store.ExportZip(zipPath, ["tek2230"]);
+            store.Save("tek2230", new CliOptions { Transport = "serial", Port = "COM1" }); // changed after export
+
+            var result = store.ImportZip(zipPath);
+
+            Assert.AreEqual(1, result.Imported);
+            Assert.AreEqual(0, result.Skipped);
+            Assert.AreEqual(0, result.Renamed);
+            Assert.AreEqual("COM9", store.Load("tek2230").Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportZip_ConflictingName_SkipsWhenResolverSaysSkip()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "serial", Port = "COM9" });
+            var zipPath = Path.Combine(directory, "export.zip");
+            store.ExportZip(zipPath, ["tek2230"]);
+            store.Save("tek2230", new CliOptions { Transport = "serial", Port = "COM1" });
+
+            var result = store.ImportZip(zipPath, _ => ZipImportConflictResolution.Skip);
+
+            Assert.AreEqual(0, result.Imported);
+            Assert.AreEqual(1, result.Skipped);
+            Assert.AreEqual(0, result.Renamed);
+            Assert.AreEqual("COM1", store.Load("tek2230").Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportZip_ConflictingName_RenamesWhenResolverSaysRename()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "serial", Port = "COM9" });
+            var zipPath = Path.Combine(directory, "export.zip");
+            store.ExportZip(zipPath, ["tek2230"]);
+
+            var result = store.ImportZip(zipPath, _ => ZipImportConflictResolution.Rename);
+
+            Assert.AreEqual(1, result.Imported);
+            Assert.AreEqual(0, result.Skipped);
+            Assert.AreEqual(1, result.Renamed);
+            CollectionAssert.AreEqual(new[] { "tek2230", "tek2230 (2)" }, store.List().ToArray());
+            Assert.AreEqual("COM9", store.Load("tek2230 (2)").Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-profile-tests", Path.GetRandomFileName());

@@ -84,17 +84,25 @@ ordered against the rest.
 - **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
   for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
   detail on each increment). Still open:
-  - **A long/short name for a detected serial port** — the new "Detected ports" picker lists short
-    names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly name is wired up.
-  - **Export-selected/export-all as a zip**, with per-name import conflict resolution
-    (ignore/rename/replace, or delete-all-and-replace) and bulk profile removal — today
-    import/export is one profile, one JSON file at a time; Delete is per-profile. Needs multi-select
-    in the profiles list plus zip creation/extraction, not a small UI tweak.
+  Prioritized per direction given 2026-09-16, with the serial-port naming item moved to lower
+  priority. ~~Export-selected/export-all as a zip~~ landed 2026-09-16: multi-select in the profiles
+  list (WPF `ListBox.SelectionMode="Extended"`, TUI `ListView.MarkMultiple`/`ShowMarks`), Export
+  Selected/Export All (one `{name}.json` per profile in a zip), and zip-aware Import with per-name
+  Replace/Rename/Skip conflict resolution (`ConnectionEditorViewModel.ResolveZipImportConflict`) —
+  see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Still open from that item:
+  a "delete all existing profiles, then import everything" wholesale alternative to per-name
+  conflict resolution, and bulk profile removal (see below).
   - **Multi-select Presenter** — today it's single-select even though `Pipeline` already fans bytes
     out to multiple presenters; `CliOptions.Presenter` would need to become a list, which also
     raises a real design question for the send path (which presenter encodes a typed line, if more
     than one is active). Needs its own design pass.
-  - **Per-input-line parser selection**, with a default supplied by the connection profile.
+  - **Per-input-line parser selection**, with a default supplied by the connection profile. Needs
+    its own design clarification — no "parser" concept distinct from presenters exists yet.
+  - **Bulk profile removal** — Delete is still per-profile even though the profiles list now
+    supports multi-select (added for Export Selected above); there's no "Delete Selected" yet.
+  - **Lower priority: a long/short name for a detected serial port** — the "Detected ports" picker
+    lists short names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly
+    name is wired up.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
     connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
     IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.

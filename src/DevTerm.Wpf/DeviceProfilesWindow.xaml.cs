@@ -43,6 +43,19 @@ public partial class DeviceProfilesWindow : Window
             "dev-term",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        // Yes/No/Cancel maps naturally onto the three resolutions without a custom dialog: Yes
+        // overwrites, No keeps both (renamed), Cancel leaves the existing profile untouched.
+        ViewModel.ResolveZipImportConflict = name => MessageBox.Show(
+            this,
+            $"A profile named '{name}' already exists. Replace it? (No renames the imported copy, Cancel skips it.)",
+            "dev-term",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning) switch
+        {
+            MessageBoxResult.No => ZipImportConflictResolution.Rename,
+            MessageBoxResult.Cancel => ZipImportConflictResolution.Skip,
+            _ => ZipImportConflictResolution.Replace,
+        };
         // Covers both the "Close" button (IsCancel="True", no ViewModel command of its own) and
         // pressing Escape - WPF triggers an IsCancel button's click for Escape by default, and
         // either way ends up here via Window.Close(). Doesn't affect the Connect path above:
@@ -76,6 +89,21 @@ public partial class DeviceProfilesWindow : Window
             {
             }
         };
+    }
+
+    // ListBox.SelectedItems has no dependency property of its own to bind two-way in pure XAML
+    // (see the ProfilesList comment in the .xaml) - this just mirrors it into the view model's
+    // plain ObservableCollection, which ExportSelectedProfilesCommand reads from.
+    private void ProfilesList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        ViewModel.SelectedProfileNames.Clear();
+        foreach (var item in ProfilesList.SelectedItems)
+        {
+            if (item is string name)
+            {
+                ViewModel.SelectedProfileNames.Add(name);
+            }
+        }
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)

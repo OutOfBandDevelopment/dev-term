@@ -6,18 +6,18 @@
 │                                                                             █│
 │                                                                             █│
 │                                                                             █│
+│⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖                                         █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                         █│
+│                                                                             █│
 │Transport: ◉ Serial  ○ Tcp  ○ Hid                                            █│
 │                                                                             █│
 │Description: Tektronix 2230 bench scope                                      █│
-│                                                                             █│
-│Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600                        █│
-│                          ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                     █│
-│Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             █│
+│                                                                             ░│
+│Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600                        ░│
+│                          ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                     ░│
+│Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             ░│
 │                                                                             ░│
 │Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                              ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│

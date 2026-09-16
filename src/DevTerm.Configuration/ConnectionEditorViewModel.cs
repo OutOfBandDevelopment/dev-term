@@ -68,6 +68,19 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(HidProductIdDisplay),
     };
 
+    /// <summary>
+    /// Which saved profiles are checked in the profiles list, for <see cref="ExportSelectedProfilesCommand"/>
+    /// — a separate collection from <see cref="SelectedProfileName"/> (which stays single-item,
+    /// unchanged, since Load/Delete only ever operate on one profile at a time). Each front end
+    /// populates this itself from its own list control: WPF's <c>ListBox.SelectedItems</c>
+    /// (<c>SelectionMode="Extended"</c>) via a <c>SelectionChanged</c> handler, the TUI's
+    /// <c>ListView.GetAllMarkedItems()</c> (<c>MarkMultiple = true</c>) read once right before the
+    /// export button's own handler runs — plain mutation, not itself a tracked edit (see
+    /// <see cref="NonDirtyProperties"/>' comment on <see cref="SelectedProfileName"/>: this is the
+    /// same kind of transient UI state).
+    /// </summary>
+    public ObservableCollection<string> SelectedProfileNames { get; } = [];
+
     public ConnectionEditorViewModel(
         ConnectionProfileStore store,
         CliOptions initial,
@@ -90,6 +103,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         RefreshCommand = new RelayCommand(RefreshProfiles);
         ImportCommand = new RelayCommand(Import);
         ExportCommand = new RelayCommand(Export);
+        ExportSelectedProfilesCommand = new RelayCommand(() => ExportProfilesZip(SelectedProfileNames));
+        ExportAllProfilesCommand = new RelayCommand(() => ExportProfilesZip(Profiles));
 
         // Auto-refresh when a profile is added/removed/renamed on disk by another process (the
         // other front end, or the user editing ~/.dev-term/profiles by hand) — the manual Refresh
@@ -176,6 +191,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public ICommand ImportCommand { get; }
 
     public ICommand ExportCommand { get; }
+
+    /// <summary>Exports the profiles named in <see cref="SelectedProfileNames"/> as a single zip to <see cref="ImportExportPath"/>.</summary>
+    public ICommand ExportSelectedProfilesCommand { get; }
+
+    /// <summary>Exports every saved profile as a single zip to <see cref="ImportExportPath"/>, regardless of <see cref="SelectedProfileNames"/>.</summary>
+    public ICommand ExportAllProfilesCommand { get; }
 
     /// <summary>
     /// Set once <see cref="ConnectCommand"/> validates; <see langword="null"/> until then. What
@@ -453,6 +474,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public Func<bool>? ConfirmDiscardChanges { get; set; }
 
     /// <summary>
+    /// Set by each front end to show its own native conflict-resolution prompt when importing a zip
+    /// (<see cref="Import"/> dispatches to zip handling by <c>.zip</c> extension) and an entry's name
+    /// already matches a saved profile — called once per conflicting name. Left <see langword="null"/>,
+    /// every conflict resolves to <see cref="ZipImportConflictResolution.Replace"/>, same "proceed
+    /// without asking" convention as <see cref="ConfirmOverwrite"/>/<see cref="ConfirmDiscardChanges"/>.
+    /// </summary>
+    public Func<string, ZipImportConflictResolution>? ResolveZipImportConflict { get; set; }
+
+    /// <summary>
     /// Call before discarding whatever's currently unsaved in the fields — closing/quitting the
     /// editor, or loading a different profile over them (not before Connect, which already resets
     /// <see cref="IsDirty"/> itself on success — see its own doc comment, since Connect doesn't
@@ -644,11 +674,37 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             return;
         }
 
+        if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            ImportZip(path);
+            return;
+        }
+
         try
         {
             LoadIntoFields(ConnectionProfileStore.LoadFromFile(path));
             IsDirty = false;
             StatusMessage = $"Imported '{path}' — review the fields, then Save Profile to keep it.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not import '{path}': {ex.Message}";
+        }
+    }
+
+    // A zip holds several named profiles at once (see ExportProfilesZip) rather than one profile's
+    // fields to review - so, unlike a single-file Import above, this saves straight into the store
+    // and refreshes the list instead of loading into the on-screen fields.
+    private void ImportZip(string path)
+    {
+        try
+        {
+            var result = _store.ImportZip(path, ResolveZipImportConflict);
+            RefreshProfiles();
+            StatusMessage = $"Imported {result.Imported} profile(s) from '{path}'"
+                + (result.Renamed > 0 ? $", renamed {result.Renamed}" : string.Empty)
+                + (result.Skipped > 0 ? $", skipped {result.Skipped}" : string.Empty)
+                + ".";
         }
         catch (Exception ex)
         {
@@ -675,6 +731,32 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
         ConnectionProfileStore.ExportToFile(path, options);
         StatusMessage = $"Exported to '{path}'.";
+    }
+
+    private void ExportProfilesZip(IReadOnlyCollection<string> names)
+    {
+        var path = ImportExportPath.Trim();
+        if (path.Length == 0)
+        {
+            StatusMessage = "Type a file path to export to.";
+            return;
+        }
+
+        if (names.Count == 0)
+        {
+            StatusMessage = "Select one or more saved profiles to export first.";
+            return;
+        }
+
+        try
+        {
+            _store.ExportZip(path, names);
+            StatusMessage = $"Exported {names.Count} profile(s) to '{path}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not export to '{path}': {ex.Message}";
+        }
     }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

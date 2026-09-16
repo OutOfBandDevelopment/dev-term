@@ -192,6 +192,166 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void ExportSelectedProfilesCommand_ExportsOnlyTheNamedProfilesAsAZip()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.1",
+                TcpPort = "23",
+                SaveName = "alpha",
+            };
+            vm.SaveCommand.Execute(null);
+            vm.SaveName = "beta";
+            vm.SaveCommand.Execute(null);
+            vm.SaveName = "gamma";
+            vm.SaveCommand.Execute(null);
+
+            var zipPath = Path.Combine(directory, "export.zip");
+            vm.SelectedProfileNames.Add("alpha");
+            vm.SelectedProfileNames.Add("beta");
+            vm.ImportExportPath = zipPath;
+
+            vm.ExportSelectedProfilesCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Exported 2 profile(s)");
+            Assert.IsTrue(File.Exists(zipPath));
+
+            var importDirectory = CreateTempDirectory();
+            var importStore = new ConnectionProfileStore(importDirectory);
+            importStore.ImportZip(zipPath);
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ExportSelectedProfilesCommand_WithNothingSelected_SetsStatusMessage()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                ImportExportPath = Path.Combine(directory, "export.zip"),
+            };
+
+            vm.ExportSelectedProfilesCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Select one or more saved profiles");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ExportAllProfilesCommand_ExportsEveryProfileRegardlessOfSelection()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.1",
+                TcpPort = "23",
+                SaveName = "alpha",
+            };
+            vm.SaveCommand.Execute(null);
+            vm.SaveName = "beta";
+            vm.SaveCommand.Execute(null);
+
+            var zipPath = Path.Combine(directory, "all.zip");
+            vm.ImportExportPath = zipPath;
+
+            vm.ExportAllProfilesCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Exported 2 profile(s)");
+
+            var importDirectory = CreateTempDirectory();
+            var importStore = new ConnectionProfileStore(importDirectory);
+            importStore.ImportZip(zipPath);
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportCommand_ZipPath_ImportsIntoTheStoreAndRefreshesProfilesInsteadOfLoadingFields()
+    {
+        var sourceDirectory = CreateTempDirectory();
+        var destDirectory = CreateTempDirectory();
+        try
+        {
+            var source = new ConnectionProfileStore(sourceDirectory);
+            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var zipPath = Path.Combine(sourceDirectory, "export.zip");
+            source.ExportZip(zipPath, ["alpha"]);
+
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(destDirectory), new CliOptions { Transport = "serial" })
+            {
+                ImportExportPath = zipPath,
+            };
+
+            vm.ImportCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Imported 1 profile(s)");
+            Assert.Contains("alpha", vm.Profiles);
+            Assert.AreEqual("serial", vm.Transport, "A zip import saves straight into the store; it shouldn't load fields the way a single-profile JSON import does.");
+        }
+        finally
+        {
+            Directory.Delete(sourceDirectory, recursive: true);
+            Directory.Delete(destDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ImportCommand_ZipPath_WithConflict_AsksResolveZipImportConflict()
+    {
+        var sourceDirectory = CreateTempDirectory();
+        var destDirectory = CreateTempDirectory();
+        try
+        {
+            var source = new ConnectionProfileStore(sourceDirectory);
+            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var zipPath = Path.Combine(sourceDirectory, "export.zip");
+            source.ExportZip(zipPath, ["alpha"]);
+
+            var destStore = new ConnectionProfileStore(destDirectory);
+            destStore.Save("alpha", new CliOptions { Transport = "tcp", Host = "existing", TcpPort = 1 });
+            var vm = new ConnectionEditorViewModel(destStore, new CliOptions())
+            {
+                ImportExportPath = zipPath,
+                ResolveZipImportConflict = _ => ZipImportConflictResolution.Skip,
+            };
+
+            vm.ImportCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "skipped 1");
+            Assert.AreEqual("existing", destStore.Load("alpha").Host);
+        }
+        finally
+        {
+            Directory.Delete(sourceDirectory, recursive: true);
+            Directory.Delete(destDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ImportCommand_MissingFile_SetsStatusMessageWithoutThrowing()
     {
         var directory = CreateTempDirectory();
