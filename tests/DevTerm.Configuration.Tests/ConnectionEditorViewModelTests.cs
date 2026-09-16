@@ -587,6 +587,54 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SavingAProfileThroughAnotherStoreInstance_RaisesProfilesChangedExternally()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            using var raised = new ManualResetEventSlim(false);
+            vm.ProfilesChangedExternally += (_, _) => raised.Set();
+
+            // A second, independent ConnectionProfileStore instance pointed at the same directory —
+            // simulating the other front end (or a user editing the folder by hand) saving a
+            // profile while this editor is already open, not this same instance's own Save.
+            new ConnectionProfileStore(directory).Save("added-elsewhere", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+
+            Assert.IsTrue(raised.Wait(TimeSpan.FromSeconds(5)), "Expected the real FileSystemWatcher to notice a profile saved by a different store instance.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Dispose_StopsRaisingProfilesChangedExternally()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            var raisedAfterDispose = false;
+            vm.ProfilesChangedExternally += (_, _) => raisedAfterDispose = true;
+
+            vm.Dispose();
+            new ConnectionProfileStore(directory).Save("added-after-dispose", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+
+            // No good way to prove a negative deterministically against a real filesystem watcher,
+            // so this gives it a real moment to (incorrectly) fire before checking - matches the
+            // same real-watcher realism the test above needs, just inverted.
+            Thread.Sleep(500);
+            Assert.IsFalse(raisedAfterDispose, "A disposed view model's watcher should no longer be raising events.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConfirmClose_WhenDirtyAndNoHookWired_ProceedsWithoutAsking()
     {
         var directory = CreateTempDirectory();

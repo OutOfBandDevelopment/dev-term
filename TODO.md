@@ -226,6 +226,21 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   convention `ConfirmOverwrite` already needed). 249 tests across the solution now (244 pass by
   default).
 
+  **Update, 2026-09-16**: a real `FileSystemWatcher`-backed auto-refresh landed for the
+  saved-profiles list. `ConnectionEditorViewModel` (now `IDisposable`) watches
+  `ConnectionProfileStore.ProfilesDirectory` (new public property) and raises
+  `ProfilesChangedExternally` on add/remove/rename; each front end marshals that onto its own UI
+  thread and calls the same `RefreshCommand` the Refresh button does — the button itself stays as a
+  manual fallback. Found and fixed a real crash doing this, not just a test artifact: the watcher
+  fires on a background thread, and if that fires *after* `Application.Shutdown()` has already run
+  (confirmed via a real crash: the window's own profiles directory being deleted by test cleanup
+  after the window closed), `Application.Invoke` throws `NotInitializedException` uncaught on that
+  background thread — fatal to the whole process, not just one test, since nothing was there to
+  catch it. Fixed with a try/catch around the TUI's `Application.Invoke` call specifically for that
+  exception; a regression test reproduces the exact sequence (build a window, shut down the
+  Application, then trigger a real filesystem event) and confirmed stable across repeated runs. 258
+  tests across the solution now (253 pass by default).
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -319,7 +334,6 @@ ordered against the rest.
   - **HID vendor/product ID as comboboxes** enumerating real local devices (reuse
     `SystemHidDeviceDiscovery`, same as `--listhiddevices`) while still allowing a typed custom
     value, plus a decimal/hex display toggle — today both are plain decimal-only text fields.
-  - **A real file watcher on the profiles folder** — today's Refresh button is manual-only.
   - **TUI: wire up a file picker for the import/export path field**, and **make the editor's
     content scroll** when it doesn't fit the terminal — both confirmed possible (Terminal.Gui
     v2.5.0 ships `OpenDialog`/`SaveDialog`/`FileDialog` and real `ScrollBar` support), just not

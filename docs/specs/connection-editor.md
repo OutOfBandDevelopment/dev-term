@@ -53,7 +53,7 @@ Shown in two situations:
 | **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
 | **Delete** | Deletes the selected saved profile; refreshes the list; clears the selection | A profile must be selected | "Select a profile first." |
-| **Refresh** | Re-reads the profiles directory (picks up a profile saved by another process, e.g. the other front end) | None | n/a |
+| **Refresh** | Re-reads the profiles directory (picks up a profile saved by another process, e.g. the other front end) | None | n/a — mostly redundant now that a real `FileSystemWatcher` does this automatically (see States), kept as a manual fallback |
 | **Import** | Reads a `CliOptions`-shaped JSON file at the given path into the fields — does **not** save it as a profile by itself, review then Save | Path must be non-empty | "Could not import '{path}': {message}" — a missing/malformed file doesn't throw, it reports and leaves fields untouched |
 | **Export** | Validates the current fields; writes them to the given path as JSON (same shape a saved profile uses) | Path must be non-empty; fields must validate | Validation message |
 
@@ -66,6 +66,14 @@ Shown in two situations:
 - **Status message**: a single line (`StatusMessage`) shows the most recent action's result or a
   validation failure — success and failure share the same field, there's no separate "error" vs.
   "info" styling today (WPF renders it in dark red regardless).
+- **Saved-profiles list auto-refreshes**: a real `FileSystemWatcher` on the profiles directory
+  (`ConnectionEditorViewModel`'s constructor) raises `ProfilesChangedExternally` whenever a profile
+  is added/removed/renamed on disk by anything other than this view model instance — the other
+  front end, or a user editing `~/.dev-term/profiles` by hand. Each front end marshals that onto its
+  own UI thread and calls the same `RefreshCommand` the Refresh button does. Disposed when the
+  editor closes (`IDisposable`); if the watcher can't be created at all (e.g. a permissions problem
+  on the profiles directory), the editor still works, just without auto-refresh — the manual Refresh
+  button always works regardless.
 - **Dirty tracking**: `IsDirty` flips true the moment any field changes (Transport, Port, Baud, ...
   — everything except `StatusMessage`/`SelectedProfileName`/the `Is*Transport` flags themselves) and
   clears on a successful Load, Save, Connect, or Import. Close/Quit and Load both check it via
@@ -132,8 +140,6 @@ Requested but not yet built, in the order they came up:
   one profile, one JSON file, no conflict handling beyond the single-profile Save overwrite prompt —
   a real, larger feature (multi-select in the profiles list, zip creation/extraction, a conflict-
   resolution UI), not implemented yet.
-- **Profiles-folder auto-refresh.** Only a manual Refresh button today; no `FileSystemWatcher` on
-  `~/.dev-term/profiles`.
 - **A TUI file-picker for the import/export path.** Terminal.Gui v2.5.0 has real file dialogs
   (`OpenDialog`/`SaveDialog`) — confirmed to exist, not yet wired to the TUI's path field.
 - **Scrolling for a short terminal.** The TUI's form can be taller than a small terminal window —

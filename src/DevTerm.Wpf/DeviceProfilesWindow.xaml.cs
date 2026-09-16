@@ -55,6 +55,10 @@ public partial class DeviceProfilesWindow : Window
                 e.Cancel = true;
             }
         };
+        // The watcher fires on a background thread - Dispatcher.BeginInvoke marshals onto the UI
+        // thread before touching the (data-bound) Profiles collection or anything else.
+        ViewModel.ProfilesChangedExternally += (_, _) => Dispatcher.BeginInvoke(() => ViewModel.RefreshCommand.Execute(null));
+        Closed += (_, _) => ViewModel.Dispose();
         ViewModel.CloseRequested += (_, _) =>
         {
             try

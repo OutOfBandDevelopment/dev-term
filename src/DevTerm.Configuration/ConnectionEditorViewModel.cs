@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -15,11 +16,12 @@ namespace DevTerm.Configuration;
 /// and business logic itself (connect/load/save/import/export) lives here exactly once. See
 /// docs/design/connection-profiles.md.
 /// </summary>
-public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
+public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly CliOptionsValidator Validator = new();
 
     private readonly ConnectionProfileStore _store;
+    private readonly FileSystemWatcher? _profilesWatcher;
 
     private string _transport = "serial";
     private string _port = string.Empty;
@@ -70,10 +72,47 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         RefreshCommand = new RelayCommand(RefreshProfiles);
         ImportCommand = new RelayCommand(Import);
         ExportCommand = new RelayCommand(Export);
+
+        // Auto-refresh when a profile is added/removed/renamed on disk by another process (the
+        // other front end, or the user editing ~/.dev-term/profiles by hand) — the manual Refresh
+        // button/command above still exists for anyone who doesn't trust the watcher. Directory.CreateDirectory
+        // first since FileSystemWatcher throws immediately if the directory doesn't exist yet (a
+        // fresh install with no profiles saved yet). Events fire on a background thread, which
+        // neither front end's UI can touch directly, so this only raises ProfilesChangedExternally
+        // — each front end marshals onto its own UI thread before actually calling RefreshCommand.
+        try
+        {
+            Directory.CreateDirectory(store.ProfilesDirectory);
+            _profilesWatcher = new FileSystemWatcher(store.ProfilesDirectory, "*.json")
+            {
+                NotifyFilter = NotifyFilters.FileName,
+                EnableRaisingEvents = true,
+            };
+            _profilesWatcher.Created += (_, _) => ProfilesChangedExternally?.Invoke(this, EventArgs.Empty);
+            _profilesWatcher.Deleted += (_, _) => ProfilesChangedExternally?.Invoke(this, EventArgs.Empty);
+            _profilesWatcher.Renamed += (_, _) => ProfilesChangedExternally?.Invoke(this, EventArgs.Empty);
+        }
+        catch (SystemException)
+        {
+            // A watcher is a nice-to-have, not essential — the manual Refresh button/command still
+            // works regardless. Don't fail editor construction over e.g. a permissions problem on
+            // the profiles directory.
+            _profilesWatcher = null;
+        }
     }
 
     /// <summary>Raised once <see cref="ConnectCommand"/> succeeds — see <see cref="Result"/> for what to do with it.</summary>
     public event EventHandler? CloseRequested;
+
+    /// <summary>
+    /// Raised (on a background thread — see the constructor) when a profile is added, removed, or
+    /// renamed on disk outside this view model, e.g. by the other front end or by hand. Each front
+    /// end subscribes and marshals onto its own UI thread before actually refreshing
+    /// (<see cref="RefreshCommand"/>) — this view model has no UI thread of its own to do that on.
+    /// </summary>
+    public event EventHandler? ProfilesChangedExternally;
+
+    public void Dispose() => _profilesWatcher?.Dispose();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

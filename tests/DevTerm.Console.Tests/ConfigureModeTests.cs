@@ -64,6 +64,46 @@ public sealed class ConfigureModeTests
     private static void Click(Button button) => button.InvokeCommand(Command.Accept);
 
     [TestMethod]
+    public void ProfilesChangedExternally_AfterApplicationShutdown_DoesNotCrashTheProcess()
+    {
+        // A real regression, not a hypothetical: a FileSystemWatcher event that fires (on its own
+        // background thread) after Application.Shutdown() has already run - e.g. the window closed
+        // and something touches the profiles directory a moment later - used to call
+        // Application.Invoke into a fully torn-down Application, throwing NotInitializedException
+        // uncaught on that background thread, which crashed the entire test host process rather
+        // than just failing one test (confirmed by watching it happen before this was fixed).
+        // There's no way to assert "no exception on a background thread" directly from here - the
+        // real proof is that this test, and every test after it in the same run, complete normally
+        // instead of the whole run aborting.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            Application.Init("dotnet");
+            try
+            {
+                var parts = ConfigureMode.BuildWindow(new CliOptions(), null, new ConnectionProfileStore(directory));
+                var token = Application.Begin(parts.Window);
+                Application.LayoutAndDraw(true);
+                Application.End(token);
+            }
+            finally
+            {
+                Application.Shutdown();
+            }
+
+            File.WriteAllText(Path.Combine(directory, "late.json"), "{}");
+
+            // Give the real, still-alive FileSystemWatcher a genuine moment to fire on its
+            // background thread before this test (and its temp-directory cleanup) moves on.
+            Thread.Sleep(500);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Connect_WithValidFields_ReturnsOptionsAndStopsTheLoop()
     {
         var directory = CreateTempProfilesDirectory();

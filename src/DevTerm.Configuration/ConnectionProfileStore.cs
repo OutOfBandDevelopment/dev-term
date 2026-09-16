@@ -12,6 +12,9 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 {
     private readonly string _profilesDirectory = profilesDirectory ?? DevTermUserDataPaths.ProfilesDirectory;
 
+    /// <summary>The directory this store saves/lists/loads/deletes profiles in — exposed so a caller can watch it directly (see <see cref="ConnectionEditorViewModel"/>'s file-watcher-backed auto-refresh) without duplicating the same default-directory logic.</summary>
+    public string ProfilesDirectory => _profilesDirectory;
+
     /// <summary>Names of every saved profile, alphabetical. Empty if the profiles directory doesn't exist yet.</summary>
     public IReadOnlyList<string> List()
     {

@@ -275,6 +275,32 @@ public static class ConfigureMode
         viewModel.ConfirmDiscardChanges = () =>
             MessageBox.Query(Application.Instance!, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
 
+        // The watcher fires on a background thread - Application.Invoke marshals onto the UI loop
+        // thread (needs a real Application.Run() loop actively pumping to ever flush - see
+        // CLAUDE.md - fine for real use, but means a test exercising this needs RunWithLoop, not
+        // RunHeadless). Wrapped in try/catch: found the hard way (crashed a real test run, not
+        // theoretical) that a queued FileSystemWatcher event can still fire after
+        // Application.Shutdown() has already run - e.g. this exact window's own profiles directory
+        // being deleted by test cleanup after the window closed - and Application.Invoke throws
+        // NotInitializedException rather than silently no-op-ing in that state, which is fatal on a
+        // background thread with nothing to catch it otherwise. Explicit disposal below still
+        // covers the normal case; this is the backstop for whatever timing gap let one through.
+        viewModel.ProfilesChangedExternally += (_, _) =>
+        {
+            try
+            {
+                Application.Invoke(() =>
+                {
+                    viewModel.RefreshCommand.Execute(null);
+                    PullFieldsFromViewModel();
+                });
+            }
+            catch (NotInitializedException)
+            {
+            }
+        };
+        window.Disposing += (_, _) => viewModel.Dispose();
+
         viewModel.CloseRequested += (_, _) =>
         {
             parts.Result = viewModel.Result;
