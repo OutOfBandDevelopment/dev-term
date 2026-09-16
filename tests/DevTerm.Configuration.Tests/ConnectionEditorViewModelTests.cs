@@ -1,3 +1,6 @@
+using DevTerm.Transports.Hid;
+using DevTerm.Transports.Serial;
+
 namespace DevTerm.Configuration.Tests;
 
 /// <summary>
@@ -643,6 +646,165 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions()) { Host = "192.168.0.108" };
 
             Assert.IsTrue(vm.ConfirmClose(), "Left null (e.g. in a test that doesn't wire a real dialog), a close should proceed rather than get stuck unable to ask.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private sealed class FakeSerialPortDiscovery(IReadOnlyList<string> portNames) : ISerialPortDiscovery
+    {
+        public IReadOnlyList<string> GetPortNames() => portNames;
+    }
+
+    private sealed class FailingSerialPortDiscovery : ISerialPortDiscovery
+    {
+        public IReadOnlyList<string> GetPortNames() => throw new IOException("simulated discovery failure");
+    }
+
+    private sealed class FakeHidDeviceDiscovery(IReadOnlyList<HidDeviceDescriptor> devices) : IHidDeviceDiscovery
+    {
+        public IReadOnlyList<HidDeviceDescriptor> GetDevices() => devices;
+    }
+
+    [TestMethod]
+    public void Constructor_PopulatesSerialPortOptionsFromDiscovery()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
+
+            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_WhenSerialPortDiscoveryThrows_LeavesSerialPortOptionsEmptyRatherThanFailingConstruction()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FailingSerialPortDiscovery());
+
+            Assert.IsEmpty(vm.SerialPortOptions);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedSerialPort_CopiesTheChoiceIntoPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]))
+            {
+                SelectedSerialPort = "COM7",
+            };
+
+            Assert.AreEqual("COM7", vm.Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedSerialPort_MarksTheEditorDirtyViaPort_ButIsNotItselfATrackedEdit()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3"]));
+
+            Assert.IsFalse(vm.IsDirty);
+            vm.SelectedSerialPort = "COM3";
+
+            Assert.IsTrue(vm.IsDirty, "Picking a port changes Port, which should count as an edit.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_PopulatesHidDeviceOptionsFromDiscovery_FormattedLikeListHidDevices()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", "0E6A395F3531")]));
+
+            Assert.HasCount(1, vm.HidDeviceOptions);
+            Assert.AreEqual("046D:C08B  G502 HERO Gaming Mouse", vm.HidDeviceOptions[0].Display);
+            Assert.AreEqual(0x046D, vm.HidDeviceOptions[0].VendorId);
+            Assert.AreEqual(0xC08B, vm.HidDeviceOptions[0].ProductId);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_HidDeviceWithNoProductName_DisplaysJustTheIds()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5502, null, null)]));
+
+            Assert.AreEqual("10CF:5502", vm.HidDeviceOptions[0].Display);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedHidDevice_CopiesVendorAndProductIdAsDecimal()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var device = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B);
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                SelectedHidDevice = device,
+            };
+
+            Assert.AreEqual(0x046D.ToString(), vm.HidVendorId);
+            Assert.AreEqual(0xC08B.ToString(), vm.HidProductId);
         }
         finally
         {

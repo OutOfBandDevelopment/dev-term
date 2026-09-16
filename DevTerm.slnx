@@ -12,6 +12,7 @@
     <Project Path="src/DevTerm.Wpf/DevTerm.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DevTerm.CodingStandards.Tests/DevTerm.CodingStandards.Tests.csproj" />
     <Project Path="tests/DevTerm.Configuration.Tests/DevTerm.Configuration.Tests.csproj" />
     <Project Path="tests/DevTerm.Console.Tests/DevTerm.Console.Tests.csproj" />
     <Project Path="tests/DevTerm.Core.Tests/DevTerm.Core.Tests.csproj" />

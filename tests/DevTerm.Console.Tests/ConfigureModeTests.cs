@@ -475,4 +475,43 @@ public sealed class ConfigureModeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void DetectPortButton_IsWiredNextToThePortField()
+    {
+        // Same "structural, never actually click it" convention as BrowseButton_IsWiredNextToThePathField
+        // above - this one opens a nested Application.Run(dialog) too (a plain Dialog+ListView
+        // picker, since Terminal.Gui has no built-in combobox - see docs/changes/2026-09-16.md).
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.AreEqual("Detect...", parts.DetectPortButton.Text);
+                Assert.IsNotNull(parts.DetectPortButton.SuperView);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DetectHidButton_IsWiredNextToTheHidIdFields()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.AreEqual("Detect...", parts.DetectHidButton.Text);
+                Assert.IsNotNull(parts.DetectHidButton.SuperView);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

@@ -243,6 +243,60 @@ public sealed class DeviceProfilesWindowTests
     }
 
     [TestMethod]
+    public void DetectedPortsComboBox_IsBoundToSerialPortOptionsAndSelectedSerialPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                Assert.AreSame(window.ViewModel.SerialPortOptions, window.DetectedPortsBox.ItemsSource);
+
+                window.ViewModel.SelectedSerialPort = "COM99";
+
+                Assert.AreEqual("COM99", window.PortBox.Text,
+                    "Picking a port through SelectedSerialPort should flow into Port and then the real, bound Port TextBox.");
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DetectedHidDevicesComboBox_IsBoundToHidDeviceOptionsAndSelectedHidDevice()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "hid" }) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                Assert.AreSame(window.ViewModel.HidDeviceOptions, window.DetectedHidDevicesBox.ItemsSource);
+
+                window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B);
+
+                Assert.AreEqual(0x046D.ToString(), window.HidVendorBox.Text);
+                Assert.AreEqual(0xC08B.ToString(), window.HidProductBox.Text);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConnectButton_Command_SetsResultAndClosesTheDialog()
     {
         var directory = CreateTempDirectory();

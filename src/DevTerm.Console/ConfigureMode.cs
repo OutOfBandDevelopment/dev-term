@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
+using System.Globalization;
 using System.IO.Ports;
 using DevTerm.Configuration;
 using Terminal.Gui.App;
@@ -145,7 +146,8 @@ public static class ConfigureMode
 
         var portLabel = new Label { X = 0, Y = Pos.Bottom(descriptionLabel) + 1, Text = "Serial port:" };
         var portField = new TextField { X = Pos.Right(portLabel) + 1, Y = Pos.Top(portLabel), Width = 12, Text = initial.Port ?? string.Empty };
-        var baudLabel = new Label { X = Pos.Right(portField) + 3, Y = Pos.Top(portLabel), Text = "Baud:" };
+        var detectPortButton = new Button { X = Pos.Right(portField) + 1, Y = Pos.Top(portLabel), Text = "Detect..." };
+        var baudLabel = new Label { X = Pos.Right(detectPortButton) + 3, Y = Pos.Top(portLabel), Text = "Baud:" };
         var baudField = new TextField { X = Pos.Right(baudLabel) + 1, Y = Pos.Top(portLabel), Width = 10, Text = initial.Baud.ToString() };
 
         var dataBitsLabel = new Label { X = 0, Y = Pos.Bottom(portLabel) + 1, Text = "Data bits:" };
@@ -166,6 +168,7 @@ public static class ConfigureMode
         var hidVendorField = new TextField { X = Pos.Right(hidVendorLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidVendorId.ToString() };
         var hidProductLabel = new Label { X = Pos.Right(hidVendorField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Product ID:" };
         var hidProductField = new TextField { X = Pos.Right(hidProductLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidProductId.ToString() };
+        var detectHidButton = new Button { X = Pos.Right(hidProductField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Detect..." };
 
         var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Presenter:" };
         var presenterSelector = new OptionSelector<PresenterChoice>
@@ -214,6 +217,7 @@ public static class ConfigureMode
             TransportSelector = transportSelector,
             DescriptionField = descriptionField,
             PortField = portField,
+            DetectPortButton = detectPortButton,
             BaudField = baudField,
             DataBitsField = dataBitsField,
             ParitySelector = paritySelector,
@@ -223,6 +227,7 @@ public static class ConfigureMode
             ListenCheckBox = listenCheckBox,
             HidVendorField = hidVendorField,
             HidProductField = hidProductField,
+            DetectHidButton = detectHidButton,
             PresenterSelector = presenterSelector,
             LineEndingSelector = lineEndingSelector,
             SaveNameField = saveNameField,
@@ -239,11 +244,11 @@ public static class ConfigureMode
         // groups at once regardless of selection was confusing (a real complaint, not a guess).
         void UpdateTransportVisibility(TransportChoice selected)
         {
-            portLabel.Visible = portField.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
+            portLabel.Visible = portField.Visible = detectPortButton.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
             dataBitsLabel.Visible = dataBitsField.Visible = parityLabel.Visible = paritySelector.Visible = selected == TransportChoice.Serial;
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
-            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = selected == TransportChoice.Hid;
+            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = selected == TransportChoice.Hid;
         }
 
         // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
@@ -418,6 +423,82 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        // A small nested modal picker for "type it yourself, or pick from what's actually attached"
+        // - the same Application.Run(dialog)/read-result-after pattern as OpenDialog above, built
+        // from a plain Dialog+ListView instead of a Terminal.Gui built-in since there's no built-in
+        // combobox widget (checked via reflection against the installed v2.5.0 package - see
+        // docs/changes/2026-09-16.md). Selecting a row is wired the same way double-click-to-load
+        // is above: ListView's own double-click maps to Command.Accept, raising the inherited
+        // Accepting event.
+        static string? PickFromList(string title, IReadOnlyList<string> items)
+        {
+            if (items.Count == 0)
+            {
+                MessageBox.Query(Application.Instance!, "dev-term", "Nothing was detected.", ["OK"]);
+                return null;
+            }
+
+            string? picked = null;
+            var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
+            var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
+            listView.SetSource(new ObservableCollection<string>(items));
+            listView.Accepting += (_, e) =>
+            {
+                if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
+                {
+                    picked = items[index];
+                }
+
+                e.Handled = true;
+                Application.RequestStop();
+            };
+            var selectButton = new Button { X = 0, Y = Pos.Bottom(listView), Text = "Select", IsDefault = true };
+            selectButton.Accepting += (_, e) =>
+            {
+                if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
+                {
+                    picked = items[index];
+                }
+
+                e.Handled = true;
+                Application.RequestStop();
+            };
+            var cancelButton = new Button { X = Pos.Right(selectButton) + 1, Y = Pos.Top(selectButton), Text = "Cancel" };
+            cancelButton.Accepting += (_, e) =>
+            {
+                e.Handled = true;
+                Application.RequestStop();
+            };
+            dialog.Add(listView, selectButton, cancelButton);
+            Application.Run(dialog);
+            return picked;
+        }
+
+        detectPortButton.Accepting += (_, e) =>
+        {
+            var choice = PickFromList("Detected serial ports", viewModel.SerialPortOptions);
+            if (choice is not null)
+            {
+                portField.Text = choice;
+            }
+
+            e.Handled = true;
+        };
+
+        detectHidButton.Accepting += (_, e) =>
+        {
+            var devices = viewModel.HidDeviceOptions;
+            var choice = PickFromList("Detected HID devices", [.. devices.Select(d => d.Display)]);
+            if (choice is not null)
+            {
+                var picked = devices.First(d => d.Display == choice);
+                hidVendorField.Text = picked.VendorId.ToString(CultureInfo.InvariantCulture);
+                hidProductField.Text = picked.ProductId.ToString(CultureInfo.InvariantCulture);
+            }
+
+            e.Handled = true;
+        };
+
         importButton.Accepting += (_, e) =>
         {
             PushFieldsIntoViewModel();
@@ -464,10 +545,10 @@ public static class ConfigureMode
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
             transportLabel, transportSelector,
             descriptionLabel, descriptionField,
-            portLabel, portField, baudLabel, baudField,
+            portLabel, portField, detectPortButton, baudLabel, baudField,
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            hidVendorLabel, hidVendorField, hidProductLabel, hidProductField,
+            hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton,
             presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton,
@@ -556,6 +637,8 @@ internal sealed class ConfigureWindowParts
 
     public required TextField PortField { get; init; }
 
+    public required Button DetectPortButton { get; init; }
+
     public required TextField BaudField { get; init; }
 
     public required TextField DataBitsField { get; init; }
@@ -573,6 +656,8 @@ internal sealed class ConfigureWindowParts
     public required TextField HidVendorField { get; init; }
 
     public required TextField HidProductField { get; init; }
+
+    public required Button DetectHidButton { get; init; }
 
     public required OptionSelector<ConfigureMode.PresenterChoice> PresenterSelector { get; init; }
 

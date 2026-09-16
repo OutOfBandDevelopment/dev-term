@@ -18,8 +18,8 @@
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
-│HID vendor ID (decimal): 4216         Product ID: 63560                      ░│
-│                                                                             ░│
+│HID vendor ID (decimal): 4216         Product ID: 63560        ⟦ Detect... ⟧▖░│
+│                                                               ▝▀▀▀▀▀▀▀▀▀▀▀▀▘░│
 │Presenter: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary              ░│
 │                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

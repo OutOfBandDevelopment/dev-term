@@ -63,7 +63,15 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Port:" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox x:Name="PortBox" Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Detected ports:" VerticalAlignment="Center" />
+                            <ComboBox x:Name="DetectedPortsBox" Grid.Column="1" ItemsSource="{Binding SerialPortOptions}" SelectedItem="{Binding SelectedSerialPort}" />
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
@@ -128,7 +136,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Vendor ID (decimal):" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="{Binding HidVendorId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox x:Name="HidVendorBox" Grid.Column="1" Text="{Binding HidVendorId, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
@@ -136,7 +144,15 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Product ID (decimal):" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="{Binding HidProductId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox x:Name="HidProductBox" Grid.Column="1" Text="{Binding HidProductId, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Detected devices:" VerticalAlignment="Center" />
+                            <ComboBox x:Name="DetectedHidDevicesBox" Grid.Column="1" ItemsSource="{Binding HidDeviceOptions}" DisplayMemberPath="Display" SelectedItem="{Binding SelectedHidDevice}" />
                         </Grid>
                     </StackPanel>
 

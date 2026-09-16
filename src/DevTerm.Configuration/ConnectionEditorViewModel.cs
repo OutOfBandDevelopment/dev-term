@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using DevTerm.Transports.Hid;
+using DevTerm.Transports.Serial;
 
 namespace DevTerm.Configuration;
 
@@ -42,6 +45,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _statusMessage = string.Empty;
     private string? _selectedProfileName;
     private bool _isDirty;
+    private string? _selectedSerialPort;
+    private HidDeviceOption? _selectedHidDevice;
 
     /// <summary>
     /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
@@ -55,12 +60,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsSerialTransport),
         nameof(IsTcpTransport),
         nameof(IsHidTransport),
+        nameof(SelectedSerialPort),
+        nameof(SelectedHidDevice),
     };
 
-    public ConnectionEditorViewModel(ConnectionProfileStore store, CliOptions initial, string? statusMessage = null)
+    public ConnectionEditorViewModel(
+        ConnectionProfileStore store,
+        CliOptions initial,
+        string? statusMessage = null,
+        ISerialPortDiscovery? serialPortDiscovery = null,
+        IHidDeviceDiscovery? hidDeviceDiscovery = null)
     {
         _store = store;
         StatusMessage = statusMessage ?? string.Empty;
+        SerialPortOptions = SafeDiscover(serialPortDiscovery ?? new SystemSerialPortDiscovery());
+        HidDeviceOptions = SafeDiscover(hidDeviceDiscovery ?? new SystemHidDeviceDiscovery());
         LoadIntoFields(initial);
         RefreshProfiles();
         IsDirty = false; // LoadIntoFields above marks every field it sets as dirty; a freshly-opened editor showing its starting configuration isn't actually dirty yet.
@@ -114,6 +128,33 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public void Dispose() => _profilesWatcher?.Dispose();
 
+    // Enumeration can fail on a locked-down machine (permissions, a driver quirk) - a picker list
+    // is a convenience, not something construction should fail over, the same reasoning already
+    // applied to the profiles-folder FileSystemWatcher above.
+    private static IReadOnlyList<string> SafeDiscover(ISerialPortDiscovery discovery)
+    {
+        try
+        {
+            return discovery.GetPortNames();
+        }
+        catch (SystemException)
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<HidDeviceOption> SafeDiscover(IHidDeviceDiscovery discovery)
+    {
+        try
+        {
+            return [.. discovery.GetDevices().Select(HidDeviceOption.FromDescriptor)];
+        }
+        catch (SystemException)
+        {
+            return [];
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<string> Profiles { get; } = [];
@@ -160,6 +201,18 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public IReadOnlyList<string> StopBitsOptions { get; } = Enum.GetNames<StopBits>();
 
+    /// <summary>
+    /// Serial ports actually attached to this machine right now (<see cref="ISerialPortDiscovery.GetPortNames"/>,
+    /// the same enumeration <c>--listports</c> uses), for a "pick from what's plugged in" combobox
+    /// next to <see cref="Port"/> — set once at construction, empty (not an error) if discovery fails
+    /// or nothing's attached. <see cref="Port"/> stays freely typable regardless; picking one here
+    /// just fills it in via <see cref="SelectedSerialPort"/>.
+    /// </summary>
+    public IReadOnlyList<string> SerialPortOptions { get; }
+
+    /// <summary>Same idea as <see cref="SerialPortOptions"/>, for real HID devices via <see cref="SelectedHidDevice"/>.</summary>
+    public IReadOnlyList<HidDeviceOption> HidDeviceOptions { get; }
+
     public string Transport
     {
         get => _transport;
@@ -190,6 +243,26 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public string Port { get => _port; set => SetField(ref _port, value); }
 
+    /// <summary>
+    /// Bound to a picker (WPF's editable "Known ports" combobox; the TUI's "Detect..." button) —
+    /// setting it copies the choice into <see cref="Port"/> and is otherwise not itself a tracked
+    /// edit (see <see cref="NonDirtyProperties"/>; <see cref="Port"/> changing is what actually
+    /// marks the editor dirty). <see langword="null"/> doesn't clear <see cref="Port"/> — it just
+    /// means nothing from the list is currently selected.
+    /// </summary>
+    public string? SelectedSerialPort
+    {
+        get => _selectedSerialPort;
+        set
+        {
+            SetField(ref _selectedSerialPort, value);
+            if (!string.IsNullOrEmpty(value))
+            {
+                Port = value;
+            }
+        }
+    }
+
     public string Baud { get => _baud; set => SetField(ref _baud, value); }
 
     public string DataBits { get => _dataBits; set => SetField(ref _dataBits, value); }
@@ -207,6 +280,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public string HidVendorId { get => _hidVendorId; set => SetField(ref _hidVendorId, value); }
 
     public string HidProductId { get => _hidProductId; set => SetField(ref _hidProductId, value); }
+
+    /// <summary>Same idea as <see cref="SelectedSerialPort"/>, for <see cref="HidVendorId"/>/<see cref="HidProductId"/> together.</summary>
+    public HidDeviceOption? SelectedHidDevice
+    {
+        get => _selectedHidDevice;
+        set
+        {
+            SetField(ref _selectedHidDevice, value);
+            if (value is not null)
+            {
+                HidVendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
+                HidProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
+            }
+        }
+    }
 
     public string Presenter { get => _presenter; set => SetField(ref _presenter, value); }
 

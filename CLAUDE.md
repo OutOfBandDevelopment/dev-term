@@ -111,14 +111,16 @@ TUI, WPF): see [`docs/design/`](docs/design/README.md). Current backlog/in-progr
 
 ## Testing
 
-Every test class carries a `[TestCategory]` — `UNIT` (fast, hardware-free, the default subset once
+Every test class carries a `[TestCategory]`, one of `UNIT` (fast, hardware-free, the default subset once
 a CI pipeline exists — includes `DevTerm.Console.Tests.TuiModeTests`, which drives a real
 `TuiMode` window headlessly via Terminal.Gui's own testing API), `INTEGRATION` (spawns a real
 process and/or a real local socket, but no real external hardware — see
 `DevTerm.Console.Tests.ConsoleAppCliTests`), or `DEV-LOCAL` (needs an actual physical device
 reachable from wherever the test runs — see `RealHardwareCliTests`/`RealHardwareMainWindowTests`,
 opt-in via `devterm.runsettings` at the repo root; without a settings file they report
-`Assert.Inconclusive`, not a failure). Full rationale, including two real WPF/async gotchas found
+`Assert.Inconclusive`, not a failure) — enforced, not just a convention: `tests/DevTerm.CodingStandards.Tests`
+reflects over every test assembly and fails on a class with no category, or an unrecognized one (see
+`docs/coding-standards.md`'s Testing section). Full rationale, including two real WPF/async gotchas found
 building the `DEV-LOCAL` WPF tests (a missing `DispatcherSynchronizationContext` sends `await`
 continuations to the wrong thread; showing a `MainWindow` that's already been connected manually
 double-opens the session and corrupts the single-reader `PipeReader`) and the two Terminal.Gui

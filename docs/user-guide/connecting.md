@@ -91,6 +91,15 @@ Filling in the fields and pressing **Connect** validates them and connects immed
 save a profile first (Save is for reusing the setup later; see
 [Managing connection profiles](managing-profiles.md)).
 
+### Picking a detected serial port or HID device
+
+Both the Serial port field and the HID Vendor/Product ID fields stay freely typable, but next to
+each is a way to pick from what's actually plugged in right now — WPF shows a second "Detected
+ports"/"Detected devices" dropdown; the TUI shows a "Detect..." button that opens a small list to
+pick from. Picking a HID device fills in both Vendor ID and Product ID together, since they identify
+one device. The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
+when the editor opens — nothing plugged in afterward shows up without reopening the editor.
+
 ### A TUI-specific limitation to know about
 
 Notice the TUI's TCP/HID captures above have blank rows where the Serial fields used to be:

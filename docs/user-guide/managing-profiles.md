@@ -49,4 +49,4 @@ Two Architect Notes items are still open, worth knowing if you're looking for th
 - **Deleting** is per-profile via the Delete button shown above — there's no bulk delete.
 
 See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full
-list, including HID vendor/product ID comboboxes and multi-select presenters.
+list, including a decimal/hex display toggle and multi-select presenters.

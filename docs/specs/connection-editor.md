@@ -28,7 +28,7 @@ Shown in two situations:
 |---|---|---|---|---|
 | Transport | one of `serial`/`tcp`/`hid` | `serial` | Must be one of the three | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
-| Port (serial) | free text | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0` |
+| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
 | Data bits (serial) | integer, typed as text | `8` | Same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
@@ -36,8 +36,8 @@ Shown in two situations:
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
-| Vendor ID (hid) | integer (decimal), typed as text | `0` | Required, 1–65535, when Transport is `hid` | Device Manager shows hex — see `CliOptions.HidVendorId`'s own doc comment for the conversion |
-| Product ID (hid) | integer (decimal), typed as text | `0` | Required, 1–65535, when Transport is `hid` | Same decimal-only caveat as Vendor ID |
+| Vendor ID (hid) | integer (decimal), typed as text, or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Device Manager shows hex — see `CliOptions.HidVendorId`'s own doc comment for the conversion; the list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"` |
+| Product ID (hid) | integer (decimal), typed as text, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same decimal-only caveat as Vendor ID |
 | Presenter | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | `hex` | n/a (fixed set, every presenter `AddTextPresenters` registers) | Single-select today — see Open items |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
@@ -127,6 +127,18 @@ Shown in two situations:
   `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
   same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges` hooks so the view model
   itself has no UI dependency.
+- **Detected-hardware pickers fill fields rather than binding directly to them**: `Port` and
+  `HidVendorId`/`HidProductId` stay plain, freely-typable fields; a separate `SelectedSerialPort`/
+  `SelectedHidDevice` property on the view model is what a picker actually binds to, and setting it
+  copies the choice into the real field(s) (`SelectedHidDevice` sets both Vendor and Product ID
+  together, since they identify one device). Deliberately not the same property, both to keep typing
+  a custom value simple and because a WPF editable `ComboBox`'s `Text` and `SelectedItem` don't share
+  one format cleanly once the display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the
+  plain decimal the field actually stores. WPF renders this as a second, non-editable `ComboBox`
+  ("Detected ports:"/"Detected devices:") next to the real field; the TUI renders it as a "Detect..."
+  button that opens a small modal picker (a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
+  Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
+  v2.5.0 package). Both are empty (not an error) if nothing's detected or discovery itself fails.
 - **Double-click-to-load is a pure command binding in WPF, an event handler calling the same
   command in the TUI**: WPF's `ListBox` has no XAML way to bind a routed mouse event directly to an
   `ICommand`, but it does support `<ListBox.InputBindings><MouseBinding MouseAction="LeftDoubleClick"
@@ -140,10 +152,15 @@ Shown in two situations:
 
 Requested but not yet built, in the order they came up:
 
-- **HID Vendor/Product ID as comboboxes** enumerating the real devices already connected to the
-  local machine (reusing `SystemHidDeviceDiscovery`, the same discovery `--listhiddevices` uses),
-  while still allowing a typed custom value, plus a decimal/hex display toggle. Today both are
-  plain decimal-only text fields.
+- **A decimal/hex display toggle for Vendor/Product ID.** The fields (and the new "Detected devices"
+  picker's underlying value) are decimal-only; Device Manager and most vendor documentation show hex,
+  so today's workaround is still doing that conversion by hand (see `CliOptions.HidVendorId`'s doc
+  comment) — the picker helps for a device that's actually plugged in, but not for typing one from a
+  datasheet.
+- **A long/short name for a detected serial port.** The "Detected ports" picker lists whatever
+  `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every platform — no
+  cross-platform equivalent of Windows' WMI-based friendly name (`"USB Serial Device (COM3)"`) was
+  wired up, to avoid a Windows-only code path in an otherwise cross-platform discovery.
 - **Multi-select Presenter.** Today it's single-select, even though the underlying `Pipeline`
   already supports fanning bytes out to multiple presenters at once — `CliOptions.Presenter` itself
   would need to become a list, which also touches `AddDevTermFrontEnd`'s single-presenter lookup and

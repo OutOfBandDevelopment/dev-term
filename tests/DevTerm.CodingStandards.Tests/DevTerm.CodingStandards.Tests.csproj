@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <!-- One reference per test project purely so this one can reflect over every other test
+       assembly (see TestCategoryStandardsTests) - net10.0-windows specifically so it can also
+       reference DevTerm.Wpf.Tests/DevTerm.Console.Tests, both already Windows-only themselves. -->
+  <ItemGroup>
+    <ProjectReference Include="..\DevTerm.Configuration.Tests\DevTerm.Configuration.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Console.Tests\DevTerm.Console.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Core.Tests\DevTerm.Core.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.DeviceManifests.Tests\DevTerm.DeviceManifests.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Presenters.Text.Tests\DevTerm.Presenters.Text.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Hid.Tests\DevTerm.Transports.Hid.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Serial.Tests\DevTerm.Transports.Serial.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Tcp.Tests\DevTerm.Transports.Tcp.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.UiDefinitions.Tests\DevTerm.UiDefinitions.Tests.csproj" />
+    <ProjectReference Include="..\DevTerm.Wpf.Tests\DevTerm.Wpf.Tests.csproj" />
+  </ItemGroup>
+
+</Project>

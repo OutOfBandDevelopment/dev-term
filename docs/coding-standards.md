@@ -15,10 +15,16 @@ in the same change; a rule that's only written down here but not enforced anywhe
   style rules actually surface as `dotnet build` warnings, not just IDE squiggles — matching
   `CLAUDE.md`'s existing "no separate lint step; `dotnet build` surfaces analyzer warnings"
   convention rather than adding a second one.
-- **A future `DevTerm.Analyzers` project** (not built yet) — for standards that are specific to this
-  codebase's own semantics and can't be expressed as a generic style rule (e.g. "every `ITransport`
-  implementation must no-op on an empty write, not throw" — see `CLAUDE.md`'s constraints list for
-  why that one matters). Added once an actual rule needs it, not speculatively.
+- **`tests/DevTerm.CodingStandards.Tests`** — a small MSTest project that reflects over every other
+  test assembly (via `ProjectReference`, not a Roslyn analyzer) to check standards `.editorconfig`
+  has no way to express, like "every `[TestClass]`/`[TestMethod]` has a real `[TestCategory]`" (see
+  Testing below) — a missing or typo'd category doesn't fail a build on its own (MSTest just silently
+  excludes that test from any `--filter TestCategory=...`), so nothing else catches it. Runs as part
+  of the ordinary `dotnet test`, no separate step.
+- **A future `DevTerm.Analyzers` project** (not built yet) — for standards that need a compile-time
+  check on ordinary source (not test metadata) and can't be expressed as a generic style rule (e.g.
+  "every `ITransport` implementation must no-op on an empty write, not throw" — see `CLAUDE.md`'s
+  constraints list for why that one matters). Added once an actual rule needs it, not speculatively.
 
 **Severities are `suggestion`/`warning`, essentially never `error`**, deliberately: this project's
 existing convention is that a warning is a real, worth-reading signal (see `CLAUDE.md`'s Terminal.Gui
@@ -82,6 +88,16 @@ standard below gets declared that StyleCop already knows how to check.
 - **`PascalCase`** for types, public/internal/protected members.
 - **`_camelCase`** (leading underscore) for private fields — matches every field in the codebase
   (`_session`, `_transport`, `_isDirty`, ...).
+
+### Testing
+
+- **Every `[TestClass]` carries a `[TestCategory]`** whose value is one of `UNIT`, `INTEGRATION`, or
+  `DEV-LOCAL` (see `CLAUDE.md`'s Testing section for what each means) — always at the class level in
+  this codebase, never per-method, so every test in a class shares one category. Enforced by
+  `tests/DevTerm.CodingStandards.Tests.TestCategoryStandardsTests`, which reflects over every test
+  assembly and fails if a class is missing one, uses an unrecognized value, or (checking what MSTest
+  actually resolves per test, class-level plus method-level combined) a method ends up with no
+  effective category at all.
 
 ## Adding a new standard
 

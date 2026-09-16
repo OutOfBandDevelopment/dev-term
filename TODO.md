@@ -267,6 +267,43 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   button/scroll mechanism actually works, and a narrower new Open item for the still-missing
   save-style export picker.
 
+  **Update, 2026-09-16**: Serial port and HID Vendor/Product ID both got a "type it, or pick from
+  what's actually attached" picker. `ConnectionEditorViewModel` gained `SerialPortOptions`
+  (`ISerialPortDiscovery.GetPortNames()`, the same enumeration `--listports` uses) and
+  `HidDeviceOptions` (`IHidDeviceDiscovery.GetDevices()`, same as `--listhiddevices`, formatted via
+  the new `HidDeviceOption` record as `"{VID:X4}:{PID:X4}  {ProductName}"`), both captured once at
+  construction and tolerant of discovery failing outright (empty list, not a construction failure —
+  same reasoning as the profiles-folder `FileSystemWatcher`). New `SelectedSerialPort`/
+  `SelectedHidDevice` properties copy a picked value into `Port`/`HidVendorId`+`HidProductId`
+  respectively, deliberately separate from those fields themselves (typing stays simple, and a WPF
+  editable combobox's `Text` doesn't share one format cleanly with a richer display string like
+  `"046D:C08B  G502 HERO Gaming Mouse"`). WPF renders the picker as a second, non-editable
+  `ComboBox` next to each field; the TUI adds a "Detect..." button that opens a small modal
+  `Dialog`+`ListView` picker (`Application.Run(dialog)`, same nested-modal pattern as the Browse
+  button's `OpenDialog` — Terminal.Gui has no built-in combobox widget). Decimal/hex display toggle
+  and a long/short serial-port name are still open — see `docs/specs/connection-editor.md`.
+
+  New tests: 9 in `ConnectionEditorViewModelTests` (discovery populating both lists, a failing
+  discovery leaving the list empty rather than failing construction, both `Selected*` properties
+  copying into the right field(s) and the dirty-tracking around that), 2 in
+  `DeviceProfilesWindowTests` (the WPF comboboxes are genuinely bound to the right properties), 2 in
+  `ConfigureModeTests` (the two Detect buttons exist and are wired — deliberately never clicked, same
+  "native/nested dialogs are exercised structurally" convention as `BrowseButton`'s own test).
+
+  **Update, 2026-09-16**: per direct feedback, "every `[TestMethod]` has a `[TestCategory]` of the
+  correct type" is now a declared, *enforced* coding standard, not just an already-true convention.
+  Enforcement couldn't be an `.editorconfig`/StyleCop rule (a missing or typo'd `[TestCategory]`
+  isn't a compile-time concern — MSTest just silently excludes that test from
+  `--filter TestCategory=...`, nothing else would ever catch it), so this is the first rule to reach
+  for a real code-level check instead: a new `tests/DevTerm.CodingStandards.Tests` project reflects
+  over every other test assembly (via `ProjectReference`, one per test project) and asserts every
+  `[TestClass]` carries a `[TestCategory]` from `{UNIT, INTEGRATION, DEV-LOCAL}`, and separately that
+  what MSTest actually resolves per test (class-level plus method-level combined) is never empty or
+  unrecognized. Verified the checks actually catch a violation, not just pass vacuously: temporarily
+  typo'd one class's category, confirmed both new tests failed with a clear message naming the exact
+  class/method, then reverted. `docs/coding-standards.md` gained a Testing section documenting the
+  rule; `CLAUDE.md`'s own Testing section now says this is enforced, not just conventional.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -345,9 +382,12 @@ ordered against the rest.
 - **Connection Editor, from the 2026-09-15 Architect Notes** (see the "Update, 2026-09-15"/
   "2026-09-16" entries above for what already landed from this list — serial fields, description,
   delete/refresh, overwrite confirmation, dropdowns, grow/shrink list, dirty-field confirmation,
-  double-click-to-load, file-watcher auto-refresh, TUI Browse button + scrolling). Still open:
-  - **Serial port as a combobox** — type anything, or pick from an enumerated list showing each
-    port's long and short name (today it's a plain text field).
+  double-click-to-load, file-watcher auto-refresh, TUI Browse button + scrolling, serial-port/HID
+  detected-device pickers). Still open:
+  - **A decimal/hex display toggle for HID Vendor/Product ID** — both fields (and the new "Detected
+    devices" picker's underlying value) are decimal-only; Device Manager/vendor docs show hex.
+  - **A long/short name for a detected serial port** — the new "Detected ports" picker lists short
+    names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly name is wired up.
   - **Export-selected/export-all as a zip**, with per-name import conflict resolution
     (ignore/rename/replace, or delete-all-and-replace) and bulk profile removal — today
     import/export is one profile, one JSON file at a time; Delete is per-profile. Needs multi-select
@@ -357,9 +397,6 @@ ordered against the rest.
     raises a real design question for the send path (which presenter encodes a typed line, if more
     than one is active). Needs its own design pass.
   - **Per-input-line parser selection**, with a default supplied by the connection profile.
-  - **HID vendor/product ID as comboboxes** enumerating real local devices (reuse
-    `SystemHidDeviceDiscovery`, same as `--listhiddevices`) while still allowing a typed custom
-    value, plus a decimal/hex display toggle — today both are plain decimal-only text fields.
   - **A save-style picker for a not-yet-existing export filename** — both front ends' Browse
     buttons use an open-style dialog (must pick an existing file) for both Import and Export.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
@@ -433,3 +470,10 @@ ordered against the rest.
 - A logger-playback mode (realtime/fast/slow/rewind/fast-forward/pause, plus trim/markup) for the
   logger-mode capture above — speculative, depends on logger mode existing first and on a concrete
   file format for the captured log, neither of which exist yet.
+  
+  ## From the Architect
+
+  - Window Title:
+    - When launched or set as a profile the title should be as : {App Name} - {Connection Profile}
+    - When launched or set as a configured connection : {App Name} - {Connection Definition | tcp://192.168.0.110:23 | serial://com3:4800,8,n,1 | hid://[vendor id].[product id].[instance id]}
+    - this should be bound so it is changed when the profile is changed from the device profiles screen
