@@ -1,0 +1,140 @@
+# Baseline coding standards for dev-term — see docs/coding-standards.md for the human-readable
+# version of these rules and the process for changing them. Severities are mostly `suggestion`/
+# `warning`, not `error`: nothing here should turn a currently-green build red on its own.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.cs]
+indent_size = 4
+
+[*.{xaml,xml,csproj,props,targets}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+##############################
+# C# language style — matches what's already consistently used across this codebase.
+##############################
+
+[*.cs]
+
+# var: prefer it whenever the type is obvious or built-in, matching existing usage throughout
+# (e.g. `var reader = ...`, `var options = new CliOptions { ... }`).
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# File-scoped namespaces everywhere (`namespace Foo.Bar;`, no braces) — used in every file in this
+# codebase already; this is the one rule in this baseline set to `warning` rather than
+# `suggestion`, since it's the most visible and easiest to enforce mechanically.
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Expression-bodied members for simple one-line accessors/properties/methods — matches e.g.
+# ConnectionEditorViewModel's `public string Port { get => _port; set => SetField(ref _port, value); }`
+# and the many `=>`-bodied read-only properties throughout.
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = when_on_single_line:suggestion
+
+# Braces always required, even for a single-statement if/for/while body — matches Session.cs and
+# every other file's existing usage; never the single-line `if (x) return;` style.
+csharp_prefer_braces = true:warning
+
+# Allman brace placement (opening brace on its own line) — the style used throughout already.
+csharp_new_line_before_open_brace = all
+
+# using directives: System.* first, then alphabetical, outside the namespace block, no blank line
+# separating groups — matches every file's existing usage.
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# `this.`/`Foo.` qualification: never required for fields/properties/methods accessed from within
+# their own class — matches existing usage (no `this.` prefix anywhere in the codebase).
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# Prefer `readonly` on a field that's never reassigned outside the constructor — matches the
+# `private readonly ITransport _transport;` style already used for fields that are genuinely fixed
+# after construction (fields that DO need to be reassigned later, e.g. MainWindow's `_session` for
+# live profile switching, are deliberately not `readonly` and this rule doesn't fight that).
+dotnet_style_readonly_field = true:suggestion
+
+# Modern C# patterns already used throughout (pattern matching, null-conditional, collection
+# expressions, primary constructors where they read better) — encouraged, not required.
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_prefer_null_check_over_type_check = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_prefer_collection_expression = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+
+##############################
+# Naming — matches existing usage throughout (PascalCase members, _camelCase private fields).
+##############################
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.camel_case_underscore_prefix.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore_prefix.required_prefix = _
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_fields.required_modifiers =
+
+dotnet_naming_symbols.public_members.applicable_kinds = class,struct,interface,enum,property,method,event,delegate
+dotnet_naming_symbols.public_members.applicable_accessibilities = public,internal,protected,protected_internal,private_protected
+
+dotnet_naming_rule.private_fields_underscore_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel_case.style = camel_case_underscore_prefix
+
+dotnet_naming_rule.public_members_pascal_case.severity = suggestion
+dotnet_naming_rule.public_members_pascal_case.symbols = public_members
+dotnet_naming_rule.public_members_pascal_case.style = pascal_case
+
+##############################
+# StyleCop.Analyzers — the package is referenced solution-wide (see Directory.Build.props), but
+# EVERY rule it ships starts OFF here, deliberately: a first real build against this codebase with
+# StyleCop's defaults produced ~1,800 warnings (1,396 of them SA1101 alone — "prefix local calls
+# with this", a style this codebase has never used), none of which reflect a standard anyone
+# actually declared. That's the opposite of a minimal baseline. Turn a specific rule on (one line,
+# `dotnet_diagnostic.SAxxxx.severity = warning`) only once a corresponding standard is written down
+# in docs/coding-standards.md — the two stay in lockstep, one rule at a time.
+##############################
+
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+
+# SA0001 is StyleCop's own "XML comment analysis is disabled" meta-warning, reported once per
+# project purely because the documentation-rules category above is off — not an actual finding.
+dotnet_diagnostic.SA0001.severity = none
+
+# A couple of individual rules that didn't fall under the category-level suppressions above for
+# whatever internal category-string reason — confirmed by an actual full rebuild, not guessed.
+dotnet_diagnostic.SA1516.severity = none

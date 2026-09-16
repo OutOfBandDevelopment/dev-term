@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    Applies to every project in the solution automatically (MSBuild convention — no per-csproj
+    edits needed). See docs/coding-standards.md for what this enforces and why.
+  -->
+
+  <PropertyGroup>
+    <!-- Makes the built-in .NET/Roslyn code-style analyzers (the ones .editorconfig's
+         csharp_style_*/dotnet_style_* keys configure) actually run and report during `dotnet build`,
+         not just in the IDE — matching CLAUDE.md's existing "dotnet build surfaces analyzer
+         warnings" convention rather than adding a second, separate lint step. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Analyzer diagnostics are warnings, not build-breaking errors, for this baseline — see
+         .editorconfig's own header comment for why. Flip specific rules to `error` severity in
+         .editorconfig once they're solid enough to actually block a build over. -->
+    <WarningsAsErrors />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- StyleCop.Analyzers: most of its rules are disabled via .editorconfig (see that file's own
+         comments) since they don't match this project's established conventions yet — enabled here
+         so new rules can be turned on incrementally, one at a time, as a standard is actually
+         declared for them, without a second round of per-project wiring. -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

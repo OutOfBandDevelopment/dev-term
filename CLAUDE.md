@@ -30,7 +30,12 @@ TUI instead of the scriptable REPL loop (useful interactively, but not what you 
 commands via a shell for a quick real-hardware check, which is what most of this file's examples
 are for). `--tui false` is equivalent to `--cli true`.
 
-There is no separate lint step; `dotnet build` surfaces analyzer warnings (MSTest analyzers included).
+There is no separate lint step; `dotnet build` surfaces analyzer warnings (MSTest analyzers, plus
+`.editorconfig`'s built-in Roslyn code-style rules and StyleCop.Analyzers — see
+[`docs/coding-standards.md`](docs/coding-standards.md) for what's actually declared/enforced and how
+to add a new rule). StyleCop itself starts with every rule silenced except what's explicitly turned
+on — it produced ~1,800 warnings against this codebase with its defaults, almost none of them a real
+standard anyone declared, so don't re-enable a whole category to "see what's there."
 
 A personal, untracked `appsettings.Local.json` next to `DevTerm.Console`'s output (copied there on
 build if present in `src/DevTerm.Console/`) holds a saved connection profile, so `dotnet run

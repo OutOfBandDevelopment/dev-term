@@ -41,6 +41,7 @@ completed work.
 - [Device control modules](docs/design/device-control-modules.md)
 - [Front ends (console CLI/TUI + WPF GUI)](docs/design/frontends.md)
 - [Platform, hosting & configuration](docs/design/platform.md)
+- [Coding standards](docs/coding-standards.md) — declared, enforced rules (`.editorconfig`/analyzers), not a style guide written in the abstract
 
 ## License
 

@@ -372,6 +372,12 @@ ordered against the rest.
     than a new storage pattern.
 - A logger mode — capture every sent/received message with a direction prefix and a sequence
   number, for later review (not the same as the rendering-presenter export formats above).
+- **A custom `DevTerm.Analyzers` Roslyn project**, for coding standards that are specific to this
+  codebase's own semantics and can't be expressed via `.editorconfig`/StyleCop.Analyzers (see
+  `docs/coding-standards.md`, landed 2026-09-16) — e.g. a project-specific rule like "every
+  `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
+  constraints list for why that one matters). Deliberately not built yet: no such rule has actually
+  been declared that a generic analyzer can't already cover — build it once one is.
 
 ## Research (not backlog-ready)
 
