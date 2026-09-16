@@ -421,4 +421,58 @@ public sealed class ConfigureModeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void PageDown_ScrollsToRevealControlsBelowTheFold()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                var before = TuiTestRunner.DumpBuffer();
+                StringAssert.Contains(before, "Presenter:");
+                Assert.DoesNotContain("Line ending:", before, "The form is taller than the default window - Line ending and everything after it shouldn't be visible before scrolling.");
+
+                // Application.RaiseKeyDownEvent, not the IInputInjector-based TuiTestRunner.PressKey:
+                // the injector path is already known unreliable for Application-level (as opposed to
+                // focused-view) key handling once several Init/Shutdown cycles have run earlier in
+                // the same process - see TuiModeTests.CtrlQ_RequestsStop's own doc comment for the
+                // same finding against TuiMode's own global Application.KeyDown handler.
+                Application.RaiseKeyDownEvent(Key.PageDown);
+                Application.LayoutAndDraw(true);
+
+                var after = TuiTestRunner.DumpBuffer();
+                StringAssert.Contains(after, "Line ending:", "Expected PageDown to scroll the form down far enough to reveal a control that was below the fold.");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void BrowseButton_IsWiredNextToThePathField()
+    {
+        // Deliberately doesn't click it: doing so opens a real, native Terminal.Gui OpenDialog via
+        // a nested Application.Run(dialog) with nothing able to drive or dismiss it headlessly,
+        // which would hang the test - the same "native file/message dialogs are exercised
+        // structurally, not by actually opening them" convention already applied to
+        // ConfirmOverwrite/ConfirmDiscardChanges's real MessageBox.Query dialogs elsewhere in this
+        // class, and matching WPF's own Browse_Click (also untested for the same reason).
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.AreEqual("Browse...", parts.BrowseButton.Text);
+                Assert.IsNotNull(parts.BrowseButton.SuperView, "Expected the button to actually be attached under the window somewhere (not necessarily a direct child - see the scrollable formContent container).");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

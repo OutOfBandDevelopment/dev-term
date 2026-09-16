@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Drawing;
 using System.IO.Ports;
 using DevTerm.Configuration;
 using Terminal.Gui.App;
@@ -87,6 +88,27 @@ public static class ConfigureMode
             Height = Dim.Fill(),
         };
 
+        // Everything below is added to this scrollable container, not directly to the window - the
+        // full form (~32 rows) is routinely taller than a small terminal window. ContentHeight is a
+        // generous fixed estimate covering every field group, not computed from an actual layout
+        // pass (Terminal.Gui doesn't have positions resolved to concrete rows until Application.Begin
+        // runs, well after this method returns) - needs bumping if a future field group makes the
+        // form taller still. Confirmed via a real headless probe against the installed Terminal.Gui
+        // package that SetContentSize + ViewportSettings actually scrolls (View has no built-in
+        // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
+        // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
+        // below).
+        const int ContentHeight = 34;
+        var formContent = new View
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+        };
+        formContent.SetContentSize(new Size(100, ContentHeight));
+        formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
+
         var errorLabel = new Label
         {
             X = 0,
@@ -167,12 +189,17 @@ public static class ConfigureMode
         var saveNameField = new TextField { X = Pos.Right(saveNameLabel) + 1, Y = Pos.Top(saveNameLabel), Width = 20 };
         var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile" };
 
+        // Browse/Import/Export sit on their own row below the path field, not crowded onto the
+        // label's row - the four widgets (path label, a usably-wide field, and three buttons)
+        // don't fit in an 80-column window on one row without clipping (found by actually looking
+        // at a real captured screenshot after adding Browse, not assumed to fit).
         var pathLabel = new Label { X = 0, Y = Pos.Bottom(saveNameLabel) + 1, Text = "Import/export file path:" };
-        var pathField = new TextField { X = Pos.Right(pathLabel) + 1, Y = Pos.Top(pathLabel), Width = 30 };
-        var importButton = new Button { X = Pos.Right(pathField) + 1, Y = Pos.Top(pathLabel), Text = "Import" };
-        var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(pathLabel), Text = "Export" };
+        var pathField = new TextField { X = Pos.Right(pathLabel) + 1, Y = Pos.Top(pathLabel), Width = 40 };
+        var browseButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Browse..." };
+        var importButton = new Button { X = Pos.Right(browseButton) + 1, Y = Pos.Top(browseButton), Text = "Import" };
+        var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(browseButton), Text = "Export" };
 
-        var connectButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Connect", IsDefault = true };
+        var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true };
         var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
 
         var parts = new ConfigureWindowParts
@@ -201,6 +228,7 @@ public static class ConfigureMode
             SaveNameField = saveNameField,
             SaveButton = saveButton,
             PathField = pathField,
+            BrowseButton = browseButton,
             ImportButton = importButton,
             ExportButton = exportButton,
             ConnectButton = connectButton,
@@ -371,6 +399,25 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        // Mirrors WPF's own Browse... button: it also just opens a real, native file dialog and
+        // sets ImportExportPath from whatever's picked - the one piece of either front end that's
+        // still code-behind rather than a shared command, since a native file dialog has no
+        // pure-binding/pure-view-model equivalent. Uses OpenDialog specifically (requires an
+        // existing file) for both Import and Export, exactly matching WPF's own Browse_Click, which
+        // uses OpenFileDialog for both too - you can still hand-edit the picked path afterward for
+        // a not-yet-existing export destination.
+        browseButton.Accepting += (_, e) =>
+        {
+            var dialog = new OpenDialog { Path = pathField.Text };
+            Application.Run(dialog);
+            if (!dialog.Canceled && dialog.FilePaths.Count > 0)
+            {
+                pathField.Text = dialog.FilePaths[0];
+            }
+
+            e.Handled = true;
+        };
+
         importButton.Accepting += (_, e) =>
         {
             PushFieldsIntoViewModel();
@@ -413,7 +460,7 @@ public static class ConfigureMode
             Application.RequestStop();
         };
 
-        window.Add(
+        formContent.Add(
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
             transportLabel, transportSelector,
             descriptionLabel, descriptionField,
@@ -423,8 +470,63 @@ public static class ConfigureMode
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField,
             presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
-            pathLabel, pathField, importButton, exportButton,
+            pathLabel, pathField, browseButton, importButton, exportButton,
             connectButton, quitButton);
+        window.Add(formContent);
+
+        // PageUp/PageDown and the mouse wheel scroll the form when it doesn't fit. PageUp/PageDown
+        // bound on the global Application.KeyDown event, not formContent's own KeyDown, for the
+        // same reason Ctrl+Q needed the global event elsewhere in this codebase: a per-view KeyDown
+        // handler doesn't reliably see a key already routed to a focused child first. Deliberately
+        // skipped whenever profilesList has focus, and deliberately not also binding the plain
+        // arrow keys: checked directly (ListView.KeyBindings.GetBindings()) that ListView itself
+        // already binds PageUp/PageDown *and* CursorUp/CursorDown for its own item navigation - a
+        // global intercept would reach Application.KeyDown before ListView's own routing and steal
+        // those keys from it entirely whenever the saved-profiles list has focus. Clamped to
+        // [0, ContentHeight - viewport height] so it can't scroll past either end.
+        void ScrollBy(int delta)
+        {
+            var maxY = Math.Max(0, ContentHeight - formContent.Viewport.Height);
+            var newY = Math.Clamp(formContent.Viewport.Y + delta, 0, maxY);
+            formContent.Viewport = formContent.Viewport with { Y = newY };
+        }
+
+        EventHandler<Key>? scrollOnKey = null;
+        scrollOnKey = (_, key) =>
+        {
+            if (profilesList.HasFocus)
+            {
+                return;
+            }
+
+            var delta = key == Key.PageDown ? formContent.Viewport.Height
+                : key == Key.PageUp ? -formContent.Viewport.Height
+                : 0;
+
+            if (delta == 0)
+            {
+                return;
+            }
+
+            ScrollBy(delta);
+            key.Handled = true;
+        };
+        Application.KeyDown += scrollOnKey;
+        window.Disposing += (_, _) => Application.KeyDown -= scrollOnKey;
+
+        formContent.MouseEvent += (_, mouse) =>
+        {
+            if (mouse.Flags.HasFlag(MouseFlags.WheeledDown))
+            {
+                ScrollBy(1);
+                mouse.Handled = true;
+            }
+            else if (mouse.Flags.HasFlag(MouseFlags.WheeledUp))
+            {
+                ScrollBy(-1);
+                mouse.Handled = true;
+            }
+        };
 
         return parts;
     }
@@ -481,6 +583,8 @@ internal sealed class ConfigureWindowParts
     public required Button SaveButton { get; init; }
 
     public required TextField PathField { get; init; }
+
+    public required Button BrowseButton { get; init; }
 
     public required Button ImportButton { get; init; }
 

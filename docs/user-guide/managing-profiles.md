@@ -22,14 +22,15 @@ fixed height —
 
 ![WPF connection editor showing Load/Delete/Refresh](images/wpf-device-profiles-serial.png)
 
-**Refresh** re-reads the profiles folder from disk — useful if the other front end (or you, by hand)
-saved a profile into `~/.dev-term/profiles` while this screen was already open. Neither front end
-watches the folder automatically yet (see the spec's Open items).
+**Refresh** re-reads the profiles folder from disk manually — you shouldn't usually need it: both
+front ends also watch `~/.dev-term/profiles` in real time and pick up a profile added, removed, or
+renamed by the other front end (or by hand) automatically, refreshing the list on their own.
 
 ## Import / Export
 
-Type or browse (WPF only — the TUI doesn't have a file-picker wired up for this field yet, though
-Terminal.Gui does support real file dialogs) to a file path, then:
+Type, or press **Browse...** to pick an existing file (both front ends now have this — the TUI's
+opens a real Terminal.Gui `OpenDialog`, WPF's a native `OpenFileDialog`; both require an existing
+file, so exporting to a brand-new filename still means typing it by hand), then:
 
 - **Export** writes the *current fields* (validated first) to that path as JSON — the same shape a
   saved profile uses, just as a standalone file instead of going into `~/.dev-term/profiles`. Handy

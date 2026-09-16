@@ -1,25 +1,25 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│                                                                              │
-│Saved profiles:                                                               │
-│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖             │
-│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘             │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│Transport: ○ Serial  ○ Tcp  ◉ Hid                                             │
-│                                                                              │
-│Description:                                                                  │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│HID vendor ID (decimal): 4216         Product ID: 63560                       │
-│                                                                              │
-│Presenter: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary               │
-│                                                                              │
+│                                                                             ▲│
+│Saved profiles:                                                              █│
+│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖            █│
+│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘            █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             █│
+│Transport: ○ Serial  ○ Tcp  ◉ Hid                                            █│
+│                                                                             █│
+│Description:                                                                 █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│HID vendor ID (decimal): 4216         Product ID: 63560                      ░│
+│                                                                             ░│
+│Presenter: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary              ░│
+│                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

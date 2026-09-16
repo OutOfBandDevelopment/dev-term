@@ -96,8 +96,17 @@ save a profile first (Save is for reusing the setup later; see
 Notice the TUI's TCP/HID captures above have blank rows where the Serial fields used to be:
 Terminal.Gui's absolute `Pos.Bottom(view)` positioning is computed from a view's frame regardless of
 its `Visible` state, so hiding a field group doesn't let anything below it move up to fill the gap
-(WPF's `Grid`/`StackPanel` does this automatically). Also not visible in any TUI capture above: the
-Line ending/Save/Import-export controls and the Connect/Quit buttons — the default window is tall
-enough for the fields shown but not the whole form, and it doesn't scroll its own content yet (see
-[`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items — Terminal.Gui does
-support real scrollbars, just not wired up here).
+(WPF's `Grid`/`StackPanel` does this automatically).
+
+### Scrolling to see the rest of the TUI form
+
+None of the three captures above show the Line ending/Save/Import-export controls or the
+Connect/Quit buttons — the default window is tall enough for the fields shown but not the whole
+form (~33 rows). **Press Page Up/Page Down, or use the mouse wheel, to scroll** — a real scrollbar
+appears on the right edge. Here's the same serial-transport screen scrolled down (TCP fields shown
+instead, to demonstrate a different starting point):
+
+![TUI connection editor, scrolled down to reveal Presenter/Line ending/Save/Import-export/Connect/Quit](images/tui-configure-scrolled.png)
+
+Scrolling is skipped while the saved-profiles list has focus, so Page Up/Page Down/the arrow keys
+still navigate that list normally instead of scrolling the form out from under it.

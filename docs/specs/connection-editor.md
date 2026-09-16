@@ -105,10 +105,24 @@ Shown in two situations:
   row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The TUI's list has a
   fixed height (4 rows) — Terminal.Gui's absolute-position layout doesn't have an equivalent to
   WPF's star-sized rows without a more involved container.
-- **Import/export path entry**: WPF has a "Browse..." button (a native `OpenFileDialog`) next to the
-  typed path field. The TUI only has the typed field — Terminal.Gui v2.5.0 does ship real file-picker
-  dialogs (`Terminal.Gui.Views.OpenDialog`/`SaveDialog`/`FileDialog`, all public), so a TUI file
-  browser is possible; it's just not wired up here yet (see Open items).
+- **Import/export path entry**: both front ends have a "Browse..." button next to the typed path
+  field — WPF's opens a native `OpenFileDialog` (code-behind, the one exception to pure command
+  binding, since a native dialog has no binding equivalent); the TUI's opens a real
+  `Terminal.Gui.Views.OpenDialog` the same way (`Application.Run(dialog)`, then reads `dialog.FilePaths`
+  if not `dialog.Canceled`) — both use an open-style picker (requires an existing file) for *both*
+  Import and Export, so exporting to a new filename means picking a folder then hand-editing the
+  filename in the path field afterward.
+- **The TUI's form scrolls; WPF's doesn't need to** — the TUI form (~33 rows) routinely exceeds a
+  default terminal window, so its content sits in a `View` with a real Terminal.Gui viewport/scrollbar
+  (`SetContentSize` + `ViewportSettings |= AllowNegativeY | HasVerticalScrollBar`), scrollable via
+  PageUp/PageDown (bound on `Application.KeyDown`, skipped while the saved-profiles `ListView` has
+  focus so it doesn't steal that list's own PageUp/PageDown/arrow-key navigation — confirmed via
+  reflection that `ListView` already binds all of those itself) or the mouse wheel (bound on the
+  scrollable container directly, so a wheel over the profiles list itself still scrolls *that* list
+  first). Confirmed via a real headless probe against the installed Terminal.Gui v2.5.0 package that
+  `View` has no built-in `Command.ScrollDown`/`PageDown` implementation to invoke instead — both keys
+  and the wheel are wired by hand. WPF's `ScrollViewer` around the field editor already handled this
+  automatically from the start (see the WPF screenshots — the window itself is simply taller/resizable).
 - **Overwrite/discard confirmations and delete are native per front end**: WPF uses
   `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
   same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges` hooks so the view model
@@ -140,10 +154,7 @@ Requested but not yet built, in the order they came up:
   one profile, one JSON file, no conflict handling beyond the single-profile Save overwrite prompt —
   a real, larger feature (multi-select in the profiles list, zip creation/extraction, a conflict-
   resolution UI), not implemented yet.
-- **A TUI file-picker for the import/export path.** Terminal.Gui v2.5.0 has real file dialogs
-  (`OpenDialog`/`SaveDialog`) — confirmed to exist, not yet wired to the TUI's path field.
-- **Scrolling for a short terminal.** The TUI's form can be taller than a small terminal window —
-  confirmed Terminal.Gui's `ListView`/`View` base class does have built-in scrollbar support
-  (`HorizontalScrollBar`/`VerticalScrollBar` properties, a `ScrollBarVisibilityMode` for
-  auto/always/never), but the editor `Window` itself isn't currently set up to scroll its content
-  when it doesn't fit.
+- **A picker for choosing a not-yet-existing export filename.** Both front ends' Browse buttons use
+  an open-style dialog (must pick an existing file); there's no save-style picker, so exporting to a
+  brand-new filename still means hand-typing it (or browsing to the right folder and editing just
+  the filename afterward).

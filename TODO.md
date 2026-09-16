@@ -241,6 +241,32 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   Application, then trigger a real filesystem event) and confirmed stable across repeated runs. 258
   tests across the solution now (253 pass by default).
 
+  **Update, 2026-09-16**: the TUI's two remaining "confirmed possible, not wired up" items both
+  landed. A real "Browse..." button opens `Terminal.Gui.Views.OpenDialog` (`Application.Run(dialog)`,
+  then reads `dialog.FilePaths` if not `Canceled`) next to the import/export path field, mirroring
+  WPF's own `OpenFileDialog` — including its same limitation (an open-style picker, so a
+  not-yet-existing export filename still needs hand-typing). The TUI's whole form now scrolls: every
+  control moved into a new `formContent` container `View` with a real Terminal.Gui viewport/scrollbar
+  (`SetContentSize` + `ViewportSettings |= AllowNegativeY | HasVerticalScrollBar` — confirmed via a
+  real headless probe against the installed package that this actually scrolls, and separately that
+  `View` has no built-in `Command.ScrollDown`/`PageDown` implementation to invoke instead, so
+  PageUp/PageDown and the mouse wheel are wired by hand). PageUp/PageDown are bound on
+  `Application.KeyDown` but deliberately skipped whenever the saved-profiles `ListView` has focus:
+  checked directly that `ListView` already binds both those keys (and the arrow keys) for its own
+  item navigation, so a naive global intercept would have stolen them from it entirely.
+
+  Adding the Browse button surfaced a real layout bug, caught by actually looking at a captured
+  screenshot rather than assumed to fit: with Browse crowded onto the path label's row alongside
+  Import/Export, the row exceeded 80 columns and clipped Export's button text off the visible window
+  entirely. Fixed by giving Browse/Import/Export their own row below the path field. New tests: a
+  `PageDown` scrolling test (checks a control below the fold appears only after scrolling), a
+  `BrowseButton` wiring smoke test (deliberately never clicks it — doing so opens a real modal
+  dialog with nothing able to dismiss it headlessly), plus a new scrolled-state screenshot
+  (`tui-configure-scrolled.png`). `docs/specs/connection-editor.md` updated: both "confirmed
+  possible, not wired up" Open items are gone, replaced with per-front-end notes on how each Browse
+  button/scroll mechanism actually works, and a narrower new Open item for the still-missing
+  save-style export picker.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -319,7 +345,7 @@ ordered against the rest.
 - **Connection Editor, from the 2026-09-15 Architect Notes** (see the "Update, 2026-09-15"/
   "2026-09-16" entries above for what already landed from this list — serial fields, description,
   delete/refresh, overwrite confirmation, dropdowns, grow/shrink list, dirty-field confirmation,
-  double-click-to-load). Still open:
+  double-click-to-load, file-watcher auto-refresh, TUI Browse button + scrolling). Still open:
   - **Serial port as a combobox** — type anything, or pick from an enumerated list showing each
     port's long and short name (today it's a plain text field).
   - **Export-selected/export-all as a zip**, with per-name import conflict resolution
@@ -334,11 +360,8 @@ ordered against the rest.
   - **HID vendor/product ID as comboboxes** enumerating real local devices (reuse
     `SystemHidDeviceDiscovery`, same as `--listhiddevices`) while still allowing a typed custom
     value, plus a decimal/hex display toggle — today both are plain decimal-only text fields.
-  - **TUI: wire up a file picker for the import/export path field**, and **make the editor's
-    content scroll** when it doesn't fit the terminal — both confirmed possible (Terminal.Gui
-    v2.5.0 ships `OpenDialog`/`SaveDialog`/`FileDialog` and real `ScrollBar` support), just not
-    wired into `ConfigureMode` yet. See [`docs/specs/connection-editor.md`](docs/specs/connection-editor.md)'s
-    Open items.
+  - **A save-style picker for a not-yet-existing export filename** — both front ends' Browse
+    buttons use an open-style dialog (must pick an existing file) for both Import and Export.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
     connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
     IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.

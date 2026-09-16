@@ -135,6 +135,55 @@ public sealed class ScreenshotTests
         }
     }
 
+    [TestMethod]
+    public void ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii", Description = "Tektronix 2230 bench scope" };
+
+            Application.Init("dotnet");
+            string dump;
+            try
+            {
+                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = Application.Begin(parts.Window);
+                Application.LayoutAndDraw(true);
+
+                try
+                {
+                    // Same PageDown mechanism ConfigureModeTests.PageDown_ScrollsToRevealControlsBelowTheFold
+                    // verifies works - this just also captures what it looks like.
+                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    Application.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(ImagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-scrolled.png"));
+                }
+                finally
+                {
+                    Application.End(token);
+                }
+            }
+            finally
+            {
+                Application.Shutdown();
+            }
+
+            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-scrolled.txt"), dump);
+
+            StringAssert.Contains(dump, "Connect");
+            StringAssert.Contains(dump, "Quit");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static (Session Session, FakeTransport Transport, IPresenter Presenter) CreateSession()
     {
         var transport = new FakeTransport();

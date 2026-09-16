@@ -25,6 +25,18 @@ existing convention is that a warning is a real, worth-reading signal (see `CLAU
 obsolete-API warnings, tracked and accepted on purpose, not suppressed) — turning a style preference
 into a build-breaking error is a bigger step than "declare a standard," and hasn't been asked for.
 
+## A known StyleCop quirk
+
+`severity = none` (including the category-level bulk suppressions above) stops a rule's diagnostic
+from being *reported*, but doesn't stop the analyzer from *running* — a few of StyleCop's
+`LayoutRules` analyzers (`SA1500`, `SA1502`, `SA1508`, seen so far in `DevTerm.Transports.Tcp.Tests`)
+throw an internal `NullReferenceException` against some as-yet-unidentified syntax shape in this
+codebase even while fully silenced, surfacing as a harmless `AD0001` meta-warning ("Analyzer '...'
+threw an exception"). Confirmed non-blocking — 0 build errors, no effect on test results, reproduced
+consistently on a clean rebuild — so not chased further for now; if it gets noisy enough to matter,
+the fix is likely narrowing which projects reference `StyleCop.Analyzers` at all (`Directory.Build.props`
+currently applies it solution-wide) rather than anything in `.editorconfig`.
+
 ## StyleCop.Analyzers starts silent, on purpose
 
 The package is referenced (`Directory.Build.props`) so any rule can be turned on with one line, but

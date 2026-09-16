@@ -1,25 +1,25 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│                                                                              │
-│Saved profiles:                                                               │
-│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖             │
-│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘             │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│Transport: ◉ Serial  ○ Tcp  ○ Hid                                             │
-│                                                                              │
-│Description: Tektronix 2230 bench scope                                       │
-│                                                                              │
-│Serial port: COM3           Baud: 9600                                        │
-│                                                                              │
-│Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space              │
-│                                                                              │
-│Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                               │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│Presenter: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary               │
-│                                                                              │
+│                                                                             ▲│
+│Saved profiles:                                                              █│
+│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖            █│
+│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘            █│
+│                                                                             █│
+│                                                                             █│
+│                                                                             █│
+│Transport: ◉ Serial  ○ Tcp  ○ Hid                                            █│
+│                                                                             █│
+│Description: Tektronix 2230 bench scope                                      █│
+│                                                                             █│
+│Serial port: COM3           Baud: 9600                                       █│
+│                                                                             █│
+│Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             █│
+│                                                                             █│
+│Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                              ░│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│Presenter: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary              ░│
+│                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
