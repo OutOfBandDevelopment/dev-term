@@ -210,6 +210,163 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SaveCommand_IncludesSerialAndDescriptionFields()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "serial",
+                Port = "COM5",
+                Baud = "4800",
+                DataBits = "7",
+                ParityText = "Even",
+                StopBitsText = "Two",
+                Description = "Test bench Rigol",
+                SaveName = "bench",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            var saved = store.Load("bench");
+            Assert.AreEqual("COM5", saved.Port);
+            Assert.AreEqual(4800, saved.Baud);
+            Assert.AreEqual(7, saved.DataBits);
+            Assert.AreEqual(System.IO.Ports.Parity.Even, saved.Parity);
+            Assert.AreEqual(System.IO.Ports.StopBits.Two, saved.StopBits);
+            Assert.AreEqual("Test bench Rigol", saved.Description);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SaveCommand_WhenNameAlreadyExists_AsksForConfirmationFirst()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("existing", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+
+            var confirmPrompts = new List<string>();
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "2.2.2.2",
+                TcpPort = "2",
+                SaveName = "existing",
+                ConfirmOverwrite = name =>
+                {
+                    confirmPrompts.Add(name);
+                    return false;
+                },
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            Assert.Contains("existing", confirmPrompts);
+            StringAssert.Contains(vm.StatusMessage, "already exists");
+            Assert.AreEqual("1.1.1.1", store.Load("existing").Host, "Declining the overwrite should leave the existing profile untouched.");
+
+            vm.ConfirmOverwrite = _ => true;
+            vm.SaveCommand.Execute(null);
+
+            Assert.AreEqual("2.2.2.2", store.Load("existing").Host, "Confirming the overwrite should save the new fields.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadCommand_SetsSaveNameToTheLoadedProfile()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            var vm = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" }) { SelectedProfileName = "tek108" };
+            vm.LoadCommand.Execute(null);
+
+            Assert.AreEqual("tek108", vm.SaveName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteCommand_RemovesTheSelectedProfile()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            var vm = new ConnectionEditorViewModel(store, new CliOptions()) { SelectedProfileName = "tek108" };
+            vm.DeleteCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Deleted profile 'tek108'");
+            Assert.DoesNotContain("tek108", vm.Profiles);
+            Assert.IsFalse(store.List().Contains("tek108"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteCommand_WithNoSelection_SetsStatusMessage()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            vm.DeleteCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Select a profile first");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void RefreshCommand_PicksUpAProfileSavedOutsideThisViewModel()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions());
+
+            store.Save("added-later", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+            Assert.DoesNotContain("added-later", vm.Profiles);
+
+            vm.RefreshCommand.Execute(null);
+
+            Assert.Contains("added-later", vm.Profiles);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void PropertyChanged_RaisedWhenAFieldChanges()
     {
         var directory = CreateTempDirectory();

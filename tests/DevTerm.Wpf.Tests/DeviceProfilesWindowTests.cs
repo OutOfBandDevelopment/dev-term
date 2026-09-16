@@ -140,6 +140,35 @@ public sealed class DeviceProfilesWindowTests
     }
 
     [TestMethod]
+    public void DeleteCommand_RemovesTheSelectedProfileFromTheList()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(store, new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                window.ProfilesList.SelectedItem = "tek108";
+                window.ViewModel.DeleteCommand.Execute(null);
+
+                StringAssert.Contains(window.ViewModel.StatusMessage, "Deleted profile 'tek108'");
+                Assert.IsFalse(store.List().Contains("tek108"));
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConnectButton_Command_SetsResultAndClosesTheDialog()
     {
         var directory = CreateTempDirectory();

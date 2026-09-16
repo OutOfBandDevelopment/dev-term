@@ -153,6 +153,21 @@ presenters — the manifest only adds device-specific commands/UI on top of a co
 fine without it. The user sees a warning (exact presentation TBD per front end), not a blocked
 connection.
 
+**Real pickers and more fields, same day**: Transport/Presenter/Line ending/Parity/Stop bits are now
+actual selectors in both front ends (WPF `ComboBox`es bound via `{Binding}`; TUI
+`OptionSelector<TEnum>`, via two TUI-only enums since it needs a real `enum` and the shared view
+model's `Transport`/`Presenter` are plain strings) rather than free-text fields, with the visible
+field group switching based on the selected Transport. Serial gained Data bits/Parity/Stop bits;
+there's now a free-text Description field; Delete and Refresh sit next to Load; Save asks for
+confirmation before overwriting an existing name; Load sets "Save as profile named" to the loaded
+name; WPF's saved-profiles list grows/shrinks with the window. `CliOptions` gained
+`[Category]`/`[DisplayName]` attributes documenting the field groupings (metadata only for now).
+Full field-by-field/action-by-action reference, including what's still open (HID vendor/product ID
+enumeration, multi-select presenters, dirty-field confirmation, zip export/import with conflict
+resolution, a TUI file picker/scrollbar): [`docs/specs/connection-editor.md`](../specs/connection-editor.md) —
+the first of a new `docs/specs/` series, one file per screen/user-flow, precise where this doc is
+about intent and `docs/user-guide/` is about how to use it.
+
 ## What this explicitly is not (yet)
 
 - **Not wired to `IControlSurface`** — loading a profile's referenced manifest makes its

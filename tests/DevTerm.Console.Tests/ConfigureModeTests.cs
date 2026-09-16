@@ -74,7 +74,7 @@ public sealed class ConfigureModeTests
             {
                 StringAssert.Contains(parts.ErrorLabel.Text, "Missing required");
 
-                parts.TransportField.Text = "tcp";
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
                 parts.HostField.Text = "192.168.0.107";
                 parts.TcpPortField.Text = "23";
 
@@ -121,7 +121,7 @@ public sealed class ConfigureModeTests
         {
             RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
             {
-                parts.TransportField.Text = "tcp";
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
                 parts.HostField.Text = "192.168.0.107";
                 parts.TcpPortField.Text = "23";
 
@@ -190,9 +190,65 @@ public sealed class ConfigureModeTests
                 Click(parts.LoadButton);
 
                 StringAssert.Contains(parts.ErrorLabel.Text, "Loaded profile 'tek108'");
-                Assert.AreEqual("tcp", parts.TransportField.Text);
+                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteButton_RemovesTheSelectedProfileFromTheList()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            RunHeadless(new CliOptions(), null, store, parts =>
+            {
+                parts.ProfilesList.SelectedItem = 0;
+                Click(parts.DeleteButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Deleted profile 'tek108'");
+            });
+
+            Assert.IsFalse(store.List().Contains("tek108"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectingATransport_TogglesWhichFieldGroupIsVisible()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "serial" }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.IsTrue(parts.PortField.Visible);
+                Assert.IsFalse(parts.HostField.Visible);
+                Assert.IsFalse(parts.HidVendorField.Visible);
+
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
+
+                Assert.IsFalse(parts.PortField.Visible);
+                Assert.IsTrue(parts.HostField.Visible);
+                Assert.IsFalse(parts.HidVendorField.Visible);
+
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Hid;
+
+                Assert.IsFalse(parts.PortField.Visible);
+                Assert.IsFalse(parts.HostField.Visible);
+                Assert.IsTrue(parts.HidVendorField.Visible);
             });
         }
         finally
@@ -225,7 +281,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ImportButton);
 
                 StringAssert.Contains(parts.ErrorLabel.Text, "Imported");
-                Assert.AreEqual("tcp", parts.TransportField.Text);
+                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
             });

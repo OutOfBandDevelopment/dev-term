@@ -210,6 +210,46 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   handler doesn't reliably see a key already routed to a focused child first — the send field
   normally has focus). `MainWindow`'s WPF menu needed the equivalent: an explicit `PreviewKeyDown`
   check, not just `MenuItem.InputGestureText`.
+- **Terminal.Gui v2.5.0's `OptionSelector<T>.Values` cannot be set directly** — it throws
+  `InvalidOperationException` ("Setting Values directly is not allowed"); the selector derives its
+  values from `Enum.GetValues<T>()` automatically, and `T` must be `struct, Enum` (a plain `string`
+  choice list needs a purpose-built local enum, converted to/from the real option string at the
+  call site — see `ConfigureMode.TransportChoice`/`PresenterChoice`).
+- **A `private enum` nested in one class is invisible to a different class in the same file/assembly
+  — `InternalsVisibleTo` does not help, since it only affects `internal` members, never `private`
+  ones.** `ConfigureMode.TransportChoice`/`PresenterChoice` needed to be `internal enum`, not
+  `private enum`, purely so `ConfigureWindowParts` (a separate class) and the test assembly could
+  reference `OptionSelector<TransportChoice>` as a property type at all.
+- **Terminal.Gui's headless "dotnet" driver reports `fg=(255,255,255) bg=(255,255,255)`
+  (white-on-white, invisible) for any cell still on the default, unstyled color scheme** — there's
+  no real terminal behind headless mode to resolve an actual theme's colors. Confirmed by reflecting
+  `Cell.Attribute` (a real `Terminal.Gui.Drawing.Attribute` with true RGB `Foreground`/`Background`,
+  not just a 16-color name) for a plain `Label` and the window border, both white-on-white, while a
+  menu bar highlight or a focused field reported real, distinguishable colors. Only relevant once
+  you try to render the buffer as an actual image (`DevTerm.Console.Tests.TuiScreenshot`) — a plain
+  `Cell.Grapheme` text dump (`TuiTestRunner.DumpBuffer`) never touches color and was unaffected. Any
+  future color-aware TUI capture should fall back to a sane default (black-on-white) when a cell's
+  foreground equals its background, rather than trusting the driver's reported color literally.
+- **A WPF `Window` that's only ever `Measure`d/`Arrange`d, never `Show()`n, renders as a blank image
+  under `RenderTargetBitmap`** — confirmed by inspecting the actual output pixels, not assumed. It
+  needs a real (if off-screen/invisible) `Show()` to get a `PresentationSource`/compositor target
+  before `RenderTargetBitmap.Render()` produces real content. See `DevTerm.Wpf.Tests.WpfScreenshot`.
+- **Don't call `Window.Close()` on a shown `MainWindow` from test automation** — its `OnClosing`
+  handler's cancel-then-async-cleanup-then-reclose pattern (needed so `Session.CloseAsync`/
+  `DisposeAsync` can be awaited before the window actually closes) raced against
+  `StaTestRunner.Run`'s single manually-pumped `DispatcherFrame` and threw "Cannot ... Close ...
+  while a Window is closing" — a real reentrancy edge case never exercised before because no
+  existing test actually closed a shown window. Screenshot tests just leave the window open; the
+  test process exits shortly after regardless.
+- **The Terminal.Gui headless key injector (`IInputInjector`/`TuiTestRunner.TypeText`) degrades
+  after enough `Application.Init`/`Shutdown` cycles have already run in the same test process** —
+  this was already known for a single class (see the `Application.Invoke`/`IInputInjector` note
+  above and `TuiModeTests.CtrlQ_RequestsStop`'s doc comment), but turned out to be cross-class too: a
+  new screenshot test using `TypeText` left a *later, different* test's own `TypeText` call unable
+  to reach the focused field, even though each test's own `Application.Init`/`Shutdown` cycle
+  completed cleanly. When a test doesn't need to prove real key routing — e.g. a screenshot just
+  wants a field showing some text — set the control's `.Text` directly and call
+  `Application.LayoutAndDraw(true)` instead of injecting keys.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

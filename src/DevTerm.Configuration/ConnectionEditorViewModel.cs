@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
@@ -23,6 +24,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     private string _transport = "serial";
     private string _port = string.Empty;
     private string _baud = "9600";
+    private string _dataBits = "8";
+    private string _parityText = "None";
+    private string _stopBitsText = "One";
     private string _host = string.Empty;
     private string _tcpPort = "0";
     private bool _listen;
@@ -30,6 +34,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     private string _hidProductId = "0";
     private string _presenter = "hex";
     private string _lineEndingText = "None";
+    private string _description = string.Empty;
     private string _saveName = string.Empty;
     private string _importExportPath = string.Empty;
     private string _statusMessage = string.Empty;
@@ -45,6 +50,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         ConnectCommand = new RelayCommand(Connect);
         LoadCommand = new RelayCommand(LoadSelected);
         SaveCommand = new RelayCommand(SaveAsProfile);
+        DeleteCommand = new RelayCommand(DeleteSelected);
+        RefreshCommand = new RelayCommand(RefreshProfiles);
         ImportCommand = new RelayCommand(Import);
         ExportCommand = new RelayCommand(Export);
     }
@@ -61,6 +68,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     public ICommand LoadCommand { get; }
 
     public ICommand SaveCommand { get; }
+
+    public ICommand DeleteCommand { get; }
+
+    public ICommand RefreshCommand { get; }
 
     public ICommand ImportCommand { get; }
 
@@ -89,6 +100,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> PresenterOptions { get; } = ["ascii", "utf8", "hex", "decimal", "octal", "binary"];
 
     public IReadOnlyList<string> LineEndingOptions { get; } = Enum.GetNames<LineEnding>();
+
+    public IReadOnlyList<string> ParityOptions { get; } = Enum.GetNames<Parity>();
+
+    public IReadOnlyList<string> StopBitsOptions { get; } = Enum.GetNames<StopBits>();
 
     public string Transport
     {
@@ -122,6 +137,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
 
     public string Baud { get => _baud; set => SetField(ref _baud, value); }
 
+    public string DataBits { get => _dataBits; set => SetField(ref _dataBits, value); }
+
+    public string ParityText { get => _parityText; set => SetField(ref _parityText, value); }
+
+    public string StopBitsText { get => _stopBitsText; set => SetField(ref _stopBitsText, value); }
+
     public string Host { get => _host; set => SetField(ref _host, value); }
 
     public string TcpPort { get => _tcpPort; set => SetField(ref _tcpPort, value); }
@@ -136,6 +157,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
 
     public string LineEndingText { get => _lineEndingText; set => SetField(ref _lineEndingText, value); }
 
+    public string Description { get => _description; set => SetField(ref _description, value); }
+
     public string SaveName { get => _saveName; set => SetField(ref _saveName, value); }
 
     public string ImportExportPath { get => _importExportPath; set => SetField(ref _importExportPath, value); }
@@ -145,11 +168,24 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     /// <summary>The profile name currently selected in the saved-profiles list — bound two-way from WPF's <c>ListBox.SelectedItem</c>; the TUI sets it manually from its <c>ListView</c>'s selected index before calling <see cref="LoadCommand"/>.</summary>
     public string? SelectedProfileName { get => _selectedProfileName; set => SetField(ref _selectedProfileName, value); }
 
+    /// <summary>
+    /// Set by each front end to show its own native "overwrite '{name}'?" confirmation (a
+    /// <c>MessageBox</c> in WPF, a Terminal.Gui message box in the TUI) — the view model has no UI
+    /// of its own to show one directly. <see cref="SaveCommand"/> calls it only when
+    /// <see cref="SaveName"/> already names an existing profile, and only saves if it returns
+    /// <see langword="true"/>; left <see langword="null"/>, saving always proceeds without asking
+    /// (e.g. in tests that don't wire a real dialog).
+    /// </summary>
+    public Func<string, bool>? ConfirmOverwrite { get; set; }
+
     public void LoadIntoFields(CliOptions options)
     {
         Transport = options.Transport;
         Port = options.Port ?? string.Empty;
         Baud = options.Baud.ToString();
+        DataBits = options.DataBits.ToString();
+        ParityText = options.Parity.ToString();
+        StopBitsText = options.StopBits.ToString();
         Host = options.Host ?? string.Empty;
         TcpPort = options.TcpPort.ToString();
         Listen = options.Listen;
@@ -157,6 +193,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         HidProductId = options.HidProductId.ToString();
         Presenter = options.Presenter;
         LineEndingText = options.LineEnding.ToString();
+        Description = options.Description ?? string.Empty;
     }
 
     public CliOptions BuildOptions()
@@ -168,11 +205,27 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
             Host = Host.Trim() is { Length: > 0 } h ? h : null,
             Listen = Listen,
             Presenter = Presenter.Trim() is { Length: > 0 } pr ? pr : "hex",
+            Description = Description.Trim() is { Length: > 0 } d ? d : null,
         };
 
         if (int.TryParse(Baud, out var baud))
         {
             options.Baud = baud;
+        }
+
+        if (int.TryParse(DataBits, out var dataBits))
+        {
+            options.DataBits = dataBits;
+        }
+
+        if (Enum.TryParse<Parity>(ParityText, ignoreCase: true, out var parity))
+        {
+            options.Parity = parity;
+        }
+
+        if (Enum.TryParse<StopBits>(StopBitsText, ignoreCase: true, out var stopBits))
+        {
+            options.StopBits = stopBits;
         }
 
         if (int.TryParse(TcpPort, out var tcpPort))
@@ -207,6 +260,26 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         }
     }
 
+    private void DeleteSelected()
+    {
+        if (SelectedProfileName is not { } name)
+        {
+            StatusMessage = "Select a profile first.";
+            return;
+        }
+
+        if (_store.Delete(name))
+        {
+            RefreshProfiles();
+            SelectedProfileName = null;
+            StatusMessage = $"Deleted profile '{name}'.";
+        }
+        else
+        {
+            StatusMessage = $"No profile named '{name}' was found.";
+        }
+    }
+
     private void Connect()
     {
         var options = BuildOptions();
@@ -232,6 +305,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         try
         {
             LoadIntoFields(_store.Load(name));
+            SaveName = name;
             StatusMessage = $"Loaded profile '{name}'.";
         }
         catch (Exception ex)
@@ -246,6 +320,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         if (name.Length == 0)
         {
             StatusMessage = "Type a name to save this connection as a profile.";
+            return;
+        }
+
+        if (Profiles.Contains(name) && ConfirmOverwrite?.Invoke(name) == false)
+        {
+            StatusMessage = $"Not saved — '{name}' already exists.";
             return;
         }
 

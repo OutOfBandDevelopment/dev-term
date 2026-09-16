@@ -143,9 +143,14 @@ reflecting over a real running window's own `KeyBindings`, not assumed:
 
 ## User guide
 
-[`docs/user-guide/`](../user-guide/README.md) has task-oriented walkthroughs for each front end,
-with real captured output rather than hand-typed mockups: [`cli.md`](../user-guide/cli.md) embeds
-real stdin/stdout transcripts from the built app, and [`tui.md`](../user-guide/tui.md) embeds real
-screen buffers read back via `TuiTestRunner.DumpBuffer()`. [`wpf.md`](../user-guide/wpf.md) is a
-stub — deferred since it needs a `RenderTargetBitmap` capture against `MainWindowTests`' existing
-harness rather than a new investigation, not yet built.
+[`docs/user-guide/`](../user-guide/README.md) has task-oriented walkthroughs, one file per user
+flow (not per front end) — real captured output, never hand-typed mockups. CLI transcripts are real
+stdin/stdout capture; TUI screenshots come from `DevTerm.Console.Tests.ScreenshotTests`/
+`TuiScreenshot`, which renders the real Terminal.Gui screen buffer to a PNG (each cell's actual
+color, via `System.Drawing.Common`) rather than the plain-text `TuiTestRunner.DumpBuffer()` capture
+used for earlier assertions-only tests; WPF screenshots come from `DevTerm.Wpf.Tests.ScreenshotTests`/
+`WpfScreenshot`, a `RenderTargetBitmap` capture of a real, off-screen-but-actually-shown `Window` —
+confirmed empirically that a `Window` only ever `Measure`d/`Arrange`d (never shown, even off-screen)
+renders as a blank image, so `WpfScreenshot.ShowOffScreen` moves the window off any real monitor and
+calls `Show()` rather than skipping it. See `.claude/skills/docs-sync/SKILL.md` for the "screenshots
+are tests, not manual chores" workflow this implies.

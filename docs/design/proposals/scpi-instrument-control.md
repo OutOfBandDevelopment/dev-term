@@ -28,7 +28,7 @@ inbound replies/telemetry, bundled as one plugin per [device-control-modules.md]
 
 | Instrument | Interface | Notes |
 |---|---|---|
-| HP/Agilent/Keysight 34401A | GPIB/RS-232 | 6½-digit bench DMM |
+| HP/Agilent/Keysight 34401A | GPIB/RS-232 | 6½-digit bench DMM — confirmed (2026-09-15) readable at 9600 8N2 over RS-232 by an existing third-party tool, [HP-Agilent-Keysight-34401A-Control-and-Data-Logging-Software](https://github.com/Niravk1997/HP-Agilent-Keysight-34401A-Control-and-Data-Logging-Software/releases); useful as a known-good serial-settings/command reference once this is built against real hardware |
 | Rigol DM3058E | USB/RS-232 | 5½-digit bench DMM |
 | Rigol DG1022 / DG1022Z (unlocked as DG1062Z) | Built-in display, USB/LAN/GPIB (opt) | Function/arbitrary waveform generator |
 | Korad KA3005P / KA6003P | USB/RS-232 | Programmable bench power supplies |

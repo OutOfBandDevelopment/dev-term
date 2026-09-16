@@ -154,6 +154,44 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   and answers `*IDN?`, not the pre-SCPI `ID?` the existing 2230-specific assertion expects, so it
   needs its own test rather than a third `DataRow` on the existing one.
 
+  **Update, 2026-09-15**: several Architect Notes items landed on the Connection Editor — serial
+  fields (data bits, parity, stop bits, all now real dropdowns/`OptionSelector`s), a free-text
+  Description field, Delete/Refresh commands, an overwrite-confirmation prompt on Save (via a new
+  `ConnectionEditorViewModel.ConfirmOverwrite` hook, wired to a native dialog per front end), Load
+  now sets "Save as profile named" to the loaded name, and WPF's saved-profiles list grows/shrinks
+  with the window instead of a fixed height. Transport/Presenter/Line ending/Parity/Stop bits are
+  now real pickers in both front ends (WPF `ComboBox`es bound via `{Binding}`; TUI
+  `OptionSelector<TEnum>`, which required two TUI-only enums since it needs a real `enum` and the
+  shared view model's `Transport`/`Presenter` are plain strings) — selecting a Transport shows only
+  that transport's field group. `CliOptions` gained `[Category]`/`[DisplayName]` attributes
+  documenting the same field groupings (metadata only, not yet consumed by the editor via
+  reflection). New: [`docs/specs/`](docs/specs/README.md) — one spec per screen/flow
+  (`connection-editor.md` written; `tui-main-screen.md`/`wpf-main-window.md` still pending), the
+  precise field/action/state reference `docs/design/`/`docs/user-guide/` don't try to be. Also new:
+  a `.claude/skills/docs-sync/` skill codifying the "update the spec/user-guide/changelog in the
+  same change" workflow.
+
+  **Update, 2026-09-15**: `docs/user-guide/` reorganized from one file per front end to one file per
+  user flow (`connecting.md`, `managing-profiles.md`, `sending-and-receiving.md`,
+  `connect-disconnect.md`), each showing every applicable front end's real screenshot side by side
+  rather than splitting them across separate pages — `cli.md`/`tui.md`/`wpf.md`/the old
+  `connection-editor.md` draft are gone, superseded. The WPF screenshot stub finally landed:
+  `DevTerm.Wpf.Tests.ScreenshotTests`/`WpfScreenshot` renders a real `Window` to PNG via
+  `RenderTargetBitmap` — confirmed the hard way that a `Window` only `Measure`d/`Arrange`d (never
+  shown) renders completely blank, so it moves the window off-screen and calls a real `Show()`
+  instead. The TUI also moved from plain-text buffer dumps to real PNGs:
+  `DevTerm.Console.Tests.ScreenshotTests`/`TuiScreenshot` renders each cell's actual color via
+  `System.Drawing.Common` — found and worked around a real headless-driver limitation doing this,
+  where any cell still on the default color scheme reports `fg=(255,255,255) bg=(255,255,255)`
+  (invisible white-on-white) since there's no real terminal behind headless mode to resolve an
+  actual theme; only cells with a real highlight (menu bar, a focused field) report a usable color,
+  so unresolved cells now render as plain black-on-white instead. Also found and fixed a real
+  cross-test interference bug while building this: the Terminal.Gui headless key injector
+  (`TuiTestRunner.TypeText`) degrades after enough `Application.Init`/`Shutdown` cycles in one
+  process — a new screenshot test using it left a *later, different* test's own injected keystrokes
+  unable to reach the focused field; fixed by setting the field's `.Text` directly for the
+  screenshot instead of injecting keys it doesn't need to actually simulate. See `CLAUDE.md`.
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -229,6 +267,41 @@ ordered against the rest.
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
+- **Connection Editor, from the 2026-09-15 Architect Notes** (see the "Update, 2026-09-15" entries
+  above for what already landed from this list — serial fields, description, delete/refresh,
+  overwrite confirmation, dropdowns, grow/shrink list). Still open:
+  - **Serial port as a combobox** — type anything, or pick from an enumerated list showing each
+    port's long and short name (today it's a plain text field).
+  - **Export-selected/export-all as a zip**, with per-name import conflict resolution
+    (ignore/rename/replace, or delete-all-and-replace) and bulk profile removal — today
+    import/export is one profile, one JSON file at a time; Delete is per-profile. Needs multi-select
+    in the profiles list plus zip creation/extraction, not a small UI tweak.
+  - **Multi-select Presenter** — today it's single-select even though `Pipeline` already fans bytes
+    out to multiple presenters; `CliOptions.Presenter` would need to become a list, which also
+    raises a real design question for the send path (which presenter encodes a typed line, if more
+    than one is active). Needs its own design pass.
+  - **Per-input-line parser selection**, with a default supplied by the connection profile.
+  - **HID vendor/product ID as comboboxes** enumerating real local devices (reuse
+    `SystemHidDeviceDiscovery`, same as `--listhiddevices`) while still allowing a typed custom
+    value, plus a decimal/hex display toggle — today both are plain decimal-only text fields.
+  - **Dirty-field confirmation** — an OK/Cancel prompt on Load/Close/Connect when fields have
+    changed since the last Load/Save/Connect. Needs a tracked dirty flag on the view model.
+  - **A real file watcher on the profiles folder** — today's Refresh button is manual-only.
+  - **TUI: wire up a file picker for the import/export path field**, and **make the editor's
+    content scroll** when it doesn't fit the terminal — both confirmed possible (Terminal.Gui
+    v2.5.0 ships `OpenDialog`/`SaveDialog`/`FileDialog` and real `ScrollBar` support), just not
+    wired into `ConfigureMode` yet. See [`docs/specs/connection-editor.md`](docs/specs/connection-editor.md)'s
+    Open items.
+  - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
+    connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
+    IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.
+- Once device manifest support is further along, build an editor for it — at least a default
+  render for request/response messages, ideally a presentation editor. New field types this implies
+  beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart
+  recorder (1+ channels), and the vector/coordinate families x/y/z/h/s/v, x/y/h/s/v, r/theta,
+  r/theta/h/s/v.
+- A logger mode — capture every sent/received message with a direction prefix and a sequence
+  number, for later review (not the same as the rendering-presenter export formats above).
 
 ## Research (not backlog-ready)
 
@@ -244,52 +317,6 @@ ordered against the rest.
   already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
   fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
   itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
-
-## Architect Notes
-
-- Connection Editor
-  - serial should include more fields
-    - stop bits
-    - parity type
-    - data bits
-    - port 
-      - should be a combobox where you can type whatever you want or pick from an enumerated list... the list should have the long and short name of the port
-  - there should be an export all / export selected option
-    - this would create a zipfile with the selected profiles
-    - importing one of these zip files should add the values to the existing list
-      - if imported names already exist should get the option to ignore, rename, replace
-      - on import should have the option to delete all and replace with imported
-    - there should be the ability to remove profiles
-  - presenters should be multi-select
-  - input field should have the option to use different parsers with a defailt provided by the connection profile
-  - there should be description field
-  - for tcp
-    - ensure that named values can be used as well as ipv4 and ipv6
-  - for usb-hid
-    - vendor id should be a combobox that enumerates the id and names on the location machine as well as allows the user to type in something else
-    - product id should be a combobox that enumerates the id and names on the location machine as well as allows the user to type in something else
-    - should beable to toggle between decimal and hex
-  - if a inputs are dirty should get a ok/cancel dialog on load, close, connect
-    - load should set the "save as porfile named:"
-    - on save if name matches then prompt overwrite warning
-  - this should either have a file watcher or a refresh button on the profile folder
-  - as the screen is expanded the "saved profiles" list should grow/shrink in height
-  - for "TUI" 
-    - is there a file browser that can be used with the path field?
-    - is there a scroll box with a glyph of a scrollbar?
-- for the hp34401a this software reads the 9600 8n2 correctly
-  - https://github.com/Niravk1997/HP-Agilent-Keysight-34401A-Control-and-Data-Logging-Software/releases
-- once we add the device manifest support we should have and editor
-  - it would be nice to have a presentation editor or at least a default render for request/response messages
-  - additional field types
-    - bar graph
-      - bar per channel
-    - strip/roll chart recoder
-      - should be 1 or more channels
-    - x/y/z/h/s/v 
-    - x/y/h/s/v 
-    - r/theta
-    - r/theta/h/s/v
-- Id like a logger mode
-  - messages should have direction prefix and sequence 
-- would be nice to have a mode that can playback logger with realtime, fast, slow, rewind, fast-forward, pause as well as trim, markup
+- A logger-playback mode (realtime/fast/slow/rewind/fast-forward/pause, plus trim/markup) for the
+  logger-mode capture above — speculative, depends on logger mode existing first and on a concrete
+  file format for the captured log, neither of which exist yet.

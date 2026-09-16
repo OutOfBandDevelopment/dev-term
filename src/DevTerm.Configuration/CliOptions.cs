@@ -27,6 +27,11 @@ public sealed class CliOptions
     [Description("Which transport to use: serial, tcp, or hid.")]
     public string Transport { get; set; } = "serial";
 
+    /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
+    [Category("General")]
+    [DisplayName("Description")]
+    public string? Description { get; set; }
+
     /// <summary>List available serial ports and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListPorts { get; set; }

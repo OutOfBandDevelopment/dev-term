@@ -103,6 +103,11 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.ManifestName)] = options.ManifestName;
         }
 
+        if (options.Description is not null)
+        {
+            profile[nameof(CliOptions.Description)] = options.Description;
+        }
+
         return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
     }
 }

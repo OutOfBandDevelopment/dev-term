@@ -5,6 +5,10 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- TuiScreenshot.cs uses System.Drawing.Common to render real PNGs for docs/user-guide —
+         Windows-only, same as DevTerm.Wpf.Tests; the production DevTerm.Console app stays
+         cross-platform, this only marks the test project. -->
+    <SupportedOSPlatform>windows</SupportedOSPlatform>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="MSTest" Version="4.0.2" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.11" />
     <PackageReference Include="Terminal.Gui" Version="2.5.0" />
   </ItemGroup>
 

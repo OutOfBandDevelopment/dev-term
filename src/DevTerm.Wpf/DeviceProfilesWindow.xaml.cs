@@ -32,6 +32,12 @@ public partial class DeviceProfilesWindow : Window
         InitializeComponent();
         ViewModel = new ConnectionEditorViewModel(store, initial, statusText);
         DataContext = ViewModel;
+        ViewModel.ConfirmOverwrite = name => MessageBox.Show(
+            this,
+            $"A profile named '{name}' already exists. Overwrite it?",
+            "dev-term",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
         ViewModel.CloseRequested += (_, _) =>
         {
             try

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO.Ports;
 using DevTerm.Configuration;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
@@ -105,6 +106,8 @@ public static class ConfigureMode
         profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
 
         var loadButton = new Button { X = Pos.Right(profilesList) + 1, Y = Pos.Top(profilesList), Text = "Load" };
+        var deleteButton = new Button { X = Pos.Right(loadButton) + 1, Y = Pos.Top(profilesList), Text = "Delete" };
+        var refreshButton = new Button { X = Pos.Right(deleteButton) + 1, Y = Pos.Top(profilesList), Text = "Refresh" };
 
         var transportLabel = new Label { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Transport:" };
         var transportSelector = new OptionSelector<TransportChoice>
@@ -115,12 +118,23 @@ public static class ConfigureMode
             HorizontalSpace = 2,
         };
 
-        var portLabel = new Label { X = 0, Y = Pos.Bottom(transportLabel) + 1, Text = "Serial port:" };
+        var descriptionLabel = new Label { X = 0, Y = Pos.Bottom(transportLabel) + 1, Text = "Description:" };
+        var descriptionField = new TextField { X = Pos.Right(descriptionLabel) + 1, Y = Pos.Top(descriptionLabel), Width = 40 };
+
+        var portLabel = new Label { X = 0, Y = Pos.Bottom(descriptionLabel) + 1, Text = "Serial port:" };
         var portField = new TextField { X = Pos.Right(portLabel) + 1, Y = Pos.Top(portLabel), Width = 12, Text = initial.Port ?? string.Empty };
         var baudLabel = new Label { X = Pos.Right(portField) + 3, Y = Pos.Top(portLabel), Text = "Baud:" };
         var baudField = new TextField { X = Pos.Right(baudLabel) + 1, Y = Pos.Top(portLabel), Width = 10, Text = initial.Baud.ToString() };
 
-        var hostLabel = new Label { X = 0, Y = Pos.Bottom(portLabel) + 1, Text = "TCP host:" };
+        var dataBitsLabel = new Label { X = 0, Y = Pos.Bottom(portLabel) + 1, Text = "Data bits:" };
+        var dataBitsField = new TextField { X = Pos.Right(dataBitsLabel) + 1, Y = Pos.Top(dataBitsLabel), Width = 4, Text = initial.DataBits.ToString() };
+        var parityLabel = new Label { X = Pos.Right(dataBitsField) + 3, Y = Pos.Top(dataBitsLabel), Text = "Parity:" };
+        var paritySelector = new OptionSelector<Parity> { X = Pos.Right(parityLabel) + 1, Y = Pos.Top(dataBitsLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
+
+        var stopBitsLabel = new Label { X = 0, Y = Pos.Bottom(dataBitsLabel) + 1, Text = "Stop bits:" };
+        var stopBitsSelector = new OptionSelector<StopBits> { X = Pos.Right(stopBitsLabel) + 1, Y = Pos.Top(stopBitsLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
+
+        var hostLabel = new Label { X = 0, Y = Pos.Bottom(stopBitsLabel) + 1, Text = "TCP host:" };
         var hostField = new TextField { X = Pos.Right(hostLabel) + 1, Y = Pos.Top(hostLabel), Width = 20, Text = initial.Host ?? string.Empty };
         var tcpPortLabel = new Label { X = Pos.Right(hostField) + 3, Y = Pos.Top(hostLabel), Text = "Port:" };
         var tcpPortField = new TextField { X = Pos.Right(tcpPortLabel) + 1, Y = Pos.Top(hostLabel), Width = 8, Text = initial.TcpPort.ToString() };
@@ -167,9 +181,15 @@ public static class ConfigureMode
             ErrorLabel = errorLabel,
             ProfilesList = profilesList,
             LoadButton = loadButton,
+            DeleteButton = deleteButton,
+            RefreshButton = refreshButton,
             TransportSelector = transportSelector,
+            DescriptionField = descriptionField,
             PortField = portField,
             BaudField = baudField,
+            DataBitsField = dataBitsField,
+            ParitySelector = paritySelector,
+            StopBitsSelector = stopBitsSelector,
             HostField = hostField,
             TcpPortField = tcpPortField,
             ListenCheckBox = listenCheckBox,
@@ -191,6 +211,8 @@ public static class ConfigureMode
         void UpdateTransportVisibility(TransportChoice selected)
         {
             portLabel.Visible = portField.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
+            dataBitsLabel.Visible = dataBitsField.Visible = parityLabel.Visible = paritySelector.Visible = selected == TransportChoice.Serial;
+            stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
             hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = selected == TransportChoice.Hid;
         }
@@ -201,8 +223,12 @@ public static class ConfigureMode
         void PushFieldsIntoViewModel()
         {
             viewModel.Transport = (transportSelector.Value ?? TransportChoice.Serial).ToString().ToLowerInvariant();
+            viewModel.Description = descriptionField.Text;
             viewModel.Port = portField.Text;
             viewModel.Baud = baudField.Text;
+            viewModel.DataBits = dataBitsField.Text;
+            viewModel.ParityText = (paritySelector.Value ?? Parity.None).ToString();
+            viewModel.StopBitsText = (stopBitsSelector.Value ?? StopBits.One).ToString();
             viewModel.Host = hostField.Text;
             viewModel.TcpPort = tcpPortField.Text;
             viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
@@ -218,8 +244,12 @@ public static class ConfigureMode
         {
             var transportChoice = Enum.TryParse<TransportChoice>(viewModel.Transport, ignoreCase: true, out var t) ? t : TransportChoice.Serial;
             transportSelector.Value = transportChoice;
+            descriptionField.Text = viewModel.Description;
             portField.Text = viewModel.Port;
             baudField.Text = viewModel.Baud;
+            dataBitsField.Text = viewModel.DataBits;
+            paritySelector.Value = Enum.TryParse<Parity>(viewModel.ParityText, ignoreCase: true, out var parity) ? parity : Parity.None;
+            stopBitsSelector.Value = Enum.TryParse<StopBits>(viewModel.StopBitsText, ignoreCase: true, out var stopBits) ? stopBits : StopBits.One;
             hostField.Text = viewModel.Host;
             tcpPortField.Text = viewModel.TcpPort;
             listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
@@ -237,23 +267,51 @@ public static class ConfigureMode
 
         transportSelector.ValueChanged += (_, _) => UpdateTransportVisibility(transportSelector.Value ?? TransportChoice.Serial);
 
+        // The TUI's own "overwrite '{name}'?" confirmation - Terminal.Gui's MessageBox.Query is the
+        // equivalent of the WPF window's MessageBox.Show wiring for the same ConfirmOverwrite hook.
+        viewModel.ConfirmOverwrite = name =>
+            MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
+
         viewModel.CloseRequested += (_, _) =>
         {
             parts.Result = viewModel.Result;
             Application.RequestStop();
         };
 
+        void SelectProfileIntoViewModel()
+        {
+            if (profilesList.Source is not null && profilesList.SelectedItem is int index && index >= 0 && index < viewModel.Profiles.Count)
+            {
+                viewModel.SelectedProfileName = viewModel.Profiles[index];
+            }
+        }
+
         loadButton.Accepting += (_, e) =>
         {
-            if (profilesList.Source is null || profilesList.SelectedItem is not int index || index < 0 || index >= viewModel.Profiles.Count)
+            SelectProfileIntoViewModel();
+            if (viewModel.SelectedProfileName is null)
             {
                 errorLabel.Text = "Select a profile first.";
                 e.Handled = true;
                 return;
             }
 
-            viewModel.SelectedProfileName = viewModel.Profiles[index];
             viewModel.LoadCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
+        deleteButton.Accepting += (_, e) =>
+        {
+            SelectProfileIntoViewModel();
+            viewModel.DeleteCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
+        refreshButton.Accepting += (_, e) =>
+        {
+            viewModel.RefreshCommand.Execute(null);
             PullFieldsFromViewModel();
             e.Handled = true;
         };
@@ -298,9 +356,11 @@ public static class ConfigureMode
         };
 
         window.Add(
-            errorLabel, profilesLabel, profilesList, loadButton,
+            errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
             transportLabel, transportSelector,
+            descriptionLabel, descriptionField,
             portLabel, portField, baudLabel, baudField,
+            dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField,
             presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
@@ -323,11 +383,23 @@ internal sealed class ConfigureWindowParts
 
     public required Button LoadButton { get; init; }
 
-    public required View TransportSelector { get; init; }
+    public required Button DeleteButton { get; init; }
+
+    public required Button RefreshButton { get; init; }
+
+    public required OptionSelector<ConfigureMode.TransportChoice> TransportSelector { get; init; }
+
+    public required TextField DescriptionField { get; init; }
 
     public required TextField PortField { get; init; }
 
     public required TextField BaudField { get; init; }
+
+    public required TextField DataBitsField { get; init; }
+
+    public required OptionSelector<Parity> ParitySelector { get; init; }
+
+    public required OptionSelector<StopBits> StopBitsSelector { get; init; }
 
     public required TextField HostField { get; init; }
 
@@ -339,9 +411,9 @@ internal sealed class ConfigureWindowParts
 
     public required TextField HidProductField { get; init; }
 
-    public required View PresenterSelector { get; init; }
+    public required OptionSelector<ConfigureMode.PresenterChoice> PresenterSelector { get; init; }
 
-    public required View LineEndingSelector { get; init; }
+    public required OptionSelector<LineEnding> LineEndingSelector { get; init; }
 
     public required TextField SaveNameField { get; init; }
 
