@@ -121,9 +121,13 @@ public sealed class ConfigureModeTests
         {
             RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
             {
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
-                parts.HostField.Text = "192.168.0.107";
-                parts.TcpPortField.Text = "23";
+                // Deliberately doesn't edit any fields first: doing so would make the view model
+                // dirty, and Quit now asks ConfirmDiscardChanges before proceeding when dirty
+                // (wired to a real, blocking Terminal.Gui MessageBox.Query in production) — nothing
+                // in headless test mode can click that dialog's button, so the run would hang. The
+                // dirty-confirmation logic itself is covered at the view-model level instead (see
+                // DevTerm.Configuration.Tests.ConnectionEditorViewModelTests' ConfirmClose_* tests),
+                // same convention already used for ConfirmOverwrite's own real dialog.
 
                 // A non-null sentinel first: Result already defaults to null, so clicking Quit and
                 // then asserting null would pass even if the click did nothing at all — seeding a
@@ -133,6 +137,41 @@ public sealed class ConfigureModeTests
                 Click(parts.QuitButton);
 
                 Assert.IsNull(parts.Result);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Quit_WhenDirty_AsksConfirmDiscardChangesAndHonorsTheAnswer()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                // Stubbed rather than left wired to ConfigureMode's real Terminal.Gui
+                // MessageBox.Query, which would hang here — nothing in headless test mode can
+                // click that dialog's button (see Quit_SetsResultToNull's comment).
+                var asked = 0;
+                parts.ViewModel.ConfirmDiscardChanges = () => { asked++; return false; };
+                parts.HostField.Text = "192.168.0.107";
+
+                // A non-null sentinel first, same reasoning as Quit_SetsResultToNull: proves
+                // whether Quit's actual close-and-clear-Result logic ran or not.
+                parts.Result = new CliOptions();
+                Click(parts.QuitButton);
+
+                Assert.AreEqual(1, asked, "Editing a field first should have made the view model dirty, so Quit should ask before discarding it.");
+                Assert.IsNotNull(parts.Result, "Declining the confirmation should stop Quit from actually proceeding.");
+
+                parts.ViewModel.ConfirmDiscardChanges = () => true;
+                Click(parts.QuitButton);
+
+                Assert.IsNull(parts.Result, "Confirming discard should let Quit proceed and clear Result.");
             });
         }
         finally
@@ -188,6 +227,37 @@ public sealed class ConfigureModeTests
             {
                 parts.ProfilesList.SelectedItem = 0;
                 Click(parts.LoadButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Loaded profile 'tek108'");
+                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
+                Assert.AreEqual("192.168.0.108", parts.HostField.Text);
+                Assert.AreEqual("23", parts.TcpPortField.Text);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DoubleClickingAProfile_LoadsItSameAsTheLoadButton()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" });
+
+            RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", store, parts =>
+            {
+                parts.ProfilesList.SelectedItem = 0;
+
+                // A double-click maps to Command.Accept on Terminal.Gui's ListView (confirmed via
+                // reflection against the installed package — a single click maps to a different
+                // command, Activate) — the same InvokeCommand(Command.Accept) mechanism this test
+                // class's own Click(Button) helper uses to simulate a button press.
+                parts.ProfilesList.InvokeCommand(Command.Accept);
 
                 StringAssert.Contains(parts.ErrorLabel.Text, "Loaded profile 'tek108'");
                 Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);

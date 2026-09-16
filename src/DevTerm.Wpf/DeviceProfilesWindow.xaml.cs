@@ -21,9 +21,8 @@ public partial class DeviceProfilesWindow : Window
     /// close the window instead. What "Connect" means depends on the caller: at startup, with no
     /// valid configuration yet, it's used directly to build the DI host and connect immediately
     /// (see <see cref="App"/>). From <see cref="MainWindow"/>'s "Device Profiles..." menu item
-    /// (already connected), it's saved as the default profile and a restart is requested instead —
-    /// see docs/design/connection-profiles.md's note on why this doesn't live-swap the running
-    /// session's transport.
+    /// (already connected), it's saved as the default profile *and* live-switched to immediately
+    /// via <see cref="MainWindow.SwitchProfileAsync"/> — no restart needed.
     /// </summary>
     public CliOptions? Result => ViewModel.Result;
 
@@ -38,6 +37,24 @@ public partial class DeviceProfilesWindow : Window
             "dev-term",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        ViewModel.ConfirmDiscardChanges = () => MessageBox.Show(
+            this,
+            "You have unsaved changes. Close without saving?",
+            "dev-term",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        // Covers both the "Close" button (IsCancel="True", no ViewModel command of its own) and
+        // pressing Escape - WPF triggers an IsCancel button's click for Escape by default, and
+        // either way ends up here via Window.Close(). Doesn't affect the Connect path above:
+        // Connect() already clears IsDirty before raising CloseRequested, so ConfirmClose() sees
+        // IsDirty == false and never prompts for a result the user is actively trying to keep.
+        Closing += (_, e) =>
+        {
+            if (!ViewModel.ConfirmClose())
+            {
+                e.Cancel = true;
+            }
+        };
         ViewModel.CloseRequested += (_, _) =>
         {
             try

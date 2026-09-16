@@ -207,6 +207,25 @@ Active / in-progress work for dev-term. Completed work is logged by date under `
   unable to reach the focused field; fixed by setting the field's `.Text` directly for the
   screenshot instead of injecting keys it doesn't need to actually simulate. See `CLAUDE.md`.
 
+  **Update, 2026-09-16**: two more Connection Editor Architect Notes items landed. Double-clicking a
+  row in the saved-profiles list now loads it, same as pressing Load — WPF via a pure
+  `<MouseBinding MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />` (no code-behind),
+  the TUI via `ListView`'s `Accepting` event (confirmed via reflection that a double-click maps to
+  `Command.Accept`, not `Activate`/`OpenSelectedItem` as the v1-era names might suggest) calling the
+  same local function the Load button's own handler does. Dirty-field confirmation also landed:
+  `ConnectionEditorViewModel.IsDirty` flips true on any field edit (excluding transient state like
+  `StatusMessage`) and clears on a successful Load/Save/Connect/Import; a new `ConfirmDiscardChanges`
+  hook (same "left null, always proceeds" convention as `ConfirmOverwrite`) backs a `ConfirmClose()`
+  check that both Close/Quit and Load now call before discarding unsaved edits — Connect doesn't
+  need it, since connecting doesn't discard anything. Found and fixed a real self-inflicted test hang
+  doing this: `ConfigureModeTests.Quit_SetsResultToNull` edited fields (incidentally, not for its own
+  assertion) before clicking Quit, which now makes the view model dirty and triggers
+  `ConfigureMode`'s real, blocking `Terminal.Gui.Views.MessageBox.Query` — nothing in headless test
+  mode can click that dialog, so the run hung; fixed by not editing fields there and adding a
+  dedicated test that stubs `ConfirmDiscardChanges` instead of hitting the real dialog (same
+  convention `ConfirmOverwrite` already needed). 249 tests across the solution now (244 pass by
+  default).
+
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
@@ -282,9 +301,10 @@ ordered against the rest.
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
-- **Connection Editor, from the 2026-09-15 Architect Notes** (see the "Update, 2026-09-15" entries
-  above for what already landed from this list — serial fields, description, delete/refresh,
-  overwrite confirmation, dropdowns, grow/shrink list). Still open:
+- **Connection Editor, from the 2026-09-15 Architect Notes** (see the "Update, 2026-09-15"/
+  "2026-09-16" entries above for what already landed from this list — serial fields, description,
+  delete/refresh, overwrite confirmation, dropdowns, grow/shrink list, dirty-field confirmation,
+  double-click-to-load). Still open:
   - **Serial port as a combobox** — type anything, or pick from an enumerated list showing each
     port's long and short name (today it's a plain text field).
   - **Export-selected/export-all as a zip**, with per-name import conflict resolution
@@ -299,8 +319,6 @@ ordered against the rest.
   - **HID vendor/product ID as comboboxes** enumerating real local devices (reuse
     `SystemHidDeviceDiscovery`, same as `--listhiddevices`) while still allowing a typed custom
     value, plus a decimal/hex display toggle — today both are plain decimal-only text fields.
-  - **Dirty-field confirmation** — an OK/Cancel prompt on Load/Close/Connect when fields have
-    changed since the last Load/Save/Connect. Needs a tracked dirty flag on the view model.
   - **A real file watcher on the profiles folder** — today's Refresh button is manual-only.
   - **TUI: wire up a file picker for the import/export path field**, and **make the editor's
     content scroll** when it doesn't fit the terminal — both confirmed possible (Terminal.Gui

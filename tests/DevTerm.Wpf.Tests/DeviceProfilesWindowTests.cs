@@ -1,5 +1,7 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using DevTerm.Configuration;
 
 namespace DevTerm.Wpf.Tests;
@@ -158,6 +160,78 @@ public sealed class DeviceProfilesWindowTests
 
                 StringAssert.Contains(window.ViewModel.StatusMessage, "Deleted profile 'tek108'");
                 Assert.IsFalse(store.List().Contains("tek108"));
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DoubleClickingAProfile_IsBoundToTheSameLoadCommandAsTheLoadButton()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(store, new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                window.ProfilesList.SelectedItem = "tek108";
+
+                var binding = window.ProfilesList.InputBindings.OfType<MouseBinding>()
+                    .Single(b => b.MouseAction == MouseAction.LeftDoubleClick);
+                Assert.AreSame(window.ViewModel.LoadCommand, binding.Command,
+                    "Double-click should be bound to the same LoadCommand the Load button uses, per pure command binding — no code-behind click handler.");
+
+                binding.Command.Execute(binding.CommandParameter);
+
+                StringAssert.Contains(window.ViewModel.StatusMessage, "Loaded profile 'tek108'");
+                Assert.AreEqual("192.168.0.108", window.HostBox.Text);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Closing_WhenDirty_AsksConfirmDiscardChangesAndHonorsTheAnswer()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                var closed = false;
+                window.Closed += (_, _) => closed = true;
+
+                var asked = 0;
+                window.ViewModel.ConfirmDiscardChanges = () => { asked++; return false; };
+                window.ViewModel.Host = "192.168.0.108";
+
+                window.Close();
+
+                Assert.AreEqual(1, asked, "Editing a field first should have made the view model dirty, so closing should ask before discarding it.");
+                Assert.IsFalse(closed, "Declining the confirmation should cancel the close.");
+
+                window.ViewModel.ConfirmDiscardChanges = () => true;
+                window.Close();
+
+                Assert.IsTrue(closed, "Confirming discard should let the close proceed.");
 
                 await Task.CompletedTask;
             });

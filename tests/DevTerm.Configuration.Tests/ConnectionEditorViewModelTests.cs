@@ -385,4 +385,220 @@ public sealed class ConnectionEditorViewModelTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void Constructor_IsNotDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 });
+
+            Assert.IsFalse(vm.IsDirty, "A freshly-opened editor showing its starting configuration shouldn't already be dirty.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void EditingAField_MarksTheViewModelDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            vm.Host = "192.168.0.108";
+
+            Assert.IsTrue(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SettingStatusMessageOrSelectedProfileName_DoesNotMarkDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                StatusMessage = "some status",
+                SelectedProfileName = "some-profile",
+            };
+
+            Assert.IsFalse(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadCommand_ClearsDirty_EvenAfterEditingFieldsFirst()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Host = "something typed but never saved",
+                SelectedProfileName = "tek108",
+            };
+            Assert.IsTrue(vm.IsDirty);
+
+            vm.LoadCommand.Execute(null);
+
+            Assert.IsFalse(vm.IsDirty, "Loading a profile overwrites the unsaved edits, so nothing is dirty relative to what's now shown.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SaveCommand_ClearsDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.108",
+                TcpPort = "23",
+                SaveName = "tek108",
+            };
+            Assert.IsTrue(vm.IsDirty);
+
+            vm.SaveCommand.Execute(null);
+
+            Assert.IsFalse(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectCommand_WithValidFields_ClearsDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.107",
+                TcpPort = "23",
+            };
+            Assert.IsTrue(vm.IsDirty);
+
+            vm.ConnectCommand.Execute(null);
+
+            Assert.IsFalse(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConfirmClose_WhenNotDirty_ReturnsTrueWithoutAskingConfirmation()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            var asked = false;
+            vm.ConfirmDiscardChanges = () => { asked = true; return false; };
+
+            Assert.IsTrue(vm.ConfirmClose());
+            Assert.IsFalse(asked, "Not dirty - there's nothing to confirm discarding.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConfirmClose_WhenDirty_AsksAndHonorsTheAnswer()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions()) { Host = "192.168.0.108" };
+
+            vm.ConfirmDiscardChanges = () => false;
+            Assert.IsFalse(vm.ConfirmClose());
+
+            vm.ConfirmDiscardChanges = () => true;
+            Assert.IsTrue(vm.ConfirmClose());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadCommand_WhenDirty_AsksConfirmDiscardChangesFirst()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Host = "something typed but never saved",
+                SelectedProfileName = "tek108",
+            };
+
+            vm.ConfirmDiscardChanges = () => false;
+            vm.LoadCommand.Execute(null);
+
+            Assert.AreEqual("something typed but never saved", vm.Host, "Declining should leave the unsaved edit in place, not overwrite it.");
+            StringAssert.Contains(vm.StatusMessage, "cancelled");
+
+            vm.ConfirmDiscardChanges = () => true;
+            vm.LoadCommand.Execute(null);
+
+            Assert.AreEqual("192.168.0.108", vm.Host, "Confirming discard should let the load actually proceed.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConfirmClose_WhenDirtyAndNoHookWired_ProceedsWithoutAsking()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions()) { Host = "192.168.0.108" };
+
+            Assert.IsTrue(vm.ConfirmClose(), "Left null (e.g. in a test that doesn't wire a real dialog), a close should proceed rather than get stuck unable to ask.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

@@ -39,6 +39,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     private string _importExportPath = string.Empty;
     private string _statusMessage = string.Empty;
     private string? _selectedProfileName;
+    private bool _isDirty;
+
+    /// <summary>
+    /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
+    /// purposes — transient UI/status state, not a connection field a user could lose.
+    /// </summary>
+    private static readonly HashSet<string> NonDirtyProperties = new(StringComparer.Ordinal)
+    {
+        nameof(StatusMessage),
+        nameof(SelectedProfileName),
+        nameof(IsDirty),
+        nameof(IsSerialTransport),
+        nameof(IsTcpTransport),
+        nameof(IsHidTransport),
+    };
 
     public ConnectionEditorViewModel(ConnectionProfileStore store, CliOptions initial, string? statusMessage = null)
     {
@@ -46,6 +61,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         StatusMessage = statusMessage ?? string.Empty;
         LoadIntoFields(initial);
         RefreshProfiles();
+        IsDirty = false; // LoadIntoFields above marks every field it sets as dirty; a freshly-opened editor showing its starting configuration isn't actually dirty yet.
 
         ConnectCommand = new RelayCommand(Connect);
         LoadCommand = new RelayCommand(LoadSelected);
@@ -169,6 +185,13 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     public string? SelectedProfileName { get => _selectedProfileName; set => SetField(ref _selectedProfileName, value); }
 
     /// <summary>
+    /// <see langword="true"/> if a connection field has changed since the last successful Load,
+    /// Save, Connect, or Import — the "would I lose something by closing/loading over this right
+    /// now" signal each front end checks via <see cref="ConfirmClose"/> before actually closing.
+    /// </summary>
+    public bool IsDirty { get => _isDirty; private set => SetField(ref _isDirty, value); }
+
+    /// <summary>
     /// Set by each front end to show its own native "overwrite '{name}'?" confirmation (a
     /// <c>MessageBox</c> in WPF, a Terminal.Gui message box in the TUI) — the view model has no UI
     /// of its own to show one directly. <see cref="SaveCommand"/> calls it only when
@@ -177,6 +200,23 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
     /// (e.g. in tests that don't wire a real dialog).
     /// </summary>
     public Func<string, bool>? ConfirmOverwrite { get; set; }
+
+    /// <summary>
+    /// Set by each front end to show its own native "you have unsaved changes — discard them?"
+    /// confirmation, invoked only when <see cref="IsDirty"/> — see <see cref="ConfirmClose"/>. Left
+    /// <see langword="null"/>, an in-progress close/load always proceeds without asking (e.g. in
+    /// tests that don't wire a real dialog), same convention as <see cref="ConfirmOverwrite"/>.
+    /// </summary>
+    public Func<bool>? ConfirmDiscardChanges { get; set; }
+
+    /// <summary>
+    /// Call before discarding whatever's currently unsaved in the fields — closing/quitting the
+    /// editor, or loading a different profile over them (not before Connect, which already resets
+    /// <see cref="IsDirty"/> itself on success — see its own doc comment, since Connect doesn't
+    /// discard anything). Returns <see langword="true"/> if it's fine to proceed: either nothing's
+    /// unsaved, or the user confirmed discarding it via <see cref="ConfirmDiscardChanges"/>.
+    /// </summary>
+    public bool ConfirmClose() => !IsDirty || (ConfirmDiscardChanges?.Invoke() ?? true);
 
     public void LoadIntoFields(CliOptions options)
     {
@@ -291,6 +331,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         }
 
         Result = options;
+        IsDirty = false;
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -302,10 +343,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (!ConfirmClose())
+        {
+            StatusMessage = "Load cancelled — you have unsaved changes.";
+            return;
+        }
+
         try
         {
             LoadIntoFields(_store.Load(name));
             SaveName = name;
+            IsDirty = false;
             StatusMessage = $"Loaded profile '{name}'.";
         }
         catch (Exception ex)
@@ -340,6 +388,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         _store.Save(name, options);
         RefreshProfiles();
         SaveName = string.Empty;
+        IsDirty = false;
         StatusMessage = $"Saved profile '{name}'.";
     }
 
@@ -355,6 +404,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         try
         {
             LoadIntoFields(ConnectionProfileStore.LoadFromFile(path));
+            IsDirty = false;
             StatusMessage = $"Imported '{path}' — review the fields, then Save Profile to keep it.";
         }
         catch (Exception ex)
@@ -395,5 +445,13 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged
         OnPropertyChanged(propertyName);
     }
 
-    private void OnPropertyChanged(string? propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    private void OnPropertyChanged(string? propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        if (propertyName is not null && !NonDirtyProperties.Contains(propertyName))
+        {
+            IsDirty = true;
+        }
+    }
 }

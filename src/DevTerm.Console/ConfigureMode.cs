@@ -177,6 +177,7 @@ public static class ConfigureMode
 
         var parts = new ConfigureWindowParts
         {
+            ViewModel = viewModel,
             Window = window,
             ErrorLabel = errorLabel,
             ProfilesList = profilesList,
@@ -271,6 +272,8 @@ public static class ConfigureMode
         // equivalent of the WPF window's MessageBox.Show wiring for the same ConfirmOverwrite hook.
         viewModel.ConfirmOverwrite = name =>
             MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
+        viewModel.ConfirmDiscardChanges = () =>
+            MessageBox.Query(Application.Instance!, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
 
         viewModel.CloseRequested += (_, _) =>
         {
@@ -286,18 +289,36 @@ public static class ConfigureMode
             }
         }
 
-        loadButton.Accepting += (_, e) =>
+        // Shared by the Load button and double-clicking a row in the list below - same
+        // LoadCommand, not a separate code path, per "double-click should do the same as Load".
+        void LoadSelectedProfile()
         {
             SelectProfileIntoViewModel();
             if (viewModel.SelectedProfileName is null)
             {
                 errorLabel.Text = "Select a profile first.";
-                e.Handled = true;
                 return;
             }
 
             viewModel.LoadCommand.Execute(null);
             PullFieldsFromViewModel();
+        }
+
+        loadButton.Accepting += (_, e) =>
+        {
+            LoadSelectedProfile();
+            e.Handled = true;
+        };
+
+        // ListView's default mouse bindings map a double-click specifically to Command.Accept
+        // (a single click maps to Command.Activate instead) - confirmed via reflection against the
+        // installed Terminal.Gui v2.5.0 package rather than guessed, since "Activated"/
+        // "OpenSelectedItem"-sounding members are a natural but wrong first guess here.
+        // View.Accepting (inherited, the same event every Button.Accepting handler above uses) is
+        // what actually fires for it.
+        profilesList.Accepting += (_, e) =>
+        {
+            LoadSelectedProfile();
             e.Handled = true;
         };
 
@@ -350,6 +371,17 @@ public static class ConfigureMode
 
         quitButton.Accepting += (_, e) =>
         {
+            // Pushed first so a field typed but never sent through Save/Import/Export/Connect (the
+            // only buttons that otherwise sync Terminal.Gui's controls into the view model) still
+            // counts as dirty here - otherwise Quit could see IsDirty == false purely because the
+            // view model was never told about an edit that's actually sitting unsaved on screen.
+            PushFieldsIntoViewModel();
+            if (!viewModel.ConfirmClose())
+            {
+                e.Handled = true;
+                return;
+            }
+
             parts.Result = null;
             e.Handled = true;
             Application.RequestStop();
@@ -375,6 +407,9 @@ public static class ConfigureMode
 /// <summary>The controls a test needs to drive <see cref="ConfigureMode"/> headlessly.</summary>
 internal sealed class ConfigureWindowParts
 {
+    /// <summary>Exposed so tests can stub <see cref="ConnectionEditorViewModel.ConfirmOverwrite"/>/<see cref="ConnectionEditorViewModel.ConfirmDiscardChanges"/> instead of hitting the real, blocking Terminal.Gui <c>MessageBox.Query</c> this class wires them to.</summary>
+    public required ConnectionEditorViewModel ViewModel { get; init; }
+
     public required Window Window { get; init; }
 
     public required Label ErrorLabel { get; init; }

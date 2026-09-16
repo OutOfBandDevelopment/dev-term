@@ -42,15 +42,15 @@ Shown in two situations:
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
 | Import/export file path | free text (+ "Browse..." in WPF) | empty | Must be non-empty to import/export | Same file, same JSON shape, for both directions |
-| Saved profiles | list, one name per saved profile | populated from `ConnectionProfileStore.List()` at construction | n/a | Selecting one doesn't load it by itself — press Load |
+| Saved profiles | list, one name per saved profile | populated from `ConnectionProfileStore.List()` at construction | n/a | Double-clicking a row loads it — same as selecting it and pressing Load, not a separate action |
 
 ## Actions
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result` and raises `CloseRequested` | None | Shows the validation failure message; `Result` stays `null`, window stays open |
-| **Close** (WPF) / **Quit** (TUI) | Discards changes; `Result` stays `null` | None | n/a |
-| **Load** | Loads the selected saved profile's fields into the editor; also sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / the underlying `IOException`'s message if the file can't be read |
+| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested` | None | Shows the validation failure message; `Result` stays `null`, window stays open |
+| **Close** (WPF) / **Quit** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
+| **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
 | **Delete** | Deletes the selected saved profile; refreshes the list; clears the selection | A profile must be selected | "Select a profile first." |
 | **Refresh** | Re-reads the profiles directory (picks up a profile saved by another process, e.g. the other front end) | None | n/a |
@@ -66,6 +66,13 @@ Shown in two situations:
 - **Status message**: a single line (`StatusMessage`) shows the most recent action's result or a
   validation failure — success and failure share the same field, there's no separate "error" vs.
   "info" styling today (WPF renders it in dark red regardless).
+- **Dirty tracking**: `IsDirty` flips true the moment any field changes (Transport, Port, Baud, ...
+  — everything except `StatusMessage`/`SelectedProfileName`/the `Is*Transport` flags themselves) and
+  clears on a successful Load, Save, Connect, or Import. Close/Quit and Load both check it via
+  `ConfirmClose()` before discarding whatever's currently unsaved; Connect doesn't need the check
+  since nothing is discarded by connecting with the fields as shown. Freshly opening the editor
+  (including from a saved profile's initial values) is never dirty — only an edit made *after* that
+  counts.
 
 ## Per-front-end notes
 
@@ -94,9 +101,18 @@ Shown in two situations:
   typed path field. The TUI only has the typed field — Terminal.Gui v2.5.0 does ship real file-picker
   dialogs (`Terminal.Gui.Views.OpenDialog`/`SaveDialog`/`FileDialog`, all public), so a TUI file
   browser is possible; it's just not wired up here yet (see Open items).
-- **Overwrite confirmation and delete are native per front end**: WPF uses `MessageBox.Show`; the
-  TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the same
-  `ConnectionEditorViewModel.ConfirmOverwrite` hook so the view model itself has no UI dependency.
+- **Overwrite/discard confirmations and delete are native per front end**: WPF uses
+  `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
+  same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges` hooks so the view model
+  itself has no UI dependency.
+- **Double-click-to-load is a pure command binding in WPF, an event handler calling the same
+  command in the TUI**: WPF's `ListBox` has no XAML way to bind a routed mouse event directly to an
+  `ICommand`, but it does support `<ListBox.InputBindings><MouseBinding MouseAction="LeftDoubleClick"
+  Command="{Binding LoadCommand}" /></ListBox.InputBindings>` — no code-behind at all. The TUI's
+  `ListView` has no such binding concept; a double-click maps to `Command.Accept` there (confirmed
+  via reflection — a single click maps to a different command, `Activate`), so `ConfigureMode`
+  subscribes `profilesList.Accepting` to the same local `LoadSelectedProfile()` function the Load
+  button's own `Accepting` handler calls — one shared code path, not a duplicated one.
 
 ## Open items
 
@@ -111,9 +127,6 @@ Requested but not yet built, in the order they came up:
   would need to become a list, which also touches `AddDevTermFrontEnd`'s single-presenter lookup and
   raises a real design question for the send path (which presenter encodes a typed line for sending,
   if more than one is active). Needs its own design pass, not a quick UI change.
-- **Dirty-field confirmation.** No "you have unsaved changes — continue?" prompt on Load/Close/
-  Connect when fields have been edited since the last Load/Save/Connect. Would need a tracked dirty
-  flag on the view model (set on any field `PropertyChanged`, cleared on Load/Save/Connect).
 - **Export-selected/export-all as a single zip, with per-name import conflict resolution**
   (ignore/rename/replace per profile, or "delete all and replace" wholesale). Today import/export is
   one profile, one JSON file, no conflict handling beyond the single-profile Save overwrite prompt —
