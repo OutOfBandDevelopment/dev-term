@@ -100,6 +100,14 @@ pick from. Picking a HID device fills in both Vendor ID and Product ID together,
 one device. The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
 when the editor opens — nothing plugged in afterward shows up without reopening the editor.
 
+### Viewing HID Vendor/Product ID as hex
+
+Check **Show as hex** next to the HID fields to switch Vendor ID/Product ID between plain decimal
+and 4-digit hex (e.g. `04D2` instead of `1234`) — the same no-`0x`-prefix format
+`--listhiddevices`/the detected-devices picker above already use. Toggling it reformats whatever's
+already entered rather than clearing the fields; it's purely a display/typing preference, not saved
+as part of a profile.
+
 ### A TUI-specific limitation to know about
 
 Notice the TUI's TCP/HID captures above have blank rows where the Serial fields used to be:

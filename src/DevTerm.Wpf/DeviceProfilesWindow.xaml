@@ -135,17 +135,18 @@
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Vendor ID (decimal):" VerticalAlignment="Center" />
-                            <TextBox x:Name="HidVendorBox" Grid.Column="1" Text="{Binding HidVendorId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Vendor ID:" VerticalAlignment="Center" />
+                            <TextBox x:Name="HidVendorBox" Grid.Column="1" Text="{Binding HidVendorIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Product ID (decimal):" VerticalAlignment="Center" />
-                            <TextBox x:Name="HidProductBox" Grid.Column="1" Text="{Binding HidProductId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Product ID:" VerticalAlignment="Center" />
+                            <TextBox x:Name="HidProductBox" Grid.Column="1" Text="{Binding HidProductIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
+                        <CheckBox x:Name="HidShowHexBox" Content="Show as hex" IsChecked="{Binding HidIdsShowHex}" Margin="140,0,0,4" />
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />

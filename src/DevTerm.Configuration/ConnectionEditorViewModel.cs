@@ -47,6 +47,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private bool _isDirty;
     private string? _selectedSerialPort;
     private HidDeviceOption? _selectedHidDevice;
+    private bool _hidIdsShowHex;
 
     /// <summary>
     /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
@@ -62,6 +63,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsHidTransport),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
+        nameof(HidIdsShowHex),
+        nameof(HidVendorIdDisplay),
+        nameof(HidProductIdDisplay),
     };
 
     public ConnectionEditorViewModel(
@@ -277,9 +281,121 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public bool Listen { get => _listen; set => SetField(ref _listen, value); }
 
-    public string HidVendorId { get => _hidVendorId; set => SetField(ref _hidVendorId, value); }
+    /// <summary>
+    /// Always a plain decimal string — the canonical value <see cref="BuildOptions"/>/<see cref="LoadIntoFields"/>
+    /// read and write, and what <see cref="SelectedHidDevice"/> sets. A front end's text field binds
+    /// to <see cref="HidVendorIdDisplay"/> instead, not this directly, so it can show hex without
+    /// this value ever needing to be anything but decimal.
+    /// </summary>
+    public string HidVendorId
+    {
+        get => _hidVendorId;
+        set
+        {
+            if (_hidVendorId == value)
+            {
+                return;
+            }
 
-    public string HidProductId { get => _hidProductId; set => SetField(ref _hidProductId, value); }
+            SetField(ref _hidVendorId, value);
+            OnPropertyChanged(nameof(HidVendorIdDisplay));
+        }
+    }
+
+    /// <summary>Same idea as <see cref="HidVendorId"/>/<see cref="HidVendorIdDisplay"/>.</summary>
+    public string HidProductId
+    {
+        get => _hidProductId;
+        set
+        {
+            if (_hidProductId == value)
+            {
+                return;
+            }
+
+            SetField(ref _hidProductId, value);
+            OnPropertyChanged(nameof(HidProductIdDisplay));
+        }
+    }
+
+    /// <summary>
+    /// <see langword="true"/> to show/accept <see cref="HidVendorIdDisplay"/>/<see cref="HidProductIdDisplay"/>
+    /// as 4-digit hex (matching <c>--listhiddevices</c>'s own <c>"046D:C08B"</c> formatting) instead
+    /// of plain decimal — a display preference only, not itself a connection field, so it doesn't
+    /// mark the editor dirty and isn't saved as part of a profile (<see cref="HidVendorId"/>/
+    /// <see cref="HidProductId"/> are always decimal regardless of this).
+    /// </summary>
+    public bool HidIdsShowHex
+    {
+        get => _hidIdsShowHex;
+        set
+        {
+            if (_hidIdsShowHex == value)
+            {
+                return;
+            }
+
+            SetField(ref _hidIdsShowHex, value);
+            OnPropertyChanged(nameof(HidVendorIdDisplay));
+            OnPropertyChanged(nameof(HidProductIdDisplay));
+        }
+    }
+
+    /// <summary>
+    /// What a front end's Vendor ID field actually binds to — decimal or 4-digit hex depending on
+    /// <see cref="HidIdsShowHex"/>, converting to/from the canonical decimal <see cref="HidVendorId"/>.
+    /// Setting this does <em>not</em> re-raise its own change notification (only <see cref="HidVendorId"/>'s
+    /// does, when something else — Load, <see cref="SelectedHidDevice"/> — changes the canonical
+    /// value): a bound WPF <c>TextBox</c> re-pulling and reformatting its own text on every keystroke
+    /// would reset the caret to the end after each character typed.
+    /// </summary>
+    public string HidVendorIdDisplay
+    {
+        get => FormatHidId(_hidVendorId, _hidIdsShowHex);
+        set
+        {
+            var canonical = ParseHidId(value, _hidIdsShowHex);
+            if (_hidVendorId == canonical)
+            {
+                return;
+            }
+
+            SetField(ref _hidVendorId, canonical, nameof(HidVendorId));
+        }
+    }
+
+    /// <summary>Same idea as <see cref="HidVendorIdDisplay"/>.</summary>
+    public string HidProductIdDisplay
+    {
+        get => FormatHidId(_hidProductId, _hidIdsShowHex);
+        set
+        {
+            var canonical = ParseHidId(value, _hidIdsShowHex);
+            if (_hidProductId == canonical)
+            {
+                return;
+            }
+
+            SetField(ref _hidProductId, canonical, nameof(HidProductId));
+        }
+    }
+
+    // Formats/parses a canonical decimal HID id string for display — 4-digit uppercase hex (no "0x"
+    // prefix, matching --listhiddevices' own "046D:C08B" convention) when asHex/isHex, otherwise
+    // passed through unchanged. An unparseable value is returned as-is rather than blanked out: the
+    // same "don't reject a keystroke, let validation catch it later" behavior every other typed
+    // field in this view model already has (see e.g. Baud/DataBits).
+    private static string FormatHidId(string decimalText, bool asHex) =>
+        asHex && int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value.ToString("X4", CultureInfo.InvariantCulture)
+            : decimalText;
+
+    private static string ParseHidId(string text, bool isHex) =>
+        isHex
+            ? int.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value)
+                ? value.ToString(CultureInfo.InvariantCulture)
+                : text
+            : text;
 
     /// <summary>Same idea as <see cref="SelectedSerialPort"/>, for <see cref="HidVendorId"/>/<see cref="HidProductId"/> together.</summary>
     public HidDeviceOption? SelectedHidDevice

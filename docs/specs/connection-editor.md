@@ -36,8 +36,9 @@ Shown in two situations:
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
-| Vendor ID (hid) | integer (decimal), typed as text, or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Device Manager shows hex — see `CliOptions.HidVendorId`'s own doc comment for the conversion; the list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"` |
-| Product ID (hid) | integer (decimal), typed as text, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same decimal-only caveat as Vendor ID |
+| Vendor ID (hid) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.HidVendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"` |
+| Product ID (hid) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same as Vendor ID |
+| Show as hex (hid) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenter | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | `hex` | n/a (fixed set, every presenter `AddTextPresenters` registers) | Single-select today — see Open items |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
@@ -139,6 +140,19 @@ Shown in two situations:
   button that opens a small modal picker (a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
   Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
   v2.5.0 package). Both are empty (not an error) if nothing's detected or discovery itself fails.
+- **The HID decimal/hex toggle is display-only, backed by a separate `*Display` property per
+  field** (`HidVendorIdDisplay`/`HidProductIdDisplay`), not `HidVendorId`/`HidProductId` themselves
+  — those two stay canonical decimal strings always (what `BuildOptions`/`LoadIntoFields`/
+  `SelectedHidDevice` all read and write), so validation/Save/Connect/profile storage never need to
+  know or care which format the user is currently viewing. Toggling `HidIdsShowHex` reformats
+  whatever's already entered rather than requiring it to be retyped. WPF binds a `TextBox` directly
+  to `HidVendorIdDisplay`/`HidProductIdDisplay` (deliberately *not* re-raising that property's own
+  change notification from within its own setter — only from `HidIdsShowHex`'s setter or from
+  `HidVendorId`/`HidProductId` changing some other way, e.g. Load or the detected-devices picker —
+  so a bound `TextBox` doesn't get its text reformatted, and its caret reset to the end, after every
+  single keystroke). The TUI has no continuous binding to fight the same way — its "Show as hex"
+  `CheckBox` reformats the two fields immediately on toggle anyway, via its own `Activated` handler
+  (confirmed via a headless probe that `Activated` fires *after* `Value` has already flipped).
 - **Double-click-to-load is a pure command binding in WPF, an event handler calling the same
   command in the TUI**: WPF's `ListBox` has no XAML way to bind a routed mouse event directly to an
   `ICommand`, but it does support `<ListBox.InputBindings><MouseBinding MouseAction="LeftDoubleClick"
@@ -152,11 +166,6 @@ Shown in two situations:
 
 Requested but not yet built, in the order they came up:
 
-- **A decimal/hex display toggle for Vendor/Product ID.** The fields (and the new "Detected devices"
-  picker's underlying value) are decimal-only; Device Manager and most vendor documentation show hex,
-  so today's workaround is still doing that conversion by hand (see `CliOptions.HidVendorId`'s doc
-  comment) — the picker helps for a device that's actually plugged in, but not for typing one from a
-  datasheet.
 - **A long/short name for a detected serial port.** The "Detected ports" picker lists whatever
   `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every platform — no
   cross-platform equivalent of Windows' WMI-based friendly name (`"USB Serial Device (COM3)"`) was

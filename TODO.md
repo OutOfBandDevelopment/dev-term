@@ -48,15 +48,17 @@ Completed work is logged by date under `docs/changes/`.
   Delete/Refresh, an overwrite-confirmation prompt, and `docs/specs/` as a new precise-reference doc
   kind; double-click-to-load and a dirty-field discard confirmation; a real profiles-folder
   `FileSystemWatcher` for saved-list auto-refresh; a TUI file picker (Browse...) and a scrollable
-  TUI form; and, most recently, "type it or pick from what's attached" pickers for the serial port
-  and HID vendor/product ID. Test automation for CLI/TUI/WPF (including Terminal.Gui's own headless
+  TUI form; "type it or pick from what's attached" pickers for the serial port and HID
+  vendor/product ID; and, most recently, a decimal/hex display toggle for HID Vendor/Product ID
+  (a separate `*Display` property per field, so the canonical value stays decimal regardless of
+  what's currently shown). Test automation for CLI/TUI/WPF (including Terminal.Gui's own headless
   testing API) and a `[TestCategory]` coding standard, both prerequisites for landing the above with
   confidence, are also done — see `docs/design/testing.md`/`docs/coding-standards.md`.
 
-  Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a decimal/hex display toggle for HID
-  Vendor/Product ID, a long/short name for a detected serial port, export-selected/export-all as a
-  zip with per-name import conflict resolution, multi-select Presenter, per-input-line parser
-  selection, and a save-style picker for a not-yet-existing export filename.
+  Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a long/short name for a detected serial
+  port, export-selected/export-all as a zip with per-name import conflict resolution, multi-select
+  Presenter, per-input-line parser selection, and a save-style picker for a not-yet-existing export
+  filename.
 
 ## Backlog / research
 

@@ -431,7 +431,8 @@ public sealed class ConfigureModeTests
             RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
             {
                 var before = TuiTestRunner.DumpBuffer();
-                StringAssert.Contains(before, "Presenter:");
+                StringAssert.Contains(before, "Stop bits:");
+                Assert.DoesNotContain("Presenter:", before, "The form is taller than the default window - Presenter and everything after it (pushed one row further down by the HID hex-toggle checkbox) shouldn't be visible before scrolling.");
                 Assert.DoesNotContain("Line ending:", before, "The form is taller than the default window - Line ending and everything after it shouldn't be visible before scrolling.");
 
                 // Application.RaiseKeyDownEvent, not the IInputInjector-based TuiTestRunner.PressKey:
@@ -508,6 +509,42 @@ public sealed class ConfigureModeTests
                 Assert.AreEqual("Detect...", parts.DetectHidButton.Text);
                 Assert.IsNotNull(parts.DetectHidButton.SuperView);
             });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidShowHexCheckBox_TogglingReformatsTheDisplayedVendorAndProductIdFields()
+    {
+        // CheckBox.Value flips, then Activating/Activated fire - confirmed via a headless probe
+        // against the installed Terminal.Gui v2.5.0 package that Command.Activate (what Space is
+        // bound to) is what toggles a CheckBox, not Command.Accept/Select (Accept isn't bound at
+        // all for CheckBox's own toggle; Select doesn't exist as a Command in this version).
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(
+                new CliOptions { Transport = "hid", HidVendorId = 1234, HidProductId = 49291 },
+                null,
+                new ConnectionProfileStore(directory),
+                parts =>
+                {
+                    Assert.AreEqual("1234", parts.HidVendorField.Text);
+                    Assert.AreEqual("49291", parts.HidProductField.Text);
+
+                    parts.HidShowHexCheckBox.InvokeCommand(Command.Activate);
+
+                    Assert.AreEqual("04D2", parts.HidVendorField.Text, "Checking 'Show as hex' should reformat the already-typed value, not require it to be re-entered.");
+                    Assert.AreEqual("C08B", parts.HidProductField.Text);
+
+                    parts.HidShowHexCheckBox.InvokeCommand(Command.Activate);
+
+                    Assert.AreEqual("1234", parts.HidVendorField.Text, "Unchecking should revert back to decimal.");
+                    Assert.AreEqual("49291", parts.HidProductField.Text);
+                });
         }
         finally
         {

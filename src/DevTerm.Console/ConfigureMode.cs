@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
-using System.Globalization;
 using System.IO.Ports;
 using DevTerm.Configuration;
 using Terminal.Gui.App;
@@ -99,7 +98,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 34;
+        const int ContentHeight = 36;
         var formContent = new View
         {
             X = 0,
@@ -164,13 +163,14 @@ public static class ConfigureMode
         var tcpPortField = new TextField { X = Pos.Right(tcpPortLabel) + 1, Y = Pos.Top(hostLabel), Width = 8, Text = initial.TcpPort.ToString() };
         var listenCheckBox = new CheckBox { X = Pos.Right(tcpPortField) + 3, Y = Pos.Top(hostLabel), Text = "Listen", Value = initial.Listen ? CheckState.Checked : CheckState.UnChecked };
 
-        var hidVendorLabel = new Label { X = 0, Y = Pos.Bottom(hostLabel) + 1, Text = "HID vendor ID (decimal):" };
+        var hidVendorLabel = new Label { X = 0, Y = Pos.Bottom(hostLabel) + 1, Text = "HID vendor ID:" };
         var hidVendorField = new TextField { X = Pos.Right(hidVendorLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidVendorId.ToString() };
         var hidProductLabel = new Label { X = Pos.Right(hidVendorField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Product ID:" };
         var hidProductField = new TextField { X = Pos.Right(hidProductLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidProductId.ToString() };
         var detectHidButton = new Button { X = Pos.Right(hidProductField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Detect..." };
+        var hidShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Show as hex" };
 
-        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Presenter:" };
+        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidShowHexCheckBox) + 1, Text = "Presenter:" };
         var presenterSelector = new OptionSelector<PresenterChoice>
         {
             X = Pos.Right(presenterLabel) + 1,
@@ -228,6 +228,7 @@ public static class ConfigureMode
             HidVendorField = hidVendorField,
             HidProductField = hidProductField,
             DetectHidButton = detectHidButton,
+            HidShowHexCheckBox = hidShowHexCheckBox,
             PresenterSelector = presenterSelector,
             LineEndingSelector = lineEndingSelector,
             SaveNameField = saveNameField,
@@ -248,7 +249,7 @@ public static class ConfigureMode
             dataBitsLabel.Visible = dataBitsField.Visible = parityLabel.Visible = paritySelector.Visible = selected == TransportChoice.Serial;
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
-            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = selected == TransportChoice.Hid;
+            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = hidShowHexCheckBox.Visible = selected == TransportChoice.Hid;
         }
 
         // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
@@ -266,8 +267,9 @@ public static class ConfigureMode
             viewModel.Host = hostField.Text;
             viewModel.TcpPort = tcpPortField.Text;
             viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
-            viewModel.HidVendorId = hidVendorField.Text;
-            viewModel.HidProductId = hidProductField.Text;
+            viewModel.HidIdsShowHex = hidShowHexCheckBox.Value == CheckState.Checked;
+            viewModel.HidVendorIdDisplay = hidVendorField.Text;
+            viewModel.HidProductIdDisplay = hidProductField.Text;
             viewModel.Presenter = (presenterSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
             viewModel.LineEndingText = (lineEndingSelector.Value ?? DevTerm.Configuration.LineEnding.None).ToString();
             viewModel.SaveName = saveNameField.Text;
@@ -287,8 +289,9 @@ public static class ConfigureMode
             hostField.Text = viewModel.Host;
             tcpPortField.Text = viewModel.TcpPort;
             listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
-            hidVendorField.Text = viewModel.HidVendorId;
-            hidProductField.Text = viewModel.HidProductId;
+            hidShowHexCheckBox.Value = viewModel.HidIdsShowHex ? CheckState.Checked : CheckState.UnChecked;
+            hidVendorField.Text = viewModel.HidVendorIdDisplay;
+            hidProductField.Text = viewModel.HidProductIdDisplay;
             presenterSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Presenter, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
             lineEndingSelector.Value = Enum.TryParse<DevTerm.Configuration.LineEnding>(viewModel.LineEndingText, ignoreCase: true, out var le) ? le : DevTerm.Configuration.LineEnding.None;
             saveNameField.Text = viewModel.SaveName;
@@ -491,12 +494,28 @@ public static class ConfigureMode
             var choice = PickFromList("Detected HID devices", [.. devices.Select(d => d.Display)]);
             if (choice is not null)
             {
-                var picked = devices.First(d => d.Display == choice);
-                hidVendorField.Text = picked.VendorId.ToString(CultureInfo.InvariantCulture);
-                hidProductField.Text = picked.ProductId.ToString(CultureInfo.InvariantCulture);
+                viewModel.SelectedHidDevice = devices.First(d => d.Display == choice);
+                hidVendorField.Text = viewModel.HidVendorIdDisplay;
+                hidProductField.Text = viewModel.HidProductIdDisplay;
             }
 
             e.Handled = true;
+        };
+
+        // Reformats the two HID fields immediately when the toggle changes, rather than waiting
+        // for the next button press. CheckBox.Activated fires *after* Value has already flipped
+        // (confirmed via a headless probe against the installed Terminal.Gui v2.5.0 package -
+        // Command.Activate, bound to Space, updates Value before raising Activating/Activated), so
+        // the currently-displayed text is pushed through the view model's *old* HidIdsShowHex
+        // first - reinterpreting it in whatever format it's actually showing right now - before
+        // HidIdsShowHex itself is updated to match the checkbox's new state.
+        hidShowHexCheckBox.Activated += (_, _) =>
+        {
+            viewModel.HidVendorIdDisplay = hidVendorField.Text;
+            viewModel.HidProductIdDisplay = hidProductField.Text;
+            viewModel.HidIdsShowHex = hidShowHexCheckBox.Value == CheckState.Checked;
+            hidVendorField.Text = viewModel.HidVendorIdDisplay;
+            hidProductField.Text = viewModel.HidProductIdDisplay;
         };
 
         importButton.Accepting += (_, e) =>
@@ -548,7 +567,7 @@ public static class ConfigureMode
             portLabel, portField, detectPortButton, baudLabel, baudField,
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton,
+            hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
             presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton,
@@ -658,6 +677,8 @@ internal sealed class ConfigureWindowParts
     public required TextField HidProductField { get; init; }
 
     public required Button DetectHidButton { get; init; }
+
+    public required CheckBox HidShowHexCheckBox { get; init; }
 
     public required OptionSelector<ConfigureMode.PresenterChoice> PresenterSelector { get; init; }
 

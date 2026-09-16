@@ -297,6 +297,42 @@ public sealed class DeviceProfilesWindowTests
     }
 
     [TestMethod]
+    public void HidShowHexCheckBox_TogglesTheRealVendorAndProductIdTextBoxesBetweenDecimalAndHex()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "hid" }) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                window.ViewModel.HidVendorId = "1234";
+                window.ViewModel.HidProductId = "49291";
+
+                Assert.AreEqual("1234", window.HidVendorBox.Text);
+                Assert.AreEqual("49291", window.HidProductBox.Text);
+
+                window.HidShowHexBox.IsChecked = true;
+
+                Assert.AreEqual("04D2", window.HidVendorBox.Text, "Checking 'Show as hex' should reformat the already-set value through the real binding, not require it to be re-entered.");
+                Assert.AreEqual("C08B", window.HidProductBox.Text);
+
+                window.HidShowHexBox.IsChecked = false;
+
+                Assert.AreEqual("1234", window.HidVendorBox.Text, "Unchecking should revert back to decimal.");
+                Assert.AreEqual("49291", window.HidProductBox.Text);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConnectButton_Command_SetsResultAndClosesTheDialog()
     {
         var directory = CreateTempDirectory();

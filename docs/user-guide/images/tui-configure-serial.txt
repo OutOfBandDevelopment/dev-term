@@ -13,13 +13,13 @@
 │Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600                        █│
 │                          ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                     █│
 │Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             █│
-│                                                                             █│
+│                                                                             ░│
 │Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                              ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
-│Presenter: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary              ░│
+│                                                                             ░│
 │                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

@@ -811,4 +811,162 @@ public sealed class ConnectionEditorViewModelTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void HidVendorIdDisplay_WhenHidIdsShowHexIsFalse_MatchesTheCanonicalDecimalValue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidVendorId = "1234",
+            };
+
+            Assert.AreEqual("1234", vm.HidVendorIdDisplay);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidVendorIdDisplay_WhenHidIdsShowHexIsTrue_FormatsAsFourDigitUppercaseHex()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidVendorId = "1234",
+                HidIdsShowHex = true,
+            };
+
+            Assert.AreEqual("04D2", vm.HidVendorIdDisplay);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SettingHidVendorIdDisplay_WhenHidIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidIdsShowHex = true,
+                HidVendorIdDisplay = "04D2",
+            };
+
+            Assert.AreEqual("1234", vm.HidVendorId);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SettingHidProductIdDisplay_WhenHidIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidIdsShowHex = true,
+                HidProductIdDisplay = "C08B",
+            };
+
+            Assert.AreEqual(0xC08B.ToString(), vm.HidProductId);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void TogglingHidIdsShowHex_ReformatsTheAlreadyDisplayedValue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidVendorId = "1234",
+            };
+
+            Assert.AreEqual("1234", vm.HidVendorIdDisplay);
+
+            vm.HidIdsShowHex = true;
+
+            Assert.AreEqual("04D2", vm.HidVendorIdDisplay, "Toggling the display format should reformat the already-set canonical value, not require it to be re-entered.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidVendorIdDisplay_WithUnparseableHexInput_IsKeptAsIsRatherThanBlanked()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                HidIdsShowHex = true,
+                HidVendorIdDisplay = "not hex",
+            };
+
+            Assert.AreEqual("not hex", vm.HidVendorId, "An unparseable value should be stored as-is (letting validation catch it later), the same 'don't reject a keystroke' behavior every other typed field already has.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SettingHidIdsShowHexOrTheDisplayProperties_DoesNotMarkTheEditorDirtyByItself()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            vm.HidIdsShowHex = true;
+
+            Assert.IsFalse(vm.IsDirty, "Toggling the display format is a presentation preference, not a connection-field edit.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SettingHidVendorIdDisplay_MarksTheEditorDirtyViaTheCanonicalValue()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            vm.HidVendorIdDisplay = "1234";
+
+            Assert.IsTrue(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

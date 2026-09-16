@@ -84,8 +84,6 @@ ordered against the rest.
 - **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
   for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
   detail on each increment). Still open:
-  - **A decimal/hex display toggle for HID Vendor/Product ID** — both fields (and the new "Detected
-    devices" picker's underlying value) are decimal-only; Device Manager/vendor docs show hex.
   - **A long/short name for a detected serial port** — the new "Detected ports" picker lists short
     names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly name is wired up.
   - **Export-selected/export-all as a zip**, with per-name import conflict resolution
