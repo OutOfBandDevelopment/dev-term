@@ -45,7 +45,21 @@ internal static class TuiTestRunner
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(5);
 
-    public static void RunHeadless(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
+    /// <summary>
+    /// A one-presenter catalog for tests that fake a single presenter: the send format is pinned to
+    /// that presenter's name (a default <see cref="CliOptions"/> would otherwise ask for "hex", which
+    /// a catalog holding only, say, ASCII can't resolve).
+    /// </summary>
+    public static PresenterCatalog CatalogFor(IPresenter presenter, CliOptions cliOptions)
+    {
+        cliOptions.Parser ??= presenter.Name;
+        return new PresenterCatalog([presenter]);
+    }
+
+    public static void RunHeadless(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body) =>
+        RunHeadless(session, CatalogFor(presenter, cliOptions), cliOptions, body);
+
+    public static void RunHeadless(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
     {
         Application.Init("dotnet");
         try
@@ -111,7 +125,10 @@ internal static class TuiTestRunner
         return text.ToString();
     }
 
-    public static void RunWithLoop(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
+    public static void RunWithLoop(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body) =>
+        RunWithLoop(session, CatalogFor(presenter, cliOptions), cliOptions, body);
+
+    public static void RunWithLoop(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
     {
         TuiWindowParts? parts = null;
         var ready = new ManualResetEventSlim(false);

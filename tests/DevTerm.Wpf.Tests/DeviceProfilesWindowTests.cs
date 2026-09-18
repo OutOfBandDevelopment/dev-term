@@ -297,6 +297,82 @@ public sealed class DeviceProfilesWindowTests
     }
 
     [TestMethod]
+    public void PresenterCheckBoxes_AreBoundToTheViewModelsPresenterChoices_InBothDirections()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var initial = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "binary"], Parser = "hex" };
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                // An ItemsControl in a window that's never Show()n doesn't generate its item
+                // containers/checkboxes until it's itself laid out - do that directly.
+                window.PresenterChoicesList.ApplyTemplate();
+                window.PresenterChoicesList.Measure(new Size(500, 200));
+                window.PresenterChoicesList.Arrange(new Rect(0, 0, 500, 200));
+                window.PresenterChoicesList.UpdateLayout();
+                var boxes = FindVisualChildren<System.Windows.Controls.CheckBox>(window.PresenterChoicesList).ToList();
+                CollectionAssert.AreEqual(
+                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" },
+                    boxes.Select(b => (string)b.Content).ToArray());
+                CollectionAssert.AreEqual(
+                    new[] { true, false, false, false, false, true },
+                    boxes.Select(b => b.IsChecked == true).ToArray(),
+                    "Each checkbox should reflect its presenter's IsSelected.");
+                Assert.AreEqual("hex", window.ParserBox.SelectedItem, "The Send as box shows the profile's parser, separately from the presenters.");
+
+                boxes[1].IsChecked = true; // utf8
+                CollectionAssert.AreEqual(new[] { "ascii", "utf8", "binary" }, window.ViewModel.SelectedPresenters.ToArray());
+                Assert.IsTrue(window.ViewModel.IsDirty);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static IEnumerable<T> FindLogicalChildren<T>(System.Windows.DependencyObject parent)
+        where T : System.Windows.DependencyObject
+    {
+        foreach (var child in System.Windows.LogicalTreeHelper.GetChildren(parent).OfType<System.Windows.DependencyObject>())
+        {
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindLogicalChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(System.Windows.DependencyObject parent)
+        where T : System.Windows.DependencyObject
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    [TestMethod]
     public void HidShowHexCheckBox_TogglesTheRealVendorAndProductIdTextBoxesBetweenDecimalAndHex()
     {
         var directory = CreateTempDirectory();
@@ -450,6 +526,75 @@ public sealed class DeviceProfilesWindowTests
                 Assert.IsTrue(closed);
                 Assert.IsNotNull(window.Result);
                 Assert.AreEqual("tcp", window.Result.Transport);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+
+    [TestMethod]
+    public void DeleteSelectedProfilesCommand_ThroughTheRealMultiSelectList_DeletesOnlyTheSelectedProfiles()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("gamma", new CliOptions { Transport = "tcp", Host = "192.168.0.3", TcpPort = 23 });
+
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(store, new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                // The window wires a real MessageBox to this hook (never shown under test, same
+                // convention as the ConfirmOverwrite/ConfirmDiscardChanges tests) - the stub proves
+                // Delete Selected asks first without opening a modal box.
+                IReadOnlyList<string>? asked = null;
+                window.ViewModel.ConfirmDeleteProfiles = names =>
+                {
+                    asked = names;
+                    return true;
+                };
+
+                window.ProfilesList.SelectedItems.Add("alpha");
+                window.ProfilesList.SelectedItems.Add("gamma");
+                window.ViewModel.DeleteSelectedProfilesCommand.Execute(null);
+
+                CollectionAssert.AreEqual(new[] { "alpha", "gamma" }, asked!.ToArray());
+                CollectionAssert.AreEqual(new[] { "beta" }, store.List().ToArray());
+                CollectionAssert.AreEqual(new[] { "beta" }, window.ProfilesList.Items.Cast<string>().ToArray());
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedButton_IsBoundToDeleteSelectedProfilesCommand()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                // Logical tree, not visual: an unshown window hasn't generated its visual tree yet.
+                var button = FindLogicalChildren<System.Windows.Controls.Button>(window)
+                    .Single(b => b.Content is "Delete Selected");
+                Assert.AreSame(window.ViewModel.DeleteSelectedProfilesCommand, button.Command);
 
                 await Task.CompletedTask;
             });

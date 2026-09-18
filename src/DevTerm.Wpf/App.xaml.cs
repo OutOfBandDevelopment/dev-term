@@ -38,7 +38,7 @@ public partial class App : Application
         var earlyConfigBuilder = new ConfigurationBuilder();
         DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
         var cliOptions = new CliOptions();
-        earlyConfigBuilder.Build().Bind(cliOptions);
+        DevTermConfiguration.Bind(earlyConfigBuilder.Build(), cliOptions);
 
         var validation = new CliOptionsValidator().Validate(null, cliOptions);
         if (validation.Failed)
@@ -62,22 +62,23 @@ public partial class App : Application
         _host = host;
 
         var catalog = host.Services.GetRequiredService<PresenterCatalog>();
-        if (!catalog.TryGet(cliOptions.Presenter, out var presenter))
+        IReadOnlyList<IPresenter> presenters;
+        try
         {
-            MessageBox.Show(
-                $"Unknown presenter '{cliOptions.Presenter}'. Available: {string.Join(", ", catalog.Names)}",
-                "dev-term",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            presenters = DevTermSessionBuilder.ResolvePresenters(catalog, cliOptions);
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(ex.Message, "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
             return;
         }
 
         var transport = host.Services.GetRequiredService<ITransport>();
         var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
-        var session = sessionFactory.Create(transport, new Pipeline([presenter]));
+        var session = sessionFactory.Create(transport, new Pipeline(presenters));
 
-        var window = new MainWindow(session, presenter, cliOptions);
+        var window = new MainWindow(session, catalog, cliOptions);
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();

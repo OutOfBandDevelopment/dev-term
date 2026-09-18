@@ -15,7 +15,7 @@ public sealed class ConnectionProfileStoreTests
         Parity = Parity.None,
         StopBits = StopBits.One,
         Handshake = Handshake.RequestToSend,
-        Presenter = "ascii",
+        Presenter = ["ascii"],
         LineEnding = LineEnding.Cr,
         AsciiMaxLineLength = 512,
         ManifestName = "tek-2230",
@@ -40,7 +40,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual("COM3", loaded.Port);
             Assert.AreEqual(4800, loaded.Baud);
             Assert.AreEqual(Handshake.RequestToSend, loaded.Handshake);
-            Assert.AreEqual("ascii", loaded.Presenter);
+            CollectionAssert.AreEqual(new[] { "ascii" }, loaded.Presenter);
             Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
             Assert.AreEqual(512, loaded.AsciiMaxLineLength);
             Assert.AreEqual("tek-2230", loaded.ManifestName);
@@ -184,7 +184,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual("serial", loaded.Transport);
             Assert.AreEqual("COM3", loaded.Port);
             Assert.AreEqual(4800, loaded.Baud);
-            Assert.AreEqual("ascii", loaded.Presenter);
+            CollectionAssert.AreEqual(new[] { "ascii" }, loaded.Presenter);
             Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
             Assert.AreEqual("tek-2230", loaded.ManifestName);
 

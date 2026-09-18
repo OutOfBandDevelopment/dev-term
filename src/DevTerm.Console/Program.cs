@@ -11,9 +11,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
-    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
-    + "\n   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
@@ -55,7 +55,7 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
 var earlyConfigBuilder = new ConfigurationBuilder();
 DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
 var cliOptions = new CliOptions();
-earlyConfigBuilder.Build().Bind(cliOptions);
+DevTermConfiguration.Bind(earlyConfigBuilder.Build(), cliOptions);
 
 var useTui = cliOptions.Tui && !cliOptions.Cli;
 var validation = new CliOptionsValidator().Validate(null, cliOptions);
@@ -90,21 +90,25 @@ var host = hostBuilder.Build();
 using (host)
 {
     var catalog = host.Services.GetRequiredService<PresenterCatalog>();
-    if (!catalog.TryGet(cliOptions.Presenter, out var presenter))
+    IReadOnlyList<IPresenter> presenters;
+    try
     {
-        Console.Error.WriteLine(
-            $"Unknown presenter '{cliOptions.Presenter}'. Available: {string.Join(", ", catalog.Names)}");
+        presenters = DevTermSessionBuilder.ResolvePresenters(catalog, cliOptions);
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.Error.WriteLine(ex.Message);
         return 1;
     }
 
     var transport = host.Services.GetRequiredService<ITransport>();
     var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
-    await using var session = sessionFactory.Create(transport, new Pipeline([presenter]));
+    await using var session = sessionFactory.Create(transport, new Pipeline(presenters));
 
     // TUI is the default mode; --cli true (or --tui false) forces the plain scriptable loop —
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, presenter, cliOptions)
-        : await CliMode.RunAsync(session, presenter, cliOptions);
+        ? await TuiMode.RunAsync(session, catalog, cliOptions)
+        : await CliMode.RunAsync(session, catalog, cliOptions);
 }

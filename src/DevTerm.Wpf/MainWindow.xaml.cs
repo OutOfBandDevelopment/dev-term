@@ -17,17 +17,20 @@ namespace DevTerm.Wpf;
 public partial class MainWindow : Window
 {
     private Session _session;
-    private IPresenter _presenter;
+    private PresenterCatalog _catalog;
     private CliOptions _cliOptions;
     private bool _closeConfirmed;
 
-    public MainWindow(Session session, IPresenter presenter, CliOptions cliOptions)
+    public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions)
     {
         InitializeComponent();
 
         _session = session;
-        _presenter = presenter;
+        _catalog = catalog;
         _cliOptions = cliOptions;
+
+        ParserBox.ItemsSource = catalog.InputNames;
+        ParserBox.SelectedItem = cliOptions.EffectiveParser;
 
         if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
         {
@@ -49,6 +52,21 @@ public partial class MainWindow : Window
                 Close();
             }
         };
+    }
+
+    /// <summary>The send format (parser) currently encoding typed lines — the "Send as" box's selection, starting as the profile's.</summary>
+    internal string CurrentParser => ParserBox.SelectedItem as string ?? _cliOptions.EffectiveParser;
+
+    private string TitleText => $"dev-term — {ConnectionDescription.For(_cliOptions)} ({ConnectionDescription.Formats(_cliOptions, CurrentParser)})";
+
+    // Only refreshes a title that's already been set for a connection; before ConnectAsync runs the
+    // title is still the XAML's plain "dev-term".
+    private void ParserBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_session.State == ConnectionState.Open)
+        {
+            Title = TitleText;
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
@@ -75,9 +93,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        Title = $"dev-term — {ConnectionDescription.For(_cliOptions)} ({_presenter.Name})";
+        Title = TitleText;
         ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = _presenter is IPresenterInput;
+        SendBox.IsEnabled = true;
         SendBox.Focus();
     }
 
@@ -112,7 +130,7 @@ public partial class MainWindow : Window
         }
 
         ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = _presenter is IPresenterInput;
+        SendBox.IsEnabled = true;
         OutputList.Items.Add($"Connected to {ConnectionDescription.For(_cliOptions)}.");
     }
 
@@ -150,7 +168,7 @@ public partial class MainWindow : Window
         var line = SendBox.Text;
         SendBox.Clear();
 
-        if (line.Length == 0 || _presenter is not IPresenterInput input)
+        if (line.Length == 0 || !_catalog.TryGetInput(CurrentParser, out var input))
         {
             return;
         }
@@ -223,8 +241,9 @@ public partial class MainWindow : Window
         await _session.DisposeAsync();
 
         _session = built.Session;
-        _presenter = built.Presenter;
+        _catalog = built.Catalog;
         _cliOptions = newOptions;
+        ParserBox.SelectedItem = newOptions.EffectiveParser;
         _session.Output += OnSessionOutput;
 
         // A different profile means a different device/connection - clearing prior output avoids
@@ -251,9 +270,9 @@ public partial class MainWindow : Window
             return false;
         }
 
-        Title = $"dev-term — {ConnectionDescription.For(_cliOptions)} ({_presenter.Name})";
+        Title = TitleText;
         ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = _presenter is IPresenterInput;
+        SendBox.IsEnabled = true;
         OutputList.Items.Add($"Switched to {ConnectionDescription.For(_cliOptions)}.");
         return true;
     }

@@ -19,7 +19,7 @@ namespace DevTerm.Console;
 /// </remarks>
 public static class TuiMode
 {
-    public static async Task<int> RunAsync(Session session, IPresenter presenter, CliOptions cliOptions)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions)
     {
         try
         {
@@ -34,7 +34,7 @@ public static class TuiMode
         Application.Init();
         try
         {
-            var parts = BuildWindow(session, presenter, cliOptions);
+            var parts = BuildWindow(session, catalog, cliOptions);
             parts.SendField.SetFocus();
             Application.Run(parts.Window);
         }
@@ -53,11 +53,18 @@ public static class TuiMode
     /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(Session session, IPresenter presenter, CliOptions cliOptions)
+    internal static TuiWindowParts BuildWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions)
     {
+        // The parser (send format) currently encoding typed lines - starts as the profile's, and
+        // the "Send as" menu switches it for every line typed afterward. Captured/reassigned by the
+        // closures below like session/cliOptions are (see SwitchProfileAsync's comment).
+        var parser = cliOptions.EffectiveParser;
+
+        string TitleFor() => $"dev-term — {ConnectionDescription.For(cliOptions)} ({ConnectionDescription.Formats(cliOptions, parser)})";
+
         var window = new Window
         {
-            Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name})",
+            Title = TitleFor(),
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
@@ -105,6 +112,14 @@ public static class TuiMode
             () => { });
         connectMenuItem.Action = () => _ = ToggleConnectionAsync(session, cliOptions, connectMenuItem, sendField, AppendOutput);
 
+        void SetParser(string name)
+        {
+            // Called from a menu item's action, already on the UI thread - no Application.Invoke
+            // needed (and it would never flush under a headless test without a real run loop).
+            parser = name;
+            window.Title = TitleFor();
+        }
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -123,6 +138,10 @@ public static class TuiMode
                 }),
                 new MenuItem("_Quit", "Ctrl+Q", () => Application.RequestStop(), Key.Q.WithCtrl),
             ]),
+            // One entry per presenter that can encode typed text; picking one applies from the next
+            // line typed on (the title bar shows which is current). Built from the catalog as of
+            // startup - a profile switch never changes which presenters are registered.
+            new MenuBarItem("_Send as", [.. catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
         ]);
 
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
@@ -183,13 +202,14 @@ public static class TuiMode
             await session.DisposeAsync();
 
             session = built.Session;
-            presenter = built.Presenter;
+            catalog = built.Catalog;
             cliOptions = newOptions;
+            parser = newOptions.EffectiveParser;
             session.Output += OnSessionOutput;
 
             Application.Invoke(() =>
             {
-                window.Title = $"dev-term — {ConnectionDescription.For(cliOptions)} ({presenter.Name})";
+                window.Title = TitleFor();
                 output.Text = string.Empty;
             });
 
@@ -216,7 +236,7 @@ public static class TuiMode
             Application.Invoke(() =>
             {
                 connectMenuItem.Title = "_Disconnect";
-                sendField.Enabled = presenter is IPresenterInput;
+                sendField.Enabled = true;
             });
             AppendOutput($"Switched to {ConnectionDescription.For(cliOptions)}.");
             return true;
@@ -244,9 +264,9 @@ public static class TuiMode
                 return;
             }
 
-            if (presenter is not IPresenterInput input)
+            if (!catalog.TryGetInput(parser, out var input))
             {
-                AppendOutput($"Presenter '{presenter.Name}' does not support sending.");
+                AppendOutput($"Parser '{parser}' does not support sending.");
                 return;
             }
 
@@ -255,7 +275,7 @@ public static class TuiMode
 
         window.Add(menuBar, output, sendLabel, sendField);
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser);
     }
 
     /// <summary>
@@ -320,5 +340,5 @@ public static class TuiMode
     }
 }
 
-/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, or drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls).</summary>
-internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync);
+/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls).</summary>
+internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser);

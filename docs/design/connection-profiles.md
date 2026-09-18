@@ -179,10 +179,18 @@ confirmation before overwriting an existing name; Load sets "Save as profile nam
 name; WPF's saved-profiles list grows/shrinks with the window. `CliOptions` gained
 `[Category]`/`[DisplayName]` attributes documenting the field groupings (metadata only for now).
 Full field-by-field/action-by-action reference, including what's still open (HID vendor/product ID
-enumeration, multi-select presenters, dirty-field confirmation, zip export/import with conflict
+enumeration, dirty-field confirmation, zip export/import with conflict
 resolution, a TUI file picker/scrollbar): [`docs/specs/connection-editor.md`](../specs/connection-editor.md) —
 the first of a new `docs/specs/` series, one file per screen/user-flow, precise where this doc is
 about intent and `docs/user-guide/` is about how to use it.
+
+**Presenter picker and parser, 2026-09-18**: `CliOptions.Presenter` is now a list (a JSON array in
+a saved profile) — the editor shows one checkbox per presenter — and a separate `Parser` names the
+presenter that encodes typed lines, so display and send format are decoupled. Old profiles with a
+scalar `"Presenter": "hex"` (and no `Parser`) still load: `DevTermConfiguration.Bind` splits a
+scalar/comma-separated `Presenter` (also how `--presenter ascii,hex` and `DEVTERM_PRESENTER` arrive),
+and `Parser` falls back to the first presenter. Front ends now hold a `PresenterCatalog` rather than
+a single `IPresenter`, so the send format can change per line.
 
 ## What this explicitly is not (yet)
 

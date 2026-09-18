@@ -42,7 +42,7 @@ handy for Export specifically, since Browse alone would otherwise mean hand-typi
 
 A missing or malformed file reports an error in the status line rather than throwing.
 
-## Exporting/importing several profiles at once as a zip
+## Working with several profiles at once (export as zip, bulk delete)
 
 The saved-profiles list supports selecting more than one row: click-drag or ctrl/shift-click in
 WPF, or press SPACE on a row in the TUI (a checkmark shows which rows are marked). With one or more
@@ -51,6 +51,10 @@ selected:
 - **Export Selected** writes just those profiles to the Import/export path as a single `.zip` (one
   `{name}.json` per profile).
 - **Export All** does the same for every saved profile, regardless of what's selected.
+- **Delete Selected** removes just those profiles, after a confirmation that lists their names —
+  unlike the plain **Delete** button (one profile, no prompt), this can't be undone and touches more
+  than the row you're looking at, so it asks first. In the TUI it's on the same row as Export
+  Selected/Export All; in WPF it's in the button column under Delete.
 
 Importing a `.zip` (via Import, same button as a single-file JSON import — it's detected by the
 `.zip` extension) writes every profile it contains straight into `~/.dev-term/profiles`, refreshing
@@ -62,12 +66,8 @@ per conflicting name.
 
 A few Architect Notes items are still open, worth knowing if you're looking for them:
 
-- **Bulk delete** — Delete is still per-profile via the button shown above, even though the list now
-  supports multi-select for Export Selected.
 - **A wholesale "delete all existing profiles, then import everything"** shortcut for a zip import
   with several conflicts — today only the per-name Replace/Rename/Skip choice exists.
-- **Multi-select Presenter** and **per-input-line parser selection** — both need their own design
-  pass before they're built; see `docs/specs/connection-editor.md`'s Open items.
 
 See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full,
 prioritized list.

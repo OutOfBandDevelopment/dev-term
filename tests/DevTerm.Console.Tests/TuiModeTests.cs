@@ -212,4 +212,73 @@ public sealed class TuiModeTests
 
         await session.CloseAsync();
     }
+
+    [TestMethod]
+    public async Task BuildWindow_WithSeveralPresenters_ShowsThemAndTheSendFormatInTheTitle()
+    {
+        var transport = new FakeTransport();
+        var ascii = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
+        var hex = new HexPresenter();
+        var session = new Session(transport, new Pipeline([ascii, hex]));
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] };
+
+        TuiTestRunner.RunHeadless(session, new PresenterCatalog([ascii, hex]), cliOptions, parts =>
+        {
+            StringAssert.Contains(parts.Window.Title, "ascii, hex; send as ascii");
+        });
+
+        await session.CloseAsync();
+    }
+
+    [TestMethod]
+    public async Task SetParser_SwitchesHowTheNextTypedLineIsEncoded_AndUpdatesTheTitle()
+    {
+        var transport = new FakeTransport();
+        var ascii = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
+        var hex = new HexPresenter();
+        var session = new Session(transport, new Pipeline([ascii]));
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" };
+
+        // Raises the send field's own KeyDown directly instead of injecting a key through
+        // IInputInjector: that injector degrades after enough Application.Init/Shutdown cycles in one
+        // test process (see CLAUDE.md), and this test is about which parser encodes the line, not
+        // about key routing (the tests above already cover that).
+        TuiTestRunner.RunHeadless(session, new PresenterCatalog([ascii, hex]), cliOptions, parts =>
+        {
+            parts.SendField.Text = "ff";
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+
+            parts.SetParser("hex");
+            StringAssert.Contains(parts.Window.Title, "send as hex");
+
+            parts.SendField.Text = "ff";
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+        });
+
+        await session.CloseAsync();
+
+        Assert.HasCount(2, transport.WrittenPayloads);
+        CollectionAssert.AreEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0], "As ascii, 'ff' is two characters.");
+        CollectionAssert.AreEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1], "As hex, 'ff' is one byte.");
+    }
+
+    [TestMethod]
+    public async Task SendAsMenu_ListsEveryPresenterThatCanEncodeInput()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var catalog = new PresenterCatalog([presenter, new HexPresenter()]);
+        cliOptions.Parser = "ascii";
+
+        TuiTestRunner.RunHeadless(session, catalog, cliOptions, _ =>
+        {
+            // The menu bar renders its top-level titles; the per-item entries only appear once opened.
+            StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Send as");
+        });
+
+        await session.CloseAsync();
+    }
 }

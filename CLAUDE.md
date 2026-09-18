@@ -258,6 +258,15 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   completed cleanly. When a test doesn't need to prove real key routing — e.g. a screenshot just
   wants a field showing some text — set the control's `.Text` directly and call
   `Application.LayoutAndDraw(true)` instead of injecting keys.
+- **The .NET config binder appends bound array items to a non-empty default array, and silently
+  drops a scalar bound to an array property.** `CliOptions.Presenter` is a `string[]` (a profile lists
+  several display presenters), verified empirically: a default of `["hex"]` plus a bound `["a"]` came
+  out `hex|a`, so the property defaults to `[]` and `CliOptions.EffectivePresenters` applies the
+  "hex" fallback instead. And an old-format profile (`"Presenter": "hex"`), `--presenter ascii,hex`,
+  and `DEVTERM_PRESENTER` all arrive as a scalar the binder ignores, so every call site binds through
+  `DevTermConfiguration.Bind(configuration, options)` (never a bare `configuration.Bind`), which
+  splits a scalar `Presenter` on commas afterwards. `Parser` (which presenter encodes typed lines)
+  is separate and null on old profiles — `EffectiveParser` falls back to the first presenter.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

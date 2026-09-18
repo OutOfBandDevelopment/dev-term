@@ -32,4 +32,16 @@ public static class ConnectionDescription
 
         return $"{cliOptions.Port} at {cliOptions.Baud} baud ({cliOptions.DataBits}{cliOptions.Parity.ToString()[0]}{stopBits})";
     }
+
+    /// <summary>
+    /// The presenters displaying incoming data and the parser encoding typed lines, e.g.
+    /// <c>ascii, hex; send as hex</c> — appended to a window title so it's always clear which
+    /// formats are in play (the parser is per-line switchable, so it's passed in rather than read
+    /// from <see cref="CliOptions.EffectiveParser"/>, which is only its starting value).
+    /// </summary>
+    public static string Formats(CliOptions cliOptions, string parser)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        return $"{string.Join(", ", cliOptions.EffectivePresenters)}; send as {parser}";
+    }
 }

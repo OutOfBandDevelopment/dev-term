@@ -101,4 +101,47 @@ public sealed class ConsoleAppCliTests
         await process.WaitForExitAsync().WaitAsync(Timeout);
         Assert.AreEqual(0, process.ExitCode);
     }
+
+    [TestMethod]
+    public async Task CliMode_WithSeveralPresentersAndAHexParser_SendsHexBytesAndPrintsEveryPresentersView()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var acceptTask = listener.AcceptTcpClientAsync();
+
+        // Presenter is a comma-separated list on the command line (a JSON array in a profile), and
+        // Parser - what encodes typed lines - is independent of which presenters display.
+        using var process = Process.Start(BuildStartInfo(
+            $"--transport tcp --host 127.0.0.1 --tcpport {port} --presenter ascii,hex --parser hex --lineending None --cli true"))!;
+
+        using var client = await acceptTask.WaitAsync(Timeout);
+        using var stream = client.GetStream();
+
+        await process.StandardInput.WriteLineAsync("49 44");
+        await process.StandardInput.FlushAsync();
+
+        var requestBuffer = new byte[64];
+        var requestLength = await stream.ReadAsync(requestBuffer).AsTask().WaitAsync(Timeout);
+        Assert.AreEqual("ID", Encoding.ASCII.GetString(requestBuffer, 0, requestLength),
+            "'49 44' typed under the hex parser should go out as the two bytes 0x49 0x44.");
+
+        await stream.WriteAsync(Encoding.ASCII.GetBytes("OK\r"));
+
+        var lines = new List<string>();
+        string? line;
+        while (!(lines.Any(l => l.StartsWith("[ascii]", StringComparison.Ordinal)) && lines.Any(l => l.StartsWith("[hex]", StringComparison.Ordinal)))
+               && (line = await process.StandardOutput.ReadLineAsync().WaitAsync(Timeout)) is not null)
+        {
+            lines.Add(line);
+        }
+
+        var seen = string.Join(" | ", lines);
+        Assert.IsTrue(lines.Any(l => l.StartsWith("[ascii]", StringComparison.Ordinal) && l.Contains("OK", StringComparison.Ordinal)), seen);
+        Assert.IsTrue(lines.Any(l => l.StartsWith("[hex]", StringComparison.Ordinal) && l.Contains("4F4B0D", StringComparison.Ordinal)), seen);
+
+        process.StandardInput.Close();
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+        Assert.AreEqual(0, process.ExitCode);
+    }
 }

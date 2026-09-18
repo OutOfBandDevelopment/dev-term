@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
+using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
 
@@ -37,7 +38,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private bool _listen;
     private string _hidVendorId = "0";
     private string _hidProductId = "0";
-    private string _presenter = "hex";
+    private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
     private string _saveName = string.Empty;
@@ -89,6 +90,14 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         IHidDeviceDiscovery? hidDeviceDiscovery = null)
     {
         _store = store;
+        PresenterChoices = [.. PresenterOptions.Select(name => new PresenterSelection(name))];
+        foreach (var choice in PresenterChoices)
+        {
+            // A checkbox toggling is an edit like any other field's - same dirty tracking, without
+            // a property-changed name of its own to put in NonDirtyProperties.
+            choice.PropertyChanged += (_, _) => OnPropertyChanged(nameof(PresenterChoices));
+        }
+
         StatusMessage = statusMessage ?? string.Empty;
         SerialPortOptions = SafeDiscover(serialPortDiscovery ?? new SystemSerialPortDiscovery());
         HidDeviceOptions = SafeDiscover(hidDeviceDiscovery ?? new SystemHidDeviceDiscovery());
@@ -105,6 +114,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         ExportCommand = new RelayCommand(Export);
         ExportSelectedProfilesCommand = new RelayCommand(() => ExportProfilesZip(SelectedProfileNames));
         ExportAllProfilesCommand = new RelayCommand(() => ExportProfilesZip(Profiles));
+        DeleteSelectedProfilesCommand = new RelayCommand(DeleteMarkedProfiles);
 
         // Auto-refresh when a profile is added/removed/renamed on disk by another process (the
         // other front end, or the user editing ~/.dev-term/profiles by hand) — the manual Refresh
@@ -198,6 +208,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>Exports every saved profile as a single zip to <see cref="ImportExportPath"/>, regardless of <see cref="SelectedProfileNames"/>.</summary>
     public ICommand ExportAllProfilesCommand { get; }
 
+    /// <summary>Deletes every profile named in <see cref="SelectedProfileNames"/> (after <see cref="ConfirmDeleteProfiles"/>, if a front end wired one) — the multi-select counterpart to <see cref="DeleteCommand"/>, which still only ever acts on the single <see cref="SelectedProfileName"/>.</summary>
+    public ICommand DeleteSelectedProfilesCommand { get; }
+
     /// <summary>
     /// Set once <see cref="ConnectCommand"/> validates; <see langword="null"/> until then. What
     /// "Connect" means depends on the caller: at startup, with no valid configuration yet, it's
@@ -209,7 +222,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public CliOptions? Result { get; private set; }
 
     /// <summary>
-    /// The valid values for <see cref="Transport"/>/<see cref="Presenter"/>/<see cref="LineEndingText"/>
+    /// The valid values for <see cref="Transport"/>/<see cref="PresenterChoices"/>/<see cref="Parser"/>/<see cref="LineEndingText"/>
     /// — instance properties (not static) purely so WPF's <c>{Binding TransportOptions}</c> can find
     /// them on the DataContext directly; the lists themselves are fixed and shared. Matches
     /// <see cref="CliOptionsValidator"/>'s own switch (transports), every presenter
@@ -433,7 +446,19 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
-    public string Presenter { get => _presenter; set => SetField(ref _presenter, value); }
+    /// <summary>
+    /// The presenter picker: one checkable entry per <see cref="PresenterOptions"/> name, in that
+    /// order. Every checked one displays incoming data (the session's pipeline fans each chunk out
+    /// to all of them, each output line tagged with its presenter's name). Display only — what
+    /// encodes a typed line is <see cref="Parser"/>, independent of this.
+    /// </summary>
+    public IReadOnlyList<PresenterSelection> PresenterChoices { get; }
+
+    /// <summary>The send format for typed lines — see <see cref="CliOptions.Parser"/>. One of <see cref="PresenterOptions"/> (every built-in presenter can encode input).</summary>
+    public string Parser { get => _parser; set => SetField(ref _parser, value); }
+
+    /// <summary>The names of the checked <see cref="PresenterChoices"/>, in picker order.</summary>
+    public IReadOnlyList<string> SelectedPresenters => [.. PresenterChoices.Where(c => c.IsSelected).Select(c => c.Name)];
 
     public string LineEndingText { get => _lineEndingText; set => SetField(ref _lineEndingText, value); }
 
@@ -483,6 +508,16 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public Func<string, ZipImportConflictResolution>? ResolveZipImportConflict { get; set; }
 
     /// <summary>
+    /// Set by each front end to show its own native "delete these N profiles?" confirmation before
+    /// <see cref="DeleteSelectedProfilesCommand"/> removes anything, given the names about to go.
+    /// Deleting several profiles at once is the one destructive action here that can't be undone
+    /// and touches more than the one row the user is looking at, so unlike the single-profile
+    /// <see cref="DeleteCommand"/> it asks first. Left <see langword="null"/>, it proceeds without
+    /// asking, same convention as <see cref="ConfirmOverwrite"/>/<see cref="ConfirmDiscardChanges"/>.
+    /// </summary>
+    public Func<IReadOnlyList<string>, bool>? ConfirmDeleteProfiles { get; set; }
+
+    /// <summary>
     /// Call before discarding whatever's currently unsaved in the fields — closing/quitting the
     /// editor, or loading a different profile over them (not before Connect, which already resets
     /// <see cref="IsDirty"/> itself on success — see its own doc comment, since Connect doesn't
@@ -504,7 +539,13 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Listen = options.Listen;
         HidVendorId = options.HidVendorId.ToString();
         HidProductId = options.HidProductId.ToString();
-        Presenter = options.Presenter;
+        var presenters = options.EffectivePresenters;
+        foreach (var choice in PresenterChoices)
+        {
+            choice.IsSelected = presenters.Contains(choice.Name, StringComparer.OrdinalIgnoreCase);
+        }
+
+        Parser = options.EffectiveParser;
         LineEndingText = options.LineEnding.ToString();
         Description = options.Description ?? string.Empty;
     }
@@ -517,7 +558,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Port = Port.Trim() is { Length: > 0 } p ? p : null,
             Host = Host.Trim() is { Length: > 0 } h ? h : null,
             Listen = Listen,
-            Presenter = Presenter.Trim() is { Length: > 0 } pr ? pr : "hex",
+            Presenter = [.. SelectedPresenters],
+            Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
         };
 
@@ -564,6 +606,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         return options;
     }
 
+    /// <summary><see cref="CliOptionsValidator"/> plus the one rule only this editor can break: an empty presenter picker (a bound <see cref="CliOptions"/> with no <c>Presenter</c> means "the default", so it can't tell).</summary>
+    private ValidateOptionsResult ValidateFields(CliOptions options) =>
+        SelectedPresenters.Count == 0
+            ? ValidateOptionsResult.Fail("Select at least one presenter.")
+            : Validator.Validate(null, options);
+
     public void RefreshProfiles()
     {
         Profiles.Clear();
@@ -593,10 +641,39 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    private void DeleteMarkedProfiles()
+    {
+        if (SelectedProfileNames.Count == 0)
+        {
+            StatusMessage = "Select one or more saved profiles to delete first.";
+            return;
+        }
+
+        // A copy: refreshing Profiles below makes the front end's list control fire its own
+        // selection-changed handler, which mutates SelectedProfileNames out from under a live loop.
+        var names = SelectedProfileNames.ToList();
+        if (ConfirmDeleteProfiles?.Invoke(names) == false)
+        {
+            StatusMessage = "Delete cancelled.";
+            return;
+        }
+
+        var deleted = names.Count(_store.Delete);
+        if (SelectedProfileName is { } current && names.Contains(current))
+        {
+            SelectedProfileName = null;
+        }
+
+        RefreshProfiles();
+        SelectedProfileNames.Clear();
+        StatusMessage = $"Deleted {deleted} profile(s)."
+            + (deleted < names.Count ? $" {names.Count - deleted} not found." : string.Empty);
+    }
+
     private void Connect()
     {
         var options = BuildOptions();
-        var validation = Validator.Validate(null, options);
+        var validation = ValidateFields(options);
         if (validation.Failed)
         {
             StatusMessage = string.Join(" ", validation.Failures);
@@ -651,7 +728,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
 
         var options = BuildOptions();
-        var validation = Validator.Validate(null, options);
+        var validation = ValidateFields(options);
         if (validation.Failed)
         {
             StatusMessage = string.Join(" ", validation.Failures);
@@ -722,7 +799,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
 
         var options = BuildOptions();
-        var validation = Validator.Validate(null, options);
+        var validation = ValidateFields(options);
         if (validation.Failed)
         {
             StatusMessage = string.Join(" ", validation.Failures);

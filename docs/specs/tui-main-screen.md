@@ -18,7 +18,8 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Type + Enter** in `Send:` | Appends the configured `LineEnding` to the presenter's parsed bytes and sends; the field clears immediately | Line non-empty; session open; the active presenter implements `IPresenterInput` | "Not connected — use File > Connect." / "Presenter '{name}' does not support sending." / a send failure message (see below) — none of these throw |
+| **Type + Enter** in `Send:` | Encodes the line with the current send format (the parser — see **Send as** below), appends the configured `LineEnding`, and sends; the field clears immediately | Line non-empty; session open | "Not connected — use File > Connect." / a send failure message (see below) — none of these throw |
+| **Send as** menu (menu bar) | Picks the parser (send format) for every line typed afterward — one item per presenter that can encode typed text (ascii, utf8, hex, decimal, octal, binary); starts as the profile's `Parser`, or its first presenter if none is saved. Updates the title bar; does not reconnect or touch the display presenters | None | n/a |
 | **File > Connect/Disconnect** | A single menu item whose label flips; toggles the same `Session`/transport open or closed without touching which profile is loaded | None | Same connection-failure handling as startup (`ConnectionErrorMessages.For`) |
 | **File > Device Profiles...** | Opens `ConfigureMode` as a nested modal (`Application.Run` on top of the current window) | None | n/a |
 | **File > Quit** / **Ctrl+Q** | Stops the application loop | None | n/a |
@@ -27,8 +28,9 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 
 - **`Send:` enabled/disabled** tracks `Session.State`: enabled only when `Open`. Toggled by
   Connect/Disconnect, not by anything else.
-- **Title bar** is fixed for the process's lifetime: `dev-term — {ConnectionDescription} ({presenter
-  name}) — Ctrl+Q to quit` — it does not update on Connect/Disconnect (see Open items).
+- **Title bar** is `dev-term — {ConnectionDescription} ({presenters}; send as {parser})` (e.g.
+  `(ascii, hex; send as hex)`). It updates when the **Send as** parser changes or a profile is
+  switched, but not on Connect/Disconnect (see Open items).
 - Incoming bytes arrive via `Session.Output`, marshaled onto the UI thread with
   `Application.Invoke` — this only works because a real `Application.Run()` loop is actively
   pumping; see `CLAUDE.md`'s constraint on `Application.Invoke` silently queuing forever otherwise.
@@ -54,8 +56,8 @@ points:
 ## Open items
 
 - **The title bar doesn't reflect Connect/Disconnect state** — it's set once at window construction
-  from the initial `ConnectionDescription`/presenter name and never updated, so after a Disconnect
-  the title still describes the (now closed) connection. `MainWindow`'s WPF title has the same gap.
+  from the connection/presenters/parser and only refreshed by a parser or profile change, so after a
+  Disconnect the title still describes the (now closed) connection. `MainWindow`'s WPF title has the same gap.
 - **No visual indicator of connection state** beyond the `Send:` field's enabled/disabled look and
   the menu item's label — no status bar, no colored indicator.
 - **Only one session per process** — `docs/design/presenters.md`'s stateful-presenter-vs-DI-singleton

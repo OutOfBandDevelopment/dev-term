@@ -12,13 +12,14 @@ menu — the WPF equivalent of the TUI's main screen.
 | Field | Type | Notes |
 |---|---|---|
 | `OutputList` | `ListBox`, fills the window above the send row | Every incoming decoded message is appended as `[{presenterName}] {text}`; status lines (Connected/Disconnected/errors) are appended the same way, indistinguishable from real device output except by text |
-| `SendBox` | `TextBox`, fills the remaining width next to the Send button | `IsEnabled` only when the active presenter implements `IPresenterInput` **and** (after Connect/Disconnect landed) the session is open |
+| `SendBox` | `TextBox`, fills the remaining width next to the Send button | `IsEnabled` only when the session is open (every text presenter can encode input, so there's no per-presenter check any more) |
+| `ParserBox` | `ComboBox` labelled "Send as:", docked right of the Send button | One item per presenter that can encode typed text; starts as the profile's `Parser` (its first presenter if none is saved); selecting one changes the send format for every line typed afterward and refreshes the title |
 
 ## Actions
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Type + Enter, or click Send** | Appends the configured `LineEnding` to the presenter's parsed bytes and sends; `SendBox` clears immediately | Line non-empty; the active presenter implements `IPresenterInput` | "Not connected — use File > Connect." (session closed) / "Send timed out — ..." / "Send failed: {message}" — appended to `OutputList`, never thrown |
+| **Type + Enter, or click Send** | Encodes the line with the `Send as:` format, appends the configured `LineEnding`, and sends; `SendBox` clears immediately | Line non-empty | "Not connected — use File > Connect." (session closed) / "Send timed out — ..." / "Send failed: {message}" — appended to `OutputList`, never thrown |
 | **File > Connect/Disconnect** | A single menu item whose header flips (`_Connect`/`_Disconnect`); toggles the same `Session`/transport without touching the loaded profile | None | `MessageBox.Show` with `ConnectionErrorMessages.For` text; session stays closed |
 | **File > Device Profiles...** | Opens `DeviceProfilesWindow` as a modal (`ShowDialog`) | None | n/a |
 | **File > Exit** / **Ctrl+Q** | Closes the window | None | n/a |
@@ -26,16 +27,17 @@ menu — the WPF equivalent of the TUI's main screen.
 
 ## States
 
-- **`SendBox.IsEnabled`** is set on load and on every Connect/Disconnect — `true` only when the
-  presenter supports input, `false` whenever the session isn't open.
+- **`SendBox.IsEnabled`** is set on load and on every Connect/Disconnect — `true` only while the
+  session is open.
 - **`ConnectMenuItem.Header`** mirrors `Session.State` — `_Disconnect` when open, `_Connect` when
   closed.
-- **Title bar**, like the TUI's, is set once at construction/on initial connect and does not update
-  again on Disconnect — see Open items.
+- **Title bar**, like the TUI's, is `dev-term — {ConnectionDescription} ({presenters}; send as
+  {parser})`. It's refreshed on connect, profile switch, and a `Send as:` change (only while the
+  session is open), but does not update on Disconnect — see Open items.
 
 ## Per-front-end notes
 
-- **Auto-connects on `Loaded`**, not on construction — `MainWindow(session, presenter, cliOptions)`
+- **Auto-connects on `Loaded`**, not on construction — `MainWindow(session, catalog, cliOptions)`
   wires everything but doesn't open the session; showing the window (real `Show()`, which fires
   `Loaded`) is what triggers `ConnectAsync`. Calling `ConnectAsync` directly *and* also calling
   `Show()` opens the session twice concurrently and corrupts the single-reader `PipeReader` (see

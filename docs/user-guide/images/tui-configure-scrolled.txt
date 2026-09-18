@@ -2,15 +2,15 @@
 │                                                                             ▲│
 │                                                                             ░│
 │                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
 │TCP host: 192.168.0.107          Port: 23         ☐ Listen                   ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
+│                                                                             ░│
+│Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary                  ░│
 │                                                                             █│
-│Presenter: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary              █│
+│Send as: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary                █│
 │                                                                             █│
 │Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
 │                                                                             █│

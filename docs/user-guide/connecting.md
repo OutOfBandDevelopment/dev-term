@@ -53,9 +53,9 @@ rather than hanging:
 ```
 $ dotnet DevTerm.Console.dll --transport carrier-pigeon --cli true
 Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', or 'hid'.
-Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
-   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
-   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --listports true
    or: dev-term --listhiddevices true
 ```
@@ -123,7 +123,7 @@ form (~33 rows). **Press Page Up/Page Down, or use the mouse wheel, to scroll** 
 appears on the right edge. Here's the same serial-transport screen scrolled down (TCP fields shown
 instead, to demonstrate a different starting point):
 
-![TUI connection editor, scrolled down to reveal Presenter/Line ending/Save/Import-export/Connect/Quit](images/tui-configure-scrolled.png)
+![TUI connection editor, scrolled down to reveal Presenters/Send as/Line ending/Save/Import-export/Connect/Quit](images/tui-configure-scrolled.png)
 
 Scrolling is skipped while the saved-profiles list has focus, so Page Up/Page Down/the arrow keys
 still navigate that list normally instead of scrolling the form out from under it.

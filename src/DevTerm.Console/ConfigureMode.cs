@@ -41,7 +41,7 @@ public static class ConfigureMode
         Hid,
     }
 
-    /// <summary>Same reasoning as <see cref="TransportChoice"/>, for <see cref="ConnectionEditorViewModel.Presenter"/>.</summary>
+    /// <summary>Same reasoning as <see cref="TransportChoice"/>, for <see cref="ConnectionEditorViewModel.Parser"/> (the presenter picker itself is checkboxes, not this).</summary>
     internal enum PresenterChoice
     {
         Ascii,
@@ -98,7 +98,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 38;
+        const int ContentHeight = 40;
         var formContent = new View
         {
             X = 0,
@@ -145,6 +145,7 @@ public static class ConfigureMode
         // Browse/Import/Export/Save As below.
         var exportSelectedButton = new Button { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Export Selected" };
         var exportAllButton = new Button { X = Pos.Right(exportSelectedButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Export All" };
+        var deleteSelectedButton = new Button { X = Pos.Right(exportAllButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Delete Selected" };
 
         var transportLabel = new Label { X = 0, Y = Pos.Bottom(exportSelectedButton) + 1, Text = "Transport:" };
         var transportSelector = new OptionSelector<TransportChoice>
@@ -185,16 +186,31 @@ public static class ConfigureMode
         var detectHidButton = new Button { X = Pos.Right(hidProductField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Detect..." };
         var hidShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Show as hex" };
 
-        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidShowHexCheckBox) + 1, Text = "Presenter:" };
-        var presenterSelector = new OptionSelector<PresenterChoice>
+        // The presenter picker is multi-select, so a row of checkboxes rather than an OptionSelector
+        // (radio buttons, single-select only) - one per PresenterChoices entry, in that order.
+        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidShowHexCheckBox) + 1, Text = "Presenters:" };
+        var presenterCheckBoxes = new List<CheckBox>();
+        foreach (var choice in viewModel.PresenterChoices)
         {
-            X = Pos.Right(presenterLabel) + 1,
-            Y = Pos.Top(presenterLabel),
+            presenterCheckBoxes.Add(new CheckBox
+            {
+                X = presenterCheckBoxes.Count == 0 ? Pos.Right(presenterLabel) + 1 : Pos.Right(presenterCheckBoxes[^1]) + 1,
+                Y = Pos.Top(presenterLabel),
+                Text = choice.Name,
+            });
+        }
+
+        // What encodes a typed line - independent of the presenters above (display only).
+        var parserLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "Send as:" };
+        var parserSelector = new OptionSelector<PresenterChoice>
+        {
+            X = Pos.Right(parserLabel) + 1,
+            Y = Pos.Top(parserLabel),
             Orientation = Orientation.Horizontal,
             HorizontalSpace = 2,
         };
 
-        var lineEndingLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "Line ending:" };
+        var lineEndingLabel = new Label { X = 0, Y = Pos.Bottom(parserLabel) + 1, Text = "Line ending:" };
         var lineEndingSelector = new OptionSelector<LineEnding>
         {
             X = Pos.Right(lineEndingLabel) + 1,
@@ -232,6 +248,7 @@ public static class ConfigureMode
             RefreshButton = refreshButton,
             ExportSelectedButton = exportSelectedButton,
             ExportAllButton = exportAllButton,
+            DeleteSelectedButton = deleteSelectedButton,
             TransportSelector = transportSelector,
             DescriptionField = descriptionField,
             PortField = portField,
@@ -247,7 +264,8 @@ public static class ConfigureMode
             HidProductField = hidProductField,
             DetectHidButton = detectHidButton,
             HidShowHexCheckBox = hidShowHexCheckBox,
-            PresenterSelector = presenterSelector,
+            PresenterCheckBoxes = presenterCheckBoxes,
+            ParserSelector = parserSelector,
             LineEndingSelector = lineEndingSelector,
             SaveNameField = saveNameField,
             SaveButton = saveButton,
@@ -289,7 +307,12 @@ public static class ConfigureMode
             viewModel.HidIdsShowHex = hidShowHexCheckBox.Value == CheckState.Checked;
             viewModel.HidVendorIdDisplay = hidVendorField.Text;
             viewModel.HidProductIdDisplay = hidProductField.Text;
-            viewModel.Presenter = (presenterSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
+            for (var i = 0; i < presenterCheckBoxes.Count; i++)
+            {
+                viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
+            }
+
+            viewModel.Parser = (parserSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
             viewModel.LineEndingText = (lineEndingSelector.Value ?? DevTerm.Configuration.LineEnding.None).ToString();
             viewModel.SaveName = saveNameField.Text;
             viewModel.ImportExportPath = pathField.Text;
@@ -311,7 +334,12 @@ public static class ConfigureMode
             hidShowHexCheckBox.Value = viewModel.HidIdsShowHex ? CheckState.Checked : CheckState.UnChecked;
             hidVendorField.Text = viewModel.HidVendorIdDisplay;
             hidProductField.Text = viewModel.HidProductIdDisplay;
-            presenterSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Presenter, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
+            for (var i = 0; i < presenterCheckBoxes.Count; i++)
+            {
+                presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
+            }
+
+            parserSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Parser, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
             lineEndingSelector.Value = Enum.TryParse<DevTerm.Configuration.LineEnding>(viewModel.LineEndingText, ignoreCase: true, out var le) ? le : DevTerm.Configuration.LineEnding.None;
             saveNameField.Text = viewModel.SaveName;
             errorLabel.Text = viewModel.StatusMessage;
@@ -329,6 +357,14 @@ public static class ConfigureMode
             MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
         viewModel.ConfirmDiscardChanges = () =>
             MessageBox.Query(Application.Instance!, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
+        viewModel.ConfirmDeleteProfiles = names =>
+            MessageBox.Query(
+                Application.Instance!,
+                "dev-term",
+                names.Count == 1
+                    ? $"Delete profile '{names[0]}'? This can't be undone."
+                    : $"Delete {names.Count} profiles ({string.Join(", ", names)})? This can't be undone.",
+                ["Yes", "No"]) == 0;
         viewModel.ResolveZipImportConflict = name =>
             MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists.", ["Replace", "Rename", "Skip"]) switch
             {
@@ -610,6 +646,14 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        deleteSelectedButton.Accepting += (_, e) =>
+        {
+            PushMarkedProfilesIntoViewModel();
+            viewModel.DeleteSelectedProfilesCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
         connectButton.Accepting += (_, e) =>
         {
             PushFieldsIntoViewModel();
@@ -638,17 +682,22 @@ public static class ConfigureMode
 
         formContent.Add(
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
-            exportSelectedButton, exportAllButton,
+            exportSelectedButton, exportAllButton, deleteSelectedButton,
             transportLabel, transportSelector,
             descriptionLabel, descriptionField,
             portLabel, portField, detectPortButton, baudLabel, baudField,
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
-            presenterLabel, presenterSelector, lineEndingLabel, lineEndingSelector,
+            presenterLabel, parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton,
             connectButton, quitButton);
+        foreach (var presenterCheckBox in presenterCheckBoxes)
+        {
+            formContent.Add(presenterCheckBox);
+        }
+
         window.Add(formContent);
 
         // PageUp/PageDown and the mouse wheel scroll the form when it doesn't fit. PageUp/PageDown
@@ -731,6 +780,8 @@ internal sealed class ConfigureWindowParts
 
     public required Button ExportAllButton { get; init; }
 
+    public required Button DeleteSelectedButton { get; init; }
+
     public required OptionSelector<ConfigureMode.TransportChoice> TransportSelector { get; init; }
 
     public required TextField DescriptionField { get; init; }
@@ -761,7 +812,11 @@ internal sealed class ConfigureWindowParts
 
     public required CheckBox HidShowHexCheckBox { get; init; }
 
-    public required OptionSelector<ConfigureMode.PresenterChoice> PresenterSelector { get; init; }
+    /// <summary>One checkbox per presenter, in <see cref="ConnectionEditorViewModel.PresenterChoices"/> order — the multi-select presenter picker.</summary>
+    public required IReadOnlyList<CheckBox> PresenterCheckBoxes { get; init; }
+
+    /// <summary>The send format (parser) — an <see cref="ConfigureMode.PresenterChoice"/> because every presenter that registers can encode input.</summary>
+    public required OptionSelector<ConfigureMode.PresenterChoice> ParserSelector { get; init; }
 
     public required OptionSelector<LineEnding> LineEndingSelector { get; init; }
 

@@ -27,6 +27,7 @@
                 <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top">
                     <Button Content="Load" Padding="8,2" Margin="0,0,0,4" Command="{Binding LoadCommand}" />
                     <Button Content="Delete" Padding="8,2" Margin="0,0,0,4" Command="{Binding DeleteCommand}" />
+                    <Button Content="Delete Selected" Padding="8,2" Margin="0,0,0,4" Command="{Binding DeleteSelectedProfilesCommand}" />
                     <Button Content="Refresh" Padding="8,2" Margin="0,0,0,4" Command="{Binding RefreshCommand}" />
                     <Button Content="Export Selected" Padding="8,2" Margin="0,0,0,4" Command="{Binding ExportSelectedProfilesCommand}" />
                     <Button Content="Export All" Padding="8,2" Command="{Binding ExportAllProfilesCommand}" />
@@ -35,7 +36,8 @@
                      needs - ListBox.SelectedItems has no dependency property of its own to bind
                      two-way in pure XAML, so SelectionChanged pushes it into the view model's
                      SelectedProfileNames from code-behind instead (see DeviceProfilesWindow.xaml.cs).
-                     SelectedItem stays bound as before - Load/Delete only ever act on one profile. -->
+                     SelectedItem stays bound as before - Load/Delete only ever act on one profile;
+                     Export Selected/Delete Selected act on the whole multi-selection. -->
                 <ListBox x:Name="ProfilesList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}"
                          SelectionMode="Extended" SelectionChanged="ProfilesList_SelectionChanged" Margin="0,0,8,0">
                     <ListBox.InputBindings>
@@ -171,8 +173,27 @@
                             <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Presenter:" VerticalAlignment="Center" />
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding PresenterOptions}" SelectedItem="{Binding Presenter}" />
+                        <TextBlock Text="Presenters:" VerticalAlignment="Center" />
+                        <ItemsControl x:Name="PresenterChoicesList" Grid.Column="1" ItemsSource="{Binding PresenterChoices}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="0,2,12,2" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Send as:" VerticalAlignment="Center" />
+                        <ComboBox x:Name="ParserBox" Grid.Column="1" ItemsSource="{Binding PresenterOptions}" SelectedItem="{Binding Parser}" />
                     </Grid>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>

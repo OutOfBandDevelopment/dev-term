@@ -91,15 +91,7 @@ ordered against the rest.
   Replace/Rename/Skip conflict resolution (`ConnectionEditorViewModel.ResolveZipImportConflict`) —
   see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Still open from that item:
   a "delete all existing profiles, then import everything" wholesale alternative to per-name
-  conflict resolution, and bulk profile removal (see below).
-  - **Multi-select Presenter** — today it's single-select even though `Pipeline` already fans bytes
-    out to multiple presenters; `CliOptions.Presenter` would need to become a list, which also
-    raises a real design question for the send path (which presenter encodes a typed line, if more
-    than one is active). Needs its own design pass.
-  - **Per-input-line parser selection**, with a default supplied by the connection profile. Needs
-    its own design clarification — no "parser" concept distinct from presenters exists yet.
-  - **Bulk profile removal** — Delete is still per-profile even though the profiles list now
-    supports multi-select (added for Export Selected above); there's no "Delete Selected" yet.
+  conflict resolution. (Bulk profile removal, listed here as open, landed 2026-09-18.)
   - **Lower priority: a long/short name for a detected serial port** — the "Detected ports" picker
     lists short names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly
     name is wired up.

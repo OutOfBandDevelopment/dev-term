@@ -19,6 +19,10 @@
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                 <Button DockPanel.Dock="Right" Content="Send" Padding="16,0" Margin="8,0,0,0"
                         IsDefault="True" Click="Send_Click" />
+                <ComboBox x:Name="ParserBox" DockPanel.Dock="Right" Width="90" Margin="8,0,0,0"
+                          ToolTip="Send as: how the typed line is turned into bytes (applies from the next line sent)"
+                          SelectionChanged="ParserBox_SelectionChanged" />
+                <TextBlock DockPanel.Dock="Right" Text="Send as:" VerticalAlignment="Center" Margin="8,0,0,0" />
                 <TextBox x:Name="SendBox" VerticalContentAlignment="Center" KeyDown="SendBox_KeyDown" />
             </DockPanel>
             <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto" />

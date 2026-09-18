@@ -104,6 +104,66 @@ public sealed class ConfigureModeTests
     }
 
     [TestMethod]
+    public void PresenterCheckBoxes_ShowTheInitialPresenters_AndConnectReturnsWhateverIsCheckedAlongsideTheSeparateParser()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii", "binary"], Parser = "hex" };
+            RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
+            {
+                CollectionAssert.AreEqual(
+                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" },
+                    parts.PresenterCheckBoxes.Select(c => c.Text.ToString()).ToArray());
+                CollectionAssert.AreEqual(
+                    new[] { true, false, false, false, false, true },
+                    parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked).ToArray());
+                Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
+
+                parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8
+                parts.PresenterCheckBoxes[0].Value = CheckState.UnChecked; // ascii
+                parts.ParserSelector.Value = ConfigureMode.PresenterChoice.Decimal;
+
+                Click(parts.ConnectButton);
+
+                Assert.IsNotNull(parts.Result);
+                CollectionAssert.AreEqual(new[] { "utf8", "binary" }, parts.Result.Presenter);
+                Assert.AreEqual("decimal", parts.Result.Parser);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Connect_WithNoPresenterChecked_ReportsAndStaysOnTheForm()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 };
+            RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
+            {
+                foreach (var checkBox in parts.PresenterCheckBoxes)
+                {
+                    checkBox.Value = CheckState.UnChecked;
+                }
+
+                Click(parts.ConnectButton);
+
+                Assert.IsNull(parts.Result);
+                StringAssert.Contains(parts.ErrorLabel.Text, "at least one presenter");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Connect_WithValidFields_ReturnsOptionsAndStopsTheLoop()
     {
         var directory = CreateTempProfilesDirectory();
@@ -227,7 +287,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] };
 
             RunHeadless(initial, null, store, parts =>
             {
@@ -261,7 +321,7 @@ public sealed class ConfigureModeTests
             // not something this stub investigated further given a single-cycle-per-test workaround
             // was straightforward and every test here already needs its own cycle regardless.
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] });
 
             RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", store, parts =>
             {
@@ -287,7 +347,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] });
 
             RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", store, parts =>
             {
@@ -374,7 +434,7 @@ public sealed class ConfigureModeTests
         try
         {
             var exportPath = Path.Combine(directory, "exported.json");
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = "ascii" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] };
 
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
@@ -680,6 +740,90 @@ public sealed class ConfigureModeTests
                     Assert.AreEqual("1234", parts.HidVendorField.Text, "Unchecking should revert back to decimal.");
                     Assert.AreEqual("49291", parts.HidProductField.Text);
                 });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+
+    [TestMethod]
+    public void DeleteSelectedButton_WithNothingMarked_ShowsStatusMessage()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
+            {
+                Click(parts.DeleteSelectedButton);
+
+                StringAssert.Contains(parts.ErrorLabel.Text, "Select one or more saved profiles to delete");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedButton_WithMarkedProfiles_DeletesThemAfterConfirmation()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+
+            RunHeadless(new CliOptions(), null, store, parts =>
+            {
+                // The real confirmation is a blocking MessageBox.Query (see the ConfirmOverwrite
+                // tests above) - stubbed here, with the asked-about names recorded so the wiring is
+                // still proven.
+                IReadOnlyList<string>? asked = null;
+                parts.ViewModel.ConfirmDeleteProfiles = names =>
+                {
+                    asked = names;
+                    return true;
+                };
+
+                // Same marking mechanism (and alphabetical order) as the Export Selected tests above.
+                parts.ProfilesList.SelectedItem = 1;
+                parts.ProfilesList.MarkUnmarkSelectedItem();
+                Click(parts.DeleteSelectedButton);
+
+                CollectionAssert.AreEqual(new[] { "tek2230" }, asked!.ToArray());
+                StringAssert.Contains(parts.ErrorLabel.Text, "Deleted 1 profile(s).");
+                CollectionAssert.AreEqual(new[] { "other" }, store.List().ToArray());
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedButton_WhenTheUserDeclines_KeepsTheProfiles()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+
+            RunHeadless(new CliOptions(), null, store, parts =>
+            {
+                parts.ViewModel.ConfirmDeleteProfiles = _ => false;
+                parts.ProfilesList.SelectedItem = 0;
+                parts.ProfilesList.MarkUnmarkSelectedItem();
+                Click(parts.DeleteSelectedButton);
+
+                Assert.AreEqual("Delete cancelled.", parts.ErrorLabel.Text);
+                CollectionAssert.AreEqual(new[] { "tek2230" }, store.List().ToArray());
+            });
         }
         finally
         {

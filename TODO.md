@@ -55,18 +55,21 @@ Completed work is logged by date under `docs/changes/`.
   brand-new filename no longer means hand-typing it; and, most recently, multi-select in the
   saved-profiles list (WPF `ListBox.SelectionMode="Extended"`, the TUI `ListView`'s own
   `MarkMultiple`/`ShowMarks`) plus Export Selected/Export All (a zip, one `{name}.json` per profile)
-  and zip-aware Import with per-name Replace/Rename/Skip conflict resolution. Test automation for
+  and zip-aware Import with per-name Replace/Rename/Skip conflict resolution; and, most recently
+  (2026-09-18), a multi-select Presenter picker plus a per-line send format ("parser") —
+  `CliOptions.Presenter` is now a list (checkboxes in the editor, `--presenter ascii,hex`), a separate
+  `Parser` names the encoder for typed lines, and the TUI ("Send as" menu)/WPF ("Send as:" box) can
+  switch it per line. Test automation for
   CLI/TUI/WPF (including Terminal.Gui's own headless testing API) and a `[TestCategory]` coding
   standard, both prerequisites for landing the above with confidence, are also done — see
   `docs/design/testing.md`/`docs/coding-standards.md`.
 
-  Still open (see [`BACKLOG.md`](BACKLOG.md) for detail), prioritized 2026-09-16: multi-select
-  Presenter, per-input-line parser selection, bulk profile removal now that multi-select exists, and
-  (lower priority) a long/short name for a detected serial port.
+  Bulk profile removal (a "Delete Selected" button, with a native confirmation naming the profiles)
+  landed the same day. Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a wholesale "delete all,
+  then import" zip option, and (lower priority) a long/short name for a detected serial port.
 
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
-[`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor items (decimal/hex toggle,
-export-as-zip, multi-select Presenter, per-input-line parser selection, save-style export picker)
-and a new "Window title, from the Architect" item.
+[`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor items (wholesale
+delete-then-import, serial-port long/short name) and a new "Window title, from the Architect" item.

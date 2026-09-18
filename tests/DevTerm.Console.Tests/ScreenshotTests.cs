@@ -83,7 +83,7 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "serial", Port = "COM3", Baud = 9600, Presenter = "ascii", Description = "Tektronix 2230 bench scope" };
+            var initial = new CliOptions { Transport = "serial", Port = "COM3", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
             StringAssert.Contains(dump, "Transport:");
@@ -103,7 +103,7 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii", Description = "Tektronix 2230 bench scope" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-tcp");
 
             StringAssert.Contains(dump, "TCP host:");
@@ -122,7 +122,7 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = "hex" };
+            var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = ["hex"] };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-hid");
 
             StringAssert.Contains(dump, "HID vendor ID");
@@ -141,7 +141,7 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii", Description = "Tektronix 2230 bench scope" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
 
             Application.Init("dotnet");
             string dump;
@@ -197,7 +197,7 @@ public sealed class ScreenshotTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
 
         string dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
@@ -218,7 +218,7 @@ public sealed class ScreenshotTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
 
         string dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
@@ -246,7 +246,7 @@ public sealed class ScreenshotTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
@@ -268,7 +268,7 @@ public sealed class ScreenshotTests
     {
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
 
         string dump = "";
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>

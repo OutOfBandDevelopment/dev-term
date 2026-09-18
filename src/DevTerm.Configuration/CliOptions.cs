@@ -48,10 +48,47 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool Cli { get; set; }
 
+    /// <summary>The name used when <see cref="Presenter"/> is empty/unset.</summary>
+    public const string DefaultPresenter = "hex";
+
+    /// <summary>
+    /// Which presenters render incoming bytes — one or more of ascii, utf8, hex, decimal, octal,
+    /// binary, all shown side by side (each output line is tagged with its presenter's name). A JSON
+    /// array in a profile (<c>"Presenter": ["ascii", "hex"]</c>); on the command line/environment,
+    /// a single comma-separated value (<c>--presenter ascii,hex</c>) — see
+    /// <see cref="DevTermConfiguration.Bind"/>, which also still reads the older single-string form
+    /// (<c>"Presenter": "hex"</c>) that profiles saved before this became a list use. Empty by
+    /// default (not <c>["hex"]</c>): the configuration binder appends bound array items to an
+    /// existing default array, so a non-empty default would leak into every bound profile — read
+    /// <see cref="EffectivePresenters"/> for the resolved list.
+    /// </summary>
     [Category("Presentation")]
     [DisplayName("Presenter")]
-    [Description("How incoming bytes are rendered: ascii, utf8, hex, decimal, octal, or binary.")]
-    public string Presenter { get; set; } = "hex";
+    [Description("How incoming bytes are rendered: any of ascii, utf8, hex, decimal, octal, binary — comma-separated to show several.")]
+    public string[] Presenter { get; set; } = [];
+
+    /// <summary><see cref="Presenter"/> with the <see cref="DefaultPresenter"/> fallback applied when empty, blanks removed, duplicates (case-insensitive) collapsed.</summary>
+    [Browsable(false)]
+    public IReadOnlyList<string> EffectivePresenters =>
+        Presenter.Select(p => p?.Trim() ?? string.Empty).Where(p => p.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() is { Length: > 0 } names
+            ? names
+            : [DefaultPresenter];
+
+    /// <summary>
+    /// The send format: which presenter's input encoding turns a typed line into bytes (ascii text,
+    /// hex digits, decimal numbers, ...). Independent of <see cref="Presenter"/>, which only picks
+    /// what's displayed. Unset (older profiles) means the first of <see cref="EffectivePresenters"/>,
+    /// which is what sent input was always encoded with before the two were separated. A front end
+    /// can switch it per typed line during a session; this is only the starting value.
+    /// </summary>
+    [Category("Presentation")]
+    [DisplayName("Parser")]
+    [Description("How a typed line is turned into bytes to send: ascii, utf8, hex, decimal, octal, or binary. Defaults to the first presenter.")]
+    public string? Parser { get; set; }
+
+    /// <summary><see cref="Parser"/> with the older-profile fallback applied (the first of <see cref="EffectivePresenters"/>).</summary>
+    [Browsable(false)]
+    public string EffectiveParser => Parser is { Length: > 0 } parser ? parser : EffectivePresenters[0];
 
     /// <summary>Appended to each typed line before sending, for presenters that support sending. See <see cref="LineEnding"/>.</summary>
     [Category("Presentation")]

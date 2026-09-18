@@ -30,11 +30,11 @@ public sealed class DevTermConfigurationTests
                 .Build();
 
             var options = new CliOptions();
-            configuration.Bind(options);
+            DevTermConfiguration.Bind(configuration, options);
 
             Assert.AreEqual("COM1", options.Port, "Untouched settings should still come from the file.");
             Assert.AreEqual(4800, options.Baud, "Command line should override the file.");
-            Assert.AreEqual("hex", options.Presenter);
+            CollectionAssert.AreEqual(new[] { "hex" }, options.Presenter, "An older profile's single-string Presenter still loads.");
         }
         finally
         {
@@ -59,7 +59,7 @@ public sealed class DevTermConfigurationTests
                 .Build();
 
             var options = new CliOptions();
-            configuration.Bind(options);
+            DevTermConfiguration.Bind(configuration, options);
 
             Assert.AreEqual("COM9", options.Port, "Command line should override both the file and the environment.");
             Assert.AreEqual(19200, options.Baud, "The environment variable should override the file.");
@@ -80,7 +80,8 @@ public sealed class DevTermConfigurationTests
             Port = "COM3",
             Baud = 4800,
             Handshake = System.IO.Ports.Handshake.RequestToSend,
-            Presenter = "ascii",
+            Presenter = ["ascii", "hex"],
+            Parser = "decimal",
             LineEnding = LineEnding.Cr,
             ManifestName = "tek-2230",
             Tui = false,
@@ -91,12 +92,13 @@ public sealed class DevTermConfigurationTests
 
         var configuration = new ConfigurationBuilder().AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json))).Build();
         var roundTripped = new CliOptions();
-        configuration.Bind(roundTripped);
+        DevTermConfiguration.Bind(configuration, roundTripped);
 
         Assert.AreEqual("COM3", roundTripped.Port);
         Assert.AreEqual(4800, roundTripped.Baud);
         Assert.AreEqual(System.IO.Ports.Handshake.RequestToSend, roundTripped.Handshake);
-        Assert.AreEqual("ascii", roundTripped.Presenter);
+        CollectionAssert.AreEqual(new[] { "ascii", "hex" }, roundTripped.Presenter);
+        Assert.AreEqual("decimal", roundTripped.Parser);
         Assert.AreEqual(LineEnding.Cr, roundTripped.LineEnding);
         Assert.AreEqual("tek-2230", roundTripped.ManifestName);
         Assert.IsTrue(roundTripped.Tui, "One-shot/mode flags shouldn't be projected into the saved profile.");
@@ -114,7 +116,7 @@ public sealed class DevTermConfigurationTests
 
             var configuration = new ConfigurationBuilder().AddJsonFile(path, optional: false).Build();
             var options = new CliOptions();
-            configuration.Bind(options);
+            DevTermConfiguration.Bind(configuration, options);
 
             Assert.AreEqual("COM7", options.Port);
             Assert.AreEqual(19200, options.Baud);
@@ -145,7 +147,7 @@ public sealed class DevTermConfigurationTests
                 .Build();
 
             var options = new CliOptions();
-            configuration.Bind(options);
+            DevTermConfiguration.Bind(configuration, options);
 
             Assert.AreEqual(9600, options.Baud, "An env var without the DEVTERM_ prefix must not bind.");
         }

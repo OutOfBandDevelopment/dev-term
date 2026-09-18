@@ -27,4 +27,24 @@ public sealed class PresenterCatalog
     }
 
     public bool TryGet(string name, out IPresenter presenter) => _byName.TryGetValue(name, out presenter!);
+
+    /// <summary>
+    /// The names of every presenter that can also turn typed text into bytes
+    /// (<see cref="IPresenterInput"/>) — what a front end offers as a "send format" (parser) choice.
+    /// </summary>
+    public IReadOnlyList<string> InputNames =>
+        [.. _byName.Values.Where(p => p is IPresenterInput).Select(p => p.Name)];
+
+    /// <summary>Resolves <paramref name="name"/> to a presenter that can encode typed input, or <see langword="false"/> if it's unknown or display-only.</summary>
+    public bool TryGetInput(string name, out IPresenterInput input)
+    {
+        if (_byName.TryGetValue(name, out var presenter) && presenter is IPresenterInput found)
+        {
+            input = found;
+            return true;
+        }
+
+        input = null!;
+        return false;
+    }
 }

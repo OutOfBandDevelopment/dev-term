@@ -42,7 +42,7 @@ public sealed class TuiModeSwitchProfileTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
@@ -51,7 +51,7 @@ public sealed class TuiModeSwitchProfileTests
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             var acceptTask = listener.AcceptTcpClientAsync();
 
-            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = "hex" })
+            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] })
                 .GetAwaiter().GetResult();
 
             using var client = acceptTask.GetAwaiter().GetResult();
@@ -76,11 +76,11 @@ public sealed class TuiModeSwitchProfileTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
-            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = "not-a-real-presenter" })
+            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["not-a-real-presenter"] })
                 .GetAwaiter().GetResult();
 
             Assert.IsFalse(switched);

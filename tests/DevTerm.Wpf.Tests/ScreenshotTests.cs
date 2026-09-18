@@ -60,7 +60,7 @@ public sealed class ScreenshotTests
         var transport = new FakeTransport();
         var presenter = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
-        var window = new MainWindow(session, presenter, new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 });
+        var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Parser = "ascii" });
         return (window, transport);
     }
 
@@ -115,7 +115,7 @@ public sealed class ScreenshotTests
                     Port = "COM3",
                     Baud = 9600,
                     DataBits = 8,
-                    Presenter = "ascii",
+                    Presenter = ["ascii"],
                     Description = "Tektronix 2230 bench scope",
                 };
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
@@ -141,8 +141,8 @@ public sealed class ScreenshotTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" });
-            store.Save("tds2024", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = "ascii" });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] });
+            store.Save("tds2024", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"] });
 
             StaTestRunner.Run(async () =>
             {
@@ -171,7 +171,7 @@ public sealed class ScreenshotTests
         {
             StaTestRunner.Run(async () =>
             {
-                var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = "hex" };
+                var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = ["hex"] };
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
                 WpfScreenshot.ShowOffScreen(window);
 

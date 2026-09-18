@@ -39,7 +39,8 @@ Shown in two situations:
 | Vendor ID (hid) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.HidVendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"` |
 | Product ID (hid) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same as Vendor ID |
 | Show as hex (hid) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
-| Presenter | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | `hex` | n/a (fixed set, every presenter `AddTextPresenters` registers) | Single-select today — see Open items |
+| Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` (a row of checkboxes) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
+| Send as | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
 | Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | A single-profile JSON path for Import/Export, or a `.zip` path (detected by extension) for Import/Export Selected/Export All — see Actions |
@@ -59,6 +60,7 @@ Shown in two situations:
 | **Export** | Validates the current fields; writes them to the given path as JSON (same shape a saved profile uses) | Path must be non-empty; fields must validate | Validation message |
 | **Export Selected** | Writes every profile marked/selected in the saved-profiles list to the given path as a single zip (one `{name}.json` entry per profile, the exact bytes already on disk, not a re-serialized round trip) | Path must be non-empty; at least one profile must be marked/selected | "Select one or more saved profiles to export first." / the underlying I/O exception's message |
 | **Export All** | Same as Export Selected, but always writes every saved profile regardless of what's marked/selected | Path must be non-empty | Same as Export Selected |
+| **Delete Selected** | Asks for confirmation naming the profiles about to go (a native dialog per front end — unlike single **Delete**, which doesn't ask), then deletes every profile marked/selected in the saved-profiles list, refreshes the list, and clears both the multi-selection and (if it was one of them) the single selection | At least one profile must be marked/selected | "Select one or more saved profiles to delete first." / "Delete cancelled." if declined / "Deleted N profile(s). M not found." when a profile had already been removed by another process |
 
 ## States
 
@@ -87,12 +89,16 @@ Shown in two situations:
 
 ## Per-front-end notes
 
-- **Widgets**: WPF uses a `ComboBox` for Transport/Presenter/Line ending/Parity/Stop bits, bound via
-  `SelectedItem`. The TUI uses Terminal.Gui's `OptionSelector<TEnum>` (a radio-button-style
-  selector) for the same five fields — it requires a real enum, so `ConfigureMode` declares two
-  TUI-only enums (`TransportChoice`, `PresenterChoice`) purely to drive that widget, converting
-  to/from the view model's plain strings; `Parity`/`StopBits`/`LineEnding` are already enums shared
-  with `CliOptions` itself, no extra enum needed for those three.
+- **Widgets**: WPF uses a `ComboBox` for Transport/Send as/Line ending/Parity/Stop bits, bound via
+  `SelectedItem`, and an `ItemsControl` of `CheckBox`es (a `WrapPanel`) for Presenters, each bound to
+  its `PresenterSelection.IsSelected` in `ConnectionEditorViewModel.PresenterChoices`. The TUI uses
+  Terminal.Gui's `OptionSelector<TEnum>` (a radio-button-style selector) for Transport/Send as/Line
+  ending/Parity/Stop bits — it requires a real enum, so `ConfigureMode` declares two TUI-only enums
+  (`TransportChoice`, `PresenterChoice` — the latter drives Send as) purely to drive that widget,
+  converting to/from the view model's plain strings; `Parity`/`StopBits`/`LineEnding` are already
+  enums shared with `CliOptions` itself, no extra enum needed for those three. Presenters is
+  multi-select, which a radio selector can't do, so the TUI uses one `CheckBox` per presenter on a
+  single row instead, copied to/from `PresenterChoices` by push/pull like every other field.
 - **Binding vs. push/pull**: WPF's controls stay continuously in sync with the view model via real
   `{Binding ...}` — editing a field updates the view model immediately, and vice versa. The TUI has
   no data-binding system, so `ConfigureMode` copies every field into the view model right before
@@ -130,10 +136,10 @@ Shown in two situations:
   `View` has no built-in `Command.ScrollDown`/`PageDown` implementation to invoke instead — both keys
   and the wheel are wired by hand. WPF's `ScrollViewer` around the field editor already handled this
   automatically from the start (see the WPF screenshots — the window itself is simply taller/resizable).
-- **Overwrite/discard confirmations and delete are native per front end**: WPF uses
+- **Overwrite/discard/bulk-delete confirmations are native per front end**: WPF uses
   `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
-  same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges` hooks so the view model
-  itself has no UI dependency.
+  same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges`/`ConfirmDeleteProfiles`
+  hooks so the view model itself has no UI dependency. Single-profile **Delete** doesn't confirm.
 - **Detected-hardware pickers fill fields rather than binding directly to them**: `Port` and
   `HidVendorId`/`HidProductId` stay plain, freely-typable fields; a separate `SelectedSerialPort`/
   `SelectedHidDevice` property on the view model is what a picker actually binds to, and setting it
@@ -168,7 +174,7 @@ Shown in two situations:
   subscribes `profilesList.Accepting` to the same local `LoadSelectedProfile()` function the Load
   button's own `Accepting` handler calls — one shared code path, not a duplicated one.
 
-- **Export Selected's multi-select is a separate collection from the single-item `SelectedProfileName`
+- **Export Selected/Delete Selected's multi-select is a separate collection from the single-item `SelectedProfileName`
   Load/Delete use** (`ConnectionEditorViewModel.SelectedProfileNames`, a plain `ObservableCollection<string>`
   each front end populates itself, since neither front end's list control notifies the view model
   live as marks/selection change). WPF's `ListBox` uses `SelectionMode="Extended"` (ctrl/shift-click)
@@ -178,8 +184,10 @@ Shown in two situations:
   (checkbox-style marks, SPACE to toggle — confirmed against the installed Terminal.Gui v2.5.0
   package that `ListWrapper<T>`, what `SetSource` builds, already implements the `IsMarked`/`SetMark`
   storage needed) with no live-sync event at all; `ConfigureMode` just reads `GetAllMarkedItems()`
-  right before the Export Selected button's own command runs, the same "copy into the view model
-  right before the command executes" pattern already used for the single-item case.
+  right before the Export Selected/Delete Selected button's own command runs, the same "copy into the
+  view model right before the command executes" pattern already used for the single-item case.
+  In the TUI, Delete Selected sits on the Export Selected/Export All row (an 80-column window has no
+  room for a fourth button on the Load/Delete/Refresh row); in WPF it's in the button column under Delete.
 - **A zip import's per-name conflict resolution is a `Func<string, ZipImportConflictResolution>`
   hook** (`ConnectionEditorViewModel.ResolveZipImportConflict`), called once per name already in the
   store — same "front end supplies a native dialog, view model has no UI dependency" shape as
@@ -187,26 +195,23 @@ Shown in two situations:
   onto Replace/Rename/Skip; the TUI maps a three-button `MessageBox.Query` the same way. Left
   unwired (e.g. in a test), every conflict defaults to Replace, matching the existing "proceed
   without asking" convention for the other two confirmation hooks.
+- **Send as, in the main windows** (not the editor itself, but where the parser is actually used):
+  the WPF main window has a "Send as:" `ComboBox` beside the Send button, the TUI a "Send as" menu-bar
+  menu with one entry per presenter that can encode input. Both start at the profile's parser and
+  switch it for every line typed afterward (the title bar shows the current one, e.g.
+  `dev-term — TCP 192.168.0.107:23 (ascii, hex; send as hex)`); switching profiles resets it to the new
+  profile's. The plain CLI has no such control — a stdin loop has no non-colliding way to say "this
+  line is hex" — so it uses `--parser` for the whole run.
 
 ## Open items
 
-Requested but not yet built, prioritized 2026-09-16:
+Requested but not yet built, prioritized 2026-09-16 (the presenter picker and per-input-line parser both landed 2026-09-18 — see Fields and Per-front-end notes):
 
-- **Multi-select Presenter.** Today it's single-select, even though the underlying `Pipeline`
-  already supports fanning bytes out to multiple presenters at once — `CliOptions.Presenter` itself
-  would need to become a list, which also touches `AddDevTermFrontEnd`'s single-presenter lookup and
-  raises a real design question for the send path (which presenter encodes a typed line for sending,
-  if more than one is active). Needs its own design pass, not a quick UI change.
-- **Per-input-line parser selection**, with a default supplied by the connection profile. Needs its
-  own design clarification — no "parser" concept distinct from a presenter exists in the codebase yet.
 - **Lower priority: a long/short name for a detected serial port.** The "Detected ports" picker
   lists whatever `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every
   platform — no cross-platform equivalent of Windows' WMI-based friendly name
   (`"USB Serial Device (COM3)"`) was wired up, to avoid a Windows-only code path in an otherwise
   cross-platform discovery.
-- **Bulk profile removal** — Delete is still per-profile even though the saved-profiles list now
-  supports multi-select (added for Export Selected, see Actions/per-front-end notes below); there's
-  no "Delete Selected" yet.
 - A "delete all existing profiles, then import everything" wholesale alternative to Import's
   per-name conflict resolution (see per-front-end notes below) — today only the per-name Skip/
   Rename/Replace choice exists.

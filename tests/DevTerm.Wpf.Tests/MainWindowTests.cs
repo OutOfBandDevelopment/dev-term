@@ -41,7 +41,9 @@ public sealed class MainWindowTests
         var transport = new FakeTransport();
         var presenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
-        var window = new MainWindow(session, presenter, cliOptions ?? new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 })
+        var options = cliOptions ?? new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        options.Parser ??= presenter.Name; // the fake catalog below only holds this one presenter
+        var window = new MainWindow(session, new PresenterCatalog([presenter]), options)
         {
             ShowInTaskbar = false,
         };
@@ -79,6 +81,60 @@ public sealed class MainWindowTests
             StringAssert.Contains(window.Title, "TCP 127.0.0.1:23");
             StringAssert.Contains(window.Title, "ascii");
             Assert.IsTrue(window.SendBox.IsEnabled);
+        });
+    }
+
+    [TestMethod]
+    public void SwitchingTheSendAsBox_ChangesHowTheNextTypedLineIsEncoded_AndTheTitle()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var transport = new FakeTransport();
+            var ascii = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+            var session = new Session(transport, new Pipeline([ascii]));
+            var window = new MainWindow(
+                session,
+                new PresenterCatalog([ascii, new HexPresenter()]),
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" })
+            {
+                ShowInTaskbar = false,
+            };
+            await window.ConnectAsync();
+            CollectionAssert.AreEquivalent(new[] { "ascii", "hex" }, window.ParserBox.Items.Cast<string>().ToArray());
+            Assert.AreEqual("ascii", window.ParserBox.SelectedItem, "The box starts at the profile's parser.");
+
+            window.SendBox.Text = "ff";
+            await window.SendCurrentInputAsync();
+
+            window.ParserBox.SelectedItem = "hex";
+            StringAssert.Contains(window.Title, "send as hex");
+            window.SendBox.Text = "ff";
+            await window.SendCurrentInputAsync();
+
+            Assert.HasCount(2, transport.WrittenPayloads);
+            CollectionAssert.AreEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0]);
+            CollectionAssert.AreEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1]);
+        });
+    }
+
+    [TestMethod]
+    public void ConnectAsync_WithSeveralPresenters_ShowsThemAllInTheTitle()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var transport = new FakeTransport();
+            var ascii = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+            var hex = new HexPresenter();
+            var window = new MainWindow(
+                new Session(transport, new Pipeline([ascii, hex])),
+                new PresenterCatalog([ascii, hex]),
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] })
+            {
+                ShowInTaskbar = false,
+            };
+            await window.ConnectAsync();
+
+            StringAssert.Contains(window.Title, "ascii, hex; send as ascii");
         });
     }
 

@@ -8,7 +8,7 @@ below are real captured output from the actual built app — see this folder's [
 
 ```
 $ dotnet DevTerm.Console.dll --transport tcp --host 192.168.0.107 --tcpport 23 --presenter ascii --lineending Cr --cli true
-Connected to TCP 192.168.0.107:23 using 'ascii'.
+Connected to TCP 192.168.0.107:23 using 'ascii' (send as 'ascii').
 Type a line and press Enter to send; Ctrl+C to exit.
 ID?
 [ascii] ID TEK/2230,V81.1,VERS:14
@@ -19,6 +19,13 @@ small throwaway TCP stand-in that answers `ID?` exactly like the project's real 
 device does); `ID?` is what you'd type — a real terminal echoes your own keystrokes, which a piped
 capture doesn't show. Every line gets the configured line ending appended (`--lineending Cr` above)
 before it's sent. Ctrl+C exits; the session closes cleanly.
+
+The banner names two things: the **presenters** (how incoming bytes are shown — one or several, e.g.
+`--presenter ascii,hex` prints each reply once per presenter, tagged `[ascii]`/`[hex]`) and the
+**send format** (how the line you type is turned into bytes — `--parser`, defaulting to the first
+presenter). They're independent: `--presenter ascii,hex --parser hex` shows replies both ways but
+sends what you type as hex. The CLI fixes the send format for the whole run; a per-line choice
+lives in the TUI and WPF (below).
 
 ## TUI
 
@@ -35,11 +42,18 @@ immediately; the reply appears in the output pane as soon as the device answers 
 
 ![TUI main screen, after a reply arrives](images/tui-main-after-reply.png)
 
+The **Send as** menu in the menu bar picks how typed text is encoded (ASCII, UTF-8, hex, decimal,
+octal, binary) — it starts as the profile's saved send format and can be changed at any time, even
+mid-session, without reconnecting. The title bar shows the current one
+(`dev-term — TCP 127.0.0.1:52311 (ascii; send as ascii)`).
+
 Ctrl+Q quits and closes the session cleanly.
 
 ## WPF
 
-The same flow, after a reply has arrived:
+The same flow, after a reply has arrived. The **Send as:** drop-down beside the Send button is the
+WPF equivalent of the TUI's Send as menu — it starts at the profile's saved send format and can be
+changed per line:
 
 ![WPF main window, connected, showing a reply](images/wpf-main-window-connected.png)
 

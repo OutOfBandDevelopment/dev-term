@@ -77,7 +77,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         // JSON file (see DevTermConfiguration.ToProfileJson).
         var configuration = new ConfigurationBuilder().AddJsonFile(path, optional: false).Build();
         var options = new CliOptions();
-        configuration.Bind(options);
+        DevTermConfiguration.Bind(configuration, options);
         return options;
     }
 

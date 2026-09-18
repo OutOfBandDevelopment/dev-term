@@ -44,6 +44,26 @@ public static class DevTermConfiguration
         config.AddCommandLine(args);
     }
 
+    /// <summary>
+    /// Binds <paramref name="configuration"/> onto <paramref name="options"/> — plain
+    /// <c>configuration.Bind(options)</c> plus the one case it can't handle:
+    /// <see cref="CliOptions.Presenter"/> is a list, but a command-line flag (<c>--presenter ascii,hex</c>),
+    /// an environment variable, or a profile saved before it became a list (<c>"Presenter": "hex"</c>)
+    /// supplies it as a single scalar, which the binder would silently drop for an array property.
+    /// A scalar is split on commas; being a scalar means it came from an environment variable/command
+    /// line (which outrank any JSON layer) or from an old-format profile, so it wins over any array
+    /// bound alongside it. Every place that binds a <see cref="CliOptions"/> goes through this.
+    /// </summary>
+    public static void Bind(IConfiguration configuration, CliOptions options)
+    {
+        configuration.Bind(options);
+
+        if (configuration.GetSection(nameof(CliOptions.Presenter)).Value is { Length: > 0 } scalar)
+        {
+            options.Presenter = scalar.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+    }
+
     /// <summary>Overwrites the untracked default profile (<see cref="LocalSettingsFileName"/>) with the connection-relevant subset of <paramref name="options"/> — see <see cref="ToProfileJson"/>.</summary>
     public static void SaveLocalProfile(CliOptions options) =>
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory, LocalSettingsFileName), ToProfileJson(options));
@@ -64,7 +84,8 @@ public static class DevTermConfiguration
         var profile = new Dictionary<string, object?>
         {
             [nameof(CliOptions.Transport)] = options.Transport,
-            [nameof(CliOptions.Presenter)] = options.Presenter,
+            [nameof(CliOptions.Presenter)] = options.EffectivePresenters,
+            [nameof(CliOptions.Parser)] = options.EffectiveParser,
             [nameof(CliOptions.LineEnding)] = options.LineEnding.ToString(),
             [nameof(CliOptions.AsciiMaxLineLength)] = options.AsciiMaxLineLength,
         };

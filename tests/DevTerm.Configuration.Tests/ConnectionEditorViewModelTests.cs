@@ -27,13 +27,14 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = "ascii" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), initial, "some error");
 
             Assert.AreEqual("tcp", vm.Transport);
             Assert.AreEqual("192.168.0.107", vm.Host);
             Assert.AreEqual("23", vm.TcpPort);
-            Assert.AreEqual("ascii", vm.Presenter);
+            CollectionAssert.AreEqual(new[] { "ascii" }, vm.SelectedPresenters.ToArray());
+            Assert.AreEqual("ascii", vm.Parser, "An initial CliOptions with no Parser sends as its first presenter, as before.");
             Assert.AreEqual("some error", vm.StatusMessage);
         }
         finally
@@ -107,9 +108,10 @@ public sealed class ConnectionEditorViewModelTests
                 Transport = "tcp",
                 Host = "192.168.0.108",
                 TcpPort = "23",
-                Presenter = "ascii",
+                Parser = "decimal",
                 SaveName = "tek108",
             };
+            SelectOnly(vm, "ascii", "hex");
 
             vm.SaveCommand.Execute(null);
 
@@ -127,6 +129,8 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("tcp", fresh.Transport);
             Assert.AreEqual("192.168.0.108", fresh.Host);
             Assert.AreEqual("23", fresh.TcpPort);
+            CollectionAssert.AreEqual(new[] { "ascii", "hex" }, fresh.SelectedPresenters.ToArray());
+            Assert.AreEqual("decimal", fresh.Parser);
         }
         finally
         {
@@ -164,7 +168,6 @@ public sealed class ConnectionEditorViewModelTests
                 Transport = "hid",
                 HidVendorId = "4216",
                 HidProductId = "63560",
-                Presenter = "hex",
                 ImportExportPath = path,
             };
 
@@ -1123,6 +1126,200 @@ public sealed class ConnectionEditorViewModelTests
             vm.HidVendorIdDisplay = "1234";
 
             Assert.IsTrue(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void SelectOnly(ConnectionEditorViewModel vm, params string[] names)
+    {
+        foreach (var choice in vm.PresenterChoices)
+        {
+            choice.IsSelected = names.Contains(choice.Name);
+        }
+    }
+
+    [TestMethod]
+    public void PresenterChoices_OneEntryPerPresenterOption_InOrder()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            CollectionAssert.AreEqual(vm.PresenterOptions.ToArray(), vm.PresenterChoices.Select(c => c.Name).ToArray());
+            CollectionAssert.AreEqual(new[] { "hex" }, vm.SelectedPresenters.ToArray(), "A default CliOptions displays as hex.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void BuildOptions_WithSeveralPresentersChecked_ListsThemInPickerOrder()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            SelectOnly(vm, "binary", "ascii");
+            vm.Parser = "hex";
+
+            var options = vm.BuildOptions();
+
+            CollectionAssert.AreEqual(new[] { "ascii", "binary" }, options.Presenter);
+            Assert.AreEqual("hex", options.Parser, "The send format is independent of which presenters display.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void TogglingAPresenterCheckbox_MarksTheEditorDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            Assert.IsFalse(vm.IsDirty);
+
+            vm.PresenterChoices.Single(c => c.Name == "ascii").IsSelected = true;
+
+            Assert.IsTrue(vm.IsDirty);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectCommand_WithNoPresenterChecked_ReportsAndDoesNotConnect()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 });
+            SelectOnly(vm);
+
+            vm.ConnectCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "at least one presenter");
+            Assert.IsNull(vm.Result);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+
+    [TestMethod]
+    public void DeleteSelectedProfilesCommand_DeletesOnlyTheSelectedProfilesAndClearsTheSelection()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            foreach (var name in new[] { "alpha", "beta", "gamma" })
+            {
+                store.Save(name, new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            }
+
+            var vm = new ConnectionEditorViewModel(store, new CliOptions());
+            vm.SelectedProfileName = "alpha";
+            vm.SelectedProfileNames.Add("alpha");
+            vm.SelectedProfileNames.Add("gamma");
+
+            vm.DeleteSelectedProfilesCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Deleted 2 profile(s).");
+            CollectionAssert.AreEqual(new[] { "beta" }, store.List().ToArray());
+            CollectionAssert.AreEqual(new[] { "beta" }, vm.Profiles.ToArray(), "The list refreshes itself.");
+            Assert.IsEmpty(vm.SelectedProfileNames);
+            Assert.IsNull(vm.SelectedProfileName, "The single-selection was one of the deleted profiles.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedProfilesCommand_WithNothingSelected_SetsStatusMessage()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(store, new CliOptions());
+
+            vm.DeleteSelectedProfilesCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "Select one or more saved profiles to delete");
+            CollectionAssert.AreEqual(new[] { "alpha" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedProfilesCommand_WhenTheUserDeclines_DeletesNothing()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            IReadOnlyList<string>? asked = null;
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ConfirmDeleteProfiles = names =>
+                {
+                    asked = names;
+                    return false;
+                },
+            };
+            vm.SelectedProfileNames.Add("alpha");
+            vm.SelectedProfileNames.Add("beta");
+
+            vm.DeleteSelectedProfilesCommand.Execute(null);
+
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, asked!.ToArray(), "The confirmation is told exactly which profiles are about to go.");
+            Assert.AreEqual("Delete cancelled.", vm.StatusMessage);
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DeleteSelectedProfilesCommand_ReportsAProfileThatAlreadyVanished()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(store, new CliOptions());
+            vm.SelectedProfileNames.Add("alpha");
+            vm.SelectedProfileNames.Add("ghost"); // e.g. removed by another process since the list was drawn
+
+            vm.DeleteSelectedProfilesCommand.Execute(null);
+
+            Assert.AreEqual("Deleted 1 profile(s). 1 not found.", vm.StatusMessage);
+            Assert.IsEmpty(store.List());
         }
         finally
         {

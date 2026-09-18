@@ -10,8 +10,20 @@ namespace DevTerm.Console;
 /// </summary>
 public static class CliMode
 {
-    public static async Task<int> RunAsync(Session session, IPresenter presenter, CliOptions cliOptions)
+    /// <remarks>
+    /// Typed lines are encoded by the profile's parser (<see cref="CliOptions.EffectiveParser"/> —
+    /// <c>--parser</c>) for the whole run; there's no per-line switch here, since a plain stdin loop
+    /// has no non-colliding way to say "this line is hex" (the TUI/WPF have a control for it).
+    /// </remarks>
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions)
     {
+        if (!catalog.TryGetInput(cliOptions.EffectiveParser, out var input))
+        {
+            System.Console.Error.WriteLine(
+                $"Unknown parser '{cliOptions.EffectiveParser}'. Available: {string.Join(", ", catalog.InputNames)}");
+            return 1;
+        }
+
         session.Output += (_, output) => System.Console.WriteLine($"[{output.PresenterName}] {output.Text}");
 
         try
@@ -29,7 +41,7 @@ public static class CliMode
             System.Console.Error.WriteLine(manifestWarning);
         }
 
-        System.Console.WriteLine($"Connected to {ConnectionDescription.For(cliOptions)} using '{presenter.Name}'.");
+        System.Console.WriteLine($"Connected to {ConnectionDescription.For(cliOptions)} using '{string.Join(", ", cliOptions.EffectivePresenters)}' (send as '{cliOptions.EffectiveParser}').");
         System.Console.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
 
         using var cts = new CancellationTokenSource();
@@ -59,39 +71,32 @@ public static class CliMode
                 break;
             }
 
-            if (presenter is IPresenterInput input)
+            // An empty typed line has no coherent "send" for any transport, and for HID it's
+            // actively invalid (report writes must match a fixed, non-zero device-defined
+            // length; a real device surfaced this as an unhandled Win32 error before this
+            // guard existed) - matches the equivalent guard already in TuiMode.
+            var payload = cliOptions.LineEnding.Append(input.Parse(line));
+            if (payload.Length == 0)
             {
-                // An empty typed line has no coherent "send" for any transport, and for HID it's
-                // actively invalid (report writes must match a fixed, non-zero device-defined
-                // length; a real device surfaced this as an unhandled Win32 error before this
-                // guard existed) - matches the equivalent guard already in TuiMode.
-                var payload = cliOptions.LineEnding.Append(input.Parse(line));
-                if (payload.Length == 0)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    await session.SendAsync(payload);
-                }
-                catch (TimeoutException)
-                {
-                    System.Console.Error.WriteLine(
-                        "Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
-                }
-                catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
-                {
-                    // E.g. a HID write whose length doesn't match the device's exact report size
-                    // - framing a valid report for a specific device is a device-specific
-                    // decoder/control-surface concern, not something a generic text presenter's
-                    // raw typed input can guarantee, so report it rather than crash.
-                    System.Console.Error.WriteLine($"Send failed: {ex.Message}");
-                }
+                continue;
             }
-            else
+
+            try
             {
-                System.Console.Error.WriteLine($"Presenter '{presenter.Name}' does not support sending.");
+                await session.SendAsync(payload);
+            }
+            catch (TimeoutException)
+            {
+                System.Console.Error.WriteLine(
+                    "Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+            }
+            catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+            {
+                // E.g. a HID write whose length doesn't match the device's exact report size
+                // - framing a valid report for a specific device is a device-specific
+                // decoder/control-surface concern, not something a generic text presenter's
+                // raw typed input can guarantee, so report it rather than crash.
+                System.Console.Error.WriteLine($"Send failed: {ex.Message}");
             }
         }
 
