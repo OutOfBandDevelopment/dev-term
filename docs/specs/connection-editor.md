@@ -57,6 +57,7 @@ Shown in two situations:
 | **Delete** | Deletes the selected saved profile; refreshes the list; clears the selection | A profile must be selected | "Select a profile first." |
 | **Refresh** | Re-reads the profiles directory (picks up a profile saved by another process, e.g. the other front end) | None | n/a — mostly redundant now that a real `FileSystemWatcher` does this automatically (see States), kept as a manual fallback |
 | **Import** | If the path ends in `.zip`, imports every `*.json` entry straight into the profile store (see Export Selected/Export All) and refreshes the list — does **not** load anything into the fields. Otherwise, reads a single `CliOptions`-shaped JSON file at the given path into the fields — does **not** save it as a profile by itself, review then Save | Path must be non-empty | "Could not import '{path}': {message}" — a missing/malformed file doesn't throw, it reports and leaves fields untouched |
+| **Replace All** | Restore-from-backup: reads the `.zip` at the given path, then deletes **every** saved profile (including ones the zip doesn't mention) and writes every profile in the zip. The whole archive is read and checked (each `*.json` entry must be valid JSON) *before* anything is deleted, then a native confirmation gives the saved-profile and zip-profile counts — skipped when nothing is saved yet, since there's nothing to lose. Clears the single and multi selections | Path must be non-empty and end in `.zip` | "Type a file path to import from." / "Replace All needs a .zip file …" / "Could not import '{path}': … Nothing was deleted." (unreadable/invalid zip) / "'{path}' contains no profiles. Nothing was deleted." / "Replace All cancelled." if declined / "Replace All failed partway: …" on a mid-write I/O error (see Per-front-end notes) |
 | **Export** | Validates the current fields; writes them to the given path as JSON (same shape a saved profile uses) | Path must be non-empty; fields must validate | Validation message |
 | **Export Selected** | Writes every profile marked/selected in the saved-profiles list to the given path as a single zip (one `{name}.json` entry per profile, the exact bytes already on disk, not a re-serialized round trip) | Path must be non-empty; at least one profile must be marked/selected | "Select one or more saved profiles to export first." / the underlying I/O exception's message |
 | **Export All** | Same as Export Selected, but always writes every saved profile regardless of what's marked/selected | Path must be non-empty | Same as Export Selected |
@@ -188,6 +189,19 @@ Shown in two situations:
   view model right before the command executes" pattern already used for the single-item case.
   In the TUI, Delete Selected sits on the Export Selected/Export All row (an 80-column window has no
   room for a fourth button on the Load/Delete/Refresh row); in WPF it's in the button column under Delete.
+- **Replace All is two store calls, not one, on purpose**: `ConnectionProfileStore.ReadZip(path)`
+  (static, no side effects — reads every `*.json` entry and rejects invalid JSON, naming the entry)
+  and then `ReplaceAll(profiles)` (deletes every saved profile, writes the given ones). Splitting
+  them means nothing is deleted unless the entire archive was readable, and it gives the
+  confirmation real counts to show. It isn't transactional past that point — an I/O failure while
+  writing leaves whatever had been written (the status line says "failed partway"); staging into a
+  temp folder and swapping would close that, and was judged more machinery than a failure that needs
+  a full disk or a permissions change mid-operation warrants. A name that appears twice in the zip
+  (entries in different folders) keeps the last one. Confirmation is the
+  `ConnectionEditorViewModel.ConfirmReplaceAllProfiles` hook, `Func<int, int, bool>` (saved count,
+  zip count), same "front end supplies a native dialog, unwired = proceeds" shape as
+  `ConfirmDeleteProfiles`. Placement: WPF's Import/Export row (between them), the TUI's
+  Browse/Import/Export/Save As row.
 - **A zip import's per-name conflict resolution is a `Func<string, ZipImportConflictResolution>`
   hook** (`ConnectionEditorViewModel.ResolveZipImportConflict`), called once per name already in the
   store — same "front end supplies a native dialog, view model has no UI dependency" shape as
@@ -212,6 +226,3 @@ Requested but not yet built, prioritized 2026-09-16 (the presenter picker and pe
   platform — no cross-platform equivalent of Windows' WMI-based friendly name
   (`"USB Serial Device (COM3)"`) was wired up, to avoid a Windows-only code path in an otherwise
   cross-platform discovery.
-- A "delete all existing profiles, then import everything" wholesale alternative to Import's
-  per-name conflict resolution (see per-front-end notes below) — today only the per-name Skip/
-  Rename/Replace choice exists.

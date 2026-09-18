@@ -89,9 +89,8 @@ ordered against the rest.
   list (WPF `ListBox.SelectionMode="Extended"`, TUI `ListView.MarkMultiple`/`ShowMarks`), Export
   Selected/Export All (one `{name}.json` per profile in a zip), and zip-aware Import with per-name
   Replace/Rename/Skip conflict resolution (`ConnectionEditorViewModel.ResolveZipImportConflict`) —
-  see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Still open from that item:
-  a "delete all existing profiles, then import everything" wholesale alternative to per-name
-  conflict resolution. (Bulk profile removal, listed here as open, landed 2026-09-18.)
+  see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Its two follow-ups (bulk
+  profile removal and a wholesale "delete all, then import" option) both landed 2026-09-18.
   - **Lower priority: a long/short name for a detected serial port** — the "Detected ports" picker
     lists short names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly
     name is wired up.

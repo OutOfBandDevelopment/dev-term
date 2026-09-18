@@ -830,4 +830,51 @@ public sealed class ConfigureModeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+
+    [TestMethod]
+    public void ReplaceAllButton_AfterConfirmation_ReplacesEverySavedProfileWithTheZip()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            var zipPath = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}.zip");
+            using (var archive = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create))
+            {
+                using var writer = new StreamWriter(archive.CreateEntry("new-one.json").Open());
+                writer.Write("{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.9\", \"TcpPort\": 23 }");
+            }
+
+            try
+            {
+                RunHeadless(new CliOptions(), null, store, parts =>
+                {
+                    // The real confirmation is a blocking MessageBox.Query - stubbed, as for Delete Selected.
+                    (int, int)? asked = null;
+                    parts.ViewModel.ConfirmReplaceAllProfiles = (existing, incoming) =>
+                    {
+                        asked = (existing, incoming);
+                        return true;
+                    };
+
+                    parts.PathField.Text = zipPath;
+                    Click(parts.ReplaceAllButton);
+
+                    Assert.AreEqual((1, 1), asked);
+                    StringAssert.Contains(parts.ErrorLabel.Text, "Replaced 1 saved profile(s) with 1");
+                    CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
+                });
+            }
+            finally
+            {
+                File.Delete(zipPath);
+            }
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

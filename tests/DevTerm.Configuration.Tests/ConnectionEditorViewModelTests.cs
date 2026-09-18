@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 
@@ -1320,6 +1321,194 @@ public sealed class ConnectionEditorViewModelTests
 
             Assert.AreEqual("Deleted 1 profile(s). 1 not found.", vm.StatusMessage);
             Assert.IsEmpty(store.List());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+
+    private static string WriteZip(string directory, params (string EntryName, string Content)[] entries)
+    {
+        var zipPath = Path.Combine(directory, $"{Guid.NewGuid():N}.zip");
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var (entryName, content) in entries)
+        {
+            var entry = archive.CreateEntry(entryName);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
+
+        return zipPath;
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_DeletesEverythingThenImportsTheZip_AfterConfirming()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("old-two", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
+            var zip = WriteZip(directory, ("new-one.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.1\", \"TcpPort\": 23 }"));
+            (int Existing, int Incoming)? asked = null;
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ImportExportPath = zip,
+                ConfirmReplaceAllProfiles = (existing, incoming) =>
+                {
+                    asked = (existing, incoming);
+                    return true;
+                },
+            };
+            vm.SelectedProfileName = "old-one";
+            vm.SelectedProfileNames.Add("old-two");
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+
+            Assert.AreEqual((2, 1), asked, "The confirmation is told how many profiles will go and how many come in.");
+            CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
+            CollectionAssert.AreEqual(new[] { "new-one" }, vm.Profiles.ToArray());
+            Assert.IsNull(vm.SelectedProfileName);
+            Assert.IsEmpty(vm.SelectedProfileNames);
+            StringAssert.Contains(vm.StatusMessage, "Replaced 2 saved profile(s) with 1");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_WhenTheUserDeclines_DeletesNothing()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ImportExportPath = WriteZip(directory, ("new-one.json", "{}")),
+                ConfirmReplaceAllProfiles = (_, _) => false,
+            };
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+
+            Assert.AreEqual("Replace All cancelled.", vm.StatusMessage);
+            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_WithAnUnreadableZip_DeletesNothing()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            var asked = false;
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ImportExportPath = WriteZip(directory, ("good.json", "{}"), ("broken.json", "{ nope")),
+                ConfirmReplaceAllProfiles = (_, _) =>
+                {
+                    asked = true;
+                    return true;
+                },
+            };
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "broken.json");
+            StringAssert.Contains(vm.StatusMessage, "Nothing was deleted");
+            Assert.IsFalse(asked, "A bad archive is rejected before the user is even asked.");
+            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_WithAZipHoldingNoProfiles_DeletesNothing()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ImportExportPath = WriteZip(directory, ("readme.txt", "not a profile")),
+            };
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+
+            StringAssert.Contains(vm.StatusMessage, "contains no profiles");
+            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_WithNothingSavedYet_ImportsWithoutAsking()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            var asked = false;
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                ImportExportPath = WriteZip(directory, ("new-one.json", "{}")),
+                ConfirmReplaceAllProfiles = (_, _) =>
+                {
+                    asked = true;
+                    return false;
+                },
+            };
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+
+            Assert.IsFalse(asked, "There's nothing to lose, so there's nothing to confirm.");
+            CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAllFromZipCommand_WithANonZipOrEmptyPath_SetsStatusMessage()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(store, new CliOptions());
+
+            vm.ReplaceAllFromZipCommand.Execute(null);
+            StringAssert.Contains(vm.StatusMessage, "Type a file path");
+
+            vm.ImportExportPath = Path.Combine(directory, "single.json");
+            vm.ReplaceAllFromZipCommand.Execute(null);
+            StringAssert.Contains(vm.StatusMessage, "needs a .zip file");
+
+            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
         }
         finally
         {

@@ -233,6 +233,7 @@ public static class ConfigureMode
         var importButton = new Button { X = Pos.Right(browseButton) + 1, Y = Pos.Top(browseButton), Text = "Import" };
         var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(browseButton), Text = "Export" };
         var saveAsButton = new Button { X = Pos.Right(exportButton) + 1, Y = Pos.Top(browseButton), Text = "Save As..." };
+        var replaceAllButton = new Button { X = Pos.Right(saveAsButton) + 1, Y = Pos.Top(browseButton), Text = "Replace All" };
 
         var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true };
         var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
@@ -274,6 +275,7 @@ public static class ConfigureMode
             ImportButton = importButton,
             ExportButton = exportButton,
             SaveAsButton = saveAsButton,
+            ReplaceAllButton = replaceAllButton,
             ConnectButton = connectButton,
             QuitButton = quitButton,
         };
@@ -364,6 +366,12 @@ public static class ConfigureMode
                 names.Count == 1
                     ? $"Delete profile '{names[0]}'? This can't be undone."
                     : $"Delete {names.Count} profiles ({string.Join(", ", names)})? This can't be undone.",
+                ["Yes", "No"]) == 0;
+        viewModel.ConfirmReplaceAllProfiles = (existing, incoming) =>
+            MessageBox.Query(
+                Application.Instance!,
+                "dev-term",
+                $"Delete all {existing} saved profile(s) and import the {incoming} in the zip? This can't be undone.",
                 ["Yes", "No"]) == 0;
         viewModel.ResolveZipImportConflict = name =>
             MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists.", ["Replace", "Rename", "Skip"]) switch
@@ -605,6 +613,14 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        replaceAllButton.Accepting += (_, e) =>
+        {
+            PushFieldsIntoViewModel();
+            viewModel.ReplaceAllFromZipCommand.Execute(null);
+            PullFieldsFromViewModel();
+            e.Handled = true;
+        };
+
         exportButton.Accepting += (_, e) =>
         {
             PushFieldsIntoViewModel();
@@ -691,7 +707,7 @@ public static class ConfigureMode
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
             presenterLabel, parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
-            pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton,
+            pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton, replaceAllButton,
             connectButton, quitButton);
         foreach (var presenterCheckBox in presenterCheckBoxes)
         {
@@ -833,6 +849,8 @@ internal sealed class ConfigureWindowParts
     public required Button ExportButton { get; init; }
 
     public required Button SaveAsButton { get; init; }
+
+    public required Button ReplaceAllButton { get; init; }
 
     public required Button ConnectButton { get; init; }
 

@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.IO.Ports;
 
 namespace DevTerm.Configuration.Tests;
@@ -443,5 +444,99 @@ public sealed class ConnectionProfileStoreTests
         var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
 
         Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "h", TcpPort = 1 }));
+    }
+
+
+    private static string WriteZip(string directory, params (string EntryName, string Content)[] entries)
+    {
+        var zipPath = Path.Combine(directory, $"{Guid.NewGuid():N}.zip");
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var (entryName, content) in entries)
+        {
+            var entry = archive.CreateEntry(entryName);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
+
+        return zipPath;
+    }
+
+    [TestMethod]
+    public void ReadZip_ReturnsEveryJsonEntryAndIgnoresOthers()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var zip = WriteZip(directory, ("alpha.json", "{ \"Transport\": \"tcp\" }"), ("notes.txt", "hello"), ("beta.json", "{}"));
+
+            var profiles = ConnectionProfileStore.ReadZip(zip);
+
+            CollectionAssert.AreEquivalent(new[] { "alpha", "beta" }, profiles.Select(p => p.Name).ToArray());
+            Assert.AreEqual("{ \"Transport\": \"tcp\" }", profiles.Single(p => p.Name == "alpha").Json);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReadZip_WithAnEntryThatIsNotJson_ThrowsNamingTheEntry()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var zip = WriteZip(directory, ("good.json", "{}"), ("broken.json", "{ nope"));
+
+            var ex = Assert.ThrowsExactly<InvalidDataException>(() => ConnectionProfileStore.ReadZip(zip));
+
+            StringAssert.Contains(ex.Message, "broken.json");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReadZip_WithTheSameNameInTwoFolders_KeepsTheLastOne()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var zip = WriteZip(directory, ("a/dup.json", "{ \"Host\": \"first\" }"), ("b/dup.json", "{ \"Host\": \"last\" }"));
+
+            var profiles = ConnectionProfileStore.ReadZip(zip);
+
+            Assert.AreEqual(1, profiles.Count);
+            StringAssert.Contains(profiles[0].Json, "last");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReplaceAll_DeletesEveryExistingProfileIncludingOnesTheZipDoesNotMention()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("keep-me-not", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("shared", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
+            var zip = WriteZip(directory, ("shared.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.9\", \"TcpPort\": 99 }"), ("fresh.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.8\", \"TcpPort\": 98 }"));
+
+            var removed = store.ReplaceAll(ConnectionProfileStore.ReadZip(zip));
+
+            Assert.AreEqual(2, removed);
+            CollectionAssert.AreEqual(new[] { "fresh", "shared" }, store.List().ToArray());
+            Assert.AreEqual("192.168.9.9", store.Load("shared").Host, "An overwritten name takes the zip's content.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }

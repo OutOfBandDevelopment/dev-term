@@ -111,6 +111,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         DeleteCommand = new RelayCommand(DeleteSelected);
         RefreshCommand = new RelayCommand(RefreshProfiles);
         ImportCommand = new RelayCommand(Import);
+        ReplaceAllFromZipCommand = new RelayCommand(ReplaceAllFromZip);
         ExportCommand = new RelayCommand(Export);
         ExportSelectedProfilesCommand = new RelayCommand(() => ExportProfilesZip(SelectedProfileNames));
         ExportAllProfilesCommand = new RelayCommand(() => ExportProfilesZip(Profiles));
@@ -199,6 +200,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public ICommand RefreshCommand { get; }
 
     public ICommand ImportCommand { get; }
+
+    /// <summary>
+    /// Deletes every saved profile and then imports every profile in the zip at
+    /// <see cref="ImportExportPath"/> — a "restore from backup", unlike <see cref="ImportCommand"/>'s
+    /// per-name Replace/Rename/Skip, which never removes a profile the zip doesn't mention. Asks first
+    /// via <see cref="ConfirmReplaceAllProfiles"/>; the zip is fully read and checked before anything
+    /// is deleted.
+    /// </summary>
+    public ICommand ReplaceAllFromZipCommand { get; }
 
     public ICommand ExportCommand { get; }
 
@@ -518,6 +528,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public Func<IReadOnlyList<string>, bool>? ConfirmDeleteProfiles { get; set; }
 
     /// <summary>
+    /// Set by each front end to show its own native "delete all N saved profiles and import the M in
+    /// the zip?" confirmation before <see cref="ReplaceAllFromZipCommand"/> removes anything, given
+    /// (saved profile count, zip profile count). Not asked when nothing is saved yet (there's
+    /// nothing to lose). Left <see langword="null"/>, it proceeds without asking, same convention as
+    /// <see cref="ConfirmDeleteProfiles"/>.
+    /// </summary>
+    public Func<int, int, bool>? ConfirmReplaceAllProfiles { get; set; }
+
+    /// <summary>
     /// Call before discarding whatever's currently unsaved in the fields — closing/quitting the
     /// editor, or loading a different profile over them (not before Connect, which already resets
     /// <see cref="IsDirty"/> itself on success — see its own doc comment, since Connect doesn't
@@ -766,6 +785,61 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         catch (Exception ex)
         {
             StatusMessage = $"Could not import '{path}': {ex.Message}";
+        }
+    }
+
+    private void ReplaceAllFromZip()
+    {
+        var path = ImportExportPath.Trim();
+        if (path.Length == 0)
+        {
+            StatusMessage = "Type a file path to import from.";
+            return;
+        }
+
+        if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusMessage = "Replace All needs a .zip file (one exported with Export Selected/Export All).";
+            return;
+        }
+
+        // Read and check the whole archive before anything is deleted - a bad zip must never cost
+        // the user their saved profiles.
+        IReadOnlyList<ZipProfile> incoming;
+        try
+        {
+            incoming = ConnectionProfileStore.ReadZip(path);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            StatusMessage = $"Could not import '{path}': {ex.Message} Nothing was deleted.";
+            return;
+        }
+
+        if (incoming.Count == 0)
+        {
+            StatusMessage = $"'{path}' contains no profiles. Nothing was deleted.";
+            return;
+        }
+
+        if (Profiles.Count > 0 && ConfirmReplaceAllProfiles?.Invoke(Profiles.Count, incoming.Count) == false)
+        {
+            StatusMessage = "Replace All cancelled.";
+            return;
+        }
+
+        try
+        {
+            var removed = _store.ReplaceAll(incoming);
+            SelectedProfileName = null;
+            SelectedProfileNames.Clear();
+            RefreshProfiles();
+            StatusMessage = $"Replaced {removed} saved profile(s) with {incoming.Count} from '{path}'.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            RefreshProfiles();
+            StatusMessage = $"Replace All failed partway: {ex.Message}";
         }
     }
 

@@ -51,6 +51,12 @@ public partial class DeviceProfilesWindow : Window
             "dev-term",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        ViewModel.ConfirmReplaceAllProfiles = (existing, incoming) => MessageBox.Show(
+            this,
+            $"Delete all {existing} saved profile(s) and import the {incoming} in the zip? This can't be undone.",
+            "dev-term",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
         // Yes/No/Cancel maps naturally onto the three resolutions without a custom dialog: Yes
         // overwrites, No keeps both (renamed), Cancel leaves the existing profile untouched.
         ViewModel.ResolveZipImportConflict = name => MessageBox.Show(

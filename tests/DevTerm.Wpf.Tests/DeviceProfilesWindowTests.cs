@@ -604,4 +604,30 @@ public sealed class DeviceProfilesWindowTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+
+    [TestMethod]
+    public void ReplaceAllButton_IsBoundToReplaceAllFromZipCommand()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                // Logical tree, not visual: an unshown window hasn't built its visual tree yet.
+                var button = FindLogicalChildren<System.Windows.Controls.Button>(window)
+                    .Single(b => b.Content is "Replace All");
+                Assert.AreSame(window.ViewModel.ReplaceAllFromZipCommand, button.Command);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

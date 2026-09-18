@@ -62,12 +62,19 @@ the list. If an incoming name already matches a saved profile, both front ends a
 **Replace** the existing one, **Rename** the incoming one (e.g. `name (2)`), or **Skip** it — once
 per conflicting name.
 
+**Replace All** (next to Import) is the "restore from a backup" version: it deletes **every** saved
+profile — including ones the zip doesn't contain — and then imports everything in the `.zip`. Point the
+Import/export path at the zip first. The zip is fully read and checked before anything is deleted, so
+an unreadable or invalid archive costs you nothing; you're then asked to confirm, with the number of
+saved profiles that will go and the number coming in (no prompt if you have none saved yet). It only
+takes a `.zip`, not a single-profile `.json` file.
+
 ## What's not built yet
 
 A few Architect Notes items are still open, worth knowing if you're looking for them:
 
-- **A wholesale "delete all existing profiles, then import everything"** shortcut for a zip import
-  with several conflicts — today only the per-name Replace/Rename/Skip choice exists.
+- **A long/short name for a detected serial port** — the "Detected ports" picker shows short names
+  only (`COM3`), not Windows' friendlier "USB Serial Device (COM3)".
 
 See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full,
 prioritized list.

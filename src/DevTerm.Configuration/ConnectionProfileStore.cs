@@ -19,6 +19,9 @@ public enum ZipImportConflictResolution
 /// <summary>Counts from a completed <see cref="ConnectionProfileStore.ImportZip"/> call, for a front end's summary status message.</summary>
 public readonly record struct ZipImportResult(int Imported, int Skipped, int Renamed);
 
+/// <summary>One profile read out of a zip by <see cref="ConnectionProfileStore.ReadZip"/>: its name and its raw JSON text.</summary>
+public sealed record ZipProfile(string Name, string Json);
+
 /// <summary>
 /// Saves/lists/loads named connection profiles — <see cref="CliOptions"/>-shaped JSON files under
 /// <see cref="DevTermUserDataPaths.ProfilesDirectory"/> by default, separate from the single
@@ -192,6 +195,70 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         }
 
         return new ZipImportResult(imported, skipped, renamed);
+    }
+
+    /// <summary>
+    /// Reads and checks every <c>*.json</c> entry of a zip without touching the store, so a caller
+    /// can look at what's inside (and refuse a bad archive) before doing anything destructive — see
+    /// <see cref="ReplaceAll"/>. Each entry must be well-formed JSON; a name that appears twice
+    /// (entries in different folders of the zip) keeps the last one, matching what
+    /// <see cref="ImportZip"/> would have left on disk. Only the JSON *syntax* is checked, the same
+    /// leniency <see cref="ImportZip"/> applies — a profile with a bad field value still surfaces at
+    /// Load, not here.
+    /// </summary>
+    /// <exception cref="InvalidDataException">An entry isn't valid JSON (named in the message).</exception>
+    public static IReadOnlyList<ZipProfile> ReadZip(string zipPath)
+    {
+        var profiles = new Dictionary<string, ZipProfile>(StringComparer.OrdinalIgnoreCase);
+        using var archive = ZipFile.OpenRead(zipPath);
+        foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
+        {
+            var name = Path.GetFileNameWithoutExtension(entry.Name);
+            using var reader = new StreamReader(entry.Open());
+            var json = reader.ReadToEnd();
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(json);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                throw new InvalidDataException($"'{entry.FullName}' in the zip isn't valid JSON: {ex.Message}", ex);
+            }
+
+            profiles[name] = new ZipProfile(name, json);
+        }
+
+        return [.. profiles.Values];
+    }
+
+    /// <summary>
+    /// Makes the store hold exactly <paramref name="profiles"/>: deletes every saved profile, then
+    /// writes each of these — the "restore from a backup zip" alternative to <see cref="ImportZip"/>'s
+    /// per-name conflict resolution, which never removes a profile the zip doesn't mention. Takes
+    /// already-read profiles (see <see cref="ReadZip"/>) rather than a path so nothing is deleted
+    /// unless the whole archive was readable first. Not transactional beyond that: an I/O failure
+    /// partway through writing leaves whatever had been written.
+    /// </summary>
+    /// <returns>How many existing profiles were deleted.</returns>
+    public int ReplaceAll(IReadOnlyList<ZipProfile> profiles)
+    {
+        ArgumentNullException.ThrowIfNull(profiles);
+        Directory.CreateDirectory(_profilesDirectory);
+        var removed = 0;
+        foreach (var name in List())
+        {
+            if (Delete(name))
+            {
+                removed++;
+            }
+        }
+
+        foreach (var profile in profiles)
+        {
+            File.WriteAllText(GetPath(profile.Name), profile.Json);
+        }
+
+        return removed;
     }
 
     private static string MakeUniqueName(string name, HashSet<string> existing)

@@ -220,6 +220,8 @@
                     </DockPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                         <Button Content="Import" Padding="8,2" Margin="0,0,8,0" Command="{Binding ImportCommand}" />
+                        <Button Content="Replace All" Padding="8,2" Margin="0,0,8,0" Command="{Binding ReplaceAllFromZipCommand}"
+                                ToolTip="Delete every saved profile, then import every profile in the .zip" />
                         <Button Content="Export" Padding="8,2" Command="{Binding ExportCommand}" />
                     </StackPanel>
                 </StackPanel>

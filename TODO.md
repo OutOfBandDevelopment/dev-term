@@ -66,11 +66,13 @@ Completed work is logged by date under `docs/changes/`.
 
   Bulk profile removal (a "Delete Selected" button, with a native confirmation naming the profiles)
   and the Architect's live window title (the saved profile's name, else a `tcp://…`/`serial://…`/
-  `hid://…` connection string, re-evaluated on every profile switch) landed the same day. Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a wholesale "delete all,
-  then import" zip option, and (lower priority) a long/short name for a detected serial port.
+  `hid://…` connection string, re-evaluated on every profile switch) landed the same day, as did a
+  "Replace All" zip import (delete every saved profile, then import the zip — read and validated
+  first, confirmed second). Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a long/short name for a
+  detected serial port (lower priority).
 
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
-[`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor items (wholesale
-delete-then-import, serial-port long/short name).
+[`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor item (serial-port
+long/short name).
