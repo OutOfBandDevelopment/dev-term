@@ -134,4 +134,6 @@ instead, to demonstrate a different starting point):
 ![TUI connection editor, scrolled down to reveal Presenters/Send as/Line ending/Save/Import-export/Connect/Quit](images/tui-configure-scrolled.png)
 
 Scrolling is skipped while the saved-profiles list has focus, so Page Up/Page Down/the arrow keys
-still navigate that list normally instead of scrolling the form out from under it.
+still navigate that list normally instead of scrolling the form out from under it. (The list has
+focus when the editor opens, so Tab off it first.) **Tab also scrolls on its own**: moving focus to a
+field or button below the visible area brings it into view.

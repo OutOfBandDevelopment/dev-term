@@ -64,6 +64,32 @@ public sealed class ConfigureModeTests
     private static void Click(Button button) => button.InvokeCommand(Command.Accept);
 
     [TestMethod]
+    public void FormFields_CanTakeFocus_SoTheUserCanTabToAndTypeIntoThem()
+    {
+        // A real regression: the form's scrollable container is a plain View, whose CanFocus
+        // defaults to false, and an unfocusable container stops focus reaching any child - so no
+        // field could be tabbed to or typed into (found by driving the real TUI in a console, not by
+        // any test: nothing here previously asked whether a field could hold focus at all). Focus
+        // is what's asserted, not typed text: headless key injection is unreliable (see Click), but
+        // whether the field is able to hold focus at all is exactly what the bug broke.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "serial" }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                parts.DescriptionField.SetFocus();
+
+                Assert.IsTrue(parts.DescriptionField.HasFocus, "The Description field couldn't take focus.");
+                Assert.AreSame(parts.DescriptionField, Application.Navigation?.GetFocused());
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ProfilesChangedExternally_AfterApplicationShutdown_DoesNotCrashTheProcess()
     {
         // A real regression, not a hypothetical: a FileSystemWatcher event that fires (on its own
@@ -500,11 +526,44 @@ public sealed class ConfigureModeTests
                 // focused-view) key handling once several Init/Shutdown cycles have run earlier in
                 // the same process - see TuiModeTests.CtrlQ_RequestsStop's own doc comment for the
                 // same finding against TuiMode's own global Application.KeyDown handler.
+                //
+                // Focus is moved off the saved-profiles list first: now that focus really lands
+                // there at startup, PageDown is (deliberately) the list's own - see scrollOnKey.
+                parts.DescriptionField.SetFocus();
                 Application.RaiseKeyDownEvent(Key.PageDown);
                 Application.LayoutAndDraw(true);
 
                 var after = TuiTestRunner.DumpBuffer();
                 StringAssert.Contains(after, "Line ending:", "Expected PageDown to scroll the form down far enough to reveal a control that was below the fold.");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FocusingAControlBelowTheFold_ScrollsItIntoView()
+    {
+        // The other half of the focus fix: once fields could take focus at all, Tab moved focus to a
+        // control scrolled out of view and the form stayed put, so the user typed blind.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "serial" }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                Assert.DoesNotContain("Import/export file path:", TuiTestRunner.DumpBuffer(), "Precondition: the path field starts below the fold.");
+
+                parts.PathField.SetFocus();
+                Application.LayoutAndDraw(true);
+
+                StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Import/export file path:", "Focusing the path field should have scrolled it into view.");
+
+                parts.DescriptionField.SetFocus();
+                Application.LayoutAndDraw(true);
+
+                StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Description:", "Focusing a field above the viewport should scroll back up to it.");
             });
         }
         finally

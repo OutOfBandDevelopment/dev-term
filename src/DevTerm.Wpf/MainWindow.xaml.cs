@@ -293,9 +293,25 @@ public partial class MainWindow : Window
         // cancel the first close request, do the async cleanup, then close for real.
         e.Cancel = true;
         _session.Output -= OnSessionOutput;
-        await _session.CloseAsync();
-        await _session.DisposeAsync();
+        try
+        {
+            await _session.CloseAsync();
+            await _session.DisposeAsync();
+        }
+        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        {
+            // The window is closing regardless - a device that timed out or vanished mid-close
+            // isn't worth crashing the app over (and would leave the window unclosable).
+        }
+
         _closeConfirmed = true;
+
+        // Never call Close() from inside this Closing event's own call stack: when the session was
+        // already closed (never opened, or disconnected via the menu) the awaits above complete
+        // synchronously, so this continuation runs *within* the first Close() and WPF throws
+        // "Cannot ... Close ... while a Window is closing". Yielding lets that first Close() finish
+        // unwinding (cancelled) before the real one is requested.
+        await System.Windows.Threading.Dispatcher.Yield();
         Close();
     }
 }

@@ -69,9 +69,20 @@ Completed work is logged by date under `docs/changes/`.
   `hid://…` connection string, re-evaluated on every profile switch) landed the same day, as did a
   "Replace All" zip import (delete every saved profile, then import the zip — read and validated
   first, confirmed second), and so did the long/short name for a detected serial port on Windows
-  (`COM3 — Prolific USB-to-Serial Comm Port`, from the Plug-and-Play registry). Nothing functional
-  is left open on the Connection Editor; the only remnant (see [`BACKLOG.md`](BACKLOG.md)) is the
-  same descriptions on Linux/macOS, at low priority.
+  (`COM4 — Prolific USB-to-Serial Comm Port`, from the Plug-and-Play registry; seen returned for a
+  live adapter) and a live filter on the HID picker (a non-zero Vendor/Product ID narrows the
+  detected-devices list; 0 means any). A real bug was also fixed: double-clicking a saved profile in
+  the WPF editor never loaded it (the list's `MouseBinding` never saw the second click; now a per-row
+  `MouseDoubleClick`), and a device `TimeoutException` is now reported like any connection failure
+  instead of escaping every open/close/switch `catch` (a crash on a device timeout was reported but
+  not reproduced against the K8055). Two more real bugs were fixed after being reported: the TUI
+  editor's fields couldn't take focus or input at all (broken since the form was made scrollable;
+  now focusable, and Tab scrolls a below-the-fold control into view), and closing the WPF window
+  threw "...while a Window is closing" (a synchronous-continuation reentrancy in `OnClosing`). Nothing functional is left open on the Connection Editor; what
+  remains (see [`BACKLOG.md`](BACKLOG.md) and `docs/changes/2026-09-18.md`) is serial-port
+  descriptions on Linux/macOS (low priority) and real-hardware confirmation: the presenter-picker/
+  `--parser` `DEV-LOCAL` tests still haven't been run, and the double-click fix and timeout
+  hardening haven't been confirmed by hand.
 
 ## Backlog / research
 

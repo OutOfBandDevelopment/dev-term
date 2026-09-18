@@ -242,13 +242,25 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   under `RenderTargetBitmap`** — confirmed by inspecting the actual output pixels, not assumed. It
   needs a real (if off-screen/invisible) `Show()` to get a `PresentationSource`/compositor target
   before `RenderTargetBitmap.Render()` produces real content. See `DevTerm.Wpf.Tests.WpfScreenshot`.
-- **Don't call `Window.Close()` on a shown `MainWindow` from test automation** — its `OnClosing`
-  handler's cancel-then-async-cleanup-then-reclose pattern (needed so `Session.CloseAsync`/
-  `DisposeAsync` can be awaited before the window actually closes) raced against
-  `StaTestRunner.Run`'s single manually-pumped `DispatcherFrame` and threw "Cannot ... Close ...
-  while a Window is closing" — a real reentrancy edge case never exercised before because no
-  existing test actually closed a shown window. Screenshot tests just leave the window open; the
-  test process exits shortly after regardless.
+- **`MainWindow.OnClosing`'s cancel-then-async-cleanup-then-reclose pattern must `await
+  Dispatcher.Yield()` before its second `Close()`.** Awaiting already-completed tasks (a session that
+  never connected, an instantly-closing transport) continues *synchronously inside the first
+  `Close()`*, so the second one threw "Cannot ... Close ... while a Window is closing" — a real crash
+  closing the app, first mistaken for a test-automation quirk. Fixed and covered by
+  `MainWindowTests.Close_*`, so closing a shown `MainWindow` in a test is fine now.
+- **A plain `View` has `CanFocus = false`, and an unfocusable container blocks focus for all its
+  children** — the Connection Editor's scrollable form container silently made every field
+  un-typeable (no focus highlight, Tab did nothing) from the commit that introduced it until it was
+  set to `CanFocus = true`. No headless test caught it because none asked whether a field could hold
+  focus; `ConfigureModeTests.FormFields_CanTakeFocus_*` does now. Related: a scrolled container does
+  not scroll a newly focused child into view by itself — `ConfigureMode` reveals each direct child on
+  `HasFocusChanged` (`HasFocusEventArgs.NewValue`).
+- **Real-console TUI driving works and is the way to check input bugs headless tests can't**: launch
+  `conhost.exe <DevTerm.Console.exe> <args>` (force the editor with `--transport hid --hidvendorid 0
+  --hidproductid 0`), find its `ConsoleWindowClass` window, inject key events with
+  `AttachConsole` + `WriteConsoleInput` to the `CONIN$` handle, and screenshot with `PrintWindow`.
+  Use a key the app handles globally (PageUp/PageDown scroll the editor form) as a control to prove
+  the injection itself is reaching the app before drawing conclusions from "nothing happened".
 - **The Terminal.Gui headless key injector (`IInputInjector`/`TuiTestRunner.TypeText`) degrades
   after enough `Application.Init`/`Shutdown` cycles have already run in the same test process** —
   this was already known for a single class (see the `Application.Invoke`/`IInputInjector` note

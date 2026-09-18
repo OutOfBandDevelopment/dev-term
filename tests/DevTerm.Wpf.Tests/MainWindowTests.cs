@@ -228,4 +228,60 @@ public sealed class MainWindowTests
             Assert.IsEmpty(transport.WrittenPayloads);
         });
     }
+
+    // A real crash reported from the running app ("Cannot set Visibility to Visible or call Show,
+    // ShowDialog, Close ... while a Window is closing", from OnClosing's second Close()): OnClosing
+    // cancels the first close, awaits the session's cleanup, then calls Close() again - but when
+    // the session is already closed (never opened, or disconnected via the menu) those awaits
+    // complete synchronously, so the second Close() ran inside the first one's own Closing event and
+    // WPF refused it. This once looked like a test-automation quirk (see CLAUDE.md's old note about
+    // not calling Close() on a shown window) and was actually the app's own bug.
+    [TestMethod]
+    public void Close_WhenTheSessionIsAlreadyClosed_ClosesTheWindowWithoutThrowing()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+
+            window.Close();
+
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout), "The window should finish closing once the async cleanup is done.");
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void Close_AfterDisconnectingViaTheMenu_ClosesTheWindowWithoutThrowing()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+            await window.ConnectAsync();
+            await window.ToggleConnectionAsync();
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+
+            window.Close();
+
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout));
+        });
+    }
+
+    [TestMethod]
+    public void Close_WhileConnected_ClosesTheWindowAndTheSession()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+            await window.ConnectAsync();
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+
+            window.Close();
+
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout));
+        });
+    }
 }

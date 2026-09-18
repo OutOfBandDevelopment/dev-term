@@ -137,6 +137,13 @@ Shown in two situations:
   `View` has no built-in `Command.ScrollDown`/`PageDown` implementation to invoke instead — both keys
   and the wheel are wired by hand. WPF's `ScrollViewer` around the field editor already handled this
   automatically from the start (see the WPF screenshots — the window itself is simply taller/resizable).
+  Two things the scrolling container needs that aren't obvious: **`CanFocus = true`** (a plain `View`
+  defaults to false, and an unfocusable container blocks focus for every child — without it no field
+  could be tabbed to or typed into; regression test `FormFields_CanTakeFocus_*`), and **scroll-into-
+  view on focus** (each direct child handles `HasFocusChanged` and adjusts the viewport so the
+  focused control is visible — Terminal.Gui doesn't do this itself; test
+  `FocusingAControlBelowTheFold_ScrollsItIntoView`). Because focus now really starts on the profiles
+  list, PageUp/PageDown page the list until focus moves off it.
 - **Overwrite/discard/bulk-delete confirmations are native per front end**: WPF uses
   `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
   same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges`/`ConfirmDeleteProfiles`
@@ -174,9 +181,10 @@ Shown in two situations:
   picker already shows the name next to it. Chosen over `Win32_PnPEntity` because it needs no new
   package and doesn't start the WMI service (~1 s cold vs ~6 ms measured here); read-only, no
   elevation. Unreadable keys are skipped; if a port name appears under several stale instances the
-  first wins. Verified against this machine's real registry (found the stale COM3 entry, correctly
-  not listed because nothing's attached) — **not** verified with a real device attached, since none
-  is available right now.
+  first wins. Verified against this machine's real registry, first with nothing attached (the stale
+  COM3 entry was found and correctly not listed), then with a live Prolific USB-to-Serial adapter
+  (enumerated as COM4: `COM4 => Prolific USB-to-Serial Comm Port` returned, ghost COM3 still not
+  listed).
 - **The HID picker is filtered by the ID fields, live.** `HidDeviceOptions` is not the raw
   discovery result: it's `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) &&
   (productId == 0 || d.ProductId == productId))`, so typing a vendor id narrows the picker to that

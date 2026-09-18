@@ -24,10 +24,14 @@ public static class ConnectionErrorMessages
 
     /// <summary>
     /// Whether an exception from <c>Session.OpenAsync</c> represents an ordinary connection
-    /// failure (bad port, port in use, host unreachable, ...) that every front end should catch
-    /// and report via <see cref="For"/>, rather than letting propagate as an unhandled crash.
+    /// failure (bad port, port in use, host unreachable, a device that never answers, ...) that
+    /// every front end should catch and report via <see cref="For"/>, rather than letting
+    /// propagate as an unhandled crash. <see cref="TimeoutException"/> is included because the
+    /// serial/HID transports raise it for a device that doesn't respond in time — it's not an
+    /// <see cref="IOException"/>, so without it here a device timeout fell straight through every
+    /// catch that filters on this method.
     /// </summary>
     public static bool IsConnectionFailure(Exception exception) => exception is
         IOException or UnauthorizedAccessException or ArgumentException
-        or InvalidOperationException or SocketException;
+        or InvalidOperationException or SocketException or TimeoutException;
 }

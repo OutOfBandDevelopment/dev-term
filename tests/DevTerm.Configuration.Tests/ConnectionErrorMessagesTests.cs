@@ -29,6 +29,28 @@ public sealed class ConnectionErrorMessagesTests
     }
 
     [TestMethod]
+    public void IsConnectionFailure_TreatsATimeoutAsAConnectionFailure_NotACrash()
+    {
+        Assert.IsTrue(ConnectionErrorMessages.IsConnectionFailure(new TimeoutException("The operation has timed out.")));
+    }
+
+    [TestMethod]
+    public void IsConnectionFailure_StillRejectsAnUnrelatedBug()
+    {
+        Assert.IsFalse(ConnectionErrorMessages.IsConnectionFailure(new NullReferenceException()));
+        Assert.IsFalse(ConnectionErrorMessages.IsConnectionFailure(new NotSupportedException()));
+    }
+
+    [TestMethod]
+    public void For_ATimeout_ReportsItLikeAnyOtherConnectionFailure()
+    {
+        var message = ConnectionErrorMessages.For("hid", new TimeoutException("The operation has timed out."));
+
+        StringAssert.Contains(message, "The operation has timed out.");
+        StringAssert.Contains(message, "--listhiddevices");
+    }
+
+    [TestMethod]
     public void For_TransportNameIsCaseInsensitive()
     {
         var message = ConnectionErrorMessages.For("SERIAL", new UnauthorizedAccessException("Access denied"));

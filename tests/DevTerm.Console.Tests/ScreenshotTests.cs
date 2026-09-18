@@ -155,6 +155,9 @@ public sealed class ScreenshotTests
                 {
                     // Same PageDown mechanism ConfigureModeTests.PageDown_ScrollsToRevealControlsBelowTheFold
                     // verifies works - this just also captures what it looks like.
+                    // Focus off the saved-profiles list first: PageDown is the list's own while it
+                    // has focus, which it now really does at startup.
+                    parts.DescriptionField.SetFocus();
                     Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
                     Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
                     Application.LayoutAndDraw(true);

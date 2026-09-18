@@ -105,6 +105,12 @@ public static class ConfigureMode
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(),
+
+            // A plain View defaults to CanFocus = false, and an unfocusable container stops focus
+            // from ever reaching its children - no field, button, or list could be tabbed to or
+            // typed into. Found by running the real TUI: the editor took input up to the commit
+            // that introduced this container, and none after.
+            CanFocus = true,
         };
         formContent.SetContentSize(new Size(100, ContentHeight));
         formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
@@ -740,6 +746,36 @@ public static class ConfigureMode
             var maxY = Math.Max(0, ContentHeight - formContent.Viewport.Height);
             var newY = Math.Clamp(formContent.Viewport.Y + delta, 0, maxY);
             formContent.Viewport = formContent.Viewport with { Y = newY };
+        }
+
+        // Tabbing (or clicking) onto a control that's scrolled out of view scrolls it into view -
+        // without this, focus moved to an off-screen field and the user typed blind. Wired per
+        // direct child: a container (an option selector's radio buttons) reports HasFocus when any
+        // of its own children does, so the direct child's Frame is the right thing to reveal.
+        void RevealInViewport(View child)
+        {
+            var top = child.Frame.Y;
+            var bottom = top + child.Frame.Height;
+            var viewport = formContent.Viewport;
+            if (top < viewport.Y)
+            {
+                ScrollBy(top - viewport.Y);
+            }
+            else if (bottom > viewport.Y + viewport.Height)
+            {
+                ScrollBy(bottom - (viewport.Y + viewport.Height));
+            }
+        }
+
+        foreach (var child in formContent.SubViews)
+        {
+            child.HasFocusChanged += (_, e) =>
+            {
+                if (e.NewValue)
+                {
+                    RevealInViewport(child);
+                }
+            };
         }
 
         EventHandler<Key>? scrollOnKey = null;
