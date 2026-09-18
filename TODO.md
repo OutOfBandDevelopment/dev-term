@@ -68,11 +68,13 @@ Completed work is logged by date under `docs/changes/`.
   and the Architect's live window title (the saved profile's name, else a `tcp://…`/`serial://…`/
   `hid://…` connection string, re-evaluated on every profile switch) landed the same day, as did a
   "Replace All" zip import (delete every saved profile, then import the zip — read and validated
-  first, confirmed second). Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a long/short name for a
-  detected serial port (lower priority).
+  first, confirmed second), and so did the long/short name for a detected serial port on Windows
+  (`COM3 — Prolific USB-to-Serial Comm Port`, from the Plug-and-Play registry). Nothing functional
+  is left open on the Connection Editor; the only remnant (see [`BACKLOG.md`](BACKLOG.md)) is the
+  same descriptions on Linux/macOS, at low priority.
 
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
-[`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor item (serial-port
-long/short name).
+[`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
+(serial-port descriptions on Linux/macOS).

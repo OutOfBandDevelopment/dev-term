@@ -73,8 +73,9 @@ takes a `.zip`, not a single-profile `.json` file.
 
 A few Architect Notes items are still open, worth knowing if you're looking for them:
 
-- **A long/short name for a detected serial port** — the "Detected ports" picker shows short names
-  only (`COM3`), not Windows' friendlier "USB Serial Device (COM3)".
+- **Descriptions for detected serial ports on Linux and macOS** — on Windows the "Detected ports"
+  picker shows e.g. "COM3 — Prolific USB-to-Serial Comm Port"; elsewhere it shows short names only
+  (`/dev/ttyUSB0`).
 
 See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full,
 prioritized list.

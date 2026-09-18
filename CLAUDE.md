@@ -255,7 +255,9 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   above and `TuiModeTests.CtrlQ_RequestsStop`'s doc comment), but turned out to be cross-class too: a
   new screenshot test using `TypeText` left a *later, different* test's own `TypeText` call unable
   to reach the focused field, even though each test's own `Application.Init`/`Shutdown` cycle
-  completed cleanly. When a test doesn't need to prove real key routing — e.g. a screenshot just
+  completed cleanly. Injecting *mouse* events (`InjectMouse`) counts too: a real-mouse double-click test made
+  `TuiModeTests.TypingAndEnter…` fail in the full run (it passed alone) — a one-off probe is fine,
+  a permanent test isn't. When a test doesn't need to prove real key routing — e.g. a screenshot just
   wants a field showing some text — set the control's `.Text` directly and call
   `Application.LayoutAndDraw(true)` instead of injecting keys.
 - **The .NET config binder appends bound array items to a non-empty default array, and silently

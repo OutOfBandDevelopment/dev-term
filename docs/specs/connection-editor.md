@@ -28,7 +28,7 @@ Shown in two situations:
 |---|---|---|---|---|
 | Transport | one of `serial`/`tcp`/`hid` | `serial` | Must be one of the three | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
-| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction |
+| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; on Windows each entry is shown as `COM3 — Prolific USB-to-Serial Comm Port` (see Per-front-end notes), but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
 | Data bits (serial) | integer, typed as text | `8` | Same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
@@ -153,6 +153,30 @@ Shown in two situations:
   button that opens a small modal picker (a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
   Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
   v2.5.0 package). Both are empty (not an error) if nothing's detected or discovery itself fails.
+- **A detected serial port's description is a separate lookup, not part of the port list.**
+  `ISerialPortDiscovery` keeps `GetPortNames()` as-is (the `--listports` and `SerialPort` contract)
+  and gains a default-interface-method `GetPortDescriptions()` returning `port name → description`
+  (empty by default, so every existing implementation/fake keeps compiling). The view model builds
+  a `SerialPortOption(Name, Display)` per name from `GetPortNames()` and looks each one up
+  case-insensitively: `Display` is `"COM3 — Prolific USB-to-Serial Comm Port"`, or just `"COM3"` when
+  there's no description. Descriptions **only decorate ports `GetPortNames()` reported** — Windows'
+  Plug-and-Play registry remembers devices unplugged long ago (this machine's has a stale Prolific
+  COM3 with nothing attached), so it can never be a source of ports. A throwing description lookup
+  degrades to short names rather than failing construction, same as a throwing port lookup already
+  yields an empty list. `SelectedSerialPort` and `Port` still hold the short name only: WPF's
+  `DetectedPortsBox` uses `DisplayMemberPath="Display"` with `SelectedValuePath="Name"`/
+  `SelectedValue="{Binding SelectedSerialPort}"`; the TUI's Detect picker lists `Display` and writes
+  the chosen entry's `Name`.
+- **The Windows description comes straight from the registry, not WMI.**
+  `WindowsSerialPortDescriptions` walks `HKLM\SYSTEM\CurrentControlSet\Enum\{bus}\{device}\{instance}`,
+  pairing each instance's `Device Parameters\PortName` with its `FriendlyName`, then strips the
+  redundant trailing `(COMn)` Windows appends (`SystemSerialPortDiscovery.StripPortSuffix`), since the
+  picker already shows the name next to it. Chosen over `Win32_PnPEntity` because it needs no new
+  package and doesn't start the WMI service (~1 s cold vs ~6 ms measured here); read-only, no
+  elevation. Unreadable keys are skipped; if a port name appears under several stale instances the
+  first wins. Verified against this machine's real registry (found the stale COM3 entry, correctly
+  not listed because nothing's attached) — **not** verified with a real device attached, since none
+  is available right now.
 - **The HID decimal/hex toggle is display-only, backed by a separate `*Display` property per
   field** (`HidVendorIdDisplay`/`HidProductIdDisplay`), not `HidVendorId`/`HidProductId` themselves
   — those two stay canonical decimal strings always (what `BuildOptions`/`LoadIntoFields`/
@@ -166,11 +190,18 @@ Shown in two situations:
   single keystroke). The TUI has no continuous binding to fight the same way — its "Show as hex"
   `CheckBox` reformats the two fields immediately on toggle anyway, via its own `Activated` handler
   (confirmed via a headless probe that `Activated` fires *after* `Value` has already flipped).
-- **Double-click-to-load is a pure command binding in WPF, an event handler calling the same
-  command in the TUI**: WPF's `ListBox` has no XAML way to bind a routed mouse event directly to an
-  `ICommand`, but it does support `<ListBox.InputBindings><MouseBinding MouseAction="LeftDoubleClick"
-  Command="{Binding LoadCommand}" /></ListBox.InputBindings>` — no code-behind at all. The TUI's
-  `ListView` has no such binding concept; a double-click maps to `Command.Accept` there (confirmed
+- **Double-click-to-load is a per-row `MouseDoubleClick` handler in WPF, an event handler calling
+  the same command in the TUI**: the original WPF version was a `<ListBox.InputBindings><MouseBinding
+  MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />` (pure binding, no code-behind) and
+  **never actually fired for a real double-click** — `ListBoxItem` marks the mouse-down handled in
+  order to select the row, so the `ListBox`'s own `InputBindings` never see it (it would only fire on
+  the empty area below the last row). Its test only asserted that the binding's `Command` was
+  `LoadCommand`, so it passed regardless. Fixed 2026-09-18: `ListBox.ItemContainerStyle` has an
+  `EventSetter` for `MouseDoubleClick` (which the `Control` base class raises even for a handled
+  mouse-down) → `ProfilesList_ItemDoubleClick`, which selects the clicked row — so a ctrl/shift
+  multi-selection can't leave Load acting on a different profile — and executes the same
+  `LoadCommand` the button is bound to. The tests now send real `MouseDown` events with
+  `ClickCount` 1 and 2 through the row (`DeviceProfilesWindowTests.ClickRow`). The TUI's `ListView` has no such binding concept; a double-click maps to `Command.Accept` there (confirmed
   via reflection — a single click maps to a different command, `Activate`), so `ConfigureMode`
   subscribes `profilesList.Accepting` to the same local `LoadSelectedProfile()` function the Load
   button's own `Accepting` handler calls — one shared code path, not a duplicated one.
@@ -221,8 +252,7 @@ Shown in two situations:
 
 Requested but not yet built, prioritized 2026-09-16 (the presenter picker and per-input-line parser both landed 2026-09-18 — see Fields and Per-front-end notes):
 
-- **Lower priority: a long/short name for a detected serial port.** The "Detected ports" picker
-  lists whatever `SerialPort.GetPortNames()` returns, which is short names only (`COM3`) on every
-  platform — no cross-platform equivalent of Windows' WMI-based friendly name
-  (`"USB Serial Device (COM3)"`) was wired up, to avoid a Windows-only code path in an otherwise
-  cross-platform discovery.
+- **Serial-port descriptions on Linux/macOS.** The "Detected ports" picker decorates each port with
+  the OS's description on Windows only (landed 2026-09-18, see Per-front-end notes); Linux
+  (`/sys/class/tty/*/device` → udev/`ID_MODEL`) and macOS (IOKit) still show short names only.
+  `ISerialPortDiscovery.GetPortDescriptions()` is the seam — nothing else changes to add them.

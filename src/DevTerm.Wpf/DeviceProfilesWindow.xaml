@@ -37,12 +37,17 @@
                      two-way in pure XAML, so SelectionChanged pushes it into the view model's
                      SelectedProfileNames from code-behind instead (see DeviceProfilesWindow.xaml.cs).
                      SelectedItem stays bound as before - Load/Delete only ever act on one profile;
-                     Export Selected/Delete Selected act on the whole multi-selection. -->
+                     Export Selected/Delete Selected act on the whole multi-selection.
+                     Double-click is a per-item MouseDoubleClick EventSetter, not a MouseBinding on the
+                     ListBox: ListBoxItem marks the mouse-down handled (that's how it selects), so an
+                     InputBinding on the ListBox never sees the second click of a double-click. -->
                 <ListBox x:Name="ProfilesList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}"
                          SelectionMode="Extended" SelectionChanged="ProfilesList_SelectionChanged" Margin="0,0,8,0">
-                    <ListBox.InputBindings>
-                        <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />
-                    </ListBox.InputBindings>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <EventSetter Event="MouseDoubleClick" Handler="ProfilesList_ItemDoubleClick" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
                 </ListBox>
             </DockPanel>
 
@@ -81,7 +86,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Detected ports:" VerticalAlignment="Center" />
-                            <ComboBox x:Name="DetectedPortsBox" Grid.Column="1" ItemsSource="{Binding SerialPortOptions}" SelectedItem="{Binding SelectedSerialPort}" />
+                            <ComboBox x:Name="DetectedPortsBox" Grid.Column="1" ItemsSource="{Binding SerialPortOptions}" DisplayMemberPath="Display" SelectedValuePath="Name" SelectedValue="{Binding SelectedSerialPort}" />
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>

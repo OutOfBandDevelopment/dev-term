@@ -566,10 +566,11 @@ public static class ConfigureMode
 
         detectPortButton.Accepting += (_, e) =>
         {
-            var choice = PickFromList("Detected serial ports", viewModel.SerialPortOptions);
+            var ports = viewModel.SerialPortOptions;
+            var choice = PickFromList("Detected serial ports", [.. ports.Select(p => p.Display)]);
             if (choice is not null)
             {
-                portField.Text = choice;
+                portField.Text = ports.First(p => p.Display == choice).Name;
             }
 
             e.Handled = true;

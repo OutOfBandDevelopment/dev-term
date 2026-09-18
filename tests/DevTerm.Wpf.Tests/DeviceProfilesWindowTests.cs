@@ -170,8 +170,44 @@ public sealed class DeviceProfilesWindowTests
         }
     }
 
+    /// <summary>
+    /// Sends a real left-button MouseDown with the given click count through a row's routed-event
+    /// path, the way the input system does. Needed because the previous version of the
+    /// double-click feature (a <c>MouseBinding</c> on the ListBox) passed a test that only checked
+    /// the binding's <c>Command</c> and then never fired for a real double-click: ListBoxItem marks
+    /// the mouse-down handled, so the ListBox's own InputBindings never see it. The window must be
+    /// shown (off-screen) for the ListBox to have generated its row containers.
+    /// </summary>
+    private static void ClickRow(DeviceProfilesWindow window, int index, int clickCount)
+    {
+        var item = (System.Windows.Controls.ListBoxItem)window.ProfilesList.ItemContainerGenerator.ContainerFromIndex(index);
+        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        {
+            RoutedEvent = Mouse.MouseDownEvent,
+            Source = item,
+        };
+        typeof(MouseButtonEventArgs).GetProperty(nameof(MouseButtonEventArgs.ClickCount))!.SetValue(args, clickCount);
+        item.RaiseEvent(args);
+    }
+
+    private static DeviceProfilesWindow ShowOffScreen(ConnectionProfileStore store)
+    {
+        // This window doesn't connect on Loaded (unlike MainWindow), so showing it is safe here.
+        var window = new DeviceProfilesWindow(store, new CliOptions())
+        {
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = -20000,
+            Top = -20000,
+        };
+        window.Show();
+        StaTestRunner.DoEvents();
+        window.UpdateLayout();
+        return window;
+    }
+
     [TestMethod]
-    public void DoubleClickingAProfile_IsBoundToTheSameLoadCommandAsTheLoadButton()
+    public void DoubleClickingAProfile_LoadsItSameAsSelectingThenPressingLoad()
     {
         var directory = CreateTempDirectory();
         try
@@ -181,20 +217,51 @@ public sealed class DeviceProfilesWindowTests
 
             StaTestRunner.Run(async () =>
             {
-                var window = new DeviceProfilesWindow(store, new CliOptions()) { ShowInTaskbar = false };
-                StaTestRunner.DoEvents();
+                var window = ShowOffScreen(store);
 
-                window.ProfilesList.SelectedItem = "tek108";
+                ClickRow(window, 0, clickCount: 1);
+                Assert.AreEqual("tek108", window.ViewModel.SelectedProfileName);
+                Assert.AreEqual(string.Empty, window.HostBox.Text, "A single click only selects.");
 
-                var binding = window.ProfilesList.InputBindings.OfType<MouseBinding>()
-                    .Single(b => b.MouseAction == MouseAction.LeftDoubleClick);
-                Assert.AreSame(window.ViewModel.LoadCommand, binding.Command,
-                    "Double-click should be bound to the same LoadCommand the Load button uses, per pure command binding — no code-behind click handler.");
-
-                binding.Command.Execute(binding.CommandParameter);
+                ClickRow(window, 0, clickCount: 2);
 
                 StringAssert.Contains(window.ViewModel.StatusMessage, "Loaded profile 'tek108'");
                 Assert.AreEqual("192.168.0.108", window.HostBox.Text);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DoubleClickingAProfile_WithSeveralSelected_LoadsTheOneThatWasClicked()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
+
+            StaTestRunner.Run(async () =>
+            {
+                var window = ShowOffScreen(store);
+
+                // An Extended multi-selection (as for Export Selected) covering both rows...
+                window.ProfilesList.SelectedItems.Add("alpha");
+                window.ProfilesList.SelectedItems.Add("beta");
+                StaTestRunner.DoEvents();
+
+                // ...then double-clicking the second row must load that one, not whichever the
+                // ListBox happens to report as its primary SelectedItem.
+                ClickRow(window, 1, clickCount: 2);
+
+                StringAssert.Contains(window.ViewModel.StatusMessage, "Loaded profile 'beta'");
+                Assert.AreEqual("10.0.0.2", window.HostBox.Text);
 
                 await Task.CompletedTask;
             });
@@ -254,6 +321,11 @@ public sealed class DeviceProfilesWindowTests
                 StaTestRunner.DoEvents();
 
                 Assert.AreSame(window.ViewModel.SerialPortOptions, window.DetectedPortsBox.ItemsSource);
+
+                Assert.AreEqual("Display", window.DetectedPortsBox.DisplayMemberPath,
+                    "The picker shows each port's description-bearing Display text...");
+                Assert.AreEqual("Name", window.DetectedPortsBox.SelectedValuePath,
+                    "...while the value it binds to SelectedSerialPort (and so Port) is the short Name.");
 
                 window.ViewModel.SelectedSerialPort = "COM99";
 

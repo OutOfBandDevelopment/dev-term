@@ -100,6 +100,11 @@ pick from. Picking a HID device fills in both Vendor ID and Product ID together,
 one device. The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
 when the editor opens — nothing plugged in afterward shows up without reopening the editor.
 
+On Windows each detected serial port is listed with the name Device Manager gives it — for example
+"COM3 — Prolific USB-to-Serial Comm Port" — which makes it much easier to tell adapters apart;
+picking one still fills in just `COM3`. A port Windows has no name for, and every port on Linux and
+macOS, is listed by its short name alone. (`--listports` still prints short names only.)
+
 ### Viewing HID Vendor/Product ID as hex
 
 Check **Show as hex** next to the HID fields to switch Vendor ID/Product ID between plain decimal

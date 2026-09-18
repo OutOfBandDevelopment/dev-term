@@ -120,6 +120,20 @@ public partial class DeviceProfilesWindow : Window
         }
     }
 
+    // Same LoadCommand the Load button is bound to - not a separate code path. Selects the
+    // double-clicked row first so a ctrl/shift-extended multi-selection can't leave Load acting on
+    // some other profile than the one that was actually clicked.
+    private void ProfilesList_ItemDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListBoxItem { DataContext: string name })
+        {
+            ViewModel.SelectedProfileName = name;
+        }
+
+        ViewModel.LoadCommand.Execute(null);
+        e.Handled = true;
+    }
+
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "dev-term connection profile (*.json)|*.json" };

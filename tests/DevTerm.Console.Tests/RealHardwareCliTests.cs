@@ -47,6 +47,12 @@ public sealed class RealHardwareCliTests
         var port = GetProperty("RealTcpDevicePort");
         var query = GetProperty(queryParameterName);
         var expectedReplySubstring = GetProperty(expectedReplyParameterName);
+
+        this.TestContext.WriteLine($"Host: {host}");
+        this.TestContext.WriteLine($"Port: {port}");
+        this.TestContext.WriteLine($"Query: {query}");
+        this.TestContext.WriteLine($"Expected Reply Subtring: {expectedReplySubstring}");
+
         if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(port) || string.IsNullOrEmpty(query) || string.IsNullOrEmpty(expectedReplySubstring))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort'/'{queryParameterName}'/'{expectedReplyParameterName}' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
@@ -75,6 +81,8 @@ public sealed class RealHardwareCliTests
             line = await process.StandardOutput.ReadLineAsync().WaitAsync(Timeout);
         }
         while (line is not null && !line.Contains("[ascii]", StringComparison.Ordinal));
+
+        this.TestContext.WriteLine($"Reply: {line}");
 
         Assert.IsNotNull(line, $"Expected a decoded reply from the real device at {host}:{port} before the process ran out of output.");
         StringAssert.Contains(line, expectedReplySubstring);

@@ -90,10 +90,11 @@ ordered against the rest.
   Selected/Export All (one `{name}.json` per profile in a zip), and zip-aware Import with per-name
   Replace/Rename/Skip conflict resolution (`ConnectionEditorViewModel.ResolveZipImportConflict`) —
   see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Its two follow-ups (bulk
-  profile removal and a wholesale "delete all, then import" option) both landed 2026-09-18.
-  - **Lower priority: a long/short name for a detected serial port** — the "Detected ports" picker
-    lists short names only (`COM3`); no cross-platform equivalent of Windows' WMI-based friendly
-    name is wired up.
+  profile removal and a wholesale "delete all, then import" option) both landed 2026-09-18, as did
+  the Windows half of a long/short name for detected serial ports.
+  - **Detected serial port descriptions on Linux/macOS** — the Windows description landed
+    2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
+    Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
     connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
     IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.

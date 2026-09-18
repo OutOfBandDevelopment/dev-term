@@ -817,9 +817,21 @@ public sealed class ConnectionEditorViewModelTests
         }
     }
 
-    private sealed class FakeSerialPortDiscovery(IReadOnlyList<string> portNames) : ISerialPortDiscovery
+    private sealed class FakeSerialPortDiscovery(
+        IReadOnlyList<string> portNames,
+        IReadOnlyDictionary<string, string>? descriptions = null) : ISerialPortDiscovery
     {
         public IReadOnlyList<string> GetPortNames() => portNames;
+
+        public IReadOnlyDictionary<string, string> GetPortDescriptions() =>
+            descriptions ?? new Dictionary<string, string>();
+    }
+
+    private sealed class FailingDescriptionsSerialPortDiscovery(IReadOnlyList<string> portNames) : ISerialPortDiscovery
+    {
+        public IReadOnlyList<string> GetPortNames() => portNames;
+
+        public IReadOnlyDictionary<string, string> GetPortDescriptions() => throw new IOException("simulated registry failure");
     }
 
     private sealed class FailingSerialPortDiscovery : ISerialPortDiscovery
@@ -843,7 +855,81 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
 
-            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.ToArray());
+            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray());
+            CollectionAssert.AreEqual(
+                new[] { "COM3", "COM7" },
+                vm.SerialPortOptions.Select(o => o.Display).ToArray(),
+                "With no descriptions known, each port shows as just its short name.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_DecoratesPortsWithTheirDescriptions_WhenKnown()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(
+                    ["COM3", "COM7"],
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["COM3"] = "Prolific USB-to-Serial Comm Port" }));
+
+            CollectionAssert.AreEqual(
+                new[] { "COM3 — Prolific USB-to-Serial Comm Port", "COM7" },
+                vm.SerialPortOptions.Select(o => o.Display).ToArray());
+            CollectionAssert.AreEqual(
+                new[] { "COM3", "COM7" },
+                vm.SerialPortOptions.Select(o => o.Name).ToArray(),
+                "The value that gets written into Port stays the short name.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_DoesNotListAPortThatOnlyHasADescription()
+    {
+        // The OS keeps records of devices long since unplugged (this machine's registry has a stale
+        // Prolific COM3); descriptions must only ever decorate ports GetPortNames actually reported.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(
+                    ["COM7"],
+                    new Dictionary<string, string> { ["COM3"] = "Ghost device", ["COM7"] = "Real device" }));
+
+            Assert.HasCount(1, vm.SerialPortOptions);
+            Assert.AreEqual("COM7", vm.SerialPortOptions[0].Name);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_WhenDescriptionLookupThrows_FallsBackToShortNames()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FailingDescriptionsSerialPortDiscovery(["COM3", "COM7"]));
+
+            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
         }
         finally
         {

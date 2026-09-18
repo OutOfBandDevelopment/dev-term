@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="devterm.runsettings" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/DevTerm.Configuration/DevTerm.Configuration.csproj" />
     <Project Path="src/DevTerm.Console/DevTerm.Console.csproj" />

@@ -161,16 +161,31 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     // Enumeration can fail on a locked-down machine (permissions, a driver quirk) - a picker list
     // is a convenience, not something construction should fail over, the same reasoning already
     // applied to the profiles-folder FileSystemWatcher above.
-    private static IReadOnlyList<string> SafeDiscover(ISerialPortDiscovery discovery)
+    private static IReadOnlyList<SerialPortOption> SafeDiscover(ISerialPortDiscovery discovery)
     {
+        IReadOnlyList<string> names;
         try
         {
-            return discovery.GetPortNames();
+            names = discovery.GetPortNames();
         }
         catch (SystemException)
         {
             return [];
         }
+
+        // Descriptions only decorate ports GetPortNames already reported (the OS keeps records of
+        // long-gone devices too), and are optional - failing to read them just means short names.
+        IReadOnlyDictionary<string, string> descriptions;
+        try
+        {
+            descriptions = discovery.GetPortDescriptions();
+        }
+        catch (SystemException)
+        {
+            descriptions = new Dictionary<string, string>();
+        }
+
+        return [.. names.Select(name => SerialPortOption.From(name, descriptions))];
     }
 
     private static IReadOnlyList<HidDeviceOption> SafeDiscover(IHidDeviceDiscovery discovery)
@@ -254,9 +269,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// the same enumeration <c>--listports</c> uses), for a "pick from what's plugged in" combobox
     /// next to <see cref="Port"/> — set once at construction, empty (not an error) if discovery fails
     /// or nothing's attached. <see cref="Port"/> stays freely typable regardless; picking one here
-    /// just fills it in via <see cref="SelectedSerialPort"/>.
+    /// just fills it in via <see cref="SelectedSerialPort"/>. Each entry carries the OS's description
+    /// of the port when known (Windows only so far), for display alongside the short name.
     /// </summary>
-    public IReadOnlyList<string> SerialPortOptions { get; }
+    public IReadOnlyList<SerialPortOption> SerialPortOptions { get; }
 
     /// <summary>Same idea as <see cref="SerialPortOptions"/>, for real HID devices via <see cref="SelectedHidDevice"/>.</summary>
     public IReadOnlyList<HidDeviceOption> HidDeviceOptions { get; }
