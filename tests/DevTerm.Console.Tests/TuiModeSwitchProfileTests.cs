@@ -58,7 +58,7 @@ public sealed class TuiModeSwitchProfileTests
             using var stream = client.GetStream();
 
             Assert.IsTrue(switched);
-            var titleUpdated = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains($"TCP 127.0.0.1:{port}"), WaitTimeout);
+            var titleUpdated = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains($"tcp://127.0.0.1:{port}"), WaitTimeout);
             Assert.IsTrue(titleUpdated, "Expected the window title to reflect the newly-switched-to connection.");
             StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), "hex");
             Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title));
@@ -90,5 +90,45 @@ public sealed class TuiModeSwitchProfileTests
         });
 
         await session.CloseAsync();
+    }
+
+
+    [TestMethod]
+    public async Task SwitchProfileAsync_ToASavedProfile_RetitlesTheWindowWithItsName()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
+        try
+        {
+            var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Presenter = ["ascii"] };
+
+            TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+            {
+                StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), "tcp://127.0.0.1:1");
+
+                using var listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+                var acceptTask = listener.AcceptTcpClientAsync();
+                var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] };
+                new ConnectionProfileStore(directory).Save("bench-scope", target);
+
+                var switched = parts.SwitchProfileAsync(target).GetAwaiter().GetResult();
+                using var client = acceptTask.GetAwaiter().GetResult();
+
+                Assert.IsTrue(switched);
+                var retitled = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains("bench-scope"), WaitTimeout);
+                Assert.IsTrue(retitled, "Expected the title to name the saved profile just switched to.");
+                Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title.Contains("tcp://")));
+            }, new ConnectionProfileStore(directory));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
     }
 }

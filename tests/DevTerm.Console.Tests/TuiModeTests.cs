@@ -64,7 +64,7 @@ public sealed class TuiModeTests
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
-            StringAssert.Contains(parts.Window.Title, "TCP 127.0.0.1:23");
+            StringAssert.Contains(parts.Window.Title, "tcp://127.0.0.1:23");
             StringAssert.Contains(parts.Window.Title, "ascii");
 
             var screen = TuiTestRunner.DumpBuffer();
@@ -280,5 +280,30 @@ public sealed class TuiModeTests
         });
 
         await session.CloseAsync();
+    }
+
+
+    [TestMethod]
+    public async Task BuildWindow_WhenTheConnectionIsASavedProfile_TitlesTheWindowWithTheProfileName()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
+        try
+        {
+            var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"] };
+            var store = new ConnectionProfileStore(directory);
+            store.Save("bench-scope", cliOptions);
+
+            TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+            {
+                StringAssert.Contains(parts.Window.Title, "bench-scope");
+                Assert.IsFalse(parts.Window.Title.Contains("tcp://"), "A saved profile is titled by name, not by its connection string.");
+            }, store);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }

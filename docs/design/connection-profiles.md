@@ -192,6 +192,12 @@ scalar/comma-separated `Presenter` (also how `--presenter ascii,hex` and `DEVTER
 and `Parser` falls back to the first presenter. Front ends now hold a `PresenterCatalog` rather than
 a single `IPresenter`, so the send format can change per line.
 
+**Window title, 2026-09-18**: the main windows' title names what's connected — the saved profile's
+name when the running connection is exactly one (`ConnectionProfileStore.FindName`, by comparing the
+persisted subset rather than tracking a name that would go stale on the first edit), otherwise a
+`tcp://`/`serial://`/`hid://` connection string (`ConnectionDescription.Definition`) — and is
+recomputed on every live profile switch. Details in `docs/specs/tui-main-screen.md`.
+
 ## What this explicitly is not (yet)
 
 - **Not wired to `IControlSurface`** — loading a profile's referenced manifest makes its

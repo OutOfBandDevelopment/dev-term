@@ -46,6 +46,38 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
     }
 
+    /// <summary>
+    /// The name of the saved profile that <paramref name="options"/> exactly matches, or
+    /// <see langword="null"/> if none does — how a front end tells "running a saved profile" from "running
+    /// some other configured connection" without tracking a profile name alongside every
+    /// <see cref="CliOptions"/> (which would go stale the moment a field was edited, and has nothing to
+    /// say about the untracked default profile a run starts from). "Exactly" is
+    /// <see cref="DevTermConfiguration.ToProfileJson"/> equality — the connection-relevant subset, so
+    /// run-mode flags and the older-profile presenter/parser fallbacks don't cause a false mismatch.
+    /// If several profiles are identical, the first alphabetically wins. An unreadable profile is
+    /// skipped rather than failing the title.
+    /// </summary>
+    public string? FindName(CliOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var wanted = DevTermConfiguration.ToProfileJson(options);
+        foreach (var name in List())
+        {
+            try
+            {
+                if (DevTermConfiguration.ToProfileJson(Load(name)) == wanted)
+                {
+                    return name;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException)
+            {
+            }
+        }
+
+        return null;
+    }
+
     public CliOptions Load(string name)
     {
         var path = GetPath(name);

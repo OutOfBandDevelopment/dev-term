@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -37,7 +38,8 @@ public sealed class MainWindowSwitchProfileTests
             var initialTransport = new FakeTransport();
             var initialPresenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
             var initialSession = new Session(initialTransport, new Pipeline([initialPresenter]));
-            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Parser = "ascii" })
+            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Parser = "ascii" },
+                IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
             };
@@ -55,7 +57,7 @@ public sealed class MainWindowSwitchProfileTests
             using var stream = client.GetStream();
 
             Assert.IsTrue(switched);
-            StringAssert.Contains(window.Title, $"TCP 127.0.0.1:{port}");
+            StringAssert.Contains(window.Title, $"tcp://127.0.0.1:{port}");
             StringAssert.Contains(window.Title, "hex");
             Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
             Assert.AreEqual(1, window.OutputList.Items.Count, "Old output should be cleared; only the 'Switched to ...' line should remain.");
@@ -66,5 +68,52 @@ public sealed class MainWindowSwitchProfileTests
             Assert.IsTrue(appeared, "Expected the new (real TCP) session's incoming bytes to reach the output list.");
             StringAssert.Contains((string)window.OutputList.Items[1]!, "[hex]");
         });
+    }
+
+
+    [TestMethod]
+    public void SwitchProfileAsync_ToASavedProfile_RetitlesTheWindowWithItsName()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var initialTransport = new FakeTransport();
+                var initialPresenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+                var initialSession = new Session(initialTransport, new Pipeline([initialPresenter]));
+                var window = new MainWindow(
+                    initialSession,
+                    new PresenterCatalog([initialPresenter]),
+                    new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Parser = "ascii" },
+                    new ConnectionProfileStore(directory))
+                {
+                    ShowInTaskbar = false,
+                };
+                await window.ConnectAsync();
+                StringAssert.Contains(window.Title, "tcp://127.0.0.1:1");
+
+                using var listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+                var acceptTask = listener.AcceptTcpClientAsync();
+                var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] };
+                new ConnectionProfileStore(directory).Save("bench-scope", target);
+
+                var switched = await window.SwitchProfileAsync(target);
+                using var client = await acceptTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+                Assert.IsTrue(switched);
+                StringAssert.Contains(window.Title, "bench-scope");
+                Assert.IsFalse(window.Title.Contains("tcp://"), "A saved profile is titled by name, not by its connection string.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
     }
 }

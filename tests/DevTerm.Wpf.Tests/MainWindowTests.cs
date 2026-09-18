@@ -43,7 +43,7 @@ public sealed class MainWindowTests
         var session = new Session(transport, new Pipeline([presenter]));
         var options = cliOptions ?? new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
         options.Parser ??= presenter.Name; // the fake catalog below only holds this one presenter
-        var window = new MainWindow(session, new PresenterCatalog([presenter]), options)
+        var window = new MainWindow(session, new PresenterCatalog([presenter]), options, IsolatedProfiles.Empty())
         {
             ShowInTaskbar = false,
         };
@@ -78,7 +78,7 @@ public sealed class MainWindowTests
             var (window, _) = CreateWindow();
             await window.ConnectAsync();
 
-            StringAssert.Contains(window.Title, "TCP 127.0.0.1:23");
+            StringAssert.Contains(window.Title, "tcp://127.0.0.1:23");
             StringAssert.Contains(window.Title, "ascii");
             Assert.IsTrue(window.SendBox.IsEnabled);
         });
@@ -95,7 +95,8 @@ public sealed class MainWindowTests
             var window = new MainWindow(
                 session,
                 new PresenterCatalog([ascii, new HexPresenter()]),
-                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" })
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" },
+                IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
             };
@@ -128,7 +129,8 @@ public sealed class MainWindowTests
             var window = new MainWindow(
                 new Session(transport, new Pipeline([ascii, hex])),
                 new PresenterCatalog([ascii, hex]),
-                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] })
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] },
+                IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
             };

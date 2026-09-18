@@ -31,9 +31,12 @@ menu — the WPF equivalent of the TUI's main screen.
   session is open.
 - **`ConnectMenuItem.Header`** mirrors `Session.State` — `_Disconnect` when open, `_Connect` when
   closed.
-- **Title bar**, like the TUI's, is `dev-term — {ConnectionDescription} ({presenters}; send as
-  {parser})`. It's refreshed on connect, profile switch, and a `Send as:` change (only while the
-  session is open), but does not update on Disconnect — see Open items.
+- **Title bar**, like the TUI's, is `dev-term — {subject} ({presenters}; send as {parser})` — the
+  saved profile's name when the running connection is exactly a saved profile, otherwise its
+  connection definition (`tcp://192.168.0.110:23`, `serial://COM3:4800,8,n,1`,
+  `hid://1915.AFDA.{serial}`); see the TUI spec for the exact matching rule. It's refreshed on
+  connect, profile switch, and a `Send as:` change (only while the session is open), but does not
+  update on Disconnect — see Open items.
 
 ## Per-front-end notes
 

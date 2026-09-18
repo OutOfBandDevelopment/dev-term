@@ -340,4 +340,108 @@ public sealed class ConnectionProfileStoreTests
         Directory.CreateDirectory(path);
         return path;
     }
+
+
+    [TestMethod]
+    public void FindName_ForOptionsThatMatchASavedProfile_ReturnsItsName()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"] });
+
+            // Run-mode flags aren't part of a profile, so they can't cause a false mismatch.
+            var running = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"], Cli = true };
+
+            Assert.AreEqual("tek2230", store.FindName(running));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FindName_AfterAFieldIsEdited_ReturnsNull()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 });
+
+            Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 24 }));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FindName_MatchesAnOlderProfileWithNoParserAgainstItsEffectiveParser()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "legacy.json"), "{ \"Transport\": \"tcp\", \"Host\": \"10.0.0.1\", \"TcpPort\": 23, \"Presenter\": \"ascii\" }");
+
+            Assert.AreEqual("legacy", store.FindName(new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" }));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FindName_SkipsAnUnreadableProfileAndKeepsLooking()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 };
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "a-broken.json"), "{ not json");
+            store.Save("b-good", options);
+
+            Assert.AreEqual("b-good", store.FindName(options));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FindName_WithTwoIdenticalProfiles_ReturnsTheFirstAlphabetically()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 };
+            store.Save("zulu", options);
+            store.Save("alpha", options);
+
+            Assert.AreEqual("alpha", store.FindName(options));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FindName_WithNoProfilesDirectory_ReturnsNull()
+    {
+        var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
+
+        Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "h", TcpPort = 1 }));
+    }
 }

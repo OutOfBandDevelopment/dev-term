@@ -56,15 +56,22 @@ internal static class TuiTestRunner
         return new PresenterCatalog([presenter]);
     }
 
-    public static void RunHeadless(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body) =>
-        RunHeadless(session, CatalogFor(presenter, cliOptions), cliOptions, body);
+    /// <summary>
+    /// A store over a directory that doesn't exist, so a window built under test never reads the
+    /// developer's real <c>~/.dev-term/profiles</c> when its title asks "is this a saved profile?".
+    /// </summary>
+    public static ConnectionProfileStore EmptyProfiles() =>
+        new(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
 
-    public static void RunHeadless(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
+    public static void RunHeadless(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null) =>
+        RunHeadless(session, CatalogFor(presenter, cliOptions), cliOptions, body, profileStore);
+
+    public static void RunHeadless(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null)
     {
         Application.Init("dotnet");
         try
         {
-            var parts = TuiMode.BuildWindow(session, presenter, cliOptions);
+            var parts = TuiMode.BuildWindow(session, presenter, cliOptions, profileStore ?? EmptyProfiles());
             parts.SendField.SetFocus();
             var token = Application.Begin(parts.Window);
             Application.LayoutAndDraw(true);
@@ -125,10 +132,10 @@ internal static class TuiTestRunner
         return text.ToString();
     }
 
-    public static void RunWithLoop(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body) =>
-        RunWithLoop(session, CatalogFor(presenter, cliOptions), cliOptions, body);
+    public static void RunWithLoop(Session session, IPresenter presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null) =>
+        RunWithLoop(session, CatalogFor(presenter, cliOptions), cliOptions, body, profileStore);
 
-    public static void RunWithLoop(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body)
+    public static void RunWithLoop(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null)
     {
         TuiWindowParts? parts = null;
         var ready = new ManualResetEventSlim(false);
@@ -139,7 +146,7 @@ internal static class TuiTestRunner
             try
             {
                 Application.Init("dotnet");
-                parts = TuiMode.BuildWindow(session, presenter, cliOptions);
+                parts = TuiMode.BuildWindow(session, presenter, cliOptions, profileStore ?? EmptyProfiles());
                 parts.SendField.SetFocus();
                 Application.Invoke(() => ready.Set());
                 Application.Run(parts.Window);

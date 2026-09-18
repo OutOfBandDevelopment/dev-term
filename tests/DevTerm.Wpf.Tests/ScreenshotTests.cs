@@ -60,7 +60,7 @@ public sealed class ScreenshotTests
         var transport = new FakeTransport();
         var presenter = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
-        var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Parser = "ascii" });
+        var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Parser = "ascii" }, IsolatedProfiles.Empty());
         return (window, transport);
     }
 
@@ -72,7 +72,7 @@ public sealed class ScreenshotTests
             var (window, transport) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("TCP"), PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), PumpTimeout);
             await transport.PushIncomingAsync("ID TEK/2230,V81.1,VERS:14\r"u8.ToArray());
             StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
 
@@ -90,7 +90,7 @@ public sealed class ScreenshotTests
             var (window, _) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("TCP"), PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), PumpTimeout);
             await window.ToggleConnectionAsync();
             StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
 

@@ -65,11 +65,12 @@ Completed work is logged by date under `docs/changes/`.
   `docs/design/testing.md`/`docs/coding-standards.md`.
 
   Bulk profile removal (a "Delete Selected" button, with a native confirmation naming the profiles)
-  landed the same day. Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a wholesale "delete all,
+  and the Architect's live window title (the saved profile's name, else a `tcp://…`/`serial://…`/
+  `hid://…` connection string, re-evaluated on every profile switch) landed the same day. Still open (see [`BACKLOG.md`](BACKLOG.md) for detail): a wholesale "delete all,
   then import" zip option, and (lower priority) a long/short name for a detected serial port.
 
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the still-open Connection Editor items (wholesale
-delete-then-import, serial-port long/short name) and a new "Window title, from the Architect" item.
+delete-then-import, serial-port long/short name).

@@ -98,17 +98,6 @@ ordered against the rest.
   - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
     connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
     IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.
-- **Window title, from the Architect (2026-09-16)** — should reflect what's actually connected,
-  and update live rather than only at startup:
-  - Launched with (or switched to) a saved profile: `{App Name} - {Connection Profile}`.
-  - Launched with (or switched to) a configured connection that isn't a saved profile:
-    `{App Name} - {Connection Definition}`, e.g. `tcp://192.168.0.110:23`,
-    `serial://COM3:4800,8,n,1`, `hid://{vendor id}.{product id}.{instance id}`.
-  - Should be bound so it updates when the profile/connection changes from the Device Profiles
-    screen, in both front ends — not just set once at startup. Needs a title-string builder (likely
-    on `ConnectionDescription` or similar, given its existing "describe a `CliOptions` for display"
-    role) plus wiring into `MainWindow.Title`/`TuiMode`'s window title in whichever place already
-    reacts to `SwitchProfileAsync` completing.
 - Once device manifest support is further along, build an editor for it — at least a default
   render for request/response messages, ideally a presentation editor. New field types this implies
   beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart

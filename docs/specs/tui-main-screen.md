@@ -28,9 +28,17 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 
 - **`Send:` enabled/disabled** tracks `Session.State`: enabled only when `Open`. Toggled by
   Connect/Disconnect, not by anything else.
-- **Title bar** is `dev-term — {ConnectionDescription} ({presenters}; send as {parser})` (e.g.
-  `(ascii, hex; send as hex)`). It updates when the **Send as** parser changes or a profile is
-  switched, but not on Connect/Disconnect (see Open items).
+- **Title bar** is `dev-term — {subject} ({presenters}; send as {parser})`, e.g.
+  `dev-term — tek2230 (ascii, hex; send as hex)`. The subject is the **saved profile's name** when the running connection is exactly a saved
+  profile (`ConnectionProfileStore.FindName` — compares the connection-relevant subset, so run-mode
+  flags don't matter; first alphabetically if two profiles are identical), otherwise the
+  **connection definition** (`ConnectionDescription.Definition`): `tcp://192.168.0.110:23`,
+  `tcp://*:9000 (listening)`, `serial://COM3:4800,8,n,1` (data bits, lowercase parity letter, stop
+  bits), `hid://{vendor}.{product}[.{serial number}]` (hex ids).
+  Recomputed when the **Send as** parser changes or a profile is switched (so it follows a live
+  switch to a saved profile or a one-off connection), but not on Connect/Disconnect (see Open items).
+  A saved profile is recognised at startup too — the untracked default profile a run starts from
+  counts if it matches a saved one.
 - Incoming bytes arrive via `Session.Output`, marshaled onto the UI thread with
   `Application.Invoke` — this only works because a real `Application.Run()` loop is actively
   pumping; see `CLAUDE.md`'s constraint on `Application.Invoke` silently queuing forever otherwise.

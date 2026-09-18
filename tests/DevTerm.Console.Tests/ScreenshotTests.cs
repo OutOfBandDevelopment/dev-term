@@ -209,7 +209,7 @@ public sealed class ScreenshotTests
 
         await session.CloseAsync();
 
-        StringAssert.Contains(dump, "TCP 192.168.0.107:23");
+        StringAssert.Contains(dump, "tcp://192.168.0.107:23");
         StringAssert.Contains(dump, "Send:");
     }
 

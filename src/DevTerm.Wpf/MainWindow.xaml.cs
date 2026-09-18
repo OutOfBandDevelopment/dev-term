@@ -19,11 +19,14 @@ public partial class MainWindow : Window
     private Session _session;
     private PresenterCatalog _catalog;
     private CliOptions _cliOptions;
+    private readonly ConnectionProfileStore _profileStore;
     private bool _closeConfirmed;
 
-    public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions)
+    /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
+    public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         InitializeComponent();
+        _profileStore = profileStore ?? new ConnectionProfileStore();
 
         _session = session;
         _catalog = catalog;
@@ -57,7 +60,7 @@ public partial class MainWindow : Window
     /// <summary>The send format (parser) currently encoding typed lines — the "Send as" box's selection, starting as the profile's.</summary>
     internal string CurrentParser => ParserBox.SelectedItem as string ?? _cliOptions.EffectiveParser;
 
-    private string TitleText => $"dev-term — {ConnectionDescription.For(_cliOptions)} ({ConnectionDescription.Formats(_cliOptions, CurrentParser)})";
+    private string TitleText => ConnectionDescription.WindowTitle(_cliOptions, CurrentParser, _profileStore);
 
     // Only refreshes a title that's already been set for a connection; before ConnectAsync runs the
     // title is still the XAML's plain "dev-term".
@@ -204,7 +207,7 @@ public partial class MainWindow : Window
 
     private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
     {
-        var window = new DeviceProfilesWindow(new ConnectionProfileStore(), _cliOptions) { Owner = this };
+        var window = new DeviceProfilesWindow(_profileStore, _cliOptions) { Owner = this };
         window.ShowDialog();
 
         if (window.Result is { } chosen)

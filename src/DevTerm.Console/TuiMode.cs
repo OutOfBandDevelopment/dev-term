@@ -19,7 +19,7 @@ namespace DevTerm.Console;
 /// </remarks>
 public static class TuiMode
 {
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         try
         {
@@ -34,7 +34,7 @@ public static class TuiMode
         Application.Init();
         try
         {
-            var parts = BuildWindow(session, catalog, cliOptions);
+            var parts = BuildWindow(session, catalog, cliOptions, profileStore);
             parts.SendField.SetFocus();
             Application.Run(parts.Window);
         }
@@ -53,14 +53,18 @@ public static class TuiMode
     /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions)
+    internal static TuiWindowParts BuildWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
+        // Also what "is this connection a saved profile?" (the title) is answered against, and what the
+        // Device Profiles screen edits - a test passes an isolated one rather than the real user folder.
+        profileStore ??= new ConnectionProfileStore();
+
         // The parser (send format) currently encoding typed lines - starts as the profile's, and
         // the "Send as" menu switches it for every line typed afterward. Captured/reassigned by the
         // closures below like session/cliOptions are (see SwitchProfileAsync's comment).
         var parser = cliOptions.EffectiveParser;
 
-        string TitleFor() => $"dev-term — {ConnectionDescription.For(cliOptions)} ({ConnectionDescription.Formats(cliOptions, parser)})";
+        string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore);
 
         var window = new Window
         {
@@ -127,7 +131,7 @@ public static class TuiMode
                 connectMenuItem,
                 new MenuItem("_Device Profiles...", string.Empty, () =>
                 {
-                    var configureParts = ConfigureMode.BuildWindow(cliOptions, null, new ConnectionProfileStore());
+                    var configureParts = ConfigureMode.BuildWindow(cliOptions, null, profileStore);
                     Application.Run(configureParts.Window);
 
                     if (configureParts.Result is { } chosen)

@@ -77,4 +77,76 @@ public sealed class ConnectionDescriptionTests
 
         Assert.AreEqual("USB HID VID 0x1915 PID 0xAFDA serial '12345'", ConnectionDescription.For(options));
     }
+
+
+    [TestMethod]
+    public void Definition_Tcp_IsATcpUri()
+    {
+        Assert.AreEqual("tcp://192.168.0.110:23", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 }));
+    }
+
+    [TestMethod]
+    public void Definition_TcpListener_ShowsTheWildcardHost()
+    {
+        Assert.AreEqual("tcp://*:9000 (listening)", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Listen = true, TcpPort = 9000 }));
+    }
+
+    [TestMethod]
+    public void Definition_Serial_IsPortBaudDataBitsParityLetterStopBits()
+    {
+        var options = new CliOptions { Transport = "serial", Port = "COM3", Baud = 4800, DataBits = 8, Parity = Parity.None, StopBits = StopBits.One };
+
+        Assert.AreEqual("serial://COM3:4800,8,n,1", ConnectionDescription.Definition(options));
+    }
+
+    [TestMethod]
+    [DataRow(Parity.Even, StopBits.OnePointFive, "serial:///dev/ttyUSB0:9600,7,e,1.5")]
+    [DataRow(Parity.Odd, StopBits.Two, "serial:///dev/ttyUSB0:9600,7,o,2")]
+    public void Definition_Serial_UsesLowercaseParityLetterAndTheRealStopBitsText(Parity parity, StopBits stopBits, string expected)
+    {
+        var options = new CliOptions { Transport = "serial", Port = "/dev/ttyUSB0", Baud = 9600, DataBits = 7, Parity = parity, StopBits = stopBits };
+
+        Assert.AreEqual(expected, ConnectionDescription.Definition(options));
+    }
+
+    [TestMethod]
+    public void Definition_Hid_IsVendorAndProductInHex()
+    {
+        Assert.AreEqual("hid://1915.AFDA", ConnectionDescription.Definition(new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA }));
+    }
+
+    [TestMethod]
+    public void Definition_HidWithSerialNumber_AppendsItAsTheInstance()
+    {
+        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+
+        Assert.AreEqual("hid://1915.AFDA.12345", ConnectionDescription.Definition(options));
+    }
+
+    [TestMethod]
+    public void WindowTitle_ForANonSavedConnection_UsesTheDefinitionAndTheFormats()
+    {
+        var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
+        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii", "hex"], Parser = "hex" };
+
+        Assert.AreEqual("dev-term — tcp://192.168.0.110:23 (ascii, hex; send as hex)", ConnectionDescription.WindowTitle(options, "hex", store));
+    }
+
+    [TestMethod]
+    public void WindowTitle_ForASavedProfile_UsesTheProfileName()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" };
+            store.Save("tek2230", options);
+
+            Assert.AreEqual("dev-term — tek2230 (ascii; send as ascii)", ConnectionDescription.WindowTitle(options, "ascii", store));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

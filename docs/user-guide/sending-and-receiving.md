@@ -45,7 +45,11 @@ immediately; the reply appears in the output pane as soon as the device answers 
 The **Send as** menu in the menu bar picks how typed text is encoded (ASCII, UTF-8, hex, decimal,
 octal, binary) — it starts as the profile's saved send format and can be changed at any time, even
 mid-session, without reconnecting. The title bar shows the current one
-(`dev-term — TCP 127.0.0.1:52311 (ascii; send as ascii)`).
+(`dev-term — tcp://127.0.0.1:52311 (ascii; send as ascii)`) and names what you're connected to: the
+**profile's name** if the connection is exactly one of your saved profiles
+(`dev-term — tek2230 (ascii; send as ascii)`), otherwise its connection string (`tcp://host:port`,
+`serial://COM3:4800,8,n,1`, `hid://vendor.product.serial`). It updates as soon as you switch
+profiles from Device Profiles.
 
 Ctrl+Q quits and closes the session cleanly.
 
