@@ -36,7 +36,7 @@ Shown in two situations:
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
-| Vendor ID (hid) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.HidVendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"` |
+| Vendor ID (hid) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.HidVendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same as Vendor ID |
 | Show as hex (hid) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` (a row of checkboxes) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
@@ -177,6 +177,23 @@ Shown in two situations:
   first wins. Verified against this machine's real registry (found the stale COM3 entry, correctly
   not listed because nothing's attached) — **not** verified with a real device attached, since none
   is available right now.
+- **The HID picker is filtered by the ID fields, live.** `HidDeviceOptions` is not the raw
+  discovery result: it's `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) &&
+  (productId == 0 || d.ProductId == productId))`, so typing a vendor id narrows the picker to that
+  vendor's devices, adding a product id narrows it to one, and `0` (the default) lists everything.
+  An id that isn't a number yet (mid-typing, or a bad value) counts as `0` rather than emptying the
+  list. Recomputed whenever the canonical `HidVendorId`/`HidProductId` change — from typing, the hex
+  display field, Load, or picking a device — by editing an `ObservableCollection` in place (remove
+  what no longer matches, insert what now does, detection order), not by replacing the list: a
+  bound WPF `ComboBox` follows it live and keeps a selection that still matches, where a replaced
+  `ItemsSource` would reset it. It is exposed as `IReadOnlyList<HidDeviceOption>`; the
+  `ObservableCollection` is the runtime type. `HidDevicesHiddenByFilter` (some detected device is
+  hidden only by the filter) lets the TUI say "No detected HID device matches the Vendor/Product ID
+  entered (0 means any)" instead of a misleading "Nothing was detected." for an empty picker. The
+  TUI's fields only reach the view model when pushed, so its Detect button pushes them first.
+  Consequence worth knowing: **picking a device fills in both ids, which then narrows the list to
+  just that device** — to pick a different one, clear an id (or set it to 0) first. A device whose
+  own vendor id is 0 is not treated as a wildcard.
 - **The HID decimal/hex toggle is display-only, backed by a separate `*Display` property per
   field** (`HidVendorIdDisplay`/`HidProductIdDisplay`), not `HidVendorId`/`HidProductId` themselves
   — those two stay canonical decimal strings always (what `BuildOptions`/`LoadIntoFields`/

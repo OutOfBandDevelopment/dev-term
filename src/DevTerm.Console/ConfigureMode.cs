@@ -520,11 +520,11 @@ public static class ConfigureMode
         // docs/changes/2026-09-16.md). Selecting a row is wired the same way double-click-to-load
         // is above: ListView's own double-click maps to Command.Accept, raising the inherited
         // Accepting event.
-        static string? PickFromList(string title, IReadOnlyList<string> items)
+        static string? PickFromList(string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
         {
             if (items.Count == 0)
             {
-                MessageBox.Query(Application.Instance!, "dev-term", "Nothing was detected.", ["OK"]);
+                MessageBox.Query(Application.Instance!, "dev-term", emptyMessage, ["OK"]);
                 return null;
             }
 
@@ -578,8 +578,16 @@ public static class ConfigureMode
 
         detectHidButton.Accepting += (_, e) =>
         {
+            // The picker is filtered by the Vendor/Product ID fields (non-zero = must match), and
+            // the TUI's fields only reach the view model when pushed, so push what's typed first.
+            PushFieldsIntoViewModel();
             var devices = viewModel.HidDeviceOptions;
-            var choice = PickFromList("Detected HID devices", [.. devices.Select(d => d.Display)]);
+            var choice = PickFromList(
+                "Detected HID devices",
+                [.. devices.Select(d => d.Display)],
+                viewModel.HidDevicesHiddenByFilter
+                    ? "No detected HID device matches the Vendor/Product ID entered (0 means any)."
+                    : "Nothing was detected.");
             if (choice is not null)
             {
                 viewModel.SelectedHidDevice = devices.First(d => d.Display == choice);

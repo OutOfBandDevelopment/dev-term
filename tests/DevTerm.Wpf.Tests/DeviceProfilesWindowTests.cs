@@ -368,6 +368,57 @@ public sealed class DeviceProfilesWindowTests
         }
     }
 
+    private sealed class FakeHidDiscovery(params Transports.Hid.HidDeviceDescriptor[] devices) : Transports.Hid.IHidDeviceDiscovery
+    {
+        public IReadOnlyList<Transports.Hid.HidDeviceDescriptor> GetDevices() => devices;
+    }
+
+    [TestMethod]
+    public void DetectedHidDevicesComboBox_FollowsTheVendorAndProductIdFilterLive_KeepingASurvivingSelection()
+    {
+        // The real window's discovery is the machine's actual HID devices, so this binds a plain
+        // ComboBox the same way the XAML does (ItemsSource + SelectedItem) to a view model with a
+        // fake discovery: what's being checked is that WPF follows the view model's in-place list.
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var viewModel = new ConnectionEditorViewModel(
+                    new ConnectionProfileStore(directory),
+                    new CliOptions(),
+                    hidDeviceDiscovery: new FakeHidDiscovery(
+                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC08B, "Mouse", null),
+                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard", null),
+                        new Transports.Hid.HidDeviceDescriptor(0x0699, 0x0368, "Scope", null)));
+                var box = new System.Windows.Controls.ComboBox { DisplayMemberPath = "Display", DataContext = viewModel };
+                box.SetBinding(System.Windows.Controls.ItemsControl.ItemsSourceProperty, new System.Windows.Data.Binding(nameof(viewModel.HidDeviceOptions)));
+                box.SetBinding(System.Windows.Controls.Primitives.Selector.SelectedItemProperty, new System.Windows.Data.Binding(nameof(viewModel.SelectedHidDevice)) { Mode = System.Windows.Data.BindingMode.TwoWay });
+                StaTestRunner.DoEvents();
+                Assert.AreEqual(3, box.Items.Count);
+
+                viewModel.SelectedHidDevice = viewModel.HidDeviceOptions[0];
+                StaTestRunner.DoEvents();
+
+                Assert.AreEqual(1, box.Items.Count, "Picking the mouse filled in its ids, which narrows the list to it.");
+                Assert.AreSame(viewModel.SelectedHidDevice, box.SelectedItem);
+                Assert.AreEqual("046D:C08B  Mouse", viewModel.SelectedHidDevice!.Display, "The selection survived the list shrinking around it.");
+
+                viewModel.HidVendorId = "0";
+                viewModel.HidProductId = "0";
+                StaTestRunner.DoEvents();
+
+                Assert.AreEqual(3, box.Items.Count, "Clearing both ids widens the list back out.");
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [TestMethod]
     public void PresenterCheckBoxes_AreBoundToTheViewModelsPresenterChoices_InBothDirections()
     {

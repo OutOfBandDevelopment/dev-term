@@ -48,6 +48,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private bool _isDirty;
     private string? _selectedSerialPort;
     private HidDeviceOption? _selectedHidDevice;
+    private IReadOnlyList<HidDeviceOption> _detectedHidDevices = [];
+    private readonly ObservableCollection<HidDeviceOption> _hidDeviceOptions = [];
     private bool _hidIdsShowHex;
 
     /// <summary>
@@ -100,7 +102,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
         StatusMessage = statusMessage ?? string.Empty;
         SerialPortOptions = SafeDiscover(serialPortDiscovery ?? new SystemSerialPortDiscovery());
-        HidDeviceOptions = SafeDiscover(hidDeviceDiscovery ?? new SystemHidDeviceDiscovery());
+        _detectedHidDevices = SafeDiscover(hidDeviceDiscovery ?? new SystemHidDeviceDiscovery());
+        RefreshHidDeviceOptions();
         LoadIntoFields(initial);
         RefreshProfiles();
         IsDirty = false; // LoadIntoFields above marks every field it sets as dirty; a freshly-opened editor showing its starting configuration isn't actually dirty yet.
@@ -274,8 +277,24 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public IReadOnlyList<SerialPortOption> SerialPortOptions { get; }
 
-    /// <summary>Same idea as <see cref="SerialPortOptions"/>, for real HID devices via <see cref="SelectedHidDevice"/>.</summary>
-    public IReadOnlyList<HidDeviceOption> HidDeviceOptions { get; }
+    /// <summary>
+    /// Same idea as <see cref="SerialPortOptions"/>, for real HID devices via <see cref="SelectedHidDevice"/> —
+    /// except this one is <em>filtered</em> by whatever <see cref="HidVendorId"/>/<see cref="HidProductId"/>
+    /// currently hold: a non-zero id keeps only devices with that id, zero means "any"
+    /// (<c>Where VendorId in (0, vendorId) and ProductId in (0, productId)</c>), so typing a vendor id
+    /// narrows the picker to that vendor's devices. Backed by an <see cref="ObservableCollection{T}"/>
+    /// (a bound WPF combobox follows it live, and keeps its selection when the selected device
+    /// survives the filter) though exposed read-only; <see cref="HidDevicesHiddenByFilter"/> says
+    /// whether the filter is what's making it short.
+    /// </summary>
+    public IReadOnlyList<HidDeviceOption> HidDeviceOptions => _hidDeviceOptions;
+
+    /// <summary>
+    /// <see langword="true"/> when some detected HID device isn't in <see cref="HidDeviceOptions"/>
+    /// only because the Vendor/Product ID fields filtered it out — lets a front end say "nothing
+    /// matches those ids" rather than a misleading "nothing was detected" for an empty picker.
+    /// </summary>
+    public bool HidDevicesHiddenByFilter => _hidDeviceOptions.Count < _detectedHidDevices.Count;
 
     public string Transport
     {
@@ -937,9 +956,46 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         OnPropertyChanged(propertyName);
     }
 
+    // Re-derives the picker list from everything detected: a non-zero id must match, zero (or
+    // anything not a number yet, mid-typing) means "any". Edits the ObservableCollection in place
+    // (remove what no longer matches, then insert what now does, in detection order) instead of
+    // replacing it, so a bound combobox keeps a still-matching selection rather than being reset.
+    private void RefreshHidDeviceOptions()
+    {
+        var vendorId = ParseHidFilterId(_hidVendorId);
+        var productId = ParseHidFilterId(_hidProductId);
+        var wanted = _detectedHidDevices
+            .Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId == productId))
+            .ToList();
+
+        for (var i = _hidDeviceOptions.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(_hidDeviceOptions[i]))
+            {
+                _hidDeviceOptions.RemoveAt(i);
+            }
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i >= _hidDeviceOptions.Count || _hidDeviceOptions[i] != wanted[i])
+            {
+                _hidDeviceOptions.Insert(i, wanted[i]);
+            }
+        }
+    }
+
+    private static int ParseHidFilterId(string decimalText) =>
+        int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
+
     private void OnPropertyChanged(string? propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        if (propertyName is nameof(HidVendorId) or nameof(HidProductId))
+        {
+            RefreshHidDeviceOptions();
+        }
 
         if (propertyName is not null && !NonDirtyProperties.Contains(propertyName))
         {

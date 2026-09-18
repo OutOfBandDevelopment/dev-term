@@ -97,7 +97,10 @@ Both the Serial port field and the HID Vendor/Product ID fields stay freely typa
 each is a way to pick from what's actually plugged in right now — WPF shows a second "Detected
 ports"/"Detected devices" dropdown; the TUI shows a "Detect..." button that opens a small list to
 pick from. Picking a HID device fills in both Vendor ID and Product ID together, since they identify
-one device. The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
+one device. The HID list is filtered by the ID fields: type a Vendor ID and only that vendor's devices
+are listed, add a Product ID and only the matching device is; `0` means "any", so leaving both at `0`
+lists everything detected. (That also means that after picking a device the list shrinks to just it —
+set an ID back to `0` to see the others again.) The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
 when the editor opens — nothing plugged in afterward shows up without reopening the editor.
 
 On Windows each detected serial port is listed with the name Device Manager gives it — for example

@@ -1041,6 +1041,208 @@ public sealed class ConnectionEditorViewModelTests
         }
     }
 
+    private static readonly HidDeviceDescriptor[] ThreeHidDevices =
+    [
+        new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", null),
+        new HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard K120", null),
+        new HidDeviceDescriptor(0x0699, 0x0368, "TDS 2024", null),
+    ];
+
+    private static string[] HidOptionDisplays(ConnectionEditorViewModel vm) => [.. vm.HidDeviceOptions.Select(o => o.Display)];
+
+    [TestMethod]
+    public void HidDeviceOptions_WithZeroIds_ListsEveryDetectedDevice()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+
+            Assert.HasCount(3, vm.HidDeviceOptions);
+            Assert.IsFalse(vm.HidDevicesHiddenByFilter);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_ANonZeroVendorId_KeepsOnlyThatVendorsDevices()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidVendorId = 0x046D.ToString();
+
+            CollectionAssert.AreEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+            Assert.IsTrue(vm.HidDevicesHiddenByFilter);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_ANonZeroProductIdAlone_FiltersByProductAcrossVendors()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidProductId = 0x0368.ToString();
+
+            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_BothIdsNonZero_MustBothMatch()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidVendorId = 0x046D.ToString();
+            vm.HidProductId = 0xC31C.ToString();
+
+            CollectionAssert.AreEqual(new[] { "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+
+            vm.HidProductId = 0x0368.ToString();
+
+            Assert.IsEmpty(vm.HidDeviceOptions, "Vendor 046D and product 0368 matches nothing detected.");
+            Assert.IsTrue(vm.HidDevicesHiddenByFilter, "An empty list caused by the filter must be distinguishable from nothing being detected.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_FollowsLaterEdits_AndClearingAnIdWidensTheListAgainInDetectionOrder()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidVendorId = 0x0699.ToString();
+            Assert.HasCount(1, vm.HidDeviceOptions);
+
+            vm.HidVendorId = "0";
+
+            CollectionAssert.AreEqual(
+                new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024" },
+                HidOptionDisplays(vm));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_FollowsTheHexDisplayField_LikeTheDecimalOne()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidIdsShowHex = true;
+            vm.HidVendorIdDisplay = "0699";
+
+            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_AnIdThatIsNotANumberYet_DoesNotFilter()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            vm.HidVendorId = "12ab";
+
+            Assert.HasCount(3, vm.HidDeviceOptions);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_IsFilteredByTheInitialOptions_FromTheStart()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions { Transport = "hid", HidVendorId = 0x0699 },
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+
+            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void HidDeviceOptions_IsTheSameLiveCollectionAcrossFilterChanges_SoABoundListFollowsIt()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var before = vm.HidDeviceOptions;
+            var changes = 0;
+            ((System.Collections.Specialized.INotifyCollectionChanged)before).CollectionChanged += (_, _) => changes++;
+
+            vm.HidVendorId = 0x0699.ToString();
+
+            Assert.AreSame(before, vm.HidDeviceOptions);
+            Assert.AreEqual(2, changes, "The two non-matching devices are removed in place - no wholesale reset.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedHidDevice_FillsTheIdsAsARealEdit_AndThePickedDeviceStaysInTheFilteredList()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            Assert.IsFalse(vm.IsDirty);
+
+            vm.SelectedHidDevice = vm.HidDeviceOptions[0];
+
+            Assert.IsTrue(vm.IsDirty, "Picking a device fills in the ids, which is a real edit...");
+            CollectionAssert.AreEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse" }, HidOptionDisplays(vm), "...and the picked device stays in the filtered list.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [TestMethod]
     public void SelectedHidDevice_CopiesVendorAndProductIdAsDecimal()
     {
