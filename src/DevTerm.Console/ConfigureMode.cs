@@ -98,7 +98,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 40;
+        const int ContentHeight = 44;
         var formContent = new View
         {
             X = 0,

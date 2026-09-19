@@ -89,3 +89,10 @@ Completed work is logged by date under `docs/changes/`.
 Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
 (serial-port descriptions on Linux/macOS).
+
+## Notes from the Architect
+
+In TUI.  If I try changing a connection after a failure it doesnt even try to connect and the connect/disconnect button state doesn't properly follow connection.  For example I tried connecting to 192.168.0.108 and it fail so I tried connecting to 192.168.0.107 and it wont even try to connect now.
+
+In WPF if the connection errors out the app crashes.
+
