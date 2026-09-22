@@ -85,9 +85,12 @@ Completed work is logged by date under `docs/changes/`.
   automated-test) investigation of a reported WPF connection-error crash that didn't reproduce.
   Nothing functional is left open on the Connection Editor; what
   remains (see [`BACKLOG.md`](BACKLOG.md) and `docs/changes/2026-09-18.md`) is serial-port
-  descriptions on Linux/macOS (low priority) and real-hardware confirmation: the presenter-picker/
-  `--parser` `DEV-LOCAL` tests still haven't been run, and the double-click fix and timeout
-  hardening haven't been confirmed by hand.
+  descriptions on Linux/macOS (low priority, explicitly deferred by the user — not needed soon) and
+  the double-click fix / timeout hardening, which still haven't been confirmed by hand. The
+  presenter-picker/`--parser` `DEV-LOCAL` real-hardware tests *have* now been run (2026-09-22, see
+  `docs/changes/2026-09-22.md`) against the two real TCP devices actually available
+  (192.168.0.108, 192.168.0.110) — both passed everywhere they're exercised; the third configured
+  host (192.168.0.107) wasn't reachable and its `DataRow`s failed as expected, not a regression.
 
 - **`LoopbackTransport` test helper**, added 2026-09-22 — a scripted, deterministic in-process
   `ITransport` (`DevTerm.Console.Tests`) for exercising `Session`/`TuiMode`/`MainWindow` logic
