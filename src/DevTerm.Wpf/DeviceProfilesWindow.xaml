@@ -172,6 +172,12 @@
                         </Grid>
                     </StackPanel>
 
+                    <StackPanel x:Name="LoopbackPanel" Visibility="{Binding IsLoopbackTransport, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Loopback" FontWeight="Bold" Margin="0,8,0,2" />
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,4"
+                                   Text="No configuration needed — a scripted fake device. Try &quot;hello&quot;, &quot;Send Stream: N, ascii&quot;, &quot;Send Events: N&quot;, or &quot;help&quot;/&quot;?&quot;." />
+                    </StackPanel>
+
                     <TextBlock Text="Presentation" FontWeight="Bold" Margin="0,8,0,2" />
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>

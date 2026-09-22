@@ -6,6 +6,7 @@
     <ProjectReference Include="..\DevTerm.Transports.Serial\DevTerm.Transports.Serial.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Tcp\DevTerm.Transports.Tcp.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
   </ItemGroup>
 
   <ItemGroup>

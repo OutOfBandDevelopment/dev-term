@@ -79,6 +79,14 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_WithLoopbackTransport_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "loopback" });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
     public void Validate_UnknownTransport_Fails()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "carrier-pigeon" });

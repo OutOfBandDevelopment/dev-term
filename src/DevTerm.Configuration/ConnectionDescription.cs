@@ -22,6 +22,11 @@ public static class ConnectionDescription
             return $"USB HID VID 0x{cliOptions.HidVendorId:X4} PID 0x{cliOptions.HidProductId:X4}{serial}";
         }
 
+        if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Loopback";
+        }
+
         var stopBits = cliOptions.StopBits switch
         {
             StopBits.One => "1",
@@ -54,6 +59,11 @@ public static class ConnectionDescription
         {
             var instance = string.IsNullOrEmpty(cliOptions.HidSerialNumber) ? string.Empty : $".{cliOptions.HidSerialNumber}";
             return $"hid://{cliOptions.HidVendorId:X4}.{cliOptions.HidProductId:X4}{instance}";
+        }
+
+        if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
+        {
+            return "loopback://";
         }
 
         var stopBits = cliOptions.StopBits switch

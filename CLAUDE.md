@@ -23,6 +23,7 @@ dotnet run --project src/DevTerm.Console -- --listports true    # list serial po
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
 dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018 --cli true
+dotnet run --project src/DevTerm.Console -- --transport loopback --cli true    # no hardware needed; try "hello"
 ```
 
 **The full-screen TUI is the console app's default mode** — omitting `--cli true` above opens the
@@ -57,6 +58,12 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` / `DevTerm.Transports.Hid` — `ITransport`
   implementations. Each is independently testable via a fake stream (see "Testing" below), never
   real hardware/sockets.
+- `DevTerm.Transports.Loopback` — a zero-configuration, in-process fake-device `ITransport`
+  (`Pipe`-backed, no real I/O/hardware involved) selectable in either front end so a user with no
+  hardware attached can still exercise the UI end-to-end against a scripted device. See
+  docs/design/transports.md's "Loopback" section. Distinct from the internal, test-only
+  `LoopbackTransport` in `tests/DevTerm.Console.Tests/` (see "Testing" below) — same idea, separate
+  code, different purpose.
 - `DevTerm.Presenters.Text` — ASCII (line-buffered), UTF-8, hex, decimal, octal, binary.
 - `DevTerm.UiDefinitions` — a framework-agnostic, JSON/XML-serializable model for declaring a
   device control panel once (`UiDefinition` → `UiSection`s → `UiControl`s: button/toggle/slider/

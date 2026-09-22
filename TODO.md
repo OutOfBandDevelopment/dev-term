@@ -98,6 +98,18 @@ Completed work is logged by date under `docs/changes/`.
   device" section and `docs/changes/2026-09-22.md`. Not yet used by any TUI/WPF-level test — it's a
   building block, added because real devices aren't always available to test against by hand.
 
+- **Production `loopback` transport**, added 2026-09-22 — promotes the same scripted-fake-device
+  idea from the `LoopbackTransport` test helper above into a real, user-selectable transport
+  (`DevTerm.Transports.Loopback`) so someone without any hardware attached can pick "loopback" in
+  the TUI Configure screen or WPF Device Profiles/Connection Editor and get a working, zero-
+  configuration fake device to exercise the UI end-to-end. Deliberately a separate project, not a
+  reuse of the test-only prototype in `tests/DevTerm.Console.Tests/` (which stays exactly as-is —
+  see `docs/design/testing.md`); this one is wired through the same DI/validation/description path
+  every other transport uses (`AddDevTermFrontEnd`, `CliOptionsValidator`, `ConnectionDescription`)
+  and both front ends' transport pickers. Same three example commands as the test helper (`hello`,
+  `Send Stream: N, ascii`, `Send Events: N`); no user-configurable custom script yet. See
+  `docs/design/transports.md`'s "Loopback" section and `docs/changes/2026-09-22.md`.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in

@@ -119,18 +119,28 @@ public sealed class DeviceProfilesWindowTests
                 Assert.AreEqual(Visibility.Visible, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
 
                 window.ViewModel.Transport = "tcp";
 
                 Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Visible, window.TcpPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
 
                 window.ViewModel.Transport = "hid";
 
                 Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
                 Assert.AreEqual(Visibility.Visible, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
+
+                window.ViewModel.Transport = "loopback";
+
+                Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.LoopbackPanel.Visibility);
 
                 await Task.CompletedTask;
             });

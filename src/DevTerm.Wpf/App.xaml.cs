@@ -1,4 +1,6 @@
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -22,6 +24,20 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // A safety net, not a substitute for the deliberate try/catch-and-report handling already in
+        // MainWindow (ConnectAsync/ToggleConnectionAsync/SwitchProfileAsync) - those catch a known,
+        // expected failure (ConnectionErrorMessages.IsConnectionFailure) and intentionally close on a
+        // failed *startup* connect. This instead catches whatever slips past every existing catch
+        // block (a genuine bug, an exception type nobody anticipated) on the UI thread, reports it,
+        // and lets the app keep running rather than taking the whole window down with it.
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        // A faulted background Task whose exception nobody ever observed (no await, no .Result, no
+        // continuation checking it) used to crash the process when its finalizer ran - .NET no longer
+        // does that by default, but this still reports it instead of letting it vanish silently, and
+        // marks it observed so nothing downstream re-escalates it.
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         // Don't quit when the startup DeviceProfilesWindow below closes (WPF's default
         // ShutdownMode is OnLastWindowClose) - there's no MainWindow yet at that point, so the
@@ -88,5 +104,34 @@ public partial class App : Application
     {
         _host?.Dispose();
         base.OnExit(e);
+    }
+
+    // Setting e.Handled = true is what tells WPF the process shouldn't terminate over this - left
+    // unset (the default), the runtime tears the app down right after this handler returns regardless
+    // of what it does. Shown via a plain MessageBox (not ConnectionErrorMessages, which is specific to
+    // transport open/send failures) since this covers arbitrary, unanticipated exceptions.
+    private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        MessageBox.Show(
+            $"An unexpected error occurred and has been ignored so dev-term can keep running:\n\n{e.Exception}",
+            "dev-term — unexpected error",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+        e.Handled = true;
+    }
+
+    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        e.SetObserved();
+
+        // Raised on the finalizer thread, not the UI thread - MessageBox.Show needs a real STA
+        // message loop, so this marshals over rather than calling it directly here. Fire-and-forget:
+        // there's no result to wait for, and the app (or Current itself) may already be shutting down.
+        Current?.Dispatcher.BeginInvoke(() =>
+            MessageBox.Show(
+                $"A background operation failed and has been ignored so dev-term can keep running:\n\n{e.Exception}",
+                "dev-term — unexpected error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error));
     }
 }

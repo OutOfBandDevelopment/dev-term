@@ -445,6 +445,37 @@ public sealed class ConfigureModeTests
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
                 Assert.IsTrue(parts.HidVendorField.Visible);
+                Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
+
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Loopback;
+
+                Assert.IsFalse(parts.PortField.Visible);
+                Assert.IsFalse(parts.HostField.Visible);
+                Assert.IsFalse(parts.HidVendorField.Visible);
+                Assert.IsTrue(parts.LoopbackInfoLabel.Visible);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Connect_WithLoopbackTransport_AndNoOtherFields_Succeeds()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "serial" }; // invalid: no Port
+            RunHeadless(initial, "Missing required '--port' for the serial transport.", new ConnectionProfileStore(directory), parts =>
+            {
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Loopback;
+
+                Click(parts.ConnectButton);
+
+                Assert.IsNotNull(parts.Result);
+                Assert.AreEqual("loopback", parts.Result.Transport);
             });
         }
         finally

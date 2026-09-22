@@ -59,6 +59,35 @@ None of these ship day one; the adapter seam exists so each can land independent
 
 **BLE Serial** is the common special case worth naming explicitly: many hobbyist/embedded BLE devices don't expose a bespoke GATT profile at all — they emulate a UART over two characteristics (one for host→device writes, one for device→host notifications), most commonly following the de facto [Nordic UART Service](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrfxlib/nrf_ble/doc/service.html) UUIDs (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E` service, `...002` RX/write, `...003` TX/notify). A BLE Serial transport mode defaults to those UUIDs but stays configurable per device, since not every device that "acts like serial over BLE" actually uses NUS — worth confirming per device (e.g., via a BLE scanner app) before assuming the default applies, same caution as every other vendor-protocol-claim in this project.
 
+### Loopback
+
+A zero-configuration, in-process fake device — `DevTerm.Transports.Loopback` — for exercising the
+UI (TUI Configure screen, WPF Device Profiles/Connection Editor, either front end's send/receive
+flow) without any real hardware attached. It implements `ITransport` over an in-memory `Pipe`: no
+real `Stream`, no background pump, and none of the cancellation hazards documented for
+serial/HID above, since there's no external I/O to cancel.
+
+It runs a small fixed script of rules against each typed command and pushes each response line back
+as its own separate write (so line-buffering presenters like the ASCII presenter see distinct
+lines/events), with an unmatched command producing a visible `? Unrecognized: ...` marker rather
+than silence. Matching is case-insensitive (`HELLO`, `Hello`, and `hello` all match):
+
+- `hello` → `From Loopback test`
+- `Send Stream: N, ascii` → a deterministic N-character ASCII run
+- `Send Events: N` → N separate lines, `Event 1` through `Event N`
+- `help` or `?` → the command list above (`LoopbackScript.HelpLines`)
+
+The script is fixed today — no user-configurable custom script via the profile editor — and the
+transport takes an `IOptions<LoopbackTransportOptions>` (currently empty) purely as the natural
+extension point for that later. Selecting `loopback` as the transport needs no other fields in
+either front end, so both pickers show only an informational label/panel in its place.
+
+This is a distinct, real production transport, not a repurposed version of the internal
+`LoopbackTransport` test helper in `tests/DevTerm.Console.Tests/` (documented in
+[testing.md](testing.md)) — that one stays a test-only prototype used to drive `Session`/`TuiMode`/
+`MainWindow` in automated tests; this one is registered through the same `AddDevTermFrontEnd` DI path
+as every other transport and is selectable by an actual end user.
+
 ## Extensibility
 
 New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes, etc.) implement the same `ITransport` contract and are picked up via the plugin host — no core changes required. RFC 2217 (a remote-controllable serial port over Telnet) is a concrete planned one — see [rfc2217.md](rfc2217.md), including a real-world caveat about vendor-specific variants that don't actually match the IETF standard despite the name.

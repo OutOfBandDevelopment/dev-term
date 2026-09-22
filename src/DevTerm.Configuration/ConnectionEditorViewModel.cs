@@ -64,6 +64,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsSerialTransport),
         nameof(IsTcpTransport),
         nameof(IsHidTransport),
+        nameof(IsLoopbackTransport),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
         nameof(HidIdsShowHex),
@@ -257,7 +258,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "loopback"];
 
     public IReadOnlyList<string> PresenterOptions { get; } = ["ascii", "utf8", "hex", "decimal", "octal", "binary"];
 
@@ -315,6 +316,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsSerialTransport));
             OnPropertyChanged(nameof(IsTcpTransport));
             OnPropertyChanged(nameof(IsHidTransport));
+            OnPropertyChanged(nameof(IsLoopbackTransport));
         }
     }
 
@@ -323,6 +325,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool IsTcpTransport => string.Equals(Transport, "tcp", StringComparison.OrdinalIgnoreCase);
 
     public bool IsHidTransport => string.Equals(Transport, "hid", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
 
     public string Port { get => _port; set => SetField(ref _port, value); }
 

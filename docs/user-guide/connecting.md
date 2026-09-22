@@ -87,6 +87,14 @@ configured — no flags, no saved profile, or an invalid one. It's also reachabl
 
 ![WPF connection editor, HID transport](images/wpf-device-profiles-hid.png)
 
+**Loopback** — a zero-configuration, in-process fake device for exercising the UI without any real
+hardware attached (see [`docs/design/transports.md`](../design/transports.md)); no fields to fill
+in, just Connect:
+
+![TUI connection editor, Loopback transport](images/tui-configure-loopback.png)
+
+![WPF connection editor, Loopback transport](images/wpf-device-profiles-loopback.png)
+
 Filling in the fields and pressing **Connect** validates them and connects immediately — no need to
 save a profile first (Save is for reusing the setup later; see
 [Managing connection profiles](managing-profiles.md)).

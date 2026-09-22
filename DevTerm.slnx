@@ -9,6 +9,7 @@
     <Project Path="src/DevTerm.DeviceManifests/DevTerm.DeviceManifests.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
+    <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
     <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
     <Project Path="src/DevTerm.UiDefinitions/DevTerm.UiDefinitions.csproj" />
@@ -22,6 +23,7 @@
     <Project Path="tests/DevTerm.DeviceManifests.Tests/DevTerm.DeviceManifests.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
+    <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
     <Project Path="tests/DevTerm.UiDefinitions.Tests/DevTerm.UiDefinitions.Tests.csproj" />

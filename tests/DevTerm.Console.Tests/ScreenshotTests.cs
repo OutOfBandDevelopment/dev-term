@@ -136,6 +136,56 @@ public sealed class ScreenshotTests
     }
 
     [TestMethod]
+    public void ConfigureMode_LoopbackTransport_IsCaptured()
+    {
+        // The info label sits where the HID field group would be, below the fold on an 80x24
+        // window - same reason ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold needs to
+        // scroll to reach the Presenters section just past it. A plain unscrolled capture (like the
+        // other three transports use) would miss it entirely.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
+
+            Application.Init("dotnet");
+            string dump;
+            try
+            {
+                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = Application.Begin(parts.Window);
+                Application.LayoutAndDraw(true);
+
+                try
+                {
+                    parts.DescriptionField.SetFocus();
+                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    Application.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(ImagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-loopback.png"));
+                }
+                finally
+                {
+                    Application.End(token);
+                }
+            }
+            finally
+            {
+                Application.Shutdown();
+            }
+
+            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-loopback.txt"), dump);
+
+            StringAssert.Contains(dump, "No configuration needed");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold()
     {
         var directory = CreateTempProfilesDirectory();

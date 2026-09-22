@@ -9,9 +9,9 @@
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
 │                                                                             █│
-│Transport: ○ Serial  ○ Tcp  ◉ Hid                                            █│
-│                                                                             █│
-│Description:                                                                 █│
+│Transport: ○ Serial  ○ Tcp  ◉ Hid  ○ Loopback                                █│
+│                                                                             ░│
+│Description:                                                                 ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│

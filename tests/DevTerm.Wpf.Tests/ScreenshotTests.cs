@@ -187,4 +187,29 @@ public sealed class ScreenshotTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void DeviceProfilesWindow_LoopbackTransport_IsCaptured()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var initial = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
+                WpfScreenshot.ShowOffScreen(window);
+
+                var path = Path.Combine(ImagesDirectory, "wpf-device-profiles-loopback.png");
+                WpfScreenshot.Save(window, path);
+
+                AssertRealImage(path);
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

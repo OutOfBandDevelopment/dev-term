@@ -4,7 +4,7 @@
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
-│                                                                             ░│
+│No configuration needed — a scripted fake device. Try "hello", "Send Stream: ░│
 │                                                                             ░│
 │Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary                  ░│
 │                                                                             ░│

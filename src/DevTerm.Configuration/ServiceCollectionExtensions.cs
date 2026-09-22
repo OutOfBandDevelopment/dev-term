@@ -1,6 +1,7 @@
 using DevTerm.Core.Hosting;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Hid;
+using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,10 @@ public static class ServiceCollectionExtensions
                 o.ProductId = cliOptions.HidProductId;
                 o.SerialNumber = cliOptions.HidSerialNumber;
             });
+        }
+        else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddLoopbackTransport();
         }
         else
         {

@@ -39,6 +39,7 @@ public static class ConfigureMode
         Serial,
         Tcp,
         Hid,
+        Loopback,
     }
 
     /// <summary>Same reasoning as <see cref="TransportChoice"/>, for <see cref="ConnectionEditorViewModel.Parser"/> (the presenter picker itself is checkboxes, not this).</summary>
@@ -192,9 +193,16 @@ public static class ConfigureMode
         var detectHidButton = new Button { X = Pos.Right(hidProductField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Detect..." };
         var hidShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Show as hex" };
 
+        var loopbackInfoLabel = new Label
+        {
+            X = 0,
+            Y = Pos.Bottom(hidShowHexCheckBox) + 1,
+            Text = "No configuration needed — a scripted fake device. Try \"hello\", \"Send Stream: N, ascii\", \"Send Events: N\", or \"help\"/\"?\".",
+        };
+
         // The presenter picker is multi-select, so a row of checkboxes rather than an OptionSelector
         // (radio buttons, single-select only) - one per PresenterChoices entry, in that order.
-        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(hidShowHexCheckBox) + 1, Text = "Presenters:" };
+        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(loopbackInfoLabel) + 1, Text = "Presenters:" };
         var presenterCheckBoxes = new List<CheckBox>();
         foreach (var choice in viewModel.PresenterChoices)
         {
@@ -271,6 +279,7 @@ public static class ConfigureMode
             HidProductField = hidProductField,
             DetectHidButton = detectHidButton,
             HidShowHexCheckBox = hidShowHexCheckBox,
+            LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
             ParserSelector = parserSelector,
             LineEndingSelector = lineEndingSelector,
@@ -295,6 +304,7 @@ public static class ConfigureMode
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
             hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = hidShowHexCheckBox.Visible = selected == TransportChoice.Hid;
+            loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
         }
 
         // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
@@ -720,6 +730,7 @@ public static class ConfigureMode
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
+            loopbackInfoLabel,
             presenterLabel, parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton, replaceAllButton,
@@ -872,6 +883,9 @@ internal sealed class ConfigureWindowParts
     public required Button DetectHidButton { get; init; }
 
     public required CheckBox HidShowHexCheckBox { get; init; }
+
+    /// <summary>Shown only when <see cref="ConfigureMode.TransportChoice.Loopback"/> is selected — the loopback transport takes no configuration.</summary>
+    public required Label LoopbackInfoLabel { get; init; }
 
     /// <summary>One checkbox per presenter, in <see cref="ConnectionEditorViewModel.PresenterChoices"/> order — the multi-select presenter picker.</summary>
     public required IReadOnlyList<CheckBox> PresenterCheckBoxes { get; init; }

@@ -75,6 +75,32 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void ConnectCommand_WithLoopbackTransport_SetsResultAndRaisesCloseRequested()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "serial" })
+            {
+                Transport = "loopback",
+            };
+
+            var closeRequested = false;
+            vm.CloseRequested += (_, _) => closeRequested = true;
+
+            vm.ConnectCommand.Execute(null);
+
+            Assert.IsTrue(closeRequested);
+            Assert.IsNotNull(vm.Result);
+            Assert.AreEqual("loopback", vm.Result.Transport);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConnectCommand_WithInvalidFields_SetsStatusMessageAndDoesNotRaiseCloseRequested()
     {
         var directory = CreateTempDirectory();
