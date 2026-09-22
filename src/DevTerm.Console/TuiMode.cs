@@ -36,7 +36,14 @@ public static class TuiMode
         {
             var parts = BuildWindow(session, catalog, cliOptions, profileStore);
             parts.SendField.SetFocus();
-            Application.Run(parts.Window);
+
+            // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
+            // GUI: report whatever slips past every existing catch block (a genuine bug, not one of
+            // the already-handled ConnectionErrorMessages.IsConnectionFailure cases) and resume the
+            // loop rather than letting the whole TUI die. Per Terminal.Gui's own doc comment on this
+            // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
+            // debugger can break on the original exception.
+            Application.Run(parts.Window, OnUnhandledException);
         }
         finally
         {
@@ -45,6 +52,16 @@ public static class TuiMode
 
         await session.CloseAsync();
         return 0;
+
+        static bool OnUnhandledException(Exception ex)
+        {
+            MessageBox.ErrorQuery(
+                Application.Instance,
+                "dev-term — unexpected error",
+                $"An unexpected error occurred and has been ignored so dev-term can keep running:\n\n{ex}",
+                "Ok");
+            return true;
+        }
     }
 
     /// <summary>

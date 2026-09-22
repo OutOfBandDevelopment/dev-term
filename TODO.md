@@ -107,8 +107,29 @@ Completed work is logged by date under `docs/changes/`.
   see `docs/design/testing.md`); this one is wired through the same DI/validation/description path
   every other transport uses (`AddDevTermFrontEnd`, `CliOptionsValidator`, `ConnectionDescription`)
   and both front ends' transport pickers. Same three example commands as the test helper (`hello`,
-  `Send Stream: N, ascii`, `Send Events: N`); no user-configurable custom script yet. See
-  `docs/design/transports.md`'s "Loopback" section and `docs/changes/2026-09-22.md`.
+  `Send Stream: N, ascii`, `Send Events: N`), plus a fourth added the same day: `help`/`?`, which
+  prints the command list (`LoopbackScript.HelpLines`); all matching is case-insensitive. No
+  user-configurable custom script yet. See `docs/design/transports.md`'s "Loopback" section and
+  `docs/changes/2026-09-22.md`.
+
+- **Global unhandled-exception handling**, added 2026-09-22 — an unexpected exception (one that
+  slips past every existing, deliberate `ConnectionErrorMessages.IsConnectionFailure` catch) no
+  longer takes the whole app down with it. `DevTerm.Wpf`'s `App.xaml.cs` hooks
+  `Application.DispatcherUnhandledException` (reports via `MessageBox`, sets `e.Handled = true`) and
+  `TaskScheduler.UnobservedTaskException` (a faulted, never-awaited background `Task`; marshaled to
+  the UI thread via `Dispatcher.BeginInvoke` since it fires on the finalizer thread). `DevTerm.Console`
+  has no `Dispatcher` to intercept a synchronous exception the same way, so its two front ends split
+  the equivalent behavior: `Program.cs` hooks `TaskScheduler.UnobservedTaskException` process-wide
+  (reports to stderr), and `TuiMode.RunAsync` passes an `errorHandler` to `Application.Run` (a real
+  Terminal.Gui v2.5.0 API — reports via `MessageBox.ErrorQuery` and returns `true` to resume the main
+  loop instead of exiting). Per Terminal.Gui's own doc comment, that `errorHandler` only takes effect
+  in RELEASE builds — a DEBUG build still rethrows so a debugger can break on the original exception.
+  `CliMode` needed no change beyond the process-wide `UnobservedTaskException` hook: it already
+  catches the same known failure modes per line (`ConnectionErrorMessages.IsConnectionFailure`,
+  `TimeoutException`) the other front ends do, and letting anything past that crash with a non-zero
+  exit code is the right behavior for a scriptable/automatable mode — swallowing an unanticipated
+  exception there would hide a real bug from whatever's driving it via a script/CI pipeline. See
+  `docs/changes/2026-09-22.md`.
 
 ## Backlog / research
 

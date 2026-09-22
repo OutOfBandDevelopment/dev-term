@@ -10,6 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
+// A faulted background Task whose exception nobody ever observed (no await, no .Result, no
+// continuation checking it) used to crash the process when its finalizer ran - .NET no longer does
+// that by default, but this still reports it instead of letting it vanish silently, and marks it
+// observed so nothing downstream re-escalates it. Mirrors DevTerm.Wpf's App.xaml.cs handler; the
+// TUI's own on-screen equivalent for a *synchronous* unhandled exception is TuiMode.RunAsync's
+// Application.Run errorHandler, since there's no Dispatcher here to intercept those instead.
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    e.SetObserved();
+    Console.Error.WriteLine($"A background operation failed and has been ignored so dev-term can keep running:\n\n{e.Exception}");
+};
+
 const string Usage =
     "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
