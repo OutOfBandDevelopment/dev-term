@@ -13,9 +13,36 @@ CI/CD pipeline exists (a pipeline can run `UNIT` and `INTEGRATION` on every push
 - **`UNIT`** — fast, hardware-free, no process/OS boundary crossed. The large majority of the
   suite: transport tests against a fake port/device (a real `Pipe`, not a real socket/serial
   port/USB device — see `SerialTransportTests`/`TcpTransportTests`/`HidTransportTests`), presenter
-  tests, serialization round-trips (`DevTerm.UiDefinitions`/`DevTerm.DeviceManifests`), and WPF
+  tests, serialization round-trips (`DevTerm.UiDefinitions`/`DevTerm.DeviceManifests`), WPF
   `MainWindow` logic tests driven in-process against a `FakeTransport` (see
-  `DevTerm.Wpf.Tests.MainWindowTests`) rather than a real connection.
+  `DevTerm.Wpf.Tests.MainWindowTests`) rather than a real connection, and scripted-response tests
+  against `LoopbackTransport` (see "Scripted responses without a real device" below).
+
+## Scripted responses without a real device: `LoopbackTransport`
+
+`FakeTransport` (`DevTerm.Console.Tests`/`DevTerm.Wpf.Tests`) is deliberately dumb — a bare
+`Pipe`-backed `ITransport` a test drives by hand (`WriteAsync` just records the payload;
+`PushIncomingAsync` is a separate manual call to simulate a reply). That's fine for tests that only
+need one or two canned exchanges, but is tedious for anything wanting realistic request/response or
+multi-line "event stream" behavior — and a real `TcpListener` loopback socket (the pattern
+`TuiModeSwitchProfileTests`/`ConsoleAppCliTests` use) is `INTEGRATION`-tier overkill when the actual
+network stream isn't what's under test.
+
+`DevTerm.Console.Tests.LoopbackTransport` fills that gap: an in-process `ITransport`, same
+`Pipe`-backed shape as `FakeTransport`, but backed by a script (`IReadOnlyList<LoopbackRule>`) of
+regex-matched commands, each producing zero or more deterministic response lines (no `Random` — a
+given input always produces the same output, so tests can assert exact text). A command with no
+matching rule gets a visible `? Unrecognized: ...` reply rather than silence, so a test with an
+incomplete script fails on a wrong/missing line instead of hanging on a reply that never comes. Each
+response line is pushed back as its own write, so a line-buffering presenter (`AsciiPresenter`) sees
+separate lines/events rather than one blob — this is what makes an "N discrete events" style reply
+possible at all. `LoopbackScript.Default()` provides three example rules (an exact-match greeting, a
+parameterized "send me a stream of N bytes" command via `LoopbackGenerators.AsciiStream`, and a
+parameterized "send me N events" command via `LoopbackGenerators.Events`); a test can pass its own
+rule list instead when it needs different behavior. See `LoopbackTransportTests` for usage through a
+real `Session`/`AsciiPresenter` pair — the same shape `TuiMode`/`MainWindow` use, just without
+`TuiTestRunner`/`StaTestRunner`'s UI-thread machinery, since nothing here touches Terminal.Gui or
+WPF. `UNIT`, not `INTEGRATION`: no socket, no process boundary, just a `Pipe`.
 - **`INTEGRATION`** — crosses a real process or OS boundary, but no real external hardware: spawns
   the actual built `DevTerm.Console.dll` as a child process and drives it over real stdin/stdout,
   against a real local TCP socket the test itself opens (loopback, not a real device) — see

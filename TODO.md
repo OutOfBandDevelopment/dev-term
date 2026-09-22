@@ -89,6 +89,15 @@ Completed work is logged by date under `docs/changes/`.
   `--parser` `DEV-LOCAL` tests still haven't been run, and the double-click fix and timeout
   hardening haven't been confirmed by hand.
 
+- **`LoopbackTransport` test helper**, added 2026-09-22 — a scripted, deterministic in-process
+  `ITransport` (`DevTerm.Console.Tests`) for exercising `Session`/`TuiMode`/`MainWindow` logic
+  against realistic request/response and multi-line "event stream" behavior without a real device or
+  even a real socket, filling the gap between the dumb `FakeTransport` (manual push/record only) and
+  a real `TcpListener` loopback (`INTEGRATION`-tier, and overkill when the network stream itself
+  isn't what's under test). See `docs/design/testing.md`'s "Scripted responses without a real
+  device" section and `docs/changes/2026-09-22.md`. Not yet used by any TUI/WPF-level test — it's a
+  building block, added because real devices aren't always available to test against by hand.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
