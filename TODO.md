@@ -78,7 +78,12 @@ Completed work is logged by date under `docs/changes/`.
   not reproduced against the K8055). Two more real bugs were fixed after being reported: the TUI
   editor's fields couldn't take focus or input at all (broken since the form was made scrollable;
   now focusable, and Tab scrolls a below-the-fold control into view), and closing the WPF window
-  threw "...while a Window is closing" (a synchronous-continuation reentrancy in `OnClosing`). Nothing functional is left open on the Connection Editor; what
+  threw "...while a Window is closing" (a synchronous-continuation reentrancy in `OnClosing`). A
+  third, reported 2026-09-18 and fixed 2026-09-22: switching TUI profiles after a failed attempt
+  could silently revert a just-succeeded one (a stale, superseded connect resolving late and
+  clobbering the UI) — see `docs/changes/2026-09-22.md`, which also covers a live (not
+  automated-test) investigation of a reported WPF connection-error crash that didn't reproduce.
+  Nothing functional is left open on the Connection Editor; what
   remains (see [`BACKLOG.md`](BACKLOG.md) and `docs/changes/2026-09-18.md`) is serial-port
   descriptions on Linux/macOS (low priority) and real-hardware confirmation: the presenter-picker/
   `--parser` `DEV-LOCAL` tests still haven't been run, and the double-click fix and timeout
@@ -89,10 +94,4 @@ Completed work is logged by date under `docs/changes/`.
 Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
 (serial-port descriptions on Linux/macOS).
-
-## Notes from the Architect
-
-In TUI.  If I try changing a connection after a failure it doesnt even try to connect and the connect/disconnect button state doesn't properly follow connection.  For example I tried connecting to 192.168.0.108 and it fail so I tried connecting to 192.168.0.107 and it wont even try to connect now.
-
-In WPF if the connection errors out the app crashes.
 

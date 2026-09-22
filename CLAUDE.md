@@ -261,6 +261,18 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   `AttachConsole` + `WriteConsoleInput` to the `CONIN$` handle, and screenshot with `PrintWindow`.
   Use a key the app handles globally (PageUp/PageDown scroll the editor form) as a control to prove
   the injection itself is reaching the app before drawing conclusions from "nothing happened".
+- **Real-WPF-app driving past a blocking `MessageBox.Show()` works the same way, for the same
+  reason** — `MainWindow.ConnectAsync`/`ToggleConnectionAsync`/`SwitchProfileAsync`'s failure paths
+  are undertested by design (`MessageBoxShow` is a real modal with no automated way to dismiss it;
+  see `MainWindowSwitchProfileTests`'s doc comment) but still checkable live: launch
+  `DevTerm.Wpf.exe` with args pointed at a connection that will fail, enumerate its windows via
+  `user32.dll EnumWindows`/`GetWindowText` to find the resulting dialog and `EnumChildWindows` for
+  its OK button, then drive the button with `SendMessage(hwnd, BM_CLICK=0x00F5, 0, 0)` — this
+  bypasses the button click entirely rather than needing real keyboard/mouse input, which matters
+  because `SetForegroundWindow`/`SendKeys` from an unrelated (non-interactive) process reliably
+  fail to focus the dialog under Windows' foreground-lock rules. Confirmed a reported "WPF crashes
+  on connection error" did not reproduce this way (process exited cleanly both times, no `.NET
+  Runtime`/`Application Error` event log entries) — see docs/changes/2026-09-22.md.
 - **The Terminal.Gui headless key injector (`IInputInjector`/`TuiTestRunner.TypeText`) degrades
   after enough `Application.Init`/`Shutdown` cycles have already run in the same test process** —
   this was already known for a single class (see the `Application.Invoke`/`IInputInjector` note

@@ -72,6 +72,54 @@ public sealed class TuiModeSwitchProfileTests
     }
 
     [TestMethod]
+    public async Task SwitchProfileAsync_SupersededByAnotherSwitchBeforeItResolves_DoesNotStompTheNewerOne()
+    {
+        // Reproduces "I tried connecting to 192.168.0.108 and it failed, so I tried 192.168.0.107
+        // and it won't even try to connect now": a first attempt that's still pending (here, a TCP
+        // listener mode that never gets a client, standing in for a host that never actively
+        // refuses - the real case was an unreachable LAN IP sitting on the OS connect timeout) must
+        // not have its eventual failure/cancellation reset connectMenuItem.Title/sendField.Enabled/
+        // output after a second, newer switch has already established its own, real connection.
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Presenter = ["ascii"] };
+
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            using var neverConnectedTo = new TcpListener(IPAddress.Loopback, 0);
+            neverConnectedTo.Start();
+            var pendingPort = ((IPEndPoint)neverConnectedTo.LocalEndpoint).Port;
+
+            // TcpTransportMode.Listener: AcceptAsync blocks until a client connects - nobody ever
+            // does, so this stays "Opening" indefinitely until cancelled, a deterministic stand-in
+            // for a slow-to-fail connect.
+            var staleTask = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Listen = true, TcpPort = pendingPort, Presenter = ["ascii"] });
+
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var acceptTask = listener.AcceptTcpClientAsync();
+
+            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] })
+                .GetAwaiter().GetResult();
+            using var client = acceptTask.GetAwaiter().GetResult();
+
+            Assert.IsTrue(switched, "The second (newer) switch should have connected for real.");
+            Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title));
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
+            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), $"tcp://127.0.0.1:{port}");
+
+            // The stale (superseded) attempt should resolve false - cancelled, not left hanging -
+            // without ever having touched the UI state the newer attempt already set.
+            var staleResult = staleTask.GetAwaiter().GetResult();
+            Assert.IsFalse(staleResult);
+            Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title), "The stale attempt's resolution must not have reverted the menu title.");
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled), "The stale attempt's resolution must not have disabled the send field.");
+            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), $"tcp://127.0.0.1:{port}");
+        });
+    }
+
+    [TestMethod]
     public async Task SwitchProfileAsync_WithAnUnknownPresenter_ReportsAndKeepsTheOldSessionUnaffected()
     {
         var (session, _, presenter) = CreateSession();

@@ -64,6 +64,13 @@ public static class TuiMode
         // closures below like session/cliOptions are (see SwitchProfileAsync's comment).
         var parser = cliOptions.EffectiveParser;
 
+        // Cancels and replaces the in-flight profile-switch attempt's token on every
+        // SwitchProfileAsync call - declared up here (not next to SwitchProfileAsync itself) purely
+        // so the "_Device Profiles..." menu item below, which calls SwitchProfileAsync before its
+        // own declaration appears in this method, doesn't hit a definite-assignment error over a
+        // variable a local function closes over.
+        CancellationTokenSource? switchCts = null;
+
         string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore);
 
         var window = new Window
@@ -188,8 +195,22 @@ public static class TuiMode
         // Application.Run() loop (RunWithLoop in tests, never RunHeadless) - it calls
         // Application.Invoke like ToggleConnectionAsync below, which silently never flushes
         // otherwise (see CLAUDE.md).
+        // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on
+        // the OS connect timeout) can still be pending when the user switches to a *different*
+        // host, and without switchCts, the earlier attempt's success/failure handler ran anyway
+        // once it finally resolved - using the by-then-stale cliOptions - and stomped
+        // connectMenuItem.Title/sendField.Enabled/output back over whatever the newer attempt had
+        // already set. Reported as "I tried connecting to 192.168.0.108 and it failed, so I tried
+        // 192.168.0.107 and it won't even try to connect now" - .107 *did* try, but .108's late
+        // failure silently reverted the UI afterward. Real TCP connects honor cancellation (unlike
+        // SerialPort/HidStream - see CLAUDE.md), so the superseded attempt now fails fast instead
+        // of leaking a connect in the background.
         async Task<bool> SwitchProfileAsync(CliOptions newOptions)
         {
+            switchCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            switchCts = cts;
+
             DevTermSessionBuilder.Result built;
             try
             {
@@ -201,15 +222,17 @@ public static class TuiMode
                 return false;
             }
 
+            var mySession = built.Session;
+
             session.Output -= OnSessionOutput;
             await session.CloseAsync();
             await session.DisposeAsync();
 
-            session = built.Session;
+            session = mySession;
             catalog = built.Catalog;
             cliOptions = newOptions;
             parser = newOptions.EffectiveParser;
-            session.Output += OnSessionOutput;
+            mySession.Output += OnSessionOutput;
 
             Application.Invoke(() =>
             {
@@ -224,16 +247,39 @@ public static class TuiMode
 
             try
             {
-                await session.OpenAsync();
+                await mySession.OpenAsync(cts.Token);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+                // Superseded by a newer switch before this one finished connecting - that newer
+                // attempt owns the UI now, so this stale one reports nothing.
+                return false;
             }
             catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
             {
+                if (!ReferenceEquals(switchCts, cts))
+                {
+                    // Superseded between the failure and this catch running - don't stomp the
+                    // newer attempt's state with a stale one.
+                    return false;
+                }
+
                 AppendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
                 Application.Invoke(() =>
                 {
                     connectMenuItem.Title = "_Connect";
                     sendField.Enabled = false;
                 });
+                return false;
+            }
+
+            if (!ReferenceEquals(switchCts, cts))
+            {
+                // Connected, but superseded in the meantime - close it rather than adopting a
+                // stray connection as current.
+                mySession.Output -= OnSessionOutput;
+                await mySession.CloseAsync();
+                await mySession.DisposeAsync();
                 return false;
             }
 
@@ -310,6 +356,16 @@ public static class TuiMode
         catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
         {
             appendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
+
+            // Unlike SwitchProfileAsync, this reuses the same session/transport rather than
+            // building a fresh one - but the menu title/send field still need to reflect "not
+            // connected" on a failed *retry*, not just a failed first attempt (BuildWindow already
+            // set them correctly for that case before this was ever wired up).
+            Application.Invoke(() =>
+            {
+                connectMenuItem.Title = "_Connect";
+                sendField.Enabled = false;
+            });
             return;
         }
 

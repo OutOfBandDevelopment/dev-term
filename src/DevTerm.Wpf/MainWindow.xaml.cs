@@ -129,6 +129,14 @@ public partial class MainWindow : Window
                 "dev-term — connection failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+
+            // Unlike SwitchProfileAsync (which already resets these on a failed attempt), this
+            // reuses the same session/transport across retries - but the menu label/send box still
+            // need to reflect "not connected" on a failed *retry*, not just a failed first attempt
+            // (ConnectAsync already leaves them alone on a failed first attempt, since it closes the
+            // window instead). Same asymmetry found and fixed in TuiMode.ToggleConnectionAsync.
+            ConnectMenuItem.Header = "_Connect";
+            SendBox.IsEnabled = false;
             return;
         }
 
