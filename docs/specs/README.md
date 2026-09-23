@@ -34,6 +34,9 @@ Each spec follows the same shape:
   end's "File > Device Profiles..." menu item.
 - [TUI Main Screen](tui-main-screen.md) — `TuiMode`, the console app's default full-screen mode.
 - [WPF Main Window](wpf-main-window.md) — `MainWindow`, the GUI front end's only window today.
+- [Device Control Panel](device-control-panel.md) — the generic `UiDefinition` renderer
+  (`ControlPanelMode`/`ControlPanelWindow`) shared by the K8055, Busylight, and SCPI Instrument panels
+  reachable from each front end's `Device` menu.
 
 **Keep these current as the screens they describe change** — a spec that's drifted from the code is
 worse than no spec, since it looks authoritative while being wrong. Update the relevant spec in the

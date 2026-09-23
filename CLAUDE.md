@@ -113,9 +113,50 @@ parser. `CliOptions` property names double as CLI flag names (case-insensitive).
 
 Full architecture/rationale, including what's designed but not yet built (dynamic plugin loading,
 protocol decoders, rendering presenters, device control modules, RFC 2217, UDP/HID/BLE transports,
-TUI, WPF): see [`docs/design/`](docs/design/README.md). Current in-progress state:
-[`TODO.md`](TODO.md); not-yet-started backlog/research: [`BACKLOG.md`](BACKLOG.md). Daily change
-log: `docs/changes/YYYY-MM-DD.md`.
+TUI, WPF): see [`docs/design/`](docs/design/README.md) — see "Documentation" below for the rest of
+the doc tree and how to keep it in sync.
+
+## Documentation
+
+Five kinds of doc, each with a distinct job — don't blend them:
+
+- **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
+  left stale) as work completes: replace a finished entry with a short "done, see
+  `docs/changes/YYYY-MM-DD.md`" summary, or remove it, rather than leaving a completed item worded as
+  still-in-progress. **[`BACKLOG.md`](BACKLOG.md)** is the same idea for not-yet-started work.
+- **`docs/changes/YYYY-MM-DD.md`** — the authoritative, detailed changelog. Append to today's file as
+  work lands within a day; don't rewrite prior days'. This is where a real root cause, a fix's actual
+  detail, or a "verified against real hardware" note belongs — `TODO.md`/proposal docs cross-reference
+  it rather than repeating it.
+- **[`docs/design/`](docs/design/README.md)** — intent and rationale for people building dev-term:
+  one doc per architectural concern (transports, presenters, plugin model, ...), plus
+  `docs/design/proposals/` (listed in `docs/design/README.md`'s "Proposals" section) for concrete,
+  per-device/per-feature proposals (each with a "Status" section — implemented/not, and what's
+  actually been verified against real hardware vs. assumed). Update a proposal's Status and
+  `docs/design/README.md`'s one-line summary of it in the same change that implements/extends it.
+- **[`docs/specs/`](docs/specs/README.md)** — the precise field/action/state reference for one
+  user-facing screen or shared component, kept current as that screen changes (in the same change
+  that changes the behavior, not a follow-up). This is what to check before changing a screen's
+  behavior or verifying an implementation matches intent.
+- **[`docs/user-guide/`](docs/user-guide/README.md)** — task-oriented walkthroughs, one file per user
+  flow (not per front end) — see what a flow looks like across CLI/TUI/WPF together. Every screenshot/
+  transcript is real captured output (`ScreenshotTests` et al.), never a hand-typed mockup.
+
+**Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
+a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has
+grown hard to read at a glance, split it rather than letting it keep growing (matches
+`docs/design/README.md`'s own "each doc covers one concern" rule).
+
+**A new user-facing feature (a new menu item, screen, or flow) needs a `docs/specs/` entry and a
+`docs/user-guide/` entry, not just a design doc** — a design doc alone (as with the SCPI module for a
+while) leaves the actual screen/flow undocumented even though the feature exists and works.
+
+**Diagrams**: both `docs/design/` and `docs/specs/` can embed PlantUML directly as fenced
+` ```plantuml ` blocks — `@startuml`/`@enduml` for class/sequence diagrams, `@startsalt`/`@endsalt`
+for UI wireframes (see `docs/design/ui-definitions.md` and `docs/specs/device-control-panel.md` for
+examples of each). Reach for a wireframe/sequence diagram when a screen has no real screenshot yet, or
+when a flow (an async multi-step interaction, a correlation between two components) is genuinely
+easier to show than to describe in prose.
 
 ## Testing
 

@@ -23,6 +23,7 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 | **File > Connect/Disconnect** | A single menu item whose label flips; toggles the same `Session`/transport open or closed without touching which profile is loaded | None | Same connection-failure handling as startup (`ConnectionErrorMessages.For`) |
 | **File > Device Profiles...** | Opens `ConfigureMode` as a nested modal (`Application.Run` on top of the current window) | None | n/a |
 | **File > Quit** / **Ctrl+Q** | Stops the application loop | None | n/a |
+| **Device > K8055/Busylight/SCPI Instrument...** | Opens a generic control-panel screen for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with WPF and data-driven rather than a fixed set of fields | None checked | n/a |
 
 ## States
 
