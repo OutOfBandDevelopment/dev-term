@@ -151,6 +151,15 @@ public sealed class ScpiProfileCatalogTests
     {
         var names = ScpiProfileCatalog.All.Select(p => p.Name).ToArray();
 
-        Assert.HasCount(6, names);
+        Assert.HasCount(7, names);
+    }
+
+    [TestMethod]
+    public void Tektronix2230_HasNoIdnPatternSoItIsNeverAutoDetected()
+    {
+        var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("2230", StringComparison.OrdinalIgnoreCase));
+
+        Assert.IsTrue(string.IsNullOrEmpty(tek2230.IdnPattern));
+        Assert.IsTrue(tek2230.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
     }
 }

@@ -69,11 +69,15 @@ ordered against the rest.
   resolved (see that proposal's open questions) before implementing the decoder.
   [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md) is **deprioritized** —
   no hardware access to test against anymore; kept as a documented proposal only.
-  A Tektronix-codes (pre-SCPI) decoder is also in scope, explicitly **not** part of the SCPI work
-  above since the 2230 predates SCPI and doesn't speak it — see
+  A minimal Tektronix 2230 profile (`Profiles/tektronix-2230.json`, one confirmed command, `ID?`)
+  was added to `DevTerm.Devices.Scpi` directly on 2026-09-23 — the 2230 predates SCPI and doesn't
+  speak it, but `ScpiControlSurface`'s plain template substitution didn't need SCPI syntax to send
+  one confirmed command. See
   [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md) for what's known
-  (`ID?` → `ID TEK/2230,V81.1,VERS:14;`, confirmed live against the project's own two owned units)
-  and the real-hardware probing this still needs before a command set can be curated.
+  (`ID?` → `ID TEK/2230,V81.1,VERS:14;`, confirmed live against the project's own two owned units),
+  its revised "Status" section for what reusing the SCPI plumbing as-is doesn't yet cover (unconfirmed
+  reply framing, no auto-detect), and the real-hardware probing still needed before more commands
+  can be curated.
   Three more real, HID/serial-only (no new transport needed) targets, sourced from a local prior-art
   decoder library (`dotex/Incoming/BinaryDecoders`), each with a real-hardware-verified or
   cross-referenced protocol: [Kuando Busylight](docs/design/proposals/kuando-busylight-protocol.md)

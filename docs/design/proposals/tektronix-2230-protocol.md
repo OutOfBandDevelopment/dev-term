@@ -1,6 +1,59 @@
 # Proposal: Tektronix 2230 — Pre-SCPI "Codes" Protocol
 
-## Status: proposal only — not implemented
+## Status: minimal profile added (2026-09-23), reusing `DevTerm.Devices.Scpi` as-is
+
+Revised from the original "out of scope, needs its own decoder" framing below: `ScpiControlSurface`'s
+`{Name}`-token template substitution has no actual dependency on SCPI's `*`-prefixed common commands
+or `:SUBSYSTEM:COMMAND` hierarchy — a `Template` is just an arbitrary string with `{Name}` tokens, so
+a plain `ID?` command works exactly like any other profile's command. There was therefore no need to
+build a separate `TektronixCodesControlSurface`/`TektronixCodesReplyPresenter` pair just to send one
+confirmed command; the plumbing described in "Why this isn't folded into the SCPI module" below still
+holds for anything *beyond* the one confirmed exchange (see the caveats immediately below), so this
+stays a proposal doc rather than a finished module.
+
+`src/DevTerm.Devices.Scpi/Profiles/tektronix-2230.json` was added:
+
+```json
+{
+  "Name": "Tektronix 2230 (pre-SCPI \"codes\" protocol - NOT IEEE-488.2/SCPI compliant; see docs/design/proposals/tektronix-2230-protocol.md)",
+  "Terminator": "\n",
+  "Commands": [
+    { "Id": "id", "Label": "Identify", "Category": "Common", "Template": "ID?", "IsQuery": true }
+  ]
+}
+```
+
+Only the one confirmed command (`ID?`) is included, consistent with this repo's practice of never
+curating a command without a confirmed real reply. The name field itself carries the
+non-compliance warning (shown wherever a profile name is displayed — the picker list, the panel
+title) since there's no separate "compliance" field in `ScpiInstrumentProfile`. Everything else
+about this device is still reached through the always-present "Custom Command" section every SCPI
+profile gets, same as any other unconfirmed command on any other profile.
+
+**Caveats carried over from reusing the SCPI plumbing as-is, not fully resolved:**
+
+- **No `IdnPattern`, so no auto-detect.** The existing auto-detect flow
+  (`MainWindow.DetectScpiProfileAsync`/`TuiMode`'s equivalent) hardcodes sending `*IDN?`, which this
+  device doesn't understand — the 2230 must always be picked explicitly from the profile list
+  ("Tektronix 2230 (pre-SCPI...)"), never via "Auto-detect (\*IDN?)". Giving it an `IdnPattern` would
+  be actively misleading (it would never match, since auto-detect never sends `ID?`), so it's left
+  unset — the same convention `ScpiProfileCatalog.Generic` already uses for "manual selection only".
+- **Reply framing is still unconfirmed.** `ScpiReplyPresenter` line-buffers on `\n`; the one known
+  reply (`ID TEK/2230,V81.1,VERS:14;`) is `;`-terminated, and whether a trailing newline actually
+  follows the `;` on the wire has not been checked against real hardware. If it doesn't, the `id`
+  command's `IndicatorControl` simply won't update (the FIFO queue stays pending) even though the
+  raw bytes did arrive — the same failure shape as a presenter not being wired into the pipeline at
+  all, so don't assume this profile's indicator working is proof of anything beyond `ID?` specifically
+  until checked live.
+- **`Terminator: "\n"` on the outbound side is a guess**, not confirmed — the known exchange doesn't
+  establish what, if anything, needs to follow `ID?` when sent.
+
+The original scoping below (full command enumeration, `;`-based reply framing work) remains
+accurate for going beyond this one command.
+
+---
+
+## Original scoping (superseded above for the one-command case)
 
 Explicitly out of scope for the SCPI instrument control work
 ([scpi-instrument-control.md](scpi-instrument-control.md)): the 2230 predates SCPI and does not
@@ -50,19 +103,28 @@ remotely accessible on this model at all — many period scopes of this class ar
 *acquisition* readback, with the front panel remaining the only way to change most settings) is
 **unknown** and not guessed here.
 
-## Why this isn't folded into the SCPI module
+## Why this isn't (fully) folded into the SCPI module
 
-- Different command syntax entirely (no `:SUBSYSTEM:COMMAND` hierarchy, no `*`-prefixed IEEE 488.2
-  common commands) — `ScpiControlSurface`'s `{Name}`-token template substitution and
-  `ScpiProfileCatalog`'s `IdnPattern`-based auto-detect both assume a `*IDN?`-shaped bootstrap query
-  this device doesn't have.
-- Different reply framing (`;`-terminated, command-name-echoing) than the newline-terminated,
-  bare-value SCPI convention `ScpiReplyPresenter` was built around.
+Superseded in part by the "Status" section above: a single `ID?` command needed nothing beyond
+`ScpiControlSurface`'s plain template substitution, so it *is* just a `DevTerm.Devices.Scpi` JSON
+profile today, not a bespoke plugin. What still doesn't fold in cleanly, if/once more commands are
+confirmed:
+
+- **Auto-detect doesn't generalize.** `ScpiProfileCatalog`'s `IdnPattern`-based matching assumes a
+  `*IDN?`-shaped bootstrap query this device doesn't have — fine for one manually-picked profile,
+  but there's no `*IDN?`-equivalent to hang a real "detect this exact instrument automatically" flow
+  on within the existing auto-detect entry point without special-casing it there.
+- **Reply framing (`;`-terminated, command-name-echoing) doesn't match `ScpiReplyPresenter`'s
+  newline-buffered, bare-value assumption.** Untested whether it happens to work anyway (see the
+  caveat above); if it turns out not to, correlated replies for this device need their own decoder,
+  not a `ScpiReplyPresenter` change (which is built around real SCPI's actual convention, not a
+  guess at Tek's).
 - Reusing `DevTerm.UiDefinitions`/`IControlSurface`/the generic `ControlPanelMode`/`ControlPanelWindow`
-  renderers is still very plausible once a real command set and reply grammar are known — the
-  renderer itself is protocol-agnostic (proven across K8055, Busylight, and SCPI with zero renderer
-  changes). What's missing is a `TektronixCodesControlSurface`/`TektronixCodesReplyPresenter` pair
-  analogous to the SCPI ones, not a UI-layer change.
+  renderers is still proven and unaffected either way — the renderer itself is protocol-agnostic. A
+  dedicated `TektronixCodesControlSurface`/`TektronixCodesReplyPresenter` pair (mirroring
+  `DevTerm.Devices.Scpi`'s shape) only becomes worth building if real-hardware probing turns up
+  either a large confirmed command set or reply framing `ScpiReplyPresenter` genuinely can't handle
+  — not before either is known.
 
 ## Proposed next steps (not started)
 
@@ -75,11 +137,13 @@ remotely accessible on this model at all — many period scopes of this class ar
    exact command/reply pairs the same way `ID?` was already confirmed — no command should be added
    to a profile without a real confirmed reply, consistent with this repo's stated practice of
    flagging unverified curated command sets explicitly.
-3. Once a handful of confirmed commands exist, build `DevTerm.Devices.TektronixCodes` mirroring
-   `DevTerm.Devices.Scpi`'s shape (a profile/control-surface/reply-presenter trio) rather than
-   forcing it through the SCPI-specific types — a shared *pattern*, not shared *code*, matching this
-   repo's existing precedent of independent per-protocol decoders (K8055/Busylight/SCPI don't share
-   decoder code with each other either).
+3. Once a handful of confirmed commands exist, extend `Profiles/tektronix-2230.json` with them as
+   long as `ScpiReplyPresenter`'s newline-buffered FIFO correlation is confirmed to actually work for
+   this device's replies (step 1). If it doesn't, build a separate `DevTerm.Devices.TektronixCodes`
+   mirroring `DevTerm.Devices.Scpi`'s shape (a profile/control-surface/reply-presenter trio) instead
+   of forcing a `;`-terminated protocol through `ScpiReplyPresenter` — a shared *pattern*, not shared
+   *code*, matching this repo's existing precedent of independent per-protocol decoders (K8055/
+   Busylight/SCPI don't share decoder code with each other either).
 
 ## Open questions
 
