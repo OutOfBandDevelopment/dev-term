@@ -126,6 +126,58 @@ Run against four real USBTMC-class Rigol instruments (VID `1AB1`) newly availabl
   behavior afterward, before any `UsbtmcTransport : ITransport` work below can be verified against
   real hardware — it's a per-machine setup step, not a code fix.
 
+## Setting up WinUSB for a USBTMC device (Windows)
+
+Confirmed (see "Real-hardware findings" above): opening any of these devices needs their USBTMC
+interface rebound from whatever Windows assigned by default to a WinUSB-compatible driver first.
+This is a one-time, per-device, per-machine setup step, done with
+**[Zadig](https://zadig.akeo.ie/)** — the standard tool for this, also the reference implementation
+behind `libwdi` (the library `LibUsbDotNet`'s native `libusb-1.0` ultimately talks to on Windows).
+
+**This step cannot be fully scripted/automated** — checked directly against the `libwdi`/Zadig
+project (its GitHub releases and wiki), not assumed:
+
+- Zadig's own releases only ever ship `zadig*.exe` (the GUI). `libwdi` also builds a command-line
+  tool, `wdi-simple`, that *can* install a WinUSB driver non-interactively — but it has never been
+  published as a prebuilt binary in any `libwdi` release; getting it means building `libwdi` from
+  source (Visual Studio + WDK), which is a heavier ask than the manual GUI step it would replace.
+- Zadig itself has no documented command-line flags for an unattended install (checked its wiki's
+  "Zadig" page). It does support a `zadig.ini` (global defaults) and a separate, individually-loaded
+  "preset device" file (`Device` menu → `Load Preset Device`, a small `[device]` INI block with
+  `Description`/`VID`/`PID`) that can pre-fill the VID/PID so you don't hand-type hex, but the actual
+  `Install Driver`/`Replace Driver` click — the one part that needs Administrator elevation and
+  genuinely changes a real device's driver binding — still has to be a deliberate, manual click in
+  the GUI. That's arguably correct, not just a gap: it's the same kind of confirmation Windows itself
+  requires (UAC) for any driver change.
+
+**What this repo provides instead**: [`scripts/usbtmc/New-ZadigPreset.ps1`](../../scripts/usbtmc/New-ZadigPreset.ps1)
+generates a `zadig.ini` and one Zadig preset file per attached USBTMC device (by default, discovered
+by shelling out to this project's own `--listusbtmcdevices true`; VID/PID can also be passed
+directly). It writes files only — no elevation needed to run it, and it does not install anything
+itself. Usage:
+
+```powershell
+./scripts/usbtmc/New-ZadigPreset.ps1
+```
+
+Then, manually:
+
+1. Download Zadig and run it **as Administrator** (required for the driver install step).
+2. Copy the generated `zadig.ini` next to `zadig.exe` (or launch Zadig from the same folder).
+3. `Device` → `Load Preset Device` → pick one of the generated `zadig-preset-<VID>-<PID>.cfg` files.
+4. Confirm the driver dropdown shows **WinUSB**, then click **Install Driver** (first time for that
+   hardware ID) or **Replace Driver** (if something else is already bound).
+5. Repeat steps 3-4 for each additional device — Zadig handles one device per run.
+
+**Caveats carried over from "Real-hardware findings," restated here since they matter most at this
+step**: this rebinds the device away from whatever it used before (a stock Windows driver, or a
+vendor's own instrument-control software's driver, if installed) — if other software on the same
+machine depends on that original driver, rebinding to WinUSB will break it for that other software
+until reverted (Device Manager → the device → `Update driver` → roll back, or re-run Zadig against
+the original driver). This is a real, not hypothetical, tradeoff for anyone who also runs vendor
+instrument software (Rigol Ultra Sigma, Keysight BenchVue/Connection Expert, NI-VISA/MAX, etc.)
+against the same physical unit.
+
 ## `ITransport` mapping
 
 `UsbtmcTransport : ITransport` (`DevTerm.Transports.Usbtmc`):
@@ -173,9 +225,11 @@ own repeated practice of not trusting a fix until checked against real hardware:
 - Whether the DG1022/DS1102E specifically (not yet tested — the four devices checked so far are a
   different set of Rigol instruments) also need a Zadig driver swap, or happen to enumerate
   differently — unconfirmed until checked against those exact two units.
-- Whether to automate/document the Zadig driver-swap step for end users (a real per-machine setup
-  burden this transport now provably has, per "Real-hardware findings" above) or treat it as a
-  documented prerequisite in the user guide once this transport actually ships.
+- **Resolved**: the Zadig driver-swap step is now documented, and partially automated (VID/PID
+  preset generation, not the elevated install click itself — see "Setting up WinUSB" above) via
+  `scripts/usbtmc/New-ZadigPreset.ps1`. Still open: whether this belongs in `docs/user-guide/` too
+  once the full transport ships (today it's design-doc-only, appropriate while there's no connectable
+  transport yet to document a user-facing flow for).
 - Whether USB488's `READ_STATUS_BYTE`/service-request handling is worth building in v1, or whether a
   simple synchronous send/query cycle (no serial-poll, no SRQ) is enough for how these instruments
   are actually used from dev-term today (matching how GPIB-via-Prologix's own v1 scope in

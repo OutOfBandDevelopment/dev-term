@@ -21,6 +21,7 @@ dotnet test --filter "TestCategory=INTEGRATION"   # spawns real processes/socket
 dotnet test --filter "TestCategory=DEV-LOCAL" --settings devterm.runsettings   # needs real hardware — see "Testing" below
 dotnet run --project src/DevTerm.Console -- --listports true    # list serial ports
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
+dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true    # list USB USBTMC devices (see docs/design/usbtmc-transport.md)
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
 dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018 --cli true
 dotnet run --project src/DevTerm.Console -- --transport loopback --cli true    # no hardware needed; try "hello"
