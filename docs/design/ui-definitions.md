@@ -28,11 +28,15 @@ mockup exactly).
 both front ends read a `UiDefinition` generically and produce real, wired controls from it —
 `ControlPanelMode` (TUI, Terminal.Gui) and `ControlPanelWindow` (WPF) — proven against the real
 Velleman K8055 (`DevTerm.Devices.K8055`: a `UiDefinition`, an `IControlSurface`, and an
-`IStructuredPresenter` decoder). Neither renderer is K8055-specific — any device's
-`UiDefinition`/`IControlSurface` pair renders the same way. Not yet exercised against a second
-device (Busylight is the next candidate, a separate future pass) or against the numeric/choice/
-textField control kinds on real hardware (K8055's own mockup only uses toggle/slider/indicator/
-button).
+`IStructuredPresenter` decoder), and, as of the same day, against a second device, Kuando Busylight
+(`DevTerm.Devices.Busylight`: a `UiDefinition`, an `IControlSurface`, and a plain `IPresenter`
+decoder with no `IStructuredPresenter` — Busylight's panel has no `IndicatorControl`s). Neither
+renderer needed any change for the second device — confirming neither is K8055-specific. Busylight's
+own mockup exercises `ChoiceControl` (both styles: radio-group color/blink presets, a dropdown
+track list) and `NumericControl` (on/off timing) for the first time, alongside the toggle/slider/
+button kinds K8055 already exercised; `TextFieldControl` is still unexercised by any real device
+module. Busylight's real-hardware verification is still pending (software-only pass so far, real
+device review deferred to the user); K8055's is done for WPF, still pending for the TUI side.
 
 ## Shape
 

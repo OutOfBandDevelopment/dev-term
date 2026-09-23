@@ -7,6 +7,7 @@
     <Project Path="src/DevTerm.Console/DevTerm.Console.csproj" />
     <Project Path="src/DevTerm.Core/DevTerm.Core.csproj" />
     <Project Path="src/DevTerm.DeviceManifests/DevTerm.DeviceManifests.csproj" />
+    <Project Path="src/DevTerm.Devices.Busylight/DevTerm.Devices.Busylight.csproj" />
     <Project Path="src/DevTerm.Devices.K8055/DevTerm.Devices.K8055.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
@@ -22,6 +23,7 @@
     <Project Path="tests/DevTerm.Console.Tests/DevTerm.Console.Tests.csproj" />
     <Project Path="tests/DevTerm.Core.Tests/DevTerm.Core.Tests.csproj" />
     <Project Path="tests/DevTerm.DeviceManifests.Tests/DevTerm.DeviceManifests.Tests.csproj" />
+    <Project Path="tests/DevTerm.Devices.Busylight.Tests/DevTerm.Devices.Busylight.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.K8055.Tests/DevTerm.Devices.K8055.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />

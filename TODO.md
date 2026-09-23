@@ -32,10 +32,7 @@ Completed work is logged by date under `docs/changes/`.
   rather than opening a second HID connection. `UiControl.Id` is the command id 1:1
   (`ButtonControl.CommandId` overrides it), settling ui-definitions.md's open question. 19 new
   `UNIT` tests (`ControlPanelModeTests`, `ControlPanelWindowTests`) plus 14 in
-  `DevTerm.Devices.K8055.Tests` — see `docs/changes/2026-09-22.md`. **Renderer is generic, not
-  K8055-specific** — the next real target to prove that against a second device is Busylight (a
-  separate future pass); K8055's own mockup only exercises toggle/slider/indicator/button, so
-  numeric/choice/textField have render/unit coverage but no real-hardware exercise yet.
+  `DevTerm.Devices.K8055.Tests` — see `docs/changes/2026-09-22.md`.
   Real-hardware verification against WPF's `ControlPanelWindow` is done, same day
   (`docs/changes/2026-09-22.md`): live indicators matched an independent CLI reading, and digital
   out/analog out/counter reset all round-tripped correctly against the physical board (an apparent
@@ -44,6 +41,21 @@ Completed work is logged by date under `docs/changes/`.
   bit-to-channel mapping is still unconfirmed (shipped as a raw `digitalInRaw` byte rather than 5
   guessed channel keys) — both require the user's own physical rewiring/hands-on time, deferred for
   now — see `docs/design/proposals/velleman-k8055-protocol.md`'s open questions.
+  **Renderer's genericness now proven against a second device, same day**: `DevTerm.Devices.Busylight`
+  (`BusylightUiDefinition`, `BusylightControlSurface`, `BusylightDecoder`) needed zero renderer
+  changes in either front end — only a new device module plus the same one-line
+  `AddDevTermFrontEnd`/menu-item wiring K8055 used. Registered as `--presenter busylight`, opened via
+  a new "Busylight Control Panel..." item alongside K8055's. Unlike K8055, every control except
+  "apply" only mutates in-memory state (color/blink timing/mute/track/volume); "apply" is the one
+  command that actually sends the confirmed-working 9-byte single-command frame, matching the
+  mockup's explicit `[Apply]` button. "customColor" (no color-picker UI yet) and "programSequence"
+  (the batch/program mode was confirmed to have no visible effect on the real device — see
+  `docs/design/proposals/kuando-busylight-protocol.md`'s open questions) are documented no-ops. No
+  `IndicatorControl`s and hence no `IStructuredPresenter` — `BusylightDecoder` just renders the
+  device's ASCII poll-reply as text. 12 new `UNIT` tests
+  (`DevTerm.Devices.Busylight.Tests`). **Not yet verified against a real physical Busylight** — this
+  landed as a software-only pass; the user will do the physical hardware review later, the same way
+  the K8055's remaining digital-in/TUI checklist items are deferred to them.
 
 - **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
   (identity, a transport hint, the declarative command/response schema already sketched in

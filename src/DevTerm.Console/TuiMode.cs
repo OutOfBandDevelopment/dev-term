@@ -3,6 +3,7 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
@@ -186,6 +187,16 @@ public static class TuiMode
                         new K8055ControlSurface(session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
+                    Application.Run(panelParts.Window);
+                }),
+                new MenuItem("_Busylight Control Panel...", string.Empty, () =>
+                {
+                    var structuredSource = catalog.TryGet("busylight", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        BusylightUiDefinition.Build(),
+                        new BusylightControlSurface(session),
+                        structuredSource,
+                        "dev-term — Busylight Control Panel");
                     Application.Run(panelParts.Window);
                 }),
             ]),

@@ -71,6 +71,13 @@ SHOW_LEGEND()
   window/collaborator directly, not through DI" pattern `DeviceProfilesWindow`/`MainWindow` already
   use), not through a plugin-manifest registration — the declarative manifest/plugin-loading
   question below remains open.
+- `DevTerm.Devices.Busylight`, landed the same day, is the second concrete module and the one that
+  actually proves the renderer is generic: a `UiDefinition` (`BusylightUiDefinition.Build()`), an
+  `IControlSurface` (`BusylightControlSurface` — every command but "apply" only mutates state;
+  "apply" sends the single 9-byte frame), and a plain `IPresenter` decoder (`BusylightDecoder`, no
+  `IStructuredPresenter` — the panel has no `IndicatorControl`s to drive). Registered and wired the
+  identical way K8055 is (`AddBusylightPresenter`, `--presenter busylight`, a sibling menu item in
+  both front ends) — no renderer code changed to support it.
 - A device control module registers an `IControlSurface` alongside one or more `IPresenter`s under one plugin manifest entry (see [plugin-model.md](plugin-model.md)), but each half is still just an ordinary DI-registered service — nothing about the core pipeline needs to know "this is a bundled module" versus independently chosen pieces.
 
 ## Relationship to transports
@@ -98,7 +105,7 @@ For simple query/response devices (most bench gear — a command string in, a fo
 
 ## Open questions
 
-- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet), now proven end-to-end against a real device (K8055); see that doc's own open questions for what's still undecided.
+- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet), now proven end-to-end against two real devices (K8055, Busylight) with no renderer changes between them; see that doc's own open questions for what's still undecided.
 - Whether/how a device control module gets registered via the declarative manifest/plugin-loading path (see [device-manifests.md](device-manifests.md)/[plugin-model.md](plugin-model.md)) rather than a front end constructing its `IControlSurface` directly from a live `Session`, as `K8055ControlSurface` does today — the current wiring is a front-end-specific menu item (`_Device`/`Device` → "K8055 Control Panel..."), not something a loaded `DeviceManifest` drives yet.
 - Whether commands can declare an expected reply pattern (request/response pairing) so a "Query Status" command can show its answer inline, versus everything staying async/stream-oriented like the rest of the pipeline.
 - Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic — see the candidate direction above (a dev-term-specific schema, with Kaitai Struct as the binary-layout piece and an SCPI baseline as a zero-authoring fallback).

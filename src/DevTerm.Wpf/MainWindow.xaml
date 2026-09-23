@@ -16,6 +16,7 @@
             </MenuItem>
             <MenuItem Header="_Device">
                 <MenuItem Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
+                <MenuItem Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
             </MenuItem>
         </Menu>
         <DockPanel Margin="8">
