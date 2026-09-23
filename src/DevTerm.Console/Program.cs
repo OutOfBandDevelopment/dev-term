@@ -5,6 +5,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
+using DevTerm.Transports.Usbtmc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,6 +29,7 @@ const string Usage =
     + "\n   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true"
+    + "\n   or: dev-term --listusbtmcdevices true"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
@@ -55,6 +57,18 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
     {
         var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
         Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {device.ProductName ?? "(unknown)"}{serial}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
+{
+    foreach (var device in new SystemUsbtmcDeviceDiscovery().GetDevices())
+    {
+        var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
+        var manufacturer = device.Manufacturer is null ? string.Empty : $"{device.Manufacturer} ";
+        Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}");
     }
 
     return 0;

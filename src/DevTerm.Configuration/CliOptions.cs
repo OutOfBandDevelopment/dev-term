@@ -184,6 +184,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListHidDevices { get; set; }
 
+    /// <summary>List attached USBTMC-class USB devices and exit, skipping normal validation/connection entirely.</summary>
+    [Category("Mode")]
+    public bool ListUsbtmcDevices { get; set; }
+
     /// <summary>
     /// Names a device manifest to load alongside this connection — <b>a name, not a path</b>;
     /// resolves to <c>~/.dev-term/manifests/{ManifestName}</c> or this app's own

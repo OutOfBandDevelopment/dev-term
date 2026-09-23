@@ -15,6 +15,7 @@
     <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
     <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
+    <Project Path="src/DevTerm.Transports.Usbtmc/DevTerm.Transports.Usbtmc.csproj" />
     <Project Path="src/DevTerm.UiDefinitions/DevTerm.UiDefinitions.csproj" />
     <Project Path="src/DevTerm.Wpf/DevTerm.Wpf.csproj" />
   </Folder>

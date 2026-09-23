@@ -31,11 +31,21 @@ ordered against the rest.
   **Tektronix TDS2024** (has a GPIB option, currently fitted with a Centronics module instead) and
   the **HP 34401A** (already in the SCPI proposal's device table, GPIB/RS-232).
 - **USBTMC transport** — the USB class most bench equipment (Rigol/Keysight/etc.) actually uses for
-  local USB control; neither HID nor serial, needs its own raw-USB (WinUSB/LibUsbDotNet)
-  implementation. Not yet designed in detail — see `docs/design/transports.md`'s Extensibility
-  section. Real target hardware: the plain **Rigol DG1022** (no LAN option, unlike the
-  DG1022Z/DG1062Z) and the **Rigol DS1102E** oscilloscope (confirmed to have USB, likely USBTMC for
-  this era of Rigol scope but not yet confirmed for this specific unit).
+  local USB control; neither HID nor serial, needs its own raw-USB implementation — IVI.NET/VISA was
+  considered and rejected (Windows/.NET-Framework-oriented, plus a separate proprietary native
+  runtime install, unlike every other dev-term transport). Library choice now decided (LibUsbDotNet,
+  not WinUSB) and **device discovery built and verified against real hardware** (2026-09-23,
+  `DevTerm.Transports.Usbtmc`'s `SystemUsbtmcDeviceDiscovery`, `--listusbtmcdevices true`) — found
+  four real USBTMC-class Rigol instruments (VID `1AB1`) correctly, but also found that opening any of
+  them fails until each is rebound to a WinUSB-compatible driver via Zadig, a real per-machine setup
+  step that blocks everything past bare enumeration. The full `UsbtmcTransport : ITransport` (bulk
+  transfer framing/reassembly, USB488 remote/local control) is still not built — see
+  [`docs/design/usbtmc-transport.md`](docs/design/usbtmc-transport.md) for protocol framing,
+  cancellation caveats, and the driver-binding finding. Real target hardware: the plain **Rigol
+  DG1022** (no LAN option, unlike the DG1022Z/DG1062Z) and the **Rigol DS1102E** oscilloscope
+  (confirmed to have USB, likely USBTMC for this era of Rigol scope but not yet confirmed for this
+  specific unit) — neither of these two specifically has been checked yet; the four devices found
+  2026-09-23 are a different set of Rigol instruments already on the bench.
 - Declarative command/response schema for device control modules (send template + response
   pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
   baseline for common bench-instrument commands) — see the new section in
