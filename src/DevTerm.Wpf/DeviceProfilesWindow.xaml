@@ -151,15 +151,19 @@
                         <CheckBox Content="Listen (server mode)" IsChecked="{Binding Listen}" Margin="140,0,0,4" />
                     </StackPanel>
 
-                    <StackPanel x:Name="HidPanel" Visibility="{Binding IsHidTransport, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="USB HID" FontWeight="Bold" Margin="0,8,0,2" />
+                    <!-- Shared by the "hid" and "usbtmc" transports - both select a physical USB
+                         device the same way (vendor/product ID, optionally a serial number), so
+                         one field group serves both; only the detected-devices picker differs,
+                         since HID and USBTMC devices come from different discovery sources. -->
+                    <StackPanel x:Name="UsbDevicePanel" Visibility="{Binding IsUsbDeviceTransport, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="USB Device" FontWeight="Bold" Margin="0,8,0,2" />
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Vendor ID:" VerticalAlignment="Center" />
-                            <TextBox x:Name="HidVendorBox" Grid.Column="1" Text="{Binding HidVendorIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox x:Name="VendorBox" Grid.Column="1" Text="{Binding VendorIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
@@ -167,16 +171,24 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Product ID:" VerticalAlignment="Center" />
-                            <TextBox x:Name="HidProductBox" Grid.Column="1" Text="{Binding HidProductIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox x:Name="ProductBox" Grid.Column="1" Text="{Binding ProductIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
-                        <CheckBox x:Name="HidShowHexBox" Content="Show as hex" IsChecked="{Binding HidIdsShowHex}" Margin="140,0,0,4" />
-                        <Grid Margin="0,0,0,4">
+                        <CheckBox x:Name="IdsShowHexBox" Content="Show as hex" IsChecked="{Binding IdsShowHex}" Margin="140,0,0,4" />
+                        <Grid x:Name="DetectedHidDevicesRow" Margin="0,0,0,4" Visibility="{Binding IsHidTransport, Converter={StaticResource BoolToVisibility}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Detected devices:" VerticalAlignment="Center" />
+                            <TextBlock Text="Detected HID devices:" VerticalAlignment="Center" />
                             <ComboBox x:Name="DetectedHidDevicesBox" Grid.Column="1" ItemsSource="{Binding HidDeviceOptions}" DisplayMemberPath="Display" SelectedItem="{Binding SelectedHidDevice}" />
+                        </Grid>
+                        <Grid x:Name="DetectedUsbtmcDevicesRow" Margin="0,0,0,4" Visibility="{Binding IsUsbtmcTransport, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Detected USBTMC devices:" VerticalAlignment="Center" />
+                            <ComboBox x:Name="DetectedUsbtmcDevicesBox" Grid.Column="1" ItemsSource="{Binding UsbtmcDeviceOptions}" DisplayMemberPath="Display" SelectedItem="{Binding SelectedUsbtmcDevice}" />
                         </Grid>
                     </StackPanel>
 

@@ -193,8 +193,8 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
                 Transport = "hid",
-                HidVendorId = "4216",
-                HidProductId = "63560",
+                VendorId = "4216",
+                ProductId = "63560",
                 ImportExportPath = path,
             };
 
@@ -211,8 +211,8 @@ public sealed class ConnectionEditorViewModelTests
             fresh.ImportCommand.Execute(null);
 
             Assert.AreEqual("hid", fresh.Transport);
-            Assert.AreEqual("4216", fresh.HidVendorId);
-            Assert.AreEqual("63560", fresh.HidProductId);
+            Assert.AreEqual("4216", fresh.VendorId);
+            Assert.AreEqual("63560", fresh.ProductId);
             StringAssert.Contains(fresh.StatusMessage, "Imported");
         }
         finally
@@ -1100,7 +1100,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidVendorId = 0x046D.ToString();
+            vm.VendorId = 0x046D.ToString();
 
             CollectionAssert.AreEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
             Assert.IsTrue(vm.HidDevicesHiddenByFilter);
@@ -1118,7 +1118,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidProductId = 0x0368.ToString();
+            vm.ProductId = 0x0368.ToString();
 
             CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
@@ -1135,12 +1135,12 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidVendorId = 0x046D.ToString();
-            vm.HidProductId = 0xC31C.ToString();
+            vm.VendorId = 0x046D.ToString();
+            vm.ProductId = 0xC31C.ToString();
 
             CollectionAssert.AreEqual(new[] { "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
 
-            vm.HidProductId = 0x0368.ToString();
+            vm.ProductId = 0x0368.ToString();
 
             Assert.IsEmpty(vm.HidDeviceOptions, "Vendor 046D and product 0368 matches nothing detected.");
             Assert.IsTrue(vm.HidDevicesHiddenByFilter, "An empty list caused by the filter must be distinguishable from nothing being detected.");
@@ -1158,10 +1158,10 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidVendorId = 0x0699.ToString();
+            vm.VendorId = 0x0699.ToString();
             Assert.HasCount(1, vm.HidDeviceOptions);
 
-            vm.HidVendorId = "0";
+            vm.VendorId = "0";
 
             CollectionAssert.AreEqual(
                 new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024" },
@@ -1180,8 +1180,8 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidIdsShowHex = true;
-            vm.HidVendorIdDisplay = "0699";
+            vm.IdsShowHex = true;
+            vm.VendorIdDisplay = "0699";
 
             CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
@@ -1198,7 +1198,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
-            vm.HidVendorId = "12ab";
+            vm.VendorId = "12ab";
 
             Assert.HasCount(3, vm.HidDeviceOptions);
         }
@@ -1216,7 +1216,7 @@ public sealed class ConnectionEditorViewModelTests
         {
             var vm = new ConnectionEditorViewModel(
                 new ConnectionProfileStore(directory),
-                new CliOptions { Transport = "hid", HidVendorId = 0x0699 },
+                new CliOptions { Transport = "hid", VendorId = 0x0699 },
                 hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
 
             CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
@@ -1238,7 +1238,7 @@ public sealed class ConnectionEditorViewModelTests
             var changes = 0;
             ((System.Collections.Specialized.INotifyCollectionChanged)before).CollectionChanged += (_, _) => changes++;
 
-            vm.HidVendorId = 0x0699.ToString();
+            vm.VendorId = 0x0699.ToString();
 
             Assert.AreSame(before, vm.HidDeviceOptions);
             Assert.AreEqual(2, changes, "The two non-matching devices are removed in place - no wholesale reset.");
@@ -1281,8 +1281,8 @@ public sealed class ConnectionEditorViewModelTests
                 SelectedHidDevice = device,
             };
 
-            Assert.AreEqual(0x046D.ToString(), vm.HidVendorId);
-            Assert.AreEqual(0xC08B.ToString(), vm.HidProductId);
+            Assert.AreEqual(0x046D.ToString(), vm.VendorId);
+            Assert.AreEqual(0xC08B.ToString(), vm.ProductId);
         }
         finally
         {
@@ -1291,17 +1291,17 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void HidVendorIdDisplay_WhenHidIdsShowHexIsFalse_MatchesTheCanonicalDecimalValue()
+    public void VendorIdDisplay_WhenIdsShowHexIsFalse_MatchesTheCanonicalDecimalValue()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidVendorId = "1234",
+                VendorId = "1234",
             };
 
-            Assert.AreEqual("1234", vm.HidVendorIdDisplay);
+            Assert.AreEqual("1234", vm.VendorIdDisplay);
         }
         finally
         {
@@ -1310,18 +1310,18 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void HidVendorIdDisplay_WhenHidIdsShowHexIsTrue_FormatsAsFourDigitUppercaseHex()
+    public void VendorIdDisplay_WhenIdsShowHexIsTrue_FormatsAsFourDigitUppercaseHex()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidVendorId = "1234",
-                HidIdsShowHex = true,
+                VendorId = "1234",
+                IdsShowHex = true,
             };
 
-            Assert.AreEqual("04D2", vm.HidVendorIdDisplay);
+            Assert.AreEqual("04D2", vm.VendorIdDisplay);
         }
         finally
         {
@@ -1330,18 +1330,18 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void SettingHidVendorIdDisplay_WhenHidIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
+    public void SettingVendorIdDisplay_WhenIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidIdsShowHex = true,
-                HidVendorIdDisplay = "04D2",
+                IdsShowHex = true,
+                VendorIdDisplay = "04D2",
             };
 
-            Assert.AreEqual("1234", vm.HidVendorId);
+            Assert.AreEqual("1234", vm.VendorId);
         }
         finally
         {
@@ -1350,18 +1350,18 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void SettingHidProductIdDisplay_WhenHidIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
+    public void SettingProductIdDisplay_WhenIdsShowHexIsTrue_ParsesHexIntoTheCanonicalDecimalValue()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidIdsShowHex = true,
-                HidProductIdDisplay = "C08B",
+                IdsShowHex = true,
+                ProductIdDisplay = "C08B",
             };
 
-            Assert.AreEqual(0xC08B.ToString(), vm.HidProductId);
+            Assert.AreEqual(0xC08B.ToString(), vm.ProductId);
         }
         finally
         {
@@ -1370,21 +1370,21 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void TogglingHidIdsShowHex_ReformatsTheAlreadyDisplayedValue()
+    public void TogglingIdsShowHex_ReformatsTheAlreadyDisplayedValue()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidVendorId = "1234",
+                VendorId = "1234",
             };
 
-            Assert.AreEqual("1234", vm.HidVendorIdDisplay);
+            Assert.AreEqual("1234", vm.VendorIdDisplay);
 
-            vm.HidIdsShowHex = true;
+            vm.IdsShowHex = true;
 
-            Assert.AreEqual("04D2", vm.HidVendorIdDisplay, "Toggling the display format should reformat the already-set canonical value, not require it to be re-entered.");
+            Assert.AreEqual("04D2", vm.VendorIdDisplay, "Toggling the display format should reformat the already-set canonical value, not require it to be re-entered.");
         }
         finally
         {
@@ -1393,18 +1393,18 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void HidVendorIdDisplay_WithUnparseableHexInput_IsKeptAsIsRatherThanBlanked()
+    public void VendorIdDisplay_WithUnparseableHexInput_IsKeptAsIsRatherThanBlanked()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
-                HidIdsShowHex = true,
-                HidVendorIdDisplay = "not hex",
+                IdsShowHex = true,
+                VendorIdDisplay = "not hex",
             };
 
-            Assert.AreEqual("not hex", vm.HidVendorId, "An unparseable value should be stored as-is (letting validation catch it later), the same 'don't reject a keystroke' behavior every other typed field already has.");
+            Assert.AreEqual("not hex", vm.VendorId, "An unparseable value should be stored as-is (letting validation catch it later), the same 'don't reject a keystroke' behavior every other typed field already has.");
         }
         finally
         {
@@ -1413,14 +1413,14 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void SettingHidIdsShowHexOrTheDisplayProperties_DoesNotMarkTheEditorDirtyByItself()
+    public void SettingIdsShowHexOrTheDisplayProperties_DoesNotMarkTheEditorDirtyByItself()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
 
-            vm.HidIdsShowHex = true;
+            vm.IdsShowHex = true;
 
             Assert.IsFalse(vm.IsDirty, "Toggling the display format is a presentation preference, not a connection-field edit.");
         }
@@ -1431,14 +1431,14 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void SettingHidVendorIdDisplay_MarksTheEditorDirtyViaTheCanonicalValue()
+    public void SettingVendorIdDisplay_MarksTheEditorDirtyViaTheCanonicalValue()
     {
         var directory = CreateTempDirectory();
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
 
-            vm.HidVendorIdDisplay = "1234";
+            vm.VendorIdDisplay = "1234";
 
             Assert.IsTrue(vm.IsDirty);
         }

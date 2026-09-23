@@ -151,15 +151,24 @@ public sealed class ScpiProfileCatalogTests
     {
         var names = ScpiProfileCatalog.All.Select(p => p.Name).ToArray();
 
-        Assert.HasCount(7, names);
+        Assert.HasCount(8, names);
     }
 
     [TestMethod]
     public void Tektronix2230_HasNoIdnPatternSoItIsNeverAutoDetected()
     {
-        var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("2230", StringComparison.OrdinalIgnoreCase));
+        var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.StartsWith("Tektronix 2230", StringComparison.OrdinalIgnoreCase));
 
         Assert.IsTrue(string.IsNullOrEmpty(tek2230.IdnPattern));
         Assert.IsTrue(tek2230.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
+    }
+
+    [TestMethod]
+    public void TektronixTds2024_HasNoIdnPatternSoItIsNeverAutoDetected()
+    {
+        var tds2024 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("TDS2024", StringComparison.OrdinalIgnoreCase));
+
+        Assert.IsTrue(string.IsNullOrEmpty(tds2024.IdnPattern));
+        Assert.IsTrue(tds2024.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
     }
 }

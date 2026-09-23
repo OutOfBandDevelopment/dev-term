@@ -26,10 +26,11 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 const string Usage =
     "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
-    + "\n   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --listports true"
-    + "\n   or: dev-term --listhiddevices true"
-    + "\n   or: dev-term --listusbtmcdevices true"
+    + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
+    + "\n   or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
@@ -53,8 +54,17 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPorts)))
 
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
 {
+    // 0 (the default, from an omitted flag) means "any" — same convention the Connection Editor's
+    // detected-devices picker already uses for filtering by these same two fields.
+    var filterVendorId = earlyConfig.GetValue<int>(nameof(CliOptions.VendorId));
+    var filterProductId = earlyConfig.GetValue<int>(nameof(CliOptions.ProductId));
     foreach (var device in new SystemHidDeviceDiscovery().GetDevices())
     {
+        if ((filterVendorId != 0 && device.VendorId != filterVendorId) || (filterProductId != 0 && device.ProductId != filterProductId))
+        {
+            continue;
+        }
+
         var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
         Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {device.ProductName ?? "(unknown)"}{serial}");
     }
@@ -64,8 +74,15 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListHidDevices)))
 
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
 {
+    var filterVendorId = earlyConfig.GetValue<int>(nameof(CliOptions.VendorId));
+    var filterProductId = earlyConfig.GetValue<int>(nameof(CliOptions.ProductId));
     foreach (var device in new SystemUsbtmcDeviceDiscovery().GetDevices())
     {
+        if ((filterVendorId != 0 && device.VendorId != filterVendorId) || (filterProductId != 0 && device.ProductId != filterProductId))
+        {
+            continue;
+        }
+
         var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
         var manufacturer = device.Manufacturer is null ? string.Empty : $"{device.Manufacturer} ";
         Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}");

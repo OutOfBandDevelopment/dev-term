@@ -118,28 +118,39 @@ public sealed class DeviceProfilesWindowTests
 
                 Assert.AreEqual(Visibility.Visible, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
-                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.UsbDevicePanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
 
                 window.ViewModel.Transport = "tcp";
 
                 Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Visible, window.TcpPanel.Visibility);
-                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.UsbDevicePanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
 
                 window.ViewModel.Transport = "hid";
 
                 Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
-                Assert.AreEqual(Visibility.Visible, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.UsbDevicePanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.DetectedHidDevicesRow.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.DetectedUsbtmcDevicesRow.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
+
+                window.ViewModel.Transport = "usbtmc";
+
+                Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.UsbDevicePanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.DetectedHidDevicesRow.Visibility);
+                Assert.AreEqual(Visibility.Visible, window.DetectedUsbtmcDevicesRow.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.LoopbackPanel.Visibility);
 
                 window.ViewModel.Transport = "loopback";
 
                 Assert.AreEqual(Visibility.Collapsed, window.SerialPanel.Visibility);
                 Assert.AreEqual(Visibility.Collapsed, window.TcpPanel.Visibility);
-                Assert.AreEqual(Visibility.Collapsed, window.HidPanel.Visibility);
+                Assert.AreEqual(Visibility.Collapsed, window.UsbDevicePanel.Visibility);
                 Assert.AreEqual(Visibility.Visible, window.LoopbackPanel.Visibility);
 
                 await Task.CompletedTask;
@@ -366,8 +377,8 @@ public sealed class DeviceProfilesWindowTests
 
                 window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B);
 
-                Assert.AreEqual(0x046D.ToString(), window.HidVendorBox.Text);
-                Assert.AreEqual(0xC08B.ToString(), window.HidProductBox.Text);
+                Assert.AreEqual(0x046D.ToString(), window.VendorBox.Text);
+                Assert.AreEqual(0xC08B.ToString(), window.ProductBox.Text);
 
                 await Task.CompletedTask;
             });
@@ -414,8 +425,8 @@ public sealed class DeviceProfilesWindowTests
                 Assert.AreSame(viewModel.SelectedHidDevice, box.SelectedItem);
                 Assert.AreEqual("046D:C08B  Mouse", viewModel.SelectedHidDevice!.Display, "The selection survived the list shrinking around it.");
 
-                viewModel.HidVendorId = "0";
-                viewModel.HidProductId = "0";
+                viewModel.VendorId = "0";
+                viewModel.ProductId = "0";
                 StaTestRunner.DoEvents();
 
                 Assert.AreEqual(3, box.Items.Count, "Clearing both ids widens the list back out.");
@@ -506,7 +517,7 @@ public sealed class DeviceProfilesWindowTests
     }
 
     [TestMethod]
-    public void HidShowHexCheckBox_TogglesTheRealVendorAndProductIdTextBoxesBetweenDecimalAndHex()
+    public void IdsShowHexCheckBox_TogglesTheRealVendorAndProductIdTextBoxesBetweenDecimalAndHex()
     {
         var directory = CreateTempDirectory();
         try
@@ -516,21 +527,21 @@ public sealed class DeviceProfilesWindowTests
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "hid" }) { ShowInTaskbar = false };
                 StaTestRunner.DoEvents();
 
-                window.ViewModel.HidVendorId = "1234";
-                window.ViewModel.HidProductId = "49291";
+                window.ViewModel.VendorId = "1234";
+                window.ViewModel.ProductId = "49291";
 
-                Assert.AreEqual("1234", window.HidVendorBox.Text);
-                Assert.AreEqual("49291", window.HidProductBox.Text);
+                Assert.AreEqual("1234", window.VendorBox.Text);
+                Assert.AreEqual("49291", window.ProductBox.Text);
 
-                window.HidShowHexBox.IsChecked = true;
+                window.IdsShowHexBox.IsChecked = true;
 
-                Assert.AreEqual("04D2", window.HidVendorBox.Text, "Checking 'Show as hex' should reformat the already-set value through the real binding, not require it to be re-entered.");
-                Assert.AreEqual("C08B", window.HidProductBox.Text);
+                Assert.AreEqual("04D2", window.VendorBox.Text, "Checking 'Show as hex' should reformat the already-set value through the real binding, not require it to be re-entered.");
+                Assert.AreEqual("C08B", window.ProductBox.Text);
 
-                window.HidShowHexBox.IsChecked = false;
+                window.IdsShowHexBox.IsChecked = false;
 
-                Assert.AreEqual("1234", window.HidVendorBox.Text, "Unchecking should revert back to decimal.");
-                Assert.AreEqual("49291", window.HidProductBox.Text);
+                Assert.AreEqual("1234", window.VendorBox.Text, "Unchecking should revert back to decimal.");
+                Assert.AreEqual("49291", window.ProductBox.Text);
 
                 await Task.CompletedTask;
             });

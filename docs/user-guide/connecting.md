@@ -22,8 +22,9 @@ Commands section for the full flag list per transport.
 
 ### Discovering hardware first
 
-`--listports true` lists serial ports; `--listhiddevices true` lists USB HID devices. Both exit
-immediately, no connection made — real output from a development machine:
+`--listports true` lists serial ports; `--listhiddevices true` lists USB HID devices;
+`--listusbtmcdevices true` lists USBTMC instruments. All three exit immediately, no connection
+made — real output from a development machine:
 
 ```
 $ dotnet DevTerm.Console.dll --listports true
@@ -38,12 +39,22 @@ $ dotnet DevTerm.Console.dll --listhiddevices true
 04D8:F848  BLL Lamp
 ```
 
+`--listhiddevices`/`--listusbtmcdevices` both take the same optional `--vendorid <n>`/
+`--productid <n>` filter the Connection Editor's detected-devices picker uses — `0` (the default)
+means "any", a non-zero value narrows the list to just matching devices:
+
+```
+$ dotnet DevTerm.Console.dll --listhiddevices true --vendorid 1133
+046D:C08B  G502 HERO Gaming Mouse  SN:0E6A395F3531
+046D:C08B  HID VHF Driver  SN:1.0
+```
+
 The list is whatever's actually plugged in (`10CF:5502` is a Velleman K8055 I/O board; `04D8:F848`
 is a Kuando Busylight sold under the generic "BLL Lamp" HID product string — see
 [`docs/design/proposals/velleman-k8055-protocol.md`](../design/proposals/velleman-k8055-protocol.md)
 and
 [`docs/design/proposals/kuando-busylight-protocol.md`](../design/proposals/kuando-busylight-protocol.md)).
-Pass a listed vendor/product ID to `--transport hid --hidvendorid <n> --hidproductid <n>` to connect.
+Pass a listed vendor/product ID to `--transport hid --vendorid <n> --productid <n>` to connect.
 
 ### Errors
 
@@ -52,12 +63,14 @@ rather than hanging:
 
 ```
 $ dotnet DevTerm.Console.dll --transport carrier-pigeon --cli true
-Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', or 'hid'.
+Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', or 'loopback'.
 Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport tcp (--host <host> | --listen true) --tcpport <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
-   or: dev-term --transport hid --hidvendorid <n> --hidproductid <n> [--hidserialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --listports true
    or: dev-term --listhiddevices true
+   or: dev-term --listusbtmcdevices true
 ```
 
 A real connection failure (device offline, wrong host/port, wrong serial port) is reported the same
@@ -99,30 +112,34 @@ Filling in the fields and pressing **Connect** validates them and connects immed
 save a profile first (Save is for reusing the setup later; see
 [Managing connection profiles](managing-profiles.md)).
 
-### Picking a detected serial port or HID device
+### Picking a detected serial port, HID device, or USBTMC device
 
-Both the Serial port field and the HID Vendor/Product ID fields stay freely typable, but next to
-each is a way to pick from what's actually plugged in right now — WPF shows a second "Detected
-ports"/"Detected devices" dropdown; the TUI shows a "Detect..." button that opens a small list to
-pick from. Picking a HID device fills in both Vendor ID and Product ID together, since they identify
-one device. The HID list is filtered by the ID fields: type a Vendor ID and only that vendor's devices
-are listed, add a Product ID and only the matching device is; `0` means "any", so leaving both at `0`
-lists everything detected. (That also means that after picking a device the list shrinks to just it —
-set an ID back to `0` to see the others again.) The list is the same enumeration `--listports`/`--listhiddevices` use, captured once
-when the editor opens — nothing plugged in afterward shows up without reopening the editor.
+The Serial port field and the Vendor/Product ID fields — shared by the HID and USBTMC transports,
+since both identify a device the same way — stay freely typable, but next to each is a way to pick
+from what's actually plugged in right now. WPF shows a second "Detected ports"/"Detected HID
+devices"/"Detected USBTMC devices" dropdown (whichever matches the selected transport); the TUI
+shows a "Detect..." button (serial) or a "Detect HID..."/"Detect USBTMC..." button (one per
+transport, since HID and USBTMC devices come from separate discovery sources) that opens a small
+list to pick from. Picking a device fills in both Vendor ID and Product ID together, since they
+identify one device. The list is filtered by the ID fields: type a Vendor ID and only that vendor's
+devices are listed, add a Product ID and only the matching device is; `0` means "any", so leaving
+both at `0` lists everything detected. (That also means that after picking a device the list shrinks
+to just it — set an ID back to `0` to see the others again.) The list is the same enumeration
+`--listports`/`--listhiddevices`/`--listusbtmcdevices` use, captured once when the editor opens —
+nothing plugged in afterward shows up without reopening the editor.
 
 On Windows each detected serial port is listed with the name Device Manager gives it — for example
 "COM3 — Prolific USB-to-Serial Comm Port" — which makes it much easier to tell adapters apart;
 picking one still fills in just `COM3`. A port Windows has no name for, and every port on Linux and
 macOS, is listed by its short name alone. (`--listports` still prints short names only.)
 
-### Viewing HID Vendor/Product ID as hex
+### Viewing Vendor/Product ID as hex
 
-Check **Show as hex** next to the HID fields to switch Vendor ID/Product ID between plain decimal
-and 4-digit hex (e.g. `04D2` instead of `1234`) — the same no-`0x`-prefix format
-`--listhiddevices`/the detected-devices picker above already use. Toggling it reformats whatever's
-already entered rather than clearing the fields; it's purely a display/typing preference, not saved
-as part of a profile.
+Check **Show as hex** next to the Vendor/Product ID fields (HID and USBTMC transports both use it)
+to switch Vendor ID/Product ID between plain decimal and 4-digit hex (e.g. `04D2` instead of `1234`)
+— the same no-`0x`-prefix format `--listhiddevices`/`--listusbtmcdevices`/the detected-devices
+picker above already use. Toggling it reformats whatever's already entered rather than clearing the
+fields; it's purely a display/typing preference, not saved as part of a profile.
 
 ### A TUI-specific limitation to know about
 

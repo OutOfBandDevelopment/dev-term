@@ -171,7 +171,7 @@ public sealed class ScreenshotTests
         {
             StaTestRunner.Run(async () =>
             {
-                var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = ["hex"] };
+                var initial = new CliOptions { Transport = "hid", VendorId = 4216, ProductId = 63560, Presenter = ["hex"] };
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
                 WpfScreenshot.ShowOffScreen(window);
 

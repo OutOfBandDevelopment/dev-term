@@ -8,6 +8,7 @@ using System.Windows.Input;
 using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
+using DevTerm.Transports.Usbtmc;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
@@ -39,8 +40,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _host = string.Empty;
     private string _tcpPort = "0";
     private bool _listen;
-    private string _hidVendorId = "0";
-    private string _hidProductId = "0";
+    private string _vendorId = "0";
+    private string _productId = "0";
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -53,7 +54,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private HidDeviceOption? _selectedHidDevice;
     private IReadOnlyList<HidDeviceOption> _detectedHidDevices = [];
     private readonly ObservableCollection<HidDeviceOption> _hidDeviceOptions = [];
-    private bool _hidIdsShowHex;
+    private UsbtmcDeviceOption? _selectedUsbtmcDevice;
+    private IReadOnlyList<UsbtmcDeviceOption> _detectedUsbtmcDevices = [];
+    private readonly ObservableCollection<UsbtmcDeviceOption> _usbtmcDeviceOptions = [];
+    private bool _idsShowHex;
 
     /// <summary>
     /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
@@ -67,12 +71,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsSerialTransport),
         nameof(IsTcpTransport),
         nameof(IsHidTransport),
+        nameof(IsUsbtmcTransport),
+        nameof(IsUsbDeviceTransport),
         nameof(IsLoopbackTransport),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
-        nameof(HidIdsShowHex),
-        nameof(HidVendorIdDisplay),
-        nameof(HidProductIdDisplay),
+        nameof(SelectedUsbtmcDevice),
+        nameof(IdsShowHex),
+        nameof(VendorIdDisplay),
+        nameof(ProductIdDisplay),
     };
 
     /// <summary>
@@ -93,7 +100,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         CliOptions initial,
         string? statusMessage = null,
         ISerialPortDiscovery? serialPortDiscovery = null,
-        IHidDeviceDiscovery? hidDeviceDiscovery = null)
+        IHidDeviceDiscovery? hidDeviceDiscovery = null,
+        IUsbtmcDeviceDiscovery? usbtmcDeviceDiscovery = null)
     {
         _store = store;
         PresenterChoices = [.. PresenterOptions.Select(name => new PresenterSelection(name))];
@@ -112,6 +120,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         SerialPortOptions = SafeDiscover(serialPortDiscovery ?? new SystemSerialPortDiscovery());
         _detectedHidDevices = SafeDiscover(hidDeviceDiscovery ?? new SystemHidDeviceDiscovery());
         RefreshHidDeviceOptions();
+        _detectedUsbtmcDevices = SafeDiscover(usbtmcDeviceDiscovery ?? new SystemUsbtmcDeviceDiscovery());
+        RefreshUsbtmcDeviceOptions();
         LoadIntoFields(initial);
         RefreshProfiles();
         IsDirty = false; // LoadIntoFields above marks every field it sets as dirty; a freshly-opened editor showing its starting configuration isn't actually dirty yet.
@@ -211,6 +221,18 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    private static IReadOnlyList<UsbtmcDeviceOption> SafeDiscover(IUsbtmcDeviceDiscovery discovery)
+    {
+        try
+        {
+            return [.. discovery.GetDevices().Select(UsbtmcDeviceOption.FromDescriptor)];
+        }
+        catch (SystemException)
+        {
+            return [];
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<string> Profiles { get; } = [];
@@ -265,7 +287,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "loopback"];
 
     /// <summary>
     /// This list is hardcoded rather than resolved from the live <see cref="Core.Presenters.PresenterCatalog"/>
@@ -311,7 +333,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     /// <summary>
     /// Same idea as <see cref="SerialPortOptions"/>, for real HID devices via <see cref="SelectedHidDevice"/> —
-    /// except this one is <em>filtered</em> by whatever <see cref="HidVendorId"/>/<see cref="HidProductId"/>
+    /// except this one is <em>filtered</em> by whatever <see cref="VendorId"/>/<see cref="ProductId"/>
     /// currently hold: a non-zero id keeps only devices with that id, zero means "any"
     /// (<c>Where VendorId in (0, vendorId) and ProductId in (0, productId)</c>), so typing a vendor id
     /// narrows the picker to that vendor's devices. Backed by an <see cref="ObservableCollection{T}"/>
@@ -327,6 +349,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// matches those ids" rather than a misleading "nothing was detected" for an empty picker.
     /// </summary>
     public bool HidDevicesHiddenByFilter => _hidDeviceOptions.Count < _detectedHidDevices.Count;
+
+    /// <summary>Same idea as <see cref="HidDeviceOptions"/>, for real USBTMC devices via <see cref="SelectedUsbtmcDevice"/> — filtered by the same shared <see cref="VendorId"/>/<see cref="ProductId"/> fields.</summary>
+    public IReadOnlyList<UsbtmcDeviceOption> UsbtmcDeviceOptions => _usbtmcDeviceOptions;
+
+    /// <summary>Same idea as <see cref="HidDevicesHiddenByFilter"/>, for <see cref="UsbtmcDeviceOptions"/>.</summary>
+    public bool UsbtmcDevicesHiddenByFilter => _usbtmcDeviceOptions.Count < _detectedUsbtmcDevices.Count;
 
     public string Transport
     {
@@ -347,6 +375,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsSerialTransport));
             OnPropertyChanged(nameof(IsTcpTransport));
             OnPropertyChanged(nameof(IsHidTransport));
+            OnPropertyChanged(nameof(IsUsbtmcTransport));
+            OnPropertyChanged(nameof(IsUsbDeviceTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
         }
     }
@@ -357,7 +387,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public bool IsHidTransport => string.Equals(Transport, "hid", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsUsbtmcTransport => string.Equals(Transport, "usbtmc", StringComparison.OrdinalIgnoreCase);
+
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <see langword="true"/> when the shared USB Vendor/Product ID field group (<see cref="VendorId"/>/
+    /// <see cref="ProductId"/>, plus each transport's own device picker) should be shown — both
+    /// <see cref="IsHidTransport"/> and <see cref="IsUsbtmcTransport"/> select a physical USB device
+    /// the same way, so a front end shows one shared group for either instead of two parallel ones.
+    /// </summary>
+    public bool IsUsbDeviceTransport => IsHidTransport || IsUsbtmcTransport;
 
     public string Port { get => _port; set => SetField(ref _port, value); }
 
@@ -413,121 +453,123 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     /// <summary>
     /// Always a plain decimal string — the canonical value <see cref="BuildOptions"/>/<see cref="LoadIntoFields"/>
-    /// read and write, and what <see cref="SelectedHidDevice"/> sets. A front end's text field binds
-    /// to <see cref="HidVendorIdDisplay"/> instead, not this directly, so it can show hex without
-    /// this value ever needing to be anything but decimal.
+    /// read and write, and what <see cref="SelectedHidDevice"/>/<see cref="SelectedUsbtmcDevice"/> set.
+    /// Shared by the HID and USBTMC transports (both select a physical USB device the same way). A
+    /// front end's text field binds to <see cref="VendorIdDisplay"/> instead, not this directly, so
+    /// it can show hex without this value ever needing to be anything but decimal.
     /// </summary>
-    public string HidVendorId
+    public string VendorId
     {
-        get => _hidVendorId;
+        get => _vendorId;
         set
         {
-            if (_hidVendorId == value)
+            if (_vendorId == value)
             {
                 return;
             }
 
-            SetField(ref _hidVendorId, value);
-            OnPropertyChanged(nameof(HidVendorIdDisplay));
+            SetField(ref _vendorId, value);
+            OnPropertyChanged(nameof(VendorIdDisplay));
         }
     }
 
-    /// <summary>Same idea as <see cref="HidVendorId"/>/<see cref="HidVendorIdDisplay"/>.</summary>
-    public string HidProductId
+    /// <summary>Same idea as <see cref="VendorId"/>/<see cref="VendorIdDisplay"/>.</summary>
+    public string ProductId
     {
-        get => _hidProductId;
+        get => _productId;
         set
         {
-            if (_hidProductId == value)
+            if (_productId == value)
             {
                 return;
             }
 
-            SetField(ref _hidProductId, value);
-            OnPropertyChanged(nameof(HidProductIdDisplay));
+            SetField(ref _productId, value);
+            OnPropertyChanged(nameof(ProductIdDisplay));
         }
     }
 
     /// <summary>
-    /// <see langword="true"/> to show/accept <see cref="HidVendorIdDisplay"/>/<see cref="HidProductIdDisplay"/>
-    /// as 4-digit hex (matching <c>--listhiddevices</c>'s own <c>"046D:C08B"</c> formatting) instead
-    /// of plain decimal — a display preference only, not itself a connection field, so it doesn't
-    /// mark the editor dirty and isn't saved as part of a profile (<see cref="HidVendorId"/>/
-    /// <see cref="HidProductId"/> are always decimal regardless of this).
+    /// <see langword="true"/> to show/accept <see cref="VendorIdDisplay"/>/<see cref="ProductIdDisplay"/>
+    /// as 4-digit hex (matching <c>--listhiddevices</c>/<c>--listusbtmcdevices</c>'s own
+    /// <c>"046D:C08B"</c> formatting) instead of plain decimal — a display preference only, not
+    /// itself a connection field, so it doesn't mark the editor dirty and isn't saved as part of a
+    /// profile (<see cref="VendorId"/>/<see cref="ProductId"/> are always decimal regardless of this).
     /// </summary>
-    public bool HidIdsShowHex
+    public bool IdsShowHex
     {
-        get => _hidIdsShowHex;
+        get => _idsShowHex;
         set
         {
-            if (_hidIdsShowHex == value)
+            if (_idsShowHex == value)
             {
                 return;
             }
 
-            SetField(ref _hidIdsShowHex, value);
-            OnPropertyChanged(nameof(HidVendorIdDisplay));
-            OnPropertyChanged(nameof(HidProductIdDisplay));
+            SetField(ref _idsShowHex, value);
+            OnPropertyChanged(nameof(VendorIdDisplay));
+            OnPropertyChanged(nameof(ProductIdDisplay));
         }
     }
 
     /// <summary>
     /// What a front end's Vendor ID field actually binds to — decimal or 4-digit hex depending on
-    /// <see cref="HidIdsShowHex"/>, converting to/from the canonical decimal <see cref="HidVendorId"/>.
-    /// Setting this does <em>not</em> re-raise its own change notification (only <see cref="HidVendorId"/>'s
-    /// does, when something else — Load, <see cref="SelectedHidDevice"/> — changes the canonical
-    /// value): a bound WPF <c>TextBox</c> re-pulling and reformatting its own text on every keystroke
-    /// would reset the caret to the end after each character typed.
+    /// <see cref="IdsShowHex"/>, converting to/from the canonical decimal <see cref="VendorId"/>.
+    /// Setting this does <em>not</em> re-raise its own change notification (only <see cref="VendorId"/>'s
+    /// does, when something else — Load, <see cref="SelectedHidDevice"/>/<see cref="SelectedUsbtmcDevice"/> —
+    /// changes the canonical value): a bound WPF <c>TextBox</c> re-pulling and reformatting its own
+    /// text on every keystroke would reset the caret to the end after each character typed.
     /// </summary>
-    public string HidVendorIdDisplay
+    public string VendorIdDisplay
     {
-        get => FormatHidId(_hidVendorId, _hidIdsShowHex);
+        get => FormatId(_vendorId, _idsShowHex);
         set
         {
-            var canonical = ParseHidId(value, _hidIdsShowHex);
-            if (_hidVendorId == canonical)
+            var canonical = ParseId(value, _idsShowHex);
+            if (_vendorId == canonical)
             {
                 return;
             }
 
-            SetField(ref _hidVendorId, canonical, nameof(HidVendorId));
+            SetField(ref _vendorId, canonical, nameof(VendorId));
         }
     }
 
-    /// <summary>Same idea as <see cref="HidVendorIdDisplay"/>.</summary>
-    public string HidProductIdDisplay
+    /// <summary>Same idea as <see cref="VendorIdDisplay"/>.</summary>
+    public string ProductIdDisplay
     {
-        get => FormatHidId(_hidProductId, _hidIdsShowHex);
+        get => FormatId(_productId, _idsShowHex);
         set
         {
-            var canonical = ParseHidId(value, _hidIdsShowHex);
-            if (_hidProductId == canonical)
+            var canonical = ParseId(value, _idsShowHex);
+            if (_productId == canonical)
             {
                 return;
             }
 
-            SetField(ref _hidProductId, canonical, nameof(HidProductId));
+            SetField(ref _productId, canonical, nameof(ProductId));
         }
     }
 
-    // Formats/parses a canonical decimal HID id string for display — 4-digit uppercase hex (no "0x"
-    // prefix, matching --listhiddevices' own "046D:C08B" convention) when asHex/isHex, otherwise
-    // passed through unchanged. An unparseable value is returned as-is rather than blanked out: the
-    // same "don't reject a keystroke, let validation catch it later" behavior every other typed
-    // field in this view model already has (see e.g. Baud/DataBits).
-    private static string FormatHidId(string decimalText, bool asHex) =>
+    // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
+    // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
+    // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
+    // returned as-is rather than blanked out: the same "don't reject a keystroke, let validation
+    // catch it later" behavior every other typed field in this view model already has (see e.g.
+    // Baud/DataBits).
+    private static string FormatId(string decimalText, bool asHex) =>
         asHex && int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value.ToString("X4", CultureInfo.InvariantCulture)
             : decimalText;
 
-    private static string ParseHidId(string text, bool isHex) =>
+    private static string ParseId(string text, bool isHex) =>
         isHex
             ? int.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value)
                 ? value.ToString(CultureInfo.InvariantCulture)
                 : text
             : text;
 
-    /// <summary>Same idea as <see cref="SelectedSerialPort"/>, for <see cref="HidVendorId"/>/<see cref="HidProductId"/> together.</summary>
+    /// <summary>Same idea as <see cref="SelectedSerialPort"/>, for <see cref="VendorId"/>/<see cref="ProductId"/> together.</summary>
     public HidDeviceOption? SelectedHidDevice
     {
         get => _selectedHidDevice;
@@ -536,8 +578,23 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             SetField(ref _selectedHidDevice, value);
             if (value is not null)
             {
-                HidVendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
-                HidProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
+                VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
+                ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
+    /// <summary>Same idea as <see cref="SelectedHidDevice"/>, for a real USBTMC device — writes into the same shared <see cref="VendorId"/>/<see cref="ProductId"/>.</summary>
+    public UsbtmcDeviceOption? SelectedUsbtmcDevice
+    {
+        get => _selectedUsbtmcDevice;
+        set
+        {
+            SetField(ref _selectedUsbtmcDevice, value);
+            if (value is not null)
+            {
+                VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
+                ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
             }
         }
     }
@@ -644,8 +701,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Host = options.Host ?? string.Empty;
         TcpPort = options.TcpPort.ToString();
         Listen = options.Listen;
-        HidVendorId = options.HidVendorId.ToString();
-        HidProductId = options.HidProductId.ToString();
+        VendorId = options.VendorId.ToString();
+        ProductId = options.ProductId.ToString();
         var presenters = options.EffectivePresenters;
         foreach (var choice in PresenterChoices)
         {
@@ -701,14 +758,14 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             options.TcpPort = tcpPort;
         }
 
-        if (int.TryParse(HidVendorId, out var vendorId))
+        if (int.TryParse(VendorId, out var vendorId))
         {
-            options.HidVendorId = vendorId;
+            options.VendorId = vendorId;
         }
 
-        if (int.TryParse(HidProductId, out var productId))
+        if (int.TryParse(ProductId, out var productId))
         {
-            options.HidProductId = productId;
+            options.ProductId = productId;
         }
 
         if (Enum.TryParse<LineEnding>(LineEndingText, ignoreCase: true, out var lineEnding))
@@ -1021,8 +1078,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     // replacing it, so a bound combobox keeps a still-matching selection rather than being reset.
     private void RefreshHidDeviceOptions()
     {
-        var vendorId = ParseHidFilterId(_hidVendorId);
-        var productId = ParseHidFilterId(_hidProductId);
+        var vendorId = ParseFilterId(_vendorId);
+        var productId = ParseFilterId(_productId);
         var wanted = _detectedHidDevices
             .Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId == productId))
             .ToList();
@@ -1044,16 +1101,44 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
-    private static int ParseHidFilterId(string decimalText) =>
+    // Same filtering as RefreshHidDeviceOptions, over the USBTMC discovery list instead — see
+    // UsbtmcDeviceOptions' doc comment.
+    private void RefreshUsbtmcDeviceOptions()
+    {
+        var vendorId = ParseFilterId(_vendorId);
+        var productId = ParseFilterId(_productId);
+        var wanted = _detectedUsbtmcDevices
+            .Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId == productId))
+            .ToList();
+
+        for (var i = _usbtmcDeviceOptions.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(_usbtmcDeviceOptions[i]))
+            {
+                _usbtmcDeviceOptions.RemoveAt(i);
+            }
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i >= _usbtmcDeviceOptions.Count || _usbtmcDeviceOptions[i] != wanted[i])
+            {
+                _usbtmcDeviceOptions.Insert(i, wanted[i]);
+            }
+        }
+    }
+
+    private static int ParseFilterId(string decimalText) =>
         int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
 
     private void OnPropertyChanged(string? propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        if (propertyName is nameof(HidVendorId) or nameof(HidProductId))
+        if (propertyName is nameof(VendorId) or nameof(ProductId))
         {
             RefreshHidDeviceOptions();
+            RefreshUsbtmcDeviceOptions();
         }
 
         if (propertyName is not null && !NonDirtyProperties.Contains(propertyName))

@@ -61,7 +61,7 @@ public sealed class ServiceCollectionExtensionsTests
     [TestMethod]
     public void AddDevTermFrontEnd_HidTransport_ResolvesHidTransportConfiguredFromCliOptions()
     {
-        var cliOptions = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+        var cliOptions = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA, SerialNumber = "12345" };
         var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
 
         var transport = provider.GetRequiredService<ITransport>();

@@ -172,6 +172,36 @@ ordered against the rest.
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
+- **Device control panel UX polish, from real-hardware use of the SCPI/K8055/Busylight panels
+  (Architect notes, 2026-09-23)** — applies to `ControlPanelMode`/`ControlPanelWindow` generically,
+  not one device:
+  - Collapsible sections with a visual expand/collapse affordance, for every device profile's panel
+    (SCPI profiles in particular tend to have many sections/commands).
+  - Labels should show at full width without wrapping, aligned within their section/grouping.
+  - An info icon (hover/select) on any field that sends a command, showing the exact command text
+    that will be sent — useful for verifying a SCPI template's substituted value before sending it
+    to real hardware.
+  - `ScpiInstrumentProfile.Notes` (rendered via `UiDefinition.Description`) should be its own group,
+    moved to the bottom of the panel rather than wherever it currently renders.
+  - Extend `DevTerm.UiDefinitions`' parameter metadata to decouple a value's **data type** from its
+    **control type** — e.g. a numeric value should be able to declare validation (an input range,
+    reusing `ScpiParameterDefinition`'s existing `Minimum`/`Maximum`) independently of *which* widget
+    renders it (slider vs. plain numeric field vs. text), rather than the current tight
+    `Kind: Numeric|Choice|Text` → fixed-widget coupling. Overlaps with the "consolidate hand-coded
+    settings forms" item above — likely the same underlying model extension.
+- **Busylight custom-color dialog UX** (Architect notes, 2026-09-23): a "Custom" radio option
+  alongside the named presets, with a swatch previewing the currently-configured custom color before
+  entering the picker; the picker's last-used values should persist across re-opening it (currently
+  reset each time — filed as a bug in `TODO.md`); Enter in the picker should act like clicking Apply.
+- **Tektronix 2230 — decided direction, not yet built**: rather than continuing to reuse
+  `ScpiControlSurface`/`ScpiReplyPresenter` as more commands get confirmed, build a separate "Text
+  Command" device module (`DevTerm.Devices.TextCommand`? — mirroring `DevTerm.Devices.Scpi`'s shape:
+  profile/control-surface/reply-presenter) that allows more generic command strings than SCPI's
+  `{Name}`-token templates assume. This resolves
+  [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)'s own "why this
+  isn't (fully) folded into the SCPI module" open question in favor of the separate-module option,
+  once real-hardware probing (still needed — see that doc) turns up enough of the 2230's command set
+  to justify it. See `TODO.md` for a reported terminator correction (`\r`, not `\n`) to apply first.
 
 ## Research (not backlog-ready)
 

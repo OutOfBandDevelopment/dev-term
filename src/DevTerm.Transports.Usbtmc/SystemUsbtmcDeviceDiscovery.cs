@@ -19,44 +19,58 @@ public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
         using var context = new UsbContext();
         foreach (var device in context.List())
         {
-            var isUsbtmc = device.Configs.Any(config => config.Interfaces.Any(
-                iface => iface.Class == ClassCode.Application && iface.SubClass == UsbtmcInterfaceSubClass));
-
-            if (!isUsbtmc)
-            {
-                continue;
-            }
-
-            // The string descriptors (Manufacturer/Product/SerialNumber) need an actual control
-            // transfer, which needs an open device handle — VendorId/ProductId alone come from the
-            // already-enumerated device descriptor and need no Open(). Opening can fail (e.g. no
-            // WinUSB-compatible driver bound to the device on Windows) independent of whether the
-            // device itself is a valid USBTMC device, so a failed Open still yields a descriptor,
-            // just without the string fields.
-            var opened = TryOpen(device);
+            // IUsbDevice (LibUsbDotNet.Device) is a SafeHandle wrapping a native libusb device
+            // reference - every device context.List() hands back must be disposed before this
+            // method returns, or its finalizer runs on the GC finalizer thread later, potentially
+            // after `context` above has already been disposed/freed. Unref'ing a device against an
+            // already-destroyed libusb context is undefined behavior; confirmed against real
+            // hardware as the cause of a native access-violation crash in
+            // LibUsbDotNet.NativeMethods.UnrefDevice during test-process teardown.
             try
             {
-                var info = device.Info;
-                descriptors.Add(new UsbtmcDeviceDescriptor(
-                    info.VendorId,
-                    info.ProductId,
-                    TryGet(() => info.Manufacturer),
-                    TryGet(() => info.Product),
-                    TryGet(() => info.SerialNumber)));
+                var isUsbtmc = device.Configs.Any(config => config.Interfaces.Any(
+                    iface => iface.Class == ClassCode.Application && iface.SubClass == UsbtmcInterfaceSubClass));
+
+                if (!isUsbtmc)
+                {
+                    continue;
+                }
+
+                // The string descriptors (Manufacturer/Product/SerialNumber) need an actual control
+                // transfer, which needs an open device handle — VendorId/ProductId alone come from the
+                // already-enumerated device descriptor and need no Open(). Opening can fail (e.g. no
+                // WinUSB-compatible driver bound to the device on Windows) independent of whether the
+                // device itself is a valid USBTMC device, so a failed Open still yields a descriptor,
+                // just without the string fields.
+                var opened = TryOpen(device);
+                try
+                {
+                    var info = device.Info;
+                    descriptors.Add(new UsbtmcDeviceDescriptor(
+                        info.VendorId,
+                        info.ProductId,
+                        TryGet(() => info.Manufacturer),
+                        TryGet(() => info.Product),
+                        TryGet(() => info.SerialNumber)));
+                }
+                finally
+                {
+                    if (opened)
+                    {
+                        try
+                        {
+                            device.Close();
+                        }
+                        catch
+                        {
+                            // Best-effort cleanup only; a failed Close doesn't change what was detected.
+                        }
+                    }
+                }
             }
             finally
             {
-                if (opened)
-                {
-                    try
-                    {
-                        device.Close();
-                    }
-                    catch
-                    {
-                        // Best-effort cleanup only; a failed Close doesn't change what was detected.
-                    }
-                }
+                device.Dispose();
             }
         }
 

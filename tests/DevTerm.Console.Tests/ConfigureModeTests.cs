@@ -432,26 +432,37 @@ public sealed class ConfigureModeTests
             {
                 Assert.IsTrue(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
-                Assert.IsFalse(parts.HidVendorField.Visible);
+                Assert.IsFalse(parts.VendorField.Visible);
 
                 parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsTrue(parts.HostField.Visible);
-                Assert.IsFalse(parts.HidVendorField.Visible);
+                Assert.IsFalse(parts.VendorField.Visible);
 
                 parts.TransportSelector.Value = ConfigureMode.TransportChoice.Hid;
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
-                Assert.IsTrue(parts.HidVendorField.Visible);
+                Assert.IsTrue(parts.VendorField.Visible);
+                Assert.IsTrue(parts.DetectHidButton.Visible);
+                Assert.IsFalse(parts.DetectUsbtmcButton.Visible);
+                Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
+
+                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Usbtmc;
+
+                Assert.IsFalse(parts.PortField.Visible);
+                Assert.IsFalse(parts.HostField.Visible);
+                Assert.IsTrue(parts.VendorField.Visible);
+                Assert.IsFalse(parts.DetectHidButton.Visible);
+                Assert.IsTrue(parts.DetectUsbtmcButton.Visible);
                 Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
 
                 parts.TransportSelector.Value = ConfigureMode.TransportChoice.Loopback;
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
-                Assert.IsFalse(parts.HidVendorField.Visible);
+                Assert.IsFalse(parts.VendorField.Visible);
                 Assert.IsTrue(parts.LoopbackInfoLabel.Visible);
             });
         }
@@ -791,7 +802,7 @@ public sealed class ConfigureModeTests
         {
             RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
             {
-                Assert.AreEqual("Detect...", parts.DetectHidButton.Text);
+                Assert.AreEqual("Detect HID...", parts.DetectHidButton.Text);
                 Assert.IsNotNull(parts.DetectHidButton.SuperView);
             });
         }
@@ -802,7 +813,7 @@ public sealed class ConfigureModeTests
     }
 
     [TestMethod]
-    public void HidShowHexCheckBox_TogglingReformatsTheDisplayedVendorAndProductIdFields()
+    public void IdsShowHexCheckBox_TogglingReformatsTheDisplayedVendorAndProductIdFields()
     {
         // CheckBox.Value flips, then Activating/Activated fire - confirmed via a headless probe
         // against the installed Terminal.Gui v2.5.0 package that Command.Activate (what Space is
@@ -812,23 +823,23 @@ public sealed class ConfigureModeTests
         try
         {
             RunHeadless(
-                new CliOptions { Transport = "hid", HidVendorId = 1234, HidProductId = 49291 },
+                new CliOptions { Transport = "hid", VendorId = 1234, ProductId = 49291 },
                 null,
                 new ConnectionProfileStore(directory),
                 parts =>
                 {
-                    Assert.AreEqual("1234", parts.HidVendorField.Text);
-                    Assert.AreEqual("49291", parts.HidProductField.Text);
+                    Assert.AreEqual("1234", parts.VendorField.Text);
+                    Assert.AreEqual("49291", parts.ProductField.Text);
 
-                    parts.HidShowHexCheckBox.InvokeCommand(Command.Activate);
+                    parts.IdsShowHexCheckBox.InvokeCommand(Command.Activate);
 
-                    Assert.AreEqual("04D2", parts.HidVendorField.Text, "Checking 'Show as hex' should reformat the already-typed value, not require it to be re-entered.");
-                    Assert.AreEqual("C08B", parts.HidProductField.Text);
+                    Assert.AreEqual("04D2", parts.VendorField.Text, "Checking 'Show as hex' should reformat the already-typed value, not require it to be re-entered.");
+                    Assert.AreEqual("C08B", parts.ProductField.Text);
 
-                    parts.HidShowHexCheckBox.InvokeCommand(Command.Activate);
+                    parts.IdsShowHexCheckBox.InvokeCommand(Command.Activate);
 
-                    Assert.AreEqual("1234", parts.HidVendorField.Text, "Unchecking should revert back to decimal.");
-                    Assert.AreEqual("49291", parts.HidProductField.Text);
+                    Assert.AreEqual("1234", parts.VendorField.Text, "Unchecking should revert back to decimal.");
+                    Assert.AreEqual("49291", parts.ProductField.Text);
                 });
         }
         finally

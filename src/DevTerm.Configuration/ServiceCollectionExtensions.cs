@@ -7,6 +7,7 @@ using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
+using DevTerm.Transports.Usbtmc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DevTerm.Configuration;
@@ -43,9 +44,19 @@ public static class ServiceCollectionExtensions
             services.AddHidTransport();
             services.Configure<HidTransportOptions>(o =>
             {
-                o.VendorId = cliOptions.HidVendorId;
-                o.ProductId = cliOptions.HidProductId;
-                o.SerialNumber = cliOptions.HidSerialNumber;
+                o.VendorId = cliOptions.VendorId;
+                o.ProductId = cliOptions.ProductId;
+                o.SerialNumber = cliOptions.SerialNumber;
+            });
+        }
+        else if (string.Equals(cliOptions.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddUsbtmcTransport();
+            services.Configure<UsbtmcTransportOptions>(o =>
+            {
+                o.VendorId = cliOptions.VendorId;
+                o.ProductId = cliOptions.ProductId;
+                o.SerialNumber = cliOptions.SerialNumber;
             });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))

@@ -23,7 +23,7 @@ dotnet run --project src/DevTerm.Console -- --listports true    # list serial po
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
 dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true    # list USB USBTMC devices (see docs/design/usbtmc-transport.md)
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
-dotnet run --project src/DevTerm.Console -- --transport hid --hidvendorid 6421 --hidproductid 45018 --cli true
+dotnet run --project src/DevTerm.Console -- --transport hid --vendorid 6421 --productid 45018 --cli true
 dotnet run --project src/DevTerm.Console -- --transport loopback --cli true    # no hardware needed; try "hello"
 ```
 
@@ -305,8 +305,8 @@ double-opens the session and corrupts the single-reader `PipeReader`) and the tw
   not scroll a newly focused child into view by itself — `ConfigureMode` reveals each direct child on
   `HasFocusChanged` (`HasFocusEventArgs.NewValue`).
 - **Real-console TUI driving works and is the way to check input bugs headless tests can't**: launch
-  `conhost.exe <DevTerm.Console.exe> <args>` (force the editor with `--transport hid --hidvendorid 0
-  --hidproductid 0`), find its `ConsoleWindowClass` window, inject key events with
+  `conhost.exe <DevTerm.Console.exe> <args>` (force the editor with `--transport hid --vendorid 0
+  --productid 0`), find its `ConsoleWindowClass` window, inject key events with
   `AttachConsole` + `WriteConsoleInput` to the `CONIN$` handle, and screenshot with `PrintWindow`.
   Use a key the app handles globally (PageUp/PageDown scroll the editor form) as a control to prove
   the injection itself is reaching the app before drawing conclusions from "nothing happened".

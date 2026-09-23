@@ -52,6 +52,41 @@ public sealed class ConsoleAppCliTests
     }
 
     [TestMethod]
+    public async Task ListHidDevices_WithVendorAndProductIdFilter_ExitsZeroAndOmitsNonMatchingDevices()
+    {
+        // 65535/65535 is not a real, assigned USB vendor/product id, so whatever's actually plugged
+        // into the machine running this test is guaranteed not to match — proves the filter narrows
+        // the list (to empty here) rather than just proving the flags parse without crashing.
+        using var process = Process.Start(BuildStartInfo("--listhiddevices true --vendorid 65535 --productid 65535"))!;
+        var stdout = await process.StandardOutput.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(0, process.ExitCode);
+        Assert.AreEqual(string.Empty, stdout.Trim());
+    }
+
+    [TestMethod]
+    public async Task ListUsbtmcDevices_ExitsZeroWithoutCrashing()
+    {
+        using var process = Process.Start(BuildStartInfo("--listusbtmcdevices true"))!;
+        await process.StandardOutput.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(0, process.ExitCode);
+    }
+
+    [TestMethod]
+    public async Task ListUsbtmcDevices_WithVendorAndProductIdFilter_ExitsZeroAndOmitsNonMatchingDevices()
+    {
+        using var process = Process.Start(BuildStartInfo("--listusbtmcdevices true --vendorid 65535 --productid 65535"))!;
+        var stdout = await process.StandardOutput.ReadToEndAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync().WaitAsync(Timeout);
+
+        Assert.AreEqual(0, process.ExitCode);
+        Assert.AreEqual(string.Empty, stdout.Trim());
+    }
+
+    [TestMethod]
     public async Task UnknownTransport_PrintsErrorAndUsage_ExitsOne()
     {
         using var process = Process.Start(BuildStartInfo("--transport carrier-pigeon --cli true"))!;

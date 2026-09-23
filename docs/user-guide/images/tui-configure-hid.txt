@@ -1,7 +1,7 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │                                                                             ▲│
-│HID vendor ID: 4216         Product ID: 63560        ⟦ Detect... ⟧▖          ░│
-│                                                     ▝▀▀▀▀▀▀▀▀▀▀▀▀▘          ░│
+│Vendor ID: 4216         Product ID: 63560        ⟦ Detect HID... ⟧▖          ░│
+│                                                 ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘          ░│
 │☐ Show as hex                                                                ░│
 │                                                                             ░│
 │                                                                             ░│

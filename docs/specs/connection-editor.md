@@ -26,7 +26,7 @@ Shown in two situations:
 
 | Field | Type | Default | Validation | Notes |
 |---|---|---|---|---|
-| Transport | one of `serial`/`tcp`/`hid` | `serial` | Must be one of the three | Selecting a value shows only that transport's field group (see States) |
+| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; on Windows each entry is shown as `COM3 — Prolific USB-to-Serial Comm Port` (see Per-front-end notes), but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
@@ -36,9 +36,9 @@ Shown in two situations:
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
-| Vendor ID (hid) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` | Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.HidVendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
-| Product ID (hid) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` | Same as Vendor ID |
-| Show as hex (hid) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
+| Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
+| Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
+| Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` (a row of checkboxes) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
 | Send as | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
@@ -66,9 +66,13 @@ Shown in two situations:
 ## States
 
 - **Transport-based field-group visibility**: only the field group matching the selected Transport
-  is shown (Serial / TCP / USB HID) — `IsSerialTransport`/`IsTcpTransport`/`IsHidTransport` on the
-  view model, recomputed whenever `Transport` changes. Presenter/Line ending/Description/Save/
-  Import-export are always visible regardless of Transport.
+  is shown (Serial / TCP / USB device / Loopback) —
+  `IsSerialTransport`/`IsTcpTransport`/`IsHidTransport`/`IsUsbtmcTransport` on the view model,
+  recomputed whenever `Transport` changes. The shared Vendor/Product ID/Show-as-hex group is shown
+  for either USB transport via `IsUsbDeviceTransport` (= `IsHidTransport || IsUsbtmcTransport`);
+  within that group, only the Detected-devices picker for the *selected* one of `hid`/`usbtmc` is
+  shown, since they're separate discovery sources (see Per-front-end notes). Presenter/Line ending/
+  Description/Save/Import-export are always visible regardless of Transport.
 - **Status message**: a single line (`StatusMessage`) shows the most recent action's result or a
   validation failure — success and failure share the same field, there's no separate "error" vs.
   "info" styling today (WPF renders it in dark red regardless).
@@ -148,18 +152,22 @@ Shown in two situations:
   `MessageBox.Show`; the TUI uses `Terminal.Gui.Views.MessageBox.Query`. Both are wired through the
   same `ConnectionEditorViewModel.ConfirmOverwrite`/`ConfirmDiscardChanges`/`ConfirmDeleteProfiles`
   hooks so the view model itself has no UI dependency. Single-profile **Delete** doesn't confirm.
-- **Detected-hardware pickers fill fields rather than binding directly to them**: `Port` and
-  `HidVendorId`/`HidProductId` stay plain, freely-typable fields; a separate `SelectedSerialPort`/
-  `SelectedHidDevice` property on the view model is what a picker actually binds to, and setting it
-  copies the choice into the real field(s) (`SelectedHidDevice` sets both Vendor and Product ID
-  together, since they identify one device). Deliberately not the same property, both to keep typing
-  a custom value simple and because a WPF editable `ComboBox`'s `Text` and `SelectedItem` don't share
-  one format cleanly once the display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the
-  plain decimal the field actually stores. WPF renders this as a second, non-editable `ComboBox`
-  ("Detected ports:"/"Detected devices:") next to the real field; the TUI renders it as a "Detect..."
-  button that opens a small modal picker (a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
-  Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
-  v2.5.0 package). Both are empty (not an error) if nothing's detected or discovery itself fails.
+- **Detected-hardware pickers fill fields rather than binding directly to them**: `Port` and the
+  shared `VendorId`/`ProductId` stay plain, freely-typable fields; a separate `SelectedSerialPort`/
+  `SelectedHidDevice`/`SelectedUsbtmcDevice` property on the view model is what a picker actually
+  binds to, and setting it copies the choice into the real field(s) (`SelectedHidDevice`/
+  `SelectedUsbtmcDevice` each set both Vendor and Product ID together, since they identify one
+  device). Deliberately not the same property, both to keep typing a custom value simple and because
+  a WPF editable `ComboBox`'s `Text` and `SelectedItem` don't share one format cleanly once the
+  display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the plain decimal the field
+  actually stores. WPF renders this as a second, non-editable `ComboBox` ("Detected ports:"/
+  "Detected HID devices:"/"Detected USBTMC devices:") next to the real field, only the row matching
+  the selected transport visible; the TUI renders it as a "Detect..." button (serial) or a
+  "Detect HID.../Detect USBTMC..." button (one per USB transport, always both present, next to each
+  other, since HID and USBTMC discovery are independent) that opens a small modal picker (a plain
+  `Dialog` + `ListView`, `Application.Run(dialog)` — Terminal.Gui has no built-in combobox widget,
+  confirmed via reflection against the installed v2.5.0 package). Both are empty (not an error) if
+  nothing's detected or discovery itself fails.
 - **A detected serial port's description is a separate lookup, not part of the port list.**
   `ISerialPortDiscovery` keeps `GetPortNames()` as-is (the `--listports` and `SerialPort` contract)
   and gains a default-interface-method `GetPortDescriptions()` returning `port name → description`
@@ -185,36 +193,39 @@ Shown in two situations:
   COM3 entry was found and correctly not listed), then with a live Prolific USB-to-Serial adapter
   (enumerated as COM4: `COM4 => Prolific USB-to-Serial Comm Port` returned, ghost COM3 still not
   listed).
-- **The HID picker is filtered by the ID fields, live.** `HidDeviceOptions` is not the raw
-  discovery result: it's `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) &&
-  (productId == 0 || d.ProductId == productId))`, so typing a vendor id narrows the picker to that
-  vendor's devices, adding a product id narrows it to one, and `0` (the default) lists everything.
-  An id that isn't a number yet (mid-typing, or a bad value) counts as `0` rather than emptying the
-  list. Recomputed whenever the canonical `HidVendorId`/`HidProductId` change — from typing, the hex
-  display field, Load, or picking a device — by editing an `ObservableCollection` in place (remove
-  what no longer matches, insert what now does, detection order), not by replacing the list: a
-  bound WPF `ComboBox` follows it live and keeps a selection that still matches, where a replaced
-  `ItemsSource` would reset it. It is exposed as `IReadOnlyList<HidDeviceOption>`; the
-  `ObservableCollection` is the runtime type. `HidDevicesHiddenByFilter` (some detected device is
-  hidden only by the filter) lets the TUI say "No detected HID device matches the Vendor/Product ID
-  entered (0 means any)" instead of a misleading "Nothing was detected." for an empty picker. The
-  TUI's fields only reach the view model when pushed, so its Detect button pushes them first.
-  Consequence worth knowing: **picking a device fills in both ids, which then narrows the list to
-  just that device** — to pick a different one, clear an id (or set it to 0) first. A device whose
-  own vendor id is 0 is not treated as a wildcard.
-- **The HID decimal/hex toggle is display-only, backed by a separate `*Display` property per
-  field** (`HidVendorIdDisplay`/`HidProductIdDisplay`), not `HidVendorId`/`HidProductId` themselves
-  — those two stay canonical decimal strings always (what `BuildOptions`/`LoadIntoFields`/
-  `SelectedHidDevice` all read and write), so validation/Save/Connect/profile storage never need to
-  know or care which format the user is currently viewing. Toggling `HidIdsShowHex` reformats
-  whatever's already entered rather than requiring it to be retyped. WPF binds a `TextBox` directly
-  to `HidVendorIdDisplay`/`HidProductIdDisplay` (deliberately *not* re-raising that property's own
-  change notification from within its own setter — only from `HidIdsShowHex`'s setter or from
-  `HidVendorId`/`HidProductId` changing some other way, e.g. Load or the detected-devices picker —
-  so a bound `TextBox` doesn't get its text reformatted, and its caret reset to the end, after every
-  single keystroke). The TUI has no continuous binding to fight the same way — its "Show as hex"
-  `CheckBox` reformats the two fields immediately on toggle anyway, via its own `Activated` handler
-  (confirmed via a headless probe that `Activated` fires *after* `Value` has already flipped).
+- **The HID and USBTMC pickers are each filtered by the shared ID fields, live, independently.**
+  `HidDeviceOptions`/`UsbtmcDeviceOptions` are not the raw discovery results: each is
+  `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId
+  == productId))`, so typing a vendor id narrows both pickers to that vendor's devices, adding a
+  product id narrows each to one, and `0` (the default) lists everything. An id that isn't a number
+  yet (mid-typing, or a bad value) counts as `0` rather than emptying the list. Both are recomputed
+  whenever the canonical shared `VendorId`/`ProductId` change — from typing, the hex display field,
+  Load, or picking a device from *either* picker — by editing an `ObservableCollection` in place
+  (remove what no longer matches, insert what now does, detection order), not by replacing the list:
+  a bound WPF `ComboBox` follows it live and keeps a selection that still matches, where a replaced
+  `ItemsSource` would reset it. Each is exposed as `IReadOnlyList<HidDeviceOption>`/
+  `IReadOnlyList<UsbtmcDeviceOption>`; the `ObservableCollection` is the runtime type.
+  `HidDevicesHiddenByFilter`/`UsbtmcDevicesHiddenByFilter` (some detected device of that kind is
+  hidden only by the filter) lets the TUI say "No detected HID/USBTMC device matches the
+  Vendor/Product ID entered (0 means any)" instead of a misleading "Nothing was detected." for an
+  empty picker. The TUI's fields only reach the view model when pushed, so each Detect button pushes
+  them first. Consequence worth knowing: **picking a device fills in both ids, which then narrows
+  both lists to just devices matching that pair** — to pick a different one, clear an id (or set it
+  to 0) first. A device whose own vendor id is 0 is not treated as a wildcard.
+- **The decimal/hex toggle for the shared Vendor/Product ID fields is display-only, backed by a
+  separate `*Display` property per field** (`VendorIdDisplay`/`ProductIdDisplay`), not `VendorId`/
+  `ProductId` themselves — those two stay canonical decimal strings always (what `BuildOptions`/
+  `LoadIntoFields`/`SelectedHidDevice`/`SelectedUsbtmcDevice` all read and write), so validation/
+  Save/Connect/profile storage never need to know or care which format the user is currently
+  viewing, or which of the two USB transports is selected. Toggling `IdsShowHex` reformats whatever's
+  already entered rather than requiring it to be retyped. WPF binds a `TextBox` directly to
+  `VendorIdDisplay`/`ProductIdDisplay` (deliberately *not* re-raising that property's own change
+  notification from within its own setter — only from `IdsShowHex`'s setter or from `VendorId`/
+  `ProductId` changing some other way, e.g. Load or either detected-devices picker — so a bound
+  `TextBox` doesn't get its text reformatted, and its caret reset to the end, after every single
+  keystroke). The TUI has no continuous binding to fight the same way — its "Show as hex" `CheckBox`
+  reformats the two fields immediately on toggle anyway, via its own `Activated` handler (confirmed
+  via a headless probe that `Activated` fires *after* `Value` has already flipped).
 - **Double-click-to-load is a per-row `MouseDoubleClick` handler in WPF, an event handler calling
   the same command in the TUI**: the original WPF version was a `<ListBox.InputBindings><MouseBinding
   MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />` (pure binding, no code-behind) and

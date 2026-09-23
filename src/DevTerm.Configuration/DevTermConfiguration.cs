@@ -96,13 +96,14 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.TcpPort)] = options.TcpPort;
             profile[nameof(CliOptions.Listen)] = options.Listen;
         }
-        else if (string.Equals(options.Transport, "hid", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(options.Transport, "hid", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(options.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))
         {
-            profile[nameof(CliOptions.HidVendorId)] = options.HidVendorId;
-            profile[nameof(CliOptions.HidProductId)] = options.HidProductId;
-            if (options.HidSerialNumber is not null)
+            profile[nameof(CliOptions.VendorId)] = options.VendorId;
+            profile[nameof(CliOptions.ProductId)] = options.ProductId;
+            if (options.SerialNumber is not null)
             {
-                profile[nameof(CliOptions.HidSerialNumber)] = options.HidSerialNumber;
+                profile[nameof(CliOptions.SerialNumber)] = options.SerialNumber;
             }
         }
         else

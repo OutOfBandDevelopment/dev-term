@@ -65,7 +65,7 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void For_Hid_DescribesVendorAndProductIdInHex()
     {
-        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA };
+        var options = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA };
 
         Assert.AreEqual("USB HID VID 0x1915 PID 0xAFDA", ConnectionDescription.For(options));
     }
@@ -73,7 +73,7 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void For_HidWithSerialNumber_IncludesIt()
     {
-        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+        var options = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA, SerialNumber = "12345" };
 
         Assert.AreEqual("USB HID VID 0x1915 PID 0xAFDA serial '12345'", ConnectionDescription.For(options));
     }
@@ -112,13 +112,13 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void Definition_Hid_IsVendorAndProductInHex()
     {
-        Assert.AreEqual("hid://1915.AFDA", ConnectionDescription.Definition(new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA }));
+        Assert.AreEqual("hid://1915.AFDA", ConnectionDescription.Definition(new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA }));
     }
 
     [TestMethod]
     public void Definition_HidWithSerialNumber_AppendsItAsTheInstance()
     {
-        var options = new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA, HidSerialNumber = "12345" };
+        var options = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA, SerialNumber = "12345" };
 
         Assert.AreEqual("hid://1915.AFDA.12345", ConnectionDescription.Definition(options));
     }

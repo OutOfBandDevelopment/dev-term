@@ -176,12 +176,12 @@ public sealed class CliOptionsBindingTests
     [TestMethod]
     public void Bind_HidArguments_PopulatesOptions()
     {
-        var options = Bind("--transport", "hid", "--hidvendorid", "6421", "--hidproductid", "45018", "--hidserialnumber", "12345");
+        var options = Bind("--transport", "hid", "--vendorid", "6421", "--productid", "45018", "--serialnumber", "12345");
 
         Assert.AreEqual("hid", options.Transport);
-        Assert.AreEqual(6421, options.HidVendorId);
-        Assert.AreEqual(45018, options.HidProductId);
-        Assert.AreEqual("12345", options.HidSerialNumber);
+        Assert.AreEqual(6421, options.VendorId);
+        Assert.AreEqual(45018, options.ProductId);
+        Assert.AreEqual("12345", options.SerialNumber);
     }
 
     [TestMethod]

@@ -126,7 +126,7 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = ["hex"] };
+            var initial = new CliOptions { Transport = "hid", VendorId = 4216, ProductId = 63560, Presenter = ["hex"] };
 
             Application.Init("dotnet");
             string dump;
@@ -158,7 +158,7 @@ public sealed class ScreenshotTests
 
             File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-hid.txt"), dump);
 
-            StringAssert.Contains(dump, "HID vendor ID");
+            StringAssert.Contains(dump, "Vendor ID:");
             StringAssert.Contains(dump, "4216");
             StringAssert.Contains(dump, "Product ID:");
         }

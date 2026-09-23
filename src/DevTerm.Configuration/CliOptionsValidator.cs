@@ -35,14 +35,27 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             case "hid":
-                if (options.HidVendorId is < 1 or > 0xFFFF)
+                if (options.VendorId is < 1 or > 0xFFFF)
                 {
-                    return ValidateOptionsResult.Fail("Missing or invalid '--hidvendorid' for the HID transport (expected 1-65535, decimal).");
+                    return ValidateOptionsResult.Fail("Missing or invalid '--vendorid' for the HID transport (expected 1-65535, decimal).");
                 }
 
-                if (options.HidProductId is < 1 or > 0xFFFF)
+                if (options.ProductId is < 1 or > 0xFFFF)
                 {
-                    return ValidateOptionsResult.Fail("Missing or invalid '--hidproductid' for the HID transport (expected 1-65535, decimal).");
+                    return ValidateOptionsResult.Fail("Missing or invalid '--productid' for the HID transport (expected 1-65535, decimal).");
+                }
+
+                break;
+
+            case "usbtmc":
+                if (options.VendorId is < 1 or > 0xFFFF)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--vendorid' for the USBTMC transport (expected 1-65535, decimal).");
+                }
+
+                if (options.ProductId is < 1 or > 0xFFFF)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--productid' for the USBTMC transport (expected 1-65535, decimal).");
                 }
 
                 break;
@@ -51,7 +64,7 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

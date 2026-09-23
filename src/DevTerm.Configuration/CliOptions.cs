@@ -24,7 +24,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -163,22 +163,25 @@ public sealed class CliOptions
     [DisplayName("Listen (server mode)")]
     public bool Listen { get; set; }
 
-    // USB HID transport.
+    // USB HID and USBTMC transports share the same "vendor/product/serial" identity fields below —
+    // both select a physical USB device the same way, so a saved profile's Vendor/Product ID
+    // carries over if you switch Transport between "hid" and "usbtmc" instead of needing two
+    // parallel, near-identical sets of fields.
 
-    /// <summary>USB Vendor ID, decimal (Device Manager shows hex, e.g. "VID_1915" is 6421 decimal).</summary>
-    [Category("USB HID")]
+    /// <summary>USB Vendor ID, decimal (Device Manager shows hex, e.g. "VID_1915" is 6421 decimal). Used by both the HID and USBTMC transports.</summary>
+    [Category("USB Device")]
     [DisplayName("Vendor ID")]
-    public int HidVendorId { get; set; }
+    public int VendorId { get; set; }
 
-    /// <summary>USB Product ID, decimal (Device Manager shows hex, e.g. "PID_AFDA" is 45018 decimal).</summary>
-    [Category("USB HID")]
+    /// <summary>USB Product ID, decimal (Device Manager shows hex, e.g. "PID_AFDA" is 45018 decimal). Used by both the HID and USBTMC transports.</summary>
+    [Category("USB Device")]
     [DisplayName("Product ID")]
-    public int HidProductId { get; set; }
+    public int ProductId { get; set; }
 
-    /// <summary>Disambiguates when more than one connected device matches <see cref="HidVendorId"/>/<see cref="HidProductId"/>.</summary>
-    [Category("USB HID")]
+    /// <summary>Disambiguates when more than one connected device matches <see cref="VendorId"/>/<see cref="ProductId"/>. Used by both the HID and USBTMC transports.</summary>
+    [Category("USB Device")]
     [DisplayName("Serial number")]
-    public string? HidSerialNumber { get; set; }
+    public string? SerialNumber { get; set; }
 
     /// <summary>List available USB HID devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]

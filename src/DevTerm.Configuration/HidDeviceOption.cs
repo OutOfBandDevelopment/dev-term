@@ -8,8 +8,8 @@ namespace DevTerm.Configuration;
 /// HID device formatted for display (matching <c>--listhiddevices</c>'s own
 /// <c>"{VID:X4}:{PID:X4}  {ProductName}"</c> shape) alongside the plain decimal
 /// <see cref="VendorId"/>/<see cref="ProductId"/> that actually get written into
-/// <see cref="ConnectionEditorViewModel.HidVendorId"/>/<see cref="ConnectionEditorViewModel.HidProductId"/>
-/// when picked.
+/// <see cref="ConnectionEditorViewModel.VendorId"/>/<see cref="ConnectionEditorViewModel.ProductId"/>
+/// (shared with the USBTMC transport's own picker) when picked.
 /// </summary>
 public sealed record HidDeviceOption(string Display, int VendorId, int ProductId)
 {

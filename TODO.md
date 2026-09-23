@@ -297,51 +297,46 @@ Completed work is logged by date under `docs/changes/`.
   in `DevTerm.Wpf.Tests` (`MainWindowTests`), 2 in `DevTerm.Console.Tests` (`TuiModeTests`) — see
   `docs/changes/2026-09-23.md`.
 
+- **Real-hardware/real-usage bugs reported by the Architect (2026-09-23), not yet fixed.** Raw notes
+  triaged into this file and `BACKLOG.md` the same day — design-level items (collapsible groups,
+  per-field data-type/control-type metadata, an info icon showing the underlying command, Busylight
+  custom-color UX, the Tektronix 2230 direction) moved to `BACKLOG.md`; these are concrete bugs
+  against already-shipped screens:
+  - **HP 34401A SCPI panel** (now on COM5): changing "Range" under "Configure" throws an exception;
+    "Configure DV Voltage Range" doesn't appear to do anything.
+  - **Device Profiles / Connection Editor**: selecting "BBL Lamp" under HID "detected devices" throws
+    an out-of-index exception; a blank/`0`/unparsable HID Vendor or Product ID value isn't validated;
+    switching profiles should disconnect the existing connection and only reconnect when "Connect" is
+    pressed (not automatically); loading a saved profile should populate "Save as profile named" with
+    that profile's name; "Save as profile named" is incorrectly cleared after "Save profile"; the
+    detected-devices/detected-ports lists need a Refresh button.
+  - **Busylight panel**: the custom-color dialog's values don't persist between openings (see also the
+    related UX item moved to `BACKLOG.md`).
+  - **Terminal screen (both front ends)**: the File menu's Connect/Disconnect item doesn't reflect (or
+    doesn't visibly reflect) the current connection state; the window title reportedly doesn't include
+    the loaded profile name even though this was believed already landed (2026-09-18's "Architect's
+    live window title" — needs re-checking, may be a regression); the send-line history (2026-09-23's
+    Up/Down recall) adds a duplicate entry when the same line is sent twice in a row.
+  - **Device presenter "Custom Command" section** (SCPI and any device profile using the always-present
+    custom-command escape hatch): pressing Enter in the "Command" field throws an exception; clicking
+    "Send" with a value typed in "Command" also throws — likely the same root cause, not yet
+    root-caused.
+  - **Tektronix 2230**: the `id` command's outbound terminator should be `\r`, not the `\n` guessed in
+    `Profiles/tektronix-2230.json`/[tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)
+    (a correction from the device owner, not yet applied to the profile or re-verified with a fresh
+    capture).
+  - **New real hardware now available for testing** (previously only two 2230 scopes and the
+    K8055/Busylight were confirmed reachable): USB Rigol DG1000Z, DG3000, DM3000, DS1000, plus Korad
+    KA3005P on COM6 and KA6003P on COM7. This is a real opportunity to verify the SCPI module's six
+    curated profiles (still flagged "not yet verified against any real hardware" above) — note the
+    newly-available units are different specific models than the profiles currently bundled
+    (`rigol-dg1022.json`, `rigol-dm3058e.json`, `rigol-ds1105e.json`), so verifying may also mean
+    adding sibling profiles for the DG1000Z/DG3000/DM3000/DS1000 families rather than assuming an
+    existing profile just works unmodified.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
-(serial-port descriptions on Linux/macOS).
-
-## Notes from the Architect
-
-- HP 34401A SCPI display
-  - Changing the "Range" under "Configure" throws an exception
-  - The "Configure DV Voltage Range" doesn't seem to do anything.
-  - moved to COM5
-- device profiles
-  - when I set to hid transport and select the "BBL Lamp" under the "detected devices" I get an out of index exception.  
-  - when changing profiles existing connections should be disconnected and the new device connected when "connect" is pressed.
-  - when hid is selected blank, 0 or anything that can not be parsed as a an integer or hex string.
-  - there should be a refresh button for the "detected devices" and "detected ports" 
-  - when a profile is "loaded" it should set the "Save as profile named" field to the profile name so you can just click save to update that option. 
-  - the "saved as profile named" field should not be cleared on "save  profile"
-- busylight
-  - when a custom color is set there should be a radio box for "custom" and it should have a box that displays the configured color before you enter the custom screen"
-  - the custom settings should persist between opening the custom control
-  - pressing enter on this screen should function the same as apply without having to actually click on the apply button.  
-- terminal screen
-  - under the "file" the value should either change to the corresponding value for "connected"/"disconnected" or should have both values in the name
-  - if a profile is loaded the title should include that profile name... this should have already been resolved.
-  - if the latest command is the same as the last command it does not needed added to the history list.
-- device presenters
-  - Entering a value in the "Command" field under "Custom Command" and pressing enter seems to throw an exception
-  - Clicking "Send" under the "Custom Command" even with a value typed in the "Command" field throws an exception.
-  - I would like the "notes" field put in a group and moved to the bottom of the screen.  
-  - The labels should show full width without wrapping text and all should be aligned withing a grouping.  
-  - groupings should be collsabable with visual queues that they can be expanded and collasped (this should apply to all device profiles)
-  - for fields that send commands there should be an information icon that when selected/hovered would show the command to be sent
-  - input commands should support the ability to set a data type and optionally a control type.  
-    - this would allow for metadata for field valudate such as input range
-    - this would allow for using something like a slider, numeric value, text value, etc.
-- Tek2230 SCPI?
-  - the Identity command should be mapped to ID?\r
-  - the rest of the commands should be identified.  
-  - instead of resusing SCPI there should be a seperate "Text Command" device presnter that should be very similar to SCPI but allow for more generic command strings.  
-- added devices
-  - USB DG1000Z
-  - USB DG3000
-  - USB DM3000
-  - USB DS1000
-  - COM6 - Korad KA3005p
-  - COM7 - Korad KA6003p
+(serial-port descriptions on Linux/macOS) and the design-level items from the Architect's
+2026-09-23 notes (see above).

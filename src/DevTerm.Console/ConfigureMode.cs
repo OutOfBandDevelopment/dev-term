@@ -39,6 +39,7 @@ public static class ConfigureMode
         Serial,
         Tcp,
         Hid,
+        Usbtmc,
         Loopback,
     }
 
@@ -189,17 +190,22 @@ public static class ConfigureMode
         var tcpPortField = new TextField { X = Pos.Right(tcpPortLabel) + 1, Y = Pos.Top(hostLabel), Width = 8, Text = initial.TcpPort.ToString() };
         var listenCheckBox = new CheckBox { X = Pos.Right(tcpPortField) + 3, Y = Pos.Top(hostLabel), Text = "Listen", Value = initial.Listen ? CheckState.Checked : CheckState.UnChecked };
 
-        var hidVendorLabel = new Label { X = 0, Y = Pos.Bottom(hostLabel) + 1, Text = "HID vendor ID:" };
-        var hidVendorField = new TextField { X = Pos.Right(hidVendorLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidVendorId.ToString() };
-        var hidProductLabel = new Label { X = Pos.Right(hidVendorField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Product ID:" };
-        var hidProductField = new TextField { X = Pos.Right(hidProductLabel) + 1, Y = Pos.Top(hidVendorLabel), Width = 10, Text = initial.HidProductId.ToString() };
-        var detectHidButton = new Button { X = Pos.Right(hidProductField) + 3, Y = Pos.Top(hidVendorLabel), Text = "Detect..." };
-        var hidShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(hidVendorLabel) + 1, Text = "Show as hex" };
+        // Shared by the "hid" and "usbtmc" transports — both select a physical USB device the same
+        // way (vendor/product ID, optionally a serial number), so one field group serves both;
+        // only the Detect... button differs, since HID and USBTMC devices come from different
+        // discovery sources.
+        var vendorLabel = new Label { X = 0, Y = Pos.Bottom(hostLabel) + 1, Text = "Vendor ID:" };
+        var vendorField = new TextField { X = Pos.Right(vendorLabel) + 1, Y = Pos.Top(vendorLabel), Width = 10, Text = initial.VendorId.ToString() };
+        var productLabel = new Label { X = Pos.Right(vendorField) + 3, Y = Pos.Top(vendorLabel), Text = "Product ID:" };
+        var productField = new TextField { X = Pos.Right(productLabel) + 1, Y = Pos.Top(vendorLabel), Width = 10, Text = initial.ProductId.ToString() };
+        var detectHidButton = new Button { X = Pos.Right(productField) + 3, Y = Pos.Top(vendorLabel), Text = "Detect HID..." };
+        var detectUsbtmcButton = new Button { X = Pos.Right(detectHidButton) + 1, Y = Pos.Top(vendorLabel), Text = "Detect USBTMC..." };
+        var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(vendorLabel) + 1, Text = "Show as hex" };
 
         var loopbackInfoLabel = new Label
         {
             X = 0,
-            Y = Pos.Bottom(hidShowHexCheckBox) + 1,
+            Y = Pos.Bottom(idsShowHexCheckBox) + 1,
             Text = "No configuration needed — a scripted fake device. Try \"hello\", \"Send Stream: N, ascii\", \"Send Events: N\", or \"help\"/\"?\".",
         };
 
@@ -304,10 +310,11 @@ public static class ConfigureMode
             HostField = hostField,
             TcpPortField = tcpPortField,
             ListenCheckBox = listenCheckBox,
-            HidVendorField = hidVendorField,
-            HidProductField = hidProductField,
+            VendorField = vendorField,
+            ProductField = productField,
             DetectHidButton = detectHidButton,
-            HidShowHexCheckBox = hidShowHexCheckBox,
+            DetectUsbtmcButton = detectUsbtmcButton,
+            IdsShowHexCheckBox = idsShowHexCheckBox,
             LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
             ScpiProfileField = scpiProfileField,
@@ -335,7 +342,10 @@ public static class ConfigureMode
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             handshakeLabel.Visible = handshakeSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
-            hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = hidShowHexCheckBox.Visible = selected == TransportChoice.Hid;
+            var isUsbDevice = selected == TransportChoice.Hid || selected == TransportChoice.Usbtmc;
+            vendorLabel.Visible = vendorField.Visible = productLabel.Visible = productField.Visible = idsShowHexCheckBox.Visible = isUsbDevice;
+            detectHidButton.Visible = selected == TransportChoice.Hid;
+            detectUsbtmcButton.Visible = selected == TransportChoice.Usbtmc;
             loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
         }
 
@@ -355,9 +365,9 @@ public static class ConfigureMode
             viewModel.Host = hostField.Text;
             viewModel.TcpPort = tcpPortField.Text;
             viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
-            viewModel.HidIdsShowHex = hidShowHexCheckBox.Value == CheckState.Checked;
-            viewModel.HidVendorIdDisplay = hidVendorField.Text;
-            viewModel.HidProductIdDisplay = hidProductField.Text;
+            viewModel.IdsShowHex = idsShowHexCheckBox.Value == CheckState.Checked;
+            viewModel.VendorIdDisplay = vendorField.Text;
+            viewModel.ProductIdDisplay = productField.Text;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
@@ -384,9 +394,9 @@ public static class ConfigureMode
             hostField.Text = viewModel.Host;
             tcpPortField.Text = viewModel.TcpPort;
             listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
-            hidShowHexCheckBox.Value = viewModel.HidIdsShowHex ? CheckState.Checked : CheckState.UnChecked;
-            hidVendorField.Text = viewModel.HidVendorIdDisplay;
-            hidProductField.Text = viewModel.HidProductIdDisplay;
+            idsShowHexCheckBox.Value = viewModel.IdsShowHex ? CheckState.Checked : CheckState.UnChecked;
+            vendorField.Text = viewModel.VendorIdDisplay;
+            productField.Text = viewModel.ProductIdDisplay;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
@@ -660,27 +670,50 @@ public static class ConfigureMode
             if (choice is not null)
             {
                 viewModel.SelectedHidDevice = devices.First(d => d.Display == choice);
-                hidVendorField.Text = viewModel.HidVendorIdDisplay;
-                hidProductField.Text = viewModel.HidProductIdDisplay;
+                vendorField.Text = viewModel.VendorIdDisplay;
+                productField.Text = viewModel.ProductIdDisplay;
             }
 
             e.Handled = true;
         };
 
-        // Reformats the two HID fields immediately when the toggle changes, rather than waiting
+        detectUsbtmcButton.Accepting += (_, e) =>
+        {
+            // Same filtering/push convention as detectHidButton, but against the USBTMC discovery
+            // source - the two device lists come from different places even though they write into
+            // the same shared Vendor/Product ID fields.
+            PushFieldsIntoViewModel();
+            var devices = viewModel.UsbtmcDeviceOptions;
+            var choice = PickFromList(
+                "Detected USBTMC devices",
+                [.. devices.Select(d => d.Display)],
+                viewModel.UsbtmcDevicesHiddenByFilter
+                    ? "No detected USBTMC device matches the Vendor/Product ID entered (0 means any)."
+                    : "Nothing was detected.");
+            if (choice is not null)
+            {
+                viewModel.SelectedUsbtmcDevice = devices.First(d => d.Display == choice);
+                vendorField.Text = viewModel.VendorIdDisplay;
+                productField.Text = viewModel.ProductIdDisplay;
+            }
+
+            e.Handled = true;
+        };
+
+        // Reformats the two shared fields immediately when the toggle changes, rather than waiting
         // for the next button press. CheckBox.Activated fires *after* Value has already flipped
         // (confirmed via a headless probe against the installed Terminal.Gui v2.5.0 package -
         // Command.Activate, bound to Space, updates Value before raising Activating/Activated), so
-        // the currently-displayed text is pushed through the view model's *old* HidIdsShowHex
+        // the currently-displayed text is pushed through the view model's *old* IdsShowHex
         // first - reinterpreting it in whatever format it's actually showing right now - before
-        // HidIdsShowHex itself is updated to match the checkbox's new state.
-        hidShowHexCheckBox.Activated += (_, _) =>
+        // IdsShowHex itself is updated to match the checkbox's new state.
+        idsShowHexCheckBox.Activated += (_, _) =>
         {
-            viewModel.HidVendorIdDisplay = hidVendorField.Text;
-            viewModel.HidProductIdDisplay = hidProductField.Text;
-            viewModel.HidIdsShowHex = hidShowHexCheckBox.Value == CheckState.Checked;
-            hidVendorField.Text = viewModel.HidVendorIdDisplay;
-            hidProductField.Text = viewModel.HidProductIdDisplay;
+            viewModel.VendorIdDisplay = vendorField.Text;
+            viewModel.ProductIdDisplay = productField.Text;
+            viewModel.IdsShowHex = idsShowHexCheckBox.Value == CheckState.Checked;
+            vendorField.Text = viewModel.VendorIdDisplay;
+            productField.Text = viewModel.ProductIdDisplay;
         };
 
         importButton.Accepting += (_, e) =>
@@ -783,7 +816,7 @@ public static class ConfigureMode
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             handshakeLabel, handshakeSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
+            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, idsShowHexCheckBox,
             loopbackInfoLabel,
             presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
             parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
@@ -933,13 +966,15 @@ internal sealed class ConfigureWindowParts
 
     public required CheckBox ListenCheckBox { get; init; }
 
-    public required TextField HidVendorField { get; init; }
+    public required TextField VendorField { get; init; }
 
-    public required TextField HidProductField { get; init; }
+    public required TextField ProductField { get; init; }
 
     public required Button DetectHidButton { get; init; }
 
-    public required CheckBox HidShowHexCheckBox { get; init; }
+    public required Button DetectUsbtmcButton { get; init; }
+
+    public required CheckBox IdsShowHexCheckBox { get; init; }
 
     /// <summary>Shown only when <see cref="ConfigureMode.TransportChoice.Loopback"/> is selected — the loopback transport takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

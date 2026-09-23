@@ -18,8 +18,14 @@ public static class ConnectionDescription
 
         if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
         {
-            var serial = cliOptions.HidSerialNumber is null ? string.Empty : $" serial '{cliOptions.HidSerialNumber}'";
-            return $"USB HID VID 0x{cliOptions.HidVendorId:X4} PID 0x{cliOptions.HidProductId:X4}{serial}";
+            var serial = cliOptions.SerialNumber is null ? string.Empty : $" serial '{cliOptions.SerialNumber}'";
+            return $"USB HID VID 0x{cliOptions.VendorId:X4} PID 0x{cliOptions.ProductId:X4}{serial}";
+        }
+
+        if (string.Equals(cliOptions.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))
+        {
+            var serial = cliOptions.SerialNumber is null ? string.Empty : $" serial '{cliOptions.SerialNumber}'";
+            return $"USBTMC VID 0x{cliOptions.VendorId:X4} PID 0x{cliOptions.ProductId:X4}{serial}";
         }
 
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
@@ -57,8 +63,14 @@ public static class ConnectionDescription
 
         if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
         {
-            var instance = string.IsNullOrEmpty(cliOptions.HidSerialNumber) ? string.Empty : $".{cliOptions.HidSerialNumber}";
-            return $"hid://{cliOptions.HidVendorId:X4}.{cliOptions.HidProductId:X4}{instance}";
+            var instance = string.IsNullOrEmpty(cliOptions.SerialNumber) ? string.Empty : $".{cliOptions.SerialNumber}";
+            return $"hid://{cliOptions.VendorId:X4}.{cliOptions.ProductId:X4}{instance}";
+        }
+
+        if (string.Equals(cliOptions.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))
+        {
+            var instance = string.IsNullOrEmpty(cliOptions.SerialNumber) ? string.Empty : $".{cliOptions.SerialNumber}";
+            return $"usbtmc://{cliOptions.VendorId:X4}.{cliOptions.ProductId:X4}{instance}";
         }
 
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))

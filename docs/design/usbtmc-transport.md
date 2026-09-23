@@ -249,3 +249,28 @@ own repeated practice of not trusting a fix until checked against real hardware:
   framing (Prologix's `++` ASCII layer over serial/TCP) and USBTMC's (binary headers over raw USB
   bulk transfers) don't overlap; probably two independent implementations sharing only the SCPI
   profile data above them, the same way Serial/TCP/HID share no decoder code with each other today.
+- **Resolved**: bulk-endpoint stall recovery (`CLEAR_FEATURE` mentioned above) is now implemented —
+  `SystemUsbtmcDevice.Open()` calls `ClearHalt()` on both endpoints before first use, and
+  `WriteBulkOut`/`ReadBulkIn` each clear-and-retry once on `Error.Pipe` — see
+  `docs/changes/2026-09-23.md`'s real-hardware section for the DM3000 STALL this fixed.
+- **New, unresolved (real-hardware, 2026-09-23)**: reading a query's reply from a real Rigol DM3000
+  consistently stalls the bulk-IN endpoint even with correct framing/tagging and after stall
+  recovery, `INITIATE_CLEAR`, and a full device reset — the device's own Status Byte never sets MAV
+  after receiving `*IDN?`, reproduced identically from a second, independent USB stack (Python/
+  pyusb). Strong evidence this is a firmware-level limitation of this specific unit rather than a
+  `dev-term` bug; see `docs/changes/2026-09-23.md` for the full investigation. Not yet tried: an
+  official Rigol/NI-VISA stack against the same unit, or a second physical DM3000, to fully rule out
+  a single-unit hardware fault. This means `UsbtmcTransport`'s query/reply path is still **unverified
+  end-to-end against real hardware** despite the codec/framing/stall-recovery layers below it now
+  being real-hardware-tested individually.
+- **New, resolved (real-hardware, 2026-09-23)**: `LibUsbDotNet.Device` (behind `IUsbDevice`) is a
+  `SafeHandle`-backed `IDisposable` — every device object `UsbContext.List()` returns must be
+  disposed once it's no longer needed, not just `Close()`d if it was opened, or its finalizer can run
+  on the GC finalizer thread after the owning `UsbContext` was already disposed, unref'ing a device
+  against an already-freed native context. This reproduced as a real `0xC0000005` access violation in
+  `LibUsbDotNet.NativeMethods.UnrefDevice` during test-process teardown once real USBTMC hardware was
+  attached to the dev machine (surfacing only then, since `SystemUsbtmcDeviceDiscovery`/
+  `SystemUsbtmcDevice` are reachable from several UNIT-tagged WPF/TUI tests via
+  `ConnectionEditorViewModel`'s default real discovery). Fixed by disposing every enumerated device
+  that isn't kept, in both `SystemUsbtmcDeviceDiscovery.GetDevices()` and `SystemUsbtmcDevice.Open()`,
+  plus disposing (not just closing) the kept device on `Close()`/on `Open()`'s exception path.

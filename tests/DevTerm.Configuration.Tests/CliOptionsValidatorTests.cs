@@ -57,7 +57,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_HidWithVendorAndProductId_Succeeds()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0xAFDA });
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA });
 
         Assert.IsTrue(result.Succeeded);
     }
@@ -65,7 +65,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_HidWithoutVendorId_Fails()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0, HidProductId = 0xAFDA });
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", VendorId = 0, ProductId = 0xAFDA });
 
         Assert.IsTrue(result.Failed);
     }
@@ -73,7 +73,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_HidWithoutProductId_Fails()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "hid", HidVendorId = 0x1915, HidProductId = 0 });
+        var result = _validator.Validate(null, new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0 });
 
         Assert.IsTrue(result.Failed);
     }

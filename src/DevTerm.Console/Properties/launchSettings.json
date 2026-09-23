@@ -29,11 +29,11 @@
     },
     "K8055 HID": {
       "commandName": "Project",
-      "commandLineArgs": "--transport hid --hidvendorid 4303 --hidproductid 21760 --presenter k8055"
+      "commandLineArgs": "--transport hid --vendorid 4303 --productid 21760 --presenter k8055"
     },
     "Busylight HID": {
       "commandName": "Project",
-      "commandLineArgs": "--transport hid --hidvendorid 1240 --hidproductid 63560 --presenter busylight"
+      "commandLineArgs": "--transport hid --vendorid 1240 --productid 63560 --presenter busylight"
     },
     "List USBTMC devices": {
       "commandName": "Project",

@@ -45,6 +45,20 @@ public sealed class ScpiReplyPresenterTests
     }
 
     [TestMethod]
+    public void Render_BareCrLine_EmitsTheLine()
+    {
+        // Real-hardware-confirmed: a Tektronix TDS2024 over TCP terminates replies with a bare CR,
+        // not LF — matches AsciiPresenter's CR/LF/CRLF-as-one-terminator handling. An LF-only
+        // version of this presenter never completed the line, so a query's reply indicator never
+        // updated even though the same bytes rendered fine via the ascii presenter.
+        var presenter = new ScpiReplyPresenter();
+
+        var lines = presenter.Render(Bytes("ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04\r"));
+
+        CollectionAssert.AreEqual(new[] { "ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04" }, lines.ToArray());
+    }
+
+    [TestMethod]
     public void Render_TwoLinesInOneChunk_EmitsBoth()
     {
         var presenter = new ScpiReplyPresenter();
