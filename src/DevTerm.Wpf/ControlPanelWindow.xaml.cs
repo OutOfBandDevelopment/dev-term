@@ -28,6 +28,7 @@ public partial class ControlPanelWindow : Window
     private readonly IControlSurface _surface;
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
+    private readonly Dictionary<string, (byte R, byte G, byte B)> _lastPickedColors = [];
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
@@ -96,6 +97,13 @@ public partial class ControlPanelWindow : Window
     {
         switch (control)
         {
+            case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
+            {
+                var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                view.Click += (_, _) => OpenColorPicker(button.Id, colorTargetId);
+                return (view, view);
+            }
+
             case ButtonControl button:
             {
                 var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
@@ -211,6 +219,18 @@ public partial class ControlPanelWindow : Window
             default:
                 var fallback = new TextBlock { Text = "(unsupported control)" };
                 return (fallback, fallback);
+        }
+    }
+
+    private void OpenColorPicker(string buttonId, string targetCommandId)
+    {
+        var (r, g, b) = _lastPickedColors.GetValueOrDefault(buttonId, ((byte)255, (byte)255, (byte)255));
+        var picker = new ColorPickerWindow(r, g, b) { Owner = this };
+        if (picker.ShowDialog() == true)
+        {
+            _lastPickedColors[buttonId] = (picker.SelectedR, picker.SelectedG, picker.SelectedB);
+            var value = string.Create(CultureInfo.InvariantCulture, $"{picker.SelectedR},{picker.SelectedG},{picker.SelectedB}");
+            _ = _surface.InvokeAsync(targetCommandId, value);
         }
     }
 

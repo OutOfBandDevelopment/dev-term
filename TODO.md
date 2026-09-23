@@ -48,14 +48,46 @@ Completed work is logged by date under `docs/changes/`.
   a new "Busylight Control Panel..." item alongside K8055's. Unlike K8055, every control except
   "apply" only mutates in-memory state (color/blink timing/mute/track/volume); "apply" is the one
   command that actually sends the confirmed-working 9-byte single-command frame, matching the
-  mockup's explicit `[Apply]` button. "customColor" (no color-picker UI yet) and "programSequence"
-  (the batch/program mode was confirmed to have no visible effect on the real device — see
-  `docs/design/proposals/kuando-busylight-protocol.md`'s open questions) are documented no-ops. No
-  `IndicatorControl`s and hence no `IStructuredPresenter` — `BusylightDecoder` just renders the
-  device's ASCII poll-reply as text. 12 new `UNIT` tests
+  mockup's explicit `[Apply]` button. No `IndicatorControl`s and hence no `IStructuredPresenter` —
+  `BusylightDecoder` just renders the device's ASCII poll-reply as text. 12 new `UNIT` tests
   (`DevTerm.Devices.Busylight.Tests`). **Not yet verified against a real physical Busylight** — this
   landed as a software-only pass; the user will do the physical hardware review later, the same way
   the K8055's remaining digital-in/TUI checklist items are deferred to them.
+
+- **Live user feedback on the K8055/Busylight panels, addressed same day (2026-09-22)** — after the
+  above landed, real hands-on use of the K8055 and Busylight panels surfaced four real issues, all
+  fixed the same day (see `docs/changes/2026-09-22.md` for the full write-up):
+  - **K8055 digital inputs never read as anything but 0** — `K8055Decoder` read `digitalInRaw` from
+    byte 0 of the 9-byte input frame, but byte 0 is the same leading HID report-ID byte confirmed
+    elsewhere in this codebase (always `0x00`, never real device data), so it could never have
+    carried digital-input state. Fixed to read byte 1 instead. Code-inspection fix, not yet
+    reconfirmed against real hardware.
+  - **Busylight's "Custom..." button did nothing** — added `ButtonControl.ColorPickerTargetCommandId`,
+    a new generic, device-agnostic field on the UI-definitions model (any device's button can declare
+    "open a modal RGB/HSV color picker; on confirm, send `\"r,g,b\"` to this command id" without the
+    renderer hardcoding Busylight-specific ids). Implemented in both front ends: WPF `ColorPickerWindow`
+    (sliders + hex box for RGB, sliders for HSV) and the TUI's `ControlPanelMode.PickColor` (a nested
+    `Dialog` with text fields for both). `BusylightControlSurface.SetColor` now accepts either a named
+    preset or an `"r,g,b"` triple.
+  - **Busylight's "Program Sequence..." button did nothing** — already a confirmed, real-hardware-
+    tested no-op (see `docs/design/proposals/kuando-busylight-protocol.md`'s open questions); removed
+    from `BusylightUiDefinition` rather than investigated further, since a button with no effect on
+    real hardware is worse than no button. `programSequence` is still accepted as a no-op command for
+    backward compatibility.
+  - Also brought the TUI's output pane in line with the WPF main window's existing capped-output rule
+    (`MainWindow.MaxOutputLines`, 1000): the TUI's `TuiMode.AppendOutput` grew an unbounded
+    concatenated string forever, and WPF itself had a handful of raw `OutputList.Items.Add` call sites
+    that bypassed its own cap. Both fixed: WPF now routes every output line through the capped
+    `AppendOutput` helper, and TUI gained the same bounded-buffer rule at a shorter cap (300, not
+    1000) since its output pane rebuilds one `TextView.Text` string on every trim rather than using a
+    virtualized items list.
+  - **K8055 live indicators re-rendered on every streamed report, even unchanged ones** — the board
+    streams its input report continuously and unprompted, and most consecutive frames repeat the same
+    reading, but `K8055Decoder.ValuesChanged` fired the full 5-key dictionary on every frame
+    regardless ("runaway data streaming"). Fixed by tracking the last published value per key and only
+    including (and only raising the event for) keys that actually changed since the previous frame;
+    both control panels already update indicators by per-key lookup, so a partial dictionary needed no
+    consumer-side change.
 
 - **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
   (identity, a transport hint, the declarative command/response schema already sketched in

@@ -148,15 +148,24 @@ Selectable via `--presenter busylight`, reachable from both front ends' new "Bus
 Panel..." menu item. Every command except "apply" only mutates `BusylightControlSurface`'s internal
 state (color preset, on/off bytes, mute, track, volume); "apply" sends the confirmed-working 9-byte
 single-command frame (report ID `0x00` + the 8-byte struct above) built from that state, matching the
-mockup's explicit `[Apply]` button rather than sending on every field change. "Custom..." (no
-color-picker UI yet) and "Program Sequence..." (the 64-byte batch/program mode below is
-checksum-correct but confirmed to have no visible effect on the real device) are documented no-ops.
-`BusylightDecoder` has no `IStructuredPresenter` companion — the panel has no `IndicatorControl`s —
-and just renders the poll reply's ASCII bytes as text. Verified by 12 new unit tests
-(`DevTerm.Devices.Busylight.Tests`) against the exact frame bytes for each command; **not yet
-verified against the real, physical device** — this landed as a software-only pass, with real
-hardware review deferred to the user for a later session, same as some of K8055's own remaining
-checklist items.
+mockup's explicit `[Apply]` button rather than sending on every field change. `BusylightDecoder` has
+no `IStructuredPresenter` companion — the panel has no `IndicatorControl`s — and just renders the
+poll reply's ASCII bytes as text. Verified by 12 new unit tests (`DevTerm.Devices.Busylight.Tests`)
+against the exact frame bytes for each command; **not yet verified against the real, physical
+device** — this landed as a software-only pass, with real hardware review deferred to the user for a
+later session, same as some of K8055's own remaining checklist items.
+
+**Updated same day, after real-time user feedback**: "Custom..." was reported as doing nothing and
+is now a real modal — `ButtonControl.ColorPickerTargetCommandId` (a new, generic, device-agnostic
+field on the UI-definitions model, not Busylight-specific) opens an RGB *and* HSV color picker in
+both front ends (WPF `ColorPickerWindow`, TUI `ControlPanelMode.PickColor`) and sends the result as
+an `"r,g,b"` (0-255 each) string to the `color` command, which `BusylightControlSurface.SetColor` now
+accepts alongside the five named presets. "Program Sequence..." was also reported as doing nothing —
+since this was already a confirmed, real-hardware-tested no-op (see "Open questions" below, unchanged
+by this update), the button was removed from `BusylightUiDefinition` rather than investigated further
+(a button with no effect on real hardware is worse than no button); `programSequence` is still
+accepted as a no-op command for backward compatibility, so an older saved manifest/script referencing
+it doesn't throw.
 
 ## Open questions
 

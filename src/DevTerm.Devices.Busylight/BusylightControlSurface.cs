@@ -10,10 +10,16 @@ namespace DevTerm.Devices.Busylight;
 /// On, Off, a packed Audio byte) over the given <see cref="Session"/>'s live HID connection, per
 /// docs/design/proposals/kuando-busylight-protocol.md. Every command other than "apply" only mutates
 /// internal state; "apply" is the only command that actually sends a frame, matching the mockup's
-/// explicit [Apply] button rather than sending on every field change. "customColor" (no
-/// color-picker UI here) and "programSequence" (the 64-byte batch/program mode is checksum-correct
-/// per the proposal doc but confirmed to have no visible effect on the real device) are documented
-/// no-ops.
+/// explicit [Apply] button rather than sending on every field change. The "color" command accepts
+/// either a known preset name (see <see cref="Colors"/>) or a custom <c>"r,g,b"</c> triple (each
+/// 0-255, invariant culture) as sent by either front end's RGB/HSV color-picker modal (opened via
+/// <c>ButtonControl.ColorPickerTargetCommandId</c> on the "Custom..." button — this surface never
+/// shows UI itself). "customColor" itself is a documented no-op — the button opens a color picker
+/// via <c>ColorPickerTargetCommandId</c> instead of invoking it. "programSequence" (the 64-byte
+/// batch/program mode, checksum-correct per the proposal doc but confirmed to have no visible effect
+/// on the real device) is still accepted here as a no-op for backward compatibility, but the
+/// "Program Sequence..." button was removed from <see cref="BusylightUiDefinition"/> since a button
+/// that does nothing on real hardware is worse than no button.
 /// </summary>
 public sealed class BusylightControlSurface : IControlSurface
 {
@@ -100,10 +106,40 @@ public sealed class BusylightControlSurface : IControlSurface
 
     private void SetColor(string? value)
     {
-        if (value is not null && Colors.TryGetValue(value, out var rgb))
+        if (value is null)
+        {
+            return;
+        }
+
+        if (Colors.TryGetValue(value, out var rgb))
         {
             (_r, _g, _b) = rgb;
+            return;
         }
+
+        if (TryParseRgbTriple(value, out var r, out var g, out var b))
+        {
+            (_r, _g, _b) = (r, g, b);
+        }
+    }
+
+    private static bool TryParseRgbTriple(string value, out byte r, out byte g, out byte b)
+    {
+        r = g = b = 0;
+        var parts = value.Split(',');
+        if (parts.Length != 3)
+        {
+            return false;
+        }
+
+        if (!byte.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out r)
+            || !byte.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out g)
+            || !byte.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out b))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private void SetBlinkPreset(string? value)

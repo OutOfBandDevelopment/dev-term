@@ -202,6 +202,21 @@ internal static class ControlPanelMode
 
         switch (control)
         {
+            case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
+                var colorButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
+                colorButtonView.Accepting += (_, e) =>
+                {
+                    if (PickColor(255, 255, 255) is { } picked)
+                    {
+                        _ = surface.InvokeAsync(colorTargetId, $"{picked.R},{picked.G},{picked.B}");
+                    }
+
+                    e.Handled = true;
+                };
+                frame.Add(colorButtonView);
+                controlViews[control.Id] = colorButtonView;
+                break;
+
             case ButtonControl button:
                 var buttonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
                 buttonView.Accepting += (_, e) =>
@@ -316,6 +331,158 @@ internal static class ControlPanelMode
 
     private static double ParseOr(string text, double fallback) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
+    /// <summary>
+    /// A small nested modal RGB/HSV color picker, opened by any <c>ButtonControl</c> with
+    /// <c>ColorPickerTargetCommandId</c> set (see <see cref="AddControlRow"/>) — the TUI half of the
+    /// same generic color-picker support as <c>DevTerm.Wpf.ColorPickerWindow</c>. No slider/hex
+    /// widget exists in the installed Terminal.Gui package (see this class's own remarks on that),
+    /// so every field is a bounded <see cref="TextField"/>, synced on Enter the same way
+    /// Slider/Numeric rows above are.
+    /// </summary>
+    private static (byte R, byte G, byte B)? PickColor(byte initialR, byte initialG, byte initialB)
+    {
+        (byte R, byte G, byte B)? picked = null;
+        var dialog = new Dialog { Title = "Custom Color", Width = 40, Height = 12 };
+
+        var rField = new TextField { X = 4, Y = 0, Width = 6, Text = initialR.ToString(CultureInfo.InvariantCulture) };
+        var gField = new TextField { X = 4, Y = 1, Width = 6, Text = initialG.ToString(CultureInfo.InvariantCulture) };
+        var bField = new TextField { X = 4, Y = 2, Width = 6, Text = initialB.ToString(CultureInfo.InvariantCulture) };
+        var hField = new TextField { X = 20, Y = 0, Width = 6 };
+        var sField = new TextField { X = 20, Y = 1, Width = 6 };
+        var vField = new TextField { X = 20, Y = 2, Width = 6 };
+        var hexField = new TextField { X = 4, Y = 4, Width = 10 };
+
+        void SetFromRgb(byte r, byte g, byte b)
+        {
+            rField.Text = r.ToString(CultureInfo.InvariantCulture);
+            gField.Text = g.ToString(CultureInfo.InvariantCulture);
+            bField.Text = b.ToString(CultureInfo.InvariantCulture);
+            var (h, s, v) = RgbToHsv(r, g, b);
+            hField.Text = h.ToString("0", CultureInfo.InvariantCulture);
+            sField.Text = (s * 100).ToString("0", CultureInfo.InvariantCulture);
+            vField.Text = (v * 100).ToString("0", CultureInfo.InvariantCulture);
+            hexField.Text = $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        byte CurrentR() => (byte)Math.Clamp(ParseOr(rField.Text, 0), 0, 255);
+        byte CurrentG() => (byte)Math.Clamp(ParseOr(gField.Text, 0), 0, 255);
+        byte CurrentB() => (byte)Math.Clamp(ParseOr(bField.Text, 0), 0, 255);
+
+        rField.Accepting += (_, e) => { SetFromRgb(CurrentR(), CurrentG(), CurrentB()); e.Handled = true; };
+        gField.Accepting += (_, e) => { SetFromRgb(CurrentR(), CurrentG(), CurrentB()); e.Handled = true; };
+        bField.Accepting += (_, e) => { SetFromRgb(CurrentR(), CurrentG(), CurrentB()); e.Handled = true; };
+
+        void CommitHsv()
+        {
+            var h = Math.Clamp(ParseOr(hField.Text, 0), 0, 360);
+            var s = Math.Clamp(ParseOr(sField.Text, 0), 0, 100) / 100.0;
+            var v = Math.Clamp(ParseOr(vField.Text, 0), 0, 100) / 100.0;
+            var (r, g, b) = HsvToRgb(h, s, v);
+            SetFromRgb(r, g, b);
+        }
+
+        hField.Accepting += (_, e) => { CommitHsv(); e.Handled = true; };
+        sField.Accepting += (_, e) => { CommitHsv(); e.Handled = true; };
+        vField.Accepting += (_, e) => { CommitHsv(); e.Handled = true; };
+        hexField.Accepting += (_, e) =>
+        {
+            var text = hexField.Text.Trim().TrimStart('#');
+            if (text.Length == 6
+                && byte.TryParse(text.AsSpan(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hr)
+                && byte.TryParse(text.AsSpan(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hg)
+                && byte.TryParse(text.AsSpan(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hb))
+            {
+                SetFromRgb(hr, hg, hb);
+            }
+
+            e.Handled = true;
+        };
+
+        var okButton = new Button { X = 0, Y = 6, Text = "OK", IsDefault = true };
+        okButton.Accepting += (_, e) =>
+        {
+            picked = (CurrentR(), CurrentG(), CurrentB());
+            e.Handled = true;
+            Application.RequestStop();
+        };
+        var cancelButton = new Button { X = Pos.Right(okButton) + 1, Y = 6, Text = "Cancel" };
+        cancelButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            Application.RequestStop();
+        };
+
+        dialog.Add(
+            new Label { X = 0, Y = 0, Text = "R:" }, rField,
+            new Label { X = 0, Y = 1, Text = "G:" }, gField,
+            new Label { X = 0, Y = 2, Text = "B:" }, bField,
+            new Label { X = 16, Y = 0, Text = "H:" }, hField,
+            new Label { X = 16, Y = 1, Text = "S:" }, sField,
+            new Label { X = 16, Y = 2, Text = "V:" }, vField,
+            new Label { X = 0, Y = 4, Text = "Hex:" }, hexField,
+            okButton,
+            cancelButton);
+
+        SetFromRgb(initialR, initialG, initialB);
+        Application.Run(dialog);
+        return picked;
+    }
+
+    /// <summary>Standard RGB→HSV conversion; hue in degrees [0,360), saturation/value in [0,1] — see <c>DevTerm.Wpf.ColorPickerWindow</c>'s identical WPF-side helper.</summary>
+    private static (double H, double S, double V) RgbToHsv(byte r, byte g, byte b)
+    {
+        double rf = r / 255.0, gf = g / 255.0, bf = b / 255.0;
+        var max = Math.Max(rf, Math.Max(gf, bf));
+        var min = Math.Min(rf, Math.Min(gf, bf));
+        var delta = max - min;
+
+        double hue;
+        if (delta < 1e-9)
+        {
+            hue = 0;
+        }
+        else if (max == rf)
+        {
+            hue = 60 * (((gf - bf) / delta) % 6);
+        }
+        else if (max == gf)
+        {
+            hue = 60 * (((bf - rf) / delta) + 2);
+        }
+        else
+        {
+            hue = 60 * (((rf - gf) / delta) + 4);
+        }
+
+        if (hue < 0)
+        {
+            hue += 360;
+        }
+
+        var saturation = max < 1e-9 ? 0 : delta / max;
+        return (hue, saturation, max);
+    }
+
+    /// <summary>Standard HSV→RGB conversion; hue in degrees [0,360), saturation/value in [0,1] — see <c>DevTerm.Wpf.ColorPickerWindow</c>'s identical WPF-side helper.</summary>
+    private static (byte R, byte G, byte B) HsvToRgb(double h, double s, double v)
+    {
+        var c = v * s;
+        var hPrime = (h % 360) / 60.0;
+        var x = c * (1 - Math.Abs((hPrime % 2) - 1));
+        var (r1, g1, b1) = hPrime switch
+        {
+            < 1 => (c, x, 0.0),
+            < 2 => (x, c, 0.0),
+            < 3 => (0.0, c, x),
+            < 4 => (0.0, x, c),
+            < 5 => (x, 0.0, c),
+            _ => (c, 0.0, x),
+        };
+
+        var m = v - c;
+        return ((byte)Math.Round((r1 + m) * 255), (byte)Math.Round((g1 + m) * 255), (byte)Math.Round((b1 + m) * 255));
+    }
 }
 
 /// <summary>The controls a test needs to drive a rendered control panel headlessly.</summary>

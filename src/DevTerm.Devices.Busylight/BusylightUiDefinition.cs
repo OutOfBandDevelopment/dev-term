@@ -29,7 +29,7 @@ public static class BusylightUiDefinition
                         Options = ["Red", "Green", "Blue", "Yellow", "Off"],
                         DefaultValue = "Off",
                     },
-                    new ButtonControl { Id = "customColor", Label = "Custom..." },
+                    new ButtonControl { Id = "customColor", Label = "Custom...", ColorPickerTargetCommandId = "color" },
                 ],
             },
             new UiSection
@@ -74,7 +74,6 @@ public static class BusylightUiDefinition
                 Controls =
                 [
                     new ButtonControl { Id = "apply", Label = "Apply" },
-                    new ButtonControl { Id = "programSequence", Label = "Program Sequence..." },
                 ],
             },
         ],

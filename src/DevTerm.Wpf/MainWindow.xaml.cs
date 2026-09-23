@@ -18,6 +18,14 @@ namespace DevTerm.Wpf;
 /// </summary>
 public partial class MainWindow : Window
 {
+    /// <summary>
+    /// Caps the scrolling output log so a long-running session (especially against a device that
+    /// streams continuously, like the K8055's unprompted input reports at hundreds/sec) doesn't grow
+    /// <see cref="OutputList"/> without bound — an unbounded <c>ItemsControl</c> eventually makes the
+    /// whole window unresponsive. Oldest lines are dropped first.
+    /// </summary>
+    private const int MaxOutputLines = 1000;
+
     private Session _session;
     private PresenterCatalog _catalog;
     private CliOptions _cliOptions;
@@ -39,7 +47,7 @@ public partial class MainWindow : Window
 
         if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
         {
-            OutputList.Items.Add(manifestWarning);
+            AppendOutput(manifestWarning);
         }
 
         _session.Output += OnSessionOutput;
@@ -116,7 +124,7 @@ public partial class MainWindow : Window
             await _session.CloseAsync();
             ConnectMenuItem.Header = "_Connect";
             SendBox.IsEnabled = false;
-            OutputList.Items.Add("Disconnected.");
+            AppendOutput("Disconnected.");
             return;
         }
 
@@ -144,21 +152,28 @@ public partial class MainWindow : Window
 
         ConnectMenuItem.Header = "_Disconnect";
         SendBox.IsEnabled = true;
-        OutputList.Items.Add($"Connected to {ConnectionDescription.For(_cliOptions)}.");
+        AppendOutput($"Connected to {ConnectionDescription.For(_cliOptions)}.");
     }
 
     private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => _ = ToggleConnectionAsync();
 
     private void OnSessionOutput(object? sender, PresenterOutput output)
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
+    }
+
+    private void AppendOutput(string line)
+    {
+        OutputList.Items.Add(line);
+        while (OutputList.Items.Count > MaxOutputLines)
         {
-            OutputList.Items.Add($"[{output.PresenterName}] {output.Text}");
-            if (OutputList.Items.Count > 0)
-            {
-                OutputList.ScrollIntoView(OutputList.Items[^1]);
-            }
-        });
+            OutputList.Items.RemoveAt(0);
+        }
+
+        if (OutputList.Items.Count > 0)
+        {
+            OutputList.ScrollIntoView(OutputList.Items[^1]);
+        }
     }
 
     private void SendBox_KeyDown(object sender, KeyEventArgs e)
@@ -194,7 +209,7 @@ public partial class MainWindow : Window
 
         if (_session.State != ConnectionState.Open)
         {
-            OutputList.Items.Add("Not connected — use File > Connect.");
+            AppendOutput("Not connected — use File > Connect.");
             return;
         }
 
@@ -204,14 +219,14 @@ public partial class MainWindow : Window
         }
         catch (TimeoutException)
         {
-            OutputList.Items.Add("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
+            AppendOutput("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
         }
         catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
         {
             // Matches CliMode/TuiMode's send-path handling (see docs/changes/2026-09-15.md): a
             // generic text presenter's typed input can't guarantee it matches a specific device's
             // framing requirements, so report the failure instead of crashing.
-            OutputList.Items.Add($"Send failed: {ex.Message}");
+            AppendOutput($"Send failed: {ex.Message}");
         }
     }
 
@@ -296,7 +311,7 @@ public partial class MainWindow : Window
         OutputList.Items.Clear();
         if (ManifestNameWarning.For(newOptions) is { } manifestWarning)
         {
-            OutputList.Items.Add(manifestWarning);
+            AppendOutput(manifestWarning);
         }
 
         try
@@ -318,7 +333,7 @@ public partial class MainWindow : Window
         Title = TitleText;
         ConnectMenuItem.Header = "_Disconnect";
         SendBox.IsEnabled = true;
-        OutputList.Items.Add($"Switched to {ConnectionDescription.For(_cliOptions)}.");
+        AppendOutput($"Switched to {ConnectionDescription.For(_cliOptions)}.");
         return true;
     }
 

@@ -30,7 +30,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("digitalOut1", "1");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -43,7 +43,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("digitalOut8", "1");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -57,7 +57,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("digitalOut3", "1");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -71,7 +71,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("digitalOut1", "0");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -84,7 +84,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("analogOut1", "128");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x00, 128, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 128, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -98,7 +98,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("analogOut2", "64");
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x05, 0x00, 128, 64, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 128, 64, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -111,7 +111,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("resetCounter1", null);
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 
@@ -124,7 +124,7 @@ public sealed class K8055ControlSurfaceTests
         await surface.InvokeAsync("resetCounter2", null);
 
         transport.Verify(t => t.WriteAsync(
-            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
             It.IsAny<CancellationToken>()));
     }
 

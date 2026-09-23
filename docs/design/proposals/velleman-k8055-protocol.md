@@ -157,8 +157,18 @@ real, physically-explainable board characteristic (a floating counter-input pin 
 a stable rate), not a decoder or encoding bug — see the changelog entry for the full reasoning.
 Genuinely still open: the digital-in bit mapping, the trailing duration/debounce bytes, what `0x06`
 does, and the TUI side (`ControlPanelMode`) — none of those were exercised yet. The decoder still
-ships byte 0 as a raw `digitalInRaw` hex value rather than guessing at 5 channel keys, and the
+ships the raw digital-in byte as `digitalInRaw` (hex) rather than guessing at 5 channel keys, and the
 control surface still sends `0x00, 0x00` for the two trailing bytes (static level, not a pulse).
+
+**Fixed same day, after a live "digital inputs don't seem to read in" report**: `K8055Decoder` had
+read `digitalInRaw` from byte 0 of the 9-byte frame — but byte 0 is the same leading HID report-ID
+byte confirmed elsewhere in this doc and in `BusylightControlSurface` (always `0x00`, never real
+device data, per the real-hardware finding above and `CLAUDE.md`'s own HID report-ID convention), so
+it could never have carried real digital-input state regardless of wiring. `digitalInRaw` now reads
+byte 1 instead — the true first byte of the 8-byte K8055 payload. This is a code-inspection fix,
+consistent with the already-confirmed report-ID convention, but **not yet re-verified against real
+hardware** (that reconfirmation, and the digital-in bit-to-channel mapping itself, both still need
+the board rewired one pin at a time — see the open questions below).
 
 ## Open questions
 
@@ -173,8 +183,8 @@ control surface still sends `0x00, 0x00` for the two trailing bytes (static leve
   one pin at a time, which only the user can do.
 - **New 2026-09-22**: byte 2 of the input frame read a constant `0x01` this session (PID `0x5500`)
   versus the constant `0x03` recorded in the original 2026-09-15 note (PID `0x5502`, a different
-  physical board) — not yet explained, and not currently decoded into anything (`digitalInRaw` only
-  reads byte 0), so not blocking, but worth resolving alongside the digital-in bit mapping above.
+  physical board) — not yet explained, and not currently decoded into anything (`digitalInRaw` reads
+  byte 1, not byte 2), so not blocking, but worth resolving alongside the digital-in bit mapping above.
 - Whether `HidTransportOptions` should eventually support a PID mask/range (this device is the
   concrete motivating case) — not urgent for a single board, but worth remembering if a second
   device with the same DIP-switch-address pattern shows up.

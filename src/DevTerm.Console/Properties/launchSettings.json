@@ -26,6 +26,14 @@
     "TCP 192.168.0.110:23 ASCII": {
       "commandName": "Project",
       "commandLineArgs": "--transport tcp --host 192.168.0.110 --tcpport 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
+    },
+    "K8055 HID": {
+      "commandName": "Project",
+      "commandLineArgs": "--transport hid --hidvendorid 4303 --hidproductid 21760 --presenter k8055"
+    },
+    "Busylight HID": {
+      "commandName": "Project",
+      "commandLineArgs": "--transport hid --hidvendorid 1240 --hidproductid 63560 --presenter busylight"
     }
   }
 }

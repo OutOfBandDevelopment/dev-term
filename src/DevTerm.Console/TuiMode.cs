@@ -22,6 +22,15 @@ namespace DevTerm.Console;
 /// </remarks>
 public static class TuiMode
 {
+    /// <summary>
+    /// Caps the scrolling output pane the same way <c>MainWindow.MaxOutputLines</c> does for WPF, so
+    /// a long-running session doesn't grow it without bound — but shorter than WPF's 1000, since this
+    /// pane is a single concatenated <see cref="TextView.Text"/> string rebuilt on every trim, not a
+    /// virtualized items list; keeping it smaller keeps that rebuild cheap. Oldest lines are dropped
+    /// first.
+    /// </summary>
+    private const int MaxOutputLines = 300;
+
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         try
@@ -128,11 +137,19 @@ public static class TuiMode
             Enabled = session.State == ConnectionState.Open,
         };
 
+        var outputLines = new List<string>();
+
         void AppendOutput(string line)
         {
             Application.Invoke(() =>
             {
-                output.Text += output.Text.Length == 0 ? line : "\n" + line;
+                outputLines.Add(line);
+                if (outputLines.Count > MaxOutputLines)
+                {
+                    outputLines.RemoveAt(0);
+                }
+
+                output.Text = string.Join('\n', outputLines);
                 output.MoveEnd();
             });
         }

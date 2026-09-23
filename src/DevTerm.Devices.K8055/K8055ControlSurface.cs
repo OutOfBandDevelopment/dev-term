@@ -12,8 +12,15 @@ namespace DevTerm.Devices.K8055;
 /// analog-out mutation resends the full frame with the last-known state of everything else — the
 /// real device sets all outputs at once, not one bit at a time. Trailing bytes 6-7
 /// (duration/debounce, unconfirmed per the proposal doc) are sent as 0x00, 0x00 (static level, not
-/// a pulse). The two reset-counter commands send their own fixed 8-byte frame directly, with no
-/// shared state.
+/// a pulse). The two reset-counter commands send their own fixed frame directly, with no shared
+/// state. Every frame is sent with a leading <c>0x00</c> HID report-ID byte ahead of the 8-byte K8055
+/// payload (a 9-byte write total) — the same convention confirmed live for
+/// <c>DevTerm.Devices.Busylight</c> (Windows' HidD_SetOutputReport requires the report ID as the
+/// buffer's first byte even for a device with no report IDs of its own), and consistent with the
+/// K8055's own 9-byte *input* reports observed live
+/// (<c>[00, 00, 03, AnalogIn1, ...]</c> — byte 0 is the same report-ID slot). The original
+/// implementation omitted this byte and only ever verified that the write didn't throw, not that it
+/// changed anything on the device — see docs/changes/2026-09-22.md's follow-up entry.
 /// </summary>
 public sealed class K8055ControlSurface : IControlSurface
 {
@@ -122,9 +129,9 @@ public sealed class K8055ControlSurface : IControlSurface
             }
         }
 
-        return [SetOutputsCommand, digitalOutByte, _analogOut1, _analogOut2, 0x00, 0x00, 0x00, 0x00];
+        return [0x00, SetOutputsCommand, digitalOutByte, _analogOut1, _analogOut2, 0x00, 0x00, 0x00, 0x00];
     }
 
     private Task SendFixedFrameAsync(byte command, CancellationToken cancellationToken) =>
-        _session.SendAsync(new byte[] { command, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, cancellationToken);
+        _session.SendAsync(new byte[] { 0x00, command, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, cancellationToken);
 }

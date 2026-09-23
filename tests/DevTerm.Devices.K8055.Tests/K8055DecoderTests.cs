@@ -53,7 +53,7 @@ public sealed class K8055DecoderTests
     {
         var decoder = new K8055Decoder();
         var frame = (byte[])SampleFrame.Clone();
-        frame[0] = 0x05;
+        frame[1] = 0x05;
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(frame));
 
@@ -83,5 +83,36 @@ public sealed class K8055DecoderTests
         var lines = decoder.Render(new ReadOnlySequence<byte>(twoFrames));
 
         Assert.AreEqual(2, lines.Count);
+    }
+
+    [TestMethod]
+    public void Render_WithARepeatedIdenticalFrame_DoesNotRaiseValuesChangedAgain()
+    {
+        var decoder = new K8055Decoder();
+        var raiseCount = 0;
+        decoder.ValuesChanged += (_, _) => raiseCount++;
+
+        decoder.Render(new ReadOnlySequence<byte>(SampleFrame));
+        decoder.Render(new ReadOnlySequence<byte>(SampleFrame));
+
+        Assert.AreEqual(1, raiseCount);
+    }
+
+    [TestMethod]
+    public void Render_WithOneChangedField_RaisesValuesChangedWithOnlyThatField()
+    {
+        var decoder = new K8055Decoder();
+        var receivedDictionaries = new List<IReadOnlyDictionary<string, string>>();
+        decoder.ValuesChanged += (_, values) => receivedDictionaries.Add(values);
+
+        decoder.Render(new ReadOnlySequence<byte>(SampleFrame));
+        var changedFrame = (byte[])SampleFrame.Clone();
+        changedFrame[3] = 0x4D; // AnalogIn1: 76 -> 77, everything else identical.
+        decoder.Render(new ReadOnlySequence<byte>(changedFrame));
+
+        Assert.AreEqual(2, receivedDictionaries.Count);
+        var secondUpdate = receivedDictionaries[1];
+        Assert.AreEqual(1, secondUpdate.Count);
+        Assert.AreEqual("77", secondUpdate["analogIn1"]);
     }
 }

@@ -13,15 +13,27 @@ namespace DevTerm.Devices.K8055;
 /// </summary>
 /// <remarks>
 /// Digital-input bit-to-channel mapping is unconfirmed — nothing was wired to the 5 digital-input
-/// pins during the original real-hardware check. Rather than guess 5 individual channel keys, byte 0
-/// is published raw as "digitalInRaw" (hex); confirm the real per-bit mapping by wiring one input at
-/// a time and observing which bit flips, then add named channel keys/indicators once confirmed.
+/// pins during the original real-hardware check. Rather than guess 5 individual channel keys, the
+/// raw digital-input byte is published as "digitalInRaw" (hex); confirm the real per-bit mapping by
+/// wiring one input at a time and observing which bit flips, then add named channel keys/indicators
+/// once confirmed.
+/// </remarks>
+/// <remarks>
+/// Byte 0 of this 9-byte frame is the same leading HID report-ID byte confirmed live for both this
+/// device's own outbound frames and <c>DevTerm.Devices.Busylight</c> (always <c>0x00</c>, never real
+/// device data — see <see cref="K8055ControlSurface"/>'s doc comment) — it is NOT the digital-input
+/// byte the original decoder assumed. The real 8-byte K8055 payload starts at byte 1, so the
+/// digital-input bitmask is byte 1, not byte 0; reading byte 0 instead always reported a constant
+/// <c>0x00</c> regardless of physical input state, indistinguishable from "digital inputs unwired"
+/// until someone actually wired one — see docs/changes/2026-09-22.md's follow-up entry. Still
+/// pending real-hardware reconfirmation (which bit maps to which of the 5 physical input pins).
 /// </remarks>
 public sealed class K8055Decoder : IPresenter, IStructuredPresenter
 {
     private const int FrameLength = 9;
 
     private readonly List<byte> _buffer = [];
+    private readonly Dictionary<string, string> _lastValues = [];
 
     public string Name => "k8055";
 
@@ -40,7 +52,26 @@ public sealed class K8055Decoder : IPresenter, IStructuredPresenter
             var frame = _buffer.GetRange(0, FrameLength);
             _buffer.RemoveRange(0, FrameLength);
             lines.Add(DecodeFrame(frame, out var values));
-            ValuesChanged?.Invoke(this, values);
+
+            // The device streams a report continuously and unprompted (confirmed live — see
+            // docs/design/proposals/velleman-k8055-protocol.md), so most frames repeat the last
+            // reading verbatim; only publish the values that actually changed since the last frame,
+            // and skip the event entirely when nothing did, so a live indicator isn't rebuilt/redrawn
+            // on every single report just to show the same number it already had.
+            Dictionary<string, string>? changed = null;
+            foreach (var (id, value) in values)
+            {
+                if (!_lastValues.TryGetValue(id, out var previous) || previous != value)
+                {
+                    (changed ??= [])[id] = value;
+                    _lastValues[id] = value;
+                }
+            }
+
+            if (changed is not null)
+            {
+                ValuesChanged?.Invoke(this, changed);
+            }
         }
 
         return lines;
@@ -48,7 +79,7 @@ public sealed class K8055Decoder : IPresenter, IStructuredPresenter
 
     private static string DecodeFrame(IReadOnlyList<byte> frame, out IReadOnlyDictionary<string, string> values)
     {
-        var digitalInRaw = frame[0];
+        var digitalInRaw = frame[1];
         var analogIn1 = frame[3];
         var analogIn2 = frame[4];
         var counter1 = (ushort)(frame[5] | (frame[6] << 8));
