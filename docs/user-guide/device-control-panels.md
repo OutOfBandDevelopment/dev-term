@@ -4,8 +4,7 @@ Some devices get a real control panel instead of typing raw bytes — buttons, s
 fields generated from that device's own declared layout. Once connected (see
 [Connecting to a device](connecting.md)), open **Device** in the menu bar (TUI and WPF both) to see
 what's available. Full field-by-field/action-by-action reference:
-[`docs/specs/device-control-panel.md`](../specs/device-control-panel.md). This page has no
-screenshots yet — see that spec's Open items.
+[`docs/specs/device-control-panel.md`](../specs/device-control-panel.md).
 
 ## K8055 and Busylight: open and go
 
@@ -14,8 +13,17 @@ immediately — no setup, no picker. These two devices have one fixed, built-in 
 
 - **K8055** (a generic USB HID digital/analog I/O board): digital output toggles, analog output
   sliders, and digital-input/analog-input indicators that update live as the device reports them.
+
+![TUI K8055 control panel, with a live decoded input report showing Analog In/Digital In values](images/tui-control-panel-k8055.png)
+
+![WPF K8055 control panel, with a live decoded input report showing Analog In/Digital In values](images/wpf-control-panel-k8055.png)
+
 - **Busylight** (a USB HID RGB status light): color buttons (including a custom RGB/HSV color
   picker) and an on/off toggle.
+
+![TUI Busylight control panel](images/tui-control-panel-busylight.png)
+
+![WPF Busylight control panel](images/wpf-control-panel-busylight.png)
 
 Both only make sense connected to that actual device over HID — opening either panel against an
 unrelated connection just won't do anything useful.
@@ -42,6 +50,10 @@ Whichever way you get there, every SCPI panel also has a **Custom Command** sect
 text field and a Send button that sends exactly what you type, verbatim, with the reply shown right
 there — so you're never limited to what's in the curated command list.
 
+![TUI SCPI control panel (Korad KA6003P profile), after a Query Set Voltage round-trip](images/tui-control-panel-scpi.png)
+
+![WPF SCPI control panel (Korad KA6003P profile), after a Query Set Voltage round-trip](images/wpf-control-panel-scpi.png)
+
 ### Sending a command with parameters
 
 A curated command that needs a value (say, a frequency) shows as one or more fields next to a single
@@ -58,5 +70,3 @@ plain text).
 - No custom, per-manifest control panel yet for a device described only by a
   [device manifest](../design/device-manifests.md) — today's three panels are each built into
   dev-term directly.
-- No automated screenshots of any of these three panels — see
-  [`docs/specs/device-control-panel.md`](../specs/device-control-panel.md)'s Open items.

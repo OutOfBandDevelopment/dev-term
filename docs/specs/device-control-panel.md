@@ -180,11 +180,6 @@ any command not in the curated list.
 
 ## Open items
 
-- **No automated screenshot coverage** — unlike every other screen in
-  [`docs/specs/`](README.md)/[`docs/user-guide/`](../user-guide/README.md), none of `ScreenshotTests`
-  (TUI) or its WPF equivalent currently captures a K8055/Busylight/SCPI control panel, so this spec
-  and [the matching user-guide page](../user-guide/device-control-panels.md) have no real captured
-  images to show, unlike every other page in that guide.
 - **No menu-item state check against the actual connection** — the three Device menu items are always
   enabled and don't verify the connected transport/presenter actually matches the device before
   opening.

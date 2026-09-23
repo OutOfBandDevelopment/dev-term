@@ -184,6 +184,61 @@ internal static class TuiTestRunner
         }
     }
 
+    /// <summary>
+    /// Same real-<c>Application.Run()</c>-loop pattern as <see cref="RunWithLoop(Session, PresenterCatalog, CliOptions, Action{TuiWindowParts}, ConnectionProfileStore)"/>,
+    /// generalized to any window built by <paramref name="buildParts"/> — used for a control panel
+    /// (<see cref="DevTerm.Console.ControlPanelMode.BuildWindow"/>) rather than <see cref="TuiMode"/>
+    /// itself, e.g. to capture a live-updating indicator that only marshals via
+    /// <c>Application.Invoke</c> when a real loop is pumping.
+    /// </summary>
+    public static void RunWithLoop(Func<ControlPanelWindowParts> buildParts, Action<ControlPanelWindowParts> body)
+    {
+        ControlPanelWindowParts? parts = null;
+        var ready = new ManualResetEventSlim(false);
+        Exception? threadException = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                Application.Init("dotnet");
+                parts = buildParts();
+                Application.Invoke(() => ready.Set());
+                Application.Run(parts.Window);
+            }
+            catch (Exception ex)
+            {
+                threadException = ex;
+                ready.Set();
+            }
+        })
+        {
+            IsBackground = true,
+        };
+        thread.Start();
+
+        if (!ready.Wait(StartTimeout))
+        {
+            throw new TimeoutException("The TUI run loop did not start in time.");
+        }
+
+        if (threadException is not null)
+        {
+            throw new InvalidOperationException("The TUI run loop failed to start.", threadException);
+        }
+
+        try
+        {
+            body(parts!);
+        }
+        finally
+        {
+            Application.Invoke(() => Application.RequestStop());
+            thread.Join(StopTimeout);
+            Application.Shutdown();
+        }
+    }
+
     /// <summary>Runs <paramref name="func"/> on the TUI loop thread (see <see cref="RunWithLoop"/>) and waits for it to complete, so reads of view state don't race the loop's own redraw/input processing.</summary>
     public static T InvokeOnLoop<T>(Func<T> func)
     {
