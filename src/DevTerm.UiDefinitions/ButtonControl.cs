@@ -13,4 +13,15 @@ public sealed class ButtonControl : UiControl
     /// <c>"r,g,b"</c>-formatted value (each 0-255, invariant culture) to the command id named here.
     /// </summary>
     public string? ColorPickerTargetCommandId { get; set; }
+
+    /// <summary>
+    /// When set, clicking this button reads each named sibling control's current value (by
+    /// <see cref="UiControl.Id"/>, looked up in the same section) instead of invoking with no
+    /// value, joins them with <c>,</c> — the same convention <see cref="ColorPickerTargetCommandId"/>
+    /// already uses to pack multiple values through <c>IControlSurface</c>'s single string
+    /// parameter — and invokes <see cref="CommandId"/>/<see cref="UiControl.Id"/> with the joined
+    /// string. Lets a generic renderer offer "pick a command, fill in its parameters, invoke it"
+    /// (e.g. a SCPI command with parameters) without a bespoke dynamic form.
+    /// </summary>
+    public List<string>? ParameterFieldIds { get; set; }
 }

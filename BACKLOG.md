@@ -59,18 +59,21 @@ ordered against the rest.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG).
 - Device control modules (control surface + telemetry decode/plot) — see the declarative-schema
   item above for the command/response definition piece specifically.
-  [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is the recommended
-  first target — textual, first real declarative-schema candidate, and needs no new transport for
-  its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
+  [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is **implemented**
+  (2026-09-23, `DevTerm.Devices.Scpi`) — the first real declarative-schema instance, needing no new
+  transport for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above);
+  not yet verified against any of its six curated target instruments' real hardware.
   [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
   transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
   transport dependency (USB HID) is now built, but it still needs its HID report-framing question
   resolved (see that proposal's open questions) before implementing the decoder.
   [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md) is **deprioritized** —
   no hardware access to test against anymore; kept as a documented proposal only.
-  A Tektronix-codes (pre-SCPI) decoder is also in scope — the project's own Tek 2230 test device
-  (`ID?` → `ID TEK/2230,V81.1,VERS:14;`) is this "precursor protocol" family; worth its own proposal
-  doc when picked up.
+  A Tektronix-codes (pre-SCPI) decoder is also in scope, explicitly **not** part of the SCPI work
+  above since the 2230 predates SCPI and doesn't speak it — see
+  [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md) for what's known
+  (`ID?` → `ID TEK/2230,V81.1,VERS:14;`, confirmed live against the project's own two owned units)
+  and the real-hardware probing this still needs before a command set can be curated.
   Three more real, HID/serial-only (no new transport needed) targets, sourced from a local prior-art
   decoder library (`dotex/Incoming/BinaryDecoders`), each with a real-hardware-verified or
   cross-referenced protocol: [Kuando Busylight](docs/design/proposals/kuando-busylight-protocol.md)

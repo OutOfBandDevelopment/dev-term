@@ -104,6 +104,17 @@ public partial class ControlPanelWindow : Window
                 return (view, view);
             }
 
+            case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
+            {
+                var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                view.Click += (_, _) =>
+                {
+                    var joined = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
+                    _ = _surface.InvokeAsync(button.CommandId ?? button.Id, joined);
+                };
+                return (view, view);
+            }
+
             case ButtonControl button:
             {
                 var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
@@ -243,4 +254,14 @@ public partial class ControlPanelWindow : Window
     }
 
     private static string FormatUnit(double value, string? unit) => $"{value:0.#}{unit}";
+
+    /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
+    private static string GetCurrentValue(FrameworkElement view) => view switch
+    {
+        TextBox textBox => textBox.Text,
+        ComboBox { SelectedItem: string selected } => selected,
+        CheckBox checkBox => checkBox.IsChecked == true ? "1" : "0",
+        TextBlock textBlock => textBlock.Text,
+        _ => string.Empty,
+    };
 }

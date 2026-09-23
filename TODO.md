@@ -55,7 +55,7 @@ Completed work is logged by date under `docs/changes/`.
   the K8055's remaining digital-in/TUI checklist items are deferred to them.
 
 - **Live user feedback on the K8055/Busylight panels, addressed same day (2026-09-22)** — after the
-  above landed, real hands-on use of the K8055 and Busylight panels surfaced four real issues, all
+  above landed, real hands-on use of the K8055 and Busylight panels surfaced five real issues, all
   fixed the same day (see `docs/changes/2026-09-22.md` for the full write-up):
   - **K8055 digital inputs never read as anything but 0** — `K8055Decoder` read `digitalInRaw` from
     byte 0 of the 9-byte input frame, but byte 0 is the same leading HID report-ID byte confirmed
@@ -88,6 +88,15 @@ Completed work is logged by date under `docs/changes/`.
     including (and only raising the event for) keys that actually changed since the previous frame;
     both control panels already update indicators by per-key lookup, so a partial dictionary needed no
     consumer-side change.
+  - **Control-panel indicators never updated when the device was selected via the Device Profiles/
+    Configure Connection GUI, only via `--presenter` on the command line** — reported as "I can now
+    set the outputs but the input values dont capture the data." `ConnectionEditorViewModel.PresenterOptions`
+    (the checkbox list backing both front ends' presenter picker) was hardcoded to the six built-in
+    text presenters and never included `k8055`/`busylight`, so picking a device through the editor
+    could get the transport right but had no way to also enable its decoder — outbound commands still
+    worked (they write to the session directly), but the decoder was never wired into the session's
+    `Pipeline` and its indicators never received data. Fixed by adding both names to
+    `PresenterOptions`.
 
 - **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
   (identity, a transport hint, the declarative command/response schema already sketched in
@@ -201,6 +210,41 @@ Completed work is logged by date under `docs/changes/`.
   exit code is the right behavior for a scriptable/automatable mode — swallowing an unanticipated
   exception there would hide a real bug from whatever's driving it via a script/CI pipeline. See
   `docs/changes/2026-09-22.md`.
+
+- **SCPI instrument control module** (`DevTerm.Devices.Scpi`), landed 2026-09-23 — a data-driven
+  profile mechanism for SCPI bench instruments rather than one hardcoded module per device, per
+  `docs/design/proposals/scpi-instrument-control.md`. `ScpiInstrumentProfile`/
+  `ScpiCommandDefinition`/`ScpiParameterDefinition` (JSON, `System.Text.Json`) declare a device's
+  command set as data; `ScpiProfileCatalog` loads bundled `Profiles/*.json` plus a drop-in
+  `ScpiProfiles/` folder next to the executable, so adding an instrument later needs a new JSON
+  file, not a rebuild — six curated starter profiles ship: HP/Agilent/Keysight 34401A, Rigol
+  DM3058E, Rigol DG1022/DG1022Z, Rigol DS1105E, Korad KA3005P, Korad KA6003P, plus a code-built
+  Generic fallback (`*IDN?`/`*RST`/`*CLS`/`*OPC?`). `ScpiControlSurface` does `{Name}`-token
+  template substitution, numeric clamping, and a `sendCustom` verbatim passthrough escape hatch.
+  `ScpiReplyPresenter` (`IPresenter`/`IStructuredPresenter`/`IScpiReplyTracker`) line-buffers ASCII
+  and FIFO-correlates each query to its reply via `QuerySent`, resolving
+  device-control-modules.md's "expected reply pattern" open question for the plain synchronous
+  case. `ScpiUiDefinitionBuilder` maps a profile onto the existing generic `UiDefinition` model
+  (one section per `Category`, a button for a 0-parameter command, a button+`IndicatorControl` for
+  a query, parameter fields + a button for an N-parameter command) reusing the same
+  `ControlPanelMode`/`ControlPanelWindow` renderers proven against K8055/Busylight — needing one
+  small, generic, non-SCPI-specific addition to the shared model,
+  `ButtonControl.ParameterFieldIds` (a button that reads named sibling fields' current values,
+  joins them with `,`, and invokes `CommandId ?? Id` with the result). Both front ends get a
+  generic "SCPI Instrument..." menu item (not one per device, unlike K8055/Busylight) opening a
+  small profile picker (`Auto-detect (*IDN?)` / `Generic (manual)` / one of the six named
+  profiles); auto-detect sends `*IDN?` and regex-matches the reply against each profile's
+  `IdnPattern` (`ScpiProfileCatalog.TryMatchByIdn`), honestly scoped as an identification shortcut
+  since no universal "list supported commands" SCPI query exists. 37 new `UNIT` tests
+  (`DevTerm.Devices.Scpi.Tests`) plus `ParameterFieldIds` cases added to both existing
+  `ControlPanelModeTests`/`ControlPanelWindowTests`, and `"scpi"` added to
+  `ConnectionEditorViewModel.PresenterOptions` (and both its checkbox-list test assertions) up
+  front, avoiding the exact `k8055`/`busylight` omission bug fixed earlier the same week.
+  **Not yet verified against any real hardware** — none of the six curated command sets has been
+  confirmed against an actual instrument; only a code-review/unit-test pass so far. The Tektronix
+  2230 remains explicitly out of scope (pre-SCPI, doesn't speak this protocol at all) — see the new
+  `docs/design/proposals/tektronix-2230-protocol.md` for what's known and what real-hardware
+  probing it still needs.
 
 ## Backlog / research
 

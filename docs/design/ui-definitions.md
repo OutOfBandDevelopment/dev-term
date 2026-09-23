@@ -47,6 +47,12 @@ future `IControlSurface` would recognize) and a `Label` (what a human sees), plu
 fields:
 
 - `ButtonControl` — invokes a command, no value of its own (e.g. "Apply", "Reboot", "Reset Counter").
+  Optionally carries `ParameterFieldIds: List<string>?` (added 2026-09-23, for the SCPI module — see
+  [scpi-instrument-control.md](proposals/scpi-instrument-control.md)): when set, the renderer reads
+  each named sibling control's current value (a `TextFieldControl`/`NumericControl`'s text, a
+  `ChoiceControl`'s selected option), comma-joins them, and invokes `CommandId ?? Id` with the
+  joined string — the generic mechanism for "pick a command, fill in one or more parameter fields,
+  then send," without a bespoke dynamic-form widget per device.
 - `ToggleControl` — a boolean (e.g. "Mute", a digital output channel).
 - `SliderControl` — a bounded numeric range with a step (e.g. an analog output 0-255, a volume level).
 - `NumericControl` — a bounded numeric value entered as a number rather than dragged (e.g. on/off

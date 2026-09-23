@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
@@ -5,6 +7,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.Scpi;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
@@ -215,6 +218,34 @@ public static class TuiMode
                         structuredSource,
                         "dev-term — Busylight Control Panel");
                     Application.Run(panelParts.Window);
+                }),
+                // One generic entry, not one per instrument, unlike the two above - the command set
+                // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
+                // instrument is a dropped-in JSON file, not a new menu item.
+                new MenuItem("_SCPI Instrument...", string.Empty, () =>
+                {
+                    var structuredSource = catalog.TryGet("scpi", out var scpiPresenter) ? scpiPresenter : null;
+                    var picked = PickScpiProfileChoice();
+                    if (picked is null)
+                    {
+                        return;
+                    }
+
+                    if (picked == ScpiAutoDetectChoice)
+                    {
+                        // *IDN? is a real send/await over the live transport - unlike the two panels
+                        // above, this can't finish before the menu action returns, so it's fire-and-
+                        // forget with the eventual window open marshaled back via Application.Invoke,
+                        // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
+                        // reason (real async I/O resumes off the UI thread).
+                        _ = DetectAndOpenScpiInstrumentAsync(session, structuredSource);
+                        return;
+                    }
+
+                    var profile = picked == ScpiGenericChoice
+                        ? ScpiProfileCatalog.Generic
+                        : ScpiProfileCatalog.All.First(p => p.Name == picked);
+                    OpenScpiInstrumentWindow(session, structuredSource, profile);
                 }),
             ]),
         ]);
@@ -461,6 +492,113 @@ public static class TuiMode
         {
             appendOutput($"Send failed: {ex.Message}");
         }
+    }
+
+    private const string ScpiAutoDetectChoice = "Auto-detect (*IDN?)";
+    private const string ScpiGenericChoice = "Generic (manual)";
+
+    /// <summary>
+    /// Sends <c>*IDN?</c> and regex-matches the reply against every loaded profile's <c>IdnPattern</c>
+    /// (see <see cref="ScpiProfileCatalog.TryMatchByIdn"/>) — honestly scoped auto-detect, since SCPI
+    /// has no universal "list supported commands" query. Null on no match, no reply within the
+    /// timeout, or no "scpi" presenter registered/selected to correlate the reply through.
+    /// </summary>
+    private static async Task<ScpiInstrumentProfile?> DetectProfileAsync(Session session, IPresenter? presenter)
+    {
+        if (presenter is not IScpiReplyTracker tracker || presenter is not IStructuredPresenter structured)
+        {
+            return null;
+        }
+
+        const string detectReplyId = "scpiAutoDetect.reply";
+        var replyReceived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnValuesChanged(object? _, IReadOnlyDictionary<string, string> values)
+        {
+            if (values.TryGetValue(detectReplyId, out var reply))
+            {
+                replyReceived.TrySetResult(reply);
+            }
+        }
+
+        structured.ValuesChanged += OnValuesChanged;
+        try
+        {
+            tracker.QuerySent(detectReplyId);
+            await session.SendAsync(Encoding.ASCII.GetBytes("*IDN?\n"));
+
+            var winner = await Task.WhenAny(replyReceived.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+            return winner == replyReceived.Task ? ScpiProfileCatalog.TryMatchByIdn(await replyReceived.Task) : null;
+        }
+        finally
+        {
+            structured.ValuesChanged -= OnValuesChanged;
+        }
+    }
+
+    private static async Task DetectAndOpenScpiInstrumentAsync(Session session, IPresenter? structuredSource)
+    {
+        var detected = await DetectProfileAsync(session, structuredSource);
+        Application.Invoke(() => OpenScpiInstrumentWindow(session, structuredSource, detected ?? ScpiProfileCatalog.Generic));
+    }
+
+    private static void OpenScpiInstrumentWindow(Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)
+    {
+        var panelParts = ControlPanelMode.BuildWindow(
+            ScpiUiDefinitionBuilder.Build(profile),
+            new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
+            structuredSource,
+            $"dev-term — {profile.Name}");
+        Application.Run(panelParts.Window);
+    }
+
+    private static string? PickScpiProfileChoice()
+    {
+        var items = new List<string> { ScpiAutoDetectChoice, ScpiGenericChoice };
+        items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));
+        return PickFromList("Select SCPI Instrument", items);
+    }
+
+    /// <summary>
+    /// A small nested modal picker, the same plain Dialog+ListView pattern <c>ConfigureMode</c>'s own
+    /// local <c>PickFromList</c> uses for the same reason (no built-in combobox widget in the
+    /// installed Terminal.Gui v2.5.0 — see docs/changes/2026-09-16.md).
+    /// </summary>
+    private static string? PickFromList(string title, IReadOnlyList<string> items)
+    {
+        string? picked = null;
+        var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
+        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
+        listView.SetSource(new ObservableCollection<string>(items));
+        listView.Accepting += (_, e) =>
+        {
+            if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
+            {
+                picked = items[index];
+            }
+
+            e.Handled = true;
+            Application.RequestStop();
+        };
+        var selectButton = new Button { X = 0, Y = Pos.Bottom(listView), Text = "Select", IsDefault = true };
+        selectButton.Accepting += (_, e) =>
+        {
+            if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
+            {
+                picked = items[index];
+            }
+
+            e.Handled = true;
+            Application.RequestStop();
+        };
+        var cancelButton = new Button { X = Pos.Right(selectButton) + 1, Y = Pos.Top(selectButton), Text = "Cancel" };
+        cancelButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            Application.RequestStop();
+        };
+        dialog.Add(listView, selectButton, cancelButton);
+        Application.Run(dialog);
+        return picked;
     }
 }
 

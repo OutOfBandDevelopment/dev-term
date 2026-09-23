@@ -107,6 +107,19 @@ For simple query/response devices (most bench gear — a command string in, a fo
 
 - How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet), now proven end-to-end against two real devices (K8055, Busylight) with no renderer changes between them; see that doc's own open questions for what's still undecided.
 - Whether/how a device control module gets registered via the declarative manifest/plugin-loading path (see [device-manifests.md](device-manifests.md)/[plugin-model.md](plugin-model.md)) rather than a front end constructing its `IControlSurface` directly from a live `Session`, as `K8055ControlSurface` does today — the current wiring is a front-end-specific menu item (`_Device`/`Device` → "K8055 Control Panel..."), not something a loaded `DeviceManifest` drives yet.
-- Whether commands can declare an expected reply pattern (request/response pairing) so a "Query Status" command can show its answer inline, versus everything staying async/stream-oriented like the rest of the pipeline.
-- Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic — see the candidate direction above (a dev-term-specific schema, with Kaitai Struct as the binary-layout piece and an SCPI baseline as a zero-authoring fallback).
+- ~~Whether commands can declare an expected reply pattern (request/response pairing)...~~
+  **Answered 2026-09-23** for the plain-text/synchronous case by `DevTerm.Devices.Scpi`'s
+  `ScpiReplyPresenter`/`IScpiReplyTracker`: a command that's a query registers a
+  `{commandId}.reply` id before sending, and the next complete line back is FIFO-correlated to it
+  and shown via an `IndicatorControl` — no reply-pattern matching needed since SCPI replies are
+  just the next line, not something requiring recognition. This doesn't generalize to a device
+  whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
+  that case is still open.
+- ~~Whether device control modules can be assembled declaratively...~~ **Answered 2026-09-23** by
+  the same module: `ScpiInstrumentProfile`'s JSON schema (command id/label/category/template/
+  parameters) plus `ScpiProfileCatalog`'s bundled-plus-drop-in-folder loading is exactly the
+  "SCPI baseline as a zero-authoring fallback" candidate direction above, now built — see
+  [scpi-instrument-control.md](proposals/scpi-instrument-control.md). It's SCPI-specific, not the
+  general Kaitai-Struct-backed binary-response schema also sketched above, which remains
+  unimplemented for genuinely binary devices.
 - Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?

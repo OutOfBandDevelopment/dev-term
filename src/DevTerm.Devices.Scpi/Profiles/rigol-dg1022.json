@@ -1,0 +1,54 @@
+{
+  "Name": "Rigol DG1022/DG1022Z Function/Arbitrary Waveform Generator",
+  "IdnPattern": "DG1022",
+  "Terminator": "\n",
+  "Commands": [
+    { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
+    {
+      "Id": "func",
+      "Label": "Set Waveform",
+      "Category": "Source",
+      "Template": "FUNC {Waveform}",
+      "Parameters": [
+        { "Name": "Waveform", "Kind": "Choice", "Options": ["SIN", "SQU", "RAMP", "PULSE", "NOISE", "DC", "USER"], "DefaultValue": "SIN" }
+      ]
+    },
+    {
+      "Id": "freq",
+      "Label": "Set Frequency",
+      "Category": "Source",
+      "Template": "FREQ {Frequency}",
+      "Parameters": [
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.001, "Maximum": 20000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "volt",
+      "Label": "Set Amplitude",
+      "Category": "Source",
+      "Template": "VOLT {Amplitude}",
+      "Parameters": [
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "voltOffs",
+      "Label": "Set Offset",
+      "Category": "Source",
+      "Template": "VOLT:OFFS {Offset}",
+      "Parameters": [
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "outp",
+      "Label": "Set Output",
+      "Category": "Output",
+      "Template": "OUTP {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    }
+  ]
+}

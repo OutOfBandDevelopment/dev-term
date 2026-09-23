@@ -1,0 +1,23 @@
+{
+  "Name": "Rigol DM3058E Digital Multimeter",
+  "IdnPattern": "DM3058",
+  "Terminator": "\n",
+  "Commands": [
+    { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
+    { "Id": "measVoltDc", "Label": "Measure DC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:DC?", "IsQuery": true },
+    { "Id": "measVoltAc", "Label": "Measure AC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:AC?", "IsQuery": true },
+    { "Id": "measCurrDc", "Label": "Measure DC Current", "Category": "Measure", "Template": "MEAS:CURR:DC?", "IsQuery": true },
+    { "Id": "measRes", "Label": "Measure Resistance", "Category": "Measure", "Template": "MEAS:RES?", "IsQuery": true },
+    { "Id": "measFreq", "Label": "Measure Frequency", "Category": "Measure", "Template": "MEAS:FREQ?", "IsQuery": true },
+    {
+      "Id": "confVoltDc",
+      "Label": "Configure DC Voltage Range",
+      "Category": "Configure",
+      "Template": "CONF:VOLT:DC {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["AUTO", "0.2", "2", "20", "200", "1000"], "DefaultValue": "AUTO" }
+      ]
+    }
+  ]
+}

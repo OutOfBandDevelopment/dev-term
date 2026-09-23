@@ -55,6 +55,8 @@ public sealed class ControlPanelModeTests
                 Controls =
                 [
                     new ButtonControl { Id = "reset", Label = "Reset" },
+                    new ButtonControl { Id = "paramButton", Label = "Param Button", ParameterFieldIds = ["text1", "choice1"] },
+                    new ButtonControl { Id = "paramButton2", Label = "Param Button 2", CommandId = "paramCommand", ParameterFieldIds = ["text1"] },
                     new ToggleControl { Id = "toggle1", Label = "Toggle 1", DefaultValue = false },
                     new SliderControl { Id = "slider1", Label = "Slider 1", Minimum = 0, Maximum = 255, DefaultValue = 10 },
                     new NumericControl { Id = "numeric1", Label = "Numeric 1", Minimum = 0, Maximum = 100, DefaultValue = 5 },
@@ -126,6 +128,33 @@ public sealed class ControlPanelModeTests
 
             Assert.HasCount(1, surface.Invocations);
             Assert.AreEqual(("reset", (string?)null), surface.Invocations[0]);
+        });
+    }
+
+    [TestMethod]
+    public void ButtonWithParameterFieldIds_WhenClicked_InvokesWithJoinedSiblingValues()
+    {
+        var surface = new FakeControlSurface();
+        RunHeadless(surface, null, parts =>
+        {
+            Accept(parts.ControlViews["paramButton"]);
+
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreEqual(("paramButton", "hi,a"), surface.Invocations[0]);
+        });
+    }
+
+    [TestMethod]
+    public void ButtonWithParameterFieldIds_ReadsCurrentValueAndUsesCommandIdOverride()
+    {
+        var surface = new FakeControlSurface();
+        RunHeadless(surface, null, parts =>
+        {
+            ((TextField)parts.ControlViews["text1"]).Text = "updated";
+            Accept(parts.ControlViews["paramButton2"]);
+
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreEqual(("paramCommand", "updated"), surface.Invocations[0]);
         });
     }
 

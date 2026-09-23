@@ -1,0 +1,184 @@
+using System.Text;
+using DevTerm.Core.Presenters;
+using DevTerm.Core.Sessions;
+using DevTerm.Core.Transports;
+using Moq;
+
+namespace DevTerm.Devices.Scpi.Tests;
+
+/// <summary>
+/// Verifies the exact bytes <see cref="ScpiControlSurface"/> sends for a command — template
+/// substitution, terminator handling, custom-command passthrough — against a mocked
+/// <see cref="ITransport"/> behind a real <see cref="Session"/>, and its query/tracker
+/// correlation via a mocked <see cref="IScpiReplyTracker"/>. No real instrument involved, so UNIT.
+/// </summary>
+[TestCategory("UNIT")]
+[TestClass]
+public sealed class ScpiControlSurfaceTests
+{
+    private static (Session Session, Mock<ITransport> Transport) CreateSurfaceSession()
+    {
+        var transport = new Mock<ITransport>();
+        var session = new Session(transport.Object, new Pipeline([]));
+        return (session, transport);
+    }
+
+    private static ScpiInstrumentProfile BuildProfile(string terminator = "\n") => new()
+    {
+        Name = "Test Instrument",
+        Terminator = terminator,
+        Commands =
+        [
+            new ScpiCommandDefinition { Id = "idn", Label = "Identify", Template = "*IDN?", IsQuery = true },
+            new ScpiCommandDefinition { Id = "rst", Label = "Reset", Template = "*RST" },
+            new ScpiCommandDefinition
+            {
+                Id = "freq",
+                Label = "Set Frequency",
+                Template = "SOUR1:FREQ {Frequency}",
+                Parameters = [new ScpiParameterDefinition { Name = "Frequency", Kind = ScpiParameterKind.Numeric, Minimum = 0, Maximum = 1000, DefaultValue = "10" }],
+            },
+            new ScpiCommandDefinition
+            {
+                Id = "conf",
+                Label = "Configure",
+                Template = "CONF:{Function} {Range}",
+                Parameters =
+                [
+                    new ScpiParameterDefinition { Name = "Function", Kind = ScpiParameterKind.Text, DefaultValue = "VOLT:DC" },
+                    new ScpiParameterDefinition { Name = "Range", Kind = ScpiParameterKind.Choice, Options = ["AUTO", "10"], DefaultValue = "AUTO" },
+                ],
+            },
+        ],
+    };
+
+    private static void VerifySent(Mock<ITransport> transport, string expectedText)
+    {
+        var expectedBytes = Encoding.ASCII.GetBytes(expectedText);
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(expectedBytes)),
+            It.IsAny<CancellationToken>()));
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_ZeroParameterCommand_SendsTemplateVerbatimWithTerminator()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("rst", null);
+
+        VerifySent(transport, "*RST\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_SingleParameterCommand_SubstitutesToken()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("freq", "123.5");
+
+        VerifySent(transport, "SOUR1:FREQ 123.5\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_MultiParameterCommand_SubstitutesEachTokenPositionally()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("conf", "VOLT:AC,10");
+
+        VerifySent(transport, "CONF:VOLT:AC 10\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_NumericParameterOutOfRange_ClampsToBounds()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("freq", "5000");
+
+        VerifySent(transport, "SOUR1:FREQ 1000\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_MissingParameterValue_FallsBackToDefault()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("freq", null);
+
+        VerifySent(transport, "SOUR1:FREQ 10\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_CustomTerminator_IsAppendedInsteadOfNewline()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(terminator: string.Empty), tracker: null);
+
+        await surface.InvokeAsync("rst", null);
+
+        VerifySent(transport, "*RST");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_SendCustomCommand_SendsValueVerbatimWithNoTemplate()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "MEAS:VOLT:DC?");
+
+        VerifySent(transport, "MEAS:VOLT:DC?\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_QueryCommand_RegistersReplyIndicatorWithTrackerBeforeSending()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var tracker = new Mock<IScpiReplyTracker>();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
+
+        await surface.InvokeAsync("idn", null);
+
+        tracker.Verify(t => t.QuerySent("idn.reply"), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_NonQueryCommand_NeverRegistersWithTracker()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var tracker = new Mock<IScpiReplyTracker>();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
+
+        await surface.InvokeAsync("rst", null);
+
+        tracker.Verify(t => t.QuerySent(It.IsAny<string>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_SendCustomCommand_RegistersItsOwnReplyIndicator()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var tracker = new Mock<IScpiReplyTracker>();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
+
+        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "*IDN?");
+
+        tracker.Verify(t => t.QuerySent($"{ScpiControlSurface.SendCustomCommandId}.reply"), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_UnknownCommand_Throws()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null));
+    }
+}

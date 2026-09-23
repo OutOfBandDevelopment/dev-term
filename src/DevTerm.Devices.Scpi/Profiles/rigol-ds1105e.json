@@ -1,0 +1,23 @@
+{
+  "Name": "Rigol DS1105E Oscilloscope",
+  "IdnPattern": "DS1105E",
+  "Terminator": "\n",
+  "Commands": [
+    { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "run", "Label": "Run", "Category": "Acquisition", "Template": ":RUN" },
+    { "Id": "stop", "Label": "Stop", "Category": "Acquisition", "Template": ":STOP" },
+    { "Id": "auto", "Label": "Auto-scale", "Category": "Acquisition", "Template": ":AUToscale" },
+    {
+      "Id": "chan1Scale",
+      "Label": "Set Channel 1 Scale",
+      "Category": "Channel",
+      "Template": ":CHAN1:SCAL {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0.002, "Maximum": 10, "Unit": "V/div", "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "chan1ScaleQuery", "Label": "Query Channel 1 Scale", "Category": "Channel", "Template": ":CHAN1:SCAL?", "IsQuery": true },
+    { "Id": "measVpp1", "Label": "Measure Channel 1 Vpp", "Category": "Measure", "Template": ":MEAS:VPP? CHAN1", "IsQuery": true },
+    { "Id": "measFreq1", "Label": "Measure Channel 1 Frequency", "Category": "Measure", "Template": ":MEAS:FREQ? CHAN1", "IsQuery": true }
+  ]
+}

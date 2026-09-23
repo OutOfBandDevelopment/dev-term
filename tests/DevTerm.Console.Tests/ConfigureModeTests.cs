@@ -139,10 +139,10 @@ public sealed class ConfigureModeTests
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 CollectionAssert.AreEqual(
-                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" },
+                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi" },
                     parts.PresenterCheckBoxes.Select(c => c.Text.ToString()).ToArray());
                 CollectionAssert.AreEqual(
-                    new[] { true, false, false, false, false, true },
+                    new[] { true, false, false, false, false, true, false, false, false },
                     parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked).ToArray());
                 Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 

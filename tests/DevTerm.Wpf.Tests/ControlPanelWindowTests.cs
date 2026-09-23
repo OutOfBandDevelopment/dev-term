@@ -53,6 +53,8 @@ public sealed class ControlPanelWindowTests
                 Controls =
                 [
                     new ButtonControl { Id = "reset", Label = "Reset" },
+                    new ButtonControl { Id = "paramButton", Label = "Param Button", ParameterFieldIds = ["text1", "choiceDropdown"] },
+                    new ButtonControl { Id = "paramButton2", Label = "Param Button 2", CommandId = "paramCommand", ParameterFieldIds = ["text1"] },
                     new ToggleControl { Id = "toggle1", Label = "Toggle 1", DefaultValue = false },
                     new SliderControl { Id = "slider1", Label = "Slider 1", Minimum = 0, Maximum = 255, DefaultValue = 10 },
                     new NumericControl { Id = "numeric1", Label = "Numeric 1", Minimum = 0, Maximum = 100, DefaultValue = 5 },
@@ -119,6 +121,45 @@ public sealed class ControlPanelWindowTests
 
             Assert.HasCount(1, surface.Invocations);
             Assert.AreEqual(("reset", (string?)null), surface.Invocations[0]);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void ButtonWithParameterFieldIds_WhenClicked_InvokesWithJoinedSiblingValues()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var surface = new FakeControlSurface();
+            var window = new ControlPanelWindow(BuildSampleDefinition(), surface, null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            var button = (Button)window.ControlViews["paramButton"];
+            button.RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreEqual(("paramButton", "hi,x"), surface.Invocations[0]);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void ButtonWithParameterFieldIds_ReadsCurrentValueAndUsesCommandIdOverride()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var surface = new FakeControlSurface();
+            var window = new ControlPanelWindow(BuildSampleDefinition(), surface, null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            ((TextBox)window.ControlViews["text1"]).Text = "updated";
+            var button = (Button)window.ControlViews["paramButton2"];
+            button.RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreEqual(("paramCommand", "updated"), surface.Invocations[0]);
 
             await Task.CompletedTask;
         });

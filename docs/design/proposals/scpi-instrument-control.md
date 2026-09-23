@@ -1,5 +1,40 @@
 # Proposal: SCPI Bench Instrument Control Module
 
+## Status: implemented (2026-09-23)
+
+Built as `DevTerm.Devices.Scpi` — a data-driven profile mechanism rather than one hardcoded module
+per instrument, per the "Proposed shape" section below. Confirmed target hardware, one curated
+profile each: HP/Agilent/Keysight 34401A, Rigol DM3058E, Rigol DG1022/DG1022Z, Rigol **DS1105E**
+(not DS1102E/DS1105EM — the earlier "Target hardware" table below predates this correction), Korad
+KA3005P, Korad KA6003P. See:
+
+- `ScpiInstrumentProfile`/`ScpiCommandDefinition`/`ScpiParameterDefinition` — the declarative
+  command/response schema this doc's own "Open questions" flagged as undecided; JSON, loaded by
+  `ScpiProfileCatalog` from bundled `Profiles/*.json` plus a drop-in `ScpiProfiles/` folder next to
+  the executable, so adding an instrument later needs a new JSON file, not a rebuild.
+- `ScpiControlSurface` — template substitution (`{Name}` tokens), numeric clamping, per-profile
+  terminator, and a `sendCustom` passthrough escape hatch for anything not in a given profile's
+  curated command list.
+- `ScpiReplyPresenter` — line-buffered ASCII decoding plus FIFO query/reply correlation
+  (`IScpiReplyTracker.QuerySent`), resolving the "can a command declare an expected reply pattern"
+  open question below for the common synchronous case.
+- `ScpiUiDefinitionBuilder` — maps a profile onto the existing generic `UiDefinition`/
+  `IControlSurface` renderer (`ControlPanelMode`/`ControlPanelWindow`, proven against the K8055 and
+  Busylight) rather than a bespoke "pick a command, fill parameters" widget; this needed one small,
+  generic addition to the shared model, `ButtonControl.ParameterFieldIds` (see
+  [ui-definitions.md](../ui-definitions.md)).
+- Auto-detect is honestly scoped to `*IDN?` plus a regex match against each profile's `IdnPattern`
+  (`ScpiProfileCatalog.TryMatchByIdn`) — there is no standardized "list supported commands" SCPI
+  query, so this is not real command discovery, just an identification shortcut with a Generic
+  fallback profile when nothing matches.
+- **Not yet verified against real hardware** — none of these six instruments has been connected to
+  dev-term yet (unlike the K8055/Busylight modules, which were verified live). The curated command
+  sets are a reasonable-effort starting point per each instrument's public SCPI reference, not
+  confirmed correct. GPIB-only paths (bare HP 34401A) remain unreachable, per the open question
+  below.
+- The Tektronix 2230 remains explicitly out of scope here — see the new
+  [tektronix-2230-protocol.md](tektronix-2230-protocol.md) proposal.
+
 ## Source
 
 This proposal is derived from an existing (separate) project tracked in the
@@ -143,12 +178,12 @@ decoder --> user : Human-readable text baseline
 
 ## Open questions
 
-- Whether a declarative SCPI command/response schema (IEEE 488.2 common commands + per-family
-  extensions) should be dev-term's first real instance of the "declarative command set" pattern
-  flagged as an open question in [device-control-modules.md](../device-control-modules.md), given
-  how standardized the grammar already is.
+- ~~Whether a declarative SCPI command/response schema...~~ **Resolved**: yes —
+  `ScpiInstrumentProfile`'s JSON schema, per "Status: implemented" above.
+- ~~How much of "parse `*IDN?`"/"parse a numeric `MEAS?` reply" is generic...~~ **Resolved**:
+  `ScpiReplyPresenter` does line-buffering plus FIFO id-correlation generically (no per-family
+  parsing at all); a specific reply's *meaning* stays a profile/UI concern (an `IndicatorControl`
+  just shows the raw line), not something baked into the decoder.
 - Whether GPIB support is ever in scope (none of the transports in [transports.md](../transports.md)
-  cover it) — if not, the HP 34401A and other GPIB-only paths are out of reach unless accessed via
-  a GPIB-to-USB/Ethernet adapter that presents as serial or TCP to the OS.
-- How much of "parse `*IDN?`" and "parse a numeric `MEAS?` reply" is generic enough to live in
-  `DevTerm.Core`/a shared SCPI decoder base versus needing a profile per instrument family.
+  cover it) — still open. If not, the bare HP 34401A and other GPIB-only paths are out of reach
+  unless accessed via a GPIB-to-USB/Ethernet adapter that presents as serial or TCP to the OS.

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using DevTerm.Configuration;
@@ -7,6 +8,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.Scpi;
 
 namespace DevTerm.Wpf;
 
@@ -267,6 +269,91 @@ public partial class MainWindow : Window
         var window = new ControlPanelWindow(
             BusylightUiDefinition.Build(),
             new BusylightControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // ShowDialog(), not Show(): unlike the two panels above, this is a one-shot picker (mirrors
+    // Device Profiles), and the resulting control panel is opened separately below with Show().
+    private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new ScpiInstrumentPickerWindow { Owner = this };
+        if (picker.ShowDialog() != true || picker.Chosen is not { } chosen)
+        {
+            return;
+        }
+
+        var structuredSource = _catalog.TryGet("scpi", out var presenter) ? presenter : null;
+        if (chosen == ScpiInstrumentPickerWindow.AutoDetectChoice)
+        {
+            _ = DetectAndOpenScpiInstrumentAsync(structuredSource);
+            return;
+        }
+
+        var profile = chosen == ScpiInstrumentPickerWindow.GenericChoice
+            ? ScpiProfileCatalog.Generic
+            : ScpiProfileCatalog.All.First(p => p.Name == chosen);
+        OpenScpiInstrumentWindow(structuredSource, profile);
+    }
+
+    // *IDN? is a real send/await over the live transport, so unlike the synchronous picker above
+    // this can't finish before the click handler returns - fire-and-forget, matching
+    // ToggleConnectionAsync/SwitchProfileAsync's own async-void-adjacent pattern for the same reason.
+    private async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
+    {
+        var detected = await DetectScpiProfileAsync(structuredSource);
+        OpenScpiInstrumentWindow(structuredSource, detected ?? ScpiProfileCatalog.Generic);
+    }
+
+    /// <summary>
+    /// Honestly-scoped auto-detect: there's no universal "list supported commands" SCPI query, so
+    /// this sends <c>*IDN?</c> and regex-matches the reply against each loaded profile's
+    /// <c>IdnPattern</c> — see <see cref="ScpiProfileCatalog.TryMatchByIdn"/>. Mirrors
+    /// <c>TuiMode.DetectProfileAsync</c>.
+    /// </summary>
+    private async Task<ScpiInstrumentProfile?> DetectScpiProfileAsync(IPresenter? presenter)
+    {
+        if (presenter is not IScpiReplyTracker tracker || presenter is not IStructuredPresenter structured)
+        {
+            return null;
+        }
+
+        const string detectReplyId = "scpiAutoDetect.reply";
+        var replyReceived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnValuesChanged(object? _, IReadOnlyDictionary<string, string> values)
+        {
+            if (values.TryGetValue(detectReplyId, out var reply))
+            {
+                replyReceived.TrySetResult(reply);
+            }
+        }
+
+        structured.ValuesChanged += OnValuesChanged;
+        try
+        {
+            tracker.QuerySent(detectReplyId);
+            await _session.SendAsync(Encoding.ASCII.GetBytes("*IDN?\n"));
+
+            var winner = await Task.WhenAny(replyReceived.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+            return winner == replyReceived.Task ? ScpiProfileCatalog.TryMatchByIdn(await replyReceived.Task) : null;
+        }
+        finally
+        {
+            structured.ValuesChanged -= OnValuesChanged;
+        }
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    private void OpenScpiInstrumentWindow(IPresenter? structuredSource, ScpiInstrumentProfile profile)
+    {
+        var window = new ControlPanelWindow(
+            ScpiUiDefinitionBuilder.Build(profile),
+            new ScpiControlSurface(_session, profile, structuredSource as IScpiReplyTracker),
             structuredSource)
         {
             Owner = this,

@@ -260,7 +260,20 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "loopback"];
 
-    public IReadOnlyList<string> PresenterOptions { get; } = ["ascii", "utf8", "hex", "decimal", "octal", "binary"];
+    /// <summary>
+    /// This list is hardcoded rather than resolved from the live <see cref="Core.Presenters.PresenterCatalog"/>
+    /// because this view model is constructed before any transport/session exists (it's what builds
+    /// the <see cref="CliOptions"/> a session gets built from) — so it must include every
+    /// device-specific display presenter (<c>k8055</c>, <c>busylight</c>, ...) by name in addition to
+    /// the built-in text ones, or a device's control panel can never receive live input: switching to
+    /// that device here without also checking its presenter here leaves <see cref="CliOptions.EffectivePresenters"/>
+    /// on the default, so the device's decoder is registered but never wired into the session's
+    /// <c>Pipeline</c> and its indicators never update, even though outbound control-panel commands
+    /// (which write to the session directly, not through a presenter) work fine — confirmed live
+    /// against the K8055 GUI panel 2026-09-22.
+    /// </summary>
+    public IReadOnlyList<string> PresenterOptions { get; } =
+        ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"];
 
     public IReadOnlyList<string> LineEndingOptions { get; } = Enum.GetNames<LineEnding>();
 

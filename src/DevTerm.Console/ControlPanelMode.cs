@@ -217,6 +217,18 @@ internal static class ControlPanelMode
                 controlViews[control.Id] = colorButtonView;
                 break;
 
+            case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
+                var parameterButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
+                parameterButtonView.Accepting += (_, e) =>
+                {
+                    var joined = string.Join(',', parameterFieldIds.Select(id => controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
+                    _ = surface.InvokeAsync(button.CommandId ?? button.Id, joined);
+                    e.Handled = true;
+                };
+                frame.Add(parameterButtonView);
+                controlViews[control.Id] = parameterButtonView;
+                break;
+
             case ButtonControl button:
                 var buttonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
                 buttonView.Accepting += (_, e) =>
@@ -331,6 +343,16 @@ internal static class ControlPanelMode
 
     private static double ParseOr(string text, double fallback) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
+    /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
+    private static string GetCurrentValue(View view) => view switch
+    {
+        TextField textField => textField.Text,
+        OptionSelector { Value: { } index, Labels: { } labels } when index >= 0 && index < labels.Count => labels[index],
+        CheckBox checkBox => checkBox.Value == CheckState.Checked ? "1" : "0",
+        Label label => label.Text,
+        _ => string.Empty,
+    };
 
     /// <summary>
     /// A small nested modal RGB/HSV color picker, opened by any <c>ButtonControl</c> with
