@@ -19,12 +19,20 @@ button panel. The model is built from those concrete examples, not designed in t
 
 ## Status
 
-**First step only, landed 2026-09-15**: the representation model itself (`DevTerm.UiDefinitions`)
-and JSON/XML serialization, with round-trip tests against a real example (a full Busylight control
-panel, matching that proposal's mockup exactly). **Not yet built**: anything that actually reads
-this model and produces real Terminal.Gui or WPF controls from it, or wires it to a live
-`IControlSurface` — that's the next step once `IControlSurface` itself exists in code (it's still
-design-only, per device-control-modules.md).
+**Representation model, landed 2026-09-15**: `DevTerm.UiDefinitions` and JSON/XML serialization,
+round-trip tested against a real example (a full Busylight control panel, matching that proposal's
+mockup exactly).
+
+**Generic renderer + first real `IControlSurface`, landed 2026-09-22**: `IControlSurface` and
+`IStructuredPresenter` now exist in code (`DevTerm.Core.Control`/`DevTerm.Core.Presenters`), and
+both front ends read a `UiDefinition` generically and produce real, wired controls from it —
+`ControlPanelMode` (TUI, Terminal.Gui) and `ControlPanelWindow` (WPF) — proven against the real
+Velleman K8055 (`DevTerm.Devices.K8055`: a `UiDefinition`, an `IControlSurface`, and an
+`IStructuredPresenter` decoder). Neither renderer is K8055-specific — any device's
+`UiDefinition`/`IControlSurface` pair renders the same way. Not yet exercised against a second
+device (Busylight is the next candidate, a separate future pass) or against the numeric/choice/
+textField control kinds on real hardware (K8055's own mockup only uses toggle/slider/indicator/
+button).
 
 ## Shape
 
@@ -163,9 +171,13 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
 
 ## Open questions
 
-- How a `UiControl.Id` actually resolves to a real `IControlSurface` command/parameter once that
-  contract exists in code — this model is deliberately independent of `IControlSurface` for now
-  (no reference to it, no behavior, just data), so the binding mechanism is still open.
+- ~~How a `UiControl.Id` actually resolves to a real `IControlSurface` command/parameter~~ —
+  **settled 2026-09-22**: `Id` *is* the command id, 1:1 (`ButtonControl.CommandId` overrides it for
+  the rare case a button's id differs from its command — see `K8055UiDefinition`'s
+  `resetCounter1`/`resetCounter2` buttons, which don't need the override since their ids already
+  match their commands). `IControlSurface.InvokeAsync(commandId, value)` takes everything as a
+  single optional string, mirroring `IPresenterInput.Parse(string)`'s "everything is text at the
+  boundary" convention.
 - Whether `IndicatorControl` needs a format/unit hint (e.g. "show this raw byte as hex" vs. "show
   this as a percentage") or whether that's better left to the decoder producing the value in
   already-formatted form.

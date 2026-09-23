@@ -14,6 +14,9 @@
                 <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
+            <MenuItem Header="_Device">
+                <MenuItem Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
+            </MenuItem>
         </Menu>
         <DockPanel Margin="8">
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">

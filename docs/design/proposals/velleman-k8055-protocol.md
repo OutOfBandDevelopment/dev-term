@@ -142,6 +142,24 @@ lamps/counters for inputs, all updating in real time rather than reading a text 
 @endsalt
 ```
 
+## Status
+
+**Implemented 2026-09-22** as the first concrete device module built against the generic
+`UiDefinition`/`IControlSurface` renderer (see [device-control-modules.md](../device-control-modules.md),
+[ui-definitions.md](../ui-definitions.md)): `DevTerm.Devices.K8055` (`K8055UiDefinition`,
+`K8055ControlSurface`, `K8055Decoder`), selectable via `--presenter k8055` and reachable from both
+front ends' new "K8055 Control Panel..." menu item. Verified by unit test against the frame shapes
+documented above, and now also **verified live against real hardware, same day** (WPF only — see
+`docs/changes/2026-09-22.md` for the full account): Analog In/Digital In indicators matched an
+independent CLI hex reading exactly; Digital Out/Analog Out/Counter-Reset commands all round-tripped
+without error. The apparent "Counter 1 didn't reset" anomaly hit during that pass turned out to be a
+real, physically-explainable board characteristic (a floating counter-input pin self-oscillating at
+a stable rate), not a decoder or encoding bug — see the changelog entry for the full reasoning.
+Genuinely still open: the digital-in bit mapping, the trailing duration/debounce bytes, what `0x06`
+does, and the TUI side (`ControlPanelMode`) — none of those were exercised yet. The decoder still
+ships byte 0 as a raw `digitalInRaw` hex value rather than guessing at 5 channel keys, and the
+control surface still sends `0x00, 0x00` for the two trailing bytes (static level, not a pulse).
+
 ## Open questions
 
 - The exact meaning/units of the two trailing bytes on the Set Analog/Digital command (labeled
@@ -151,7 +169,12 @@ lamps/counters for inputs, all updating in real time rather than reading a text 
   does, if anything — request an immediate report out of cycle? Change the streaming rate? Needs a
   real test (send it, see if anything changes) rather than assuming it's a "read command" at all.
 - Byte-for-byte confirmation of the input report's first two bytes (digital inputs) — not exercised
-  in the real test above since nothing was wired to the digital input pins.
+  in the real test above since nothing was wired to the digital input pins; needs the board rewired
+  one pin at a time, which only the user can do.
+- **New 2026-09-22**: byte 2 of the input frame read a constant `0x01` this session (PID `0x5500`)
+  versus the constant `0x03` recorded in the original 2026-09-15 note (PID `0x5502`, a different
+  physical board) — not yet explained, and not currently decoded into anything (`digitalInRaw` only
+  reads byte 0), so not blocking, but worth resolving alongside the digital-in bit mapping above.
 - Whether `HidTransportOptions` should eventually support a PID mask/range (this device is the
   concrete motivating case) — not urgent for a single board, but worth remembering if a second
   device with the same DIP-switch-address pattern shows up.

@@ -1,7 +1,9 @@
 using DevTerm.Configuration;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Devices.K8055;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
@@ -170,6 +172,23 @@ public static class TuiMode
             // line typed on (the title bar shows which is current). Built from the catalog as of
             // startup - a profile switch never changes which presenters are registered.
             new MenuBarItem("_Send as", [.. catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
+            new MenuBarItem("_Device",
+            [
+                // Reuses the current, already-open session/connection rather than opening a second
+                // competing one to the same physical device - reads the live "session"/"catalog"
+                // closure variables, which SwitchProfileAsync above reassigns on a profile switch,
+                // the same way the "_Device Profiles..." item above reads the live "cliOptions".
+                new MenuItem("_K8055 Control Panel...", string.Empty, () =>
+                {
+                    var structuredSource = catalog.TryGet("k8055", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        K8055UiDefinition.Build(),
+                        new K8055ControlSurface(session),
+                        structuredSource,
+                        "dev-term — K8055 Control Panel");
+                    Application.Run(panelParts.Window);
+                }),
+            ]),
         ]);
 
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's

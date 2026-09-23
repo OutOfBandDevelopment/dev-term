@@ -14,12 +14,36 @@ Completed work is logged by date under `docs/changes/`.
   H4n), not designed in the abstract — see docs/design/ui-definitions.md. Polymorphic serialization
   uses the framework's own support (`System.Text.Json`'s `[JsonDerivedType]`, `XmlSerializer`'s
   `[XmlElement]` per derived type on the collection) rather than hand-rolled discriminator parsing.
-  Round-trip tested against a full real panel (the Busylight mockup, reproduced as data). **This is
-  step one only**: nothing yet reads this model to produce real Terminal.Gui or WPF controls, and
-  it isn't wired to `IControlSurface` (still design-only) or any live device. Next real targets to
-  build the actual TUI/WPF renderers against, per explicit plan: the K8055 (plugged in) and the
-  Busylight (already verified both directions) — both already have `@startsalt` mockups this model
-  needs to be able to reproduce as real, working controls.
+  Round-trip tested against a full real panel (the Busylight mockup, reproduced as data).
+
+- **Generic `UiDefinition`/`IControlSurface` renderer, proven against the real K8055**, landed
+  2026-09-22 — `IControlSurface` (`DevTerm.Core.Control`) and `IStructuredPresenter`
+  (`DevTerm.Core.Presenters`) now exist in code, and both front ends read any `UiDefinition`
+  generically and produce real, wired controls: `ControlPanelMode` (TUI, one `FrameView` per
+  section, kind→Terminal.Gui-widget mapping — `Button`/`CheckBox`/bounded `TextField` for
+  slider+numeric/`OptionSelector`/read-only `Label`, since Terminal.Gui 2.5.0 has no native
+  slider/RadioGroup/ComboBox) and `ControlPanelWindow` (WPF, one `GroupBox` per section,
+  `Button`/`CheckBox`/real `Slider`/`TextBox`/`RadioButton`s-or-`ComboBox`/read-only `TextBlock`).
+  Both resolve the active presenter and subscribe to `IStructuredPresenter.ValuesChanged` for live
+  indicator updates when one exists, degrading to static default values (not a failure to open) when
+  it doesn't. First concrete device module: `DevTerm.Devices.K8055` (`K8055UiDefinition`,
+  `K8055ControlSurface`, `K8055Decoder`), registered as an ordinary presenter (`--presenter k8055`)
+  and opened via a new `_Device`/`Device` menu item in each front end, reusing the current session
+  rather than opening a second HID connection. `UiControl.Id` is the command id 1:1
+  (`ButtonControl.CommandId` overrides it), settling ui-definitions.md's open question. 19 new
+  `UNIT` tests (`ControlPanelModeTests`, `ControlPanelWindowTests`) plus 14 in
+  `DevTerm.Devices.K8055.Tests` — see `docs/changes/2026-09-22.md`. **Renderer is generic, not
+  K8055-specific** — the next real target to prove that against a second device is Busylight (a
+  separate future pass); K8055's own mockup only exercises toggle/slider/indicator/button, so
+  numeric/choice/textField have render/unit coverage but no real-hardware exercise yet.
+  Real-hardware verification against WPF's `ControlPanelWindow` is done, same day
+  (`docs/changes/2026-09-22.md`): live indicators matched an independent CLI reading, and digital
+  out/analog out/counter reset all round-tripped correctly against the physical board (an apparent
+  counter-reset anomaly was root-caused to a real, physically-explainable floating-pin behavior, not
+  a bug). Still pending: the same pass against the TUI (`ControlPanelMode`), and the digital-input
+  bit-to-channel mapping is still unconfirmed (shipped as a raw `digitalInRaw` byte rather than 5
+  guessed channel keys) — both require the user's own physical rewiring/hands-on time, deferred for
+  now — see `docs/design/proposals/velleman-k8055-protocol.md`'s open questions.
 
 - **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
   (identity, a transport hint, the declarative command/response schema already sketched in

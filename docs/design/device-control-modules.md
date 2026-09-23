@@ -14,7 +14,7 @@ A device control module is a plugin that **composes**, rather than replaces, the
 
 - A **command set** — the outbound side: named commands/parameters (e.g., "Set Voltage" with a numeric parameter and unit; "Trigger" with no parameters; "Query Status" with a decoded reply) that encode to bytes over the session's transport, reusing the same send path presenters already use for sending (`IPresenterInput`, see [presenters.md](presenters.md)).
 - One or more **presenters** for the inbound side — typically a protocol/telemetry decoder (with its human-readable text baseline) and a rendering presenter for a live telemetry plot — exactly the presenter types already described in presenters.md, just bundled with the command set instead of assembled ad hoc.
-- A **control surface declaration** — a generic, declarative description of the module's commands/parameters (name, type, range/enum/unit, grouping) that front ends render as an actual control panel (buttons, sliders, dropdowns, numeric fields) without the module hand-building UI per front end. This is the control-surface analog of how composite decoders declare channels generically, and mappable presenters declare their mapping schema generically (see [presenters.md](presenters.md)): the module describes *what* controls exist, the front end decides *how* to draw them. See [ui-definitions.md](ui-definitions.md) for the concrete, serializable shape this takes (`DevTerm.UiDefinitions`) — built from real device mockups (Kuando Busylight, Velleman K8055, EByte, Zoom H4n), though not yet wired to `IControlSurface` itself.
+- A **control surface declaration** — a generic, declarative description of the module's commands/parameters (name, type, range/enum/unit, grouping) that front ends render as an actual control panel (buttons, sliders, dropdowns, numeric fields) without the module hand-building UI per front end. This is the control-surface analog of how composite decoders declare channels generically, and mappable presenters declare their mapping schema generically (see [presenters.md](presenters.md)): the module describes *what* controls exist, the front end decides *how* to draw them. See [ui-definitions.md](ui-definitions.md) for the concrete, serializable shape this takes (`DevTerm.UiDefinitions`) — built from real device mockups (Kuando Busylight, Velleman K8055, EByte, Zoom H4n), and, as of 2026-09-22, wired end-to-end: a real `IControlSurface` (`DevTerm.Devices.K8055`) driven by a generic renderer in both front ends.
 
 ```plantuml
 @startuml
@@ -41,9 +41,36 @@ SHOW_LEGEND()
 @enduml
 ```
 
-## Contract shape (conceptual)
+## Contract shape
 
-- `IControlSurface` — declares the module's commands/parameters (metadata only: name, type, constraints, grouping) and a way to invoke a command with arguments, which encodes to bytes and sends over the session's transport. Front ends use this metadata to render an appropriate control panel/form generically, the same way they already render `IMappable`/`ICompositeDecoder` metadata generically.
+- `IControlSurface` (`DevTerm.Core.Control`, landed 2026-09-22) — `Task InvokeAsync(string
+  commandId, string? value, CancellationToken cancellationToken = default)`. One string-valued
+  parameter for every control kind (button: `value` null; toggle: `"0"`/`"1"`; slider/numeric: an
+  invariant-culture number string; choice: the selected option string), mirroring
+  `IPresenterInput.Parse(string)`'s "everything is text at the boundary" convention rather than
+  multiple typed overloads. The *metadata* half (name, type, constraints, grouping) is
+  `UiDefinition`/`UiControl` (see [ui-definitions.md](ui-definitions.md)), not part of this
+  interface itself — `commandId` is the `UiControl.Id` a front end's generic renderer read that
+  metadata from. Front ends render an appropriate control panel/form generically from a
+  `UiDefinition` — `ControlPanelMode` (TUI) and `ControlPanelWindow` (WPF), both in
+  `src/DevTerm.Console`/`src/DevTerm.Wpf` — the same way they already render `IMappable`/
+  `ICompositeDecoder` metadata generically.
+- `IStructuredPresenter` (`DevTerm.Core.Presenters`, landed 2026-09-22) — `event
+  EventHandler<IReadOnlyDictionary<string, string>>? ValuesChanged`. An optional companion a decoder
+  implements to publish named live values (keyed by the `UiControl.Id`s they drive) alongside its
+  normal `IPresenter.Render` text, so a control panel's indicators update live without parsing the
+  decoder's rendered text. A renderer resolves the active presenter and subscribes if it implements
+  this interface; if not, the panel opens with indicators showing their default (dead) values
+  instead of failing to open.
+- `DevTerm.Devices.K8055` is the first concrete module: a `UiDefinition`
+  (`K8055UiDefinition.Build()`), an `IControlSurface` (`K8055ControlSurface`, encoding digital/analog
+  outputs and the two counter-reset commands), and an `IPresenter`+`IStructuredPresenter` decoder
+  (`K8055Decoder`). Registered as an ordinary presenter (`AddK8055Presenter`, selectable via
+  `--presenter k8055`) — a front end constructs the `IControlSurface` directly from the live
+  `Session` when its control-panel menu item is opened (the same "front end constructs a
+  window/collaborator directly, not through DI" pattern `DeviceProfilesWindow`/`MainWindow` already
+  use), not through a plugin-manifest registration — the declarative manifest/plugin-loading
+  question below remains open.
 - A device control module registers an `IControlSurface` alongside one or more `IPresenter`s under one plugin manifest entry (see [plugin-model.md](plugin-model.md)), but each half is still just an ordinary DI-registered service — nothing about the core pipeline needs to know "this is a bundled module" versus independently chosen pieces.
 
 ## Relationship to transports
@@ -71,7 +98,8 @@ For simple query/response devices (most bench gear — a command string in, a fo
 
 ## Open questions
 
-- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — partially answered by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet); see that doc's own open questions for what's still undecided.
+- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet), now proven end-to-end against a real device (K8055); see that doc's own open questions for what's still undecided.
+- Whether/how a device control module gets registered via the declarative manifest/plugin-loading path (see [device-manifests.md](device-manifests.md)/[plugin-model.md](plugin-model.md)) rather than a front end constructing its `IControlSurface` directly from a live `Session`, as `K8055ControlSurface` does today — the current wiring is a front-end-specific menu item (`_Device`/`Device` → "K8055 Control Panel..."), not something a loaded `DeviceManifest` drives yet.
 - Whether commands can declare an expected reply pattern (request/response pairing) so a "Query Status" command can show its answer inline, versus everything staying async/stream-oriented like the rest of the pipeline.
 - Whether device control modules can be assembled declaratively (command set + wiring described as data, akin to the mapping files in presenters.md) for simple instruments, reserving a full code plugin for ones needing custom logic — see the candidate direction above (a dev-term-specific schema, with Kaitai Struct as the binary-layout piece and an SCPI baseline as a zero-authoring fallback).
 - Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?

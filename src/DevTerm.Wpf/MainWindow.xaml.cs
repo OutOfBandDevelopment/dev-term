@@ -5,6 +5,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Devices.K8055;
 
 namespace DevTerm.Wpf;
 
@@ -223,6 +224,22 @@ public partial class MainWindow : Window
             DevTermConfiguration.SaveLocalProfile(chosen);
             _ = SwitchProfileAsync(chosen);
         }
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("k8055", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            K8055UiDefinition.Build(),
+            new K8055ControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
     }
 
     /// <summary>

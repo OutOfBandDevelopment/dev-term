@@ -1,4 +1,5 @@
 using DevTerm.Core.Hosting;
+using DevTerm.Devices.K8055;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
@@ -20,6 +21,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddDevTermCore();
         services.AddTextPresenters();
+        services.AddK8055Presenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
