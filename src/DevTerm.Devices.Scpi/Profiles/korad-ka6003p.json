@@ -2,8 +2,10 @@
   "Name": "Korad KA6003P Power Supply",
   "IdnPattern": "KA6003P",
   "Terminator": "",
+  "Notes": "Official 'KA Series Remote Control Syntax V4.0' (see docs/devices/korad-ka3005p-ka6003p/programming-manual.md) — no terminator on any command or reply. VSET/ISET are fixed-width, unterminated fields (see each parameter's DecimalPlaces/IntegerDigits below); an unpadded value desyncs the device's parser since it reads a fixed byte count, not a delimited token. RCL/SAV accept memory numbers 1-5 per the official syntax doc; an unofficial community reference claims these models only expose 4 usable front-panel memory slots — unverified against real hardware, so all 5 are offered here. STATUS? replies with one raw, unterminated status byte (bit 0 CH1 CC/CV, bit 1 CH2 CC/CV, bits 2-3 tracking mode, bit 4 beep, bit 5 OCP, bit 6 output, bit 7 OVP) — this profile surfaces it as raw text via the reply indicator rather than decoding individual bits.",
   "Commands": [
     { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "status", "Label": "Query Status Byte", "Category": "Common", "Template": "STATUS?", "IsQuery": true },
     {
       "Id": "vset",
       "Label": "Set Voltage",
@@ -33,6 +35,51 @@
       "Template": "OUT{State}",
       "Parameters": [
         { "Name": "State", "Kind": "Choice", "Options": ["1", "0"], "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "beep",
+      "Label": "Set Beeper",
+      "Category": "Protection",
+      "Template": "BEEP{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["1", "0"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "ocp",
+      "Label": "Set Over-Current Protection",
+      "Category": "Protection",
+      "Template": "OCP{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["1", "0"], "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "ovp",
+      "Label": "Set Over-Voltage Protection",
+      "Category": "Protection",
+      "Template": "OVP{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["1", "0"], "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "sav",
+      "Label": "Save Panel Setting",
+      "Category": "Memory",
+      "Template": "SAV{Slot}",
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "rcl",
+      "Label": "Recall Panel Setting",
+      "Category": "Memory",
+      "Template": "RCL{Slot}",
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" }
       ]
     }
   ]

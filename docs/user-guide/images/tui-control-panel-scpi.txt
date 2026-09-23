@@ -1,25 +1,25 @@
 ┌┤dev-term — Korad KA6003P Power Supply├───────────────────────────────────────┐
-│SCPI instrument profile — 8 command(s).                                      ▲│
+│SCPI instrument profile — 14 command(s). Official 'KA Series Remote Control S▲│
 │                                                                             █│
 │╭┤Common├────────────────────────────────────────────────────────────────────█│
 ││Identify: ⟦ Identify ⟧▖                                                     █│
 ││Identify Reply:▀▀▀▀▀▀▀▘                                                     █│
+││Query Status Byte: ⟦ Query Status Byte ⟧▖                                   █│
+││Query Status Byte Reply:▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   █│
 │╰────────────────────────────────────────────────────────────────────────────█│
 │                                                                             █│
-│╭┤Source├────────────────────────────────────────────────────────────────────█│
-││Voltage: 0          [0-60]V                                                 █│
-││Set Voltage: ⟦ Set Voltage ⟧▖                                               █│
-││Current: 0         ▀[0-3]A▀▀▘                                               █│
-││Set Current: ⟦ Set Current ⟧▖                                               █│
-││Query Set Voltage:▀⟦ Query Set Voltage ⟧▖                                   █│
-││Query Set Voltage Reply:▀05.00▀▀▀▀▀▀▀▀▀▀▘                                   █│
+│╭┤Source├────────────────────────────────────────────────────────────────────░│
+││Voltage: 0          [0-60]V                                                 ░│
+││Set Voltage: ⟦ Set Voltage ⟧▖                                               ░│
+││Current: 0         ▀[0-3]A▀▀▘                                               ░│
+││Set Current: ⟦ Set Current ⟧▖                                               ░│
+││Query Set Voltage:▀⟦ Query Set Voltage ⟧▖                                   ░│
+││Query Set Voltage Reply:▀05.00▀▀▀▀▀▀▀▀▀▀▘                                   ░│
 ││Query Set Current: ⟦ Query Set Current ⟧▖                                   ░│
 ││Query Set Current Reply:▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   ░│
 │╰────────────────────────────────────────────────────────────────────────────░│
 │                                                                             ░│
 │╭┤Measure├───────────────────────────────────────────────────────────────────░│
 ││Query Output Voltage: ⟦ Query Output Voltage ⟧▖                             ░│
-││Query Output Voltage Reply:▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                             ░│
-││Query Output Current: ⟦ Query Output Current ⟧▖                             ░│
-││Query Output Current Reply:▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                             ▼│
+││Query Output Voltage Reply:▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
