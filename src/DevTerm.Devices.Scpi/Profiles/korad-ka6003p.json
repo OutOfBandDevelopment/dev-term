@@ -10,7 +10,7 @@
       "Category": "Source",
       "Template": "VSET1:{Voltage}",
       "Parameters": [
-        { "Name": "Voltage", "Kind": "Numeric", "Minimum": 0, "Maximum": 60, "Unit": "V", "DefaultValue": "0" }
+        { "Name": "Voltage", "Kind": "Numeric", "Minimum": 0, "Maximum": 60, "Unit": "V", "DefaultValue": "0", "DecimalPlaces": 2, "IntegerDigits": 2 }
       ]
     },
     {
@@ -19,7 +19,7 @@
       "Category": "Source",
       "Template": "ISET1:{Current}",
       "Parameters": [
-        { "Name": "Current", "Kind": "Numeric", "Minimum": 0, "Maximum": 3, "Unit": "A", "DefaultValue": "0" }
+        { "Name": "Current", "Kind": "Numeric", "Minimum": 0, "Maximum": 3, "Unit": "A", "DefaultValue": "0", "DecimalPlaces": 3, "IntegerDigits": 1 }
       ]
     },
     { "Id": "vsetQuery", "Label": "Query Set Voltage", "Category": "Source", "Template": "VSET1?", "IsQuery": true },

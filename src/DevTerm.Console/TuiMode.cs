@@ -621,6 +621,11 @@ public static class TuiMode
 
     private static void OpenScpiInstrumentWindow(Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)
     {
+        if (structuredSource is ScpiReplyPresenter replyPresenter)
+        {
+            replyPresenter.ConfigureTerminator(profile.Terminator);
+        }
+
         var panelParts = ControlPanelMode.BuildWindow(
             ScpiUiDefinitionBuilder.Build(profile),
             new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),

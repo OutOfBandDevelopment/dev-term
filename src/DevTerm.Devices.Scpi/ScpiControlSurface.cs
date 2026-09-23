@@ -82,7 +82,14 @@ public sealed class ScpiControlSurface : IControlSurface
         }
 
         var clamped = Math.Clamp(number, parameter.Minimum, parameter.Maximum);
-        return clamped.ToString(CultureInfo.InvariantCulture);
+        if (parameter.DecimalPlaces is not { } decimalPlaces)
+        {
+            return clamped.ToString(CultureInfo.InvariantCulture);
+        }
+
+        var integerDigits = Math.Max(parameter.IntegerDigits ?? 1, 1);
+        var format = new string('0', integerDigits) + (decimalPlaces > 0 ? "." + new string('0', decimalPlaces) : string.Empty);
+        return clamped.ToString(format, CultureInfo.InvariantCulture);
     }
 
     private Task SendAsync(string commandText, string? replyIndicatorId, CancellationToken cancellationToken)

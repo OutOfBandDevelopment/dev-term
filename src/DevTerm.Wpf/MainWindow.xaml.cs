@@ -447,6 +447,11 @@ public partial class MainWindow : Window
     // -open _session rather than opening a second competing connection to the same physical device.
     private void OpenScpiInstrumentWindow(IPresenter? structuredSource, ScpiInstrumentProfile profile)
     {
+        if (structuredSource is ScpiReplyPresenter replyPresenter)
+        {
+            replyPresenter.ConfigureTerminator(profile.Terminator);
+        }
+
         var window = new ControlPanelWindow(
             ScpiUiDefinitionBuilder.Build(profile),
             new ScpiControlSurface(_session, profile, structuredSource as IScpiReplyTracker),

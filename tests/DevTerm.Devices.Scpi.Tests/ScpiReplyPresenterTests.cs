@@ -126,6 +126,47 @@ public sealed class ScpiReplyPresenterTests
     }
 
     [TestMethod]
+    public void Render_Terminatorless_FlushesWhateverArrivedInOneChunkWithNoTerminator()
+    {
+        // Real-hardware-confirmed: a Korad KA3005P/KA6003P reply (e.g. "05.00" for VOUT1?) has no
+        // terminator at all. Without ConfigureTerminator(""), this presenter buffers forever waiting
+        // for a CR/LF that never arrives — a Korad control panel's reply indicators never updated,
+        // making the whole panel look unresponsive even though the device replied correctly.
+        var presenter = new ScpiReplyPresenter();
+        presenter.ConfigureTerminator(string.Empty);
+
+        var lines = presenter.Render(Bytes("05.00"));
+
+        CollectionAssert.AreEqual(new[] { "05.00" }, lines.ToArray());
+    }
+
+    [TestMethod]
+    public void Render_Terminatorless_StillCorrelatesWithPendingQuery()
+    {
+        var presenter = new ScpiReplyPresenter();
+        presenter.ConfigureTerminator(string.Empty);
+        IReadOnlyDictionary<string, string>? received = null;
+        presenter.ValuesChanged += (_, values) => received = values;
+        presenter.QuerySent("voutQuery.reply");
+
+        presenter.Render(Bytes("05.00"));
+
+        Assert.IsNotNull(received);
+        Assert.AreEqual("05.00", received!["voutQuery.reply"]);
+    }
+
+    [TestMethod]
+    public void Render_Terminatorless_EmptyChunkEmitsNothing()
+    {
+        var presenter = new ScpiReplyPresenter();
+        presenter.ConfigureTerminator(string.Empty);
+
+        var lines = presenter.Render(Bytes(string.Empty));
+
+        Assert.IsEmpty(lines);
+    }
+
+    [TestMethod]
     public void Name_IsScpi()
     {
         var presenter = new ScpiReplyPresenter();

@@ -174,6 +174,38 @@ public sealed class ScpiControlSurfaceTests
     }
 
     [TestMethod]
+    public async Task InvokeAsync_NumericParameterWithDecimalPlaces_PadsToFixedWidth()
+    {
+        // Real-hardware-confirmed: a Korad KA3005P/KA6003P has no command terminator and parses a
+        // fixed-width field after "VSET1:" — sending "12" instead of "12.00" desyncs its parser and
+        // the set silently fails. Confirmed on real hardware that even "5.00" (no leading zero) is
+        // one character short of the expected "05.00" width and the set still silently fails (a
+        // follow-up VSET1? query read back the unchanged previous value) — both DecimalPlaces and
+        // IntegerDigits are required. See ScpiParameterDefinition.DecimalPlaces/IntegerDigits.
+        var (session, transport) = CreateSurfaceSession();
+        var profile = new ScpiInstrumentProfile
+        {
+            Name = "Test Instrument",
+            Terminator = string.Empty,
+            Commands =
+            [
+                new ScpiCommandDefinition
+                {
+                    Id = "vset",
+                    Label = "Set Voltage",
+                    Template = "VSET1:{Voltage}",
+                    Parameters = [new ScpiParameterDefinition { Name = "Voltage", Kind = ScpiParameterKind.Numeric, Minimum = 0, Maximum = 30, DecimalPlaces = 2, IntegerDigits = 2 }],
+                },
+            ],
+        };
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+
+        await surface.InvokeAsync("vset", "5");
+
+        VerifySent(transport, "VSET1:05.00");
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_UnknownCommand_Throws()
     {
         var (session, _) = CreateSurfaceSession();
