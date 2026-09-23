@@ -27,13 +27,36 @@ KA3005P, Korad KA6003P. See:
   (`ScpiProfileCatalog.TryMatchByIdn`) — there is no standardized "list supported commands" SCPI
   query, so this is not real command discovery, just an identification shortcut with a Generic
   fallback profile when nothing matches.
-- **Not yet verified against real hardware** — none of these six instruments has been connected to
-  dev-term yet (unlike the K8055/Busylight modules, which were verified live). The curated command
-  sets are a reasonable-effort starting point per each instrument's public SCPI reference, not
-  confirmed correct. GPIB-only paths (bare HP 34401A) remain unreachable, per the open question
-  below.
-- The Tektronix 2230 remains explicitly out of scope here — see the new
-  [tektronix-2230-protocol.md](tektronix-2230-protocol.md) proposal.
+- **Verified against one real instrument so far**: an HP/Agilent/Keysight 34401A over real RS-232
+  (2026-09-23) confirmed 9600 baud/8 data bits/2 stop bits/no parity/**no hardware handshake**/**LF**
+  terminator, and a real root cause for "device beeps, no measurement shown" — RS-232 on this
+  instrument never auto-enters remote mode the way GPIB does, so `SYSTem:REMote` must be sent before
+  any query or it answers SCPI error `+550 "Command not allowed in local"`. The bundled
+  `hp-agilent-keysight-34401a.json` profile now has a `remote` command plus a `Notes` field (below)
+  documenting this. The other five curated command sets remain unverified against real hardware
+  (Rigol DM3058E, Rigol DG1022/DG1022Z, Rigol DS1105E, Korad KA3005P, Korad KA6003P) — a
+  reasonable-effort starting point per each instrument's public SCPI reference, not confirmed
+  correct. GPIB-only paths (bare HP 34401A) remain unreachable, per the open question below.
+- **Four follow-ups from that real-hardware pass, also landed 2026-09-23**:
+  - `ScpiInstrumentProfile.Notes` — free-text operational knowledge (required non-default connection
+    settings, a mandatory preamble command) folded into `UiDefinition.Description` by
+    `ScpiUiDefinitionBuilder.Build` and rendered by both `ControlPanelWindow`/`ControlPanelMode`
+    (neither rendered `Description` before this).
+  - `CliOptions.Handshake` (already wired end-to-end into the real serial transport) is now exposed
+    in both configuration UIs — a `Handshake:` row in `DeviceProfilesWindow` (WPF) and an
+    `OptionSelector<Handshake>` row in `ConfigureMode` (TUI), right after Stop bits in both.
+  - `CliOptions.ScpiProfile` persists the chosen instrument-profile/auto-detect choice onto a saved
+    connection; both front ends' "SCPI Instrument..." menu items skip their picker dialog when the
+    saved value still resolves to a real choice (`ScpiProfileCatalog.AutoDetectChoiceName`/
+    `Generic.Name`/a loaded profile's name), falling back to showing the picker otherwise. Also
+    exposed as a "SCPI profile:" row in both configuration UIs, shown only when the `scpi` presenter
+    is selected.
+  - `ScpiProfileCatalog` now also loads from a per-user `~/.dev-term/scpi-profiles` folder (in
+    addition to the bundled `Profiles/` and app-folder `ScpiProfiles/` drop-in), mirroring the
+    existing per-user connection-profile/device-manifest storage convention.
+- The Tektronix 2230 remains explicitly out of scope for a full command set here — see the new
+  [tektronix-2230-protocol.md](tektronix-2230-protocol.md) proposal — though a minimal one-command
+  profile (`ID?`) was added the same day; see `docs/changes/2026-09-23.md`.
 
 ## Source
 

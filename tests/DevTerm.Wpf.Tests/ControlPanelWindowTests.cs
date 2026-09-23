@@ -281,6 +281,38 @@ public sealed class ControlPanelWindowTests
     }
 
     [TestMethod]
+    public void RowLabel_WrapsInsteadOfOverlappingRowContent()
+    {
+        // Regression test: the row label was a fixed-Width TextBlock with no TextWrapping, so a
+        // label longer than fits in that width painted past its column and overlapped the row's
+        // control (WPF doesn't clip an unwrapped TextBlock to its layout Width) — not visible with
+        // K8055/Busylight's short labels, but real with SCPI profile labels like "Configure DC
+        // Voltage Range" (see the 34401A profile). Fixed by wrapping instead of widening, since a
+        // wrapped label only grows its own row's height, never the sibling's position.
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Sample Device",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Configure",
+                        Controls = [new ButtonControl { Id = "longLabel", Label = "Configure DC Voltage Range" }],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.TextWrapping.Wrap, window.ControlLabels["longLabel"].TextWrapping);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void ValuesChanged_UpdatesTheMatchingIndicatorLabel()
     {
         StaTestRunner.Run(async () =>

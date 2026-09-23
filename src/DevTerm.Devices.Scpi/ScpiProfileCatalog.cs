@@ -17,6 +17,14 @@ public static class ScpiProfileCatalog
 {
     private const string DropInFolderName = "ScpiProfiles";
 
+    /// <summary>
+    /// The synthetic "pick a profile at runtime" choice both front ends' SCPI instrument pickers
+    /// offer alongside <see cref="Generic"/>'s own name and the real, loaded profile names — centralized
+    /// here (rather than independently redeclared per front end) so a saved <c>CliOptions.ScpiProfile</c>
+    /// choice and the live picker dialog always agree on the exact same literal.
+    /// </summary>
+    public const string AutoDetectChoiceName = "Auto-detect (*IDN?)";
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -24,7 +32,13 @@ public static class ScpiProfileCatalog
         Converters = { new JsonStringEnumConverter() },
     };
 
-    /// <summary>Every profile loaded from the bundled <c>Profiles/</c> folder and the drop-in <c>ScpiProfiles/</c> folder, in that order.</summary>
+    /// <summary>
+    /// Every profile loaded from the bundled <c>Profiles/</c> folder, the drop-in <c>ScpiProfiles/</c>
+    /// folder next to the executable, and a per-user <c>~/.dev-term/scpi-profiles</c> folder, in that
+    /// order — mirrors <c>DevTermUserDataPaths</c>'s <c>~/.dev-term/&lt;subfolder&gt;</c> convention for
+    /// device manifests/connection profiles, computed locally here rather than shared from
+    /// <c>DevTerm.Configuration</c> (which references this project, not the other way around).
+    /// </summary>
     public static IReadOnlyList<ScpiInstrumentProfile> All { get; } = Load(AppContext.BaseDirectory);
 
     /// <summary>
@@ -58,8 +72,18 @@ public static class ScpiProfileCatalog
         var profiles = new List<ScpiInstrumentProfile>();
         LoadFrom(Path.Combine(baseDirectory, "Profiles"), profiles);
         LoadFrom(Path.Combine(baseDirectory, DropInFolderName), profiles);
+        LoadFrom(UserProfilesDirectory, profiles);
         return profiles;
     }
+
+    /// <summary>
+    /// <c>~/.dev-term/scpi-profiles</c> — a per-user drop-in folder alongside the app-folder one
+    /// above, for a profile a user wants available regardless of which build/install of dev-term
+    /// they're running (same rationale as <c>DevTermUserDataPaths.ProfilesDirectory</c>/
+    /// <c>UserManifestsDirectory</c>).
+    /// </summary>
+    internal static string UserProfilesDirectory { get; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dev-term", "scpi-profiles");
 
     private static void LoadFrom(string directory, List<ScpiInstrumentProfile> profiles)
     {

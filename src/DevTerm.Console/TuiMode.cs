@@ -225,7 +225,7 @@ public static class TuiMode
                 new MenuItem("_SCPI Instrument...", string.Empty, () =>
                 {
                     var structuredSource = catalog.TryGet("scpi", out var scpiPresenter) ? scpiPresenter : null;
-                    var picked = PickScpiProfileChoice();
+                    var picked = ResolveSavedScpiProfileChoice(cliOptions.ScpiProfile) ?? PickScpiProfileChoice();
                     if (picked is null)
                     {
                         return;
@@ -494,8 +494,30 @@ public static class TuiMode
         }
     }
 
-    private const string ScpiAutoDetectChoice = "Auto-detect (*IDN?)";
-    private const string ScpiGenericChoice = "Generic (manual)";
+    /// <summary>Centralized on <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/> so a saved <c>CliOptions.ScpiProfile</c> choice and this picker always agree on the exact same literal.</summary>
+    private const string ScpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
+
+    private static readonly string ScpiGenericChoice = ScpiProfileCatalog.Generic.Name;
+
+    /// <summary>
+    /// Resolves a saved <see cref="CliOptions.ScpiProfile"/> choice to a picker-equivalent string,
+    /// or <see langword="null"/> if it's unset/no longer resolvable — the latter falls back to
+    /// <see cref="PickScpiProfileChoice"/> exactly as if nothing had been saved.
+    /// </summary>
+    private static string? ResolveSavedScpiProfileChoice(string? saved)
+    {
+        if (string.IsNullOrWhiteSpace(saved))
+        {
+            return null;
+        }
+
+        if (saved == ScpiAutoDetectChoice || saved == ScpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
+        {
+            return saved;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Sends <c>*IDN?</c> and regex-matches the reply against every loaded profile's <c>IdnPattern</c>

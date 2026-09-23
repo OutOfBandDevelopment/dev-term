@@ -194,4 +194,32 @@ public sealed class CliOptions
     [Category("General")]
     [DisplayName("Device manifest")]
     public string? ManifestName { get; set; }
+
+    /// <summary>
+    /// Names an entry from <c>DevTerm.Devices.Scpi.ScpiProfileCatalog.All</c> (or its
+    /// <c>Generic.Name</c>/<c>AutoDetectChoiceName</c> synthetic choices) to preselect when the "SCPI
+    /// Instrument..." menu item opens, so a saved connection doesn't need the picker re-run every
+    /// time. Null/unrecognized falls back to today's picker-always-shown behavior. Only meaningful
+    /// when <see cref="Presenter"/> includes <c>"scpi"</c>.
+    /// </summary>
+    [Category("Presentation")]
+    [DisplayName("SCPI profile")]
+    public string? ScpiProfile { get; set; }
+
+    /// <summary>
+    /// Directory where auto-saved captures (e.g. the Stream Monitor's detected binary/image data —
+    /// see docs/design/proposals/stream-content-detection.md) are written. Unset means
+    /// <see cref="DevTermUserDataPaths.ExportsDirectory"/> (<c>~/.dev-term/exports</c>) — see
+    /// <see cref="EffectiveExportDirectory"/>. Bound the same as every other property here (a
+    /// settings file, the <c>DEVTERM_</c>-prefixed environment variable, or <c>--exportdirectory</c>
+    /// on the command line) via the standard layering in <see cref="DevTermConfiguration"/>, not a
+    /// hand-rolled path/env lookup.
+    /// </summary>
+    [Category("General")]
+    [DisplayName("Export directory")]
+    public string? ExportDirectory { get; set; }
+
+    /// <summary><see cref="ExportDirectory"/> with the <see cref="DevTermUserDataPaths.ExportsDirectory"/> default applied.</summary>
+    [Browsable(false)]
+    public string EffectiveExportDirectory => ExportDirectory is { Length: > 0 } dir ? dir : DevTermUserDataPaths.ExportsDirectory;
 }

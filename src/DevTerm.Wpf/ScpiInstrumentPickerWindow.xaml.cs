@@ -11,8 +11,8 @@ namespace DevTerm.Wpf;
 /// </summary>
 public partial class ScpiInstrumentPickerWindow : Window
 {
-    public const string AutoDetectChoice = "Auto-detect (*IDN?)";
-    public const string GenericChoice = "Generic (manual)";
+    public const string AutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
+    public static string GenericChoice => ScpiProfileCatalog.Generic.Name;
 
     public string? Chosen { get; private set; }
 

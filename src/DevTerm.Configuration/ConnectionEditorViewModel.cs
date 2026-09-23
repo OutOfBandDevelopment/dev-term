@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _dataBits = "8";
     private string _parityText = "None";
     private string _stopBitsText = "One";
+    private string _handshakeText = "None";
+    private string _scpiProfile = string.Empty;
     private string _host = string.Empty;
     private string _tcpPort = "0";
     private bool _listen;
@@ -98,7 +101,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         {
             // A checkbox toggling is an edit like any other field's - same dirty tracking, without
             // a property-changed name of its own to put in NonDirtyProperties.
-            choice.PropertyChanged += (_, _) => OnPropertyChanged(nameof(PresenterChoices));
+            choice.PropertyChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(PresenterChoices));
+                OnPropertyChanged(nameof(IsScpiPresenterSelected));
+            };
         }
 
         StatusMessage = statusMessage ?? string.Empty;
@@ -281,6 +288,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public IReadOnlyList<string> StopBitsOptions { get; } = Enum.GetNames<StopBits>();
 
+    public IReadOnlyList<string> HandshakeOptions { get; } = Enum.GetNames<Handshake>();
+
+    /// <summary>
+    /// The saved-profile SCPI-instrument choice — <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/>,
+    /// <see cref="ScpiProfileCatalog.Generic"/>'s own name, or a real <see cref="ScpiProfileCatalog.All"/>
+    /// entry's name — preselected so the "SCPI Instrument..." menu item doesn't need its picker
+    /// re-run every connection. Empty means "always ask" (today's behavior, unchanged).
+    /// </summary>
+    public IReadOnlyList<string> ScpiProfileOptions { get; } =
+        [ScpiProfileCatalog.AutoDetectChoiceName, ScpiProfileCatalog.Generic.Name, .. ScpiProfileCatalog.All.Select(p => p.Name)];
+
     /// <summary>
     /// Serial ports actually attached to this machine right now (<see cref="ISerialPortDiscovery.GetPortNames"/>,
     /// the same enumeration <c>--listports</c> uses), for a "pick from what's plugged in" combobox
@@ -370,6 +388,22 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public string ParityText { get => _parityText; set => SetField(ref _parityText, value); }
 
     public string StopBitsText { get => _stopBitsText; set => SetField(ref _stopBitsText, value); }
+
+    public string HandshakeText { get => _handshakeText; set => SetField(ref _handshakeText, value); }
+
+    /// <summary>
+    /// Bound to the SCPI-profile picker row, shown only when <see cref="IsScpiPresenterSelected"/> —
+    /// see <see cref="ScpiProfileOptions"/> for the valid values and <see cref="CliOptions.ScpiProfile"/>
+    /// for how a front end's menu handler consumes it.
+    /// </summary>
+    public string ScpiProfile { get => _scpiProfile; set => SetField(ref _scpiProfile, value); }
+
+    /// <summary>
+    /// Whether the "scpi" presenter is currently checked in <see cref="PresenterChoices"/> — gates a
+    /// front end's SCPI-profile row the same way <see cref="IsSerialTransport"/>/etc. gate their own
+    /// transport-specific field groups.
+    /// </summary>
+    public bool IsScpiPresenterSelected => SelectedPresenters.Contains("scpi", StringComparer.OrdinalIgnoreCase);
 
     public string Host { get => _host; set => SetField(ref _host, value); }
 
@@ -605,6 +639,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         DataBits = options.DataBits.ToString();
         ParityText = options.Parity.ToString();
         StopBitsText = options.StopBits.ToString();
+        HandshakeText = options.Handshake.ToString();
+        ScpiProfile = options.ScpiProfile ?? string.Empty;
         Host = options.Host ?? string.Empty;
         TcpPort = options.TcpPort.ToString();
         Listen = options.Listen;
@@ -632,6 +668,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Presenter = [.. SelectedPresenters],
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
+            ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
         };
 
         if (int.TryParse(Baud, out var baud))
@@ -652,6 +689,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (Enum.TryParse<StopBits>(StopBitsText, ignoreCase: true, out var stopBits))
         {
             options.StopBits = stopBits;
+        }
+
+        if (Enum.TryParse<Handshake>(HandshakeText, ignoreCase: true, out var handshake))
+        {
+            options.Handshake = handshake;
         }
 
         if (int.TryParse(TcpPort, out var tcpPort))

@@ -19,7 +19,7 @@
 │                                                                             ░│
 │Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                              ░│
 │                                                                             ░│
-│                                                                             ░│
+│Handshake: ◉ None  ○ XOnXOff  ○ RequestToSend  ○ RequestToSendXOnXOff        ░│
 │                                                                             ░│
 │                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

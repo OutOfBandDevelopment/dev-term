@@ -28,10 +28,14 @@ public partial class ControlPanelWindow : Window
     private readonly IControlSurface _surface;
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
+    private readonly Dictionary<string, TextBlock> _controlLabels = [];
     private readonly Dictionary<string, (byte R, byte G, byte B)> _lastPickedColors = [];
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
+
+    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting the label wraps instead of overlapping its row content when a profile's label text is long (see <see cref="BuildControlRow"/>).</summary>
+    internal IReadOnlyDictionary<string, TextBlock> ControlLabels => _controlLabels;
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
     internal IReadOnlyDictionary<string, TextBlock> IndicatorLabels => _indicatorLabels;
@@ -41,6 +45,12 @@ public partial class ControlPanelWindow : Window
         InitializeComponent();
         Title = $"dev-term — {definition.Name}";
         _surface = surface;
+
+        if (!string.IsNullOrWhiteSpace(definition.Description))
+        {
+            DescriptionText.Text = definition.Description;
+            DescriptionText.Visibility = Visibility.Visible;
+        }
 
         foreach (var section in definition.Sections)
         {
@@ -83,9 +93,10 @@ public partial class ControlPanelWindow : Window
     private FrameworkElement BuildControlRow(UiControl control)
     {
         var row = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        var label = new TextBlock { Text = control.Label + ":", Width = 120, VerticalAlignment = VerticalAlignment.Center };
+        var label = new TextBlock { Text = control.Label + ":", Width = 120, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(label, Dock.Left);
         row.Children.Add(label);
+        _controlLabels[control.Id] = label;
 
         var (rowContent, tracked) = BuildWidget(control);
         row.Children.Add(rowContent);

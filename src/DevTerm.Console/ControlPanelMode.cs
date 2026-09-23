@@ -39,7 +39,8 @@ internal static class ControlPanelMode
             Height = Dim.Fill(),
         };
 
-        var contentHeight = definition.Sections.Sum(s => s.Controls.Count + 3) + 1;
+        var hasDescription = !string.IsNullOrWhiteSpace(definition.Description);
+        var contentHeight = definition.Sections.Sum(s => s.Controls.Count + 3) + 1 + (hasDescription ? 2 : 0);
         var formContent = new View
         {
             X = 0,
@@ -59,6 +60,20 @@ internal static class ControlPanelMode
         var indicatorLabels = new Dictionary<string, Label>();
 
         View? previousFrame = null;
+        if (hasDescription)
+        {
+            var descriptionLabel = new Label
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(2),
+                Height = 1,
+                Text = definition.Description,
+            };
+            formContent.Add(descriptionLabel);
+            previousFrame = descriptionLabel;
+        }
+
         foreach (var section in definition.Sections)
         {
             var frame = new FrameView

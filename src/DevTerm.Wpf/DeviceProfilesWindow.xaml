@@ -120,6 +120,14 @@
                             <TextBlock Text="Stop bits:" VerticalAlignment="Center" />
                             <ComboBox Grid.Column="1" ItemsSource="{Binding StopBitsOptions}" SelectedItem="{Binding StopBitsText}" />
                         </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Handshake:" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding HandshakeOptions}" SelectedItem="{Binding HandshakeText}" />
+                        </Grid>
                     </StackPanel>
 
                     <StackPanel x:Name="TcpPanel" Visibility="{Binding IsTcpTransport, Converter={StaticResource BoolToVisibility}}">
@@ -197,6 +205,14 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </Grid>
+                    <Grid Margin="0,0,0,4" Visibility="{Binding IsScpiPresenterSelected, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="SCPI profile:" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ScpiProfileOptions}" SelectedItem="{Binding ScpiProfile}" />
                     </Grid>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>

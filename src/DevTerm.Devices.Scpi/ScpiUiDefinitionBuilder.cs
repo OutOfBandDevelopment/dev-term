@@ -45,10 +45,11 @@ public static class ScpiUiDefinitionBuilder
             ],
         });
 
+        var baseDescription = $"SCPI instrument profile — {profile.Commands.Count} command(s).";
         return new UiDefinition
         {
             Name = profile.Name,
-            Description = $"SCPI instrument profile — {profile.Commands.Count} command(s).",
+            Description = string.IsNullOrWhiteSpace(profile.Notes) ? baseDescription : $"{baseDescription} {profile.Notes}",
             Sections = sections,
         };
     }

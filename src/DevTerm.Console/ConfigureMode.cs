@@ -99,7 +99,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 44;
+        const int ContentHeight = 46;
         var formContent = new View
         {
             X = 0,
@@ -180,7 +180,10 @@ public static class ConfigureMode
         var stopBitsLabel = new Label { X = 0, Y = Pos.Bottom(dataBitsLabel) + 1, Text = "Stop bits:" };
         var stopBitsSelector = new OptionSelector<StopBits> { X = Pos.Right(stopBitsLabel) + 1, Y = Pos.Top(stopBitsLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
 
-        var hostLabel = new Label { X = 0, Y = Pos.Bottom(stopBitsLabel) + 1, Text = "TCP host:" };
+        var handshakeLabel = new Label { X = 0, Y = Pos.Bottom(stopBitsLabel) + 1, Text = "Handshake:" };
+        var handshakeSelector = new OptionSelector<Handshake> { X = Pos.Right(handshakeLabel) + 1, Y = Pos.Top(handshakeLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
+
+        var hostLabel = new Label { X = 0, Y = Pos.Bottom(handshakeLabel) + 1, Text = "TCP host:" };
         var hostField = new TextField { X = Pos.Right(hostLabel) + 1, Y = Pos.Top(hostLabel), Width = 20, Text = initial.Host ?? string.Empty };
         var tcpPortLabel = new Label { X = Pos.Right(hostField) + 3, Y = Pos.Top(hostLabel), Text = "Port:" };
         var tcpPortField = new TextField { X = Pos.Right(tcpPortLabel) + 1, Y = Pos.Top(hostLabel), Width = 8, Text = initial.TcpPort.ToString() };
@@ -214,8 +217,33 @@ public static class ConfigureMode
             });
         }
 
+        // Shown only when the "scpi" presenter checkbox above is checked - preselects a profile so
+        // the runtime "SCPI Instrument..." menu item's own picker doesn't need to be re-run every
+        // connection (see CliOptions.ScpiProfile). A TextField + picker button rather than a
+        // Terminal.Gui combobox, matching the port/HID "type it or Detect..." pattern above - there's
+        // no built-in combobox widget (see PickFromList's own doc comment).
+        var scpiChoiceIndex = -1;
+        for (var i = 0; i < viewModel.PresenterChoices.Count; i++)
+        {
+            if (viewModel.PresenterChoices[i].Name.Equals("scpi", StringComparison.OrdinalIgnoreCase))
+            {
+                scpiChoiceIndex = i;
+                break;
+            }
+        }
+
+        var scpiProfileLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "SCPI profile:" };
+        var scpiProfileField = new TextField { X = Pos.Right(scpiProfileLabel) + 1, Y = Pos.Top(scpiProfileLabel), Width = 30 };
+        var scpiProfilePickButton = new Button { X = Pos.Right(scpiProfileField) + 1, Y = Pos.Top(scpiProfileLabel), Text = "Pick..." };
+
+        void UpdateScpiProfileVisibility()
+        {
+            var visible = scpiChoiceIndex >= 0 && presenterCheckBoxes[scpiChoiceIndex].Value == CheckState.Checked;
+            scpiProfileLabel.Visible = scpiProfileField.Visible = scpiProfilePickButton.Visible = visible;
+        }
+
         // What encodes a typed line - independent of the presenters above (display only).
-        var parserLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "Send as:" };
+        var parserLabel = new Label { X = 0, Y = Pos.Bottom(scpiProfileLabel) + 1, Text = "Send as:" };
         var parserSelector = new OptionSelector<PresenterChoice>
         {
             X = Pos.Right(parserLabel) + 1,
@@ -272,6 +300,7 @@ public static class ConfigureMode
             DataBitsField = dataBitsField,
             ParitySelector = paritySelector,
             StopBitsSelector = stopBitsSelector,
+            HandshakeSelector = handshakeSelector,
             HostField = hostField,
             TcpPortField = tcpPortField,
             ListenCheckBox = listenCheckBox,
@@ -281,6 +310,8 @@ public static class ConfigureMode
             HidShowHexCheckBox = hidShowHexCheckBox,
             LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
+            ScpiProfileField = scpiProfileField,
+            ScpiProfilePickButton = scpiProfilePickButton,
             ParserSelector = parserSelector,
             LineEndingSelector = lineEndingSelector,
             SaveNameField = saveNameField,
@@ -302,6 +333,7 @@ public static class ConfigureMode
             portLabel.Visible = portField.Visible = detectPortButton.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
             dataBitsLabel.Visible = dataBitsField.Visible = parityLabel.Visible = paritySelector.Visible = selected == TransportChoice.Serial;
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
+            handshakeLabel.Visible = handshakeSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
             hidVendorLabel.Visible = hidVendorField.Visible = hidProductLabel.Visible = hidProductField.Visible = detectHidButton.Visible = hidShowHexCheckBox.Visible = selected == TransportChoice.Hid;
             loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
@@ -319,6 +351,7 @@ public static class ConfigureMode
             viewModel.DataBits = dataBitsField.Text;
             viewModel.ParityText = (paritySelector.Value ?? Parity.None).ToString();
             viewModel.StopBitsText = (stopBitsSelector.Value ?? StopBits.One).ToString();
+            viewModel.HandshakeText = (handshakeSelector.Value ?? Handshake.None).ToString();
             viewModel.Host = hostField.Text;
             viewModel.TcpPort = tcpPortField.Text;
             viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
@@ -330,6 +363,7 @@ public static class ConfigureMode
                 viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
             }
 
+            viewModel.ScpiProfile = scpiProfileField.Text;
             viewModel.Parser = (parserSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
             viewModel.LineEndingText = (lineEndingSelector.Value ?? DevTerm.Configuration.LineEnding.None).ToString();
             viewModel.SaveName = saveNameField.Text;
@@ -346,6 +380,7 @@ public static class ConfigureMode
             dataBitsField.Text = viewModel.DataBits;
             paritySelector.Value = Enum.TryParse<Parity>(viewModel.ParityText, ignoreCase: true, out var parity) ? parity : Parity.None;
             stopBitsSelector.Value = Enum.TryParse<StopBits>(viewModel.StopBitsText, ignoreCase: true, out var stopBits) ? stopBits : StopBits.One;
+            handshakeSelector.Value = Enum.TryParse<Handshake>(viewModel.HandshakeText, ignoreCase: true, out var handshake) ? handshake : Handshake.None;
             hostField.Text = viewModel.Host;
             tcpPortField.Text = viewModel.TcpPort;
             listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
@@ -357,17 +392,35 @@ public static class ConfigureMode
                 presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
             }
 
+            scpiProfileField.Text = viewModel.ScpiProfile;
             parserSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Parser, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
             lineEndingSelector.Value = Enum.TryParse<DevTerm.Configuration.LineEnding>(viewModel.LineEndingText, ignoreCase: true, out var le) ? le : DevTerm.Configuration.LineEnding.None;
             saveNameField.Text = viewModel.SaveName;
             errorLabel.Text = viewModel.StatusMessage;
             profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
             UpdateTransportVisibility(transportChoice);
+            UpdateScpiProfileVisibility();
         }
 
         PullFieldsFromViewModel();
 
         transportSelector.ValueChanged += (_, _) => UpdateTransportVisibility(transportSelector.Value ?? TransportChoice.Serial);
+
+        if (scpiChoiceIndex >= 0)
+        {
+            presenterCheckBoxes[scpiChoiceIndex].Activated += (_, _) => UpdateScpiProfileVisibility();
+        }
+
+        scpiProfilePickButton.Accepting += (_, e) =>
+        {
+            var choice = PickFromList("SCPI instrument profile", viewModel.ScpiProfileOptions);
+            if (choice is not null)
+            {
+                scpiProfileField.Text = choice;
+            }
+
+            e.Handled = true;
+        };
 
         // The TUI's own "overwrite '{name}'?" confirmation - Terminal.Gui's MessageBox.Query is the
         // equivalent of the WPF window's MessageBox.Show wiring for the same ConfirmOverwrite hook.
@@ -728,10 +781,12 @@ public static class ConfigureMode
             descriptionLabel, descriptionField,
             portLabel, portField, detectPortButton, baudLabel, baudField,
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
+            handshakeLabel, handshakeSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             hidVendorLabel, hidVendorField, hidProductLabel, hidProductField, detectHidButton, hidShowHexCheckBox,
             loopbackInfoLabel,
-            presenterLabel, parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
+            presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
+            parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton, replaceAllButton,
             connectButton, quitButton);
@@ -870,6 +925,8 @@ internal sealed class ConfigureWindowParts
 
     public required OptionSelector<StopBits> StopBitsSelector { get; init; }
 
+    public required OptionSelector<Handshake> HandshakeSelector { get; init; }
+
     public required TextField HostField { get; init; }
 
     public required TextField TcpPortField { get; init; }
@@ -889,6 +946,11 @@ internal sealed class ConfigureWindowParts
 
     /// <summary>One checkbox per presenter, in <see cref="ConnectionEditorViewModel.PresenterChoices"/> order — the multi-select presenter picker.</summary>
     public required IReadOnlyList<CheckBox> PresenterCheckBoxes { get; init; }
+
+    /// <summary>Shown only when the "scpi" presenter is checked — see <see cref="ConnectionEditorViewModel.IsScpiPresenterSelected"/>.</summary>
+    public required TextField ScpiProfileField { get; init; }
+
+    public required Button ScpiProfilePickButton { get; init; }
 
     /// <summary>The send format (parser) — an <see cref="ConfigureMode.PresenterChoice"/> because every presenter that registers can encode input.</summary>
     public required OptionSelector<ConfigureMode.PresenterChoice> ParserSelector { get; init; }

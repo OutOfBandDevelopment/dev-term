@@ -280,10 +280,16 @@ public partial class MainWindow : Window
     // Device Profiles), and the resulting control panel is opened separately below with Show().
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
-        var picker = new ScpiInstrumentPickerWindow { Owner = this };
-        if (picker.ShowDialog() != true || picker.Chosen is not { } chosen)
+        var chosen = ResolveSavedScpiProfileChoice(_cliOptions.ScpiProfile);
+        if (chosen is null)
         {
-            return;
+            var picker = new ScpiInstrumentPickerWindow { Owner = this };
+            if (picker.ShowDialog() != true || picker.Chosen is not { } picked)
+            {
+                return;
+            }
+
+            chosen = picked;
         }
 
         var structuredSource = _catalog.TryGet("scpi", out var presenter) ? presenter : null;
@@ -297,6 +303,29 @@ public partial class MainWindow : Window
             ? ScpiProfileCatalog.Generic
             : ScpiProfileCatalog.All.First(p => p.Name == chosen);
         OpenScpiInstrumentWindow(structuredSource, profile);
+    }
+
+    /// <summary>
+    /// Resolves a saved <see cref="CliOptions.ScpiProfile"/> choice to a picker-equivalent string,
+    /// or <see langword="null"/> if it's unset/no longer resolvable — the latter falls back to
+    /// showing <see cref="ScpiInstrumentPickerWindow"/> exactly as if nothing had been saved.
+    /// Mirrors <c>TuiMode.ResolveSavedScpiProfileChoice</c>.
+    /// </summary>
+    private static string? ResolveSavedScpiProfileChoice(string? saved)
+    {
+        if (string.IsNullOrWhiteSpace(saved))
+        {
+            return null;
+        }
+
+        if (saved == ScpiInstrumentPickerWindow.AutoDetectChoice
+            || saved == ScpiInstrumentPickerWindow.GenericChoice
+            || ScpiProfileCatalog.All.Any(p => p.Name == saved))
+        {
+            return saved;
+        }
+
+        return null;
     }
 
     // *IDN? is a real send/await over the live transport, so unlike the synchronous picker above

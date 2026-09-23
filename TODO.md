@@ -246,6 +246,34 @@ Completed work is logged by date under `docs/changes/`.
   `docs/design/proposals/tektronix-2230-protocol.md` for what's known and what real-hardware
   probing it still needs.
 
+- **SCPI follow-ups from real-hardware use against a physical HP/Agilent/Keysight 34401A**, landed
+  2026-09-23 — driving the 34401A over real RS-232 surfaced correct settings (9600/8/2/None,
+  **no hardware handshake**, **LF** terminator) and a real root cause for "device beeps, no
+  measurement shown": RS-232 on this instrument never auto-enters remote mode the way GPIB does, so
+  `SYSTem:REMote` must be sent before any query or the instrument answers with SCPI error `+550
+  "Command not allowed in local"`. All four queued follow-ups are done — see
+  `docs/changes/2026-09-23.md`: a `Notes` field on `ScpiInstrumentProfile` (rendered via
+  `UiDefinition.Description` in both `ControlPanelWindow`/`ControlPanelMode`); `CliOptions.Handshake`
+  exposed in both configuration UIs (a Handshake row after Stop bits in `DeviceProfilesWindow`/
+  `ConfigureMode`); a new `CliOptions.ScpiProfile` persists the chosen instrument-profile/auto-detect
+  choice onto a saved connection, so both front ends' "SCPI Instrument..." picker is skipped when it
+  still resolves to a real choice (also exposed as its own editor row, shown only when the `scpi`
+  presenter is selected); and `ScpiProfileCatalog` now also loads from a per-user
+  `~/.dev-term/scpi-profiles` folder, mirroring the existing per-user connection-profile/device-
+  manifest storage convention. **Still open, not yet root-caused**: `docs/changes/2026-09-23.md`'s
+  separate report of a Measure button beeping the 34401A with no reply shown anywhere in the UI —
+  suspected to be the `scpi` presenter not actually being active in the session's `Pipeline` for
+  that connection, not yet confirmed or fixed.
+
+- **`CliOptions.ExportDirectory`**, landed 2026-09-23 — a configurable destination for
+  not-yet-built auto-saved captures (see the Stream Monitor proposal in `BACKLOG.md`), defaulting to
+  `~/.dev-term/exports` (`DevTermUserDataPaths.ExportsDirectory`) via `EffectiveExportDirectory`.
+  Bound through the same `DevTermConfiguration` command-line/environment-variable/settings-file
+  layering every other `CliOptions` property already gets — no special-case binding code needed for
+  a plain nullable string, unlike the `Presenter` array property. No editor UI row yet (same as the
+  existing, also-editorless `ManifestName`) — this is prep for the Stream Monitor feature itself,
+  not a user-facing setting on its own yet.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in

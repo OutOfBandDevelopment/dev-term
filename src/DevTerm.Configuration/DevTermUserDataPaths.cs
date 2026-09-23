@@ -17,6 +17,14 @@ public static class DevTermUserDataPaths
     /// <summary><c>~/.dev-term/manifests</c> — the user's own, personal device manifests.</summary>
     public static string UserManifestsDirectory => Path.Combine(UserRootDirectory, "manifests");
 
+    /// <summary>
+    /// <c>~/.dev-term/exports</c> — the default destination for auto-saved captures (e.g. the Stream
+    /// Monitor's detected binary/image data, named <c>{device}_{timestamp}.{ext}</c>; see
+    /// docs/design/proposals/stream-content-detection.md) when <see cref="CliOptions.ExportDirectory"/>
+    /// isn't set to something else.
+    /// </summary>
+    public static string ExportsDirectory => Path.Combine(UserRootDirectory, "exports");
+
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");
 

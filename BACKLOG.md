@@ -56,7 +56,14 @@ ordered against the rest.
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
-- Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG).
+- Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG). A concrete
+  consumer of this now has its own design:
+  [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md)
+  (2026-09-23) — an optional "Stream Monitor..." window that recognizes HPGL/PostScript/PCL/binary-
+  image replies (via a declared per-command response-format hint or by sniffing known signatures)
+  and captures/exports them, phased so a graphics-free capture-and-auto-save capability (TUI: save
+  as `{device}_{timestamp}.{ext}`; WPF: same, plus a free live preview for image formats WPF can
+  already decode natively) ships ahead of the harder HPGL/PostScript/PCL rendering work above.
 - Device control modules (control surface + telemetry decode/plot) — see the declarative-schema
   item above for the command/response definition piece specifically.
   [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is **implemented**

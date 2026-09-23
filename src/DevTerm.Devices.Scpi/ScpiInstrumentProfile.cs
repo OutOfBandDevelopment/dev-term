@@ -18,5 +18,14 @@ public sealed class ScpiInstrumentProfile
     /// <summary>Appended to every command sent through this profile. Most SCPI gear wants <c>"\n"</c>; some want <c>"\r\n"</c> or bare <c>"\r"</c>.</summary>
     public string Terminator { get; set; } = "\n";
 
+    /// <summary>
+    /// Free-text operational knowledge worth surfacing alongside this profile's command set —
+    /// required non-default connection settings, a mandatory preamble command, quirks found only by
+    /// testing against real hardware. Folded into <see cref="UiDefinitions.UiDefinition.Description"/>
+    /// by <see cref="ScpiUiDefinitionBuilder.Build"/>, shown by both control-panel renderers. Null when
+    /// there's nothing worth noting.
+    /// </summary>
+    public string? Notes { get; set; }
+
     public List<ScpiCommandDefinition> Commands { get; set; } = [];
 }

@@ -114,7 +114,11 @@ For simple query/response devices (most bench gear — a command string in, a fo
   and shown via an `IndicatorControl` — no reply-pattern matching needed since SCPI replies are
   just the next line, not something requiring recognition. This doesn't generalize to a device
   whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
-  that case is still open.
+  that case is still open. A related but distinct question — whether a command can also declare
+  its reply's *content type* (plain text vs. HPGL/PostScript/PCL/a binary image), so a front end
+  can render or export it properly instead of just showing text/hex — is proposed but not yet
+  built; see [stream content detection](proposals/stream-content-detection.md)'s
+  `ExpectedResponseFormat`.
 - ~~Whether device control modules can be assembled declaratively...~~ **Answered 2026-09-23** by
   the same module: `ScpiInstrumentProfile`'s JSON schema (command id/label/category/template/
   parameters) plus `ScpiProfileCatalog`'s bundled-plus-drop-in-folder loading is exactly the

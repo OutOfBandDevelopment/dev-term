@@ -119,11 +119,44 @@ public sealed class ScreenshotTests
     [TestMethod]
     public void ConfigureMode_HidTransport_IsCaptured()
     {
+        // The HID field group sits below the fold on an 80x24 window now that the Handshake row
+        // (added above it) pushed it down further - same reason
+        // ConfigureMode_LoopbackTransport_IsCaptured/ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold
+        // need to scroll. A plain unscrolled capture would miss it entirely.
         var directory = CreateTempProfilesDirectory();
         try
         {
             var initial = new CliOptions { Transport = "hid", HidVendorId = 4216, HidProductId = 63560, Presenter = ["hex"] };
-            var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-hid");
+
+            Application.Init("dotnet");
+            string dump;
+            try
+            {
+                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = Application.Begin(parts.Window);
+                Application.LayoutAndDraw(true);
+
+                try
+                {
+                    parts.DescriptionField.SetFocus();
+                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    Application.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(ImagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-hid.png"));
+                }
+                finally
+                {
+                    Application.End(token);
+                }
+            }
+            finally
+            {
+                Application.Shutdown();
+            }
+
+            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-hid.txt"), dump);
 
             StringAssert.Contains(dump, "HID vendor ID");
             StringAssert.Contains(dump, "4216");
