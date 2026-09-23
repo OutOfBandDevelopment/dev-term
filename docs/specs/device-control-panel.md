@@ -86,7 +86,7 @@ parameter button, a query button with an indicator, and the always-present Custo
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
 | **Device > K8055 Control Panel...** / **Busylight Control Panel...** | Opens the panel immediately, built from that device's fixed `UiDefinition` and a fresh `IControlSurface` over the current session | None checked | n/a |
-| **Device > SCPI Instrument...** | Resolves a profile choice, then opens the panel built from it (see "Picking a SCPI profile" below) | None checked | n/a |
+| **Device > SCPI Instrument...** | Binds the `scpi` presenter into the session's live pipeline if it wasn't already part of it (`Session.AddPresenter` — see below), resolves a profile choice, then opens the panel built from it (see "Picking a SCPI profile" below) | None checked | n/a |
 | **Interacting with a control** (button click, toggle, commit a field, move a slider, pick a choice) | Calls `IControlSurface.InvokeAsync(id, value)`, which — for the SCPI surface — formats the command's template, appends the profile's terminator, and sends it over the live session; for K8055/Busylight, drives the device directly over HID reports | Session must actually be open for the send to succeed | An I/O failure surfaces the same way a plain send failure does elsewhere (see `ConnectionErrorMessages`) — not specially handled by the panel itself |
 | **Scrolling the form (TUI only)** | PageUp/PageDown (global, works regardless of focus) or mouse wheel scroll the form when it's taller than the window; moving focus to a control below the fold scrolls it into view automatically | Form taller than the visible window | n/a |
 | **Closing the panel** | TUI: a nested `Application.Run` — closing the window ends that loop and returns to the parent screen. WPF: an ordinary (non-modal) `Window` — closing it just closes it | None | n/a |
@@ -110,9 +110,10 @@ Custom Command section — see below). Choosing **Auto-detect (*IDN?)** sends `*
 session and regex-matches the reply against every loaded profile's `IdnPattern`
 (`ScpiProfileCatalog.TryMatchByIdn`); this is a real async round-trip (up to a 3-second wait), so it
 can't finish synchronously inside the menu click — the panel opens once a reply arrives or the
-3-second wait elapses with no match, falling back to `Generic` in that case. Auto-detect needs the
-`scpi` presenter selected on the connection to correlate the reply at all; with it not selected, the
-`*IDN?` is sent but nothing can be matched, and the fallback is `Generic`.
+3-second wait elapses with no match, falling back to `Generic` in that case. Correlating the reply
+needs the `scpi` presenter active in the session's pipeline; opening **SCPI Instrument...** always
+binds it in first (`Session.AddPresenter`, see Actions above) regardless of whether it was selected
+when the connection was made, so auto-detect (and every command's reply afterward) works either way.
 
 ```plantuml
 @startuml
@@ -188,8 +189,7 @@ any command not in the curated list.
   enabled and don't verify the connected transport/presenter actually matches the device before
   opening.
 - **SCPI auto-detect's 3-second wait is fixed**, not configurable, and not visibly indicated as
-  in-progress in either front end (see `docs/changes/2026-09-23.md`'s still-open Measure-button
-  report, suspected to be related to the `scpi` presenter not being active for a given connection).
+  in-progress in either front end.
 - **`DeviceManifest`'s own `UiDefinition` isn't wired to this renderer yet** — a manifest can declare
   a `UiDefinition` today, but nothing yet resolves a loaded manifest into a live `IControlSurface`/
   panel the way K8055/Busylight/SCPI do (see

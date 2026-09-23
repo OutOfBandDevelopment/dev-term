@@ -166,6 +166,31 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    public async Task AddPresenter_WhileOpen_IsPickedUpByTheAlreadyRunningReadLoop()
+    {
+        // Regression test for the SCPI Measure/beep bug: a presenter resolved from the catalog
+        // after the session was already built/opened (e.g. opening a device control panel) used to
+        // never see incoming bytes, because Session's read loop holds one Pipeline reference for its
+        // whole lifetime and nothing rebuilt it. AddPresenter must mutate that same live instance.
+        var (transport, pipe) = CreateOpenableTransport();
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        await session.OpenAsync();
+
+        var late = new Mock<IPresenter>();
+        late.SetupGet(p => p.Name).Returns("scpi");
+        late.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["reply"]);
+        session.AddPresenter(late.Object);
+
+        var received = new TaskCompletionSource<PresenterOutput>();
+        session.Output += (_, output) => received.TrySetResult(output);
+        await pipe.Writer.WriteAsync(new byte[] { 0x2A });
+
+        var output = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.AreEqual(new PresenterOutput("scpi", "reply"), output);
+    }
+
+    [TestMethod]
     public void State_ReflectsTransportState()
     {
         var transport = new Mock<ITransport>();

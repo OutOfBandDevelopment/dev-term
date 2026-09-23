@@ -334,7 +334,7 @@ public partial class MainWindow : Window
             chosen = picked;
         }
 
-        var structuredSource = _catalog.TryGet("scpi", out var presenter) ? presenter : null;
+        var structuredSource = ResolveActiveScpiPresenter();
         if (chosen == ScpiInstrumentPickerWindow.AutoDetectChoice)
         {
             _ = DetectAndOpenScpiInstrumentAsync(structuredSource);
@@ -345,6 +345,31 @@ public partial class MainWindow : Window
             ? ScpiProfileCatalog.Generic
             : ScpiProfileCatalog.All.First(p => p.Name == chosen);
         OpenScpiInstrumentWindow(structuredSource, profile);
+    }
+
+    /// <summary>
+    /// Resolves the registered "scpi" presenter and binds it into the session's live pipeline if it
+    /// isn't there already. <see cref="PresenterCatalog.TryGet"/> alone resolves the DI-registered
+    /// singleton regardless of whether the user selected "scpi" for this connection (the pipeline is
+    /// normally fixed at session-build time from <see cref="CliOptions.EffectivePresenters"/>), which
+    /// used to silently break query/reply correlation: a Measure-style button still sent and the
+    /// device still beeped, but the reply was never routed through <c>ScpiReplyPresenter</c> so it
+    /// never appeared anywhere — see docs/changes/2026-09-23.md's real-hardware report. The fix binds
+    /// the presenter onto the session's existing <see cref="Session.Presenters"/>/<see cref="Pipeline"/>
+    /// instance in place (<see cref="Session.AddPresenter"/>) rather than resolving/rebuilding a new
+    /// pipeline: the read loop already holds a reference to this one, immutable-from-the-outside
+    /// instance for the whole life of the session, so anything not mutated into that same instance
+    /// would never be seen by it. Mirrors <c>TuiMode.ResolveActiveScpiPresenter</c>.
+    /// </summary>
+    private IPresenter? ResolveActiveScpiPresenter()
+    {
+        if (!_catalog.TryGet("scpi", out var presenter))
+        {
+            return null;
+        }
+
+        _session.AddPresenter(presenter);
+        return presenter;
     }
 
     /// <summary>

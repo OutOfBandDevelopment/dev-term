@@ -80,4 +80,45 @@ public sealed class PipelineTests
 
         CollectionAssert.AreEqual(new[] { first.Object, second.Object }, pipeline.Presenters.ToArray());
     }
+
+    [TestMethod]
+    public void AddPresenter_AppendsToTheSameLiveInstance()
+    {
+        var first = new Mock<IPresenter>();
+        first.SetupGet(p => p.Name).Returns("first");
+        var added = new Mock<IPresenter>();
+        added.SetupGet(p => p.Name).Returns("added");
+
+        var pipeline = new Pipeline([first.Object]);
+        pipeline.AddPresenter(added.Object);
+
+        CollectionAssert.AreEqual(new[] { first.Object, added.Object }, pipeline.Presenters.ToArray());
+    }
+
+    [TestMethod]
+    public void AddPresenter_AlreadyPresent_DoesNotDuplicate()
+    {
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("scpi");
+
+        var pipeline = new Pipeline([presenter.Object]);
+        pipeline.AddPresenter(presenter.Object);
+
+        CollectionAssert.AreEqual(new[] { presenter.Object }, pipeline.Presenters.ToArray());
+    }
+
+    [TestMethod]
+    public void AddPresenter_AfterConstruction_IsPickedUpByRender()
+    {
+        var added = new Mock<IPresenter>();
+        added.SetupGet(p => p.Name).Returns("added");
+        added.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["hi"]);
+
+        var pipeline = new Pipeline([]);
+        pipeline.AddPresenter(added.Object);
+
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+
+        CollectionAssert.AreEqual(new[] { new PresenterOutput("added", "hi") }, outputs.ToArray());
+    }
 }

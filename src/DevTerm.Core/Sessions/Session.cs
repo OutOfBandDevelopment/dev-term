@@ -27,6 +27,14 @@ public sealed class Session : IAsyncDisposable
 
     public IReadOnlyList<IPresenter> Presenters => _pipeline.Presenters;
 
+    /// <summary>
+    /// Binds <paramref name="presenter"/> into this session's live pipeline in place (see
+    /// <see cref="Pipeline.AddPresenter"/>) so a device control panel opened after the session was
+    /// built can still have its replies decoded/correlated, without requiring the presenter to have
+    /// been part of the connection's original <c>CliOptions.EffectivePresenters</c> selection.
+    /// </summary>
+    public void AddPresenter(IPresenter presenter) => _pipeline.AddPresenter(presenter);
+
     public event EventHandler<PresenterOutput>? Output;
 
     public async Task OpenAsync(CancellationToken cancellationToken = default)

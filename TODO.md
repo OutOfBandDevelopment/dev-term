@@ -260,10 +260,15 @@ Completed work is logged by date under `docs/changes/`.
   still resolves to a real choice (also exposed as its own editor row, shown only when the `scpi`
   presenter is selected); and `ScpiProfileCatalog` now also loads from a per-user
   `~/.dev-term/scpi-profiles` folder, mirroring the existing per-user connection-profile/device-
-  manifest storage convention. **Still open, not yet root-caused**: `docs/changes/2026-09-23.md`'s
-  separate report of a Measure button beeping the 34401A with no reply shown anywhere in the UI —
-  suspected to be the `scpi` presenter not actually being active in the session's `Pipeline` for
-  that connection, not yet confirmed or fixed.
+  manifest storage convention. The separate report of a Measure button beeping the 34401A with no
+  reply shown anywhere in the UI is now fixed at the code level — confirmed root cause: the `scpi`
+  presenter resolves fine from `PresenterCatalog` regardless of whether it was ever part of the
+  session's actual `Pipeline` (fixed at session-build time from `CliOptions.EffectivePresenters`), so
+  replies were never decoded/correlated. Fix, see `docs/changes/2026-09-23.md`: `Pipeline`/`Session`
+  gained `AddPresenter`, mutating the session's live pipeline in place; both front ends' "SCPI
+  Instrument..." menu handlers now bind the presenter in before opening the panel instead of just
+  detecting/warning about the gap. Covered by new `UNIT` tests; **not yet re-verified against the
+  physical 34401A** (no real-hardware access this session).
 
 - **`CliOptions.ExportDirectory`**, landed 2026-09-23 — a configurable destination for
   not-yet-built auto-saved captures (see the Stream Monitor proposal in `BACKLOG.md`), defaulting to
