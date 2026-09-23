@@ -6,7 +6,7 @@
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
-│Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary                  ░│
+│Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig░│
 │                                                                             ░│
 │Send as: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
 │                                                                             ░│
