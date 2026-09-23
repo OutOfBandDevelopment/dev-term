@@ -125,6 +125,13 @@ Run against four real USBTMC-class Rigol instruments (VID `1AB1`) newly availabl
   doesn't for these four). This needs doing, and reverifying open/string-descriptor/control-transfer
   behavior afterward, before any `UsbtmcTransport : ITransport` work below can be verified against
   real hardware — it's a per-machine setup step, not a code fix.
+- **Confirmed fixed after the Zadig/WinUSB rebind** (see "Setting up WinUSB" below): re-running
+  `--listusbtmcdevices true` against the same four devices after rebinding them to WinUSB now
+  resolves full string descriptors with no code changes — `Open()` succeeds and
+  `Info.Manufacturer`/`.Product`/`.SerialNumber` all populate correctly, e.g.
+  `1AB1:09C4  Rigol Technologies DM3000 SERIES   SN:DM3R232301438`. This closes the last open
+  question about whether the driver swap alone is sufficient (it is) and confirms `LibUsbDotNet`
+  itself needs no further fixing — the remaining work is entirely the `UsbtmcTransport` build below.
 
 ## Setting up WinUSB for a USBTMC device (Windows)
 
@@ -222,6 +229,9 @@ own repeated practice of not trusting a fix until checked against real hardware:
 
 ## Open questions
 
+- **Resolved**: the Zadig/WinUSB rebind is sufficient by itself — no further `LibUsbDotNet`/native
+  fix needed. Confirmed by re-running `--listusbtmcdevices true` after the rebind: all four devices'
+  string descriptors resolved correctly (see "Real-hardware findings" above).
 - Whether the DG1022/DS1102E specifically (not yet tested — the four devices checked so far are a
   different set of Rigol instruments) also need a Zadig driver swap, or happen to enumerate
   differently — unconfirmed until checked against those exact two units.

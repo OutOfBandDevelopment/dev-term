@@ -34,6 +34,10 @@
     "Busylight HID": {
       "commandName": "Project",
       "commandLineArgs": "--transport hid --hidvendorid 1240 --hidproductid 63560 --presenter busylight"
+    },
+    "List USBTMC devices": {
+      "commandName": "Project",
+      "commandLineArgs": "--listusbtmcdevices true"
     }
   }
 }
