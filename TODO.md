@@ -303,3 +303,45 @@ Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
 (serial-port descriptions on Linux/macOS).
 
+## Notes from the Architect
+
+- HP 34401A SCPI display
+  - Changing the "Range" under "Configure" throws an exception
+  - The "Configure DV Voltage Range" doesn't seem to do anything.
+  - moved to COM5
+- device profiles
+  - when I set to hid transport and select the "BBL Lamp" under the "detected devices" I get an out of index exception.  
+  - when changing profiles existing connections should be disconnected and the new device connected when "connect" is pressed.
+  - when hid is selected blank, 0 or anything that can not be parsed as a an integer or hex string.
+  - there should be a refresh button for the "detected devices" and "detected ports" 
+  - when a profile is "loaded" it should set the "Save as profile named" field to the profile name so you can just click save to update that option. 
+  - the "saved as profile named" field should not be cleared on "save  profile"
+- busylight
+  - when a custom color is set there should be a radio box for "custom" and it should have a box that displays the configured color before you enter the custom screen"
+  - the custom settings should persist between opening the custom control
+  - pressing enter on this screen should function the same as apply without having to actually click on the apply button.  
+- terminal screen
+  - under the "file" the value should either change to the corresponding value for "connected"/"disconnected" or should have both values in the name
+  - if a profile is loaded the title should include that profile name... this should have already been resolved.
+  - if the latest command is the same as the last command it does not needed added to the history list.
+- device presenters
+  - Entering a value in the "Command" field under "Custom Command" and pressing enter seems to throw an exception
+  - Clicking "Send" under the "Custom Command" even with a value typed in the "Command" field throws an exception.
+  - I would like the "notes" field put in a group and moved to the bottom of the screen.  
+  - The labels should show full width without wrapping text and all should be aligned withing a grouping.  
+  - groupings should be collsabable with visual queues that they can be expanded and collasped (this should apply to all device profiles)
+  - for fields that send commands there should be an information icon that when selected/hovered would show the command to be sent
+  - input commands should support the ability to set a data type and optionally a control type.  
+    - this would allow for metadata for field valudate such as input range
+    - this would allow for using something like a slider, numeric value, text value, etc.
+- Tek2230 SCPI?
+  - the Identity command should be mapped to ID?\r
+  - the rest of the commands should be identified.  
+  - instead of resusing SCPI there should be a seperate "Text Command" device presnter that should be very similar to SCPI but allow for more generic command strings.  
+- added devices
+  - USB DG1000Z
+  - USB DG3000
+  - USB DM3000
+  - USB DS1000
+  - COM6 - Korad KA3005p
+  - COM7 - Korad KA6003p
