@@ -53,6 +53,11 @@ profiles from Device Profiles.
 
 Ctrl+Q quits and closes the session cleanly.
 
+Pressing **Up** in `Send:` recalls the last line you sent (press it again for the one before that);
+**Down** steps back toward the most recent. Up to the last 100 lines sent this run are kept — not
+saved across restarts. Editing and pressing Enter sends the edited version as a new entry, same as
+typing it fresh.
+
 ## WPF
 
 The same flow, after a reply has arrived. The **Send as:** drop-down beside the Send button is the
@@ -63,6 +68,10 @@ changed per line:
 
 `ID TEK/2230,V81.1,VERS:14` is the same real Tektronix 2230 reply text used above, captured here
 against a `FakeTransport` that answers the same way rather than the real device.
+
+The send box is an editable drop-down: click its arrow to see recently sent lines, or, with the
+field focused, press **Up**/**Down** the same way the TUI does — the same 100-line, this-run-only
+history.
 
 ## If a send fails
 

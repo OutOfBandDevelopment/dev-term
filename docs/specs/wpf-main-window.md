@@ -12,14 +12,15 @@ menu — the WPF equivalent of the TUI's main screen.
 | Field | Type | Notes |
 |---|---|---|
 | `OutputList` | `ListBox`, fills the window above the send row | Every incoming decoded message is appended as `[{presenterName}] {text}`; status lines (Connected/Disconnected/errors) are appended the same way, indistinguishable from real device output except by text |
-| `SendBox` | `TextBox`, fills the remaining width next to the Send button | `IsEnabled` only when the session is open (every text presenter can encode input, so there's no per-presenter check any more) |
+| `SendBox` | Editable `ComboBox` (`IsEditable`, `IsTextSearchEnabled="False"`), fills the remaining width next to the Send button | `IsEnabled` only when the session is open (every text presenter can encode input, so there's no per-presenter check any more); `ItemsSource` is bound directly to a shared `SendHistory.Items` (100 entries, in-memory only), so its drop-down doubles as the history list; Up/Down also recall without opening the drop-down |
 | `ParserBox` | `ComboBox` labelled "Send as:", docked right of the Send button | One item per presenter that can encode typed text; starts as the profile's `Parser` (its first presenter if none is saved); selecting one changes the send format for every line typed afterward and refreshes the title |
 
 ## Actions
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Type + Enter, or click Send** | Encodes the line with the `Send as:` format, appends the configured `LineEnding`, and sends; `SendBox` clears immediately | Line non-empty | "Not connected — use File > Connect." (session closed) / "Send timed out — ..." / "Send failed: {message}" — appended to `OutputList`, never thrown |
+| **Type + Enter, or click Send** | Encodes the line with the `Send as:` format, appends the configured `LineEnding`, and sends; `SendBox` clears immediately; the (non-empty) line is recorded in `SendHistory` regardless of what happens next | Line non-empty | "Not connected — use File > Connect." (session closed) / "Send timed out — ..." / "Send failed: {message}" — appended to `OutputList`, never thrown |
+| **Up / Down in `SendBox`** | Recalls the previously sent line (Up, repeatable toward older entries) or steps back toward the newest (Down); handled on `PreviewKeyDown` so the `ComboBox`'s own native key handling never sees it first | None | n/a |
 | **File > Connect/Disconnect** | A single menu item whose header flips (`_Connect`/`_Disconnect`); toggles the same `Session`/transport without touching the loaded profile | None | `MessageBox.Show` with `ConnectionErrorMessages.For` text; session stays closed |
 | **File > Device Profiles...** | Opens `DeviceProfilesWindow` as a modal (`ShowDialog`) | None | n/a |
 | **File > Exit** / **Ctrl+Q** | Closes the window | None | n/a |

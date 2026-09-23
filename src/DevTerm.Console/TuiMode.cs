@@ -140,6 +140,11 @@ public static class TuiMode
             Enabled = session.State == ConnectionState.Open,
         };
 
+        // Terminal.Gui 2.5.0 has no combo box, so Up/Down recall is implemented directly on
+        // sendField's own KeyDown handler below rather than a dropdown widget - see
+        // DevTerm.Wpf.MainWindow's editable ComboBox for the WPF equivalent of the same history.
+        var sendHistory = new SendHistory();
+
         var outputLines = new List<string>();
 
         void AppendOutput(string line)
@@ -389,6 +394,30 @@ public static class TuiMode
 
         sendField.KeyDown += (_, key) =>
         {
+            if (key == Key.CursorUp)
+            {
+                key.Handled = true;
+                if (sendHistory.Previous() is { } older)
+                {
+                    sendField.Text = older;
+                    sendField.MoveEnd();
+                }
+
+                return;
+            }
+
+            if (key == Key.CursorDown)
+            {
+                key.Handled = true;
+                if (sendHistory.Next() is { } newer)
+                {
+                    sendField.Text = newer;
+                    sendField.MoveEnd();
+                }
+
+                return;
+            }
+
             if (key != Key.Enter)
             {
                 return;
@@ -397,6 +426,7 @@ public static class TuiMode
             key.Handled = true;
             var line = sendField.Text;
             sendField.Text = string.Empty;
+            sendHistory.Add(line);
 
             if (line.Length == 0)
             {

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Windows.Input;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -187,6 +188,54 @@ public sealed class MainWindowTests
             await window.SendCurrentInputAsync();
 
             Assert.IsEmpty(transport.WrittenPayloads);
+        });
+    }
+
+    [TestMethod]
+    public void HandleSendBoxKey_Up_RecallsMostRecentlySentLine()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None });
+            await window.ConnectAsync();
+            window.SendBox.Text = "ID?";
+            await window.SendCurrentInputAsync();
+
+            window.HandleSendBoxKey(Key.Up);
+
+            Assert.AreEqual("ID?", window.SendBox.Text);
+        });
+    }
+
+    [TestMethod]
+    public void HandleSendBoxKey_UpTwiceThenDown_RecallsTheNewerLine()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None });
+            await window.ConnectAsync();
+            window.SendBox.Text = "first";
+            await window.SendCurrentInputAsync();
+            window.SendBox.Text = "second";
+            await window.SendCurrentInputAsync();
+
+            window.HandleSendBoxKey(Key.Up);
+            window.HandleSendBoxKey(Key.Up);
+            window.HandleSendBoxKey(Key.Down);
+
+            Assert.AreEqual("second", window.SendBox.Text);
+        });
+    }
+
+    [TestMethod]
+    public void HandleSendBoxKey_UnrecognizedKey_ReturnsFalse()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+
+            Assert.IsFalse(window.HandleSendBoxKey(Key.A));
+            await Task.CompletedTask;
         });
     }
 

@@ -28,7 +28,8 @@
                           ToolTip="Send as: how the typed line is turned into bytes (applies from the next line sent)"
                           SelectionChanged="ParserBox_SelectionChanged" />
                 <TextBlock DockPanel.Dock="Right" Text="Send as:" VerticalAlignment="Center" Margin="8,0,0,0" />
-                <TextBox x:Name="SendBox" VerticalContentAlignment="Center" KeyDown="SendBox_KeyDown" />
+                <ComboBox x:Name="SendBox" IsEditable="True" IsTextSearchEnabled="False"
+                          VerticalContentAlignment="Center" PreviewKeyDown="SendBox_PreviewKeyDown" />
             </DockPanel>
             <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
         </DockPanel>

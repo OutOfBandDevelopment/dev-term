@@ -265,6 +265,52 @@ public sealed class TuiModeTests
     }
 
     [TestMethod]
+    public async Task CursorUp_AfterSendingALine_RecallsIt()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None };
+
+        // Raises the send field's own KeyDown directly (see SetParser_...'s comment above) rather
+        // than injecting through IInputInjector - this is about history recall, not key routing.
+        TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+        {
+            parts.SendField.Text = "ID?";
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.CursorUp);
+
+            Assert.AreEqual("ID?", parts.SendField.Text);
+        });
+
+        await session.CloseAsync();
+    }
+
+    [TestMethod]
+    public async Task CursorUpTwiceThenCursorDown_RecallsTheNewerLine()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync();
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None };
+
+        TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+        {
+            parts.SendField.Text = "first";
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+            parts.SendField.Text = "second";
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.CursorUp);
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.CursorUp);
+            parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.CursorDown);
+
+            Assert.AreEqual("second", parts.SendField.Text);
+        });
+
+        await session.CloseAsync();
+    }
+
+    [TestMethod]
     public async Task SendAsMenu_ListsEveryPresenterThatCanEncodeInput()
     {
         var (session, _, presenter) = CreateSession();

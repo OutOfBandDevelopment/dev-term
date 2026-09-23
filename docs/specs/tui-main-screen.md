@@ -12,13 +12,14 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 | Field | Type | Notes |
 |---|---|---|
 | Output pane | read-only `TextView`, fills the window above the send line | Every incoming decoded message is appended as `[{presenterName}] {text}`; auto-scrolls to the newest line (`MoveEnd()`) |
-| `Send:` | `TextField`, fills the remaining width next to the `Send:` label | Disabled whenever the session isn't open; cleared immediately on Enter, before the send even completes |
+| `Send:` | `TextField`, fills the remaining width next to the `Send:` label | Disabled whenever the session isn't open; cleared immediately on Enter, before the send even completes; Up/Down recall prior sent lines (a shared `SendHistory`, 100 entries, in-memory only) — no visible drop-down, since Terminal.Gui 2.5.0 has no combo box |
 
 ## Actions
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Type + Enter** in `Send:` | Encodes the line with the current send format (the parser — see **Send as** below), appends the configured `LineEnding`, and sends; the field clears immediately | Line non-empty; session open | "Not connected — use File > Connect." / a send failure message (see below) — none of these throw |
+| **Type + Enter** in `Send:` | Encodes the line with the current send format (the parser — see **Send as** below), appends the configured `LineEnding`, and sends; the field clears immediately; the (non-empty) line is recorded in `SendHistory` regardless of what happens next | Line non-empty; session open | "Not connected — use File > Connect." / a send failure message (see below) — none of these throw |
+| **Cursor Up / Cursor Down** in `Send:` | Recalls the previously sent line (Up, repeatable toward older entries) or steps back toward the newest (Down) — see `docs/user-guide/sending-and-receiving.md` | None | n/a |
 | **Send as** menu (menu bar) | Picks the parser (send format) for every line typed afterward — one item per presenter that can encode typed text (ascii, utf8, hex, decimal, octal, binary); starts as the profile's `Parser`, or its first presenter if none is saved. Updates the title bar; does not reconnect or touch the display presenters | None | n/a |
 | **File > Connect/Disconnect** | A single menu item whose label flips; toggles the same `Session`/transport open or closed without touching which profile is loaded | None | Same connection-failure handling as startup (`ConnectionErrorMessages.For`) |
 | **File > Device Profiles...** | Opens `ConfigureMode` as a nested modal (`Application.Run` on top of the current window) | None | n/a |

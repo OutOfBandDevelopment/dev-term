@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private PresenterCatalog _catalog;
     private CliOptions _cliOptions;
     private readonly ConnectionProfileStore _profileStore;
+    private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
 
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
 
         ParserBox.ItemsSource = catalog.InputNames;
         ParserBox.SelectedItem = cliOptions.EffectiveParser;
+        SendBox.ItemsSource = _sendHistory.Items;
 
         if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
         {
@@ -178,11 +180,50 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SendBox_KeyDown(object sender, KeyEventArgs e)
+    private void SendBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
+        if (HandleSendBoxKey(e.Key))
         {
-            _ = SendCurrentInputAsync();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Handles Up/Down history recall and Enter-to-send on <see cref="SendBox"/> — pulled out of the
+    /// <c>PreviewKeyDown</c> handler (rather than only reachable via a real routed key event) so tests
+    /// can drive it deterministically, the same reasoning as <see cref="SendCurrentInputAsync"/>
+    /// itself. Wired to <c>PreviewKeyDown</c> (tunneling), not <c>KeyDown</c>, so this runs before the
+    /// editable <see cref="ComboBox"/>'s own native key handling (opening the drop-down on Up/Down,
+    /// moving the caret) can react first — the same "framework default doesn't reliably compose with
+    /// our own handling" precedent as Ctrl+Q needing a <c>PreviewKeyDown</c> handler instead of relying
+    /// on <c>MenuItem.InputGestureText</c>. Returns whether the key was handled.
+    /// </summary>
+    internal bool HandleSendBoxKey(Key key)
+    {
+        switch (key)
+        {
+            case Key.Enter:
+                _ = SendCurrentInputAsync();
+                return true;
+
+            case Key.Up:
+                if (_sendHistory.Previous() is { } older)
+                {
+                    SendBox.Text = older;
+                }
+
+                return true;
+
+            case Key.Down:
+                if (_sendHistory.Next() is { } newer)
+                {
+                    SendBox.Text = newer;
+                }
+
+                return true;
+
+            default:
+                return false;
         }
     }
 
@@ -196,7 +237,8 @@ public partial class MainWindow : Window
     internal async Task SendCurrentInputAsync()
     {
         var line = SendBox.Text;
-        SendBox.Clear();
+        SendBox.Text = string.Empty;
+        _sendHistory.Add(line);
 
         if (line.Length == 0 || !_catalog.TryGetInput(CurrentParser, out var input))
         {

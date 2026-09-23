@@ -274,6 +274,24 @@ Completed work is logged by date under `docs/changes/`.
   existing, also-editorless `ManifestName`) — this is prep for the Stream Monitor feature itself,
   not a user-facing setting on its own yet.
 
+- **Send-line history recall (Up/Down)**, landed 2026-09-23 — a new, shared `SendHistory`
+  (`DevTerm.Configuration`), a bounded (100-entry), most-recent-first, in-memory-only history of
+  lines sent from the live session screen's send field, so pressing Up recalls the last line sent
+  (and repeatedly, older ones), Down steps back toward the newest, matching ordinary shell-history
+  semantics. WPF's `MainWindow.SendBox` changed from a plain `TextBox` to an editable `ComboBox`
+  (`ItemsSource` bound directly to `SendHistory.Items` for a live drop-down), with Enter/Up/Down
+  handled via `PreviewKeyDown` rather than the bubbling `KeyDown` (the same "don't trust unverified
+  native widget key routing" precedent as Ctrl+Q), pulled into a directly-testable
+  `HandleSendBoxKey(Key)` method rather than only reachable through the routed event. Terminal.Gui
+  2.5.0 has no combo box, so the TUI's `sendField` stays a plain `TextField`; its existing `KeyDown`
+  handler gained `Key.CursorUp`/`Key.CursorDown` branches doing the same recall, with no visible
+  drop-down. Both front ends record a line via `SendHistory.Add` at the same point they already
+  clear the field on Enter/Send, regardless of whether the send itself succeeds. Not persisted
+  across restarts — in-memory for the life of the process only. 17 new `UNIT` tests: 12 in
+  `DevTerm.Configuration.Tests` (`SendHistoryTests`) covering bounding/trimming/cursor semantics, 3
+  in `DevTerm.Wpf.Tests` (`MainWindowTests`), 2 in `DevTerm.Console.Tests` (`TuiModeTests`) — see
+  `docs/changes/2026-09-23.md`.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
