@@ -302,8 +302,11 @@ Completed work is logged by date under `docs/changes/`.
   per-field data-type/control-type metadata, an info icon showing the underlying command, Busylight
   custom-color UX, the Tektronix 2230 direction) moved to `BACKLOG.md`; these are concrete bugs
   against already-shipped screens:
-  - **HP 34401A SCPI panel** (now on COM5): changing "Range" under "Configure" throws an exception;
-    "Configure DV Voltage Range" doesn't appear to do anything.
+  - **HP 34401A SCPI panel** (now on COM5): changing "Range" under "Configure" throwing an exception
+    was fixed by the multi-parameter-field commit earlier today; "Configure DC Voltage Range doesn't
+    appear to do anything" has a plausible fix (the profile's Range choice offered the illegal keyword
+    "AUTO" instead of "DEF" — see `docs/changes/2026-09-23.md`) but is not yet re-verified against the
+    real instrument.
   - **Device Profiles / Connection Editor**: selecting "BBL Lamp" under HID "detected devices" throws
     an out-of-index exception; a blank/`0`/unparsable HID Vendor or Product ID value isn't validated;
     switching profiles should disconnect the existing connection and only reconnect when "Connect" is

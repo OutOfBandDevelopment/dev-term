@@ -2,23 +2,115 @@
   "Name": "HP/Agilent/Keysight 34401A Digital Multimeter",
   "IdnPattern": "34401A",
   "Terminator": "\n",
-  "Notes": "Confirmed against real hardware 2026-09-23 over RS-232: 9600 baud, 8 data bits, 2 stop bits (fixed on this instrument), no parity, no hardware handshake, LF line terminator. Unlike GPIB, RS-232 on the 34401A never auto-enters remote mode - send Remote (SYSTem:REMote) before any query, or the instrument answers with SCPI error +550 \"Command not allowed in local\" and no measurement.",
+  "Notes": "Confirmed against real hardware 2026-09-23 over RS-232: 9600 baud, 8 data bits, 2 stop bits (fixed on this instrument), no parity, no hardware handshake, LF line terminator. Unlike GPIB, RS-232 on the 34401A never auto-enters remote mode - send Remote (SYSTem:REMote) before any query, or the instrument answers with SCPI error +550 \"Command not allowed in local\" and no measurement. Per the programming manual's MEASure?/CONFigure section (chapter 4, page 105/117), the range parameter only accepts a numeric range or MIN|MAX|DEF - DEF selects autoranging. \"AUTO\" is not a valid keyword here (that spelling is only valid on the separate <function>:RANGe:AUTO {OFF|ON} command); the CONFigure command previously offered it as a Range choice, which would be rejected as an illegal parameter by the real instrument and silently no-op - a plausible root cause (not yet re-verified against real hardware) for the previously reported \"Configure DC Voltage Range doesn't appear to do anything\" bug. Fixed here by using \"DEF\" instead of \"AUTO\". Expanded 2026-09-23 to cover the rest of chapter 4's MEASure?/CONFigure/Common/System command set (AC voltage/current, DC current, 2-wire and 4-wire resistance, frequency, period, continuity, diode, plus SYSTem:LOCal/*CLS/*TST?/SYSTem:ERRor?/DISPlay/SYSTem:BEEPer:STATe) - the manual's transcribed reference gives exact numeric range values (0.1/1/10/100/1000) only for the DC voltage function, so every other function's Configure Range choice offers just DEF|MIN|MAX rather than guessing at unconfirmed numeric ranges.",
   "Commands": [
     { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
     { "Id": "remote", "Label": "Remote", "Category": "Common", "Template": "SYSTem:REMote" },
+    { "Id": "local", "Label": "Local", "Category": "Common", "Template": "SYSTem:LOCal" },
     { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
+    { "Id": "cls", "Label": "Clear Status", "Category": "Common", "Template": "*CLS" },
+    { "Id": "tst", "Label": "Self-Test", "Category": "Common", "Template": "*TST?", "IsQuery": true },
     { "Id": "measVoltDc", "Label": "Measure DC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:DC?", "IsQuery": true },
     { "Id": "measVoltAc", "Label": "Measure AC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:AC?", "IsQuery": true },
     { "Id": "measCurrDc", "Label": "Measure DC Current", "Category": "Measure", "Template": "MEAS:CURR:DC?", "IsQuery": true },
+    { "Id": "measCurrAc", "Label": "Measure AC Current", "Category": "Measure", "Template": "MEAS:CURR:AC?", "IsQuery": true },
     { "Id": "measRes", "Label": "Measure Resistance", "Category": "Measure", "Template": "MEAS:RES?", "IsQuery": true },
+    { "Id": "measFres", "Label": "Measure 4-Wire Resistance", "Category": "Measure", "Template": "MEAS:FRES?", "IsQuery": true },
     { "Id": "measFreq", "Label": "Measure Frequency", "Category": "Measure", "Template": "MEAS:FREQ?", "IsQuery": true },
+    { "Id": "measPeriod", "Label": "Measure Period", "Category": "Measure", "Template": "MEAS:PER?", "IsQuery": true },
+    { "Id": "measCont", "Label": "Measure Continuity", "Category": "Measure", "Template": "MEAS:CONT?", "IsQuery": true },
+    { "Id": "measDiode", "Label": "Measure Diode", "Category": "Measure", "Template": "MEAS:DIOD?", "IsQuery": true },
     {
       "Id": "confVoltDc",
       "Label": "Configure DC Voltage Range",
       "Category": "Configure",
       "Template": "CONF:VOLT:DC {Range}",
       "Parameters": [
-        { "Name": "Range", "Kind": "Choice", "Options": ["AUTO", "0.1", "1", "10", "100", "1000"], "DefaultValue": "AUTO" }
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "0.1", "1", "10", "100", "1000"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confVoltAc",
+      "Label": "Configure AC Voltage Range",
+      "Category": "Configure",
+      "Template": "CONF:VOLT:AC {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confCurrDc",
+      "Label": "Configure DC Current Range",
+      "Category": "Configure",
+      "Template": "CONF:CURR:DC {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confCurrAc",
+      "Label": "Configure AC Current Range",
+      "Category": "Configure",
+      "Template": "CONF:CURR:AC {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confRes",
+      "Label": "Configure Resistance Range",
+      "Category": "Configure",
+      "Template": "CONF:RES {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confFres",
+      "Label": "Configure 4-Wire Resistance Range",
+      "Category": "Configure",
+      "Template": "CONF:FRES {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confFreq",
+      "Label": "Configure Frequency Range",
+      "Category": "Configure",
+      "Template": "CONF:FREQ {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    {
+      "Id": "confPeriod",
+      "Label": "Configure Period Range",
+      "Category": "Configure",
+      "Template": "CONF:PER {Range}",
+      "Parameters": [
+        { "Name": "Range", "Kind": "Choice", "Options": ["DEF", "MIN", "MAX"], "DefaultValue": "DEF" }
+      ]
+    },
+    { "Id": "confCont", "Label": "Configure Continuity", "Category": "Configure", "Template": "CONF:CONT" },
+    { "Id": "confDiode", "Label": "Configure Diode", "Category": "Configure", "Template": "CONF:DIOD" },
+    { "Id": "sysErr", "Label": "Query Error Queue", "Category": "System", "Template": "SYST:ERR?", "IsQuery": true },
+    {
+      "Id": "disp",
+      "Label": "Set Display",
+      "Category": "System",
+      "Template": "DISP {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "beeperState",
+      "Label": "Set Beeper",
+      "Category": "System",
+      "Template": "SYST:BEEP:STAT {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
       ]
     }
   ]

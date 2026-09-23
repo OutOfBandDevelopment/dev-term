@@ -39,25 +39,49 @@ public sealed class Hp34401aProfileTests
     }
 
     [TestMethod]
-    public void Build_MeasureSection_HasAButtonAndReplyIndicatorForEachOfTheFiveQueries()
+    public void Build_MeasureSection_HasAButtonAndReplyIndicatorForEachOfTheTenQueries()
     {
         var definition = ScpiUiDefinitionBuilder.Build(Profile);
         var section = definition.Sections.Single(s => s.Label == "Measure");
 
-        var queryIds = new[] { "measVoltDc", "measVoltAc", "measCurrDc", "measRes", "measFreq" };
+        var queryIds = new[]
+        {
+            "measVoltDc", "measVoltAc", "measCurrDc", "measCurrAc", "measRes",
+            "measFres", "measFreq", "measPeriod", "measCont", "measDiode",
+        };
         foreach (var id in queryIds)
         {
             Assert.IsNotNull(section.Controls.OfType<ButtonControl>().SingleOrDefault(c => c.Id == id), $"missing button for {id}");
             Assert.IsNotNull(section.Controls.OfType<IndicatorControl>().SingleOrDefault(c => c.Id == $"{id}.reply"), $"missing reply indicator for {id}");
         }
 
-        // Every Measure control belongs to exactly the 5 buttons + 5 indicators above — no stray
+        // Every Measure control belongs to exactly the 10 buttons + 10 indicators above — no stray
         // extras from a parameter mis-shape, and no accidental Configure bleed-through.
-        Assert.HasCount(10, section.Controls);
+        Assert.HasCount(20, section.Controls);
     }
 
     [TestMethod]
-    public void Build_ConfigureSection_HasOneChoiceFieldAndASendButtonNoIndicator()
+    public void Build_ConfigureSection_HasAChoiceFieldAndSendButtonForEachRangedFunction()
+    {
+        var definition = ScpiUiDefinitionBuilder.Build(Profile);
+        var section = definition.Sections.Single(s => s.Label == "Configure");
+
+        var rangedIds = new[] { "confVoltAc", "confCurrDc", "confCurrAc", "confRes", "confFres", "confFreq", "confPeriod" };
+        foreach (var id in rangedIds)
+        {
+            var field = (ChoiceControl)section.Controls.Single(c => c.Id == $"{id}.Range");
+            var button = (ButtonControl)section.Controls.Single(c => c.Id == $"{id}.send");
+
+            CollectionAssert.AreEqual(new[] { "DEF", "MIN", "MAX" }, field.Options, $"unexpected Range options for {id}");
+            Assert.AreEqual("DEF", field.DefaultValue, $"unexpected Range default for {id}");
+            Assert.AreEqual(id, button.CommandId);
+            CollectionAssert.AreEqual(new[] { $"{id}.Range" }, button.ParameterFieldIds);
+            Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == $"{id}.reply"));
+        }
+    }
+
+    [TestMethod]
+    public void Build_ConfigureSection_DcVoltageRangeOffersNumericChoicesFromTheManual()
     {
         var definition = ScpiUiDefinitionBuilder.Build(Profile);
         var section = definition.Sections.Single(s => s.Label == "Configure");
@@ -65,11 +89,54 @@ public sealed class Hp34401aProfileTests
         var field = (ChoiceControl)section.Controls.Single(c => c.Id == "confVoltDc.Range");
         var button = (ButtonControl)section.Controls.Single(c => c.Id == "confVoltDc.send");
 
-        CollectionAssert.AreEqual(new[] { "AUTO", "0.1", "1", "10", "100", "1000" }, field.Options);
-        Assert.AreEqual("AUTO", field.DefaultValue);
+        CollectionAssert.AreEqual(new[] { "DEF", "0.1", "1", "10", "100", "1000" }, field.Options);
+        Assert.AreEqual("DEF", field.DefaultValue);
         Assert.AreEqual("confVoltDc", button.CommandId);
         CollectionAssert.AreEqual(new[] { "confVoltDc.Range" }, button.ParameterFieldIds);
         Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == "confVoltDc.reply"));
+    }
+
+    [TestMethod]
+    public void Build_ConfigureSection_ContinuityAndDiodeHaveNoParametersOrIndicator()
+    {
+        var definition = ScpiUiDefinitionBuilder.Build(Profile);
+        var section = definition.Sections.Single(s => s.Label == "Configure");
+
+        foreach (var id in new[] { "confCont", "confDiode" })
+        {
+            var button = (ButtonControl)section.Controls.Single(c => c.Id == id);
+            Assert.IsNull(button.CommandId);
+            Assert.IsNull(button.ParameterFieldIds);
+            Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == $"{id}.reply"));
+        }
+    }
+
+    [TestMethod]
+    public void Build_CommonSection_HasLocalClearStatusAndSelfTest()
+    {
+        var definition = ScpiUiDefinitionBuilder.Build(Profile);
+        var section = definition.Sections.Single(s => s.Label == "Common");
+
+        Assert.IsNotNull(section.Controls.OfType<ButtonControl>().SingleOrDefault(c => c.Id == "local"));
+        Assert.IsNotNull(section.Controls.OfType<ButtonControl>().SingleOrDefault(c => c.Id == "cls"));
+        Assert.IsNotNull(section.Controls.OfType<ButtonControl>().SingleOrDefault(c => c.Id == "tst"));
+        Assert.IsNotNull(section.Controls.OfType<IndicatorControl>().SingleOrDefault(c => c.Id == "tst.reply"));
+    }
+
+    [TestMethod]
+    public void Build_SystemSection_HasErrorQueryDisplayAndBeeperToggles()
+    {
+        var definition = ScpiUiDefinitionBuilder.Build(Profile);
+        var section = definition.Sections.Single(s => s.Label == "System");
+
+        Assert.IsNotNull(section.Controls.OfType<ButtonControl>().SingleOrDefault(c => c.Id == "sysErr"));
+        Assert.IsNotNull(section.Controls.OfType<IndicatorControl>().SingleOrDefault(c => c.Id == "sysErr.reply"));
+
+        var dispField = (ChoiceControl)section.Controls.Single(c => c.Id == "disp.State");
+        CollectionAssert.AreEqual(new[] { "ON", "OFF" }, dispField.Options);
+
+        var beeperField = (ChoiceControl)section.Controls.Single(c => c.Id == "beeperState.State");
+        CollectionAssert.AreEqual(new[] { "ON", "OFF" }, beeperField.Options);
     }
 
     [TestMethod]
