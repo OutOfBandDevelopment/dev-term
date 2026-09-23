@@ -253,16 +253,30 @@ own repeated practice of not trusting a fix until checked against real hardware:
   `SystemUsbtmcDevice.Open()` calls `ClearHalt()` on both endpoints before first use, and
   `WriteBulkOut`/`ReadBulkIn` each clear-and-retry once on `Error.Pipe` — see
   `docs/changes/2026-09-23.md`'s real-hardware section for the DM3000 STALL this fixed.
-- **New, unresolved (real-hardware, 2026-09-23)**: reading a query's reply from a real Rigol DM3000
-  consistently stalls the bulk-IN endpoint even with correct framing/tagging and after stall
-  recovery, `INITIATE_CLEAR`, and a full device reset — the device's own Status Byte never sets MAV
-  after receiving `*IDN?`, reproduced identically from a second, independent USB stack (Python/
-  pyusb). Strong evidence this is a firmware-level limitation of this specific unit rather than a
-  `dev-term` bug; see `docs/changes/2026-09-23.md` for the full investigation. Not yet tried: an
-  official Rigol/NI-VISA stack against the same unit, or a second physical DM3000, to fully rule out
-  a single-unit hardware fault. This means `UsbtmcTransport`'s query/reply path is still **unverified
-  end-to-end against real hardware** despite the codec/framing/stall-recovery layers below it now
-  being real-hardware-tested individually.
+- **Corrected (real-hardware, 2026-09-23)**: the bullet below originally concluded the DM3000's
+  bulk-IN stall on a query reply was a firmware-level limitation. **That conclusion was wrong** —
+  confirmed directly by the user: the same physical Rigol units (DM3000 and, separately, a DM3058E,
+  which hits the identical stall via the real SCPI control-panel UI) work correctly under Rigol's own
+  Ultra Sigma / NI-VISA driver stack. The firmware can clearly complete a `*IDN?` command/reply cycle
+  correctly — the failure is specific to talking to the device over a generic WinUSB/libusb driver
+  binding, not the device itself. Since the identical stall reproduces byte-for-byte from two
+  independent libusb-based stacks (`LibUsbDotNet` and Python/pyusb) but not from NI-VISA, the real
+  cause is most likely a difference in the low-level initialization/handshake/timing sequence NI-VISA's
+  own driver performs before its first bulk transfer that a naive libusb
+  open→claim-interface→bulk-transfer sequence doesn't replicate — not a `dev-term` code bug in the
+  sense of wrong framing (framing was independently verified byte-correct), but not a dead end either.
+  **Next concrete step** (needs hands-on access to the hardware, not further guessing): capture a
+  working Ultra Sigma/NI-VISA `*IDN?` round-trip with Wireshark + USBPcap and diff the exact
+  control/bulk transfer sequence against what `UsbtmcTransport`/the Python diagnostic send — this is
+  the only way left to find the actual missing step rather than continuing to guess blindly.
+  `UsbtmcTransport`'s query/reply path remains **unverified end-to-end against real hardware** despite
+  the codec/framing/stall-recovery layers below it now being real-hardware-tested individually.
+  Original (retracted) investigation notes, kept for the record:
+  reading a query's reply from a real Rigol DM3000 consistently stalls the bulk-IN endpoint even with
+  correct framing/tagging and after stall recovery, `INITIATE_CLEAR`, and a full device reset — the
+  device's own Status Byte never sets MAV after receiving `*IDN?`, reproduced identically from a
+  second, independent USB stack (Python/pyusb). See `docs/changes/2026-09-23.md` for the full
+  investigation and this correction.
 - **New, resolved (real-hardware, 2026-09-23)**: `LibUsbDotNet.Device` (behind `IUsbDevice`) is a
   `SafeHandle`-backed `IDisposable` — every device object `UsbContext.List()` returns must be
   disposed once it's no longer needed, not just `Close()`d if it was opened, or its finalizer can run
