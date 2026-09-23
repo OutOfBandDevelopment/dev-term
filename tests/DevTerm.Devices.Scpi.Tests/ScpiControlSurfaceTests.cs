@@ -213,4 +213,35 @@ public sealed class ScpiControlSurfaceTests
 
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null));
     }
+
+    [TestMethod]
+    public async Task InvokeAsync_ParameterFieldId_IsANoOpRatherThanThrowing()
+    {
+        // Real-hardware-confirmed on the KA6003P's WPF control panel: ScpiUiDefinitionBuilder gives
+        // a multi-parameter command's own field an id of "{command.Id}.{parameter.Name}" (e.g.
+        // "vset.Voltage") so it's unique across the panel, but it's a value holder read by the
+        // command's own button, not a command in its own right. The generic
+        // ControlPanelMode/ControlPanelWindow renderers commit every field on blur/Enter by calling
+        // InvokeAsync with the field's own id like any other field — that must not throw here, or
+        // simply tabbing off the field (with no button click at all) crashes the app.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("freq.Frequency", "42");
+
+        transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_CustomCommandFieldId_IsANoOpRatherThanThrowing()
+    {
+        // Same bug shape as above, for the always-present "Custom Command" text field (id
+        // "customCommand") that sendCustom's ParameterFieldIds reads from.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync(ScpiUiDefinitionBuilder.CustomCommandFieldId, "*IDN?");
+
+        transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
