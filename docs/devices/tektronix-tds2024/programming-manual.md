@@ -1,17 +1,16 @@
-# Tektronix TDS2024 Remote Command Reference
+# Tektronix TDS2024 Remote Command Reference — RS-232 / TDS2MM Configuration
 
-Covers the command set used by the TDS200 / TDS1000 / TDS2000 / TPS2000 family, which includes the **TDS2024** (4-channel, 200 MHz, 1 GS/s). Source: Tektronix Programmer Manual 071-1075-02.
+This reference lists the commands supported by a **TDS2024** (4-channel, 200 MHz, 1 GS/s) fitted with a **TDS2MM Measurement Extension Module**, controlled over **RS-232**. Source: Tektronix Programmer Manual 071-1075-02.
+
+Two things this configuration implies:
+- **Math/FFT is already native to the TDS2024.** The TDS2MM module exists to add Math and Measurement commands to the *TDS200* series, which lacks them natively. On a TDS1000/TDS2000-family scope like the TDS2024, those functions are already built in — so the TDS2MM here just gives you the physical port, and the `MATH:*`/`MEASUrement:*` command set behaves identically to what a TDS2024 already provides.
+- **This module also has a GPIB port**, but since you're using it over RS-232, GPIB-only syntax details (EOI/END-message framing, GPIB device addressing) have been trimmed from this reference. Everything here is written for the RS-232 wire.
 
 ## Before you start
 
-The TDS2024 has **no built-in GPIB/RS-232 port**. You need one of these rear-mounted extension modules:
-
-| Module | GPIB | RS-232 | Notes |
-|---|---|---|---|
-| TDS2CM / TDS2CMA | Yes | Yes | Most common for bench GPIB control |
-| TDS2MEM | No | Yes | Adds CompactFlash storage + RS-232/GPIB pass-through commands |
-
-Without a module, none of these commands are reachable.
+- Connect via the module's RS-232 (DB-9) port, not the front panel — the TDS2024 has no built-in serial or GPIB port.
+- Set matching serial parameters on both ends using the `RS232:*` commands (§10) — baud rate, parity, and flow control must match your terminal/PC settings before anything else will respond.
+- The TDS2MM does **not** include the TDS2MEM's CompactFlash storage. That means `FILESystem:*`, `SAVe:IMAge`, `DATE`, `TIME`, and `HARDCopy:BUTTON` are **not available** in this configuration — they need a TDS2MEM module instead. They've been left out of this reference entirely; see §18 if you need them.
 
 ## Command syntax rules
 
@@ -26,13 +25,13 @@ Without a module, none of these commands are reachable.
   ACQuire:MODe AVErage;NUMAVg 16
   ```
   Never precede a `*`-star command with `:` or `;`.
-- **Terminators**: GPIB messages end with LF + EOI. RS-232 accepts CR, LF, CRLF, or LFCR.
+- **RS-232 message terminators**: outgoing terminator is controlled by `RS232:TRANsmit:TERMinator` (CR, LF, or CRLF). Incoming, the scope accepts CR, LF, CRLF, or LFCR regardless of that setting. If you send a two-character combo (CRLF/LFCR), the scope treats the first character as the terminator and silently ignores the second as a null command.
 - **Numeric argument types**:
   - `<NR1>` — signed integer (e.g. `16`)
   - `<NR2>` — float, no exponent (e.g. `1.25`)
   - `<NR3>` — float with exponent (e.g. `1.0E0`, `100E-3`)
 - **`<QString>`** — ASCII text in single or double quotes, max 1000 chars on return.
-- **`<Block>`** — binary data block: `#<n><len><data>`, where `<n>` is the digit-count of `<len>`, and `<len>` is the byte count that follows. Example: `#217<17 bytes>`.
+- **`<Block>`** — binary data block: `#<n><len><data>`, where `<n>` is the digit-count of `<len>`, and `<len>` is the byte count that follows. Example: `#217<17 bytes>`. Over RS-232, only use *definite*-length blocks (`#<n><len>...`) — indefinite-length blocks (`#0...<terminator>`) rely on a GPIB EOI line RS-232 doesn't have, so there's no reliable way to embed a terminator byte inside the data.
 - **Wildcard mnemonics**:
   - `CH<x>` — channel 1–4
   - `REF<x>` — reference waveform A–D
@@ -136,12 +135,8 @@ Runs internal self-calibration (equivalent to Utility menu → Do Self Cal). Dis
 | `CURSor:SELect:SOUrce` | Set/Query | Waveform the cursors measure |
 | `CURSor:VBArs?` | Query | Vertical bar cursor settings |
 | `CURSor:VBArs:DELTa?` | Query | Time/frequency distance between vertical-bar cursors |
-| `CURSor:VBArs:HDELTa?` *(TPS2000)* | Query | Same as `VBArs:DELTa?` |
-| `CURSor:VBArs:HPOS<x>?` *(TPS2000)* | Query | Waveform amplitude at cursor x |
 | `CURSor:VBArs:POSITION<x>` | Set/Query | Position of vertical bar cursor x |
-| `CURSor:VBArs:SLOPE?` *(TPS2000+Power)* | Query | dV/dt or dI/dt between cursors |
 | `CURSor:VBArs:UNIts` | Set/Query | Vertical-bar unit: seconds or Hertz |
-| `CURSor:VBArs:VDELTa?` *(TPS2000)* | Query | Vertical amplitude difference between vertical-bar cursors |
 
 **`CURSor:FUNCtion { HBArs | OFF | VBArs }`**
 - `HBArs` — horizontal bar cursors, measure vertical quantities (V, A, div, dB)
@@ -171,7 +166,7 @@ CURSor:HBArs:POSITION1 25.0E-3
 CURSor:VBArs:POSITION2 9.00E-6
 ```
 
-**`CURSor:*:DELTa?` / `:VDELTa?` / `:HDELTa?`** — read-only differences between the two active cursors (vertical or horizontal, respectively). Return `9.9E37` and raise event 221 if Trigger View is active.
+**`CURSor:HBArs:DELTa?` / `CURSor:VBArs:DELTa?`** — read-only differences between the two active cursors (vertical or horizontal, respectively). Return `9.9E37` and raise event 221 if Trigger View is active.
 
 ---
 
@@ -180,10 +175,9 @@ CURSor:VBArs:POSITION2 9.00E-6
 | Command | Type | Description |
 |---|---|---|
 | `DISplay?` | Query | All display settings |
-| `DISplay:BRIGHTness` *(TPS2000)* | Set/Query | LCD backlight brightness |
 | `DISplay:CONTRast` | Set/Query | LCD contrast |
 | `DISplay:FORMat` | Set/Query | YT vs XY display mode |
-| `DISplay:INVert` | Set/Query | Normal vs inverted mono display (not on TDS200) |
+| `DISplay:INVert` | Set/Query | Normal vs inverted mono display |
 | `DISplay:PERSistence` | Set/Query | Waveform persistence/accumulate time |
 | `DISplay:STYle` | Set/Query | Waveform draw style |
 
@@ -194,8 +188,6 @@ CURSor:VBArs:POSITION2 9.00E-6
 **`DISplay:STYle { VECtors | DOTs }`** — connect samples with lines, or show dots only.
 
 **`DISplay:CONTRast <NR1>`** — LCD contrast, typically 0–100.
-
-**`DISplay:BRIGHTness { 100 | 90 | 75 | 60 | 45 | 30 | 15 | 0 }`** *(TPS2000 only, not applicable to TDS2024)*.
 ```
 DISplay:FORMat YT
 DISplay:PERSistence?   -> :DISPLAY:PERSISTENCE OFF
@@ -203,46 +195,21 @@ DISplay:PERSistence?   -> :DISPLAY:PERSISTENCE OFF
 
 ---
 
-## 5. File System Commands (TDS2MEM module only)
-
-| Command | Type | Description |
-|---|---|---|
-| `FILESystem?` | Query | Current directory + free space |
-| `FILESystem:CWD` | Set/Query | Current working directory on CF card |
-| `FILESystem:DELEte` | Set | Delete a file |
-| `FILESystem:DIR?` | Query | List files in current directory |
-| `FILESystem:FORMat` | Set | Format the CompactFlash card |
-| `FILESystem:FREESpace?` | Query | Free space remaining |
-| `FILESystem:MKDir` | Set | Create a directory |
-| `FILESystem:REName` | Set | Rename a file |
-| `FILESystem:RMDir` | Set | Delete a directory |
-
-Notes: default directory is `A:\`. File/folder names use 8.3 naming (max 8 chars + `.` + 3-char extension). Wildcards (`*`, `%`, `?`) are **not** valid in names.
-
-```
-FILESystem:CWD "A:\DATA"
-FILESystem:DIR?
-FILESystem:DELEte "A:\DATA\WFM001.CSV"
-```
-
----
-
-## 6. Hard Copy (Print) Commands
+## 5. Hard Copy (Print) Commands
 
 | Command | Type | Description |
 |---|---|---|
 | `HARDCopy` | Set | Start or terminate a hard copy (print/screen dump) |
-| `HARDCopy:BUTTON` *(TDS2MEM/TPS2000)* | Set/Query | Function of the hardcopy button |
 | `HARDCopy:FORMat` | Set/Query | Output file/print format |
 | `HARDCopy:INKSaver` | Set/Query | Ink-saver (inverted background) mode |
 | `HARDCopy:LAYout` | Set/Query | Portrait vs landscape |
-| `HARDCopy:PORT` | Set/Query | Output port: RS232, GPIB, or Centronics |
+| `HARDCopy:PORT` | Set/Query | Output port |
 
 **`HARDCopy { STARt | STOP }`** — begins or aborts a print/hardcopy job.
 
-**`HARDCopy:FORMat { BMP | BMPColor | DESKJET | DPU411 | DPU412 | DPU3445 | EPSColor | EPSMono | EPSOn | INTERLEAF | JPEG | LASERJET | PCX | PCXCOLOR | PCXEPSON | RLE | THINKJET | TIFF }`** — output format (available options depend on connected printer/module).
+**`HARDCopy:FORMat { BMP | BMPColor | DESKJET | DPU411 | DPU412 | DPU3445 | EPSColor | EPSMono | EPSOn | INTERLEAF | JPEG | LASERJET | PCX | PCXCOLOR | PCXEPSON | RLE | THINKJET | TIFF }`** — output format (available options depend on connected printer).
 
-**`HARDCopy:PORT { RS232 | GPIB | CENTRONICS }`** — output interface. Note the TDS2MEM and TPS2000 have no GPIB port, so this option isn't valid on those configurations.
+**`HARDCopy:PORT { RS232 | GPIB | CENTRONICS }`** — output interface for the hardcopy job itself. On a TDS2MM this can legitimately be `GPIB` too (the module has both ports), but since you're running over RS-232, set it to `RS232` to route hardcopy output down the same serial link you're already using. `CENTRONICS` needs a physical parallel-printer port, which the TDS2MM doesn't provide.
 
 ```
 HARDCopy:PORT RS232
@@ -252,7 +219,7 @@ HARDCopy STARt
 
 ---
 
-## 7. Horizontal Commands
+## 6. Horizontal Commands
 
 | Command | Type | Description |
 |---|---|---|
@@ -284,7 +251,9 @@ HORizontal:SCAle?      -> 5.00E-4
 
 ---
 
-## 8. Math Commands
+## 7. Math Commands
+
+*(Native to the TDS2024's TDS2000-series firmware — fully present with the TDS2MM installed, same as it would be with any other communications module.)*
 
 | Command | Type | Description |
 |---|---|---|
@@ -296,29 +265,28 @@ HORizontal:SCAle?      -> 5.00E-4
 | `MATH:FFT:VERtical:POSition` | Set/Query | FFT vertical display position |
 | `MATH:FFT:VERtical:SCAle` | Set/Query | FFT vertical zoom |
 | `MATH:VERtical?` | Query | All math vertical parameters |
-| `MATH:VERtical:POSition` *(TPS2000)* | Set/Query | Math waveform display position |
-| `MATH:VERtical:SCAle` *(TPS2000)* | Set/Query | Math waveform display scale |
 
 **`MATH:DEFINE <QString>`** — sets the math expression, e.g. `"CH1-CH2"`, `"CH1+CH2"`, or `"FFT(CH1)"`. Available operators/functions depend on firmware but generally cover add/subtract between channels and FFT.
 ```
-MATH:DEFINE "CH1-CH2"
-MATH:DEFINE?    -> "CH1-CH2"
+MATH:DEFINE "FFT(CH1)"
+MATH:DEFINE?    -> "FFT(CH1)"
 ```
 
 **`MATH:FFT:HORizontal:SCAle <NR3>`** — horizontal (frequency axis) zoom factor for the FFT display.
 
 **`MATH:FFT:VERtical:SCAle <NR3>`** — vertical (amplitude axis) zoom/scale for the FFT display, typically in dB/division.
 
+Once an FFT math waveform is defined, you can pull its samples the same way as any other waveform — set `DATa:SOUrce MATH` and run the normal `CURVe?` transfer sequence (§15). `WFMPre:XUNit` will read `"Hz"` and `WFMPre:YUNit` will typically read `"dB"` for an FFT trace instead of the usual `"s"`/`"V"`.
+
 ---
 
-## 9. Measurement Commands
+## 8. Measurement Commands
 
 | Command | Type | Description |
 |---|---|---|
 | `MEASUrement?` | Query | All measurement parameters |
 | `MEASUrement:IMMed?` | Query | Immediate-measurement parameters |
 | `MEASUrement:IMMed:SOUrce1` | Set/Query | Source channel for immediate measurement |
-| `MEASUrement:IMMed:SOUrce2` *(TPS2000+Power)* | Set/Query | Second source for 2-source measurements |
 | `MEASUrement:IMMed:TYPe` | Set/Query | Which measurement to compute immediately |
 | `MEASUrement:IMMed:UNIts?` | Query | Units of the immediate measurement |
 | `MEASUrement:IMMed:VALue?` | Query | Result of the immediate measurement |
@@ -357,17 +325,13 @@ MEASUrement:IMMed:VALue?    -> 1.0000E3
 
 ---
 
-## 10. Miscellaneous Commands
+## 9. Miscellaneous Commands
 
 | Command | Type | Description |
 |---|---|---|
-| `AUTORange?` *(TPS2000)* | Query | Autorange parameters |
-| `AUTORange:SETTings` *(TPS2000)* | Set/Query | Which axes autorange adjusts |
-| `AUTORange:STATE` *(TPS2000)* | Set/Query | Autorange on/off |
 | `AUTOSet` | Set | Trigger an autoset |
 | `AUTOSet:SIGNAL?` | Query | Signal type found by the last autoset |
 | `AUTOSet:VIEW` | Set/Query | Autoset display view |
-| `DATE` *(TDS2MEM/TPS2000)* | Set/Query | System date |
 | `*DDT` | Set/Query | Command(s) to run on trigger/GET |
 | `FACtory` | Set | Reset to factory defaults |
 | `HDR` | Set/Query | Alias for `HEADer` |
@@ -380,7 +344,6 @@ MEASUrement:IMMed:VALue?    -> 1.0000E3
 | `REM` | Set | No-op / remark |
 | `*RST` | Set | Reset to default state |
 | `SET?` | Query | Alias for `*LRN?` |
-| `TIME` *(TDS2MEM/TPS2000)* | Set/Query | System time |
 | `*TRG` | Set | Force/software trigger (GET) |
 | `*TST?` | Query | Run self-test, return result |
 | `UNLock` | Set | Unlock the front panel |
@@ -422,7 +385,7 @@ CH1:SCAle?     -> 1.0E0
 
 ---
 
-## 11. RS-232 Commands
+## 10. RS-232 Commands
 
 | Command | Type | Description |
 |---|---|---|
@@ -449,7 +412,7 @@ RS232:HARDFlagging OFF
 
 ---
 
-## 12. Save and Recall Commands
+## 11. Save and Recall Commands
 
 | Command | Type | Description |
 |---|---|---|
@@ -459,8 +422,6 @@ RS232:HARDFlagging OFF
 | `RECAll:WAVEform` | Set | Recall a stored waveform into a reference slot |
 | `SAVe:SETUp` | Set | Save current setup |
 | `SAVe:WAVEform` | Set | Save a live/math waveform to a reference slot |
-| `SAVe:IMAge` *(TDS2MEM/TPS2000)* | Set | Save a screen image to a file |
-| `SAVe:IMAge:FILEFormat` *(TDS2MEM/TPS2000)* | Set/Query | Screen-image file format |
 
 **`*SAV <NR1>`** / **`*RCL <NR1>`** — save/recall the full instrument setup to/from one of the internal setup memory slots (`<NR1>` is the slot number, typically 1–10).
 ```
@@ -470,20 +431,16 @@ RS232:HARDFlagging OFF
 
 **`SAVe:WAVEform <wfm>,REF<x>`** — copies a live channel or math waveform into non-volatile reference memory.
 ```
-SAVe:WAVEform CH1,REFA
+SAVe:WAVEform MATH,REFA
 ```
 
 **`RECAll:WAVEform REF<x>,<wfm>`** — the reverse: loads a stored reference waveform back into a channel/math slot for redisplay.
 
-**`SAVe:IMAge <QString>`** *(needs TDS2MEM/TPS2000 storage)* — writes a screen capture to the given file path on CompactFlash.
-```
-SAVe:IMAge:FILEFormat BMP
-SAVe:IMAge "A:\SCREEN01.BMP"
-```
+Note: `SAVe:IMAge` (screen-capture-to-file) isn't available here — it needs the TDS2MEM's CompactFlash storage, not present on a TDS2MM. To get a screen image over this link, use the `HARDCopy` commands (§5) instead, which stream the image out over RS-232 rather than saving to a card.
 
 ---
 
-## 13. Status and Error Commands
+## 12. Status and Error Commands
 
 Standard IEEE 488.2 status/event commands (all begin with `*` except a few Tek extensions).
 
@@ -528,7 +485,7 @@ ALLEv?
 
 ---
 
-## 14. Trigger Commands
+## 13. Trigger Commands
 
 | Command | Type | Description |
 |---|---|---|
@@ -594,19 +551,17 @@ TRIGger:MAIn:PULse:WIDth:WIDth 100E-6
 
 ---
 
-## 15. Vertical Commands
+## 14. Vertical Commands
 
 | Command | Type | Description |
 |---|---|---|
 | `CH<x>?` | Query | All vertical settings for channel x |
 | `CH<x>:BANdwidth` | Set/Query | 20 MHz bandwidth limit on/off |
 | `CH<x>:COUPling` | Set/Query | AC / DC / GND coupling |
-| `CH<x>:CURRENTPRObe` *(TPS2000)* | Set/Query | Current-probe attenuation |
 | `CH<x>:INVert` | Set/Query | Invert the channel |
 | `CH<x>:POSition` | Set/Query | Vertical position (divisions) |
 | `CH<x>:PRObe` | Set/Query | Probe attenuation factor |
 | `CH<x>:SCAle` (`:VOLts`) | Set/Query | Volts/division |
-| `CH<x>:YUNit` *(TPS2000)* | Set/Query | Units: V or A |
 | `SELect?` | Query | Which waveforms are displayed |
 | `SELect:<wfm>` | Set/Query | Show/hide a specific waveform |
 
@@ -621,7 +576,7 @@ CH1:SCAle 100E-3      ! 100 mV/div
 
 **`CH<x>:POSition <NR3>`** — vertical position in divisions from center; valid range depends on the current `CH<x>:SCAle` (e.g. ±10 divs at 2 V/div, ±1000 divs at 2 mV/div — see manual Table 2-27 for the full table).
 
-**`CH<x>:PRObe { 1 | 10 | 20 | 50 | 100 | 500 | 1000 }`** — sets the attenuation factor the scope assumes for the attached probe (most 1X/10X passive probes use `1` or `10`).
+**`CH<x>:PRObe { 1 | 10 | 100 | 1000 }`** — sets the attenuation factor the scope assumes for the attached probe (most 1X/10X passive probes use `1` or `10`; `20`, `50`, and `500` are additional TPS2000-only factors and aren't valid on the TDS2024).
 ```
 CH1:PRObe 10
 ```
@@ -637,7 +592,7 @@ SELect?     -> :SELECT:CH1 1;CH2 0;CH3 0;CH4 0;MATH 0
 
 ---
 
-## 16. Waveform Transfer Commands
+## 15. Waveform Transfer Commands
 
 This is the group you'll use most for pulling acquired data off the scope into a PC.
 
@@ -754,7 +709,7 @@ Notes:
 
 ---
 
-## 17. Worked Example: Full Acquisition Script
+## 16. Worked Example: Full Acquisition Script
 
 A typical automated capture sequence, combining several command groups:
 
@@ -787,23 +742,25 @@ WFMPre?
 CURVe?
 ```
 
-## 18. Common Gotchas
+## 17. Common Gotchas
 
-- **No native GPIB on TDS2024** — you must have the TDS2CM/TDS2CMA (or TDS2MEM for RS-232-only + storage) module installed; check `Table: Oscilloscope communication protocol` above for which module supports which interface.
+- **Serial settings must match on both ends first** — wrong baud/parity/flow-control means nothing responds at all, with no error to diagnose remotely; double check `RS232:*` (§10) against your terminal/PC settings before troubleshooting anything else.
 - **Star commands (`*...`) can never be preceded by `:` or `;`** when concatenating — the scope silently ignores the star command if you do.
 - **Only the *last* query in a concatenated string can return arbitrary/binary data** (e.g. `ID?`, `CURVe?`) — otherwise you'll get event 440 (Query UNTERMINATED... mid-string).
 - **Trigger View mode** (front-panel TRIG VIEW button held) makes the scope ignore most *set* commands and forces many cursor/measurement queries to return `9.9E37` with event 221.
 - **Waveform record is capped at 2500 points** — `DATa:STARt`/`DATa:STOP` can't exceed that regardless of acquisition mode.
 - **Use `*OPC?`, not polling `ACQuire:STATE?`,** to know when a single-sequence acquisition, hardcopy, or self-cal has actually finished.
 - **Abbreviate freely** — only the capitalized letters in each mnemonic are required, e.g. `ACQuire:NUMAVg` → `ACQ:NUMA`.
+- **Binary block transfers over RS-232 are slower and less robust than GPIB** — no EOI line to mark end-of-data, and flow control (`RS232:HARDFlagging`/`:SOFTFlagging`) matters more at higher baud rates or with large `CURVe?` transfers (2500 bytes at width=1). If you see truncated/garbled waveform data, try a lower baud rate or `ASCIi` encoding first to rule out a flow-control mismatch.
 
-## 19. Command Groups Not Applicable to the TDS2024
+## 18. What's Different With This Configuration (TDS2MM, RS-232)
 
-These groups exist in the shared manual but only apply to other models in the family — skip them for a TDS2024:
-- **Power and Battery-Related Commands** (`POWer:*`) — TPS2000 handheld-only.
-- **Power Measurement Commands** (`HARmonics:*`, `SWLoss:*`, `POWerANALYSIS:*`, `WAVEFORMANALYSIS:*`) — require the TPS2PWR1 application key on a TPS2000.
-- `CH<x>:CURRENTPRObe`, `CH<x>:YUNit`, `DISplay:BRIGHTness`, `AUTORange:*` — TPS2000-only.
-- `DATE` / `TIME` — require TDS2MEM or TPS2000 (not available with only a TDS2CM/TDS2CMA module).
+Everything in this document works as written with a TDS2MM module over RS-232. Two things worth knowing if your setup ever changes:
+
+- **If you switch to GPIB** (the TDS2MM supports it too): binary block transfers become far more reliable (EOI marks the end of data cleanly), and you can drop the RS-232-specific caveats in §10/§18 above. `HARDCopy:PORT GPIB` becomes usable at that point.
+- **If you add/swap to a TDS2MEM module**: you gain `FILESystem:*`, `SAVe:IMAge`/`:FILEFormat`, `DATE`, `TIME`, and `HARDCopy:BUTTON` (all omitted here since TDS2MM doesn't support them) — but you lose GPIB, since TDS2MEM is RS-232 only.
+
+Commands excluded from this document entirely because the TDS2024 hardware can't support them under **any** module: `POWer:*`, `HARmonics:*`, `SWLoss:*`, `POWerANALYSIS:*`, `WAVEFORMANALYSIS:*` (TPS2000 + Power Analysis application only), `AUTORange:*`, `CH<x>:CURRENTPRObe`, `CH<x>:YUNit`, `DISplay:BRIGHTness`, `MATH:VERtical:POSition`/`:SCAle`, `MEASUrement:IMMed:SOUrce2`, `CURSor:VBArs:HDELTa?`/`:HPOS<x>?`/`:VDELTa?`/`:SLOPE?` — these are all TPS2000-only, several additionally requiring the TPS2PWR1 Power Analysis key.
 
 ---
 
