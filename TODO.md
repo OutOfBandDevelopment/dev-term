@@ -60,8 +60,8 @@ Completed work is logged by date under `docs/changes/`.
   - **K8055 digital inputs never read as anything but 0** — `K8055Decoder` read `digitalInRaw` from
     byte 0 of the 9-byte input frame, but byte 0 is the same leading HID report-ID byte confirmed
     elsewhere in this codebase (always `0x00`, never real device data), so it could never have
-    carried digital-input state. Fixed to read byte 1 instead. Code-inspection fix, not yet
-    reconfirmed against real hardware.
+    carried digital-input state. Fixed to read byte 1 instead. **Confirmed against real hardware
+    2026-09-23**: digital inputs now read correctly.
   - **Busylight's "Custom..." button did nothing** — added `ButtonControl.ColorPickerTargetCommandId`,
     a new generic, device-agnostic field on the UI-definitions model (any device's button can declare
     "open a modal RGB/HSV color picker; on confirm, send `\"r,g,b\"` to this command id" without the
@@ -315,11 +315,14 @@ Completed work is logged by date under `docs/changes/`.
     detected-devices/detected-ports lists need a Refresh button.
   - **Busylight panel**: the custom-color dialog's values don't persist between openings (see also the
     related UX item moved to `BACKLOG.md`).
-  - **Terminal screen (both front ends)**: the File menu's Connect/Disconnect item doesn't reflect (or
-    doesn't visibly reflect) the current connection state; the window title reportedly doesn't include
-    the loaded profile name even though this was believed already landed (2026-09-18's "Architect's
-    live window title" — needs re-checking, may be a regression); the send-line history (2026-09-23's
-    Up/Down recall) adds a duplicate entry when the same line is sent twice in a row.
+  - **Terminal screen (both front ends)**: the window title reportedly doesn't include the loaded
+    profile name even though this was believed already landed (2026-09-18's "Architect's live window
+    title" — needs re-checking, may be a regression); the send-line history (2026-09-23's Up/Down
+    recall) adds a duplicate entry when the same line is sent twice in a row. **The File menu's
+    Connect/Disconnect item's connection-state reflection, reported broken above, was re-checked by
+    the user 2026-09-23 and now looks correct** — no code change was made for it in today's session,
+    so this is a confirmed-by-re-check resolution, not a root-caused fix; flagged here in case it
+    regresses.
   - **Device presenter "Custom Command" section** (SCPI and any device profile using the always-present
     custom-command escape hatch): pressing Enter in the "Command" field throws an exception; clicking
     "Send" with a value typed in "Command" also throws — likely the same root cause, not yet
