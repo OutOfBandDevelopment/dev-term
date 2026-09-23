@@ -31,21 +31,22 @@ ordered against the rest.
   **Tektronix TDS2024** (has a GPIB option, currently fitted with a Centronics module instead) and
   the **HP 34401A** (already in the SCPI proposal's device table, GPIB/RS-232).
 - **USBTMC transport** — the USB class most bench equipment (Rigol/Keysight/etc.) actually uses for
-  local USB control; neither HID nor serial, needs its own raw-USB implementation — IVI.NET/VISA was
+  local USB control; neither HID nor serial, needed its own raw-USB implementation — IVI.NET/VISA was
   considered and rejected (Windows/.NET-Framework-oriented, plus a separate proprietary native
-  runtime install, unlike every other dev-term transport). Library choice now decided (LibUsbDotNet,
-  not WinUSB) and **device discovery built and verified against real hardware** (2026-09-23,
-  `DevTerm.Transports.Usbtmc`'s `SystemUsbtmcDeviceDiscovery`, `--listusbtmcdevices true`) — found
-  four real USBTMC-class Rigol instruments (VID `1AB1`) correctly, but also found that opening any of
-  them fails until each is rebound to a WinUSB-compatible driver via Zadig, a real per-machine setup
-  step that blocks everything past bare enumeration. The full `UsbtmcTransport : ITransport` (bulk
-  transfer framing/reassembly, USB488 remote/local control) is still not built — see
-  [`docs/design/usbtmc-transport.md`](docs/design/usbtmc-transport.md) for protocol framing,
-  cancellation caveats, and the driver-binding finding. Real target hardware: the plain **Rigol
-  DG1022** (no LAN option, unlike the DG1022Z/DG1062Z) and the **Rigol DS1102E** oscilloscope
-  (confirmed to have USB, likely USBTMC for this era of Rigol scope but not yet confirmed for this
-  specific unit) — neither of these two specifically has been checked yet; the four devices found
-  2026-09-23 are a different set of Rigol instruments already on the bench.
+  runtime install, unlike every other dev-term transport). Built on LibUsbDotNet
+  (`DevTerm.Transports.Usbtmc`: `UsbtmcTransport`/`SystemUsbtmcDevice`/`UsbtmcCodec`), device
+  enumeration/opening/stall-recovery all verified against real Rigol hardware (2026-09-23) after a
+  per-machine Zadig/WinUSB driver rebind (see [`docs/design/usbtmc-transport.md`](docs/design/usbtmc-transport.md)
+  for the full setup). **Known, deprioritized gap**: reading a query's reply (`*IDN?` etc.) stalls
+  the bulk-IN endpoint (`Error.Pipe`) against at least two real Rigol multimeters (DM3000, DM3058E) —
+  confirmed NOT a firmware limitation (the same units work fine under Rigol's own Ultra
+  Sigma/NI-VISA), so it's specifically something about generic WinUSB/libusb access these Rigol units
+  don't like; the actual fix needs a USB packet capture of a working NI-VISA exchange to diff against,
+  which hasn't been done. Parked rather than chased further with more blind guesses — see
+  `docs/design/usbtmc-transport.md`'s "Open questions" and `docs/changes/2026-09-23.md` for the full
+  investigation. Real target hardware still to check: the plain **Rigol DG1022** (no LAN option,
+  unlike the DG1022Z/DG1062Z) and the **Rigol DS1102E** oscilloscope (confirmed to have USB, likely
+  USBTMC for this era of Rigol scope but not yet confirmed for this specific unit).
 - Declarative command/response schema for device control modules (send template + response
   pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
   baseline for common bench-instrument commands) — see the new section in

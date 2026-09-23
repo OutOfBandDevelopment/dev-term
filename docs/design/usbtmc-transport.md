@@ -269,6 +269,12 @@ own repeated practice of not trusting a fix until checked against real hardware:
   working Ultra Sigma/NI-VISA `*IDN?` round-trip with Wireshark + USBPcap and diff the exact
   control/bulk transfer sequence against what `UsbtmcTransport`/the Python diagnostic send — this is
   the only way left to find the actual missing step rather than continuing to guess blindly.
+  **Deprioritized (2026-09-23)**: the user opted to park this rather than chase further blind guesses
+  or spend time on a packet capture right now — Ultra Sigma/NI-VISA remains the working path for these
+  specific Rigol units in the meantime. Don't re-attempt already-ruled-out mitigations (stall recovery,
+  `INITIATE_CLEAR`, full device reset, smaller `MaxTransferSize`, alternate terminator/`TermCharEnabled`
+  variants — all tried, see below) without new evidence; a packet capture is the actual unblocking step
+  whenever this gets picked back up.
   `UsbtmcTransport`'s query/reply path remains **unverified end-to-end against real hardware** despite
   the codec/framing/stall-recovery layers below it now being real-hardware-tested individually.
   Original (retracted) investigation notes, kept for the record:
