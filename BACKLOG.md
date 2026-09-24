@@ -12,6 +12,8 @@ Prioritized per direction given 2026-09-15: BLE serial is the next transport to 
 RFC 2217/UDP), since real target hardware exists. USBTMC is newly-scoped, not yet ordered against
 the rest.
 
+### Transports
+
 - **BLE transport** (`DevTerm.Transports.Ble`), cross-platform by design via a pluggable per-OS
   adapter seam (Windows via `Windows.Devices.Bluetooth` first; Linux/BlueZ and macOS/CoreBluetooth
   addable later, including as community/self-contributed adapters) — see
@@ -88,10 +90,6 @@ the rest.
   respectively). This means `ReadReply`'s empty-list-vs-null gap above isn't a special case of two bad
   instruments — it can silently corrupt any long real-hardware session on any USBTMC device, which
   should raise this fix's priority.
-- Declarative command/response schema for device control modules (send template + response
-  pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
-  baseline for common bench-instrument commands) — see the new section in
-  `docs/design/device-control-modules.md`.
 - RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
   `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
   `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
@@ -103,6 +101,9 @@ the rest.
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
   resolving against a fresh capture before implementing, not just the existing notes.
+
+### Plugin architecture, decoders & presenters
+
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
@@ -116,6 +117,16 @@ the rest.
   and captures/exports them, phased so a graphics-free capture-and-auto-save capability (TUI: save
   as `{device}_{timestamp}.{ext}`; WPF: same, plus a free live preview for image formats WPF can
   already decode natively) ships ahead of the harder HPGL/PostScript/PCL rendering work above.
+- Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
+  `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
+  single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
+
+### Device control modules & hardware profiles
+
+- Declarative command/response schema for device control modules (send template + response
+  pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
+  baseline for common bench-instrument commands) — see the new section in
+  `docs/design/device-control-modules.md`.
 - Device control modules (control surface + telemetry decode/plot) — see the declarative-schema
   item above for the command/response definition piece specifically.
   [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is **implemented**
@@ -138,11 +149,11 @@ the rest.
   syntax, not a state-gating quirk, needs fixing against the DG1000Z series manual. The sibling
   `COUPling:FREQuency:*`/`COUPling:PHASe:*` families and `COUPling:AMPLitude:DEViation?`/
   `COUNter:STATe?`/`COUNter:COUPling?` are confirmed **valid** (consistent non-error replies across
-  repeats). Separately, a new deterministic pattern (not the ~6% random drop described below):
-  isolating single invalid queries showed the query *immediately following* a `-113` reply is
-  reliably swallowed with no reply at all, every time — worth a closer look at whether the firmware
-  or the transport is responsible before assuming it's the same bug as the random-drop one. The
-  **Rigol DG1022** profile
+  repeats). Separately, a new deterministic pattern (not the ~6% random drop described in the
+  USBTMC transport item above): isolating single invalid queries showed the query *immediately
+  following* a `-113` reply is reliably swallowed with no reply at all, every time — worth a closer
+  look at whether the firmware or the transport is responsible before assuming it's the same bug as
+  the random-drop one. The **Rigol DG1022** profile
   remains unconfirmed; verifying it is blocked on the
   USBTMC bulk-IN stall noted above (this unit never answered a single query all session, unlike
   DS1102E which worked earlier in the day before also becoming stuck — see that note for detail). No
@@ -171,26 +182,40 @@ the rest.
   batch-program format is not — see that proposal's open question), [Velleman K8055](docs/design/proposals/velleman-k8055-protocol.md)
   (already owned, simplest of the binary proposals), and [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md)
   (plain serial via an already-built adapter cable, buildable today like SCPI).
-- Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
-  `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
-  single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
-- **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
-  for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
-  detail on each increment). Still open:
-  Prioritized per direction given 2026-09-16, with the serial-port naming item moved to lower
-  priority. ~~Export-selected/export-all as a zip~~ landed 2026-09-16: multi-select in the profiles
-  list (WPF `ListBox.SelectionMode="Extended"`, TUI `ListView.MarkMultiple`/`ShowMarks`), Export
-  Selected/Export All (one `{name}.json` per profile in a zip), and zip-aware Import with per-name
-  Replace/Rename/Skip conflict resolution (`ConnectionEditorViewModel.ResolveZipImportConflict`) —
-  see `docs/changes/2026-09-16.md` and `docs/specs/connection-editor.md`. Its two follow-ups (bulk
-  profile removal and a wholesale "delete all, then import" option) both landed 2026-09-18, as did
-  the Windows half of a long/short name for detected serial ports.
-  - **Detected serial port descriptions on Linux/macOS** — the Windows description landed
-    2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
-    Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
-  - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
-    connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
-    IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.
+- **Tektronix 2230 — decided direction, not yet built**: rather than continuing to reuse
+  `ScpiControlSurface`/`ScpiReplyPresenter` as more commands get confirmed, build a separate "Text
+  Command" device module (`DevTerm.Devices.TextCommand`? — mirroring `DevTerm.Devices.Scpi`'s shape:
+  profile/control-surface/reply-presenter) that allows more generic command strings than SCPI's
+  `{Name}`-token templates assume. This resolves
+  [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)'s own "why this
+  isn't (fully) folded into the SCPI module" open question in favor of the separate-module option,
+  once real-hardware probing (still needed — see that doc) turns up enough of the 2230's command set
+  to justify it. (The reported terminator correction, `\r` not `\n`, was already applied and
+  reconfirmed 2026-09-23 — see `docs/changes/2026-09-23.md`.)
+
+### Connection Editor
+
+**Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
+for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
+detail on each increment). Still open — prioritized per direction given 2026-09-16, with the
+serial-port naming item moved to lower priority. ~~Export-selected/export-all as a zip~~ landed
+2026-09-16: multi-select in the profiles list (WPF `ListBox.SelectionMode="Extended"`, TUI
+`ListView.MarkMultiple`/`ShowMarks`), Export Selected/Export All (one `{name}.json` per profile in
+a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resolution
+(`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
+`docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
+all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
+detected serial ports.
+
+- **Detected serial port descriptions on Linux/macOS** — the Windows description landed
+  2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
+  Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
+- ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
+  connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
+  IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.
+
+### Device manifests & shared UI framework
+
 - Once device manifest support is further along, build an editor for it — at least a default
   render for request/response messages, ideally a presentation editor. New field types this implies
   beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart
@@ -218,29 +243,9 @@ the rest.
   field groups without extension, and whether the Connection Editor's existing
   `ConnectionEditorViewModel`/`RelayCommand` binding layer sits *under* the render engine (rendered
   controls still bind to the same view model) or gets subsumed by it.
-- **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
-  front ends.** Neither has any theme support today; both currently just take whatever colors their
-  framework defaults to. Two separate investigations before designing anything, per this project's
-  own "check before assuming" habit:
-  - **WPF**: .NET's newer Fluent theme for WPF (`ThemeMode` = Light/Dark/System) may already cover
-    light/dark for free on `net10.0-windows` — needs confirming against this project's actual TFM/
-    styles before assuming it's available, not assumed from memory of the feature's announcement.
-  - **TUI**: Terminal.Gui v2.5.0 has its own `Scheme`/`Attribute` system with real RGB colors (not
-    just 16 named ones — confirmed this session via `Cell.Attribute.Foreground`/`Background` while
-    building `TuiScreenshot`) and a `Color.Colors16`/`ColorName16` palette; check whether it already
-    ships swappable named schemes before building light/dark switching from scratch.
-  - **Custom profiles** (a user-defined named palette, not just a light/dark toggle) is the bigger
-    ask on top of either — likely wants its own saved-profile mechanism, possibly modeled on how
-    `ConnectionProfileStore` already saves/lists/loads named JSON files under `~/.dev-term/`, rather
-    than a new storage pattern.
-- A logger mode — capture every sent/received message with a direction prefix and a sequence
-  number, for later review (not the same as the rendering-presenter export formats above).
-- **A custom `DevTerm.Analyzers` Roslyn project**, for coding standards that are specific to this
-  codebase's own semantics and can't be expressed via `.editorconfig`/StyleCop.Analyzers (see
-  `docs/coding-standards.md`, landed 2026-09-16) — e.g. a project-specific rule like "every
-  `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
-  constraints list for why that one matters). Deliberately not built yet: no such rule has actually
-  been declared that a generic analyzer can't already cover — build it once one is.
+
+### Device control panel UX & theming
+
 - **Device control panel UX polish, from real-hardware use of the SCPI/K8055/Busylight panels
   (Architect notes, 2026-09-23)** — applies to `ControlPanelMode`/`ControlPanelWindow` generically,
   not one device:
@@ -262,16 +267,35 @@ the rest.
   alongside the named presets, with a swatch previewing the currently-configured custom color before
   entering the picker; the picker's last-used values should persist across re-opening it (currently
   reset each time — filed as a bug in `TODO.md`); Enter in the picker should act like clicking Apply.
-- **Tektronix 2230 — decided direction, not yet built**: rather than continuing to reuse
-  `ScpiControlSurface`/`ScpiReplyPresenter` as more commands get confirmed, build a separate "Text
-  Command" device module (`DevTerm.Devices.TextCommand`? — mirroring `DevTerm.Devices.Scpi`'s shape:
-  profile/control-surface/reply-presenter) that allows more generic command strings than SCPI's
-  `{Name}`-token templates assume. This resolves
-  [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)'s own "why this
-  isn't (fully) folded into the SCPI module" open question in favor of the separate-module option,
-  once real-hardware probing (still needed — see that doc) turns up enough of the 2230's command set
-  to justify it. (The reported terminator correction, `\r` not `\n`, was already applied and
-  reconfirmed 2026-09-23 — see `docs/changes/2026-09-23.md`.)
+- **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
+  front ends.** Neither has any theme support today; both currently just take whatever colors their
+  framework defaults to. Two separate investigations before designing anything, per this project's
+  own "check before assuming" habit:
+  - **WPF**: .NET's newer Fluent theme for WPF (`ThemeMode` = Light/Dark/System) may already cover
+    light/dark for free on `net10.0-windows` — needs confirming against this project's actual TFM/
+    styles before assuming it's available, not assumed from memory of the feature's announcement.
+  - **TUI**: Terminal.Gui v2.5.0 has its own `Scheme`/`Attribute` system with real RGB colors (not
+    just 16 named ones — confirmed this session via `Cell.Attribute.Foreground`/`Background` while
+    building `TuiScreenshot`) and a `Color.Colors16`/`ColorName16` palette; check whether it already
+    ships swappable named schemes before building light/dark switching from scratch.
+  - **Custom profiles** (a user-defined named palette, not just a light/dark toggle) is the bigger
+    ask on top of either — likely wants its own saved-profile mechanism, possibly modeled on how
+    `ConnectionProfileStore` already saves/lists/loads named JSON files under `~/.dev-term/`, rather
+    than a new storage pattern.
+
+### Tooling
+
+- **A custom `DevTerm.Analyzers` Roslyn project**, for coding standards that are specific to this
+  codebase's own semantics and can't be expressed via `.editorconfig`/StyleCop.Analyzers (see
+  `docs/coding-standards.md`, landed 2026-09-16) — e.g. a project-specific rule like "every
+  `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
+  constraints list for why that one matters). Deliberately not built yet: no such rule has actually
+  been declared that a generic analyzer can't already cover — build it once one is.
+
+### Logging
+
+- A logger mode — capture every sent/received message with a direction prefix and a sequence
+  number, for later review (not the same as the rendering-presenter export formats above).
 
 ## Research (not backlog-ready)
 
