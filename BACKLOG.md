@@ -22,33 +22,6 @@ the rest.
   a [DER EE DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md), whose optical
   (IR) UART output is bridged to BLE via a custom adapter already built — unblocks that proposal
   once built. Still need: which GATT profile the custom adapter actually exposes (NUS or custom).
-- **USBTMC transport** — built on LibUsbDotNet (`DevTerm.Transports.Usbtmc`: `UsbtmcTransport`/
-  `SystemUsbtmcDevice`/`UsbtmcCodec`); IVI.NET/VISA was considered and rejected (Windows/.NET-
-  Framework-oriented, needs a separate proprietary native runtime, unlike every other dev-term
-  transport). Device enumeration/opening verified against real Rigol hardware after a per-machine
-  Zadig/WinUSB driver rebind (see `docs/design/usbtmc-transport.md`). The bulk-IN reassembly bug that
-  caused intermittent "communication lockups" (DG1022/DS1102E/DM3058E), plus a compounding
-  empty-reply-vs-null gap that could silently drop any USBTMC device's reply with no error, are both
-  fixed — see
-  [`docs/design/features/usbtmc-bulk-in-reassembly-fix.md`](docs/design/features/usbtmc-bulk-in-reassembly-fix.md)
-  and `docs/changes/2026-09-24.md`. **Still open:**
-  - **DG1022 stuck at the device/USB level**, unresolved by the reassembly fix — every bulk-IN read
-    attempt returns zero bytes regardless of retries or power-cycling (power-cycling did clear a
-    similar stall once on the DM3058E, but did not reliably fix the DG1022/DS1102E on a later
-    attempt — not a dependable recovery step). The `INITIATE_CLEAR`/`CHECK_CLEAR_STATUS`/
-    `libusb_clear_halt` recovery pattern
-    (`docs/protocols/usbtmc/USBTMC-libusb-winusb-implementation-guide.md` §7.5) is the most likely
-    real fix, needing new `IUsbtmcDevice`/`SystemUsbtmcDevice` control-transfer support the
-    reassembly fix's own scope explicitly excluded ("Do not change `SystemUsbtmcDevice.cs`") — not
-    yet implemented.
-  - **DG1062Z's ~6% silently-dropped-reply rate** (found via a 348-command sweep, 2026-09-24) **is
-    likely improved but not re-confirmed** — the empty-vs-null gap the reassembly fix closed was the
-    most consistent explanation (no exception, no error, the next query's reply just appears one line
-    early), but the sweep hasn't been re-run against the fixed code to confirm the drop rate actually
-    changed rather than just changing how a drop is reported.
-  - The DG1022 and DS1102E share USB PID `0x0588`; the DG1022's own descriptor misreports its series
-    as "DG3000" rather than "DG1000" — a serial number, not VID/PID alone, is needed to target one
-    specifically (see "USBTMC device identity has no `DevicePath`-equivalent field" below).
 - RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
   `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
   `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
@@ -86,45 +59,13 @@ the rest.
   pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
   baseline for common bench-instrument commands) — see the new section in
   `docs/design/device-control-modules.md`.
-- Device control modules (control surface + telemetry decode/plot) — see the declarative-schema
-  item above for the command/response definition piece specifically.
-  [SCPI instrument control](docs/design/features/scpi-instrument-control.md) is **implemented**
-  (`DevTerm.Devices.Scpi`) — the first real declarative-schema instance, needing no new transport
-  for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
-  Real-hardware-confirmed: HP/Agilent/Keysight 34401A, both Korad KA3005P/KA6003P, Rigol DS1102E,
-  Rigol DM3058E (full 83-query paced sweep), and Rigol DG1062Z (full 174-query paced sweep) — see
-  `docs/changes/2026-09-23.md`/`2026-09-24.md` and `docs/test/` for the session reports.
   **Still open:**
-  - **Rigol DG1022 profile remains unconfirmed** — blocked on the USBTMC bulk-IN stall above (this
-    unit never answered a single query in any session so far).
-  - **DG1062Z profile-syntax defect cluster** (2026-09-24, each isolated and repeated 3-5x to
-    confirm): `ROSCillator:SOURce?`, `COUPling:AMPLitude:STATe?/:MODE?/:RATio?`, and every
-    `COUNter:CURRent:FREQuency?/:PERiod?/:DUTYcycle?/:PWIDth?/:NWIDth?`, `COUNter:SENSitivity?`,
-    `COUNter:HFR?`, and `COUNter:TRIGger:LEVel?` are rejected outright
-    (`-113,"Undefined header; keyword cannot be found"`) regardless of the frequency counter's own
-    enabled state — genuine wrong syntax against the DG1000Z series manual, not yet fixed. (The
-    sibling `COUPling:FREQuency:*`/`COUPling:PHASe:*` families and `COUPling:AMPLitude:DEViation?`/
-    `COUNter:STATe?`/`COUNter:COUPling?` are confirmed valid.) Separately, the query immediately
-    following any `-113` error reply is reliably swallowed with no reply at all, every time — worth
-    checking whether the firmware or the transport is responsible before assuming it's the same bug
-    as the DG1062Z drop-rate item above.
-  [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
+  - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
   transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
   transport dependency (USB HID) is now built, but it still needs its HID report-framing question
   resolved (see that proposal's open questions) before implementing the decoder.
-  [Favero fencing protocol](docs/design/proposals/favero-fencing-protocol.md) is **deprioritized** —
-  no hardware access to test against anymore; kept as a documented proposal only.
-  [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
+  - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
   already-built adapter cable, no new transport needed) remains buildable today, like SCPI was.
-- **Tektronix 2230 — decided direction, not yet built**: rather than continuing to reuse
-  `ScpiControlSurface`/`ScpiReplyPresenter` as more commands get confirmed, build a separate "Text
-  Command" device module (mirroring `DevTerm.Devices.Scpi`'s shape: profile/control-surface/
-  reply-presenter) that allows more generic command strings than SCPI's `{Name}`-token templates
-  assume. This resolves
-  [tektronix-2230-protocol.md](docs/design/features/tektronix-2230-protocol.md)'s own "why this
-  isn't (fully) folded into the SCPI module" open question in favor of the separate-module option,
-  once real-hardware probing (still needed — see that doc) turns up enough of the 2230's command set
-  to justify it.
 
 ### Connection Editor
 
@@ -148,11 +89,6 @@ detected serial ports.
   row when `ConnectionEditorViewModel.ConnectedDeviceNotFound` is true (see
   `docs/changes/2026-09-24.md`'s DevicePath/SerialNumber fix); `DeviceProfilesWindow.xaml` (WPF)
   has no equivalent yet.
-- **USBTMC device identity has no `DevicePath`-equivalent field** — HID's `SerialNumber`/
-  `DevicePath` two-tier match (see `docs/changes/2026-09-24.md`) fixed disambiguating multiple
-  same-VID/PID, serial-less HID devices; `UsbtmcDeviceDescriptor`/`UsbtmcTransportOptions` have no
-  matching field, so a serial-less USBTMC instrument (less likely in practice than a serial-less
-  HID gadget, but not ruled out) still can't be uniquely identified the same way.
 
 ### Device manifests & shared UI framework
 
@@ -218,10 +154,6 @@ detected serial ports.
     just 16 named ones — confirmed this session via `Cell.Attribute.Foreground`/`Background` while
     building `TuiScreenshot`) and a `Color.Colors16`/`ColorName16` palette; check whether it already
     ships swappable named schemes before building light/dark switching from scratch.
-  - **Custom profiles** (a user-defined named palette, not just a light/dark toggle) is the bigger
-    ask on top of either — likely wants its own saved-profile mechanism, possibly modeled on how
-    `ConnectionProfileStore` already saves/lists/loads named JSON files under `~/.dev-term/`, rather
-    than a new storage pattern.
 
 ### Tooling
 

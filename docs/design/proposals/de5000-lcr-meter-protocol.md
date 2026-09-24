@@ -53,11 +53,6 @@ this one is gated on a transport that's already scoped and has real target hardw
 - **Fully specified, fixed-size, checksum-free framing** — a constant 17-byte packet with known
   header (`0x00 0x0D`) and footer bytes, no length field to parse, no variable extension. About as
   simple as binary framing gets.
-- **A second real composite-decoder (bitfield) candidate**, now that
-  [Favero](favero-fencing-protocol.md) is shelved — byte 2 alone packs seven independent boolean
-  flags (hold, delta-reference-shown, delta mode, calibration mode, sorting mode, LCR-auto mode,
-  auto-range mode, parallel-measurement mode), the same "one byte, many named channels" shape
-  [presenters.md](../presenters.md) §4 describes.
 - **A mirrored sub-structure worth naming as its own concept**: the primary measurement
   (quantity/value/decimal-multiplier-and-units/display-status, bytes 5–9) and secondary measurement
   (D/Q/ESR-RP/phase-angle, same shape, bytes 10–14) are the *same* 5-byte record type appearing
