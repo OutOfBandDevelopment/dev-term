@@ -51,9 +51,9 @@ $ dotnet DevTerm.Console.dll --listhiddevices true --vendorid 1133
 
 The list is whatever's actually plugged in (`10CF:5502` is a Velleman K8055 I/O board; `04D8:F848`
 is a Kuando Busylight sold under the generic "BLL Lamp" HID product string — see
-[`docs/design/proposals/velleman-k8055-protocol.md`](../design/proposals/velleman-k8055-protocol.md)
+[`docs/design/features/velleman-k8055-protocol.md`](../design/features/velleman-k8055-protocol.md)
 and
-[`docs/design/proposals/kuando-busylight-protocol.md`](../design/proposals/kuando-busylight-protocol.md)).
+[`docs/design/features/kuando-busylight-protocol.md`](../design/features/kuando-busylight-protocol.md)).
 Pass a listed vendor/product ID to `--transport hid --vendorid <n> --productid <n>` to connect.
 
 ### Errors

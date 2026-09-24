@@ -4,7 +4,7 @@ namespace DevTerm.Devices.K8055;
 
 /// <summary>
 /// The Velleman K8055's control panel, matching the mockup in
-/// docs/design/proposals/velleman-k8055-protocol.md — 8 digital outputs, 2 analog outputs (0-255),
+/// docs/design/features/velleman-k8055-protocol.md — 8 digital outputs, 2 analog outputs (0-255),
 /// a raw digital-input indicator (see <see cref="K8055Decoder"/>'s doc comment for why it's raw,
 /// not 5 named channels), 2 analog-input indicators, and 2 pulse counters each with a reset button.
 /// </summary>

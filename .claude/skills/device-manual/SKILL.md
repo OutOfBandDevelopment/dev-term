@@ -83,7 +83,7 @@ For every command include:
   existing sibling directories' naming, e.g. `hp-34401a`, `tektronix-tds2024`,
   `korad-ka3005p-ka6003p`). Create the directory if it doesn't exist.
 - Single self-contained Markdown file — this is the source document a later change reads to build or
-  correct a `DevTerm.Devices.Scpi` profile against (see `docs/design/proposals/scpi-instrument-control.md`),
+  correct a `DevTerm.Devices.Scpi` profile against (see `docs/design/features/scpi-instrument-control.md`),
   so it needs to stand on its own without the chat context that produced it.
 - This step alone does not update `TODO.md`, `docs/changes/`, or any `DevTerm.Devices.Scpi` profile —
   that's separate follow-up work once someone actually builds the profile from this manual. Say so

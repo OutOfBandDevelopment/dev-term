@@ -10,7 +10,7 @@ namespace DevTerm.Devices.Scpi;
 /// command by id, substitutes <c>{Name}</c> parameter tokens into its <see cref="ScpiCommandDefinition.Template"/>,
 /// appends the profile's terminator, and sends the resulting ASCII bytes over the live
 /// <see cref="Session"/>. Multiple parameter values arrive comma-joined in <paramref name="value"/>
-/// (see <see cref="Value"/>) — see docs/design/proposals/scpi-instrument-control.md and
+/// (see <see cref="Value"/>) — see docs/design/features/scpi-instrument-control.md and
 /// <see cref="DevTerm.UiDefinitions.ButtonControl.ParameterFieldIds"/>.
 /// </summary>
 public sealed class ScpiControlSurface : IControlSurface

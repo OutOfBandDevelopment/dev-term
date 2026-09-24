@@ -4,7 +4,7 @@ namespace DevTerm.Devices.K8055.Tests;
 
 /// <summary>
 /// Feeds <see cref="K8055Decoder"/> the confirmed real 9-byte input shape (see
-/// docs/design/proposals/velleman-k8055-protocol.md's real-hardware finding) and asserts both its
+/// docs/design/features/velleman-k8055-protocol.md's real-hardware finding) and asserts both its
 /// human-readable <c>Render</c> text and its structured <see cref="K8055Decoder.ValuesChanged"/>
 /// output. No real device involved, so this is <c>UNIT</c>.
 /// </summary>

@@ -15,7 +15,7 @@ stays a proposal doc rather than a finished module.
 
 ```json
 {
-  "Name": "Tektronix 2230 (pre-SCPI \"codes\" protocol - NOT IEEE-488.2/SCPI compliant; see docs/design/proposals/tektronix-2230-protocol.md)",
+  "Name": "Tektronix 2230 (pre-SCPI \"codes\" protocol - NOT IEEE-488.2/SCPI compliant; see docs/design/features/tektronix-2230-protocol.md)",
   "Terminator": "\n",
   "Commands": [
     { "Id": "id", "Label": "Identify", "Category": "Common", "Template": "ID?", "IsQuery": true }

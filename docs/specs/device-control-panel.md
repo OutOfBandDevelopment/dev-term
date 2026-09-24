@@ -21,7 +21,7 @@ K8055 Control Panel against a TCP connection to something else just won't do any
 stops you from opening it. See [`docs/design/ui-definitions.md`](../design/ui-definitions.md) and
 [`docs/design/device-control-modules.md`](../design/device-control-modules.md) for the design intent
 behind this being generic, and
-[`docs/design/proposals/scpi-instrument-control.md`](../design/proposals/scpi-instrument-control.md)
+[`docs/design/features/scpi-instrument-control.md`](../design/features/scpi-instrument-control.md)
 for the SCPI module specifically.
 
 ## Fields

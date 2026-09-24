@@ -8,7 +8,7 @@ namespace DevTerm.Devices.Busylight;
 /// <see cref="IControlSurface"/> for the Kuando Busylight, sending the confirmed-working
 /// single-command frame (9 bytes: report ID 0x00 + an 8-byte struct — NextStep, Repeat, Color R/G/B,
 /// On, Off, a packed Audio byte) over the given <see cref="Session"/>'s live HID connection, per
-/// docs/design/proposals/kuando-busylight-protocol.md. Every command other than "apply" only mutates
+/// docs/design/features/kuando-busylight-protocol.md. Every command other than "apply" only mutates
 /// internal state; "apply" is the only command that actually sends a frame, matching the mockup's
 /// explicit [Apply] button rather than sending on every field change. The "color" command accepts
 /// either a known preset name (see <see cref="Colors"/>) or a custom <c>"r,g,b"</c> triple (each

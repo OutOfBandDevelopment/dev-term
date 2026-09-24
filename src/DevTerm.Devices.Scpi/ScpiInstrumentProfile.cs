@@ -2,7 +2,7 @@ namespace DevTerm.Devices.Scpi;
 
 /// <summary>
 /// A named, per-instrument-family command set — the "sub device profile" concept from
-/// docs/design/proposals/scpi-instrument-control.md. Loaded from JSON by <see cref="ScpiProfileCatalog"/>,
+/// docs/design/features/scpi-instrument-control.md. Loaded from JSON by <see cref="ScpiProfileCatalog"/>,
 /// not hardcoded per device, so adding support for another instrument is a new file, not new code.
 /// </summary>
 public sealed class ScpiInstrumentProfile

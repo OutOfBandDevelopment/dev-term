@@ -10,7 +10,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// mocked <see cref="ITransport"/> behind a real <see cref="Session"/> — no real HID device
 /// involved, so this is <c>UNIT</c>. Every other command only mutates internal state, so these
 /// tests set state then invoke "apply" to observe the resulting frame, per
-/// docs/design/proposals/kuando-busylight-protocol.md's confirmed single-command shape.
+/// docs/design/features/kuando-busylight-protocol.md's confirmed single-command shape.
 /// </summary>
 [TestCategory("UNIT")]
 [TestClass]

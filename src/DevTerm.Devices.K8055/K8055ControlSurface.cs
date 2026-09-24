@@ -7,7 +7,7 @@ namespace DevTerm.Devices.K8055;
 /// <summary>
 /// <see cref="IControlSurface"/> for the Velleman K8055, sending commands over the given
 /// <see cref="Session"/>'s live HID connection. Encodes per
-/// docs/design/proposals/velleman-k8055-protocol.md: the "Set Analog/Digital outputs" (0x05) frame
+/// docs/design/features/velleman-k8055-protocol.md: the "Set Analog/Digital outputs" (0x05) frame
 /// carries the digital-out bitmask and both analog-out bytes *together*, so any digital-out or
 /// analog-out mutation resends the full frame with the last-known state of everything else — the
 /// real device sets all outputs at once, not one bit at a time. Trailing bytes 6-7

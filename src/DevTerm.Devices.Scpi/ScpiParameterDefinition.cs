@@ -2,7 +2,7 @@ namespace DevTerm.Devices.Scpi;
 
 /// <summary>
 /// One parameter a <see cref="ScpiCommandDefinition"/>'s <see cref="ScpiCommandDefinition.Template"/>
-/// substitutes by name (a <c>{Name}</c> token) — see docs/design/proposals/scpi-instrument-control.md.
+/// substitutes by name (a <c>{Name}</c> token) — see docs/design/features/scpi-instrument-control.md.
 /// </summary>
 public sealed class ScpiParameterDefinition
 {

@@ -4,7 +4,7 @@ namespace DevTerm.Devices.Busylight;
 
 /// <summary>
 /// The Kuando Busylight's control panel, matching the mockup in
-/// docs/design/proposals/kuando-busylight-protocol.md — a color preset, a blink mode plus raw
+/// docs/design/features/kuando-busylight-protocol.md — a color preset, a blink mode plus raw
 /// on/off byte fields, sound settings, and an Apply button (see <see cref="BusylightControlSurface"/>
 /// for why nothing is sent until Apply is invoked).
 /// </summary>

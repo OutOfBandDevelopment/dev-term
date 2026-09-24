@@ -4,7 +4,7 @@ namespace DevTerm.UiDefinitions.Tests;
 
 /// <summary>
 /// Round-trips a real control panel — the Kuando Busylight color/blink/sound panel from
-/// docs/design/proposals/kuando-busylight-protocol.md's @startsalt mockup, in this model's shape —
+/// docs/design/features/kuando-busylight-protocol.md's @startsalt mockup, in this model's shape —
 /// through both serializers, rather than a synthetic minimal example.
 /// </summary>
 [TestCategory("UNIT")]

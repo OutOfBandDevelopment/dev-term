@@ -11,7 +11,7 @@ namespace DevTerm.Devices.Scpi;
 /// the whole point: supporting another instrument is a new file, not a new build. Also exposes a
 /// code-constructed <see cref="Generic"/> baseline (per device-control-modules.md's "SCPI
 /// baseline... zero-authoring fallback" idea) that exists even with zero profile files present.
-/// See docs/design/proposals/scpi-instrument-control.md.
+/// See docs/design/features/scpi-instrument-control.md.
 /// </summary>
 public static class ScpiProfileCatalog
 {

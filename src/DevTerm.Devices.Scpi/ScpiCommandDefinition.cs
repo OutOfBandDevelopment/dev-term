@@ -2,7 +2,7 @@ namespace DevTerm.Devices.Scpi;
 
 /// <summary>
 /// One outbound SCPI (or SCPI-adjacent, e.g. Korad's plain-ASCII protocol) command, declared as
-/// data rather than code — see docs/design/proposals/scpi-instrument-control.md.
+/// data rather than code — see docs/design/features/scpi-instrument-control.md.
 /// </summary>
 public sealed class ScpiCommandDefinition
 {

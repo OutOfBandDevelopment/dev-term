@@ -123,7 +123,7 @@ For simple query/response devices (most bench gear — a command string in, a fo
   the same module: `ScpiInstrumentProfile`'s JSON schema (command id/label/category/template/
   parameters) plus `ScpiProfileCatalog`'s bundled-plus-drop-in-folder loading is exactly the
   "SCPI baseline as a zero-authoring fallback" candidate direction above, now built — see
-  [scpi-instrument-control.md](proposals/scpi-instrument-control.md). It's SCPI-specific, not the
+  [scpi-instrument-control.md](features/scpi-instrument-control.md). It's SCPI-specific, not the
   general Kaitai-Struct-backed binary-response schema also sketched above, which remains
   unimplemented for genuinely binary devices.
 - Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?

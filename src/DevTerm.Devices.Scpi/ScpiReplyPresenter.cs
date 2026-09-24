@@ -12,7 +12,7 @@ namespace DevTerm.Devices.Scpi;
 /// queries) registered via <see cref="QuerySent"/>. Implements <see cref="IStructuredPresenter"/> so
 /// a generic control-panel renderer can drive a query's reply indicator without parsing this
 /// presenter's own rendered text; an unsolicited line (empty queue) still renders as text, just with
-/// no indicator update. See docs/design/proposals/scpi-instrument-control.md.
+/// no indicator update. See docs/design/features/scpi-instrument-control.md.
 /// </summary>
 /// <remarks>
 /// Terminator handling mirrors <see cref="DevTerm.Presenters.Text.AsciiPresenter"/>: CR, LF, or

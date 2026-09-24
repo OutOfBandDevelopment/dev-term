@@ -6,7 +6,7 @@ namespace DevTerm.Devices.K8055;
 
 /// <summary>
 /// Decodes the Velleman K8055's unprompted 9-byte input report (confirmed against real hardware —
-/// see docs/design/proposals/velleman-k8055-protocol.md): [00, 00, 03, AnalogIn1, AnalogIn2,
+/// see docs/design/features/velleman-k8055-protocol.md): [00, 00, 03, AnalogIn1, AnalogIn2,
 /// CounterLo1, CounterHi1, CounterLo2, CounterHi2]. Implements <see cref="IStructuredPresenter"/> so
 /// a generic control-panel renderer can drive live indicators (keyed by the same ids
 /// <see cref="K8055UiDefinition"/> declares) without parsing this presenter's own rendered text.
@@ -54,7 +54,7 @@ public sealed class K8055Decoder : IPresenter, IStructuredPresenter
             lines.Add(DecodeFrame(frame, out var values));
 
             // The device streams a report continuously and unprompted (confirmed live — see
-            // docs/design/proposals/velleman-k8055-protocol.md), so most frames repeat the last
+            // docs/design/features/velleman-k8055-protocol.md), so most frames repeat the last
             // reading verbatim; only publish the values that actually changed since the last frame,
             // and skip the event entirely when nothing did, so a live indicator isn't rebuilt/redrawn
             // on every single report just to show the same number it already had.
