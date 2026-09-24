@@ -22,9 +22,9 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             case "tcp":
-                if (options.TcpPort is < 1 or > 65535)
+                if (!int.TryParse(options.Port, out var tcpPort) || tcpPort is < 1 or > 65535)
                 {
-                    return ValidateOptionsResult.Fail("Missing or invalid '--tcpport' for the TCP transport (expected 1-65535).");
+                    return ValidateOptionsResult.Fail("Missing or invalid '--port' for the TCP transport (expected 1-65535).");
                 }
 
                 if (!options.Listen && string.IsNullOrWhiteSpace(options.Host))

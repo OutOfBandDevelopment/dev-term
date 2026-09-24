@@ -12,8 +12,8 @@ public static class ConnectionDescription
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
             return cliOptions.Listen
-                ? $"TCP listener on port {cliOptions.TcpPort}"
-                : $"TCP {cliOptions.Host}:{cliOptions.TcpPort}";
+                ? $"TCP listener on port {cliOptions.Port}"
+                : $"TCP {cliOptions.Host}:{cliOptions.Port}";
         }
 
         if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
@@ -57,8 +57,8 @@ public static class ConnectionDescription
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
             return cliOptions.Listen
-                ? $"tcp://*:{cliOptions.TcpPort} (listening)"
-                : $"tcp://{cliOptions.Host}:{cliOptions.TcpPort}";
+                ? $"tcp://*:{cliOptions.Port} (listening)"
+                : $"tcp://{cliOptions.Host}:{cliOptions.Port}";
         }
 
         if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))

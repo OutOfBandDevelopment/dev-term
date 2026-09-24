@@ -107,7 +107,7 @@ public sealed class ConsoleAppCliTests
         var acceptTask = listener.AcceptTcpClientAsync();
 
         using var process = Process.Start(BuildStartInfo(
-            $"--transport tcp --host 127.0.0.1 --tcpport {port} --presenter ascii --lineending Cr --cli true"))!;
+            $"--transport tcp --host 127.0.0.1 --port {port} --presenter ascii --lineending Cr --cli true"))!;
 
         using var client = await acceptTask.WaitAsync(Timeout);
         using var stream = client.GetStream();
@@ -148,7 +148,7 @@ public sealed class ConsoleAppCliTests
         // Presenter is a comma-separated list on the command line (a JSON array in a profile), and
         // Parser - what encodes typed lines - is independent of which presenters display.
         using var process = Process.Start(BuildStartInfo(
-            $"--transport tcp --host 127.0.0.1 --tcpport {port} --presenter ascii,hex --parser hex --lineending None --cli true"))!;
+            $"--transport tcp --host 127.0.0.1 --port {port} --presenter ascii,hex --parser hex --lineending None --cli true"))!;
 
         using var client = await acceptTask.WaitAsync(Timeout);
         using var stream = client.GetStream();

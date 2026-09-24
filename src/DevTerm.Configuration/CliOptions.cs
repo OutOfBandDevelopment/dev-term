@@ -8,7 +8,7 @@ namespace DevTerm.Configuration;
 /// variables, and JSON settings files layered via the standard
 /// <c>Microsoft.Extensions.Configuration</c> extensions — see <see cref="DevTermConfiguration"/>)
 /// via the Options pattern rather than a hand-rolled parser. Property names double as the
-/// (case-insensitive) argument/setting names: <c>--transport tcp --tcpport 502</c>. Shared by
+/// (case-insensitive) argument/setting names: <c>--transport tcp --port 502</c>. Shared by
 /// every front end (console CLI/TUI, WPF) so the same saved profile works from any of them.
 /// </summary>
 /// <remarks>
@@ -100,7 +100,7 @@ public sealed class CliOptions
     [DisplayName("ASCII max line length")]
     public int AsciiMaxLineLength { get; set; } = DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength;
 
-    // Serial transport.
+    /// <summary>Serial COM port name (e.g. "COM3"), or the TCP port number as a string when <see cref="Transport"/> is "tcp" — shared under one flag/property so both transports use "--port".</summary>
     [Category("Serial")]
     [DisplayName("Port")]
     public string? Port { get; set; }
@@ -154,10 +154,6 @@ public sealed class CliOptions
     [Category("TCP")]
     [DisplayName("Host")]
     public string? Host { get; set; }
-
-    [Category("TCP")]
-    [DisplayName("Port")]
-    public int TcpPort { get; set; }
 
     [Category("TCP")]
     [DisplayName("Listen (server mode)")]

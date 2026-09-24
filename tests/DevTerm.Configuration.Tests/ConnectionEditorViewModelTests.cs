@@ -28,7 +28,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), initial, "some error");
 
             Assert.AreEqual("tcp", vm.Transport);
@@ -66,7 +66,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.IsNotNull(vm.Result);
             Assert.AreEqual("tcp", vm.Result.Transport);
             Assert.AreEqual("192.168.0.107", vm.Result.Host);
-            Assert.AreEqual(23, vm.Result.TcpPort);
+            Assert.AreEqual("23", vm.Result.Port);
         }
         finally
         {
@@ -115,7 +115,7 @@ public sealed class ConnectionEditorViewModelTests
 
             Assert.IsFalse(closeRequested);
             Assert.IsNull(vm.Result);
-            StringAssert.Contains(vm.StatusMessage, "tcpport");
+            StringAssert.Contains(vm.StatusMessage, "--port");
         }
         finally
         {
@@ -327,7 +327,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var source = new ConnectionProfileStore(sourceDirectory);
-            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var zipPath = Path.Combine(sourceDirectory, "export.zip");
             source.ExportZip(zipPath, ["alpha"]);
 
@@ -357,12 +357,12 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var source = new ConnectionProfileStore(sourceDirectory);
-            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            source.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var zipPath = Path.Combine(sourceDirectory, "export.zip");
             source.ExportZip(zipPath, ["alpha"]);
 
             var destStore = new ConnectionProfileStore(destDirectory);
-            destStore.Save("alpha", new CliOptions { Transport = "tcp", Host = "existing", TcpPort = 1 });
+            destStore.Save("alpha", new CliOptions { Transport = "tcp", Host = "existing", Port = "1" });
             var vm = new ConnectionEditorViewModel(destStore, new CliOptions())
             {
                 ImportExportPath = zipPath,
@@ -444,7 +444,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("existing", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+            store.Save("existing", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
 
             var confirmPrompts = new List<string>();
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
@@ -484,7 +484,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             var vm = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" }) { SelectedProfileName = "tek108" };
             vm.LoadCommand.Execute(null);
@@ -504,7 +504,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             var vm = new ConnectionEditorViewModel(store, new CliOptions()) { SelectedProfileName = "tek108" };
             vm.DeleteCommand.Execute(null);
@@ -546,7 +546,7 @@ public sealed class ConnectionEditorViewModelTests
             var store = new ConnectionProfileStore(directory);
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
 
-            store.Save("added-later", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+            store.Save("added-later", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
             Assert.DoesNotContain("added-later", vm.Profiles);
 
             vm.RefreshCommand.Execute(null);
@@ -585,7 +585,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" });
 
             Assert.IsFalse(vm.IsDirty, "A freshly-opened editor showing its starting configuration shouldn't already be dirty.");
         }
@@ -640,7 +640,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
@@ -754,7 +754,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
@@ -792,7 +792,7 @@ public sealed class ConnectionEditorViewModelTests
             // A second, independent ConnectionProfileStore instance pointed at the same directory —
             // simulating the other front end (or a user editing the folder by hand) saving a
             // profile while this editor is already open, not this same instance's own Save.
-            new ConnectionProfileStore(directory).Save("added-elsewhere", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+            new ConnectionProfileStore(directory).Save("added-elsewhere", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
 
             Assert.IsTrue(raised.Wait(TimeSpan.FromSeconds(5)), "Expected the real FileSystemWatcher to notice a profile saved by a different store instance.");
         }
@@ -813,7 +813,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ProfilesChangedExternally += (_, _) => raisedAfterDispose = true;
 
             vm.Dispose();
-            new ConnectionProfileStore(directory).Save("added-after-dispose", new CliOptions { Transport = "tcp", Host = "1.1.1.1", TcpPort = 1 });
+            new ConnectionProfileStore(directory).Save("added-after-dispose", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
 
             // No good way to prove a negative deterministically against a real filesystem watcher,
             // so this gives it a real moment to (incorrectly) fire before checking - matches the
@@ -1519,7 +1519,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 });
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" });
             SelectOnly(vm);
 
             vm.ConnectCommand.Execute(null);
@@ -1543,7 +1543,7 @@ public sealed class ConnectionEditorViewModelTests
             var store = new ConnectionProfileStore(directory);
             foreach (var name in new[] { "alpha", "beta", "gamma" })
             {
-                store.Save(name, new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+                store.Save(name, new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             }
 
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
@@ -1572,7 +1572,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
@@ -1593,8 +1593,8 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
             IReadOnlyList<string>? asked = null;
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
@@ -1626,7 +1626,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
             vm.SelectedProfileNames.Add("alpha");
             vm.SelectedProfileNames.Add("ghost"); // e.g. removed by another process since the list was drawn
@@ -1664,9 +1664,9 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
-            store.Save("old-two", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
-            var zip = WriteZip(directory, ("new-one.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.1\", \"TcpPort\": 23 }"));
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
+            store.Save("old-two", new CliOptions { Transport = "tcp", Host = "10.0.0.2", Port = "23" });
+            var zip = WriteZip(directory, ("new-one.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.1\", \"Port\": 23 }"));
             (int Existing, int Incoming)? asked = null;
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
@@ -1702,7 +1702,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
                 ImportExportPath = WriteZip(directory, ("new-one.json", "{}")),
@@ -1727,7 +1727,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
             var asked = false;
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
@@ -1759,7 +1759,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
             var vm = new ConnectionEditorViewModel(store, new CliOptions())
             {
                 ImportExportPath = WriteZip(directory, ("readme.txt", "not a profile")),
@@ -1812,7 +1812,7 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
 
             vm.ReplaceAllFromZipCommand.Execute(null);

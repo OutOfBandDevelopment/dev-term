@@ -42,7 +42,7 @@ public sealed class RealHardwareMainWindowTests
                 Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = TcpTransportMode.Client, Host = host, Port = port }));
             var presenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
             var session = new Session(transport, new Pipeline([presenter]));
-            var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = host, TcpPort = port, LineEnding = LineEnding.Cr, Parser = "ascii" })
+            var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = host, Port = port.ToString(), LineEnding = LineEnding.Cr, Parser = "ascii" })
             {
                 ShowInTaskbar = false,
             };

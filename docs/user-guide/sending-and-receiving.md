@@ -7,7 +7,7 @@ below are real captured output from the actual built app — see this folder's [
 ## CLI
 
 ```
-$ dotnet DevTerm.Console.dll --transport tcp --host 192.168.0.107 --tcpport 23 --presenter ascii --lineending Cr --cli true
+$ dotnet DevTerm.Console.dll --transport tcp --host 192.168.0.107 --port 23 --presenter ascii --lineending Cr --cli true
 Connected to TCP 192.168.0.107:23 using 'ascii' (send as 'ascii').
 Type a line and press Enter to send; Ctrl+C to exit.
 ID?

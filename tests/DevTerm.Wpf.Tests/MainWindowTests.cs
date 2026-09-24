@@ -42,7 +42,7 @@ public sealed class MainWindowTests
         var transport = new FakeTransport();
         var presenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
-        var options = cliOptions ?? new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var options = cliOptions ?? new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
         options.Parser ??= presenter.Name; // the fake catalog below only holds this one presenter
         var window = new MainWindow(session, new PresenterCatalog([presenter]), options, IsolatedProfiles.Empty())
         {
@@ -60,7 +60,7 @@ public sealed class MainWindowTests
             {
                 Transport = "tcp",
                 Host = "127.0.0.1",
-                TcpPort = 23,
+                Port = "23",
                 ManifestName = "definitely-does-not-exist-" + Guid.NewGuid().ToString("N"),
             });
 
@@ -96,7 +96,7 @@ public sealed class MainWindowTests
             var window = new MainWindow(
                 session,
                 new PresenterCatalog([ascii, new HexPresenter()]),
-                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" },
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii"], Parser = "ascii" },
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
@@ -130,7 +130,7 @@ public sealed class MainWindowTests
             var window = new MainWindow(
                 new Session(transport, new Pipeline([ascii, hex])),
                 new PresenterCatalog([ascii, hex]),
-                new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] },
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "hex"] },
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
@@ -164,7 +164,7 @@ public sealed class MainWindowTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.Cr });
+            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr });
             await window.ConnectAsync();
             window.SendBox.Text = "ID?";
 
@@ -181,7 +181,7 @@ public sealed class MainWindowTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None });
+            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None });
             await window.ConnectAsync();
             window.SendBox.Text = string.Empty;
 
@@ -196,7 +196,7 @@ public sealed class MainWindowTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None });
+            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None });
             await window.ConnectAsync();
             window.SendBox.Text = "ID?";
             await window.SendCurrentInputAsync();
@@ -212,7 +212,7 @@ public sealed class MainWindowTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None });
+            var (window, _) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None });
             await window.ConnectAsync();
             window.SendBox.Text = "first";
             await window.SendCurrentInputAsync();
@@ -267,7 +267,7 @@ public sealed class MainWindowTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.Cr });
+            var (window, transport) = CreateWindow(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr });
             await window.ConnectAsync();
             await window.ToggleConnectionAsync();
             window.SendBox.Text = "ID?";

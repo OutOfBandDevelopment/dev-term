@@ -40,11 +40,11 @@ public sealed class CliOptionsBindingTests
     [TestMethod]
     public void Bind_TcpClientArguments_PopulatesOptions()
     {
-        var options = Bind("--transport", "tcp", "--host", "device.local", "--tcpport", "502", "--presenter", "ascii");
+        var options = Bind("--transport", "tcp", "--host", "device.local", "--port", "502", "--presenter", "ascii");
 
         Assert.AreEqual("tcp", options.Transport);
         Assert.AreEqual("device.local", options.Host);
-        Assert.AreEqual(502, options.TcpPort);
+        Assert.AreEqual("502", options.Port);
         CollectionAssert.AreEqual(new[] { "ascii" }, options.EffectivePresenters.ToArray());
         Assert.IsFalse(options.Listen);
     }
@@ -55,7 +55,7 @@ public sealed class CliOptionsBindingTests
         // A known quirk of Microsoft.Extensions.Configuration.CommandLine: unlike a getopt-style
         // parser, a bare trailing switch has no value, so boolean flags must be passed explicitly
         // (`--listen true`), not as a bare `--listen`.
-        var options = Bind("--transport", "tcp", "--listen", "true", "--tcpport", "9000");
+        var options = Bind("--transport", "tcp", "--listen", "true", "--port", "9000");
 
         Assert.IsTrue(options.Listen);
     }
@@ -82,7 +82,6 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual(DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength, options.AsciiMaxLineLength);
         Assert.IsNull(options.Port);
         Assert.IsNull(options.Host);
-        Assert.AreEqual(0, options.TcpPort);
         Assert.IsFalse(options.Listen);
         Assert.IsTrue(options.Tui, "The TUI is the console app's default mode.");
         Assert.IsFalse(options.Cli);

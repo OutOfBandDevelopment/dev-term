@@ -41,7 +41,7 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void For_TcpClient_DescribesHostAndPort()
     {
-        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Listen = false };
+        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Listen = false };
 
         Assert.AreEqual("TCP 192.168.0.107:23", ConnectionDescription.For(options));
     }
@@ -49,7 +49,7 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void For_TcpListener_DescribesListeningPortWithoutHost()
     {
-        var options = new CliOptions { Transport = "tcp", TcpPort = 9000, Listen = true };
+        var options = new CliOptions { Transport = "tcp", Port = "9000", Listen = true };
 
         Assert.AreEqual("TCP listener on port 9000", ConnectionDescription.For(options));
     }
@@ -57,7 +57,7 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void For_TransportIsCaseInsensitive()
     {
-        var options = new CliOptions { Transport = "TCP", Host = "device.local", TcpPort = 502 };
+        var options = new CliOptions { Transport = "TCP", Host = "device.local", Port = "502" };
 
         StringAssert.StartsWith(ConnectionDescription.For(options), "TCP ");
     }
@@ -82,13 +82,13 @@ public sealed class ConnectionDescriptionTests
     [TestMethod]
     public void Definition_Tcp_IsATcpUri()
     {
-        Assert.AreEqual("tcp://192.168.0.110:23", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 }));
+        Assert.AreEqual("tcp://192.168.0.110:23", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" }));
     }
 
     [TestMethod]
     public void Definition_TcpListener_ShowsTheWildcardHost()
     {
-        Assert.AreEqual("tcp://*:9000 (listening)", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Listen = true, TcpPort = 9000 }));
+        Assert.AreEqual("tcp://*:9000 (listening)", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Listen = true, Port = "9000" }));
     }
 
     [TestMethod]
@@ -127,7 +127,7 @@ public sealed class ConnectionDescriptionTests
     public void WindowTitle_ForANonSavedConnection_UsesTheDefinitionAndTheFormats()
     {
         var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
-        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii", "hex"], Parser = "hex" };
+        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23", Presenter = ["ascii", "hex"], Parser = "hex" };
 
         Assert.AreEqual("dev-term — tcp://192.168.0.110:23 (ascii, hex; send as hex)", ConnectionDescription.WindowTitle(options, "hex", store));
     }
@@ -139,7 +139,7 @@ public sealed class ConnectionDescriptionTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" };
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23", Presenter = ["ascii"], Parser = "ascii" };
             store.Save("tek2230", options);
 
             Assert.AreEqual("dev-term — tek2230 (ascii; send as ascii)", ConnectionDescription.WindowTitle(options, "ascii", store));

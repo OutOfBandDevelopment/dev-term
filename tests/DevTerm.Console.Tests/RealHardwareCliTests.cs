@@ -61,7 +61,7 @@ public sealed class RealHardwareCliTests
 
         var startInfo = new ProcessStartInfo(
             "dotnet",
-            $"\"{Path.Combine(ConsoleAppDirectory, "DevTerm.Console.dll")}\" --transport tcp --host {host} --tcpport {port} --presenter ascii --lineending Cr --cli true")
+            $"\"{Path.Combine(ConsoleAppDirectory, "DevTerm.Console.dll")}\" --transport tcp --host {host} --port {port} --presenter ascii --lineending Cr --cli true")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,

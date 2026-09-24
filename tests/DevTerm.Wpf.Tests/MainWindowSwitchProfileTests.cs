@@ -38,7 +38,7 @@ public sealed class MainWindowSwitchProfileTests
             var initialTransport = new FakeTransport();
             var initialPresenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
             var initialSession = new Session(initialTransport, new Pipeline([initialPresenter]));
-            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Parser = "ascii" },
+            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Parser = "ascii" },
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
@@ -51,7 +51,7 @@ public sealed class MainWindowSwitchProfileTests
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             var acceptTask = listener.AcceptTcpClientAsync();
 
-            var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] });
+            var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] });
 
             using var client = await acceptTask.WaitAsync(Timeout);
             using var stream = client.GetStream();
@@ -85,7 +85,7 @@ public sealed class MainWindowSwitchProfileTests
                 var window = new MainWindow(
                     initialSession,
                     new PresenterCatalog([initialPresenter]),
-                    new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 1, Parser = "ascii" },
+                    new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Parser = "ascii" },
                     new ConnectionProfileStore(directory))
                 {
                     ShowInTaskbar = false,
@@ -97,7 +97,7 @@ public sealed class MainWindowSwitchProfileTests
                 listener.Start();
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
                 var acceptTask = listener.AcceptTcpClientAsync();
-                var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = port, Presenter = ["hex"] };
+                var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] };
                 new ConnectionProfileStore(directory).Save("bench-scope", target);
 
                 var switched = await window.SwitchProfileAsync(target);

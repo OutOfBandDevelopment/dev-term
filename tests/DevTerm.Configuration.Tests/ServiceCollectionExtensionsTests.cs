@@ -35,7 +35,7 @@ public sealed class ServiceCollectionExtensionsTests
     [TestMethod]
     public void AddDevTermFrontEnd_TcpTransport_ResolvesTcpTransportConfiguredFromCliOptions()
     {
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "device.local", TcpPort = 502 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "device.local", Port = "502" };
         var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
 
         var transport = provider.GetRequiredService<ITransport>();
@@ -50,7 +50,7 @@ public sealed class ServiceCollectionExtensionsTests
     [TestMethod]
     public void AddDevTermFrontEnd_TcpListener_ConfiguresListenerMode()
     {
-        var cliOptions = new CliOptions { Transport = "tcp", TcpPort = 9000, Listen = true };
+        var cliOptions = new CliOptions { Transport = "tcp", Port = "9000", Listen = true };
         var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
 
         var options = provider.GetRequiredService<IOptions<TcpTransportOptions>>().Value;

@@ -699,7 +699,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         HandshakeText = options.Handshake.ToString();
         ScpiProfile = options.ScpiProfile ?? string.Empty;
         Host = options.Host ?? string.Empty;
-        TcpPort = options.TcpPort.ToString();
+        TcpPort = options.Port ?? "0";
         Listen = options.Listen;
         VendorId = options.VendorId.ToString();
         ProductId = options.ProductId.ToString();
@@ -719,7 +719,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         var options = new CliOptions
         {
             Transport = Transport.Trim(),
-            Port = Port.Trim() is { Length: > 0 } p ? p : null,
+            Port = IsTcpTransport
+                ? (TcpPort.Trim() is { Length: > 0 } tp ? tp : null)
+                : (Port.Trim() is { Length: > 0 } p ? p : null),
             Host = Host.Trim() is { Length: > 0 } h ? h : null,
             Listen = Listen,
             Presenter = [.. SelectedPresenters],
@@ -751,11 +753,6 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (Enum.TryParse<Handshake>(HandshakeText, ignoreCase: true, out var handshake))
         {
             options.Handshake = handshake;
-        }
-
-        if (int.TryParse(TcpPort, out var tcpPort))
-        {
-            options.TcpPort = tcpPort;
         }
 
         if (int.TryParse(VendorId, out var vendorId))

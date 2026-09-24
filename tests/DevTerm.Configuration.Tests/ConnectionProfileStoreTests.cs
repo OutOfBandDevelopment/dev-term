@@ -80,13 +80,13 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("bridge", new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 });
+            store.Save("bridge", new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" });
 
             var loaded = store.Load("bridge");
 
             Assert.AreEqual("192.168.0.107", loaded.Host);
-            Assert.AreEqual(23, loaded.TcpPort);
-            Assert.IsNull(loaded.Port, "A TCP profile shouldn't carry serial-specific fields.");
+            Assert.AreEqual("23", loaded.Port);
+            Assert.AreEqual(9600, loaded.Baud, "A TCP profile shouldn't carry a non-default serial-specific field.");
         }
         finally
         {
@@ -350,11 +350,11 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"] });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23", Presenter = ["ascii"] });
 
             // Run-mode flags aren't part of a profile, so they can't cause a false mismatch.
-            var running = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"], Cli = true };
+            var running = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23", Presenter = ["ascii"], Cli = true };
 
             Assert.AreEqual("tek2230", store.FindName(running));
         }
@@ -371,9 +371,9 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" });
 
-            Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 24 }));
+            Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "24" }));
         }
         finally
         {
@@ -389,9 +389,9 @@ public sealed class ConnectionProfileStoreTests
         {
             var store = new ConnectionProfileStore(directory);
             Directory.CreateDirectory(directory);
-            File.WriteAllText(Path.Combine(directory, "legacy.json"), "{ \"Transport\": \"tcp\", \"Host\": \"10.0.0.1\", \"TcpPort\": 23, \"Presenter\": \"ascii\" }");
+            File.WriteAllText(Path.Combine(directory, "legacy.json"), "{ \"Transport\": \"tcp\", \"Host\": \"10.0.0.1\", \"Port\": 23, \"Presenter\": \"ascii\" }");
 
-            Assert.AreEqual("legacy", store.FindName(new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" }));
+            Assert.AreEqual("legacy", store.FindName(new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23", Presenter = ["ascii"], Parser = "ascii" }));
         }
         finally
         {
@@ -406,7 +406,7 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 };
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" };
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "a-broken.json"), "{ not json");
             store.Save("b-good", options);
@@ -426,7 +426,7 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23 };
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" };
             store.Save("zulu", options);
             store.Save("alpha", options);
 
@@ -443,7 +443,7 @@ public sealed class ConnectionProfileStoreTests
     {
         var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
 
-        Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "h", TcpPort = 1 }));
+        Assert.IsNull(store.FindName(new CliOptions { Transport = "tcp", Host = "h", Port = "1" }));
     }
 
 
@@ -524,9 +524,9 @@ public sealed class ConnectionProfileStoreTests
         try
         {
             var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
-            store.Save("keep-me-not", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
-            store.Save("shared", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
-            var zip = WriteZip(directory, ("shared.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.9\", \"TcpPort\": 99 }"), ("fresh.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.8\", \"TcpPort\": 98 }"));
+            store.Save("keep-me-not", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
+            store.Save("shared", new CliOptions { Transport = "tcp", Host = "10.0.0.2", Port = "23" });
+            var zip = WriteZip(directory, ("shared.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.9\", \"Port\": 99 }"), ("fresh.json", "{ \"Transport\": \"tcp\", \"Host\": \"192.168.9.8\", \"Port\": 98 }"));
 
             var removed = store.ReplaceAll(ConnectionProfileStore.ReadZip(zip));
 

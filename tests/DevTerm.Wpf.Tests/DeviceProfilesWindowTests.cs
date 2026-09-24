@@ -40,7 +40,7 @@ public sealed class DeviceProfilesWindowTests
         {
             StaTestRunner.Run(async () =>
             {
-                var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 };
+                var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" };
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial) { ShowInTaskbar = false };
                 StaTestRunner.DoEvents();
 
@@ -169,7 +169,7 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {
@@ -234,7 +234,7 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {
@@ -265,8 +265,8 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "10.0.0.1", TcpPort = 23 });
-            store.Save("beta", new CliOptions { Transport = "tcp", Host = "10.0.0.2", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "10.0.0.2", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {
@@ -448,7 +448,7 @@ public sealed class DeviceProfilesWindowTests
         {
             StaTestRunner.Run(async () =>
             {
-                var initial = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "binary"], Parser = "hex" };
+                var initial = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "binary"], Parser = "hex" };
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial) { ShowInTaskbar = false };
                 StaTestRunner.DoEvents();
 
@@ -559,8 +559,8 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {
@@ -592,9 +592,9 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
-            store.Save("gamma", new CliOptions { Transport = "tcp", Host = "192.168.0.3", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
+            store.Save("gamma", new CliOptions { Transport = "tcp", Host = "192.168.0.3", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {
@@ -688,9 +688,9 @@ public sealed class DeviceProfilesWindowTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
-            store.Save("gamma", new CliOptions { Transport = "tcp", Host = "192.168.0.3", TcpPort = 23 });
+            store.Save("alpha", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("beta", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
+            store.Save("gamma", new CliOptions { Transport = "tcp", Host = "192.168.0.3", Port = "23" });
 
             StaTestRunner.Run(async () =>
             {

@@ -43,7 +43,7 @@ public sealed class TuiModeTests
         {
             Transport = "tcp",
             Host = "127.0.0.1",
-            TcpPort = 23,
+            Port = "23",
             ManifestName = "definitely-does-not-exist-" + Guid.NewGuid().ToString("N"),
         };
 
@@ -60,7 +60,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
@@ -79,7 +79,7 @@ public sealed class TuiModeTests
     {
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.Cr };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
         {
@@ -98,7 +98,7 @@ public sealed class TuiModeTests
     {
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
         {
@@ -115,7 +115,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
@@ -149,7 +149,7 @@ public sealed class TuiModeTests
     {
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.Cr };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr };
         await session.CloseAsync();
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
@@ -166,7 +166,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
@@ -196,7 +196,7 @@ public sealed class TuiModeTests
     {
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
@@ -221,7 +221,7 @@ public sealed class TuiModeTests
         var hex = new HexPresenter();
         var session = new Session(transport, new Pipeline([ascii, hex]));
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii", "hex"] };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "hex"] };
 
         TuiTestRunner.RunHeadless(session, new PresenterCatalog([ascii, hex]), cliOptions, parts =>
         {
@@ -239,7 +239,7 @@ public sealed class TuiModeTests
         var hex = new HexPresenter();
         var session = new Session(transport, new Pipeline([ascii]));
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"], Parser = "ascii" };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii"], Parser = "ascii" };
 
         // Raises the send field's own KeyDown directly instead of injecting a key through
         // IInputInjector: that injector degrades after enough Application.Init/Shutdown cycles in one
@@ -269,7 +269,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         // Raises the send field's own KeyDown directly (see SetParser_...'s comment above) rather
         // than injecting through IInputInjector - this is about history recall, not key routing.
@@ -291,7 +291,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, LineEnding = LineEnding.None };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
@@ -315,7 +315,7 @@ public sealed class TuiModeTests
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync();
-        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23 };
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
         var catalog = new PresenterCatalog([presenter, new HexPresenter()]);
         cliOptions.Parser = "ascii";
 
@@ -337,7 +337,7 @@ public sealed class TuiModeTests
         var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
         try
         {
-            var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", TcpPort = 23, Presenter = ["ascii"] };
+            var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii"] };
             var store = new ConnectionProfileStore(directory);
             store.Save("bench-scope", cliOptions);
 

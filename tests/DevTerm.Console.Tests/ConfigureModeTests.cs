@@ -135,7 +135,7 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii", "binary"], Parser = "hex" };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii", "binary"], Parser = "hex" };
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 CollectionAssert.AreEqual(
@@ -169,7 +169,7 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" };
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 foreach (var checkBox in parts.PresenterCheckBoxes)
@@ -209,7 +209,7 @@ public sealed class ConfigureModeTests
                 Assert.IsNotNull(parts.Result);
                 Assert.AreEqual("tcp", parts.Result.Transport);
                 Assert.AreEqual("192.168.0.107", parts.Result.Host);
-                Assert.AreEqual(23, parts.Result.TcpPort);
+                Assert.AreEqual("23", parts.Result.Port);
             });
         }
         finally
@@ -224,13 +224,13 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "tcp" }; // invalid: no Host/TcpPort
-            RunHeadless(initial, "Missing or invalid '--tcpport'...", new ConnectionProfileStore(directory), parts =>
+            var initial = new CliOptions { Transport = "tcp" }; // invalid: no Host/Port
+            RunHeadless(initial, "Missing or invalid '--port'...", new ConnectionProfileStore(directory), parts =>
             {
                 Click(parts.ConnectButton);
 
                 Assert.IsNull(parts.Result);
-                StringAssert.Contains(parts.ErrorLabel.Text, "tcpport");
+                StringAssert.Contains(parts.ErrorLabel.Text, "--port");
             });
         }
         finally
@@ -313,7 +313,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23", Presenter = ["ascii"] };
 
             RunHeadless(initial, null, store, parts =>
             {
@@ -326,7 +326,7 @@ public sealed class ConfigureModeTests
             var saved = store.Load("tek108");
             Assert.AreEqual("tcp", saved.Transport);
             Assert.AreEqual("192.168.0.108", saved.Host);
-            Assert.AreEqual(23, saved.TcpPort);
+            Assert.AreEqual("23", saved.Port);
         }
         finally
         {
@@ -347,7 +347,7 @@ public sealed class ConfigureModeTests
             // not something this stub investigated further given a single-cycle-per-test workaround
             // was straightforward and every test here already needs its own cycle regardless.
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23", Presenter = ["ascii"] });
 
             RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", store, parts =>
             {
@@ -373,7 +373,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23", Presenter = ["ascii"] });
 
             RunHeadless(new CliOptions { Transport = "serial" }, "Missing required '--port'...", store, parts =>
             {
@@ -404,7 +404,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23 });
+            store.Save("tek108", new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23" });
 
             RunHeadless(new CliOptions(), null, store, parts =>
             {
@@ -502,7 +502,7 @@ public sealed class ConfigureModeTests
         try
         {
             var exportPath = Path.Combine(directory, "exported.json");
-            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", TcpPort = 23, Presenter = ["ascii"] };
+            var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.108", Port = "23", Presenter = ["ascii"] };
 
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
@@ -536,7 +536,7 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            RunHeadless(new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23 }, null, new ConnectionProfileStore(directory), parts =>
+            RunHeadless(new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" }, null, new ConnectionProfileStore(directory), parts =>
             {
                 parts.PathField.Text = Path.Combine(directory, "does-not-exist.json");
                 Click(parts.ImportButton);
@@ -687,8 +687,8 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
 
             RunHeadless(new CliOptions(), null, store, parts =>
             {
@@ -727,8 +727,8 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
 
             RunHeadless(new CliOptions(), null, store, parts =>
             {
@@ -753,7 +753,7 @@ public sealed class ConfigureModeTests
         try
         {
             var source = new ConnectionProfileStore(sourceDirectory);
-            source.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            source.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var zipPath = Path.Combine(sourceDirectory, "export.zip");
             source.ExportZip(zipPath, ["tek2230"]);
 
@@ -875,8 +875,8 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
-            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
+            store.Save("other", new CliOptions { Transport = "tcp", Host = "192.168.0.2", Port = "23" });
 
             RunHeadless(new CliOptions(), null, store, parts =>
             {
@@ -913,7 +913,7 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
 
             RunHeadless(new CliOptions(), null, store, parts =>
             {
@@ -940,12 +940,12 @@ public sealed class ConfigureModeTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "192.168.0.1", TcpPort = 23 });
+            store.Save("old-one", new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             var zipPath = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}.zip");
             using (var archive = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create))
             {
                 using var writer = new StreamWriter(archive.CreateEntry("new-one.json").Open());
-                writer.Write("{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.9\", \"TcpPort\": 23 }");
+                writer.Write("{ \"Transport\": \"tcp\", \"Host\": \"192.168.0.9\", \"Port\": 23 }");
             }
 
             try

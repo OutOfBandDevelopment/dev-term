@@ -13,19 +13,19 @@
     },
     "TCP 192.168.0.107:23 ASCII": {
       "commandName": "Project",
-      "commandLineArgs": "--transport tcp --host 192.168.0.107 --tcpport 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
+      "commandLineArgs": "--transport tcp --host 192.168.0.107 --port 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
     },
     "TCP 192.168.0.108:23 ASCII": {
       "commandName": "Project",
-      "commandLineArgs": "--transport tcp --host 192.168.0.108 --tcpport 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
+      "commandLineArgs": "--transport tcp --host 192.168.0.108 --port 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
     },
     "TCP 192.168.0.109:23 ASCII": {
       "commandName": "Project",
-      "commandLineArgs": "--transport tcp --host 192.168.0.109 --tcpport 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
+      "commandLineArgs": "--transport tcp --host 192.168.0.109 --port 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
     },
     "TCP 192.168.0.110:23 ASCII": {
       "commandName": "Project",
-      "commandLineArgs": "--transport tcp --host 192.168.0.110 --tcpport 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
+      "commandLineArgs": "--transport tcp --host 192.168.0.110 --port 23 --presenter ascii --lineending Cr --asciimaxlinelength 512"
     },
     "K8055 HID": {
       "commandName": "Project",

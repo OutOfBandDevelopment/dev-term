@@ -60,7 +60,7 @@ public sealed class ScreenshotTests
         var transport = new FakeTransport();
         var presenter = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
-        var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Parser = "ascii" }, IsolatedProfiles.Empty());
+        var window = new MainWindow(session, new PresenterCatalog([presenter]), new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Parser = "ascii" }, IsolatedProfiles.Empty());
         return (window, transport);
     }
 
@@ -141,12 +141,12 @@ public sealed class ScreenshotTests
         try
         {
             var store = new ConnectionProfileStore(directory);
-            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Presenter = ["ascii"] });
-            store.Save("tds2024", new CliOptions { Transport = "tcp", Host = "192.168.0.110", TcpPort = 23, Presenter = ["ascii"] });
+            store.Save("tek2230", new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] });
+            store.Save("tds2024", new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23", Presenter = ["ascii"] });
 
             StaTestRunner.Run(async () =>
             {
-                var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", TcpPort = 23, Description = "Tektronix 2230 bench scope" };
+                var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Description = "Tektronix 2230 bench scope" };
                 var window = new DeviceProfilesWindow(store, initial);
                 WpfScreenshot.ShowOffScreen(window);
 

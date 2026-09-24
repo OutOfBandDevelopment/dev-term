@@ -25,7 +25,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_TcpClientWithHostAndPort_Succeeds()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = "device.local", TcpPort = 502 });
+        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = "device.local", Port = "502" });
 
         Assert.IsTrue(result.Succeeded);
     }
@@ -33,7 +33,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_TcpClientWithoutHost_Fails()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = null, TcpPort = 502, Listen = false });
+        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = null, Port = "502", Listen = false });
 
         Assert.IsTrue(result.Failed);
     }
@@ -41,7 +41,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_TcpListenerWithoutHost_Succeeds()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = null, TcpPort = 9000, Listen = true });
+        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = null, Port = "9000", Listen = true });
 
         Assert.IsTrue(result.Succeeded);
     }
@@ -49,7 +49,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_TcpWithoutPort_Fails()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = "device.local", TcpPort = 0 });
+        var result = _validator.Validate(null, new CliOptions { Transport = "tcp", Host = "device.local", Port = "0" });
 
         Assert.IsTrue(result.Failed);
     }
@@ -97,7 +97,7 @@ public sealed class CliOptionsValidatorTests
     [TestMethod]
     public void Validate_TransportIsCaseInsensitive()
     {
-        var result = _validator.Validate(null, new CliOptions { Transport = "TCP", Host = "device.local", TcpPort = 502 });
+        var result = _validator.Validate(null, new CliOptions { Transport = "TCP", Host = "device.local", Port = "502" });
 
         Assert.IsTrue(result.Succeeded);
     }

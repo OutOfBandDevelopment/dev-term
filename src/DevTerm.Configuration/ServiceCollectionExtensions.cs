@@ -36,7 +36,7 @@ public static class ServiceCollectionExtensions
             {
                 o.Mode = cliOptions.Listen ? TcpTransportMode.Listener : TcpTransportMode.Client;
                 o.Host = cliOptions.Host;
-                o.Port = cliOptions.TcpPort;
+                o.Port = int.TryParse(cliOptions.Port, out var tcpPort) ? tcpPort : 0;
             });
         }
         else if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))

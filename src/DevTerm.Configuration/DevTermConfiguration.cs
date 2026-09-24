@@ -93,7 +93,7 @@ public static class DevTermConfiguration
         if (string.Equals(options.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
             profile[nameof(CliOptions.Host)] = options.Host;
-            profile[nameof(CliOptions.TcpPort)] = options.TcpPort;
+            profile[nameof(CliOptions.Port)] = options.Port;
             profile[nameof(CliOptions.Listen)] = options.Listen;
         }
         else if (string.Equals(options.Transport, "hid", StringComparison.OrdinalIgnoreCase) ||
