@@ -130,6 +130,11 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.Description)] = options.Description;
         }
 
+        if (options.ScpiProfile is not null)
+        {
+            profile[nameof(CliOptions.ScpiProfile)] = options.ScpiProfile;
+        }
+
         return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
     }
 }

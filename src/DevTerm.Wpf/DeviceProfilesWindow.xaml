@@ -173,6 +173,14 @@
                             <TextBlock Text="Product ID:" VerticalAlignment="Center" />
                             <TextBox x:Name="ProductBox" Grid.Column="1" Text="{Binding ProductIdDisplay, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Serial number:" VerticalAlignment="Center" />
+                            <TextBox x:Name="SerialNumberBox" Grid.Column="1" Text="{Binding SerialNumber, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
                         <CheckBox x:Name="IdsShowHexBox" Content="Show as hex" IsChecked="{Binding IdsShowHex}" Margin="140,0,0,4" />
                         <Grid x:Name="DetectedHidDevicesRow" Margin="0,0,0,4" Visibility="{Binding IsHidTransport, Converter={StaticResource BoolToVisibility}}">
                             <Grid.ColumnDefinitions>

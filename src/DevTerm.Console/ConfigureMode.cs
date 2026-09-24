@@ -100,7 +100,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 46;
+        const int ContentHeight = 48;
         var formContent = new View
         {
             X = 0,
@@ -200,7 +200,14 @@ public static class ConfigureMode
         var productField = new TextField { X = Pos.Right(productLabel) + 1, Y = Pos.Top(vendorLabel), Width = 10, Text = initial.ProductId.ToString() };
         var detectHidButton = new Button { X = Pos.Right(productField) + 3, Y = Pos.Top(vendorLabel), Text = "Detect HID..." };
         var detectUsbtmcButton = new Button { X = Pos.Right(detectHidButton) + 1, Y = Pos.Top(vendorLabel), Text = "Detect USBTMC..." };
-        var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(vendorLabel) + 1, Text = "Show as hex" };
+
+        // Optional - blank/"0" means "match the first device found for the Vendor/Product ID above"
+        // (both transports' Open() already treat a null/empty serial number as a wildcard); set it to
+        // pin the connection to one specific physical unit when more than one device on the bench
+        // shares the same VID/PID.
+        var serialNumberLabel = new Label { X = 0, Y = Pos.Bottom(vendorLabel) + 1, Text = "Serial number:" };
+        var serialNumberField = new TextField { X = Pos.Right(serialNumberLabel) + 1, Y = Pos.Top(serialNumberLabel), Width = 20, Text = initial.SerialNumber ?? string.Empty };
+        var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(serialNumberLabel) + 1, Text = "Show as hex" };
 
         var loopbackInfoLabel = new Label
         {
@@ -314,6 +321,7 @@ public static class ConfigureMode
             ProductField = productField,
             DetectHidButton = detectHidButton,
             DetectUsbtmcButton = detectUsbtmcButton,
+            SerialNumberField = serialNumberField,
             IdsShowHexCheckBox = idsShowHexCheckBox,
             LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
@@ -344,6 +352,7 @@ public static class ConfigureMode
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
             var isUsbDevice = selected == TransportChoice.Hid || selected == TransportChoice.Usbtmc;
             vendorLabel.Visible = vendorField.Visible = productLabel.Visible = productField.Visible = idsShowHexCheckBox.Visible = isUsbDevice;
+            serialNumberLabel.Visible = serialNumberField.Visible = isUsbDevice;
             detectHidButton.Visible = selected == TransportChoice.Hid;
             detectUsbtmcButton.Visible = selected == TransportChoice.Usbtmc;
             loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
@@ -368,6 +377,7 @@ public static class ConfigureMode
             viewModel.IdsShowHex = idsShowHexCheckBox.Value == CheckState.Checked;
             viewModel.VendorIdDisplay = vendorField.Text;
             viewModel.ProductIdDisplay = productField.Text;
+            viewModel.SerialNumber = serialNumberField.Text;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
@@ -397,6 +407,7 @@ public static class ConfigureMode
             idsShowHexCheckBox.Value = viewModel.IdsShowHex ? CheckState.Checked : CheckState.UnChecked;
             vendorField.Text = viewModel.VendorIdDisplay;
             productField.Text = viewModel.ProductIdDisplay;
+            serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
@@ -672,6 +683,7 @@ public static class ConfigureMode
                 viewModel.SelectedHidDevice = devices.First(d => d.Display == choice);
                 vendorField.Text = viewModel.VendorIdDisplay;
                 productField.Text = viewModel.ProductIdDisplay;
+                serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
             e.Handled = true;
@@ -695,6 +707,7 @@ public static class ConfigureMode
                 viewModel.SelectedUsbtmcDevice = devices.First(d => d.Display == choice);
                 vendorField.Text = viewModel.VendorIdDisplay;
                 productField.Text = viewModel.ProductIdDisplay;
+                serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
             e.Handled = true;
@@ -816,7 +829,7 @@ public static class ConfigureMode
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             handshakeLabel, handshakeSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, idsShowHexCheckBox,
+            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, serialNumberLabel, serialNumberField, idsShowHexCheckBox,
             loopbackInfoLabel,
             presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
             parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
@@ -973,6 +986,9 @@ internal sealed class ConfigureWindowParts
     public required Button DetectHidButton { get; init; }
 
     public required Button DetectUsbtmcButton { get; init; }
+
+    /// <summary>Optional - blank means "match the first device found for Vendor/Product ID" (see <see cref="ConnectionEditorViewModel.SerialNumber"/>).</summary>
+    public required TextField SerialNumberField { get; init; }
 
     public required CheckBox IdsShowHexCheckBox { get; init; }
 

@@ -42,6 +42,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private bool _listen;
     private string _vendorId = "0";
     private string _productId = "0";
+    private string _serialNumber = string.Empty;
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -551,6 +552,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    /// <summary>
+    /// Optional - blank pins the connection to "match the first device found for
+    /// <see cref="VendorId"/>/<see cref="ProductId"/>" (both <c>SystemHidDevice</c>/<c>SystemUsbtmcDevice</c>'s
+    /// <c>Open</c> already treat a null/empty serial number as a wildcard); set it to disambiguate
+    /// when more than one device on the bench shares the same vendor/product ID. Shared by the HID
+    /// and USBTMC transports, same as <see cref="VendorId"/>/<see cref="ProductId"/>.
+    /// </summary>
+    public string SerialNumber { get => _serialNumber; set => SetField(ref _serialNumber, value); }
+
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
     // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
@@ -580,6 +590,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             {
                 VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
+                SerialNumber = value.SerialNumber ?? string.Empty;
             }
         }
     }
@@ -595,6 +606,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             {
                 VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
+                SerialNumber = value.SerialNumber ?? string.Empty;
             }
         }
     }
@@ -703,6 +715,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Listen = options.Listen;
         VendorId = options.VendorId.ToString();
         ProductId = options.ProductId.ToString();
+        SerialNumber = options.SerialNumber ?? string.Empty;
         var presenters = options.EffectivePresenters;
         foreach (var choice in PresenterChoices)
         {
@@ -728,6 +741,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
+            SerialNumber = SerialNumber.Trim() is { Length: > 0 } sn ? sn : null,
         };
 
         if (int.TryParse(Baud, out var baud))

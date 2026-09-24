@@ -1275,7 +1275,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var device = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B);
+            var device = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, "SN123");
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
                 SelectedHidDevice = device,
@@ -1283,6 +1283,7 @@ public sealed class ConnectionEditorViewModelTests
 
             Assert.AreEqual(0x046D.ToString(), vm.VendorId);
             Assert.AreEqual(0xC08B.ToString(), vm.ProductId);
+            Assert.AreEqual("SN123", vm.SerialNumber);
         }
         finally
         {

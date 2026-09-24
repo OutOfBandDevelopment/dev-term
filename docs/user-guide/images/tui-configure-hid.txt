@@ -2,15 +2,17 @@
 │                                                                             ▲│
 │Vendor ID: 4216         Product ID: 63560        ⟦ Detect HID... ⟧▖          ░│
 │                                                 ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘          ░│
+│Serial number:                                                               ░│
+│                                                                             ░│
 │☐ Show as hex                                                                ░│
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
 │Presenters: ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig░│
 │                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│Send as: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
+│                                                                             █│
+│                                                                             █│
+│Send as: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary                █│
 │                                                                             █│
 │Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
 │                                                                             █│
@@ -18,8 +20,6 @@
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
 │Import/export file path:                                                     █│
 │                                                                             █│
-│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      █│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      █│
-│                                                                             █│
-│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    ▼│
+│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      ░│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

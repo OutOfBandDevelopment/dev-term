@@ -375,7 +375,7 @@ public sealed class DeviceProfilesWindowTests
 
                 Assert.AreSame(window.ViewModel.HidDeviceOptions, window.DetectedHidDevicesBox.ItemsSource);
 
-                window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B);
+                window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, null);
 
                 Assert.AreEqual(0x046D.ToString(), window.VendorBox.Text);
                 Assert.AreEqual(0xC08B.ToString(), window.ProductBox.Text);
