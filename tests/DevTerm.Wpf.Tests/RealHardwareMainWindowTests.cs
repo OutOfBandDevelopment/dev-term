@@ -23,7 +23,7 @@ public sealed class RealHardwareMainWindowTests
     private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(10);
 
     [TestMethod]
-    [DataRow("RealTcpDeviceHost1")]
+    [DataRow("RealTcpDeviceHost3")]
     [DataRow("RealTcpDeviceHost2")]
     public void MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
     {

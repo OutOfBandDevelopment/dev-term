@@ -210,6 +210,16 @@ detected serial ports.
 - **Detected serial port descriptions on Linux/macOS** — the Windows description landed
   2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
   Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
+- **WPF "not found" hint for a disconnected saved device** — the TUI's `ConfigureMode` shows a
+  "(not found)" label next to the Serial port row and the shared HID/USBTMC vendor/product/serial
+  row when `ConnectionEditorViewModel.ConnectedDeviceNotFound` is true (see
+  `docs/changes/2026-09-24.md`'s DevicePath/SerialNumber fix); `DeviceProfilesWindow.xaml` (WPF)
+  has no equivalent yet.
+- **USBTMC device identity has no `DevicePath`-equivalent field** — HID's `SerialNumber`/
+  `DevicePath` two-tier match (see `docs/changes/2026-09-24.md`) fixed disambiguating multiple
+  same-VID/PID, serial-less HID devices; `UsbtmcDeviceDescriptor`/`UsbtmcTransportOptions` have no
+  matching field, so a serial-less USBTMC instrument (less likely in practice than a serial-less
+  HID gadget, but not ruled out) still can't be uniquely identified the same way.
 - ~~TCP: named hostnames as well as IPv4/IPv6~~ — already works: `SystemTcpConnectionSource`
   connects via `TcpClient.ConnectAsync(string, int, ...)`, which resolves a hostname, IPv4, or
   IPv6 literal natively. Confirmed by reading the code, not by guessing; no change needed.

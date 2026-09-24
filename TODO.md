@@ -148,33 +148,10 @@ Completed work is logged by date under `docs/changes/`.
     unmodified — and, for any of them reachable only over USB rather than RS-232/LAN, is blocked on
     the USBTMC transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
 
-- **USB device identity (HID/USBTMC) — triaged from the Architect's note below, in progress.** The
-  Architect noted that matching a saved profile's device back to a live one purely by
-  Vendor/Product ID can't distinguish two identical units (a real problem: three simultaneously-
-  attached Velleman K8055 boards share the same VID/PID and report no serial number at all —
-  confirmed against real hardware). Landed so far: `HidDeviceOption.FromDescriptor` now falls back
-  to the device's `HidDeviceDescriptor.DevicePath` (always populated by HidSharp, unlike
-  `SerialNumber`/`ProductName`) whenever the real serial is null/empty/whitespace, folded directly
-  into the one `SerialNumber` field/property (not a second field a consumer has to also check) so
-  the connection-profile file, the UI's serial-number field, and `FindBestUsbDeviceMatch`'s lookup
-  all only ever read one value. A new `ConnectionEditorViewModel.ConnectedDeviceNotFound` computed
-  property is now surfaced in the TUI so far — a "(not found)" label next to the Serial port row
-  and the shared HID/USBTMC vendor/product/serial row (`ConfigureMode`'s
-  `portNotFoundLabel`/`usbNotFoundLabel`, refreshed at each explicit field-sync point since
-  Terminal.Gui has no data-binding) — true when a loaded profile's `Port` isn't among currently-
-  detected serial ports, or its Vendor/Product ID (tie-broken by `SerialNumber`) doesn't
-  best-match any currently-detected HID/USBTMC device. **Accepted tradeoff, not a bug**: a
-  `DevicePath` is tied to a physical USB hub/port, so moving a serial-less device to a different
-  port makes it look "not found" even though it's the same physical unit — the Architect explicitly
-  signed off on this. **Still open**: the WPF front end (`DeviceProfilesWindow.xaml`) doesn't yet
-  show the same "not found" hint — only the TUI does so far; and `UsbtmcDeviceDescriptor` has no
-  `DevicePath`-equivalent fallback field at all, so a serial-less USBTMC instrument (less likely in
-  practice than a serial-less HID gadget, but not ruled out) still can't be uniquely identified the
-  way HID now can.
-
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
-[`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
-(serial-port descriptions on Linux/macOS) and the design-level items from the Architect's
-2026-09-23 notes (see above).
+[`BACKLOG.md`](BACKLOG.md) — including the remaining Connection Editor remnants (serial-port
+descriptions on Linux/macOS; a WPF "not found" hint to match the TUI's; USBTMC's missing
+`DevicePath`-equivalent) and the design-level items from the Architect's 2026-09-23 notes (see
+above).

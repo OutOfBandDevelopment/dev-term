@@ -105,6 +105,11 @@ public static class DevTermConfiguration
             {
                 profile[nameof(CliOptions.SerialNumber)] = options.SerialNumber;
             }
+
+            if (options.DevicePath is not null)
+            {
+                profile[nameof(CliOptions.DevicePath)] = options.DevicePath;
+            }
         }
         else
         {

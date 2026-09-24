@@ -23,6 +23,15 @@ public sealed class HidTransportOptions
     public string? SerialNumber { get; set; }
 
     /// <summary>
+    /// OS device-instance path, tied to a physical USB hub/port rather than the device itself.
+    /// Fallback disambiguator used only when <see cref="SerialNumber"/> is null/blank — some
+    /// devices (e.g. a Velleman K8055) report no real serial descriptor at all, so this is the
+    /// only thing that distinguishes two otherwise-identical VID/PID devices plugged into
+    /// different ports. See <see cref="SystemHidDevice"/>'s matching logic.
+    /// </summary>
+    public string? DevicePath { get; set; }
+
+    /// <summary>
     /// Milliseconds a read blocks before timing out. Unlike serial, HID has no event to wait on
     /// for "a report is ready" — <see cref="SystemHidDevice"/>'s read-loop thread has to block on
     /// a real read and this timeout is how it periodically notices it should stop on close,

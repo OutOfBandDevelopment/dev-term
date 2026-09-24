@@ -1256,12 +1256,13 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void Constructor_HidDeviceWithNoSerialNumber_FallsBackToDevicePath()
+    public void Constructor_HidDeviceWithNoSerialNumber_LeavesSerialNumberNullButKeepsDevicePath()
     {
         // A real Velleman K8055 reports no serial descriptor at all - confirmed against real
-        // hardware. SerialNumber must still end up unique per physical device (and non-null) so
-        // best-matching a loaded profile back to a live device only ever has this one field to
-        // check, not a separate DevicePath lookup.
+        // hardware. SerialNumber and DevicePath are genuinely separate fields (not folded together):
+        // HidSharp's own matcher only ever understands a real serial descriptor, so a DevicePath
+        // folded into SerialNumber could never actually be found again when opening the device for
+        // real - see SystemHidDevice.Open.
         var directory = CreateTempDirectory();
         try
         {
@@ -1270,7 +1271,8 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5500, null, null, "hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}")]));
 
-            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].SerialNumber);
+            Assert.IsNull(vm.HidDeviceOptions[0].SerialNumber);
+            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].DevicePath);
         }
         finally
         {
@@ -1279,10 +1281,10 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
-    public void Constructor_HidDeviceWithBlankSerialNumber_FallsBackToDevicePath()
+    public void Constructor_HidDeviceWithBlankSerialNumber_LeavesSerialNumberNullButKeepsDevicePath()
     {
         // Some devices report an empty/whitespace serial descriptor rather than throwing or
-        // returning null - the fallback must catch that case too, not just a true null.
+        // returning null - that must be treated the same as a true null, not passed through as-is.
         var directory = CreateTempDirectory();
         try
         {
@@ -1291,7 +1293,45 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5500, null, "   ", "hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}")]));
 
-            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].SerialNumber);
+            Assert.IsNull(vm.HidDeviceOptions[0].SerialNumber);
+            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].DevicePath);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadIntoFields_ThreeIdenticalSerialLessHidDevices_SelectsTheOneMatchingDevicePath()
+    {
+        // Three simultaneously-attached Velleman K8055 boards - same VID/PID, no serial descriptor
+        // at all, so DevicePath is the only thing that tells them apart. Loading a profile that
+        // saved the second board's DevicePath must resolve back to that exact board, not just
+        // whichever one happens to be first in the detected list.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery(
+                [
+                    new HidDeviceDescriptor(0x10CF, 0x5500, null, null, "hid#vid_10cf&pid_5500#1&0&0000#{guid}"),
+                    new HidDeviceDescriptor(0x10CF, 0x5500, null, null, "hid#vid_10cf&pid_5500#2&0&0000#{guid}"),
+                    new HidDeviceDescriptor(0x10CF, 0x5500, null, null, "hid#vid_10cf&pid_5500#3&0&0000#{guid}"),
+                ]));
+
+            vm.LoadIntoFields(new CliOptions
+            {
+                Transport = "hid",
+                VendorId = 0x10CF,
+                ProductId = 0x5500,
+                DevicePath = "hid#vid_10cf&pid_5500#2&0&0000#{guid}",
+            });
+
+            Assert.AreEqual("hid#vid_10cf&pid_5500#2&0&0000#{guid}", vm.SelectedHidDevice?.DevicePath);
+            Assert.IsFalse(vm.ConnectedDeviceNotFound);
         }
         finally
         {

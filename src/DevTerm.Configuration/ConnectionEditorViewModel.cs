@@ -43,6 +43,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _vendorId = "0";
     private string _productId = "0";
     private string _serialNumber = string.Empty;
+    private string _devicePath = string.Empty;
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -257,20 +258,26 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     }
 
     // "Best match" for auto-selecting the live device a loaded profile's VendorId/ProductId/
-    // SerialNumber most likely refers to, mirroring LoadIntoFields' SelectedSerialPort sync.
-    // VendorId+ProductId must match exactly, so this never returns a device the profile didn't ask
-    // for; SerialNumber only breaks a tie among several currently-attached devices sharing the same
-    // VendorId+ProductId (a real case, not hypothetical — see HidDeviceOption's doc comment),
-    // preferring an exact serial match and otherwise falling back to the first one found rather than
-    // leaving the picker unset just because the tie couldn't be broken.
+    // SerialNumber/DevicePath most likely refers to, mirroring LoadIntoFields' SelectedSerialPort
+    // sync. VendorId+ProductId must match exactly, so this never returns a device the profile
+    // didn't ask for; SerialNumber and DevicePath only break a tie among several currently-attached
+    // devices sharing the same VendorId+ProductId (a real case, not hypothetical — three
+    // simultaneously-attached Velleman K8055 boards, same VID/PID, no serial descriptor at all —
+    // see HidDeviceOption's doc comment). SerialNumber is preferred when it's non-blank (a real
+    // serial descriptor is portable across ports, so it's the more reliable identity); DevicePath is
+    // the fallback for a device with no serial descriptor, tied to its physical USB hub/port. If
+    // neither breaks the tie, falls back to the first match found rather than leaving the picker
+    // unset.
     private static T? FindBestUsbDeviceMatch<T>(
         IReadOnlyList<T> candidates,
         int vendorId,
         int productId,
         string? serialNumber,
+        string? devicePath,
         Func<T, int> getVendorId,
         Func<T, int> getProductId,
-        Func<T, string?> getSerialNumber)
+        Func<T, string?> getSerialNumber,
+        Func<T, string?> getDevicePath)
         where T : class
     {
         var matches = candidates.Where(c => getVendorId(c) == vendorId && getProductId(c) == productId).ToList();
@@ -282,6 +289,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (!string.IsNullOrEmpty(serialNumber))
         {
             var exact = matches.FirstOrDefault(c => string.Equals(getSerialNumber(c), serialNumber, StringComparison.Ordinal));
+            if (exact is not null)
+            {
+                return exact;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(devicePath))
+        {
+            var exact = matches.FirstOrDefault(c => string.Equals(getDevicePath(c), devicePath, StringComparison.Ordinal));
             if (exact is not null)
             {
                 return exact;
@@ -465,15 +481,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>
     /// <see langword="true"/> when the current transport's identifying field(s) — <see cref="Port"/>
     /// for serial; <see cref="VendorId"/>/<see cref="ProductId"/>, tie-broken by <see
-    /// cref="SerialNumber"/>, for HID/USBTMC — don't resolve to any currently-detected device. Set
-    /// right after <see cref="LoadIntoFields"/> loads a saved profile whose device isn't plugged in
-    /// (or, deliberately, was moved to a different USB hub/port: <see cref="HidDeviceOption"/>'s
-    /// <c>SerialNumber</c>-falls-back-to-<c>DevicePath</c> behavior means that case is indistinguishable
-    /// from "unplugged" here, which is accepted rather than worked around — a <c>DevicePath</c> is
-    /// inherently tied to a physical port, not portable across ports like a real serial number would
-    /// be). A front end shows this as a "device not found" hint next to the port/device field; it
-    /// never blocks <see cref="ConnectCommand"/>, which is free to fail on its own via the usual
-    /// connection-error handling regardless of this flag.
+    /// cref="SerialNumber"/> then <see cref="DevicePath"/>, for HID/USBTMC — don't resolve to any
+    /// currently-detected device. Set right after <see cref="LoadIntoFields"/> loads a saved profile
+    /// whose device isn't plugged in (or, for a device with no real serial descriptor, was moved to
+    /// a different USB hub/port: <see cref="DevicePath"/> is inherently tied to a physical port, not
+    /// portable across ports like a real serial number would be, so that case is indistinguishable
+    /// from "unplugged" here — accepted rather than worked around). A front end shows this as a
+    /// "device not found" hint next to the port/device field; it never blocks
+    /// <see cref="ConnectCommand"/>, which is free to fail on its own via the usual connection-error
+    /// handling regardless of this flag.
     /// </summary>
     public bool ConnectedDeviceNotFound =>
         IsSerialTransport ? !string.IsNullOrEmpty(Port) && SelectedSerialPort is null
@@ -666,6 +682,16 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public string SerialNumber { get => _serialNumber; set => SetField(ref _serialNumber, value); }
 
+    /// <summary>
+    /// OS device-instance path — HID-only, unlike <see cref="SerialNumber"/> (shared with USBTMC).
+    /// Auto-populated from <see cref="SelectedHidDevice"/> or a loaded profile; there's no
+    /// corresponding visible control in either front end (nothing to hand-type here), so it's
+    /// never directly edited by the user. Serves as the fallback disambiguator when
+    /// <see cref="SerialNumber"/> is blank — see <see cref="FindBestUsbDeviceMatch{T}"/> and
+    /// <c>DevTerm.Transports.Hid.SystemHidDevice.Open</c>.
+    /// </summary>
+    public string DevicePath { get => _devicePath; set => SetField(ref _devicePath, value); }
+
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
     // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
@@ -696,6 +722,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
                 VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
                 SerialNumber = value.SerialNumber ?? string.Empty;
+                DevicePath = value.DevicePath;
             }
 
             OnPropertyChanged(nameof(ConnectedDeviceNotFound));
@@ -826,19 +853,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         VendorId = options.VendorId.ToString();
         ProductId = options.ProductId.ToString();
         SerialNumber = options.SerialNumber ?? string.Empty;
+        DevicePath = options.DevicePath ?? string.Empty;
 
         // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
-        // those setters push VendorId/ProductId/SerialNumber from whichever device gets picked, and
-        // the fields were *just* set from options above; going through the setter risks a best-effort
-        // match (see FindBestUsbDeviceMatch) silently overwriting an exact loaded SerialNumber with a
-        // different live device's serial when no live device actually has that serial connected.
+        // those setters push VendorId/ProductId/SerialNumber/DevicePath from whichever device gets
+        // picked, and the fields were *just* set from options above; going through the setter risks
+        // a best-effort match (see FindBestUsbDeviceMatch) silently overwriting an exact loaded
+        // SerialNumber/DevicePath with a different live device's identity when no live device
+        // actually matches the one that was saved.
         SetField(
             ref _selectedHidDevice,
-            FindBestUsbDeviceMatch(_detectedHidDevices, options.VendorId, options.ProductId, options.SerialNumber, d => d.VendorId, d => d.ProductId, d => d.SerialNumber),
+            FindBestUsbDeviceMatch(_detectedHidDevices, options.VendorId, options.ProductId, options.SerialNumber, options.DevicePath, d => d.VendorId, d => d.ProductId, d => d.SerialNumber, d => d.DevicePath),
             nameof(SelectedHidDevice));
         SetField(
             ref _selectedUsbtmcDevice,
-            FindBestUsbDeviceMatch(_detectedUsbtmcDevices, options.VendorId, options.ProductId, options.SerialNumber, d => d.VendorId, d => d.ProductId, d => d.SerialNumber),
+            FindBestUsbDeviceMatch(_detectedUsbtmcDevices, options.VendorId, options.ProductId, options.SerialNumber, null, d => d.VendorId, d => d.ProductId, d => d.SerialNumber, d => null),
             nameof(SelectedUsbtmcDevice));
         OnPropertyChanged(nameof(ConnectedDeviceNotFound));
 
@@ -868,6 +897,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
             SerialNumber = SerialNumber.Trim() is { Length: > 0 } sn ? sn : null,
+            DevicePath = DevicePath.Trim() is { Length: > 0 } dp ? dp : null,
         };
 
         if (int.TryParse(Baud, out var baud))

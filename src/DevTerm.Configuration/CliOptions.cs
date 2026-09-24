@@ -179,6 +179,14 @@ public sealed class CliOptions
     [DisplayName("Serial number")]
     public string? SerialNumber { get; set; }
 
+    /// <summary>OS device-instance path (e.g. "\\?\hid#vid_10cf&amp;pid_5500#...#{guid}"), tied to a
+    /// physical USB hub/port rather than the device itself. HID-only — a fallback for disambiguating
+    /// devices with no real <see cref="SerialNumber"/> (e.g. a Velleman K8055). Preferred match order
+    /// is <see cref="SerialNumber"/> first (when non-blank), then this.</summary>
+    [Category("USB Device")]
+    [DisplayName("Device path")]
+    public string? DevicePath { get; set; }
+
     /// <summary>List available USB HID devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListHidDevices { get; set; }

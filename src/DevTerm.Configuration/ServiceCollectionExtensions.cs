@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
                 o.VendorId = cliOptions.VendorId;
                 o.ProductId = cliOptions.ProductId;
                 o.SerialNumber = cliOptions.SerialNumber;
+                o.DevicePath = cliOptions.DevicePath;
             });
         }
         else if (string.Equals(cliOptions.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))

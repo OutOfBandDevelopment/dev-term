@@ -1,3 +1,4 @@
+using System.Linq;
 using HidSharp;
 
 namespace DevTerm.Transports.Hid;
@@ -25,10 +26,35 @@ public sealed class SystemHidDevice : IHidDevice
 
     public void Open()
     {
-        var device = DeviceList.Local.GetHidDeviceOrNull(_options.VendorId, _options.ProductId, serialNumber: _options.SerialNumber)
-            ?? throw new IOException(
-                $"No HID device found for VID 0x{_options.VendorId:X4} PID 0x{_options.ProductId:X4}"
-                + (_options.SerialNumber is null ? "." : $" serial '{_options.SerialNumber}'."));
+        // HidSharp's own GetHidDeviceOrNull(serialNumber:) only ever matches a device's real serial
+        // descriptor - useless for a device like a Velleman K8055, which reports none at all. So the
+        // candidates are enumerated by VID/PID only (serialNumber: null = wildcard) and matched here:
+        // an exact SerialNumber match first (when non-blank - the more reliable identity, since a
+        // real serial number is portable across USB ports), then an exact DevicePath match (tied to
+        // a physical hub/port, the only thing that disambiguates multiple serial-less devices), then
+        // just the first device found for this VID/PID.
+        var candidates = DeviceList.Local.GetHidDevices(_options.VendorId, _options.ProductId, null, null).ToList();
+
+        HidDevice? device = null;
+        if (!string.IsNullOrEmpty(_options.SerialNumber))
+        {
+            device = candidates.FirstOrDefault(d => string.Equals(d.SerialNumber, _options.SerialNumber, StringComparison.Ordinal));
+        }
+
+        if (device is null && !string.IsNullOrEmpty(_options.DevicePath))
+        {
+            device = candidates.FirstOrDefault(d => string.Equals(d.DevicePath, _options.DevicePath, StringComparison.Ordinal));
+        }
+
+        device ??= candidates.FirstOrDefault();
+
+        if (device is null)
+        {
+            var identity = _options.SerialNumber is not null ? $" serial '{_options.SerialNumber}'"
+                : _options.DevicePath is not null ? $" device path '{_options.DevicePath}'"
+                : string.Empty;
+            throw new IOException($"No HID device found for VID 0x{_options.VendorId:X4} PID 0x{_options.ProductId:X4}{identity}.");
+        }
 
         var stream = device.Open();
         stream.WriteTimeout = _options.WriteTimeoutMs;
