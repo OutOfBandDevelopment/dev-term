@@ -1,7 +1,1172 @@
 {
-  "Name": "Tektronix TDS2024 (pre-SCPI \"codes\" protocol - NOT IEEE-488.2/SCPI compliant; see docs/design/proposals/tektronix-2230-protocol.md)",
+  "Name": "Tektronix TDS2024 (IEEE-488.2/SCPI-style, via TDS2CMAX GPIB/RS-232 module; NOT the TDS2024B)",
+  "IdnPattern": "^TEKTRONIX,TDS\\s?2024\\b",
   "Terminator": "\n",
+  "Notes": "Built from docs/devices/tektronix-tds2024/programming-manual.md (Tektronix part 071-1075-03), scoped to a TDS2CMAX rear module over GPIB/RS-232 - NOT the TDS2024B (different hardware/manual) and NOT a TDS2MEM-equipped unit (no CompactFlash file-system commands here). A plain set command gives NO reply at all (success or failure is silent) - always follow with the matching query or check *ESR?/ALLEv? to confirm it took. 9.9E37 is the sentinel for 'no valid measurement value' from MEASUrement/CURSor queries - pair those with *ESR?/ALLEv? too. Concatenating multiple commands with ';' needs a leading ':' before every command whose header differs from the previous one, and a ':' must NEVER precede a '*'-prefixed common command; ID?/*IDN? must be last in a concatenated message (event 440 otherwise). RS-232 accepts CR/LF/CRLF/LFCR as input regardless of RS232:TRANsmit:TERMinator, which controls only what the scope sends (default LF, matching this profile's Terminator). Synchronizing with a long-running operation (*CAL?, single-sequence acquisition, HARDCopy STARt) needs *WAI, polling BUSY?, or *OPC?/*OPC - the vendor manual recommends *OPC? over polling ACQuire:STATE?/TRIGger:STATE?. RS-232 hardware and software flow control are mutually exclusive - disable soft flagging before any binary transfer (a binary CURVe? or a BMP hard copy) since a stray XON/XOFF byte in binary data stalls the link.",
   "Commands": [
-    { "Id": "id", "Label": "Identify", "Category": "Common", "Template": "ID?", "IsQuery": true }
+    { "Id": "idn", "Label": "Identify (IEEE 488.2)", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "id", "Label": "Identify (Tek Codes, must be last if concatenated)", "Category": "Common", "Template": "ID?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset to Factory Default Settings", "Category": "Common", "Template": "*RST" },
+    { "Id": "cls", "Label": "Clear Event Queue/SESR/SBR", "Category": "Common", "Template": "*CLS" },
+    { "Id": "esr", "Label": "Read Standard Event Status Register", "Category": "Common", "Template": "*ESR?", "IsQuery": true },
+    {
+      "Id": "ese",
+      "Label": "Set Event Status Enable Register",
+      "Category": "Common",
+      "Template": "*ESE {Mask}",
+      "Parameters": [
+        { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 255, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "eseQuery", "Label": "Query Event Status Enable Register", "Category": "Common", "Template": "*ESE?", "IsQuery": true },
+    { "Id": "stb", "Label": "Read Status Byte Register", "Category": "Common", "Template": "*STB?", "IsQuery": true },
+    {
+      "Id": "sre",
+      "Label": "Set Service Request Enable Register",
+      "Category": "Common",
+      "Template": "*SRE {Mask}",
+      "Parameters": [
+        { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 255, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "sreQuery", "Label": "Query Service Request Enable Register", "Category": "Common", "Template": "*SRE?", "IsQuery": true },
+    { "Id": "opc", "Label": "Set Operation-Complete Bit When Done", "Category": "Common", "Template": "*OPC" },
+    { "Id": "opcQuery", "Label": "Block Until Operation Complete", "Category": "Common", "Template": "*OPC?", "IsQuery": true },
+    { "Id": "wai", "Label": "Wait for Pending Operations to Finish", "Category": "Common", "Template": "*WAI" },
+    { "Id": "trg", "Label": "Execute *DDT Command Sequence", "Category": "Common", "Template": "*TRG" },
+    { "Id": "tst", "Label": "Self-Test (Always Returns 0)", "Category": "Common", "Template": "*TST?", "IsQuery": true },
+    { "Id": "cal", "Label": "Run Self-Calibration", "Category": "Common", "Template": "*CAL?", "IsQuery": true },
+    { "Id": "lrn", "Label": "Learn String (Same as SET?)", "Category": "Common", "Template": "*LRN?", "IsQuery": true },
+    {
+      "Id": "rcl",
+      "Label": "Recall Setup Memory Location",
+      "Category": "Common",
+      "Template": "*RCL {Location}",
+      "Parameters": [
+        { "Name": "Location", "Kind": "Numeric", "Minimum": 1, "Maximum": 10, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "sav",
+      "Label": "Save to Setup Memory Location",
+      "Category": "Common",
+      "Template": "*SAV {Location}",
+      "Parameters": [
+        { "Name": "Location", "Kind": "Numeric", "Minimum": 1, "Maximum": 10, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "ddt",
+      "Label": "Define *TRG Command Sequence",
+      "Category": "Common",
+      "Template": "*DDT \"{Commands}\"",
+      "Parameters": [
+        { "Name": "Commands", "Kind": "Text", "DefaultValue": "ACQuire:STATE RUN" }
+      ]
+    },
+    { "Id": "ddtQuery", "Label": "Query *DDT Command Sequence", "Category": "Common", "Template": "*DDT?", "IsQuery": true },
+    {
+      "Id": "psc",
+      "Label": "Set Power-On Status-Clear Flag",
+      "Category": "Common",
+      "Template": "*PSC {Flag}",
+      "Parameters": [
+        { "Name": "Flag", "Kind": "Choice", "Options": ["0", "1"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "pscQuery", "Label": "Query Power-On Status-Clear Flag", "Category": "Common", "Template": "*PSC?", "IsQuery": true },
+    { "Id": "autosetExecute", "Label": "Run Autoset", "Category": "Miscellaneous", "Template": "AUTOSet EXECute" },
+    { "Id": "autosetSignal", "Label": "Query Last Autoset Signal Type", "Category": "Miscellaneous", "Template": "AUTOSet:SIGNAL?", "IsQuery": true },
+    {
+      "Id": "autosetView",
+      "Label": "Set Autoset View",
+      "Category": "Miscellaneous",
+      "Template": "AUTOSet:VIEW {View}",
+      "Parameters": [
+        { "Name": "View", "Kind": "Choice", "Options": ["MULTICYcle", "SINGLECYcle", "FFT", "RISINGedge", "FALLINGedge", "FIELD", "ODD", "EVEN", "LINE", "LINENum", "DCLIne", "DEFault", "NONE"], "DefaultValue": "DEFault" }
+      ]
+    },
+    { "Id": "autosetViewQuery", "Label": "Query Autoset View", "Category": "Miscellaneous", "Template": "AUTOSet:VIEW?", "IsQuery": true },
+    { "Id": "factory", "Label": "Reset to Factory Defaults", "Category": "Miscellaneous", "Template": "FACtory" },
+    { "Id": "hdr", "Label": "Query Header Setting (Alias)", "Category": "Miscellaneous", "Template": "HDR?", "IsQuery": true },
+    {
+      "Id": "header",
+      "Label": "Set Query-Reply Header Inclusion",
+      "Category": "Miscellaneous",
+      "Template": "HEADer {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "headerQuery", "Label": "Query Header Setting", "Category": "Miscellaneous", "Template": "HEADer?", "IsQuery": true },
+    {
+      "Id": "language",
+      "Label": "Set On-Screen Language",
+      "Category": "Miscellaneous",
+      "Template": "LANGuage {Language}",
+      "Parameters": [
+        { "Name": "Language", "Kind": "Choice", "Options": ["ENGLish", "FRENch", "GERMan", "ITALian", "PORTUguese", "SPANish", "JAPAnese", "KOREan", "TRADitionalchinese", "SIMPlifiedchinese"], "DefaultValue": "ENGLish" }
+      ]
+    },
+    { "Id": "languageQuery", "Label": "Query On-Screen Language", "Category": "Miscellaneous", "Template": "LANGuage?", "IsQuery": true },
+    {
+      "Id": "lock",
+      "Label": "Lock/Unlock Front Panel",
+      "Category": "Miscellaneous",
+      "Template": "LOCk {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ALL", "NONe"], "DefaultValue": "NONe" }
+      ]
+    },
+    { "Id": "lockQuery", "Label": "Query Front Panel Lock State", "Category": "Miscellaneous", "Template": "LOCk?", "IsQuery": true },
+    {
+      "Id": "rem",
+      "Label": "Comment (Ignored by Instrument)",
+      "Category": "Miscellaneous",
+      "Template": "REM \"{Text}\"",
+      "Parameters": [
+        { "Name": "Text", "Kind": "Text", "DefaultValue": "" }
+      ]
+    },
+    { "Id": "set", "Label": "Query Full Settings String", "Category": "Miscellaneous", "Template": "SET?", "IsQuery": true },
+    { "Id": "unlockAll", "Label": "Unlock Front Panel", "Category": "Miscellaneous", "Template": "UNLock ALL" },
+    {
+      "Id": "verbose",
+      "Label": "Set Verbose (Full-Length) Keywords",
+      "Category": "Miscellaneous",
+      "Template": "VERBose {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "verboseQuery", "Label": "Query Verbose Setting", "Category": "Miscellaneous", "Template": "VERBose?", "IsQuery": true },
+    { "Id": "rs232Query", "Label": "Query All RS-232 Settings", "Category": "RS-232", "Template": "RS232?", "IsQuery": true },
+    {
+      "Id": "rs232Baud",
+      "Label": "Set Baud Rate",
+      "Category": "RS-232",
+      "Template": "RS232:BAUd {Baud}",
+      "Parameters": [
+        { "Name": "Baud", "Kind": "Choice", "Options": ["300", "600", "1200", "2400", "4800", "9600", "19200"], "DefaultValue": "9600" }
+      ]
+    },
+    { "Id": "rs232BaudQuery", "Label": "Query Baud Rate", "Category": "RS-232", "Template": "RS232:BAUd?", "IsQuery": true },
+    {
+      "Id": "rs232HardFlagging",
+      "Label": "Set Hardware Flow Control",
+      "Category": "RS-232",
+      "Template": "RS232:HARDFlagging {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "rs232HardFlaggingQuery", "Label": "Query Hardware Flow Control", "Category": "RS-232", "Template": "RS232:HARDFlagging?", "IsQuery": true },
+    {
+      "Id": "rs232Parity",
+      "Label": "Set Parity",
+      "Category": "RS-232",
+      "Template": "RS232:PARity {Parity}",
+      "Parameters": [
+        { "Name": "Parity", "Kind": "Choice", "Options": ["EVEN", "ODD", "NONe"], "DefaultValue": "NONe" }
+      ]
+    },
+    { "Id": "rs232ParityQuery", "Label": "Query Parity", "Category": "RS-232", "Template": "RS232:PARity?", "IsQuery": true },
+    {
+      "Id": "rs232SoftFlagging",
+      "Label": "Set Software (XON/XOFF) Flow Control",
+      "Category": "RS-232",
+      "Template": "RS232:SOFTFlagging {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "rs232SoftFlaggingQuery", "Label": "Query Software Flow Control", "Category": "RS-232", "Template": "RS232:SOFTFlagging?", "IsQuery": true },
+    {
+      "Id": "rs232Terminator",
+      "Label": "Set Transmit Terminator",
+      "Category": "RS-232",
+      "Template": "RS232:TRANsmit:TERMinator {Terminator}",
+      "Parameters": [
+        { "Name": "Terminator", "Kind": "Choice", "Options": ["CR", "LF", "CRLf", "LFCr"], "DefaultValue": "LF" }
+      ]
+    },
+    { "Id": "rs232TerminatorQuery", "Label": "Query Transmit Terminator", "Category": "RS-232", "Template": "RS232:TRANsmit:TERMinator?", "IsQuery": true },
+    { "Id": "allEvents", "Label": "Drain and Return All Events", "Category": "Status and Error", "Template": "ALLEv?", "IsQuery": true },
+    { "Id": "busy", "Label": "Query Busy State", "Category": "Status and Error", "Template": "BUSY?", "IsQuery": true },
+    {
+      "Id": "dese",
+      "Label": "Set Device Event Status Enable Register",
+      "Category": "Status and Error",
+      "Template": "DESE {Mask}",
+      "Parameters": [
+        { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 255, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "deseQuery", "Label": "Query Device Event Status Enable Register", "Category": "Status and Error", "Template": "DESE?", "IsQuery": true },
+    { "Id": "event", "Label": "Pop One Event Code", "Category": "Status and Error", "Template": "EVENT?", "IsQuery": true },
+    { "Id": "evmsg", "Label": "Pop One Event Code + Message", "Category": "Status and Error", "Template": "EVMsg?", "IsQuery": true },
+    { "Id": "evqty", "Label": "Query Queued Event Count", "Category": "Status and Error", "Template": "EVQty?", "IsQuery": true },
+    { "Id": "acquireQuery", "Label": "Query All Acquisition Settings", "Category": "Acquisition", "Template": "ACQuire?", "IsQuery": true },
+    {
+      "Id": "acquireMode",
+      "Label": "Set Acquisition Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuire:MODe {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["SAMple", "PEAKdetect", "AVErage"], "DefaultValue": "SAMple" }
+      ]
+    },
+    { "Id": "acquireModeQuery", "Label": "Query Acquisition Mode", "Category": "Acquisition", "Template": "ACQuire:MODe?", "IsQuery": true },
+    { "Id": "acquireNumAcq", "Label": "Query Acquisition Count", "Category": "Acquisition", "Template": "ACQuire:NUMACq?", "IsQuery": true },
+    {
+      "Id": "acquireNumAvg",
+      "Label": "Set Average Count",
+      "Category": "Acquisition",
+      "Template": "ACQuire:NUMAVg {Count}",
+      "Parameters": [
+        { "Name": "Count", "Kind": "Choice", "Options": ["4", "16", "64", "128"], "DefaultValue": "16" }
+      ]
+    },
+    { "Id": "acquireNumAvgQuery", "Label": "Query Average Count", "Category": "Acquisition", "Template": "ACQuire:NUMAVg?", "IsQuery": true },
+    {
+      "Id": "acquireState",
+      "Label": "Set Acquisition Run/Stop State",
+      "Category": "Acquisition",
+      "Template": "ACQuire:STATE {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["OFF", "ON", "RUN", "STOP"], "DefaultValue": "RUN" }
+      ]
+    },
+    { "Id": "acquireStateQuery", "Label": "Query Acquisition Run/Stop State", "Category": "Acquisition", "Template": "ACQuire:STATE?", "IsQuery": true },
+    {
+      "Id": "acquireStopAfter",
+      "Label": "Set Acquisition Stop Condition",
+      "Category": "Acquisition",
+      "Template": "ACQuire:STOPAfter {Condition}",
+      "Parameters": [
+        { "Name": "Condition", "Kind": "Choice", "Options": ["RUNSTop", "SEQuence"], "DefaultValue": "RUNSTop" }
+      ]
+    },
+    { "Id": "acquireStopAfterQuery", "Label": "Query Acquisition Stop Condition", "Category": "Acquisition", "Template": "ACQuire:STOPAfter?", "IsQuery": true },
+    { "Id": "calAbort", "Label": "Abort Factory Calibration", "Category": "Calibration", "Template": "CALibrate:ABOrt" },
+    { "Id": "calContinue", "Label": "Advance Factory Calibration Step", "Category": "Calibration", "Template": "CALibrate:CONTINUE" },
+    { "Id": "calFactory", "Label": "Start Factory Calibration", "Category": "Calibration", "Template": "CALibrate:FACtory" },
+    { "Id": "calInternal", "Label": "Run Self-Calibration (No Status)", "Category": "Calibration", "Template": "CALibrate:INTERNAL" },
+    { "Id": "calStatus", "Label": "Query Last Calibration Status", "Category": "Calibration", "Template": "CALibrate:STATUS?", "IsQuery": true },
+    { "Id": "diagFlag", "Label": "Query Last Diagnostic Result", "Category": "Calibration", "Template": "DIAg:RESUlt:FLAg?", "IsQuery": true },
+    { "Id": "diagLog", "Label": "Query Full Diagnostic Log", "Category": "Calibration", "Template": "DIAg:RESUlt:LOG?", "IsQuery": true },
+    { "Id": "errlogFirst", "Label": "Query First Error Log Entry", "Category": "Calibration", "Template": "ERRLOG:FIRST?", "IsQuery": true },
+    { "Id": "errlogNext", "Label": "Query Next Error Log Entry", "Category": "Calibration", "Template": "ERRLOG:NEXT?", "IsQuery": true },
+    { "Id": "cursorQuery", "Label": "Query All Cursor Settings", "Category": "Cursor", "Template": "CURSor?", "IsQuery": true },
+    {
+      "Id": "cursorFunction",
+      "Label": "Set Cursor Function",
+      "Category": "Cursor",
+      "Template": "CURSor:FUNCtion {Function}",
+      "Parameters": [
+        { "Name": "Function", "Kind": "Choice", "Options": ["HBArs", "OFF", "VBArs"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "cursorFunctionQuery", "Label": "Query Cursor Function", "Category": "Cursor", "Template": "CURSor:FUNCtion?", "IsQuery": true },
+    { "Id": "cursorHbarsQuery", "Label": "Query Horizontal-Bar Cursor Settings", "Category": "Cursor", "Template": "CURSor:HBArs?", "IsQuery": true },
+    { "Id": "cursorHbarsDelta", "Label": "Query Horizontal-Bar Cursor Delta", "Category": "Cursor", "Template": "CURSor:HBArs:DELTa?", "IsQuery": true },
+    {
+      "Id": "cursorHbarsPosition",
+      "Label": "Set Horizontal-Bar Cursor Position",
+      "Category": "Cursor",
+      "Template": "CURSor:HBArs:POSITION{Index} {Value}",
+      "Parameters": [
+        { "Name": "Index", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -100, "Maximum": 100, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "cursorHbarsPositionQuery",
+      "Label": "Query Horizontal-Bar Cursor Position",
+      "Category": "Cursor",
+      "Template": "CURSor:HBArs:POSITION{Index}?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Index", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "cursorHbarsUnits", "Label": "Query Horizontal-Bar Cursor Units", "Category": "Cursor", "Template": "CURSor:HBArs:UNIts?", "IsQuery": true },
+    {
+      "Id": "cursorSelectSource",
+      "Label": "Set Cursor Measurement Source",
+      "Category": "Cursor",
+      "Template": "CURSor:SELect:SOUrce {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "cursorSelectSourceQuery", "Label": "Query Cursor Measurement Source", "Category": "Cursor", "Template": "CURSor:SELect:SOUrce?", "IsQuery": true },
+    { "Id": "cursorVbarsQuery", "Label": "Query Vertical-Bar Cursor Settings", "Category": "Cursor", "Template": "CURSor:VBArs?", "IsQuery": true },
+    { "Id": "cursorVbarsDelta", "Label": "Query Vertical-Bar Cursor Delta", "Category": "Cursor", "Template": "CURSor:VBArs:DELTa?", "IsQuery": true },
+    {
+      "Id": "cursorVbarsPosition",
+      "Label": "Set Vertical-Bar Cursor Position",
+      "Category": "Cursor",
+      "Template": "CURSor:VBArs:POSITION{Index} {Value}",
+      "Parameters": [
+        { "Name": "Index", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "cursorVbarsPositionQuery",
+      "Label": "Query Vertical-Bar Cursor Position",
+      "Category": "Cursor",
+      "Template": "CURSor:VBArs:POSITION{Index}?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Index", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "cursorVbarsUnits",
+      "Label": "Set Vertical-Bar Cursor Units",
+      "Category": "Cursor",
+      "Template": "CURSor:VBArs:UNIts {Units}",
+      "Parameters": [
+        { "Name": "Units", "Kind": "Choice", "Options": ["SECOnds", "HERtz"], "DefaultValue": "SECOnds" }
+      ]
+    },
+    { "Id": "cursorVbarsUnitsQuery", "Label": "Query Vertical-Bar Cursor Units", "Category": "Cursor", "Template": "CURSor:VBArs:UNIts?", "IsQuery": true },
+    { "Id": "displayQuery", "Label": "Query All Display Settings", "Category": "Display", "Template": "DISplay?", "IsQuery": true },
+    {
+      "Id": "displayContrast",
+      "Label": "Set LCD Contrast",
+      "Category": "Display",
+      "Template": "DISplay:CONTRast {Contrast}",
+      "Parameters": [
+        { "Name": "Contrast", "Kind": "Numeric", "Minimum": 1, "Maximum": 100, "DefaultValue": "50" }
+      ]
+    },
+    { "Id": "displayContrastQuery", "Label": "Query LCD Contrast", "Category": "Display", "Template": "DISplay:CONTRast?", "IsQuery": true },
+    {
+      "Id": "displayFormat",
+      "Label": "Set Display Format",
+      "Category": "Display",
+      "Template": "DISplay:FORMat {Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["XY", "YT"], "DefaultValue": "YT" }
+      ]
+    },
+    { "Id": "displayFormatQuery", "Label": "Query Display Format", "Category": "Display", "Template": "DISplay:FORMat?", "IsQuery": true },
+    {
+      "Id": "displayInvert",
+      "Label": "Set Display Invert (No Effect on This Model)",
+      "Category": "Display",
+      "Template": "DISplay:INVert {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "displayInvertQuery", "Label": "Query Display Invert (Always OFF)", "Category": "Display", "Template": "DISplay:INVert?", "IsQuery": true },
+    {
+      "Id": "displayPersistence",
+      "Label": "Set Waveform Persistence",
+      "Category": "Display",
+      "Template": "DISplay:PERSistence {Persistence}",
+      "Parameters": [
+        { "Name": "Persistence", "Kind": "Choice", "Options": ["1", "2", "5", "INF", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "displayPersistenceQuery", "Label": "Query Waveform Persistence", "Category": "Display", "Template": "DISplay:PERSistence?", "IsQuery": true },
+    {
+      "Id": "displayStyle",
+      "Label": "Set Display Style",
+      "Category": "Display",
+      "Template": "DISplay:STYle {Style}",
+      "Parameters": [
+        { "Name": "Style", "Kind": "Choice", "Options": ["DOTs", "VECtors"], "DefaultValue": "VECtors" }
+      ]
+    },
+    { "Id": "displayStyleQuery", "Label": "Query Display Style", "Category": "Display", "Template": "DISplay:STYle?", "IsQuery": true },
+    {
+      "Id": "hardcopy",
+      "Label": "Start/Abort Hard Copy",
+      "Category": "Hard Copy",
+      "Template": "HARDCopy {Action}",
+      "Parameters": [
+        { "Name": "Action", "Kind": "Choice", "Options": ["ABOrt", "STARt"], "DefaultValue": "STARt" }
+      ]
+    },
+    { "Id": "hardcopyQuery", "Label": "Query Hard Copy Settings", "Category": "Hard Copy", "Template": "HARDCopy?", "IsQuery": true },
+    {
+      "Id": "hardcopyFormat",
+      "Label": "Set Hard Copy Format",
+      "Category": "Hard Copy",
+      "Template": "HARDCopy:FORMat {Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["BMP", "BUBBLEJet", "DESKJet", "DPU3445", "DPU411", "DPU412", "EPSC60", "EPSC80", "EPSIMAGE", "EPSOn", "LASERJet", "PCX", "RLE", "THINKjet", "TIFF"], "DefaultValue": "BMP" }
+      ]
+    },
+    { "Id": "hardcopyFormatQuery", "Label": "Query Hard Copy Format", "Category": "Hard Copy", "Template": "HARDCopy:FORMat?", "IsQuery": true },
+    {
+      "Id": "hardcopyInksaver",
+      "Label": "Set Ink Saver",
+      "Category": "Hard Copy",
+      "Template": "HARDCopy:INKSaver {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "hardcopyInksaverQuery", "Label": "Query Ink Saver", "Category": "Hard Copy", "Template": "HARDCopy:INKSaver?", "IsQuery": true },
+    {
+      "Id": "hardcopyLayout",
+      "Label": "Set Hard Copy Orientation",
+      "Category": "Hard Copy",
+      "Template": "HARDCopy:LAYout {Layout}",
+      "Parameters": [
+        { "Name": "Layout", "Kind": "Choice", "Options": ["LANdscape", "PORTRait"], "DefaultValue": "PORTRait" }
+      ]
+    },
+    { "Id": "hardcopyLayoutQuery", "Label": "Query Hard Copy Orientation", "Category": "Hard Copy", "Template": "HARDCopy:LAYout?", "IsQuery": true },
+    {
+      "Id": "hardcopyPort",
+      "Label": "Set Hard Copy Destination Port",
+      "Category": "Hard Copy",
+      "Template": "HARDCopy:PORT {Port}",
+      "Parameters": [
+        { "Name": "Port", "Kind": "Choice", "Options": ["CENtronics", "RS232", "GPIb"], "DefaultValue": "RS232" }
+      ]
+    },
+    { "Id": "hardcopyPortQuery", "Label": "Query Hard Copy Destination Port", "Category": "Hard Copy", "Template": "HARDCopy:PORT?", "IsQuery": true },
+    { "Id": "horizontalQuery", "Label": "Query All Horizontal Settings", "Category": "Horizontal", "Template": "HORizontal?", "IsQuery": true },
+    { "Id": "horizontalDelayQuery", "Label": "Query Window Time Base Settings", "Category": "Horizontal", "Template": "HORizontal:DELay?", "IsQuery": true },
+    {
+      "Id": "horizontalDelayPosition",
+      "Label": "Set Window Time Base Position",
+      "Category": "Horizontal",
+      "Template": "HORizontal:DELay:POSition {Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "horizontalDelayPositionQuery", "Label": "Query Window Time Base Position", "Category": "Horizontal", "Template": "HORizontal:DELay:POSition?", "IsQuery": true },
+    {
+      "Id": "horizontalDelayScale",
+      "Label": "Set Window Time Base Scale",
+      "Category": "Horizontal",
+      "Template": "HORizontal:DELay:SCAle {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0, "Maximum": 50, "DecimalPlaces": 9, "DefaultValue": "0.000001000" }
+      ]
+    },
+    { "Id": "horizontalDelayScaleQuery", "Label": "Query Window Time Base Scale", "Category": "Horizontal", "Template": "HORizontal:DELay:SCAle?", "IsQuery": true },
+    { "Id": "horizontalMainQuery", "Label": "Query Main Time Base Settings", "Category": "Horizontal", "Template": "HORizontal:MAIn?", "IsQuery": true },
+    {
+      "Id": "horizontalMainPosition",
+      "Label": "Set Main Trigger Position",
+      "Category": "Horizontal",
+      "Template": "HORizontal:MAIn:POSition {Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "horizontalMainPositionQuery", "Label": "Query Main Trigger Position", "Category": "Horizontal", "Template": "HORizontal:MAIn:POSition?", "IsQuery": true },
+    {
+      "Id": "horizontalMainScale",
+      "Label": "Set Main Time Base Scale",
+      "Category": "Horizontal",
+      "Template": "HORizontal:MAIn:SCAle {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0, "Maximum": 50, "DecimalPlaces": 7, "DefaultValue": "0.0005000" }
+      ]
+    },
+    { "Id": "horizontalMainScaleQuery", "Label": "Query Main Time Base Scale", "Category": "Horizontal", "Template": "HORizontal:MAIn:SCAle?", "IsQuery": true },
+    { "Id": "horizontalRecordlength", "Label": "Query Record Length (Always 2500)", "Category": "Horizontal", "Template": "HORizontal:RECOrdlength?", "IsQuery": true },
+    {
+      "Id": "horizontalView",
+      "Label": "Set Horizontal View",
+      "Category": "Horizontal",
+      "Template": "HORizontal:VIEW {View}",
+      "Parameters": [
+        { "Name": "View", "Kind": "Choice", "Options": ["MAIn", "WINDOW", "ZONE"], "DefaultValue": "MAIn" }
+      ]
+    },
+    { "Id": "horizontalViewQuery", "Label": "Query Horizontal View", "Category": "Horizontal", "Template": "HORizontal:VIEW?", "IsQuery": true },
+    { "Id": "mathQuery", "Label": "Query Math Waveform Settings", "Category": "Math", "Template": "MATH?", "IsQuery": true },
+    {
+      "Id": "mathDefine",
+      "Label": "Define Math Waveform",
+      "Category": "Math",
+      "Template": "MATH:DEFINE \"{Expression}\"",
+      "Parameters": [
+        { "Name": "Expression", "Kind": "Text", "DefaultValue": "CH1+CH2" }
+      ]
+    },
+    { "Id": "mathDefineQuery", "Label": "Query Math Waveform Definition", "Category": "Math", "Template": "MATH:DEFINE?", "IsQuery": true },
+    { "Id": "mathFftQuery", "Label": "Query FFT Display Settings", "Category": "Math", "Template": "MATH:FFT?", "IsQuery": true },
+    {
+      "Id": "mathFftHPosition",
+      "Label": "Set FFT Horizontal Position",
+      "Category": "Math",
+      "Template": "MATH:FFT:HORizontal:POSition {Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "DefaultValue": "50" }
+      ]
+    },
+    { "Id": "mathFftHPositionQuery", "Label": "Query FFT Horizontal Position", "Category": "Math", "Template": "MATH:FFT:HORizontal:POSition?", "IsQuery": true },
+    {
+      "Id": "mathFftHScale",
+      "Label": "Set FFT Horizontal Zoom",
+      "Category": "Math",
+      "Template": "MATH:FFT:HORizontal:SCAle {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Choice", "Options": ["1", "2", "5", "10"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "mathFftHScaleQuery", "Label": "Query FFT Horizontal Zoom", "Category": "Math", "Template": "MATH:FFT:HORizontal:SCAle?", "IsQuery": true },
+    {
+      "Id": "mathFftVPosition",
+      "Label": "Set FFT Vertical Position",
+      "Category": "Math",
+      "Template": "MATH:FFT:VERtical:POSition {Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "mathFftVPositionQuery", "Label": "Query FFT Vertical Position", "Category": "Math", "Template": "MATH:FFT:VERtical:POSition?", "IsQuery": true },
+    {
+      "Id": "mathFftVScale",
+      "Label": "Set FFT Vertical Zoom",
+      "Category": "Math",
+      "Template": "MATH:FFT:VERtical:SCAle {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Choice", "Options": ["0.5", "1", "2", "5", "10"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "mathFftVScaleQuery", "Label": "Query FFT Vertical Zoom", "Category": "Math", "Template": "MATH:FFT:VERtical:SCAle?", "IsQuery": true },
+    { "Id": "measurementQuery", "Label": "Query All Measurement Settings", "Category": "Measurement", "Template": "MEASUrement?", "IsQuery": true },
+    { "Id": "measurementImmedQuery", "Label": "Query Immediate Measurement Setup", "Category": "Measurement", "Template": "MEASUrement:IMMed?", "IsQuery": true },
+    {
+      "Id": "measurementImmedSource1",
+      "Label": "Set Immediate Measurement Source",
+      "Category": "Measurement",
+      "Template": "MEASUrement:IMMed:SOUrce1 {Channel}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "measurementImmedSource1Query", "Label": "Query Immediate Measurement Source", "Category": "Measurement", "Template": "MEASUrement:IMMed:SOUrce1?", "IsQuery": true },
+    {
+      "Id": "measurementImmedType",
+      "Label": "Set Immediate Measurement Type",
+      "Category": "Measurement",
+      "Template": "MEASUrement:IMMed:TYPe {Type}",
+      "Parameters": [
+        { "Name": "Type", "Kind": "Choice", "Options": ["FREQuency", "MEAN", "PERIod", "PHAse", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth"], "DefaultValue": "FREQuency" }
+      ]
+    },
+    { "Id": "measurementImmedTypeQuery", "Label": "Query Immediate Measurement Type", "Category": "Measurement", "Template": "MEASUrement:IMMed:TYPe?", "IsQuery": true },
+    { "Id": "measurementImmedUnits", "Label": "Query Immediate Measurement Units", "Category": "Measurement", "Template": "MEASUrement:IMMed:UNIts?", "IsQuery": true },
+    { "Id": "measurementImmedValue", "Label": "Execute and Read Immediate Measurement", "Category": "Measurement", "Template": "MEASUrement:IMMed:VALue?", "IsQuery": true },
+    {
+      "Id": "measurementSlotQuery",
+      "Label": "Query Measurement Slot Settings",
+      "Category": "Measurement",
+      "Template": "MEASUrement:MEAS{Slot}?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "measurementSlotSource",
+      "Label": "Set Measurement Slot Source",
+      "Category": "Measurement",
+      "Template": "MEASUrement:MEAS{Slot}:SOUrce {Channel}",
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" },
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" }
+      ]
+    },
+    {
+      "Id": "measurementSlotType",
+      "Label": "Set Measurement Slot Type",
+      "Category": "Measurement",
+      "Template": "MEASUrement:MEAS{Slot}:TYPe {Type}",
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" },
+        { "Name": "Type", "Kind": "Choice", "Options": ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"], "DefaultValue": "NONe" }
+      ]
+    },
+    {
+      "Id": "measurementSlotUnits",
+      "Label": "Query Measurement Slot Units",
+      "Category": "Measurement",
+      "Template": "MEASUrement:MEAS{Slot}:UNIts?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "measurementSlotValue",
+      "Label": "Query Measurement Slot Value",
+      "Category": "Measurement",
+      "Template": "MEASUrement:MEAS{Slot}:VALue?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Choice", "Options": ["1", "2", "3", "4", "5"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "recallSetupFactory",
+      "Label": "Recall Factory Default Setup",
+      "Category": "Save and Recall",
+      "Template": "RECAll:SETUp FACtory"
+    },
+    {
+      "Id": "recallSetupLocation",
+      "Label": "Recall Setup From Memory Location",
+      "Category": "Save and Recall",
+      "Template": "RECAll:SETUp {Location}",
+      "Parameters": [
+        { "Name": "Location", "Kind": "Numeric", "Minimum": 1, "Maximum": 10, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "saveSetup",
+      "Label": "Save Setup to Memory Location",
+      "Category": "Save and Recall",
+      "Template": "SAVe:SETUp {Location}",
+      "Parameters": [
+        { "Name": "Location", "Kind": "Numeric", "Minimum": 1, "Maximum": 10, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "saveWaveform",
+      "Label": "Save Waveform to Reference Slot",
+      "Category": "Save and Recall",
+      "Template": "SAVe:WAVEform {Source}, {Destination}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH"], "DefaultValue": "CH1" },
+        { "Name": "Destination", "Kind": "Choice", "Options": ["REFA", "REFB", "REFC", "REFD"], "DefaultValue": "REFA" }
+      ]
+    },
+    { "Id": "triggerForce", "Label": "Force Trigger Event", "Category": "Trigger", "Template": "TRIGger FORCe" },
+    { "Id": "triggerQuery", "Label": "Query All Trigger Settings", "Category": "Trigger", "Template": "TRIGger?", "IsQuery": true },
+    { "Id": "triggerMainSetLevel", "Label": "Set Trigger Level to 50%", "Category": "Trigger", "Template": "TRIGger:MAIn SETLevel" },
+    { "Id": "triggerMainQuery", "Label": "Query Main Trigger Settings", "Category": "Trigger", "Template": "TRIGger:MAIn?", "IsQuery": true },
+    { "Id": "triggerEdgeQuery", "Label": "Query Edge Trigger Settings", "Category": "Trigger", "Template": "TRIGger:MAIn:EDGE?", "IsQuery": true },
+    {
+      "Id": "triggerEdgeCoupling",
+      "Label": "Set Edge Trigger Coupling",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:EDGE:COUPling {Coupling}",
+      "Parameters": [
+        { "Name": "Coupling", "Kind": "Choice", "Options": ["AC", "DC", "HFRej", "LFRej", "NOISErej"], "DefaultValue": "DC" }
+      ]
+    },
+    { "Id": "triggerEdgeCouplingQuery", "Label": "Query Edge Trigger Coupling", "Category": "Trigger", "Template": "TRIGger:MAIn:EDGE:COUPling?", "IsQuery": true },
+    {
+      "Id": "triggerEdgeSlope",
+      "Label": "Set Edge Trigger Slope",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:EDGE:SLOpe {Slope}",
+      "Parameters": [
+        { "Name": "Slope", "Kind": "Choice", "Options": ["FALL", "RISe"], "DefaultValue": "RISe" }
+      ]
+    },
+    { "Id": "triggerEdgeSlopeQuery", "Label": "Query Edge Trigger Slope", "Category": "Trigger", "Template": "TRIGger:MAIn:EDGE:SLOpe?", "IsQuery": true },
+    {
+      "Id": "triggerEdgeSource",
+      "Label": "Set Edge Trigger Source",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:EDGE:SOUrce {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5", "LINE"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "triggerEdgeSourceQuery", "Label": "Query Edge Trigger Source", "Category": "Trigger", "Template": "TRIGger:MAIn:EDGE:SOUrce?", "IsQuery": true },
+    { "Id": "triggerFrequency", "Label": "Query Trigger Frequency", "Category": "Trigger", "Template": "TRIGger:MAIn:FREQuency?", "IsQuery": true },
+    { "Id": "triggerHoldoffQuery", "Label": "Query Trigger Holdoff", "Category": "Trigger", "Template": "TRIGger:MAIn:HOLDOff?", "IsQuery": true },
+    {
+      "Id": "triggerHoldoffValue",
+      "Label": "Set Trigger Holdoff",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:HOLDOff:VALue {Holdoff}",
+      "Parameters": [
+        { "Name": "Holdoff", "Kind": "Numeric", "Minimum": 0.0000005, "Maximum": 10, "DefaultValue": "0.0000005" }
+      ]
+    },
+    { "Id": "triggerHoldoffValueQuery", "Label": "Query Trigger Holdoff Value", "Category": "Trigger", "Template": "TRIGger:MAIn:HOLDOff:VALue?", "IsQuery": true },
+    {
+      "Id": "triggerLevel",
+      "Label": "Set Trigger Level",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:LEVel {Level}",
+      "Parameters": [
+        { "Name": "Level", "Kind": "Numeric", "Minimum": -50, "Maximum": 50, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "triggerLevelQuery", "Label": "Query Trigger Level", "Category": "Trigger", "Template": "TRIGger:MAIn:LEVel?", "IsQuery": true },
+    {
+      "Id": "triggerMode",
+      "Label": "Set Trigger Mode",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:MODe {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["AUTO", "NORMal"], "DefaultValue": "AUTO" }
+      ]
+    },
+    { "Id": "triggerModeQuery", "Label": "Query Trigger Mode", "Category": "Trigger", "Template": "TRIGger:MAIn:MODe?", "IsQuery": true },
+    { "Id": "triggerPulseQuery", "Label": "Query Pulse Trigger Settings", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse?", "IsQuery": true },
+    {
+      "Id": "triggerPulseSource",
+      "Label": "Set Pulse Trigger Source",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:PULse:SOUrce {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "triggerPulseSourceQuery", "Label": "Query Pulse Trigger Source", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse:SOUrce?", "IsQuery": true },
+    { "Id": "triggerPulseWidthQuery", "Label": "Query Pulse-Width Trigger Settings", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse:WIDth?", "IsQuery": true },
+    {
+      "Id": "triggerPulseWidthPolarity",
+      "Label": "Set Pulse-Width Trigger Polarity",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:PULse:WIDth:POLarity {Polarity}",
+      "Parameters": [
+        { "Name": "Polarity", "Kind": "Choice", "Options": ["POSITIVe", "NEGAtive"], "DefaultValue": "POSITIVe" }
+      ]
+    },
+    { "Id": "triggerPulseWidthPolarityQuery", "Label": "Query Pulse-Width Trigger Polarity", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse:WIDth:POLarity?", "IsQuery": true },
+    {
+      "Id": "triggerPulseWidthWhen",
+      "Label": "Set Pulse-Width Trigger Condition",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:PULse:WIDth:WHEN {Condition}",
+      "Parameters": [
+        { "Name": "Condition", "Kind": "Choice", "Options": ["EQual", "NOTEqual", "INside", "OUTside"], "DefaultValue": "EQual" }
+      ]
+    },
+    { "Id": "triggerPulseWidthWhenQuery", "Label": "Query Pulse-Width Trigger Condition", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse:WIDth:WHEN?", "IsQuery": true },
+    {
+      "Id": "triggerPulseWidthWidth",
+      "Label": "Set Pulse-Width Trigger Width",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:PULse:WIDth:WIDth {Width}",
+      "Parameters": [
+        { "Name": "Width", "Kind": "Numeric", "Minimum": 0.000000033, "Maximum": 10, "DefaultValue": "0.000001" }
+      ]
+    },
+    { "Id": "triggerPulseWidthWidthQuery", "Label": "Query Pulse-Width Trigger Width", "Category": "Trigger", "Template": "TRIGger:MAIn:PULse:WIDth:WIDth?", "IsQuery": true },
+    {
+      "Id": "triggerType",
+      "Label": "Set Trigger Type",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:TYPe {Type}",
+      "Parameters": [
+        { "Name": "Type", "Kind": "Choice", "Options": ["EDGE", "VIDeo", "PULse"], "DefaultValue": "EDGE" }
+      ]
+    },
+    { "Id": "triggerTypeQuery", "Label": "Query Trigger Type", "Category": "Trigger", "Template": "TRIGger:MAIn:TYPe?", "IsQuery": true },
+    { "Id": "triggerVideoQuery", "Label": "Query Video Trigger Settings", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo?", "IsQuery": true },
+    {
+      "Id": "triggerVideoLine",
+      "Label": "Set Video Trigger Line Number",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:VIDeo:LINE {Line}",
+      "Parameters": [
+        { "Name": "Line", "Kind": "Numeric", "Minimum": 1, "Maximum": 625, "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "triggerVideoLineQuery", "Label": "Query Video Trigger Line Number", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo:LINE?", "IsQuery": true },
+    {
+      "Id": "triggerVideoPolarity",
+      "Label": "Set Video Trigger Polarity",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:VIDeo:POLarity {Polarity}",
+      "Parameters": [
+        { "Name": "Polarity", "Kind": "Choice", "Options": ["INVert", "NORMal"], "DefaultValue": "NORMal" }
+      ]
+    },
+    { "Id": "triggerVideoPolarityQuery", "Label": "Query Video Trigger Polarity", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo:POLarity?", "IsQuery": true },
+    {
+      "Id": "triggerVideoSource",
+      "Label": "Set Video Trigger Source",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:VIDeo:SOUrce {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "triggerVideoSourceQuery", "Label": "Query Video Trigger Source", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo:SOUrce?", "IsQuery": true },
+    {
+      "Id": "triggerVideoStandard",
+      "Label": "Set Video Trigger Standard",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:VIDeo:STANdard {Standard}",
+      "Parameters": [
+        { "Name": "Standard", "Kind": "Choice", "Options": ["NTSc", "PAL"], "DefaultValue": "NTSc" }
+      ]
+    },
+    { "Id": "triggerVideoStandardQuery", "Label": "Query Video Trigger Standard", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo:STANdard?", "IsQuery": true },
+    {
+      "Id": "triggerVideoSync",
+      "Label": "Set Video Trigger Sync",
+      "Category": "Trigger",
+      "Template": "TRIGger:MAIn:VIDeo:SYNC {Sync}",
+      "Parameters": [
+        { "Name": "Sync", "Kind": "Choice", "Options": ["FIELD", "LINE", "ODD", "EVEN", "LINENum"], "DefaultValue": "FIELD" }
+      ]
+    },
+    { "Id": "triggerVideoSyncQuery", "Label": "Query Video Trigger Sync", "Category": "Trigger", "Template": "TRIGger:MAIn:VIDeo:SYNC?", "IsQuery": true },
+    { "Id": "triggerState", "Label": "Query Trigger State", "Category": "Trigger", "Template": "TRIGger:STATE?", "IsQuery": true },
+    {
+      "Id": "channelQuery",
+      "Label": "Query All Channel Settings",
+      "Category": "Vertical",
+      "Template": "CH{Channel}?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelBandwidth",
+      "Label": "Set Channel Bandwidth Limit",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:BANdwidth {State}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "channelBandwidthQuery",
+      "Label": "Query Channel Bandwidth Limit",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:BANdwidth?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelCoupling",
+      "Label": "Set Channel Coupling",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:COUPling {Coupling}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "Coupling", "Kind": "Choice", "Options": ["AC", "DC", "GND"], "DefaultValue": "DC" }
+      ]
+    },
+    {
+      "Id": "channelCouplingQuery",
+      "Label": "Query Channel Coupling",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:COUPling?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelInvert",
+      "Label": "Set Channel Invert",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:INVert {State}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "channelInvertQuery",
+      "Label": "Query Channel Invert",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:INVert?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelPosition",
+      "Label": "Set Channel Vertical Position",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:POSition {Position}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "Position", "Kind": "Numeric", "Minimum": -1000, "Maximum": 1000, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "channelPositionQuery",
+      "Label": "Query Channel Vertical Position",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:POSition?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelProbe",
+      "Label": "Set Channel Probe Attenuation",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:PRObe {Attenuation}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "Attenuation", "Kind": "Choice", "Options": ["1", "10", "100", "1000"], "DefaultValue": "10" }
+      ]
+    },
+    {
+      "Id": "channelProbeQuery",
+      "Label": "Query Channel Probe Attenuation",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:PRObe?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelScale",
+      "Label": "Set Channel Volts/Div",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:SCAle {Scale}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" },
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0.002, "Maximum": 5, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "channelScaleQuery",
+      "Label": "Query Channel Volts/Div",
+      "Category": "Vertical",
+      "Template": "CH{Channel}:SCAle?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2", "3", "4"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "selectQuery", "Label": "Query All Waveform Display States", "Category": "Vertical", "Template": "SELect?", "IsQuery": true },
+    {
+      "Id": "selectWaveform",
+      "Label": "Show/Hide a Waveform",
+      "Category": "Vertical",
+      "Template": "SELect:{Waveform} {State}",
+      "Parameters": [
+        { "Name": "Waveform", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "selectWaveformQuery",
+      "Label": "Query a Waveform's Display State",
+      "Category": "Vertical",
+      "Template": "SELect:{Waveform}?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Waveform", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "curveQuery", "Label": "Read Curve Data", "Category": "Waveform", "Template": "CURVe?", "IsQuery": true },
+    { "Id": "dataQuery", "Label": "Query Waveform Data Settings", "Category": "Waveform", "Template": "DATa?", "IsQuery": true },
+    { "Id": "dataInit", "Label": "Reset Waveform Data Settings to Defaults", "Category": "Waveform", "Template": "DATa INIT" },
+    {
+      "Id": "dataDestination",
+      "Label": "Set Curve Write Destination",
+      "Category": "Waveform",
+      "Template": "DATa:DESTination {Destination}",
+      "Parameters": [
+        { "Name": "Destination", "Kind": "Choice", "Options": ["REFA", "REFB", "REFC", "REFD"], "DefaultValue": "REFA" }
+      ]
+    },
+    { "Id": "dataDestinationQuery", "Label": "Query Curve Write Destination", "Category": "Waveform", "Template": "DATa:DESTination?", "IsQuery": true },
+    {
+      "Id": "dataEncoding",
+      "Label": "Set Curve Data Encoding",
+      "Category": "Waveform",
+      "Template": "DATa:ENCdg {Encoding}",
+      "Parameters": [
+        { "Name": "Encoding", "Kind": "Choice", "Options": ["ASCIi", "RIBinary", "RPBinary", "SRIbinary", "SRPbinary"], "DefaultValue": "ASCIi" }
+      ]
+    },
+    { "Id": "dataEncodingQuery", "Label": "Query Curve Data Encoding", "Category": "Waveform", "Template": "DATa:ENCdg?", "IsQuery": true },
+    {
+      "Id": "dataSource",
+      "Label": "Set Curve Read Source",
+      "Category": "Waveform",
+      "Template": "DATa:SOUrce {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CH1", "CH2", "CH3", "CH4", "MATH", "REFA", "REFB", "REFC", "REFD"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "dataSourceQuery", "Label": "Query Curve Read Source", "Category": "Waveform", "Template": "DATa:SOUrce?", "IsQuery": true },
+    {
+      "Id": "dataStart",
+      "Label": "Set First Transferred Point",
+      "Category": "Waveform",
+      "Template": "DATa:STARt {Point}",
+      "Parameters": [
+        { "Name": "Point", "Kind": "Numeric", "Minimum": 1, "Maximum": 2500, "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "dataStartQuery", "Label": "Query First Transferred Point", "Category": "Waveform", "Template": "DATa:STARt?", "IsQuery": true },
+    {
+      "Id": "dataStop",
+      "Label": "Set Last Transferred Point",
+      "Category": "Waveform",
+      "Template": "DATa:STOP {Point}",
+      "Parameters": [
+        { "Name": "Point", "Kind": "Numeric", "Minimum": 1, "Maximum": 2500, "DefaultValue": "2500" }
+      ]
+    },
+    { "Id": "dataStopQuery", "Label": "Query Last Transferred Point", "Category": "Waveform", "Template": "DATa:STOP?", "IsQuery": true },
+    {
+      "Id": "dataWidth",
+      "Label": "Set Bytes Per Point",
+      "Category": "Waveform",
+      "Template": "DATa:WIDth {Width}",
+      "Parameters": [
+        { "Name": "Width", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "dataWidthQuery", "Label": "Query Bytes Per Point", "Category": "Waveform", "Template": "DATa:WIDth?", "IsQuery": true },
+    { "Id": "wavfrmQuery", "Label": "Read Preamble + Curve Data", "Category": "Waveform", "Template": "WAVFrm?", "IsQuery": true },
+    { "Id": "wfmpreQuery", "Label": "Query Full Waveform Preamble", "Category": "Waveform", "Template": "WFMPre?", "IsQuery": true },
+    {
+      "Id": "wfmpreBitNr",
+      "Label": "Set Preamble Bits/Point",
+      "Category": "Waveform",
+      "Template": "WFMPre:BIT_Nr {Bits}",
+      "Parameters": [
+        { "Name": "Bits", "Kind": "Choice", "Options": ["8", "16"], "DefaultValue": "8" }
+      ]
+    },
+    { "Id": "wfmpreBitNrQuery", "Label": "Query Preamble Bits/Point", "Category": "Waveform", "Template": "WFMPre:BIT_Nr?", "IsQuery": true },
+    {
+      "Id": "wfmpreBnFmt",
+      "Label": "Set Preamble Binary Format",
+      "Category": "Waveform",
+      "Template": "WFMPre:BN_Fmt {Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["RI", "RP"], "DefaultValue": "RP" }
+      ]
+    },
+    { "Id": "wfmpreBnFmtQuery", "Label": "Query Preamble Binary Format", "Category": "Waveform", "Template": "WFMPre:BN_Fmt?", "IsQuery": true },
+    {
+      "Id": "wfmpreBytNr",
+      "Label": "Set Preamble Bytes/Point",
+      "Category": "Waveform",
+      "Template": "WFMPre:BYT_Nr {Bytes}",
+      "Parameters": [
+        { "Name": "Bytes", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "wfmpreBytNrQuery", "Label": "Query Preamble Bytes/Point", "Category": "Waveform", "Template": "WFMPre:BYT_Nr?", "IsQuery": true },
+    {
+      "Id": "wfmpreBytOr",
+      "Label": "Set Preamble Byte Order",
+      "Category": "Waveform",
+      "Template": "WFMPre:BYT_Or {Order}",
+      "Parameters": [
+        { "Name": "Order", "Kind": "Choice", "Options": ["LSB", "MSB"], "DefaultValue": "MSB" }
+      ]
+    },
+    { "Id": "wfmpreBytOrQuery", "Label": "Query Preamble Byte Order", "Category": "Waveform", "Template": "WFMPre:BYT_Or?", "IsQuery": true },
+    {
+      "Id": "wfmpreEncdg",
+      "Label": "Set Preamble Encoding",
+      "Category": "Waveform",
+      "Template": "WFMPre:ENCdg {Encoding}",
+      "Parameters": [
+        { "Name": "Encoding", "Kind": "Choice", "Options": ["ASC", "BIN"], "DefaultValue": "ASC" }
+      ]
+    },
+    { "Id": "wfmpreEncdgQuery", "Label": "Query Preamble Encoding", "Category": "Waveform", "Template": "WFMPre:ENCdg?", "IsQuery": true },
+    { "Id": "wfmpreNrPt", "Label": "Query Transmitted Record Point Count", "Category": "Waveform", "Template": "WFMPre:NR_Pt?", "IsQuery": true },
+    {
+      "Id": "wfmprePtFmt",
+      "Label": "Set Preamble Point Format",
+      "Category": "Waveform",
+      "Template": "WFMPre:PT_Fmt {Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["ENV", "Y"], "DefaultValue": "Y" }
+      ]
+    },
+    { "Id": "wfmprePtFmtQuery", "Label": "Query Preamble Point Format", "Category": "Waveform", "Template": "WFMPre:PT_Fmt?", "IsQuery": true },
+    { "Id": "wfmprePtOff", "Label": "Query Preamble Point Offset (Always 0)", "Category": "Waveform", "Template": "WFMPre:PT_Off?", "IsQuery": true },
+    { "Id": "wfmpreWfid", "Label": "Query Preamble Waveform Descriptor", "Category": "Waveform", "Template": "WFMPre:WFId?", "IsQuery": true },
+    {
+      "Id": "wfmpreXIncr",
+      "Label": "Set Preamble X Increment",
+      "Category": "Waveform",
+      "Template": "WFMPre:XINcr {Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 1, "DecimalPlaces": 9, "DefaultValue": "0.000000040" }
+      ]
+    },
+    { "Id": "wfmpreXIncrQuery", "Label": "Query Preamble X Increment", "Category": "Waveform", "Template": "WFMPre:XINcr?", "IsQuery": true },
+    {
+      "Id": "wfmpreXUnit",
+      "Label": "Set Preamble X Units",
+      "Category": "Waveform",
+      "Template": "WFMPre:XUNit \"{Units}\"",
+      "Parameters": [
+        { "Name": "Units", "Kind": "Text", "DefaultValue": "s" }
+      ]
+    },
+    { "Id": "wfmpreXUnitQuery", "Label": "Query Preamble X Units", "Category": "Waveform", "Template": "WFMPre:XUNit?", "IsQuery": true },
+    {
+      "Id": "wfmpreXZero",
+      "Label": "Set Preamble X Zero",
+      "Category": "Waveform",
+      "Template": "WFMPre:XZEro {Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "wfmpreXZeroQuery", "Label": "Query Preamble X Zero", "Category": "Waveform", "Template": "WFMPre:XZEro?", "IsQuery": true },
+    {
+      "Id": "wfmpreYMult",
+      "Label": "Set Preamble Y Multiplier",
+      "Category": "Waveform",
+      "Template": "WFMPre:YMUlt {Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 10, "DefaultValue": "0.078125" }
+      ]
+    },
+    { "Id": "wfmpreYMultQuery", "Label": "Query Preamble Y Multiplier", "Category": "Waveform", "Template": "WFMPre:YMUlt?", "IsQuery": true },
+    {
+      "Id": "wfmpreYOff",
+      "Label": "Set Preamble Y Offset",
+      "Category": "Waveform",
+      "Template": "WFMPre:YOFf {Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -255, "Maximum": 255, "DefaultValue": "127" }
+      ]
+    },
+    { "Id": "wfmpreYOffQuery", "Label": "Query Preamble Y Offset", "Category": "Waveform", "Template": "WFMPre:YOFf?", "IsQuery": true },
+    {
+      "Id": "wfmpreYUnit",
+      "Label": "Set Preamble Y Units",
+      "Category": "Waveform",
+      "Template": "WFMPre:YUNit \"{Units}\"",
+      "Parameters": [
+        { "Name": "Units", "Kind": "Text", "DefaultValue": "Volts" }
+      ]
+    },
+    { "Id": "wfmpreYUnitQuery", "Label": "Query Preamble Y Units", "Category": "Waveform", "Template": "WFMPre:YUNit?", "IsQuery": true },
+    {
+      "Id": "wfmpreYZero",
+      "Label": "Set Preamble Y Zero",
+      "Category": "Waveform",
+      "Template": "WFMPre:YZEro {Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -100, "Maximum": 100, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "wfmpreYZeroQuery", "Label": "Query Preamble Y Zero", "Category": "Waveform", "Template": "WFMPre:YZEro?", "IsQuery": true }
   ]
 }

@@ -1,0 +1,1015 @@
+{
+  "Name": "Rigol DG1062Z Dual-Channel Function/Arbitrary Waveform Generator (DG1000Z Series, USB-TMC/LAN)",
+  "IdnPattern": "^RIGOL TECHNOLOGIES,DG1062Z\\b",
+  "Terminator": "\n",
+  "Notes": "Built from docs/devices/rigol-dg1062z/programming-manual.md (RIGOL Programming Guide - DG1000Z Series, Feb. 2014, PGB09103-1110). The guide uses the DG1062Z as its worked example throughout and also covers the sibling DG1032Z (same command set; only the frequency-range table in :SOURce:FREQuency differs per-model). Remote interfaces are rear-panel USB-TMC (USB Device port) and LAN/LXI; GPIB is only reachable via an external GPIB-USB converter and is out of scope here, as is the optional :PA external power-amplifier accessory subsystem. This unit has the 16M point 'Arb 16M' memory option installed. Almost every SOURce/OUTPut/TRIGger command in this series takes an optional [<n>] channel selector immediately after the root keyword (e.g. SOURce2:FREQuency) rather than the older :CH2-suffix style DG1022 uses - modeled here as a Channel choice parameter substituted directly into the command keyword. Omitting/defaulting the selector always addresses CH1 regardless of whichever channel is selected on the front panel. Query replies are always returned in scientific notation with 7 significant digits, regardless of the unit suffix used on the corresponding set command. Enabling AM/FM/PM/FSK/ASK/PSK/PWM modulation, Sweep, or Burst on a channel automatically disables whichever of the other two modes was already active on that channel; Harmonic mode blocks all three and must be turned off first. Every :COUPling:* family (FREQuency/PHASe/AMPLitude) requires its MODE and DEViation/RATio to be set before its STATe is turned ON - changing MODE or DEViation/RATio while already ON is rejected. LAN configuration changes need BOTH SYSTem:COMMunicate:LAN:APPLy (applies live) and SYSTem:COMMunicate:LAN:UPDate (persists to nonvolatile memory) - APPLy alone reverts on power-cycle. Arbitrary-waveform point counts auto-adjust: 8-8192 points auto-interpolates to 8192 in frequency mode; >8192-16384 points auto-switches the channel to sample-rate mode - always verify the actual stored point count with TRACe:DATA:POINts? after a download rather than assuming the requested count was kept. OUTPut<n>:LOAD only corrects the instrument's own amplitude/offset computation for an assumed external load - it never changes the fixed 50-ohm physical source impedance. *OPC? blocks until all pending operations complete (a genuine sync point); *OPC merely sets a status-register bit asynchronously and returns immediately - prefer *OPC? after a DATA download or state recall before reading results back.",
+  "Commands": [
+    { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
+    { "Id": "cls", "Label": "Clear Status", "Category": "Common", "Template": "*CLS" },
+    { "Id": "opc", "Label": "Set Operation Complete Bit", "Category": "Common", "Template": "*OPC" },
+    { "Id": "opcQuery", "Label": "Operation Complete? (Blocking Sync Point)", "Category": "Common", "Template": "*OPC?", "IsQuery": true },
+    { "Id": "wai", "Label": "Wait For Pending Operations", "Category": "Common", "Template": "*WAI" },
+    { "Id": "trg", "Label": "Trigger", "Category": "Common", "Template": "*TRG" },
+    {
+      "Id": "sav", "Label": "Save Instrument State To Slot", "Category": "Common", "Template": "*SAV {Slot}",
+      "Parameters": [ { "Name": "Slot", "Kind": "Numeric", "Minimum": 0, "Maximum": 9, "DefaultValue": "0" } ]
+    },
+    {
+      "Id": "rcl", "Label": "Recall Instrument State From Slot", "Category": "Common", "Template": "*RCL {Slot}",
+      "Parameters": [ { "Name": "Slot", "Kind": "Numeric", "Minimum": 0, "Maximum": 9, "DefaultValue": "0" } ]
+    },
+    {
+      "Id": "applySin", "Label": "Apply Sine", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:SINusoid {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applySqu", "Label": "Apply Square", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:SQUare {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyRamp", "Label": "Apply Ramp", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:RAMP {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 4000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyPulse", "Label": "Apply Pulse", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:PULSe {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 10000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyNoise", "Label": "Apply Noise (Frequency/Phase Ignored)", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:NOISe {Amplitude},{Offset}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyDc", "Label": "Apply DC (Frequency/Amplitude Ignored)", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:DC {Offset}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyUser", "Label": "Apply Selected Arbitrary Wave", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:USER {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 30000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyHarm", "Label": "Apply Harmonic", "Category": "Apply", "Template": "SOURce{Channel}:APPLy:HARMonic {Frequency},{Amplitude},{Offset},{Phase}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 15000000, "Unit": "Hz", "DefaultValue": "1000" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" },
+        { "Name": "Phase", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "applyQuery", "Label": "Apply? (Current Waveform Setup)", "Category": "Apply", "Template": "SOURce{Channel}:APPLy?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "func", "Label": "Function", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion {Function}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Function", "Kind": "Choice", "Options": ["SIN", "SQUare", "RAMP", "PULSe", "NOISe", "DC", "USER", "HARMonic"], "DefaultValue": "SIN" }
+      ]
+    },
+    {
+      "Id": "funcQuery", "Label": "Function?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "funcRampSymm", "Label": "Ramp Symmetry", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:RAMP:SYMMetry {Percent}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "50" }
+      ]
+    },
+    {
+      "Id": "funcRampSymmQuery", "Label": "Ramp Symmetry?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:RAMP:SYMMetry?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "funcSquDuty", "Label": "Square Duty Cycle", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:SQUare:DCYCle {Percent}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Percent", "Kind": "Numeric", "Minimum": 20, "Maximum": 80, "Unit": "%", "DefaultValue": "50" }
+      ]
+    },
+    {
+      "Id": "funcSquDutyQuery", "Label": "Square Duty Cycle?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:SQUare:DCYCle?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pulseWidth", "Label": "Pulse Width", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:WIDTh {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.000000016, "Maximum": 1000, "Unit": "s", "DefaultValue": "0.0005" }
+      ]
+    },
+    {
+      "Id": "pulseWidthQuery", "Label": "Pulse Width?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:WIDTh?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pulseDcyc", "Label": "Pulse Duty Cycle", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:DCYCle {Percent}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "50" }
+      ]
+    },
+    {
+      "Id": "pulseDcycQuery", "Label": "Pulse Duty Cycle?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:DCYCle?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pulseLeadEdge", "Label": "Pulse Leading Edge Time", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:TRANsition:LEADing {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.000000005, "Maximum": 1, "Unit": "s", "DefaultValue": "0.000000005" }
+      ]
+    },
+    {
+      "Id": "pulseLeadEdgeQuery", "Label": "Pulse Leading Edge Time?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:TRANsition:LEADing?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pulseTrailEdge", "Label": "Pulse Trailing Edge Time", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:TRANsition:TRAiling {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.000000005, "Maximum": 1, "Unit": "s", "DefaultValue": "0.000000005" }
+      ]
+    },
+    {
+      "Id": "pulseTrailEdgeQuery", "Label": "Pulse Trailing Edge Time?", "Category": "Function", "Template": "SOURce{Channel}:FUNCtion:PULSe:TRANsition:TRAiling?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "freq", "Label": "Frequency", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "freqQuery", "Label": "Frequency?", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "freqStart", "Label": "Sweep Start Frequency", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:STARt {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "freqStartQuery", "Label": "Sweep Start Frequency?", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:STARt?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "freqStop", "Label": "Sweep Stop Frequency", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:STOP {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "freqStopQuery", "Label": "Sweep Stop Frequency?", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:STOP?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "freqCenter", "Label": "Sweep Center Frequency", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:CENTer {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "550" }
+      ]
+    },
+    {
+      "Id": "freqCenterQuery", "Label": "Sweep Center Frequency?", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:CENTer?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "freqSpan", "Label": "Sweep Frequency Span", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:SPAN {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "900" }
+      ]
+    },
+    {
+      "Id": "freqSpanQuery", "Label": "Sweep Frequency Span?", "Category": "Frequency", "Template": "SOURce{Channel}:FREQuency:SPAN?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "period", "Label": "Period", "Category": "Frequency", "Template": "SOURce{Channel}:PERiod {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.000000016, "Maximum": 1000000, "Unit": "s", "DefaultValue": "0.001" }
+      ]
+    },
+    {
+      "Id": "periodQuery", "Label": "Period?", "Category": "Frequency", "Template": "SOURce{Channel}:PERiod?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "volt", "Label": "Amplitude", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage {Amplitude}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0.001, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "voltQuery", "Label": "Amplitude?", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "voltOffset", "Label": "Offset", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:OFFSet {Offset}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "voltOffsetQuery", "Label": "Offset?", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:OFFSet?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "voltHigh", "Label": "High Level", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:HIGH {Level}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Level", "Kind": "Numeric", "Minimum": -9.999, "Maximum": 10, "Unit": "V", "DefaultValue": "0.5" }
+      ]
+    },
+    {
+      "Id": "voltHighQuery", "Label": "High Level?", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:HIGH?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "voltLow", "Label": "Low Level", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:LOW {Level}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Level", "Kind": "Numeric", "Minimum": -10, "Maximum": 9.999, "Unit": "V", "DefaultValue": "-0.5" }
+      ]
+    },
+    {
+      "Id": "voltLowQuery", "Label": "Low Level?", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:LOW?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "voltUnit", "Label": "Amplitude Unit", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:UNIT {Unit}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Unit", "Kind": "Choice", "Options": ["VPP", "VRMS", "DBM"], "DefaultValue": "VPP" }
+      ]
+    },
+    {
+      "Id": "voltUnitQuery", "Label": "Amplitude Unit?", "Category": "Voltage", "Template": "SOURce{Channel}:VOLTage:UNIT?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "phase", "Label": "Phase", "Category": "Voltage", "Template": "SOURce{Channel}:PHASe {Degrees}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Degrees", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "phaseQuery", "Label": "Phase?", "Category": "Voltage", "Template": "SOURce{Channel}:PHASe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    { "Id": "phaseSync", "Label": "Phase Align Both Channels", "Category": "Voltage", "Template": "SOURce:PHASe:SYNChronize" },
+    {
+      "Id": "harmState", "Label": "Harmonic State", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "harmStateQuery", "Label": "Harmonic State?", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "harmType", "Label": "Harmonic Type", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:TYPE {Type}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Type", "Kind": "Choice", "Options": ["EVEN", "ODD", "ALL", "USER"], "DefaultValue": "ALL" }
+      ]
+    },
+    {
+      "Id": "harmTypeQuery", "Label": "Harmonic Type?", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:TYPE?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "harmOrder", "Label": "Harmonic Order", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:ORDer {Order}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Order", "Kind": "Numeric", "Minimum": 2, "Maximum": 16, "DefaultValue": "2" }
+      ]
+    },
+    {
+      "Id": "harmOrderQuery", "Label": "Harmonic Order?", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:ORDer?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "harmAmp", "Label": "Harmonic Amplitude", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:AMPLitude {Order},{Amplitude}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Order", "Kind": "Numeric", "Minimum": 2, "Maximum": 16, "DefaultValue": "2" },
+        { "Name": "Amplitude", "Kind": "Numeric", "Minimum": 0, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "0.5" }
+      ]
+    },
+    {
+      "Id": "harmAmpQuery", "Label": "Harmonic Amplitude?", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:AMPLitude? {Order}", "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Order", "Kind": "Numeric", "Minimum": 2, "Maximum": 16, "DefaultValue": "2" }
+      ]
+    },
+    {
+      "Id": "harmPhase", "Label": "Harmonic Phase", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:PHASe {Order},{Degrees}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Order", "Kind": "Numeric", "Minimum": 2, "Maximum": 16, "DefaultValue": "2" },
+        { "Name": "Degrees", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "harmPhaseQuery", "Label": "Harmonic Phase?", "Category": "Harmonic", "Template": "SOURce{Channel}:HARMonic:PHASe? {Order}", "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Order", "Kind": "Numeric", "Minimum": 2, "Maximum": 16, "DefaultValue": "2" }
+      ]
+    },
+    {
+      "Id": "amState", "Label": "AM State", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "amStateQuery", "Label": "AM State?", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "amSource", "Label": "AM Modulating Source", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:SOURce {Source}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal"], "DefaultValue": "INTernal" }
+      ]
+    },
+    {
+      "Id": "amSourceQuery", "Label": "AM Modulating Source?", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:SOURce?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "amIntFunc", "Label": "AM Internal Modulating Shape", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:INTernal:FUNCtion {Shape}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Shape", "Kind": "Choice", "Options": ["SIN", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"], "DefaultValue": "SIN" }
+      ]
+    },
+    {
+      "Id": "amIntFuncQuery", "Label": "AM Internal Modulating Shape?", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:INTernal:FUNCtion?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "amIntFreq", "Label": "AM Internal Modulating Frequency", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:INTernal:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 1000000, "Unit": "Hz", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "amIntFreqQuery", "Label": "AM Internal Modulating Frequency?", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:INTernal:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "amDepth", "Label": "AM Depth", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:DEPTh {Percent}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 120, "Unit": "%", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "amDepthQuery", "Label": "AM Depth?", "Category": "Modulation-AM", "Template": "SOURce{Channel}:AM:DEPTh?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fmState", "Label": "FM State", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "fmStateQuery", "Label": "FM State?", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fmSource", "Label": "FM Modulating Source", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:SOURce {Source}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal"], "DefaultValue": "INTernal" }
+      ]
+    },
+    {
+      "Id": "fmSourceQuery", "Label": "FM Modulating Source?", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:SOURce?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fmIntFunc", "Label": "FM Internal Modulating Shape", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:INTernal:FUNCtion {Shape}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Shape", "Kind": "Choice", "Options": ["SIN", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"], "DefaultValue": "SIN" }
+      ]
+    },
+    {
+      "Id": "fmIntFuncQuery", "Label": "FM Internal Modulating Shape?", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:INTernal:FUNCtion?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fmIntFreq", "Label": "FM Internal Modulating Frequency", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:INTernal:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 1000000, "Unit": "Hz", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "fmIntFreqQuery", "Label": "FM Internal Modulating Frequency?", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:INTernal:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fmDeviation", "Label": "FM Frequency Deviation", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:DEViation {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 30000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "fmDeviationQuery", "Label": "FM Frequency Deviation?", "Category": "Modulation-FM", "Template": "SOURce{Channel}:FM:DEViation?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pmState", "Label": "PM State", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "pmStateQuery", "Label": "PM State?", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pmSource", "Label": "PM Modulating Source", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:SOURce {Source}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal"], "DefaultValue": "INTernal" }
+      ]
+    },
+    {
+      "Id": "pmSourceQuery", "Label": "PM Modulating Source?", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:SOURce?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pmIntFunc", "Label": "PM Internal Modulating Shape", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:INTernal:FUNCtion {Shape}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Shape", "Kind": "Choice", "Options": ["SIN", "SQUare", "TRIangle", "UPRamp", "DNRamp", "NOISe"], "DefaultValue": "SIN" }
+      ]
+    },
+    {
+      "Id": "pmIntFuncQuery", "Label": "PM Internal Modulating Shape?", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:INTernal:FUNCtion?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pmIntFreq", "Label": "PM Internal Modulating Frequency", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:INTernal:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 1000000, "Unit": "Hz", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "pmIntFreqQuery", "Label": "PM Internal Modulating Frequency?", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:INTernal:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "pmDeviation", "Label": "PM Phase Deviation", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:DEViation {Degrees}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Degrees", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "90" }
+      ]
+    },
+    {
+      "Id": "pmDeviationQuery", "Label": "PM Phase Deviation?", "Category": "Modulation-PM", "Template": "SOURce{Channel}:PM:DEViation?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fskState", "Label": "FSK State", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "fskStateQuery", "Label": "FSK State?", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fskHopFreq", "Label": "FSK Hop Frequency", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 30000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "fskHopFreqQuery", "Label": "FSK Hop Frequency?", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "fskRate", "Label": "FSK Internal Rate", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:INTernal:RATE {Rate}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Rate", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 1000000, "Unit": "Hz", "DefaultValue": "100" }
+      ]
+    },
+    {
+      "Id": "fskRateQuery", "Label": "FSK Internal Rate?", "Category": "Modulation-FSK", "Template": "SOURce{Channel}:FSK:INTernal:RATE?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "sweepState", "Label": "Sweep State", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "sweepStateQuery", "Label": "Sweep State?", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "sweepSpacing", "Label": "Sweep Spacing", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:SPACing {Spacing}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Spacing", "Kind": "Choice", "Options": ["LINear", "LOGarithmic", "STEp"], "DefaultValue": "LINear" }
+      ]
+    },
+    {
+      "Id": "sweepSpacingQuery", "Label": "Sweep Spacing?", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:SPACing?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "sweepTime", "Label": "Sweep Time", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:TIME {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.001, "Maximum": 500, "Unit": "s", "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "sweepTimeQuery", "Label": "Sweep Time?", "Category": "Sweep", "Template": "SOURce{Channel}:SWEep:TIME?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstState", "Label": "Burst State", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "burstStateQuery", "Label": "Burst State?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstMode", "Label": "Burst Mode", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:MODE {Mode}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Mode", "Kind": "Choice", "Options": ["TRIGgered", "GATed", "INFinity"], "DefaultValue": "TRIGgered" }
+      ]
+    },
+    {
+      "Id": "burstModeQuery", "Label": "Burst Mode?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:MODE?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstNCycles", "Label": "Burst Cycle Count", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:NCYCles {Cycles}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Cycles", "Kind": "Numeric", "Minimum": 1, "Maximum": 1000000, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "burstNCyclesQuery", "Label": "Burst Cycle Count?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:NCYCles?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstPeriod", "Label": "Burst Internal Period", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:INTernal:PERiod {Seconds}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Seconds", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 500, "Unit": "s", "DefaultValue": "0.001" }
+      ]
+    },
+    {
+      "Id": "burstPeriodQuery", "Label": "Burst Internal Period?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:INTernal:PERiod?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstPhase", "Label": "Burst Start Phase", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:PHASe {Degrees}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Degrees", "Kind": "Numeric", "Minimum": 0, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "burstPhaseQuery", "Label": "Burst Start Phase?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:PHASe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstGatePolarity", "Label": "Burst Gate Polarity", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:GATE:POLarity {Polarity}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Polarity", "Kind": "Choice", "Options": ["NORMal", "INVerted"], "DefaultValue": "NORMal" }
+      ]
+    },
+    {
+      "Id": "burstGatePolarityQuery", "Label": "Burst Gate Polarity?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:GATE:POLarity?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "burstTrigSource", "Label": "Burst Trigger Source", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:TRIGger:SOURce {Source}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal", "MANual"], "DefaultValue": "INTernal" }
+      ]
+    },
+    {
+      "Id": "burstTrigSourceQuery", "Label": "Burst Trigger Source?", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:TRIGger:SOURce?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    { "Id": "burstTrig", "Label": "Force Burst Trigger", "Category": "Burst", "Template": "SOURce{Channel}:BURSt:TRIGger",
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "trigSource", "Label": "Trigger Source", "Category": "Trigger", "Template": "TRIGger{Channel}:SOURce {Source}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal", "MANual"], "DefaultValue": "INTernal" }
+      ]
+    },
+    {
+      "Id": "trigSourceQuery", "Label": "Trigger Source?", "Category": "Trigger", "Template": "TRIGger{Channel}:SOURce?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "trigSlope", "Label": "Trigger Slope", "Category": "Trigger", "Template": "TRIGger{Channel}:SLOPe {Slope}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Slope", "Kind": "Choice", "Options": ["POSitive", "NEGative"], "DefaultValue": "POSitive" }
+      ]
+    },
+    {
+      "Id": "trigSlopeQuery", "Label": "Trigger Slope?", "Category": "Trigger", "Template": "TRIGger{Channel}:SLOPe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "trigOut", "Label": "Trigger Output", "Category": "Trigger", "Template": "TRIGger{Channel}:OUTPut {Mode}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Mode", "Kind": "Choice", "Options": ["OFF", "RISE", "FALL"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "trigOutQuery", "Label": "Trigger Output?", "Category": "Trigger", "Template": "TRIGger{Channel}:OUTPut?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "outpState", "Label": "Output State", "Category": "Output", "Template": "OUTPut{Channel}:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "outpStateQuery", "Label": "Output State?", "Category": "Output", "Template": "OUTPut{Channel}:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "outpLoad", "Label": "Output Load", "Category": "Output", "Template": "OUTPut{Channel}:LOAD {Load}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Load", "Kind": "Text", "DefaultValue": "50" }
+      ]
+    },
+    {
+      "Id": "outpLoadQuery", "Label": "Output Load?", "Category": "Output", "Template": "OUTPut{Channel}:LOAD?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "outpPolarity", "Label": "Output Polarity", "Category": "Output", "Template": "OUTPut{Channel}:POLarity {Polarity}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Polarity", "Kind": "Choice", "Options": ["NORMal", "INVerted"], "DefaultValue": "NORMal" }
+      ]
+    },
+    {
+      "Id": "outpPolarityQuery", "Label": "Output Polarity?", "Category": "Output", "Template": "OUTPut{Channel}:POLarity?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "outpSync", "Label": "Sync Output State", "Category": "Output", "Template": "OUTPut:SYNC {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "outpSyncQuery", "Label": "Sync Output State?", "Category": "Output", "Template": "OUTPut:SYNC?", "IsQuery": true },
+    {
+      "Id": "outpSyncPolarity", "Label": "Sync Output Polarity", "Category": "Output", "Template": "OUTPut:SYNC:POLarity {Polarity}",
+      "Parameters": [ { "Name": "Polarity", "Kind": "Choice", "Options": ["POSitive", "NEGative"], "DefaultValue": "POSitive" } ]
+    },
+    { "Id": "outpSyncPolarityQuery", "Label": "Sync Output Polarity?", "Category": "Output", "Template": "OUTPut:SYNC:POLarity?", "IsQuery": true },
+    {
+      "Id": "track", "Label": "Channel Tracking", "Category": "Output", "Template": "SOURce{Channel}:TRACk {Mode}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Mode", "Kind": "Choice", "Options": ["OFF", "ON", "INVT"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "trackQuery", "Label": "Channel Tracking?", "Category": "Output", "Template": "SOURce{Channel}:TRACk?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "sumState", "Label": "Sum (Noise Add) State", "Category": "Output", "Template": "SOURce{Channel}:SUM:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "sumStateQuery", "Label": "Sum (Noise Add) State?", "Category": "Output", "Template": "SOURce{Channel}:SUM:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "sumAmount", "Label": "Sum Noise Amount", "Category": "Output", "Template": "SOURce{Channel}:SUM:AMPLitude {Percent}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "10" }
+      ]
+    },
+    {
+      "Id": "sumAmountQuery", "Label": "Sum Noise Amount?", "Category": "Output", "Template": "SOURce{Channel}:SUM:AMPLitude?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "traceDataVolatile", "Label": "Download Volatile Arbitrary Waveform", "Category": "Data", "Template": "SOURce{Channel}:TRACe:DATA VOLATILE,{PointsList}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "PointsList", "Kind": "Text", "DefaultValue": "0,0.1,0.2,0.1,0,-0.1,-0.2,-0.1" }
+      ]
+    },
+    {
+      "Id": "traceDataValueQuery", "Label": "Waveform Point Value?", "Category": "Data", "Template": "SOURce{Channel}:TRACe:DATA:VALue? VOLATILE,{Index}", "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Index", "Kind": "Numeric", "Minimum": 0, "Maximum": 16383, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "traceDataPointsQuery", "Label": "Waveform Point Count?", "Category": "Data", "Template": "SOURce{Channel}:TRACe:DATA:POINts? VOLATILE", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "markerState", "Label": "Marker State", "Category": "Data", "Template": "SOURce{Channel}:MARKer:STATe {OnOff}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "markerStateQuery", "Label": "Marker State?", "Category": "Data", "Template": "SOURce{Channel}:MARKer:STATe?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "markerFreq", "Label": "Marker Frequency", "Category": "Data", "Template": "SOURce{Channel}:MARKer:FREQuency {Frequency}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Frequency", "Kind": "Numeric", "Minimum": 0.000001, "Maximum": 30000000, "Unit": "Hz", "DefaultValue": "1000" }
+      ]
+    },
+    {
+      "Id": "markerFreqQuery", "Label": "Marker Frequency?", "Category": "Data", "Template": "SOURce{Channel}:MARKer:FREQuency?", "IsQuery": true,
+      "Parameters": [ { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" } ]
+    },
+    {
+      "Id": "mmemCatalog", "Label": "Mass Storage Catalog", "Category": "Storage", "Template": "MMEMory:CATalog? {Path}", "IsQuery": true,
+      "Parameters": [ { "Name": "Path", "Kind": "Text", "DefaultValue": "\"\"" } ]
+    },
+    {
+      "Id": "mmemCdirectory", "Label": "Change Storage Directory", "Category": "Storage", "Template": "MMEMory:CDIRectory {Path}",
+      "Parameters": [ { "Name": "Path", "Kind": "Text", "DefaultValue": "\"\"" } ]
+    },
+    {
+      "Id": "mmemLoad", "Label": "Load File From Storage", "Category": "Storage", "Template": "MMEMory:LOAD {Path}",
+      "Parameters": [ { "Name": "Path", "Kind": "Text", "DefaultValue": "\"\"" } ]
+    },
+    {
+      "Id": "mmemStore", "Label": "Store File To Storage", "Category": "Storage", "Template": "MMEMory:STORe {Path}",
+      "Parameters": [ { "Name": "Path", "Kind": "Text", "DefaultValue": "\"\"" } ]
+    },
+    {
+      "Id": "mmemDelete", "Label": "Delete File From Storage", "Category": "Storage", "Template": "MMEMory:DELete {Path}",
+      "Parameters": [ { "Name": "Path", "Kind": "Text", "DefaultValue": "\"\"" } ]
+    },
+    {
+      "Id": "memStateName", "Label": "Name Internal State Slot", "Category": "Storage", "Template": "MEMory:STATe:NAME {Slot},{Name}",
+      "Parameters": [
+        { "Name": "Slot", "Kind": "Numeric", "Minimum": 0, "Maximum": 9, "DefaultValue": "0" },
+        { "Name": "Name", "Kind": "Text", "DefaultValue": "\"MySetup\"" }
+      ]
+    },
+    {
+      "Id": "memStateNameQuery", "Label": "Internal State Slot Name?", "Category": "Storage", "Template": "MEMory:STATe:NAME? {Slot}", "IsQuery": true,
+      "Parameters": [ { "Name": "Slot", "Kind": "Numeric", "Minimum": 0, "Maximum": 9, "DefaultValue": "0" } ]
+    },
+    {
+      "Id": "memStateValidQuery", "Label": "Internal State Slot Valid?", "Category": "Storage", "Template": "MEMory:STATe:VALid? {Slot}", "IsQuery": true,
+      "Parameters": [ { "Name": "Slot", "Kind": "Numeric", "Minimum": 0, "Maximum": 9, "DefaultValue": "0" } ]
+    },
+    {
+      "Id": "memRecallAuto", "Label": "Auto-Recall Last State On Power-Up", "Category": "Storage", "Template": "MEMory:STATe:RECall:AUTO {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "memRecallAutoQuery", "Label": "Auto-Recall Last State On Power-Up?", "Category": "Storage", "Template": "MEMory:STATe:RECall:AUTO?", "IsQuery": true },
+    { "Id": "sysErr", "Label": "System Error? (FIFO - Drain In A Loop)", "Category": "System", "Template": "SYSTem:ERRor?", "IsQuery": true },
+    { "Id": "sysVersion", "Label": "SCPI Version?", "Category": "System", "Template": "SYSTem:VERSion?", "IsQuery": true },
+    { "Id": "sysLocal", "Label": "Return Front Panel To Local", "Category": "System", "Template": "SYSTem:LOCal" },
+    { "Id": "sysRemote", "Label": "Set Remote (Front Panel Still Usable)", "Category": "System", "Template": "SYSTem:REMote" },
+    { "Id": "sysRwlock", "Label": "Remote With Lockout (Disables Front Panel Local Key)", "Category": "System", "Template": "SYSTem:RWLock" },
+    {
+      "Id": "sysBeeperState", "Label": "Beeper State", "Category": "System", "Template": "SYSTem:BEEPer:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "sysBeeperStateQuery", "Label": "Beeper State?", "Category": "System", "Template": "SYSTem:BEEPer:STATe?", "IsQuery": true },
+    {
+      "Id": "sysKeyLock", "Label": "Front Panel Key Lock", "Category": "System", "Template": "SYSTem:KLOCk {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "sysKeyLockQuery", "Label": "Front Panel Key Lock?", "Category": "System", "Template": "SYSTem:KLOCk?", "IsQuery": true },
+    {
+      "Id": "lanApply", "Label": "Apply LAN Settings (Live, Not Persisted)", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:APPLy"
+    },
+    {
+      "Id": "lanUpdate", "Label": "Persist LAN Settings To Nonvolatile Memory", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:UPDate"
+    },
+    {
+      "Id": "lanDhcp", "Label": "DHCP Enable", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:DHCP {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "lanDhcpQuery", "Label": "DHCP Enable?", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:DHCP?", "IsQuery": true },
+    {
+      "Id": "lanManualIp", "Label": "Manual IP Address", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:IPADdress {IpAddress}",
+      "Parameters": [ { "Name": "IpAddress", "Kind": "Text", "DefaultValue": "192.168.1.100" } ]
+    },
+    { "Id": "lanManualIpQuery", "Label": "Manual IP Address?", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:IPADdress?", "IsQuery": true },
+    {
+      "Id": "lanManualMask", "Label": "Manual Subnet Mask", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:SMASk {SubnetMask}",
+      "Parameters": [ { "Name": "SubnetMask", "Kind": "Text", "DefaultValue": "255.255.255.0" } ]
+    },
+    { "Id": "lanManualMaskQuery", "Label": "Manual Subnet Mask?", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:SMASk?", "IsQuery": true },
+    {
+      "Id": "lanManualGateway", "Label": "Manual Gateway", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:GATEway {Gateway}",
+      "Parameters": [ { "Name": "Gateway", "Kind": "Text", "DefaultValue": "192.168.1.1" } ]
+    },
+    { "Id": "lanManualGatewayQuery", "Label": "Manual Gateway?", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MANual:GATEway?", "IsQuery": true },
+    { "Id": "lanMacQuery", "Label": "MAC Address?", "Category": "System-LAN", "Template": "SYSTem:COMMunicate:LAN:MAC?", "IsQuery": true },
+    {
+      "Id": "roscSource", "Label": "Reference Oscillator Source", "Category": "System", "Template": "ROSCillator:SOURce {Source}",
+      "Parameters": [ { "Name": "Source", "Kind": "Choice", "Options": ["INTernal", "EXTernal"], "DefaultValue": "INTernal" } ]
+    },
+    { "Id": "roscSourceQuery", "Label": "Reference Oscillator Source?", "Category": "System", "Template": "ROSCillator:SOURce?", "IsQuery": true },
+    {
+      "Id": "lxiIdentify", "Label": "LXI Identify Beacon", "Category": "System", "Template": "LXI:IDENtify:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "lxiIdentifyQuery", "Label": "LXI Identify Beacon?", "Category": "System", "Template": "LXI:IDENtify:STATe?", "IsQuery": true },
+    { "Id": "lxiReset", "Label": "LXI Network Reset", "Category": "System", "Template": "LXI:RESet" },
+    { "Id": "lxiRestore", "Label": "LXI Restore Factory LAN Defaults", "Category": "System", "Template": "LXI:RESTore" },
+    { "Id": "hcopyData", "Label": "Screen Capture (Bitmap)?", "Category": "System", "Template": "HCOPy:SDUMp:DATA?", "IsQuery": true },
+    {
+      "Id": "dispBrightness", "Label": "Display Brightness", "Category": "System", "Template": "DISPlay:BRIGhtness {Percent}",
+      "Parameters": [ { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "50" } ]
+    },
+    { "Id": "dispBrightnessQuery", "Label": "Display Brightness?", "Category": "System", "Template": "DISPlay:BRIGhtness?", "IsQuery": true },
+    {
+      "Id": "couplingFreqState", "Label": "Frequency Coupling State", "Category": "Coupling", "Template": "COUPling:FREQuency:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "couplingFreqStateQuery", "Label": "Frequency Coupling State?", "Category": "Coupling", "Template": "COUPling:FREQuency:STATe?", "IsQuery": true },
+    {
+      "Id": "couplingFreqMode", "Label": "Frequency Coupling Mode (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:FREQuency:MODE {Mode}",
+      "Parameters": [ { "Name": "Mode", "Kind": "Choice", "Options": ["OFFSet", "RATio"], "DefaultValue": "OFFSet" } ]
+    },
+    { "Id": "couplingFreqModeQuery", "Label": "Frequency Coupling Mode?", "Category": "Coupling", "Template": "COUPling:FREQuency:MODE?", "IsQuery": true },
+    {
+      "Id": "couplingFreqDeviation", "Label": "Frequency Coupling Deviation (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:FREQuency:DEViation {Frequency}",
+      "Parameters": [ { "Name": "Frequency", "Kind": "Numeric", "Minimum": -60000000, "Maximum": 60000000, "Unit": "Hz", "DefaultValue": "0" } ]
+    },
+    { "Id": "couplingFreqDeviationQuery", "Label": "Frequency Coupling Deviation?", "Category": "Coupling", "Template": "COUPling:FREQuency:DEViation?", "IsQuery": true },
+    {
+      "Id": "couplingFreqRatio", "Label": "Frequency Coupling Ratio (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:FREQuency:RATio {Ratio}",
+      "Parameters": [ { "Name": "Ratio", "Kind": "Numeric", "Minimum": 0.00001, "Maximum": 100000, "DefaultValue": "1" } ]
+    },
+    { "Id": "couplingFreqRatioQuery", "Label": "Frequency Coupling Ratio?", "Category": "Coupling", "Template": "COUPling:FREQuency:RATio?", "IsQuery": true },
+    {
+      "Id": "couplingPhaseState", "Label": "Phase Coupling State", "Category": "Coupling", "Template": "COUPling:PHASe:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "couplingPhaseStateQuery", "Label": "Phase Coupling State?", "Category": "Coupling", "Template": "COUPling:PHASe:STATe?", "IsQuery": true },
+    {
+      "Id": "couplingPhaseDeviation", "Label": "Phase Coupling Deviation (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:PHASe:DEViation {Degrees}",
+      "Parameters": [ { "Name": "Degrees", "Kind": "Numeric", "Minimum": -360, "Maximum": 360, "Unit": "deg", "DefaultValue": "0" } ]
+    },
+    { "Id": "couplingPhaseDeviationQuery", "Label": "Phase Coupling Deviation?", "Category": "Coupling", "Template": "COUPling:PHASe:DEViation?", "IsQuery": true },
+    {
+      "Id": "couplingAmplState", "Label": "Amplitude Coupling State", "Category": "Coupling", "Template": "COUPling:AMPLitude:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "couplingAmplStateQuery", "Label": "Amplitude Coupling State?", "Category": "Coupling", "Template": "COUPling:AMPLitude:STATe?", "IsQuery": true },
+    {
+      "Id": "couplingAmplMode", "Label": "Amplitude Coupling Mode (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:AMPLitude:MODE {Mode}",
+      "Parameters": [ { "Name": "Mode", "Kind": "Choice", "Options": ["OFFSet", "RATio"], "DefaultValue": "OFFSet" } ]
+    },
+    { "Id": "couplingAmplModeQuery", "Label": "Amplitude Coupling Mode?", "Category": "Coupling", "Template": "COUPling:AMPLitude:MODE?", "IsQuery": true },
+    {
+      "Id": "couplingAmplDeviation", "Label": "Amplitude Coupling Deviation (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:AMPLitude:DEViation {Amplitude}",
+      "Parameters": [ { "Name": "Amplitude", "Kind": "Numeric", "Minimum": -20, "Maximum": 20, "Unit": "Vpp", "DefaultValue": "0" } ]
+    },
+    { "Id": "couplingAmplDeviationQuery", "Label": "Amplitude Coupling Deviation?", "Category": "Coupling", "Template": "COUPling:AMPLitude:DEViation?", "IsQuery": true },
+    {
+      "Id": "couplingAmplRatio", "Label": "Amplitude Coupling Ratio (Set Before Enabling)", "Category": "Coupling", "Template": "COUPling:AMPLitude:RATio {Ratio}",
+      "Parameters": [ { "Name": "Ratio", "Kind": "Numeric", "Minimum": 0.00001, "Maximum": 100000, "DefaultValue": "1" } ]
+    },
+    { "Id": "couplingAmplRatioQuery", "Label": "Amplitude Coupling Ratio?", "Category": "Coupling", "Template": "COUPling:AMPLitude:RATio?", "IsQuery": true },
+    {
+      "Id": "counterState", "Label": "Frequency Counter State", "Category": "Counter", "Template": "COUNter:STATe {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "counterStateQuery", "Label": "Frequency Counter State?", "Category": "Counter", "Template": "COUNter:STATe?", "IsQuery": true },
+    { "Id": "counterFreqQuery", "Label": "Counter Frequency?", "Category": "Counter", "Template": "COUNter:CURRent:FREQuency?", "IsQuery": true },
+    { "Id": "counterPeriodQuery", "Label": "Counter Period?", "Category": "Counter", "Template": "COUNter:CURRent:PERiod?", "IsQuery": true },
+    { "Id": "counterDcycleQuery", "Label": "Counter Duty Cycle?", "Category": "Counter", "Template": "COUNter:CURRent:DUTYcycle?", "IsQuery": true },
+    { "Id": "counterPoswidthQuery", "Label": "Counter Positive Pulse Width?", "Category": "Counter", "Template": "COUNter:CURRent:PWIDth?", "IsQuery": true },
+    { "Id": "counterNegwidthQuery", "Label": "Counter Negative Pulse Width?", "Category": "Counter", "Template": "COUNter:CURRent:NWIDth?", "IsQuery": true },
+    {
+      "Id": "counterCoupling", "Label": "Counter Input Coupling", "Category": "Counter", "Template": "COUNter:COUPling {Coupling}",
+      "Parameters": [ { "Name": "Coupling", "Kind": "Choice", "Options": ["AC", "DC"], "DefaultValue": "DC" } ]
+    },
+    { "Id": "counterCouplingQuery", "Label": "Counter Input Coupling?", "Category": "Counter", "Template": "COUNter:COUPling?", "IsQuery": true },
+    {
+      "Id": "counterSensitivity", "Label": "Counter Sensitivity", "Category": "Counter", "Template": "COUNter:SENSitivity {Percent}",
+      "Parameters": [ { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "50" } ]
+    },
+    { "Id": "counterSensitivityQuery", "Label": "Counter Sensitivity?", "Category": "Counter", "Template": "COUNter:SENSitivity?", "IsQuery": true },
+    {
+      "Id": "counterHfr", "Label": "Counter High-Frequency Reject", "Category": "Counter", "Template": "COUNter:HFR {OnOff}",
+      "Parameters": [ { "Name": "OnOff", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "counterHfrQuery", "Label": "Counter High-Frequency Reject?", "Category": "Counter", "Template": "COUNter:HFR?", "IsQuery": true },
+    {
+      "Id": "counterTrigLevel", "Label": "Counter Trigger Level", "Category": "Counter", "Template": "COUNter:TRIGger:LEVel {Level}",
+      "Parameters": [ { "Name": "Level", "Kind": "Numeric", "Minimum": -5, "Maximum": 5, "Unit": "V", "DefaultValue": "0" } ]
+    },
+    { "Id": "counterTrigLevelQuery", "Label": "Counter Trigger Level?", "Category": "Counter", "Template": "COUNter:TRIGger:LEVel?", "IsQuery": true }
+  ]
+}

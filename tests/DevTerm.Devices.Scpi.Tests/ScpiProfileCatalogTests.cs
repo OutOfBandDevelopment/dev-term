@@ -132,7 +132,7 @@ public sealed class ScpiProfileCatalogTests
     [TestMethod]
     public void TryMatchByIdn_MatchingReply_ReturnsThatBundledProfile()
     {
-        var matched = ScpiProfileCatalog.TryMatchByIdn("RIGOL TECHNOLOGIES,DG1022Z,DG1ZA123456,1.01");
+        var matched = ScpiProfileCatalog.TryMatchByIdn("RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01");
 
         Assert.IsNotNull(matched);
         Assert.IsTrue(matched!.Name.Contains("DG1022", StringComparison.OrdinalIgnoreCase));
@@ -151,7 +151,7 @@ public sealed class ScpiProfileCatalogTests
     {
         var names = ScpiProfileCatalog.All.Select(p => p.Name).ToArray();
 
-        Assert.HasCount(8, names);
+        Assert.HasCount(9, names);
     }
 
     [TestMethod]
@@ -164,11 +164,17 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
-    public void TektronixTds2024_HasNoIdnPatternSoItIsNeverAutoDetected()
+    public void TektronixTds2024_SupportsIeee4882IdnAutoDetection()
     {
         var tds2024 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("TDS2024", StringComparison.OrdinalIgnoreCase));
 
-        Assert.IsTrue(string.IsNullOrEmpty(tds2024.IdnPattern));
+        Assert.IsFalse(string.IsNullOrEmpty(tds2024.IdnPattern));
+        Assert.IsTrue(tds2024.Commands.Any(c => c.Id == "idn" && c.Template == "*IDN?"));
         Assert.IsTrue(tds2024.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
+
+        var matched = ScpiProfileCatalog.TryMatchByIdn("TEKTRONIX,TDS 2024,0,CF:91.1CT FV:v22.01");
+
+        Assert.IsNotNull(matched);
+        Assert.AreSame(tds2024, matched);
     }
 }

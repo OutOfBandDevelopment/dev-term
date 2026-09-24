@@ -1,7 +1,591 @@
 {
   "Name": "Tektronix 2230 (pre-SCPI \"codes\" protocol - NOT IEEE-488.2/SCPI compliant; see docs/design/proposals/tektronix-2230-protocol.md)",
   "Terminator": "\r",
+  "Notes": "Built from docs/devices/tektronix-2230/programming-manual.md (Option 12, RS-232-C only). Terminator is set by a physical PARAMETERS DIP switch (section 8), read once at power-up - not by a software command; \\r matches switch position 0 (CR only), the more common setting, but the real instrument may be configured for CR-LF instead - verify against the physical switch before assuming. This device does not understand *IDN? (its own identify query is ID?), so it can never be IdnPattern-auto-selected the way real SCPI instruments are. One command per message line only - the source explicitly warns against ';'-chaining multiple commands on RS-232-C (unlike GPIB/Option 10), since the instrument acts on a command as soon as it's recognized rather than waiting for the line terminator. Two real contradictions in the source, unresolved: FLOw's power-on default is stated as both OFF (prose) and ON (table) - query FLOw? before assuming; REMote's power-on default is stated as OFF (prose) but the table's bracket notation implies ON - query REMote? before sending any state-changing command. Binary curve transfers (CURVe write direction) are not exposed here - they need a raw %<len><binary><checksum> blob impractical for a generic templated command; CURVe? (query/read direction) is exposed since its reply is just text-renderable bytes. REFFrom/REFDisp/REFProt/SAVeref 'lettered' (REF A-Z) forms take a free-text single-letter parameter rather than 26 enumerated commands.",
   "Commands": [
-    { "Id": "id", "Label": "Identify", "Category": "Common", "Template": "ID?", "IsQuery": true }
+    { "Id": "id", "Label": "Identify", "Category": "Common", "Template": "ID?", "IsQuery": true },
+    { "Id": "help", "Label": "Help (List Commands)", "Category": "Common", "Template": "HELp?", "IsQuery": true },
+    { "Id": "set", "Label": "Query Full Settings String", "Category": "Common", "Template": "SET?", "IsQuery": true },
+    { "Id": "init", "Label": "Initialize (Reset Acquisition/Plot/Data Defaults)", "Category": "Common", "Template": "INIt" },
+    {
+      "Id": "long",
+      "Label": "Set Query-Reply Verbosity",
+      "Category": "Common",
+      "Template": "LONg {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "remote",
+      "Label": "Set Remote State",
+      "Category": "Serial",
+      "Template": "REMote {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "remoteQuery", "Label": "Query Remote State", "Category": "Serial", "Template": "REMote?", "IsQuery": true },
+    {
+      "Id": "flow",
+      "Label": "Set XON/XOFF Flow Control",
+      "Category": "Serial",
+      "Template": "FLOw {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "flowQuery", "Label": "Query Flow Control", "Category": "Serial", "Template": "FLOw?", "IsQuery": true },
+    {
+      "Id": "stop",
+      "Label": "Set Stop Bits",
+      "Category": "Serial",
+      "Template": "STOP {Bits}",
+      "Parameters": [
+        { "Name": "Bits", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    { "Id": "status", "Label": "Query Status Byte", "Category": "Serial", "Template": "STAtus?", "IsQuery": true },
+    { "Id": "ch1", "Label": "Query CH1 Settings", "Category": "Vertical", "Template": "CH1?", "IsQuery": true },
+    { "Id": "ch1Volts", "Label": "Query CH1 Volts/Div", "Category": "Vertical", "Template": "CH1? VOLts", "IsQuery": true },
+    { "Id": "ch1Coupling", "Label": "Query CH1 Coupling", "Category": "Vertical", "Template": "CH1? COUpling", "IsQuery": true },
+    { "Id": "ch2", "Label": "Query CH2 Settings", "Category": "Vertical", "Template": "CH2?", "IsQuery": true },
+    { "Id": "ch2Volts", "Label": "Query CH2 Volts/Div", "Category": "Vertical", "Template": "CH2? VOLts", "IsQuery": true },
+    { "Id": "ch2Coupling", "Label": "Query CH2 Coupling", "Category": "Vertical", "Template": "CH2? COUpling", "IsQuery": true },
+    { "Id": "ch2Invert", "Label": "Query CH2 Invert State", "Category": "Vertical", "Template": "CH2? INVert", "IsQuery": true },
+    { "Id": "vmode", "Label": "Query Vertical Mode", "Category": "Vertical", "Template": "VMOde?", "IsQuery": true },
+    {
+      "Id": "probe",
+      "Label": "Query Probe Attenuation",
+      "Category": "Vertical",
+      "Template": "PROBe? {Channel}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2"], "DefaultValue": "CH1" }
+      ]
+    },
+    { "Id": "delay", "Label": "Query Delay Settings", "Category": "Horizontal", "Template": "DELAy?", "IsQuery": true },
+    { "Id": "delayValue", "Label": "Query Delay Value", "Category": "Horizontal", "Template": "DELAy? VALue", "IsQuery": true },
+    { "Id": "delayUnits", "Label": "Query Delay Units", "Category": "Horizontal", "Template": "DELAy? UNits", "IsQuery": true },
+    { "Id": "horizontal", "Label": "Query Horizontal Settings", "Category": "Horizontal", "Template": "HORizontal?", "IsQuery": true },
+    { "Id": "horizontalAsediv", "Label": "Query A Sec/Div", "Category": "Horizontal", "Template": "HORizontal? ASEdiv", "IsQuery": true },
+    { "Id": "horizontalBsediv", "Label": "Query B Sec/Div", "Category": "Horizontal", "Template": "HORizontal? BSEdiv", "IsQuery": true },
+    { "Id": "horizontalExtclk", "Label": "Query External Clock State", "Category": "Horizontal", "Template": "HORizontal? EXTclk", "IsQuery": true },
+    { "Id": "horizontalHmag", "Label": "Query x10 Magnifier State", "Category": "Horizontal", "Template": "HORizontal? HMAg", "IsQuery": true },
+    { "Id": "horizontalMode", "Label": "Query Horizontal Mode", "Category": "Horizontal", "Template": "HORizontal? MODe", "IsQuery": true },
+    { "Id": "atrigger", "Label": "Query Auto-Trigger Mode", "Category": "Trigger", "Template": "ATRigger?", "IsQuery": true },
+    { "Id": "sglswpArm", "Label": "Re-Arm Single Sweep", "Category": "Trigger", "Template": "SGLswp ARM" },
+    { "Id": "sglswpQuery", "Label": "Query Single Sweep State", "Category": "Trigger", "Template": "SGLswp?", "IsQuery": true },
+    { "Id": "triggerd", "Label": "Query TRIG'D Indicator", "Category": "Trigger", "Template": "TRiggerd?", "IsQuery": true },
+    {
+      "Id": "cursorChannel",
+      "Label": "Set Cursor Channel",
+      "Category": "Cursor",
+      "Template": "CURSor CHAnnel:{Channel}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2"], "DefaultValue": "CH1" }
+      ]
+    },
+    {
+      "Id": "cursorPosition",
+      "Label": "Set Cursor Position",
+      "Category": "Cursor",
+      "Template": "CURSor POSition:{Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": 0, "Maximum": 4095, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "cursorSelect",
+      "Label": "Select Active Cursor",
+      "Category": "Cursor",
+      "Template": "CURSor SELect:{Cursor}",
+      "Parameters": [
+        { "Name": "Cursor", "Kind": "Choice", "Options": ["CURS1", "CURS2"], "DefaultValue": "CURS1" }
+      ]
+    },
+    { "Id": "cursorTargetAcq", "Label": "Attach Cursors to Live Acquisition", "Category": "Cursor", "Template": "CURSor TARget:ACQuisition" },
+    {
+      "Id": "cursorTargetRef",
+      "Label": "Attach Cursors to Reference",
+      "Category": "Cursor",
+      "Template": "CURSor TARget:{Reference}",
+      "Parameters": [
+        { "Name": "Reference", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3", "REF4"], "DefaultValue": "REF1" }
+      ]
+    },
+    { "Id": "cursorQuery", "Label": "Query All Cursor Settings", "Category": "Cursor", "Template": "CURSor?", "IsQuery": true },
+    { "Id": "deltav", "Label": "Query Cursor Voltage Delta", "Category": "Cursor", "Template": "DELTAV?", "IsQuery": true },
+    { "Id": "deltavValue", "Label": "Query Cursor Voltage Delta Value", "Category": "Cursor", "Template": "DELTAV? VALue", "IsQuery": true },
+    { "Id": "deltavUnits", "Label": "Query Cursor Voltage Delta Units", "Category": "Cursor", "Template": "DELTAV? UNits", "IsQuery": true },
+    { "Id": "deltat", "Label": "Query Cursor Time Delta", "Category": "Cursor", "Template": "DELTAT?", "IsQuery": true },
+    { "Id": "deltatValue", "Label": "Query Cursor Time Delta Value", "Category": "Cursor", "Template": "DELTAT? VALue", "IsQuery": true },
+    { "Id": "deltatUnits", "Label": "Query Cursor Time Delta Units", "Category": "Cursor", "Template": "DELTAT? UNits", "IsQuery": true },
+    {
+      "Id": "message",
+      "Label": "Write Display Message",
+      "Category": "Display",
+      "Template": "MESsage {Row}:\"{Text}\"",
+      "Parameters": [
+        { "Name": "Row", "Kind": "Numeric", "Minimum": 1, "Maximum": 16, "DefaultValue": "16" },
+        { "Name": "Text", "Kind": "Text", "DefaultValue": "" }
+      ]
+    },
+    { "Id": "messageOff", "Label": "Clear Display Message", "Category": "Display", "Template": "MESsage 0" },
+    { "Id": "plotAbort", "Label": "Abort Plot", "Category": "Display", "Template": "PLOt ABOrt" },
+    {
+      "Id": "plotAuto",
+      "Label": "Set Auto-Plot",
+      "Category": "Display",
+      "Template": "PLOt AUTo:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "plotFormat",
+      "Label": "Set Plot Format",
+      "Category": "Display",
+      "Template": "PLOt FORmat:{Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["XY", "HPGl", "EPS7", "EPS8", "TJEt"], "DefaultValue": "XY" }
+      ]
+    },
+    {
+      "Id": "plotGrat",
+      "Label": "Set Plot Graticule",
+      "Category": "Display",
+      "Template": "PLOt GRAt:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "plotSpeed",
+      "Label": "Set Plot Pen Speed",
+      "Category": "Display",
+      "Template": "PLOt SPEed:{Speed}",
+      "Parameters": [
+        { "Name": "Speed", "Kind": "Numeric", "Minimum": 1, "Maximum": 10, "DefaultValue": "5" }
+      ]
+    },
+    { "Id": "plotStart", "Label": "Start Plot", "Category": "Display", "Template": "PLOt STArt" },
+    {
+      "Id": "acqCurrent",
+      "Label": "Set Current Acquisition Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition CURRent:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["AVErage", "DEFault", "PEAkdet", "SAMple", "ACCpeak"], "DefaultValue": "DEFault" }
+      ]
+    },
+    {
+      "Id": "acqHsrec",
+      "Label": "Set High-Speed-Record Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition HSRec:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["ACCpeak", "AVErage", "SAMple"], "DefaultValue": "SAMple" }
+      ]
+    },
+    {
+      "Id": "acqLsrec",
+      "Label": "Set Low-Speed-Record Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition LSRec:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["ACCpeak", "AVErage", "PEAkdet", "SAMple"], "DefaultValue": "PEAkdet" }
+      ]
+    },
+    {
+      "Id": "acqNumsweeps",
+      "Label": "Set Number of Sweeps",
+      "Category": "Acquisition",
+      "Template": "ACQuisition NUMsweeps:{Count}",
+      "Parameters": [
+        { "Name": "Count", "Kind": "Numeric", "Minimum": 0, "Maximum": 9999, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "acqRepetitive",
+      "Label": "Set Repetitive-Acquisition Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition REPetitive:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["ACCpeak", "SAMple", "AVErage"], "DefaultValue": "AVErage" }
+      ]
+    },
+    { "Id": "acqReset", "Label": "Reset Acquisition Defaults", "Category": "Acquisition", "Template": "ACQuisition RESet" },
+    {
+      "Id": "acqRoll",
+      "Label": "Set Roll-Acquisition Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition ROLl:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["PEAkdet", "SAMple"], "DefaultValue": "PEAkdet" }
+      ]
+    },
+    {
+      "Id": "acqScan",
+      "Label": "Set Scan-Acquisition Mode",
+      "Category": "Acquisition",
+      "Template": "ACQuisition SCAn:{Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["PEAkdet", "SAMple", "ACCpeak", "AVErage"], "DefaultValue": "PEAkdet" }
+      ]
+    },
+    {
+      "Id": "acqSmooth",
+      "Label": "Set Smoothing",
+      "Category": "Acquisition",
+      "Template": "ACQuisition SMOoth:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "acqTrigCount",
+      "Label": "Set Trigger Point Count (2230)",
+      "Category": "Acquisition",
+      "Template": "ACQuisition TRIGCount:{Count}",
+      "Parameters": [
+        { "Name": "Count", "Kind": "Numeric", "Minimum": 4, "Maximum": 4080, "DefaultValue": "2048" }
+      ]
+    },
+    {
+      "Id": "acqVectors",
+      "Label": "Set Display Vectors",
+      "Category": "Acquisition",
+      "Template": "ACQuisition VECtors:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "acqWeight",
+      "Label": "Set Average Weight",
+      "Category": "Acquisition",
+      "Template": "ACQuisition WElght:{Weight}",
+      "Parameters": [
+        { "Name": "Weight", "Kind": "Choice", "Options": ["1", "2", "4", "8", "16", "32", "64", "128", "256"], "DefaultValue": "4" }
+      ]
+    },
+    { "Id": "acqQuery", "Label": "Query All Acquisition Settings", "Category": "Acquisition", "Template": "ACQuisition?", "IsQuery": true },
+    { "Id": "acqDisplay", "Label": "Query Acquisition Display Mode", "Category": "Acquisition", "Template": "ACQuisition? DiSplay", "IsQuery": true },
+    { "Id": "acqPoints", "Label": "Query Waveform Record Point Count", "Category": "Acquisition", "Template": "ACQuisition? POInts", "IsQuery": true },
+    { "Id": "acqSave", "Label": "Query Save/Continue State", "Category": "Acquisition", "Template": "ACQuisition? SAVE", "IsQuery": true },
+    { "Id": "acqSwpcount", "Label": "Query Completed Sweep Count", "Category": "Acquisition", "Template": "ACQuisition? SWPcount", "IsQuery": true },
+    { "Id": "acqTrigMode", "Label": "Query Trigger Position Mode", "Category": "Acquisition", "Template": "ACQuisition? TRIGMode", "IsQuery": true },
+    { "Id": "store", "Label": "Query Store/Non-Store State", "Category": "Acquisition", "Template": "STORe?", "IsQuery": true },
+    { "Id": "refFromAcq", "Label": "Select Live Acquisition as Save Source", "Category": "Reference", "Template": "REFFrom ACQ" },
+    {
+      "Id": "refFromRef",
+      "Label": "Select Numbered Reference as Save Source (2230)",
+      "Category": "Reference",
+      "Template": "REFFrom {Reference}",
+      "Parameters": [
+        { "Name": "Reference", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3", "REF4"], "DefaultValue": "REF1" }
+      ]
+    },
+    {
+      "Id": "refFromLetter",
+      "Label": "Select Lettered Reference as Save Source (2230)",
+      "Category": "Reference",
+      "Template": "REFFrom REF{Letter}",
+      "Parameters": [
+        { "Name": "Letter", "Kind": "Text", "DefaultValue": "A" }
+      ]
+    },
+    {
+      "Id": "refDispNumbered",
+      "Label": "Set Numbered Reference Display State (2230)",
+      "Category": "Reference",
+      "Template": "REFDisp {Reference}:{State}",
+      "Parameters": [
+        { "Name": "Reference", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3"], "DefaultValue": "REF1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF", "EMPTY"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "refDispRef4",
+      "Label": "Set REF4 Display State",
+      "Category": "Reference",
+      "Template": "REFDisp REF4:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF", "EMPTY"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "refDispLetterEmpty",
+      "Label": "Erase Lettered Reference (2230)",
+      "Category": "Reference",
+      "Template": "REFDisp REF{Letter}:EMPTY",
+      "Parameters": [
+        { "Name": "Letter", "Kind": "Text", "DefaultValue": "A" }
+      ]
+    },
+    {
+      "Id": "refProt",
+      "Label": "Set Lettered Reference Write Protection (2230)",
+      "Category": "Reference",
+      "Template": "REFProt REF{Letter}:{Protection}",
+      "Parameters": [
+        { "Name": "Letter", "Kind": "Text", "DefaultValue": "A" },
+        { "Name": "Protection", "Kind": "Choice", "Options": ["LOCked", "PERM", "UNLocked"], "DefaultValue": "UNLocked" }
+      ]
+    },
+    {
+      "Id": "refFormatChannel",
+      "Label": "Select Reformat Target Channel (2230)",
+      "Category": "Reference",
+      "Template": "REFOrmat CHAnnel:{Channel}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2"], "DefaultValue": "CH1" }
+      ]
+    },
+    {
+      "Id": "refFormatHmag",
+      "Label": "Set Reformat x10 Magnification (2230)",
+      "Category": "Reference",
+      "Template": "REFOrmat HMAg:{State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "refFormatVgain",
+      "Label": "Set Reformat Vertical Gain (2230)",
+      "Category": "Reference",
+      "Template": "REFOrmat VGAin:{Gain}",
+      "Parameters": [
+        { "Name": "Gain", "Kind": "Numeric", "Minimum": 0, "Maximum": 10, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "refFormatVposition",
+      "Label": "Set Reformat Vertical Position (2230)",
+      "Category": "Reference",
+      "Template": "REFOrmat VPOsition:{Position}",
+      "Parameters": [
+        { "Name": "Position", "Kind": "Numeric", "Minimum": -10, "Maximum": 10, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "refDispQuery", "Label": "Query Reference Display State", "Category": "Reference", "Template": "REFDisp?", "IsQuery": true },
+    {
+      "Id": "refDispQueryNumbered",
+      "Label": "Query Numbered Reference Display State (2230)",
+      "Category": "Reference",
+      "Template": "REFDisp? {Reference}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Reference", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3"], "DefaultValue": "REF1" }
+      ]
+    },
+    { "Id": "refDispQueryRef4", "Label": "Query REF4 Display State", "Category": "Reference", "Template": "REFDisp? REF4", "IsQuery": true },
+    { "Id": "refFromQuery", "Label": "Query Save Source", "Category": "Reference", "Template": "REFFrom?", "IsQuery": true },
+    { "Id": "refFormatQuery", "Label": "Query Reformat Settings (2230)", "Category": "Reference", "Template": "REFOrmat?", "IsQuery": true },
+    { "Id": "refFormatBasegain", "Label": "Query Reformat Original Gain (2230)", "Category": "Reference", "Template": "REFOrmat? BASegain", "IsQuery": true },
+    { "Id": "refFormatMode", "Label": "Query Reformat Original Vertical Mode (2230)", "Category": "Reference", "Template": "REFOrmat? MODe", "IsQuery": true },
+    { "Id": "refStatFill", "Label": "Query Reference Fill Status (2230)", "Category": "Reference", "Template": "REFStat? FILl", "IsQuery": true },
+    { "Id": "refStatFree", "Label": "Query Free Reference Memory (2230)", "Category": "Reference", "Template": "REFStat? FREe", "IsQuery": true },
+    { "Id": "refStatProtect", "Label": "Query Reference Protection Status (2230)", "Category": "Reference", "Template": "REFStat? PROTect", "IsQuery": true },
+    {
+      "Id": "saverefNumbered",
+      "Label": "Save to Numbered Reference (2230)",
+      "Category": "Reference",
+      "Template": "SAVeref {Reference}",
+      "Parameters": [
+        { "Name": "Reference", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3"], "DefaultValue": "REF1" }
+      ]
+    },
+    { "Id": "saverefRef4", "Label": "Save to REF4", "Category": "Reference", "Template": "SAVeref REF4" },
+    {
+      "Id": "saverefLetter",
+      "Label": "Save to Lettered Reference (2230)",
+      "Category": "Reference",
+      "Template": "SAVeref REF{Letter}",
+      "Parameters": [
+        { "Name": "Letter", "Kind": "Text", "DefaultValue": "A" }
+      ]
+    },
+    {
+      "Id": "dataChannel",
+      "Label": "Select Waveform Channel",
+      "Category": "Waveform",
+      "Template": "DATa CHAnnel:{Channel}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["CH1", "CH2"], "DefaultValue": "CH1" }
+      ]
+    },
+    {
+      "Id": "dataEncdg",
+      "Label": "Select Waveform Encoding",
+      "Category": "Waveform",
+      "Template": "DATa ENCdg:{Encoding}",
+      "Parameters": [
+        { "Name": "Encoding", "Kind": "Choice", "Options": ["ASCii", "BINary", "HEX"], "DefaultValue": "BINary" }
+      ]
+    },
+    {
+      "Id": "dataSource",
+      "Label": "Select Waveform Read Source",
+      "Category": "Waveform",
+      "Template": "DATa SOUrce:{Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["ACQ", "REF1", "REF2", "REF3", "REF4"], "DefaultValue": "ACQ" }
+      ]
+    },
+    {
+      "Id": "dataTarget",
+      "Label": "Select Waveform Write Target",
+      "Category": "Waveform",
+      "Template": "DATa TARget:{Target}",
+      "Parameters": [
+        { "Name": "Target", "Kind": "Choice", "Options": ["REF1", "REF2", "REF3", "REF4"], "DefaultValue": "REF1" }
+      ]
+    },
+    { "Id": "dataQuery", "Label": "Query Waveform Data Settings", "Category": "Waveform", "Template": "DATa?", "IsQuery": true },
+    { "Id": "curveQuery", "Label": "Read Curve Data", "Category": "Waveform", "Template": "CURVe?", "IsQuery": true },
+    { "Id": "wavfrmQuery", "Label": "Read Preamble + Curve Data", "Category": "Waveform", "Template": "WAVfrm?", "IsQuery": true },
+    {
+      "Id": "wfmpreEncdg",
+      "Label": "Set Preamble Encoding",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre ENCdg:{Encoding}",
+      "Parameters": [
+        { "Name": "Encoding", "Kind": "Choice", "Options": ["ASCii", "BINary", "HEX"], "DefaultValue": "BINary" }
+      ]
+    },
+    { "Id": "wfmpreQuery", "Label": "Query Full Preamble", "Category": "Waveform Preamble", "Template": "WFMpre?", "IsQuery": true },
+    { "Id": "wfmpreWfld", "Label": "Query Preamble ID String", "Category": "Waveform Preamble", "Template": "WFMpre? WFld", "IsQuery": true },
+    {
+      "Id": "wfmpreNrPts",
+      "Label": "Set Preamble Point Count",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre NR.Pts:{Points}",
+      "Parameters": [
+        { "Name": "Points", "Kind": "Choice", "Options": ["256", "512", "1024", "2048", "4096"], "DefaultValue": "1024" }
+      ]
+    },
+    {
+      "Id": "wfmprePtOff",
+      "Label": "Set Preamble Trigger Point Offset",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre PT.Off:{Offset}",
+      "Parameters": [
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -3096, "Maximum": 4096, "DefaultValue": "4" }
+      ]
+    },
+    {
+      "Id": "wfmprePtFmt",
+      "Label": "Set Preamble Point Format",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre PT.Fmt:{Format}",
+      "Parameters": [
+        { "Name": "Format", "Kind": "Choice", "Options": ["Y", "XY", "ENV"], "DefaultValue": "Y" }
+      ]
+    },
+    {
+      "Id": "wfmpreXUnits",
+      "Label": "Set Preamble X Units",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre XUNits:{Units}",
+      "Parameters": [
+        { "Name": "Units", "Kind": "Choice", "Options": ["S", "CLKs"], "DefaultValue": "S" }
+      ]
+    },
+    {
+      "Id": "wfmpreXIncr",
+      "Label": "Set Preamble X Increment",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre XINcr:{Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 1, "DecimalPlaces": 8, "DefaultValue": "0.00000200" }
+      ]
+    },
+    {
+      "Id": "wfmpreYUnits",
+      "Label": "Set Preamble Y Units",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre YUNits:{Units}",
+      "Parameters": [
+        { "Name": "Units", "Kind": "Choice", "Options": ["V", "DIVs"], "DefaultValue": "V" }
+      ]
+    },
+    {
+      "Id": "wfmpreYMult",
+      "Label": "Set Preamble Y Multiplier",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre YMUlt:{Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "DefaultValue": "0.04" }
+      ]
+    },
+    {
+      "Id": "wfmpreYOff",
+      "Label": "Set Preamble Y Offset",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre YOFf:{Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -10000, "Maximum": 10000, "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "wfmpreXMult",
+      "Label": "Set Preamble X Multiplier (XY)",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre XMUlt:{Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "wfmpreXOff",
+      "Label": "Set Preamble X Offset (XY)",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre XOFf:{Value}",
+      "Parameters": [
+        { "Name": "Value", "Kind": "Numeric", "Minimum": -10000, "Maximum": 10000, "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "wfmpreBnFmt", "Label": "Set Preamble Binary Format (RP only)", "Category": "Waveform Preamble", "Template": "WFMpre BN.Fmt:RP" },
+    {
+      "Id": "wfmpreBytNr",
+      "Label": "Set Preamble Bytes/Point",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre BYT/nr:{Bytes}",
+      "Parameters": [
+        { "Name": "Bytes", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "wfmpreBitNr",
+      "Label": "Set Preamble Bits/Point",
+      "Category": "Waveform Preamble",
+      "Template": "WFMpre BIT/nr:{Bits}",
+      "Parameters": [
+        { "Name": "Bits", "Kind": "Choice", "Options": ["8", "16"], "DefaultValue": "8" }
+      ]
+    },
+    { "Id": "wfmpreCrvchk", "Label": "Set Preamble Checksum Mode", "Category": "Waveform Preamble", "Template": "WFMpre CRVchk:CHKsm0" },
+    {
+      "Id": "opc",
+      "Label": "Set Operation-Complete Status Byte",
+      "Category": "Service Request",
+      "Template": "OPC {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "rqs",
+      "Label": "Set Proactive Status Byte",
+      "Category": "Service Request",
+      "Template": "RQS {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "event", "Label": "Query and Clear Next Event", "Category": "Service Request", "Template": "EVEnt?", "IsQuery": true }
   ]
 }

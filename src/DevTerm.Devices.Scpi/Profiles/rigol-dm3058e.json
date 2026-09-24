@@ -1,23 +1,518 @@
 {
-  "Name": "Rigol DM3058E Digital Multimeter",
+  "Name": "Rigol DM3058E Digital Multimeter (native RIGOL command set, USB/RS-232)",
   "IdnPattern": "DM3058",
   "Terminator": "\n",
+  "Notes": "Built from docs/devices/rigol-dm3058e/programming-manual.md (RIGOL Programming Guide - DM3058/DM3058E Digital Multimeter, Jan. 2015), scoped to USB and RS-232 - the DM3058E has no GPIB or LAN interface (those are DM3058-only; :LXI and GPIB commands are excluded entirely). *IDN? reports the model as 'DM3058' even on a DM3058E unit - expected per the vendor's own worked example, not a misconfiguration. This instrument supports three switchable command LANGUAGES (CMDSET RIGOL|AGILENT|FLUKE, native RIGOL is the power-on default) - this profile documents RIGOL syntax only; if commands stop being recognized, check CMDSET? first. Setting any :MEASure:<type> range switches the instrument to Manual mode automatically, silently overriding :MEASure AUTO. :MEASure:FREQuency/:PERiod's range parameter selects an input VOLTAGE range (reusing the AC-voltage table), not a frequency/period range. Most :MEASure:<type>? value queries are unavailable while :FUNCtion2 (vice/secondary display) is active. Sending :UTILity:INTErface:RS232:BAUD over the RS-232 link you're reconfiguring breaks that connection as soon as it's applied - reconnect at the new rate afterward. SYSTem:ERRor? is FIFO and pops one entry per call - poll until it returns 0,\"No error\". Status-register bit-level layout (which bit means what) is not documented here; only the register read/write commands are.",
   "Commands": [
     { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
-    { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
-    { "Id": "measVoltDc", "Label": "Measure DC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:DC?", "IsQuery": true },
-    { "Id": "measVoltAc", "Label": "Measure AC Voltage", "Category": "Measure", "Template": "MEAS:VOLT:AC?", "IsQuery": true },
-    { "Id": "measCurrDc", "Label": "Measure DC Current", "Category": "Measure", "Template": "MEAS:CURR:DC?", "IsQuery": true },
-    { "Id": "measRes", "Label": "Measure Resistance", "Category": "Measure", "Template": "MEAS:RES?", "IsQuery": true },
-    { "Id": "measFreq", "Label": "Measure Frequency", "Category": "Measure", "Template": "MEAS:FREQ?", "IsQuery": true },
+    { "Id": "cls", "Label": "Clear Status/Error Queue", "Category": "Common", "Template": "*CLS" },
     {
-      "Id": "confVoltDc",
-      "Label": "Configure DC Voltage Range",
-      "Category": "Configure",
-      "Template": "CONF:VOLT:DC {Range}",
-      "Parameters": [
-        { "Name": "Range", "Kind": "Choice", "Options": ["AUTO", "0.2", "2", "20", "200", "1000"], "DefaultValue": "AUTO" }
-      ]
-    }
+      "Id": "ese",
+      "Label": "Set Event Status Enable Mask",
+      "Category": "Common",
+      "Template": "*ESE {Mask}",
+      "Parameters": [ { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 189, "DefaultValue": "0" } ]
+    },
+    { "Id": "eseQuery", "Label": "Query Event Status Enable Mask", "Category": "Common", "Template": "*ESE?", "IsQuery": true },
+    { "Id": "esr", "Label": "Query Event Status Register", "Category": "Common", "Template": "*ESR?", "IsQuery": true },
+    { "Id": "opc", "Label": "Set Operation-Complete Bit When Done", "Category": "Common", "Template": "*OPC" },
+    { "Id": "opcQuery", "Label": "Query Operation Complete", "Category": "Common", "Template": "*OPC?", "IsQuery": true },
+    {
+      "Id": "psc",
+      "Label": "Set Power-On Status-Clear Flag",
+      "Category": "Common",
+      "Template": "*PSC {Flag}",
+      "Parameters": [ { "Name": "Flag", "Kind": "Choice", "Options": ["0", "1"], "DefaultValue": "1" } ]
+    },
+    { "Id": "pscQuery", "Label": "Query Power-On Status-Clear Flag", "Category": "Common", "Template": "*PSC?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset to Default State", "Category": "Common", "Template": "*RST" },
+    {
+      "Id": "sre",
+      "Label": "Set Status Byte Enable Mask",
+      "Category": "Common",
+      "Template": "*SRE {Mask}",
+      "Parameters": [ { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 188, "DefaultValue": "0" } ]
+    },
+    { "Id": "sreQuery", "Label": "Query Status Byte Enable Mask", "Category": "Common", "Template": "*SRE?", "IsQuery": true },
+    { "Id": "stb", "Label": "Query Status Byte Register", "Category": "Common", "Template": "*STB?", "IsQuery": true },
+    { "Id": "trg", "Label": "Issue Trigger", "Category": "Common", "Template": "*TRG" },
+    { "Id": "tst", "Label": "Run Self-Test", "Category": "Common", "Template": "*TST?", "IsQuery": true },
+    { "Id": "wai", "Label": "Wait for Pending Operations", "Category": "Common", "Template": "*WAI" },
+    {
+      "Id": "cmdset",
+      "Label": "Select Command Language",
+      "Category": "Command Set",
+      "Template": "CMDSET {Language}",
+      "Parameters": [ { "Name": "Language", "Kind": "Choice", "Options": ["RIGOL", "AGILENT", "FLUKE"], "DefaultValue": "RIGOL" } ]
+    },
+    { "Id": "cmdsetQuery", "Label": "Query Command Language", "Category": "Command Set", "Template": "CMDSET?", "IsQuery": true },
+    { "Id": "statusOperationCondition", "Label": "Query Operation Status Condition Register", "Category": "Status", "Template": "STATus:OPERation:CONDition?", "IsQuery": true },
+    {
+      "Id": "statusOperationEnable",
+      "Label": "Set Operation Status Enable Register",
+      "Category": "Status",
+      "Template": "STATus:OPERation:ENABle {Mask}",
+      "Parameters": [ { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 1841, "DefaultValue": "0" } ]
+    },
+    { "Id": "statusOperationEnableQuery", "Label": "Query Operation Status Enable Register", "Category": "Status", "Template": "STATus:OPERation:ENABle?", "IsQuery": true },
+    { "Id": "statusOperationEvent", "Label": "Query Operation Status Event Register", "Category": "Status", "Template": "STATus:OPERation:EVENt?", "IsQuery": true },
+    { "Id": "statusPreset", "Label": "Reset Status Enable Registers", "Category": "Status", "Template": "STATus:PRESet" },
+    { "Id": "statusQuestionableCondition", "Label": "Query Questionable Status Condition Register", "Category": "Status", "Template": "STATus:QUEStionable:CONDition?", "IsQuery": true },
+    {
+      "Id": "statusQuestionableEnable",
+      "Label": "Set Questionable Status Enable Register",
+      "Category": "Status",
+      "Template": "STATus:QUEStionable:ENABle {Mask}",
+      "Parameters": [ { "Name": "Mask", "Kind": "Numeric", "Minimum": 0, "Maximum": 24375, "DefaultValue": "0" } ]
+    },
+    { "Id": "statusQuestionableEnableQuery", "Label": "Query Questionable Status Enable Register", "Category": "Status", "Template": "STATus:QUEStionable:ENABle?", "IsQuery": true },
+    { "Id": "statusQuestionableEvent", "Label": "Query Questionable Status Event Register", "Category": "Status", "Template": "STATus:QUEStionable:EVENt?", "IsQuery": true },
+    { "Id": "sysBeep", "Label": "Beep Once", "Category": "System", "Template": "SYSTem:BEEPer" },
+    {
+      "Id": "sysBeepState",
+      "Label": "Set Beeper Enabled",
+      "Category": "System",
+      "Template": "SYSTem:BEEPer:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "sysBeepStateQuery", "Label": "Query Beeper Enabled", "Category": "System", "Template": "SYSTem:BEEPer:STATe?", "IsQuery": true },
+    { "Id": "sysError", "Label": "Pop Oldest Error Queue Entry", "Category": "System", "Template": "SYSTem:ERRor?", "IsQuery": true },
+    { "Id": "sysVersion", "Label": "Query SCPI Version", "Category": "System", "Template": "SYSTem:VERSion?", "IsQuery": true },
+    {
+      "Id": "sysPowerSwitch",
+      "Label": "Set Manual Power-Switch Requirement",
+      "Category": "System",
+      "Template": "SYSTem:CONFigure:POWESwitch {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    {
+      "Id": "sysPoweron",
+      "Label": "Set Power-On State Source",
+      "Category": "System",
+      "Template": "SYSTem:CONFigure:POWEron {Source}",
+      "Parameters": [ { "Name": "Source", "Kind": "Choice", "Options": ["LAST", "DEF"], "DefaultValue": "LAST" } ]
+    },
+    { "Id": "sysDefault", "Label": "Reset System Configuration to Defaults", "Category": "System", "Template": "SYSTem:CONFigure:DEFault" },
+    {
+      "Id": "sysLanguage",
+      "Label": "Set UI Language",
+      "Category": "System",
+      "Template": "SYSTem:LANGuage {Language}",
+      "Parameters": [ { "Name": "Language", "Kind": "Choice", "Options": ["CHINESE", "ENGLISH"], "DefaultValue": "ENGLISH" } ]
+    },
+    { "Id": "sysLanguageQuery", "Label": "Query UI Language", "Category": "System", "Template": "SYSTem:LANGuage?", "IsQuery": true },
+    {
+      "Id": "sysFormatDecimal",
+      "Label": "Set Decimal-Point Display Character",
+      "Category": "System",
+      "Template": "SYSTem:FORMat:DECImal {Format}",
+      "Parameters": [ { "Name": "Format", "Kind": "Choice", "Options": ["COMMA", "DOT"], "DefaultValue": "DOT" } ]
+    },
+    { "Id": "sysFormatDecimalQuery", "Label": "Query Decimal-Point Display Character", "Category": "System", "Template": "SYSTem:FORMat:DECImal?", "IsQuery": true },
+    {
+      "Id": "sysFormatSeparate",
+      "Label": "Set System Data Delimiter",
+      "Category": "System",
+      "Template": "SYSTem:FORMat:SEPArate {Format}",
+      "Parameters": [ { "Name": "Format", "Kind": "Choice", "Options": ["ON", "NONE", "SPACE"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "sysFormatSeparateQuery", "Label": "Query System Data Delimiter", "Category": "System", "Template": "SYSTem:FORMat:SEPArate?", "IsQuery": true },
+    {
+      "Id": "sysDisplayBright",
+      "Label": "Set Screen Brightness",
+      "Category": "System",
+      "Template": "SYSTem:DISPlay:BRIGht {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 32, "DefaultValue": "22" } ]
+    },
+    { "Id": "sysDisplayBrightQuery", "Label": "Query Screen Brightness", "Category": "System", "Template": "SYSTem:DISPlay:BRIGht?", "IsQuery": true },
+    {
+      "Id": "sysDisplayContrast",
+      "Label": "Set Screen Contrast",
+      "Category": "System",
+      "Template": "SYSTem:DISPlay:CONTrast {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Numeric", "Minimum": 0, "Maximum": 32, "DefaultValue": "19" } ]
+    },
+    { "Id": "sysDisplayContrastQuery", "Label": "Query Screen Contrast", "Category": "System", "Template": "SYSTem:DISPlay:CONTrast?", "IsQuery": true },
+    { "Id": "sysDisplayInvert", "Label": "Toggle Inverted Screen Display", "Category": "System", "Template": "SYSTem:DISPlay:INVErt" },
+    {
+      "Id": "calcFunction",
+      "Label": "Set Active Math Function",
+      "Category": "Math",
+      "Template": ":CALCulate:FUNCtion {Function}",
+      "Parameters": [ { "Name": "Function", "Kind": "Choice", "Options": ["NONE", "REL", "DB", "DBM", "MIN", "MAX", "AVERAGE", "TOTAL", "PF"], "DefaultValue": "NONE" } ]
+    },
+    { "Id": "calcFunctionQuery", "Label": "Query Active Math Function", "Category": "Math", "Template": ":CALCulate:FUNCtion?", "IsQuery": true },
+    { "Id": "calcStatMin", "Label": "Query Statistics Minimum", "Category": "Math", "Template": ":CALCulate:STATistic:MIN?", "IsQuery": true },
+    { "Id": "calcStatMax", "Label": "Query Statistics Maximum", "Category": "Math", "Template": ":CALCulate:STATistic:MAX?", "IsQuery": true },
+    { "Id": "calcStatAvg", "Label": "Query Statistics Average", "Category": "Math", "Template": ":CALCulate:STATistic:AVERage?", "IsQuery": true },
+    { "Id": "calcStatCount", "Label": "Query Statistics Sample Count", "Category": "Math", "Template": ":CALCulate:STATistic:COUNt?", "IsQuery": true },
+    {
+      "Id": "calcStatState",
+      "Label": "Set Statistics Collection Enabled",
+      "Category": "Math",
+      "Template": ":CALCulate:STATistic:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" } ]
+    },
+    { "Id": "calcStatStateQuery", "Label": "Query Statistics Collection Enabled", "Category": "Math", "Template": ":CALCulate:STATistic:STATe?", "IsQuery": true },
+    {
+      "Id": "calcRelOffset",
+      "Label": "Set Relative-Measurement Offset",
+      "Category": "Math",
+      "Template": ":CALCulate:REL:OFFSet {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Text", "DefaultValue": "0" } ]
+    },
+    { "Id": "calcRelOffsetQuery", "Label": "Query Relative-Measurement Offset", "Category": "Math", "Template": ":CALCulate:REL:OFFSet?", "IsQuery": true },
+    {
+      "Id": "calcRelState",
+      "Label": "Set Relative (REL) Enabled",
+      "Category": "Math",
+      "Template": ":CALCulate:REL:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "calcRelStateQuery", "Label": "Query Relative (REL) Enabled", "Category": "Math", "Template": ":CALCulate:REL:STATe?", "IsQuery": true },
+    { "Id": "calcDb", "Label": "Query dB Value", "Category": "Math", "Template": ":CALCulate:DB?", "IsQuery": true },
+    {
+      "Id": "calcDbReference",
+      "Label": "Set dB Reference",
+      "Category": "Math",
+      "Template": ":CALCulate:DB:REFErence {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Numeric", "Minimum": -120, "Maximum": 120, "DefaultValue": "0" } ]
+    },
+    { "Id": "calcDbReferenceQuery", "Label": "Query dB Reference", "Category": "Math", "Template": ":CALCulate:DB:REFErence?", "IsQuery": true },
+    {
+      "Id": "calcDbState",
+      "Label": "Set dB Enabled",
+      "Category": "Math",
+      "Template": ":CALCulate:DB:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "calcDbStateQuery", "Label": "Query dB Enabled", "Category": "Math", "Template": ":CALCulate:DB:STATe?", "IsQuery": true },
+    { "Id": "calcDbm", "Label": "Query dBm Value", "Category": "Math", "Template": ":CALCulate:DBM?", "IsQuery": true },
+    {
+      "Id": "calcDbmReference",
+      "Label": "Set dBm Reference Resistance",
+      "Category": "Math",
+      "Template": ":CALCulate:DBM:REFErence {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Numeric", "Minimum": 2, "Maximum": 8000, "DefaultValue": "600" } ]
+    },
+    { "Id": "calcDbmReferenceQuery", "Label": "Query dBm Reference Resistance", "Category": "Math", "Template": ":CALCulate:DBM:REFErence?", "IsQuery": true },
+    {
+      "Id": "calcDbmState",
+      "Label": "Set dBm Enabled",
+      "Category": "Math",
+      "Template": ":CALCulate:DBM:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "calcDbmStateQuery", "Label": "Query dBm Enabled", "Category": "Math", "Template": ":CALCulate:DBM:STATe?", "IsQuery": true },
+    { "Id": "calcPf", "Label": "Query Pass/Fail Result", "Category": "Math", "Template": ":CALCulate:PF?", "IsQuery": true },
+    {
+      "Id": "calcPfLower",
+      "Label": "Set Pass/Fail Lower Limit",
+      "Category": "Math",
+      "Template": ":CALCulate:PF:LOWEr {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Text", "DefaultValue": "0" } ]
+    },
+    { "Id": "calcPfLowerQuery", "Label": "Query Pass/Fail Lower Limit", "Category": "Math", "Template": ":CALCulate:PF:LOWEr?", "IsQuery": true },
+    {
+      "Id": "calcPfUpper",
+      "Label": "Set Pass/Fail Upper Limit",
+      "Category": "Math",
+      "Template": ":CALCulate:PF:UPPEr {Value}",
+      "Parameters": [ { "Name": "Value", "Kind": "Text", "DefaultValue": "1" } ]
+    },
+    { "Id": "calcPfUpperQuery", "Label": "Query Pass/Fail Upper Limit", "Category": "Math", "Template": ":CALCulate:PF:UPPEr?", "IsQuery": true },
+    {
+      "Id": "calcPfState",
+      "Label": "Set Pass/Fail Testing Enabled",
+      "Category": "Math",
+      "Template": ":CALCulate:PF:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "calcPfStateQuery", "Label": "Query Pass/Fail Testing Enabled", "Category": "Math", "Template": ":CALCulate:PF:STATe?", "IsQuery": true },
+    { "Id": "funcVoltDc", "Label": "Select DC Voltage Function", "Category": "Function", "Template": ":FUNCtion:VOLTage:DC" },
+    { "Id": "funcVoltAc", "Label": "Select AC Voltage Function", "Category": "Function", "Template": ":FUNCtion:VOLTage:AC" },
+    { "Id": "funcCurrDc", "Label": "Select DC Current Function", "Category": "Function", "Template": ":FUNCtion:CURRent:DC" },
+    { "Id": "funcCurrAc", "Label": "Select AC Current Function", "Category": "Function", "Template": ":FUNCtion:CURRent:AC" },
+    { "Id": "funcRes", "Label": "Select 2-Wire Resistance Function", "Category": "Function", "Template": ":FUNCtion:RESistance" },
+    { "Id": "funcFres", "Label": "Select 4-Wire Resistance Function", "Category": "Function", "Template": ":FUNCtion:FRESistance" },
+    { "Id": "funcFreq", "Label": "Select Frequency Function", "Category": "Function", "Template": ":FUNCtion:FREQuency" },
+    { "Id": "funcPeriod", "Label": "Select Period Function", "Category": "Function", "Template": ":FUNCtion:PERiod" },
+    { "Id": "funcCont", "Label": "Select Continuity Function", "Category": "Function", "Template": ":FUNCtion:CONTinuity" },
+    { "Id": "funcDiode", "Label": "Select Diode Function", "Category": "Function", "Template": ":FUNCtion:DIODe" },
+    { "Id": "funcCap", "Label": "Select Capacitance Function", "Category": "Function", "Template": ":FUNCtion:CAPacitance" },
+    { "Id": "funcQuery", "Label": "Query Active Main-Display Function", "Category": "Function", "Template": ":FUNCtion?", "IsQuery": true },
+    { "Id": "func2Query", "Label": "Query Secondary-Display Function", "Category": "Secondary Display", "Template": ":FUNCtion2?", "IsQuery": true },
+    { "Id": "func2Value1", "Label": "Query Main-Display Value (Vice Mode)", "Category": "Secondary Display", "Template": ":FUNCtion2:VALUe1?", "IsQuery": true },
+    { "Id": "func2Value2", "Label": "Query Secondary-Display Value (Vice Mode)", "Category": "Secondary Display", "Template": ":FUNCtion2:VALUe2?", "IsQuery": true },
+    { "Id": "func2VoltDc", "Label": "Enable Secondary Display: DC Voltage", "Category": "Secondary Display", "Template": ":FUNCtion2:VOLTage:DC" },
+    { "Id": "func2VoltAc", "Label": "Enable Secondary Display: AC Voltage", "Category": "Secondary Display", "Template": ":FUNCtion2:VOLTage:AC" },
+    { "Id": "func2CurrDc", "Label": "Enable Secondary Display: DC Current", "Category": "Secondary Display", "Template": ":FUNCtion2:CURRent:DC" },
+    { "Id": "func2CurrAc", "Label": "Enable Secondary Display: AC Current", "Category": "Secondary Display", "Template": ":FUNCtion2:CURRent:AC" },
+    { "Id": "func2Freq", "Label": "Enable Secondary Display: Frequency", "Category": "Secondary Display", "Template": ":FUNCtion2:FREQuency" },
+    { "Id": "func2Period", "Label": "Enable Secondary Display: Period", "Category": "Secondary Display", "Template": ":FUNCtion2:PERiod" },
+    { "Id": "func2Res", "Label": "Enable Secondary Display: 2-Wire Resistance", "Category": "Secondary Display", "Template": ":FUNCtion2:RESistance" },
+    { "Id": "func2Fres", "Label": "Enable Secondary Display: 4-Wire Resistance", "Category": "Secondary Display", "Template": ":FUNCtion2:FRESistance" },
+    { "Id": "func2Cap", "Label": "Enable Secondary Display: Capacitance", "Category": "Secondary Display", "Template": ":FUNCtion2:CAPacitance" },
+    { "Id": "func2On", "Label": "Query Secondary Display State", "Category": "Secondary Display", "Template": ":FUNCtion2:ON?", "IsQuery": true },
+    { "Id": "func2Clear", "Label": "Disable Secondary Display", "Category": "Secondary Display", "Template": ":FUNCtion2:CLEar" },
+    { "Id": "measureQuery", "Label": "Query New-Data-Acquired Flag", "Category": "Measure", "Template": ":MEASure?", "IsQuery": true },
+    {
+      "Id": "measureMode",
+      "Label": "Set Auto/Manual Measurement Mode",
+      "Category": "Measure",
+      "Template": ":MEASure {Mode}",
+      "Parameters": [ { "Name": "Mode", "Kind": "Choice", "Options": ["AUTO", "MANU"], "DefaultValue": "AUTO" } ]
+    },
+    { "Id": "measVoltDc", "Label": "Measure DC Voltage", "Category": "Measure", "Template": ":MEASure:VOLTage:DC?", "IsQuery": true },
+    {
+      "Id": "measVoltDcSet",
+      "Label": "Set DC Voltage Range",
+      "Category": "Measure",
+      "Template": ":MEASure:VOLTage:DC {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measVoltDcRange", "Label": "Query DC Voltage Range", "Category": "Measure", "Template": ":MEASure:VOLTage:DC:RANGe?", "IsQuery": true },
+    {
+      "Id": "measVoltDcImpedance",
+      "Label": "Set DC Voltage Input Impedance",
+      "Category": "Measure",
+      "Template": ":MEASure:VOLTage:DC:IMPEdance {Impedance}",
+      "Parameters": [ { "Name": "Impedance", "Kind": "Choice", "Options": ["10M", "10G"], "DefaultValue": "10M" } ]
+    },
+    { "Id": "measVoltDcImpedanceQuery", "Label": "Query DC Voltage Input Impedance", "Category": "Measure", "Template": ":MEASure:VOLTage:DC:IMPEdance?", "IsQuery": true },
+    {
+      "Id": "measVoltDcFilter",
+      "Label": "Set DC Voltage AC Filter",
+      "Category": "Measure",
+      "Template": ":MEASure:VOLTage:DC:FILTer:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "measVoltDcFilterQuery", "Label": "Query DC Voltage AC Filter", "Category": "Measure", "Template": ":MEASure:VOLTage:DC:FILTer:STATe?", "IsQuery": true },
+    { "Id": "measVoltAc", "Label": "Measure AC Voltage", "Category": "Measure", "Template": ":MEASure:VOLTage:AC?", "IsQuery": true },
+    {
+      "Id": "measVoltAcSet",
+      "Label": "Set AC Voltage Range",
+      "Category": "Measure",
+      "Template": ":MEASure:VOLTage:AC {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measVoltAcRange", "Label": "Query AC Voltage Range", "Category": "Measure", "Template": ":MEASure:VOLTage:AC:RANGe?", "IsQuery": true },
+    { "Id": "measCurrDc", "Label": "Measure DC Current", "Category": "Measure", "Template": ":MEASure:CURRent:DC?", "IsQuery": true },
+    {
+      "Id": "measCurrDcSet",
+      "Label": "Set DC Current Range",
+      "Category": "Measure",
+      "Template": ":MEASure:CURRent:DC {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "5", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measCurrDcRange", "Label": "Query DC Current Range", "Category": "Measure", "Template": ":MEASure:CURRent:DC:RANGe?", "IsQuery": true },
+    {
+      "Id": "measCurrDcFilter",
+      "Label": "Set DC Current AC Filter",
+      "Category": "Measure",
+      "Template": ":MEASure:CURRent:DC:FILTer:STATe {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "measCurrDcFilterQuery", "Label": "Query DC Current AC Filter", "Category": "Measure", "Template": ":MEASure:CURRent:DC:FILTer:STATe?", "IsQuery": true },
+    { "Id": "measCurrAc", "Label": "Measure AC Current", "Category": "Measure", "Template": ":MEASure:CURRent:AC?", "IsQuery": true },
+    {
+      "Id": "measCurrAcSet",
+      "Label": "Set AC Current Range",
+      "Category": "Measure",
+      "Template": ":MEASure:CURRent:AC {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measCurrAcRange", "Label": "Query AC Current Range", "Category": "Measure", "Template": ":MEASure:CURRent:AC:RANGe?", "IsQuery": true },
+    { "Id": "measRes", "Label": "Measure 2-Wire Resistance", "Category": "Measure", "Template": ":MEASure:RESistance?", "IsQuery": true },
+    {
+      "Id": "measResSet",
+      "Label": "Set 2-Wire Resistance Range",
+      "Category": "Measure",
+      "Template": ":MEASure:RESistance {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "5", "6", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measResRange", "Label": "Query 2-Wire Resistance Range", "Category": "Measure", "Template": ":MEASure:RESistance:RANGe?", "IsQuery": true },
+    { "Id": "measFres", "Label": "Measure 4-Wire Resistance", "Category": "Measure", "Template": ":MEASure:FRESistance?", "IsQuery": true },
+    {
+      "Id": "measFresSet",
+      "Label": "Set 4-Wire Resistance Range",
+      "Category": "Measure",
+      "Template": ":MEASure:FRESistance {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "5", "6", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measFresRange", "Label": "Query 4-Wire Resistance Range", "Category": "Measure", "Template": ":MEASure:FRESistance:RANGe?", "IsQuery": true },
+    { "Id": "measFreq", "Label": "Measure Frequency", "Category": "Measure", "Template": ":MEASure:FREQuency?", "IsQuery": true },
+    {
+      "Id": "measFreqSet",
+      "Label": "Set Frequency Input-Voltage Range",
+      "Category": "Measure",
+      "Template": ":MEASure:FREQuency {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measFreqRange", "Label": "Query Frequency Input-Voltage Range", "Category": "Measure", "Template": ":MEASure:FREQuency:RANGe?", "IsQuery": true },
+    { "Id": "measPeriod", "Label": "Measure Period", "Category": "Measure", "Template": ":MEASure:PERiod?", "IsQuery": true },
+    {
+      "Id": "measPeriodSet",
+      "Label": "Set Period Input-Voltage Range",
+      "Category": "Measure",
+      "Template": ":MEASure:PERiod {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measPeriodRange", "Label": "Query Period Input-Voltage Range", "Category": "Measure", "Template": ":MEASure:PERiod:RANGe?", "IsQuery": true },
+    { "Id": "measCont", "Label": "Measure Continuity Resistance", "Category": "Measure", "Template": ":MEASure:CONTinuity?", "IsQuery": true },
+    {
+      "Id": "measContSet",
+      "Label": "Set Continuity Resistance Threshold",
+      "Category": "Measure",
+      "Template": ":MEASure:CONTinuity {Threshold}",
+      "Parameters": [ { "Name": "Threshold", "Kind": "Numeric", "Minimum": 1, "Maximum": 2000, "DefaultValue": "10" } ]
+    },
+    { "Id": "measDiode", "Label": "Measure Diode Forward Voltage", "Category": "Measure", "Template": ":MEASure:DIODe?", "IsQuery": true },
+    { "Id": "measCap", "Label": "Measure Capacitance", "Category": "Measure", "Template": ":MEASure:CAPacitance?", "IsQuery": true },
+    {
+      "Id": "measCapSet",
+      "Label": "Set Capacitance Range",
+      "Category": "Measure",
+      "Template": ":MEASure:CAPacitance {Range}",
+      "Parameters": [ { "Name": "Range", "Kind": "Choice", "Options": ["0", "1", "2", "3", "4", "5", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "measCapRange", "Label": "Query Capacitance Range", "Category": "Measure", "Template": ":MEASure:CAPacitance:RANGe?", "IsQuery": true },
+    {
+      "Id": "rateVoltDc",
+      "Label": "Set DC Voltage Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:VOLTage:DC {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateVoltDcQuery", "Label": "Query DC Voltage Measurement Rate", "Category": "Rate", "Template": ":RATE:VOLTage:DC?", "IsQuery": true },
+    {
+      "Id": "rateVoltAc",
+      "Label": "Set AC Voltage Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:VOLTage:AC {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateVoltAcQuery", "Label": "Query AC Voltage Measurement Rate", "Category": "Rate", "Template": ":RATE:VOLTage:AC?", "IsQuery": true },
+    {
+      "Id": "rateCurrDc",
+      "Label": "Set DC Current Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:CURRent:DC {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateCurrDcQuery", "Label": "Query DC Current Measurement Rate", "Category": "Rate", "Template": ":RATE:CURRent:DC?", "IsQuery": true },
+    {
+      "Id": "rateCurrAc",
+      "Label": "Set AC Current Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:CURRent:AC {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateCurrAcQuery", "Label": "Query AC Current Measurement Rate", "Category": "Rate", "Template": ":RATE:CURRent:AC?", "IsQuery": true },
+    {
+      "Id": "rateRes",
+      "Label": "Set 2-Wire Resistance Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:RESistance {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateResQuery", "Label": "Query 2-Wire Resistance Measurement Rate", "Category": "Rate", "Template": ":RATE:RESistance?", "IsQuery": true },
+    {
+      "Id": "rateFres",
+      "Label": "Set 4-Wire Resistance Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:FRESistance {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["F", "M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateFresQuery", "Label": "Query 4-Wire Resistance Measurement Rate", "Category": "Rate", "Template": ":RATE:FRESistance?", "IsQuery": true },
+    {
+      "Id": "rateSensor",
+      "Label": "Set Sensor Measurement Rate",
+      "Category": "Rate",
+      "Template": ":RATE:SENSor {Rate}",
+      "Parameters": [ { "Name": "Rate", "Kind": "Choice", "Options": ["M", "S"], "DefaultValue": "S" } ]
+    },
+    { "Id": "rateSensorQuery", "Label": "Query Sensor Measurement Rate", "Category": "Rate", "Template": ":RATE:SENSor?", "IsQuery": true },
+    {
+      "Id": "trigSource",
+      "Label": "Set Trigger Source",
+      "Category": "Trigger",
+      "Template": ":TRIGger:SOURce {Source}",
+      "Parameters": [ { "Name": "Source", "Kind": "Choice", "Options": ["AUTO", "SINGLE", "EXT"], "DefaultValue": "AUTO" } ]
+    },
+    { "Id": "trigSourceQuery", "Label": "Query Trigger Source", "Category": "Trigger", "Template": ":TRIGger:SOURce?", "IsQuery": true },
+    {
+      "Id": "trigAutoInterval",
+      "Label": "Set Auto-Trigger Interval",
+      "Category": "Trigger",
+      "Template": ":TRIGger:AUTO:INTErval {Milliseconds}",
+      "Parameters": [ { "Name": "Milliseconds", "Kind": "Numeric", "Minimum": 8, "Maximum": 2000, "DefaultValue": "400" } ]
+    },
+    { "Id": "trigAutoIntervalQuery", "Label": "Query Auto-Trigger Interval", "Category": "Trigger", "Template": ":TRIGger:AUTO:INTErval?", "IsQuery": true },
+    {
+      "Id": "trigAutoHold",
+      "Label": "Set Auto-Trigger Hold Enabled",
+      "Category": "Trigger",
+      "Template": ":TRIGger:AUTO:HOLD {State}",
+      "Parameters": [ { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" } ]
+    },
+    { "Id": "trigAutoHoldQuery", "Label": "Query Auto-Trigger Hold Enabled", "Category": "Trigger", "Template": ":TRIGger:AUTO:HOLD?", "IsQuery": true },
+    {
+      "Id": "trigAutoHoldSensitivity",
+      "Label": "Set Auto-Trigger Hold Sensitivity",
+      "Category": "Trigger",
+      "Template": ":TRIGger:AUTO:HOLD:SENSitivity {Sensitivity}",
+      "Parameters": [ { "Name": "Sensitivity", "Kind": "Choice", "Options": ["0", "1", "2", "3", "MIN", "MAX", "DEF"], "DefaultValue": "DEF" } ]
+    },
+    { "Id": "trigAutoHoldSensitivityQuery", "Label": "Query Auto-Trigger Hold Sensitivity", "Category": "Trigger", "Template": ":TRIGger:AUTO:HOLD:SENSitivity?", "IsQuery": true },
+    {
+      "Id": "trigSingle",
+      "Label": "Set Single-Trigger Sample Count",
+      "Category": "Trigger",
+      "Template": ":TRIGger:SINGle {Count}",
+      "Parameters": [ { "Name": "Count", "Kind": "Numeric", "Minimum": 1, "Maximum": 2000, "DefaultValue": "1" } ]
+    },
+    { "Id": "trigSingleQuery", "Label": "Query Single-Trigger Sample Count", "Category": "Trigger", "Template": ":TRIGger:SINGle?", "IsQuery": true },
+    { "Id": "trigSingleTriggered", "Label": "Fire One Manual Trigger", "Category": "Trigger", "Template": ":TRIGger:SINGle:TRIGgered" },
+    {
+      "Id": "trigExt",
+      "Label": "Set External Trigger Type",
+      "Category": "Trigger",
+      "Template": ":TRIGger:EXT {Type}",
+      "Parameters": [ { "Name": "Type", "Kind": "Choice", "Options": ["RISE", "FALL", "HIGH", "LOW"], "DefaultValue": "RISE" } ]
+    },
+    { "Id": "trigExtQuery", "Label": "Query External Trigger Type", "Category": "Trigger", "Template": ":TRIGger:EXT?", "IsQuery": true },
+    {
+      "Id": "trigVmcPolar",
+      "Label": "Set VMC Output Polarity",
+      "Category": "Trigger",
+      "Template": ":TRIGger:VMComplete:POLAr {Polarity}",
+      "Parameters": [ { "Name": "Polarity", "Kind": "Choice", "Options": ["POS", "NEG"], "DefaultValue": "POS" } ]
+    },
+    { "Id": "trigVmcPolarQuery", "Label": "Query VMC Output Polarity", "Category": "Trigger", "Template": ":TRIGger:VMComplete:POLAr?", "IsQuery": true },
+    {
+      "Id": "trigVmcPulsewidth",
+      "Label": "Set VMC Output Pulse Width",
+      "Category": "Trigger",
+      "Template": ":TRIGger:VMComplete:PULSewidth {Milliseconds}",
+      "Parameters": [ { "Name": "Milliseconds", "Kind": "Numeric", "Minimum": 1, "Maximum": 399, "DefaultValue": "100" } ]
+    },
+    { "Id": "trigVmcPulsewidthQuery", "Label": "Query VMC Output Pulse Width", "Category": "Trigger", "Template": ":TRIGger:VMComplete:PULSewidth?", "IsQuery": true },
+    {
+      "Id": "utilRs232Baud",
+      "Label": "Set RS-232 Baud Rate",
+      "Category": "Utility",
+      "Template": ":UTILity:INTErface:RS232:BAUD {Baud}",
+      "Parameters": [ { "Name": "Baud", "Kind": "Choice", "Options": ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"], "DefaultValue": "9600" } ]
+    },
+    { "Id": "utilRs232BaudQuery", "Label": "Query RS-232 Baud Rate", "Category": "Utility", "Template": ":UTILity:INTErface:RS232:BAUD?", "IsQuery": true },
+    {
+      "Id": "utilRs232Parity",
+      "Label": "Set RS-232 Parity/Data Bits",
+      "Category": "Utility",
+      "Template": ":UTILity:INTErface:RS232:PARIty {Parity}",
+      "Parameters": [ { "Name": "Parity", "Kind": "Choice", "Options": ["NONE", "ODD", "EVEN"], "DefaultValue": "NONE" } ]
+    },
+    { "Id": "utilRs232ParityQuery", "Label": "Query RS-232 Parity/Data Bits", "Category": "Utility", "Template": ":UTILity:INTErface:RS232:PARIty?", "IsQuery": true }
   ]
 }
