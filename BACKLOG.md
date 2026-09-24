@@ -9,8 +9,8 @@ Completed work is logged by date under `docs/changes/`.
 ## Backlog (not started)
 
 Prioritized per direction given 2026-09-15: BLE serial is the next transport to build (ahead of
-RFC 2217/UDP), since real target hardware exists. GPIB and USBTMC are newly-scoped, not yet
-ordered against the rest.
+RFC 2217/UDP), since real target hardware exists. USBTMC is newly-scoped, not yet ordered against
+the rest.
 
 - **BLE transport** (`DevTerm.Transports.Ble`), cross-platform by design via a pluggable per-OS
   adapter seam (Windows via `Windows.Devices.Bluetooth` first; Linux/BlueZ and macOS/CoreBluetooth
@@ -20,16 +20,6 @@ ordered against the rest.
   a [DER EE DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md), whose optical
   (IR) UART output is bridged to BLE via a custom adapter already built — unblocks that proposal
   once built. Still need: which GATT profile the custom adapter actually exposes (NUS or custom).
-- **GPIB via Prologix-protocol controllers** — no new `ITransport` needed for the common case
-  (cheap eBay adapters, and DIY [AR488](https://github.com/Twilight-Logic/AR488)-firmware boards,
-  mostly speak the Prologix `++` ASCII command protocol over a plain serial or TCP connection);
-  needs a thin controller layer (GPIB addressing, read-after-write/EOI) on top of the existing
-  Serial/TCP transports, not a transport of its own. Explicitly **not** recommended: cheap "NI
-  GPIB-USB-HS clone" adapters, which speak NI's proprietary non-serial USB protocol and have
-  reported compatibility problems even against genuine NI hardware/drivers — see
-  `docs/design/transports.md`'s Extensibility section. Real target hardware once built: the
-  **Tektronix TDS2024** (has a GPIB option, currently fitted with a Centronics module instead) and
-  the **HP 34401A** (already in the SCPI proposal's device table, GPIB/RS-232).
 - **USBTMC transport** — the USB class most bench equipment (Rigol/Keysight/etc.) actually uses for
   local USB control; neither HID nor serial, needed its own raw-USB implementation — IVI.NET/VISA was
   considered and rejected (Windows/.NET-Framework-oriented, plus a separate proprietary native
@@ -54,7 +44,50 @@ ordered against the rest.
   (`--listusbtmcdevices true`), but share the same USB PID (`0x0588`) and the DG1022 unit's own
   descriptor misreports its series as "DG3000" rather than "DG1000" — a serial number, not VID/PID
   alone, would be needed to target one specifically; neither responds to a query yet, same stall as
-  above.
+  above. **Power-cycling is an unreliable workaround, not a fix (2026-09-24)**: during today's
+  hardware review, the DM3058E wedged mid-session (a hung bulk-IN read) and a physical power-cycle
+  cleared it — `*IDN?` and a full 83-query profile sweep both worked cleanly afterward. Encouraged by
+  that, all four bench Rigol units (DM3058E, DG1022, DS1102E, DG1062Z) were power-cycled together,
+  but this did **not** reliably fix the other two USBTMC devices sharing PID `0x0588`: after the
+  restart, both the DG1022 and the DS1102E (the latter previously confirmed working earlier the same
+  day, before the restart) still enumerate correctly (`--listusbtmcdevices true` lists both with
+  correct serials) but return zero bytes for `*IDN?` — no exception, no timeout message, the CLI just
+  prints nothing and exits cleanly, repeatable across multiple retries and settle-time waits. The
+  DM3058E (PID `0x09C4`, no serial-sharing) kept working the whole time. So a restart cleared it once
+  for one device and not at all for two others in the same session, even on a second restart attempt
+  (the instruments' own front-panel displays confirmed both entered remote mode both times, so the
+  control-transfer/`SetRemote` path is fine — it's specifically the bulk-IN reply path that stays
+  stalled) — not a dependable recovery step.
+  Separately, this surfaced a real gap in `UsbtmcTransport.WriteAsync`/`ReadReply`
+  (`DevTerm.Transports.Usbtmc\UsbtmcTransport.cs`): when both the initial `ReadBulkIn` and its one
+  stall retry return a zero/negative count, `ReadReply` returns an **empty** `List<byte[]>`, not
+  `null` — `WriteAsync`'s `replyChunks is null` check then falls through to an empty `foreach` and a
+  no-op flush, so a fully-failed query looks identical to a query that legitimately returned nothing,
+  with no exception or log line surfaced anywhere. Worth fixing regardless of the root cause below:
+  a failed reply read should be distinguishable from an empty one (e.g. throw, or return a sentinel
+  distinct from `null`/empty). Worth investigating whether a *software*-only recovery is possible
+  instead of requiring physical power-cycling every time: `docs/protocols/usbtmc/USBTMC_1_00.md`
+  section 4.2.1.6 documents a class-specific `INITIATE_CLEAR` control request
+  (`bmRequestType=0xA1`, `bRequest=5`, distinct from a raw USB `CLEAR_FEATURE`/`ENDPOINT_HALT`, which
+  is all `SystemUsbtmcDevice`'s existing `ClearHalt()` on `Open()` actually does today) plus
+  `CHECK_CLEAR_STATUS` to poll it to completion — neither is currently sent anywhere in
+  `DevTerm.Transports.Usbtmc`. Also worth checking whether LibUsbDotNet/WinUSB expose an equivalent of
+  a USB port reset (`libusb_reset_device` in libusb proper) as a fallback if `INITIATE_CLEAR` alone
+  doesn't unwedge a truly stalled endpoint. Neither has been tried yet — this is a research/prototype
+  item, not a confirmed fix.
+  **This is a general transport reliability defect, not just a cause of total stalls on two "stuck"
+  instruments (2026-09-24)**: a controlled 348-command sweep against the DG1062Z (`SYSTem:ERRor?`
+  interleaved after every one of 174 real queries, to sync-check each reply) — a unit that otherwise
+  answered every query correctly all session — still silently dropped roughly 6% of replies (22 of
+  348), with no exception, no error, and no way to tell from the CLI's output alone that anything was
+  lost. Confirmed via an unambiguous alignment anchor (the `SYSTem:COMMunicate:LAN:MAC?` reply,
+  `00-19-AF-04-B4-70`, which can only be one specific line): a `SYSTem:ERRor?` sent immediately after
+  that anchor never produced its `0,"No error"` reply at all — the very next line in the log was
+  already the *following* query's answer. Ruled out command pacing as an alternative explanation: the
+  same 15-command probe dropped replies at both 0.6s and 2s inter-command gaps (2/15 and 3/15
+  respectively). This means `ReadReply`'s empty-list-vs-null gap above isn't a special case of two bad
+  instruments — it can silently corrupt any long real-hardware session on any USBTMC device, which
+  should raise this fix's priority.
 - Declarative command/response schema for device control modules (send template + response
   pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
   baseline for common bench-instrument commands) — see the new section in
@@ -90,9 +123,29 @@ ordered against the rest.
   transport for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
   Real-hardware-confirmed for the HP/Agilent/Keysight 34401A, both Korad KA3005P/KA6003P curated
   profiles (2026-09-23, see `docs/changes/2026-09-23.md`), and the Rigol DS1102E (renamed from the
-  wrong-model DS1105E, 2026-09-24, see `docs/changes/2026-09-24.md`); the Rigol DM3058E/DG1022
-  profiles remain unconfirmed, and verifying them against the newly-available bench units is blocked
-  on the USBTMC bulk-IN stall noted above for any of them reachable only over USB. No
+  wrong-model DS1105E, 2026-09-24, see `docs/changes/2026-09-24.md`). Also real-hardware-confirmed
+  2026-09-24: the **Rigol DM3058E** (full 83-query paced sweep, clean) and the **Rigol DG1062Z**
+  (full 174-query paced sweep, `*IDN?` plus the rest of the profile) — see `docs/test/` for the
+  session report. The DG1062Z sweep found a confirmed profile-syntax defect cluster — each isolated
+  and repeated (3-5x) individually to be sure, rather than trusting the original interleaved sweep's
+  line-by-line attribution: `ROSCillator:SOURce?`, `COUPling:AMPLitude:STATe?`,
+  `COUPling:AMPLitude:MODE?`, `COUPling:AMPLitude:RATio?`, `COUNter:CURRent:FREQuency?`,
+  `COUNter:CURRent:PERiod?`, `COUNter:CURRent:DUTYcycle?`, `COUNter:CURRent:PWIDth?`,
+  `COUNter:CURRent:NWIDth?`, `COUNter:SENSitivity?`, `COUNter:HFR?`, and
+  `COUNter:TRIGger:LEVel?` are all rejected outright by the real firmware
+  (`-113,"Undefined header; keyword cannot be found"`), every time, regardless of the frequency
+  counter's own enabled state (`COUNter:STATe ON` first didn't unlock them either) — genuine wrong
+  syntax, not a state-gating quirk, needs fixing against the DG1000Z series manual. The sibling
+  `COUPling:FREQuency:*`/`COUPling:PHASe:*` families and `COUPling:AMPLitude:DEViation?`/
+  `COUNter:STATe?`/`COUNter:COUPling?` are confirmed **valid** (consistent non-error replies across
+  repeats). Separately, a new deterministic pattern (not the ~6% random drop described below):
+  isolating single invalid queries showed the query *immediately following* a `-113` reply is
+  reliably swallowed with no reply at all, every time — worth a closer look at whether the firmware
+  or the transport is responsible before assuming it's the same bug as the random-drop one. The
+  **Rigol DG1022** profile
+  remains unconfirmed; verifying it is blocked on the
+  USBTMC bulk-IN stall noted above (this unit never answered a single query all session, unlike
+  DS1102E which worked earlier in the day before also becoming stuck — see that note for detail). No
   `DevTerm.Transports.Usbtmc.Tests` project exists yet either — worth adding given the transport code
   (`UsbtmcTransport.IsQuery`, `SystemUsbtmcDevice`'s NUL-stripping helpers) has already needed two
   real-hardware-discovered fixes with no unit coverage of its own.

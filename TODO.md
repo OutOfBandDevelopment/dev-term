@@ -210,3 +210,8 @@ Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
 (serial-port descriptions on Linux/macOS) and the design-level items from the Architect's
 2026-09-23 notes (see above).
+
+
+## Notes from the Architect
+
+We need a better way to ensure the selected device for USB (both USBHID and USBTMC) select the same hardware instance over and over.  It seems that some devices could share the same vendor id and product id so looking them just just by those two values can not ensure the corret device is selected.
