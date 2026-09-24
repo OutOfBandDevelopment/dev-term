@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 
@@ -144,7 +145,7 @@ public sealed class ConnectionEditorViewModelTests
 
             StringAssert.Contains(vm.StatusMessage, "Saved profile 'tek108'");
             Assert.Contains("tek108", vm.Profiles);
-            Assert.AreEqual(string.Empty, vm.SaveName, "SaveName should clear after a successful save.");
+            Assert.AreEqual("tek108", vm.SaveName, "SaveName should stay put after a successful save, so Save Profile can be clicked again to update the same profile.");
 
             var fresh = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" })
             {
@@ -975,6 +976,86 @@ public sealed class ConnectionEditorViewModelTests
                 serialPortDiscovery: new FailingSerialPortDiscovery());
 
             Assert.IsEmpty(vm.SerialPortOptions);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_SelectsTheMatchingDetectedPort_WhenPortMatchesAKnownPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions { Port = "COM7" },
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
+
+            Assert.AreEqual("COM7", vm.SelectedSerialPort, "The detected-ports dropdown should jump to the entry matching the loaded Port.");
+            Assert.AreEqual("COM7", vm.Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_LeavesTheDetectedPortBlank_WhenPortDoesNotMatchAnyDetectedPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions { Port = "COM9" },
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
+
+            Assert.IsNull(vm.SelectedSerialPort, "COM9 isn't attached, so the dropdown should show blank rather than a wrong selection.");
+            Assert.AreEqual("COM9", vm.Port, "The typed/loaded Port itself must not be cleared just because it isn't currently detected.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadIntoFields_BlanksScpiProfile_WhenTheProfileHasNoneSaved()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                ScpiProfile = ScpiProfileCatalog.Generic.Name,
+            };
+
+            vm.LoadIntoFields(new CliOptions { ScpiProfile = null });
+
+            Assert.AreEqual(string.Empty, vm.ScpiProfile, "No ScpiProfile saved on the profile should blank the picker, not keep whatever was there before.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadIntoFields_SelectsTheSavedScpiProfile_WhenItNamesARealCatalogProfile()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+
+            vm.LoadIntoFields(new CliOptions { ScpiProfile = ScpiProfileCatalog.All[0].Name });
+
+            Assert.AreEqual(ScpiProfileCatalog.All[0].Name, vm.ScpiProfile);
+            Assert.Contains(vm.ScpiProfile, vm.ScpiProfileOptions, "The loaded value must be one of the picker's own options for the dropdown to actually show it selected.");
         }
         finally
         {

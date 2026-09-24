@@ -704,6 +704,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     {
         Transport = options.Transport;
         Port = options.Port ?? string.Empty;
+        SelectedSerialPort = SerialPortOptions.FirstOrDefault(p => string.Equals(p.Name, Port, StringComparison.Ordinal))?.Name;
         Baud = options.Baud.ToString();
         DataBits = options.DataBits.ToString();
         ParityText = options.Parity.ToString();
@@ -918,7 +919,6 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
         _store.Save(name, options);
         RefreshProfiles();
-        SaveName = string.Empty;
         IsDirty = false;
         StatusMessage = $"Saved profile '{name}'.";
     }

@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Configuration\DevTerm.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Devices.Scpi\DevTerm.Devices.Scpi.csproj" />
   </ItemGroup>
 
 </Project>
