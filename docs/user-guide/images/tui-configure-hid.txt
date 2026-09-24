@@ -2,7 +2,7 @@
 │                                                                             ▲│
 │Vendor ID: 4216         Product ID: 63560        ⟦ Detect HID... ⟧▖          ░│
 │                                                 ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘          ░│
-│Serial number:                                                               ░│
+│Serial number:                        (not found)                            ░│
 │                                                                             ░│
 │☐ Show as hex                                                                ░│
 │                                                                             ░│

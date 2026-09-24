@@ -1108,6 +1108,113 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void ConnectedDeviceNotFound_IsTrue_WhenTheSavedSerialPortIsntAmongDetectedPorts()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3"]));
+
+            vm.LoadIntoFields(new CliOptions { Transport = "serial", Port = "COM9" });
+
+            Assert.IsTrue(vm.ConnectedDeviceNotFound, "COM9 isn't in the detected ports list, so the saved profile's device isn't plugged in.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectedDeviceNotFound_IsFalse_WhenTheSavedSerialPortMatchesADetectedPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                serialPortDiscovery: new FakeSerialPortDiscovery(["COM3"]));
+
+            vm.LoadIntoFields(new CliOptions { Transport = "serial", Port = "COM3" });
+
+            Assert.IsFalse(vm.ConnectedDeviceNotFound);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectedDeviceNotFound_IsTrue_WhenTheSavedHidVendorProductIdDoesNotMatchAnyDetectedDevice()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x046D, 0xC08B, "Mouse", "SN123", "hid#vid_046d&pid_c08b#0&0&0000#{guid}")]));
+
+            vm.LoadIntoFields(new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5500 });
+
+            Assert.IsTrue(vm.ConnectedDeviceNotFound, "No detected HID device has this VendorId/ProductId, so it isn't currently plugged in.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectedDeviceNotFound_IsFalse_WhenTheSavedHidDeviceIsFoundByBestMatch()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x046D, 0xC08B, "Mouse", "SN123", "hid#vid_046d&pid_c08b#0&0&0000#{guid}")]));
+
+            vm.LoadIntoFields(new CliOptions { Transport = "hid", VendorId = 0x046D, ProductId = 0xC08B, SerialNumber = "SN123" });
+
+            Assert.IsFalse(vm.ConnectedDeviceNotFound);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectedDeviceNotFound_IsFalse_WhenNoVendorOrProductIdIsSpecified()
+    {
+        // VendorId/ProductId both 0 means "no USB identity filter" (see HasUsbIdentity) - there's
+        // nothing to fail to match, so this must never read as "not found".
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([]));
+
+            vm.LoadIntoFields(new CliOptions { Transport = "hid", VendorId = 0, ProductId = 0 });
+
+            Assert.IsFalse(vm.ConnectedDeviceNotFound);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Constructor_PopulatesHidDeviceOptionsFromDiscovery_FormattedLikeListHidDevices()
     {
         var directory = CreateTempDirectory();
@@ -1116,7 +1223,7 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(
                 new ConnectionProfileStore(directory),
                 new CliOptions(),
-                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", "0E6A395F3531")]));
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", "0E6A395F3531", "hid#vid_046d&pid_c08b#0&0&0000#{guid}")]));
 
             Assert.HasCount(1, vm.HidDeviceOptions);
             Assert.AreEqual("046D:C08B  G502 HERO Gaming Mouse", vm.HidDeviceOptions[0].Display);
@@ -1138,7 +1245,7 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(
                 new ConnectionProfileStore(directory),
                 new CliOptions(),
-                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5502, null, null)]));
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5502, null, null, "hid#vid_10cf&pid_5502#0&0&0000#{guid}")]));
 
             Assert.AreEqual("10CF:5502", vm.HidDeviceOptions[0].Display);
         }
@@ -1148,11 +1255,55 @@ public sealed class ConnectionEditorViewModelTests
         }
     }
 
+    [TestMethod]
+    public void Constructor_HidDeviceWithNoSerialNumber_FallsBackToDevicePath()
+    {
+        // A real Velleman K8055 reports no serial descriptor at all - confirmed against real
+        // hardware. SerialNumber must still end up unique per physical device (and non-null) so
+        // best-matching a loaded profile back to a live device only ever has this one field to
+        // check, not a separate DevicePath lookup.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5500, null, null, "hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}")]));
+
+            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].SerialNumber);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_HidDeviceWithBlankSerialNumber_FallsBackToDevicePath()
+    {
+        // Some devices report an empty/whitespace serial descriptor rather than throwing or
+        // returning null - the fallback must catch that case too, not just a true null.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions(),
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery([new HidDeviceDescriptor(0x10CF, 0x5500, null, "   ", "hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}")]));
+
+            Assert.AreEqual("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}", vm.HidDeviceOptions[0].SerialNumber);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static readonly HidDeviceDescriptor[] ThreeHidDevices =
     [
-        new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", null),
-        new HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard K120", null),
-        new HidDeviceDescriptor(0x0699, 0x0368, "TDS 2024", null),
+        new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", null, "hid#vid_046d&pid_c08b#0&0&0000#{guid}"),
+        new HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard K120", null, "hid#vid_046d&pid_c31c#0&0&0000#{guid}"),
+        new HidDeviceDescriptor(0x0699, 0x0368, "TDS 2024", null, "hid#vid_0699&pid_0368#0&0&0000#{guid}"),
     ];
 
     private static string[] HidOptionDisplays(ConnectionEditorViewModel vm) => [.. vm.HidDeviceOptions.Select(o => o.Display)];
@@ -1356,7 +1507,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var device = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, "SN123");
+            var device = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, "SN123", "hid#vid_046d&pid_c08b#0&0&0000#{guid}");
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
             {
                 SelectedHidDevice = device,

@@ -13,7 +13,7 @@
 │                                                                             ░│
 │Description: Tektronix 2230 bench scope                                      ░│
 │                                                                             ░│
-│Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600                        ░│
+│Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600         (not found)    ░│
 │                          ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                     ░│
 │Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             ░│
 │                                                                             ░│

@@ -81,6 +81,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IdsShowHex),
         nameof(VendorIdDisplay),
         nameof(ProductIdDisplay),
+        nameof(ConnectedDeviceNotFound),
     };
 
     /// <summary>
@@ -214,12 +215,80 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     {
         try
         {
-            return [.. discovery.GetDevices().Select(HidDeviceOption.FromDescriptor)];
+            return DisambiguateDisplay([.. discovery.GetDevices().Select(HidDeviceOption.FromDescriptor)]);
         }
         catch (SystemException)
         {
             return [];
         }
+    }
+
+    // Two attached devices can share an identical Display — confirmed live with three simultaneously-
+    // attached Velleman K8055 boards, all configured to the same board address (same VID/PID, no
+    // serial, no product name). Appends a short suffix built from DevicePath (the one field
+    // guaranteed to differ per physical connection — see HidDeviceOption's doc comment) so the picker
+    // shows something a person can actually tell apart, instead of several indistinguishable rows.
+    private static List<HidDeviceOption> DisambiguateDisplay(List<HidDeviceOption> options)
+    {
+        var duplicateDisplays = options
+            .GroupBy(o => o.Display, StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (duplicateDisplays.Count == 0)
+        {
+            return options;
+        }
+
+        return [.. options.Select(o => duplicateDisplays.Contains(o.Display)
+            ? o with { Display = $"{o.Display}  [{DevicePathTag(o.DevicePath)}]" }
+            : o)];
+    }
+
+    // The USB instance-qualifier segment of a HidSharp device path
+    // ("hid#vid_10cf&pid_5500#7&83de718&0&0000#{guid}" -> "7&83de718&0&0000") — the part that
+    // actually varies per physical connection; the trailing {GUID} is always the constant HID
+    // device-interface class id, so it's useless for telling two devices apart.
+    private static string DevicePathTag(string devicePath)
+    {
+        var segments = devicePath.Split('#');
+        return segments.Length >= 3 ? segments[2] : devicePath;
+    }
+
+    // "Best match" for auto-selecting the live device a loaded profile's VendorId/ProductId/
+    // SerialNumber most likely refers to, mirroring LoadIntoFields' SelectedSerialPort sync.
+    // VendorId+ProductId must match exactly, so this never returns a device the profile didn't ask
+    // for; SerialNumber only breaks a tie among several currently-attached devices sharing the same
+    // VendorId+ProductId (a real case, not hypothetical — see HidDeviceOption's doc comment),
+    // preferring an exact serial match and otherwise falling back to the first one found rather than
+    // leaving the picker unset just because the tie couldn't be broken.
+    private static T? FindBestUsbDeviceMatch<T>(
+        IReadOnlyList<T> candidates,
+        int vendorId,
+        int productId,
+        string? serialNumber,
+        Func<T, int> getVendorId,
+        Func<T, int> getProductId,
+        Func<T, string?> getSerialNumber)
+        where T : class
+    {
+        var matches = candidates.Where(c => getVendorId(c) == vendorId && getProductId(c) == productId).ToList();
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(serialNumber))
+        {
+            var exact = matches.FirstOrDefault(c => string.Equals(getSerialNumber(c), serialNumber, StringComparison.Ordinal));
+            if (exact is not null)
+            {
+                return exact;
+            }
+        }
+
+        return matches[0];
     }
 
     private static IReadOnlyList<UsbtmcDeviceOption> SafeDiscover(IUsbtmcDeviceDiscovery discovery)
@@ -379,6 +448,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsUsbtmcTransport));
             OnPropertyChanged(nameof(IsUsbDeviceTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -393,6 +463,27 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// <see langword="true"/> when the current transport's identifying field(s) — <see cref="Port"/>
+    /// for serial; <see cref="VendorId"/>/<see cref="ProductId"/>, tie-broken by <see
+    /// cref="SerialNumber"/>, for HID/USBTMC — don't resolve to any currently-detected device. Set
+    /// right after <see cref="LoadIntoFields"/> loads a saved profile whose device isn't plugged in
+    /// (or, deliberately, was moved to a different USB hub/port: <see cref="HidDeviceOption"/>'s
+    /// <c>SerialNumber</c>-falls-back-to-<c>DevicePath</c> behavior means that case is indistinguishable
+    /// from "unplugged" here, which is accepted rather than worked around — a <c>DevicePath</c> is
+    /// inherently tied to a physical port, not portable across ports like a real serial number would
+    /// be). A front end shows this as a "device not found" hint next to the port/device field; it
+    /// never blocks <see cref="ConnectCommand"/>, which is free to fail on its own via the usual
+    /// connection-error handling regardless of this flag.
+    /// </summary>
+    public bool ConnectedDeviceNotFound =>
+        IsSerialTransport ? !string.IsNullOrEmpty(Port) && SelectedSerialPort is null
+        : IsHidTransport ? HasUsbIdentity && SelectedHidDevice is null
+        : IsUsbtmcTransport ? HasUsbIdentity && SelectedUsbtmcDevice is null
+        : false;
+
+    private bool HasUsbIdentity => ParseFilterId(_vendorId) != 0 || ParseFilterId(_productId) != 0;
+
+    /// <summary>
     /// <see langword="true"/> when the shared USB Vendor/Product ID field group (<see cref="VendorId"/>/
     /// <see cref="ProductId"/>, plus each transport's own device picker) should be shown — both
     /// <see cref="IsHidTransport"/> and <see cref="IsUsbtmcTransport"/> select a physical USB device
@@ -400,7 +491,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public bool IsUsbDeviceTransport => IsHidTransport || IsUsbtmcTransport;
 
-    public string Port { get => _port; set => SetField(ref _port, value); }
+    public string Port
+    {
+        get => _port;
+        set
+        {
+            SetField(ref _port, value);
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
+        }
+    }
 
     /// <summary>
     /// Bound to a picker (WPF's editable "Known ports" combobox; the TUI's "Detect..." button) —
@@ -419,6 +518,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             {
                 Port = value;
             }
+
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -471,6 +572,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
             SetField(ref _vendorId, value);
             OnPropertyChanged(nameof(VendorIdDisplay));
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -487,6 +589,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
             SetField(ref _productId, value);
             OnPropertyChanged(nameof(ProductIdDisplay));
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -533,6 +636,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             }
 
             SetField(ref _vendorId, canonical, nameof(VendorId));
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -549,6 +653,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             }
 
             SetField(ref _productId, canonical, nameof(ProductId));
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -592,6 +697,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
                 SerialNumber = value.SerialNumber ?? string.Empty;
             }
+
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -608,6 +715,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
                 SerialNumber = value.SerialNumber ?? string.Empty;
             }
+
+            OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
 
@@ -717,6 +826,22 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         VendorId = options.VendorId.ToString();
         ProductId = options.ProductId.ToString();
         SerialNumber = options.SerialNumber ?? string.Empty;
+
+        // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
+        // those setters push VendorId/ProductId/SerialNumber from whichever device gets picked, and
+        // the fields were *just* set from options above; going through the setter risks a best-effort
+        // match (see FindBestUsbDeviceMatch) silently overwriting an exact loaded SerialNumber with a
+        // different live device's serial when no live device actually has that serial connected.
+        SetField(
+            ref _selectedHidDevice,
+            FindBestUsbDeviceMatch(_detectedHidDevices, options.VendorId, options.ProductId, options.SerialNumber, d => d.VendorId, d => d.ProductId, d => d.SerialNumber),
+            nameof(SelectedHidDevice));
+        SetField(
+            ref _selectedUsbtmcDevice,
+            FindBestUsbDeviceMatch(_detectedUsbtmcDevices, options.VendorId, options.ProductId, options.SerialNumber, d => d.VendorId, d => d.ProductId, d => d.SerialNumber),
+            nameof(SelectedUsbtmcDevice));
+        OnPropertyChanged(nameof(ConnectedDeviceNotFound));
+
         var presenters = options.EffectivePresenters;
         foreach (var choice in PresenterChoices)
         {

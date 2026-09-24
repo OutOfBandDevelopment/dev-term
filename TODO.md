@@ -44,62 +44,6 @@ Completed work is logged by date under `docs/changes/`.
   landed as a software-only pass; the user will do the physical hardware review later, the same way
   the K8055's remaining digital-in/TUI checklist items are deferred to them.
 
-- **Connection Editor, from the 2026-09-15 Architect Notes.** Landing incrementally since
-  2026-09-15 — full detail on each increment is in `docs/changes/2026-09-15.md`/
-  `docs/changes/2026-09-16.md`, not repeated here. Landed so far: profile save/load/delete/import/
-  export (`ConnectionProfileStore`) with the TUI-as-default-mode flip; a real Configure screen in
-  the TUI and a "File > Device Profiles..." menu in both front ends, sharing one
-  `ConnectionEditorViewModel` (WPF binds to it directly via XAML, no code-behind business logic;
-  the TUI copies values to/from it around each button press); a "File > Connect"/"Disconnect" menu
-  item (surfaced and fixed a real `Session` read-loop bug along the way); live mid-session profile
-  switching (no restart needed) plus a manifest-not-found warning; serial-field dropdowns,
-  Delete/Refresh, an overwrite-confirmation prompt, and `docs/specs/` as a new precise-reference doc
-  kind; double-click-to-load and a dirty-field discard confirmation; a real profiles-folder
-  `FileSystemWatcher` for saved-list auto-refresh; a TUI file picker (Browse...) and a scrollable
-  TUI form; "type it or pick from what's attached" pickers for the serial port and HID
-  vendor/product ID; a decimal/hex display toggle for HID Vendor/Product ID (a separate `*Display`
-  property per field, so the canonical value stays decimal regardless of what's currently shown); a
-  "Save As..." button (a real `SaveDialog`/`SaveFileDialog`) next to Browse, so exporting to a
-  brand-new filename no longer means hand-typing it; and, most recently, multi-select in the
-  saved-profiles list (WPF `ListBox.SelectionMode="Extended"`, the TUI `ListView`'s own
-  `MarkMultiple`/`ShowMarks`) plus Export Selected/Export All (a zip, one `{name}.json` per profile)
-  and zip-aware Import with per-name Replace/Rename/Skip conflict resolution; and, most recently
-  (2026-09-18), a multi-select Presenter picker plus a per-line send format ("parser") —
-  `CliOptions.Presenter` is now a list (checkboxes in the editor, `--presenter ascii,hex`), a separate
-  `Parser` names the encoder for typed lines, and the TUI ("Send as" menu)/WPF ("Send as:" box) can
-  switch it per line. Test automation for
-  CLI/TUI/WPF (including Terminal.Gui's own headless testing API) and a `[TestCategory]` coding
-  standard, both prerequisites for landing the above with confidence, are also done — see
-  `docs/design/testing.md`/`docs/coding-standards.md`.
-
-  Bulk profile removal (a "Delete Selected" button, with a native confirmation naming the profiles)
-  and the Architect's live window title (the saved profile's name, else a `tcp://…`/`serial://…`/
-  `hid://…` connection string, re-evaluated on every profile switch) landed the same day, as did a
-  "Replace All" zip import (delete every saved profile, then import the zip — read and validated
-  first, confirmed second), and so did the long/short name for a detected serial port on Windows
-  (`COM4 — Prolific USB-to-Serial Comm Port`, from the Plug-and-Play registry; seen returned for a
-  live adapter) and a live filter on the HID picker (a non-zero Vendor/Product ID narrows the
-  detected-devices list; 0 means any). A real bug was also fixed: double-clicking a saved profile in
-  the WPF editor never loaded it (the list's `MouseBinding` never saw the second click; now a per-row
-  `MouseDoubleClick`), and a device `TimeoutException` is now reported like any connection failure
-  instead of escaping every open/close/switch `catch` (a crash on a device timeout was reported but
-  not reproduced against the K8055). Two more real bugs were fixed after being reported: the TUI
-  editor's fields couldn't take focus or input at all (broken since the form was made scrollable;
-  now focusable, and Tab scrolls a below-the-fold control into view), and closing the WPF window
-  threw "...while a Window is closing" (a synchronous-continuation reentrancy in `OnClosing`). A
-  third, reported 2026-09-18 and fixed 2026-09-22: switching TUI profiles after a failed attempt
-  could silently revert a just-succeeded one (a stale, superseded connect resolving late and
-  clobbering the UI) — see `docs/changes/2026-09-22.md`, which also covers a live (not
-  automated-test) investigation of a reported WPF connection-error crash that didn't reproduce.
-  Nothing functional is left open on the Connection Editor; what
-  remains (see [`BACKLOG.md`](BACKLOG.md) and `docs/changes/2026-09-18.md`) is serial-port
-  descriptions on Linux/macOS (low priority, explicitly deferred by the user — not needed soon) and
-  the double-click fix / timeout hardening, which still haven't been confirmed by hand. The
-  presenter-picker/`--parser` `DEV-LOCAL` real-hardware tests *have* now been run (2026-09-22, see
-  `docs/changes/2026-09-22.md`) against the two real TCP devices actually available
-  (192.168.0.108, 192.168.0.110) — both passed everywhere they're exercised; the third configured
-  host (192.168.0.107) wasn't reachable and its `DataRow`s failed as expected, not a regression.
-
 - **SCPI instrument control module** (`DevTerm.Devices.Scpi`), landed 2026-09-23 — a data-driven
   profile mechanism for SCPI bench instruments rather than one hardcoded module per device, per
   `docs/design/proposals/scpi-instrument-control.md`. `ScpiInstrumentProfile`/
@@ -204,14 +148,33 @@ Completed work is logged by date under `docs/changes/`.
     unmodified — and, for any of them reachable only over USB rather than RS-232/LAN, is blocked on
     the USBTMC transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
 
+- **USB device identity (HID/USBTMC) — triaged from the Architect's note below, in progress.** The
+  Architect noted that matching a saved profile's device back to a live one purely by
+  Vendor/Product ID can't distinguish two identical units (a real problem: three simultaneously-
+  attached Velleman K8055 boards share the same VID/PID and report no serial number at all —
+  confirmed against real hardware). Landed so far: `HidDeviceOption.FromDescriptor` now falls back
+  to the device's `HidDeviceDescriptor.DevicePath` (always populated by HidSharp, unlike
+  `SerialNumber`/`ProductName`) whenever the real serial is null/empty/whitespace, folded directly
+  into the one `SerialNumber` field/property (not a second field a consumer has to also check) so
+  the connection-profile file, the UI's serial-number field, and `FindBestUsbDeviceMatch`'s lookup
+  all only ever read one value. A new `ConnectionEditorViewModel.ConnectedDeviceNotFound` computed
+  property is now surfaced in the TUI so far — a "(not found)" label next to the Serial port row
+  and the shared HID/USBTMC vendor/product/serial row (`ConfigureMode`'s
+  `portNotFoundLabel`/`usbNotFoundLabel`, refreshed at each explicit field-sync point since
+  Terminal.Gui has no data-binding) — true when a loaded profile's `Port` isn't among currently-
+  detected serial ports, or its Vendor/Product ID (tie-broken by `SerialNumber`) doesn't
+  best-match any currently-detected HID/USBTMC device. **Accepted tradeoff, not a bug**: a
+  `DevicePath` is tied to a physical USB hub/port, so moving a serial-less device to a different
+  port makes it look "not found" even though it's the same physical unit — the Architect explicitly
+  signed off on this. **Still open**: the WPF front end (`DeviceProfilesWindow.xaml`) doesn't yet
+  show the same "not found" hint — only the TUI does so far; and `UsbtmcDeviceDescriptor` has no
+  `DevicePath`-equivalent fallback field at all, so a serial-less USBTMC instrument (less likely in
+  practice than a serial-less HID gadget, but not ruled out) still can't be uniquely identified the
+  way HID now can.
+
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
 [`BACKLOG.md`](BACKLOG.md) — including the one remaining Connection Editor remnant
 (serial-port descriptions on Linux/macOS) and the design-level items from the Architect's
 2026-09-23 notes (see above).
-
-
-## Notes from the Architect
-
-We need a better way to ensure the selected device for USB (both USBHID and USBTMC) select the same hardware instance over and over.  It seems that some devices could share the same vendor id and product id so looking them just just by those two values can not ensure the corret device is selected.

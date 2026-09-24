@@ -375,7 +375,7 @@ public sealed class DeviceProfilesWindowTests
 
                 Assert.AreSame(window.ViewModel.HidDeviceOptions, window.DetectedHidDevicesBox.ItemsSource);
 
-                window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, null);
+                window.ViewModel.SelectedHidDevice = new HidDeviceOption("046D:C08B  G502 HERO Gaming Mouse", 0x046D, 0xC08B, null, "hid#vid_046d&pid_c08b#0&0&0000#{guid}");
 
                 Assert.AreEqual(0x046D.ToString(), window.VendorBox.Text);
                 Assert.AreEqual(0xC08B.ToString(), window.ProductBox.Text);
@@ -409,9 +409,9 @@ public sealed class DeviceProfilesWindowTests
                     new ConnectionProfileStore(directory),
                     new CliOptions(),
                     hidDeviceDiscovery: new FakeHidDiscovery(
-                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC08B, "Mouse", null),
-                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard", null),
-                        new Transports.Hid.HidDeviceDescriptor(0x0699, 0x0368, "Scope", null)));
+                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC08B, "Mouse", null, "hid#vid_046d&pid_c08b#0&0&0000#{guid}"),
+                        new Transports.Hid.HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard", null, "hid#vid_046d&pid_c31c#0&0&0000#{guid}"),
+                        new Transports.Hid.HidDeviceDescriptor(0x0699, 0x0368, "Scope", null, "hid#vid_0699&pid_0368#0&0&0000#{guid}")));
                 var box = new System.Windows.Controls.ComboBox { DisplayMemberPath = "Display", DataContext = viewModel };
                 box.SetBinding(System.Windows.Controls.ItemsControl.ItemsSourceProperty, new System.Windows.Data.Binding(nameof(viewModel.HidDeviceOptions)));
                 box.SetBinding(System.Windows.Controls.Primitives.Selector.SelectedItemProperty, new System.Windows.Data.Binding(nameof(viewModel.SelectedHidDevice)) { Mode = System.Windows.Data.BindingMode.TwoWay });

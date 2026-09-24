@@ -173,6 +173,12 @@ public static class ConfigureMode
         var baudLabel = new Label { X = Pos.Right(detectPortButton) + 3, Y = Pos.Top(portLabel), Text = "Baud:" };
         var baudField = new TextField { X = Pos.Right(baudLabel) + 1, Y = Pos.Top(portLabel), Width = 10, Text = initial.Baud.ToString() };
 
+        // Reflects ConnectionEditorViewModel.ConnectedDeviceNotFound - a saved port name that isn't
+        // among the ports currently detected (unplugged, or never plugged in on this machine at
+        // all). Refreshed explicitly wherever Port/the detected-ports list can change, since
+        // Terminal.Gui has no data-binding to do that automatically.
+        var portNotFoundLabel = new Label { X = Pos.Right(baudField) + 3, Y = Pos.Top(portLabel), Text = "(not found)" };
+
         var dataBitsLabel = new Label { X = 0, Y = Pos.Bottom(portLabel) + 1, Text = "Data bits:" };
         var dataBitsField = new TextField { X = Pos.Right(dataBitsLabel) + 1, Y = Pos.Top(dataBitsLabel), Width = 4, Text = initial.DataBits.ToString() };
         var parityLabel = new Label { X = Pos.Right(dataBitsField) + 3, Y = Pos.Top(dataBitsLabel), Text = "Parity:" };
@@ -207,6 +213,13 @@ public static class ConfigureMode
         // shares the same VID/PID.
         var serialNumberLabel = new Label { X = 0, Y = Pos.Bottom(vendorLabel) + 1, Text = "Serial number:" };
         var serialNumberField = new TextField { X = Pos.Right(serialNumberLabel) + 1, Y = Pos.Top(serialNumberLabel), Width = 20, Text = initial.SerialNumber ?? string.Empty };
+
+        // Same reasoning as portNotFoundLabel above, for the HID/USBTMC case - a saved
+        // Vendor/Product ID (tie-broken by SerialNumber, which may itself be a DevicePath
+        // fallback - see HidDeviceOption) that doesn't resolve to any currently-detected device.
+        // Moving a device to a different USB hub/port breaks a DevicePath-based match; that's
+        // accepted, not a bug (see ConnectionEditorViewModel.ConnectedDeviceNotFound's doc comment).
+        var usbNotFoundLabel = new Label { X = Pos.Right(serialNumberField) + 3, Y = Pos.Top(serialNumberLabel), Text = "(not found)" };
         var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(serialNumberLabel) + 1, Text = "Show as hex" };
 
         var loopbackInfoLabel = new Label
@@ -310,6 +323,7 @@ public static class ConfigureMode
             PortField = portField,
             DetectPortButton = detectPortButton,
             BaudField = baudField,
+            PortNotFoundLabel = portNotFoundLabel,
             DataBitsField = dataBitsField,
             ParitySelector = paritySelector,
             StopBitsSelector = stopBitsSelector,
@@ -322,6 +336,7 @@ public static class ConfigureMode
             DetectHidButton = detectHidButton,
             DetectUsbtmcButton = detectUsbtmcButton,
             SerialNumberField = serialNumberField,
+            UsbNotFoundLabel = usbNotFoundLabel,
             IdsShowHexCheckBox = idsShowHexCheckBox,
             LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
@@ -356,6 +371,16 @@ public static class ConfigureMode
             detectHidButton.Visible = selected == TransportChoice.Hid;
             detectUsbtmcButton.Visible = selected == TransportChoice.Usbtmc;
             loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
+        }
+
+        // ConnectionEditorViewModel.ConnectedDeviceNotFound already accounts for which transport is
+        // active (false for whichever one isn't), so the two labels never both show at once - this
+        // just also respects UpdateTransportVisibility's own per-transport grouping so a stale
+        // "not found" doesn't linger visible after switching transports.
+        void UpdateNotFoundIndicator()
+        {
+            portNotFoundLabel.Visible = viewModel.IsSerialTransport && viewModel.ConnectedDeviceNotFound;
+            usbNotFoundLabel.Visible = (viewModel.IsHidTransport || viewModel.IsUsbtmcTransport) && viewModel.ConnectedDeviceNotFound;
         }
 
         // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
@@ -421,6 +446,7 @@ public static class ConfigureMode
             profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
             UpdateTransportVisibility(transportChoice);
             UpdateScpiProfileVisibility();
+            UpdateNotFoundIndicator();
         }
 
         PullFieldsFromViewModel();
@@ -434,10 +460,10 @@ public static class ConfigureMode
 
         scpiProfilePickButton.Accepting += (_, e) =>
         {
-            var choice = PickFromList("SCPI instrument profile", viewModel.ScpiProfileOptions);
-            if (choice is not null)
+            var index = PickFromList("SCPI instrument profile", viewModel.ScpiProfileOptions);
+            if (index is int i)
             {
-                scpiProfileField.Text = choice;
+                scpiProfileField.Text = viewModel.ScpiProfileOptions[i];
             }
 
             e.Handled = true;
@@ -610,7 +636,13 @@ public static class ConfigureMode
         // docs/changes/2026-09-16.md). Selecting a row is wired the same way double-click-to-load
         // is above: ListView's own double-click maps to Command.Accept, raising the inherited
         // Accepting event.
-        static string? PickFromList(string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
+        // Returns the picked *index*, not the picked string — two entries can legitimately show the
+        // same text (confirmed live: three attached Velleman K8055 boards sharing a VID/PID/no-serial
+        // Display), so a caller resolving "which one did they pick" by searching its own list for a
+        // string match (as this used to return) would always resolve to the first match regardless
+        // of which row was actually selected. Indexing the caller's own list with this index instead
+        // is unambiguous no matter how many rows render identically.
+        static int? PickFromList(string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
         {
             if (items.Count == 0)
             {
@@ -618,7 +650,7 @@ public static class ConfigureMode
                 return null;
             }
 
-            string? picked = null;
+            int? picked = null;
             var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
             var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
             listView.SetSource(new ObservableCollection<string>(items));
@@ -626,7 +658,7 @@ public static class ConfigureMode
             {
                 if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
                 {
-                    picked = items[index];
+                    picked = index;
                 }
 
                 e.Handled = true;
@@ -637,7 +669,7 @@ public static class ConfigureMode
             {
                 if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
                 {
-                    picked = items[index];
+                    picked = index;
                 }
 
                 e.Handled = true;
@@ -657,12 +689,14 @@ public static class ConfigureMode
         detectPortButton.Accepting += (_, e) =>
         {
             var ports = viewModel.SerialPortOptions;
-            var choice = PickFromList("Detected serial ports", [.. ports.Select(p => p.Display)]);
-            if (choice is not null)
+            var index = PickFromList("Detected serial ports", [.. ports.Select(p => p.Display)]);
+            if (index is int i)
             {
-                portField.Text = ports.First(p => p.Display == choice).Name;
+                portField.Text = ports[i].Name;
+                viewModel.Port = portField.Text;
             }
 
+            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
@@ -672,20 +706,21 @@ public static class ConfigureMode
             // the TUI's fields only reach the view model when pushed, so push what's typed first.
             PushFieldsIntoViewModel();
             var devices = viewModel.HidDeviceOptions;
-            var choice = PickFromList(
+            var index = PickFromList(
                 "Detected HID devices",
                 [.. devices.Select(d => d.Display)],
                 viewModel.HidDevicesHiddenByFilter
                     ? "No detected HID device matches the Vendor/Product ID entered (0 means any)."
                     : "Nothing was detected.");
-            if (choice is not null)
+            if (index is int i)
             {
-                viewModel.SelectedHidDevice = devices.First(d => d.Display == choice);
+                viewModel.SelectedHidDevice = devices[i];
                 vendorField.Text = viewModel.VendorIdDisplay;
                 productField.Text = viewModel.ProductIdDisplay;
                 serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
+            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
@@ -696,20 +731,21 @@ public static class ConfigureMode
             // the same shared Vendor/Product ID fields.
             PushFieldsIntoViewModel();
             var devices = viewModel.UsbtmcDeviceOptions;
-            var choice = PickFromList(
+            var index = PickFromList(
                 "Detected USBTMC devices",
                 [.. devices.Select(d => d.Display)],
                 viewModel.UsbtmcDevicesHiddenByFilter
                     ? "No detected USBTMC device matches the Vendor/Product ID entered (0 means any)."
                     : "Nothing was detected.");
-            if (choice is not null)
+            if (index is int i)
             {
-                viewModel.SelectedUsbtmcDevice = devices.First(d => d.Display == choice);
+                viewModel.SelectedUsbtmcDevice = devices[i];
                 vendorField.Text = viewModel.VendorIdDisplay;
                 productField.Text = viewModel.ProductIdDisplay;
                 serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
+            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
@@ -825,11 +861,11 @@ public static class ConfigureMode
             exportSelectedButton, exportAllButton, deleteSelectedButton,
             transportLabel, transportSelector,
             descriptionLabel, descriptionField,
-            portLabel, portField, detectPortButton, baudLabel, baudField,
+            portLabel, portField, detectPortButton, baudLabel, baudField, portNotFoundLabel,
             dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
             handshakeLabel, handshakeSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, serialNumberLabel, serialNumberField, idsShowHexCheckBox,
+            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, serialNumberLabel, serialNumberField, usbNotFoundLabel, idsShowHexCheckBox,
             loopbackInfoLabel,
             presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
             parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
@@ -965,6 +1001,9 @@ internal sealed class ConfigureWindowParts
 
     public required TextField BaudField { get; init; }
 
+    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the serial transport — see <see cref="ConfigureMode"/>'s <c>portNotFoundLabel</c>.</summary>
+    public required Label PortNotFoundLabel { get; init; }
+
     public required TextField DataBitsField { get; init; }
 
     public required OptionSelector<Parity> ParitySelector { get; init; }
@@ -989,6 +1028,9 @@ internal sealed class ConfigureWindowParts
 
     /// <summary>Optional - blank means "match the first device found for Vendor/Product ID" (see <see cref="ConnectionEditorViewModel.SerialNumber"/>).</summary>
     public required TextField SerialNumberField { get; init; }
+
+    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the HID/USBTMC transport — see <see cref="ConfigureMode"/>'s <c>usbNotFoundLabel</c>.</summary>
+    public required Label UsbNotFoundLabel { get; init; }
 
     public required CheckBox IdsShowHexCheckBox { get; init; }
 
