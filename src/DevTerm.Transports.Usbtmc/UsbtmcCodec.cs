@@ -41,8 +41,16 @@ public static class UsbtmcCodec
     /// <summary>The decoded fields of one bulk-IN DEV_DEP_MSG_IN transfer's 12-byte header.</summary>
     public readonly record struct DecodedHeader(byte MsgId, byte BTag, int TransferSize, bool Eom);
 
-    /// <summary>Decodes the header of one bulk-IN transfer. Throws if <paramref name="transfer"/> is shorter than <see cref="HeaderSize"/>.</summary>
-    public static DecodedHeader DecodeHeader(ReadOnlySpan<byte> transfer)
+    /// <summary>
+    /// Decodes the header of one bulk-IN transfer. Throws if <paramref name="transfer"/> is
+    /// shorter than <see cref="HeaderSize"/>, if MsgID isn't <see cref="DevDepMsgIn"/>, if the
+    /// bTag/~bTag consistency check fails, or if bTag doesn't match <paramref name="expectedTag"/>
+    /// (a desync - e.g. after a prior timeout/abort left a stale transfer in the pipe). Only ever
+    /// call this on the *first* physical transfer of a logical response - a continuation transfer
+    /// has no header at all, and re-decoding its raw payload bytes as a header is exactly the bug
+    /// this validation exists to catch (see docs/design/proposals/usbtmc-lockup-fix-prompt.md).
+    /// </summary>
+    public static DecodedHeader DecodeHeader(ReadOnlySpan<byte> transfer, byte expectedTag)
     {
         if (transfer.Length < HeaderSize)
         {
@@ -52,6 +60,23 @@ public static class UsbtmcCodec
 
         var msgId = transfer[0];
         var bTag = transfer[1];
+        var bTagInverse = transfer[2];
+
+        if (msgId != DevDepMsgIn)
+        {
+            throw new InvalidOperationException($"USBTMC bulk-IN header has unexpected MsgID {msgId} (expected {DevDepMsgIn}).");
+        }
+
+        if (bTagInverse != unchecked((byte)~bTag))
+        {
+            throw new InvalidOperationException($"USBTMC bulk-IN header failed bTag/~bTag consistency check (bTag={bTag}, ~bTag byte={bTagInverse}).");
+        }
+
+        if (bTag != expectedTag)
+        {
+            throw new InvalidOperationException($"USBTMC bulk-IN header bTag {bTag} does not match expected {expectedTag} (desynced?).");
+        }
+
         var transferSize = (int)BinaryPrimitives.ReadUInt32LittleEndian(transfer[4..8]);
         var eom = (transfer[8] & EomBit) != 0;
         return new DecodedHeader(msgId, bTag, transferSize, eom);

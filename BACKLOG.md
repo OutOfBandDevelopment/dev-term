@@ -90,6 +90,36 @@ the rest.
   respectively). This means `ReadReply`'s empty-list-vs-null gap above isn't a special case of two bad
   instruments — it can silently corrupt any long real-hardware session on any USBTMC device, which
   should raise this fix's priority.
+  **Update 2026-09-24 (later same day) — the reassembly bug and the empty-vs-null gap above are now
+  fixed**, see [`docs/design/features/usbtmc-bulk-in-reassembly-fix.md`](docs/design/features/usbtmc-bulk-in-reassembly-fix.md):
+  `ReadReply` now decodes the bulk-IN header exactly once per logical response instead of re-decoding
+  every continuation transfer (the root cause of a hang on any reply spanning more than one physical
+  transfer), requests an effectively unlimited `TransferSize` in one request per query (matching
+  libsigrok), validates the header's MsgID/bTag/~bTag/expected-tag before trusting it, caps a
+  well-formed-but-implausible declared `TransferSize` (`MaxResponseSize`), and throws a clear
+  `IOException` instead of silently returning an empty reply when a read genuinely fails. Covered by
+  `tests/DevTerm.Transports.Usbtmc.Tests` (11 unit tests) and re-verified against real hardware:
+  - **DM3058E** — no regression, `*IDN?`/`:MEASure:VOLTage:DC?`/`:SYSTem:ERRor?` all correct.
+  - **DS1102E** — now reliably correct. What looked like "stalls sometimes, works with a settle
+    delay" turned out to be a distinct, real Rigol-firmware quirk: a query sent right after
+    `OpenAsync` sometimes gets back a fully well-formed, EOM-terminated, **zero-byte** logical
+    message before the real reply — a valid `TransferSize=0` header, not a failed physical read, so
+    the fix above's stall-retry logic didn't catch it. Now retried the same way (re-issue
+    `REQUEST_DEV_DEP_MSG_IN` once, treat a second empty reply as legitimately empty).
+  - **DG1022** — still genuinely stuck at the device/USB level in this session's bench state (not a
+    software bug this fix addresses) — every query attempt (6+ retries, with/without settle delay)
+    returns zero bytes. The **actual improvement**: this now surfaces as a clean, reported
+    `IOException` instead of hanging the process or silently printing nothing. The
+    `INITIATE_CLEAR`/`CHECK_CLEAR_STATUS`/`libusb_clear_halt` recovery idea already noted above
+    (research/prototype item, not yet tried) remains the most likely real fix — needs new
+    `IUsbtmcDevice`/`SystemUsbtmcDevice` control-transfer support this fix's own scope explicitly
+    excluded ("Do not change `SystemUsbtmcDevice.cs`"), so it's still open, separate follow-up work.
+  - **DG1062Z's 6%-drop finding above is likely improved but not re-confirmed**: a silent drop with
+    no exception was most consistent with the empty-vs-null gap this fix closes, so a dropped reply
+    should now surface as a thrown exception instead of vanishing — but the 348-command sweep hasn't
+    been re-run against the fixed code yet to confirm the drop rate actually changed vs. just
+    changing how it's reported. Re-running that sweep is the concrete next step if DG1062Z reliability
+    comes up again.
 - RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
   `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
   `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a

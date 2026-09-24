@@ -316,3 +316,17 @@ own repeated practice of not trusting a fix until checked against real hardware:
     release the claim depends on the libusb backend.
   - Everything else in the review (stall recovery, short-write detection, timeout-as-empty-read) was
     assessed as correct and matching real USBTMC device behavior as already implemented.
+- **Resolved (real-hardware, 2026-09-24, later same day)**: the query/reply path's "remains
+  unverified end-to-end" status above (line ~278) is now out of date. A real bug in
+  `UsbtmcTransport.ReadReply` — re-decoding a bulk-IN header on every continuation transfer of a
+  multi-transfer reply instead of only the first, hanging forever on any reply long enough to span
+  more than one physical transfer — turned out to be a second, independent cause of "communication
+  locks up" reports, separate from the earlier DM3000/DM3058E MAV-never-sets mystery this section
+  parked. Fixed, tested, and verified against real hardware: see
+  [`docs/design/features/usbtmc-bulk-in-reassembly-fix.md`](features/usbtmc-bulk-in-reassembly-fix.md).
+  DM3058E and DS1102E both now complete a full query/reply round-trip correctly end-to-end. DG1022
+  remains genuinely stuck at the device/USB level in the current bench state — possibly the same
+  family of issue as the parked DM3000/DM3058E MAV mystery above, possibly something else entirely —
+  but now surfaces as a clean, reported error instead of a silent hang; see `BACKLOG.md`'s USBTMC
+  entry for the `INITIATE_CLEAR`/`CHECK_CLEAR_STATUS` recovery mechanism this suggests as the next
+  concrete step, still not attempted.

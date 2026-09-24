@@ -12,8 +12,12 @@ namespace DevTerm.Transports.Usbtmc;
 /// expects one. This transport heuristically treats an outgoing write that ends with '?' (after
 /// trimming any trailing line ending) as a SCPI-style query: it writes the command, then issues a
 /// REQUEST_DEV_DEP_MSG_IN and pumps bulk-IN transfers (reassembling across multiple transfers by
-/// the EOM bit, per docs/design/usbtmc-transport.md's <c>ITransport</c> mapping) into <see cref="Input"/>.
-/// This heuristic is not yet verified against real hardware - see that doc's "Open questions".
+/// tracking a remaining-byte count against the first transfer's declared TransferSize, never by
+/// re-decoding a header on a continuation transfer - see
+/// docs/design/features/usbtmc-bulk-in-reassembly-fix.md) into <see cref="Input"/>. This heuristic
+/// is verified against real Rigol DM3058E/DS1102E/DG1022 hardware; the DG1022's own bulk-IN stall
+/// in that verification is a device/USB-level issue this transport surfaces as a clean exception
+/// rather than resolves - see BACKLOG.md's USBTMC entry.
 /// </summary>
 public sealed class UsbtmcTransport : ITransport
 {
@@ -171,9 +175,16 @@ public sealed class UsbtmcTransport : ITransport
         return mnemonic.Length > 0 && mnemonic[^1] == (byte)'?';
     }
 
+    // Per USBTMC 1.0, one logical DEV_DEP_MSG_IN response can span multiple physical bulk-IN
+    // transfers. Only the FIRST physical transfer carries the 12-byte header - every subsequent
+    // transfer for the same logical response is raw continuation payload with no header at all
+    // (mirrors libsigrok's scpi_usbtmc_libusb.c, which decodes the header exactly once and then
+    // tracks a remaining-byte count). Re-decoding a continuation transfer's payload bytes as a
+    // header produces a bogus TransferSize and hangs forever waiting for bytes that will never
+    // arrive - see docs/design/proposals/usbtmc-lockup-fix-prompt.md.
     private List<byte[]> ReadReply(IUsbtmcDevice device)
     {
-        SendRequestDevDepMsgIn(device);
+        var requestTag = SendRequestDevDepMsgIn(device);
 
         var chunks = new List<byte[]>();
         var readBuffer = new byte[UsbtmcCodec.HeaderSize + device.MaxTransferSize];
@@ -188,36 +199,78 @@ public sealed class UsbtmcTransport : ITransport
             // first in that case, then give the read one more chance either way before giving up.
             if (stalled)
             {
-                SendRequestDevDepMsgIn(device);
+                requestTag = SendRequestDevDepMsgIn(device);
             }
 
             count = device.ReadBulkIn(readBuffer, out _);
+            if (count <= 0)
+            {
+                throw new IOException("USBTMC device returned no data for the query.");
+            }
         }
 
-        while (count > 0)
+        var header = UsbtmcCodec.DecodeHeader(readBuffer.AsSpan(0, count), requestTag);
+        if (header.TransferSize > _options.Value.MaxResponseSize)
         {
-            var header = UsbtmcCodec.DecodeHeader(readBuffer.AsSpan(0, count));
-            var payload = UsbtmcCodec.ExtractPayload(readBuffer.AsSpan(0, count), header);
-            if (payload.Length > 0)
-            {
-                chunks.Add(payload.ToArray());
-            }
+            throw new IOException(
+                $"USBTMC device declared a TransferSize of {header.TransferSize} byte(s), exceeding the configured MaxResponseSize of {_options.Value.MaxResponseSize} byte(s).");
+        }
 
-            if (header.Eom)
-            {
-                break;
-            }
-
+        if (header.TransferSize == 0)
+        {
+            // Confirmed against a real Rigol DS1102E: a query sent immediately after OpenAsync
+            // sometimes gets back a completely well-formed, EOM-terminated, zero-byte logical
+            // message - not a physical zero-byte transfer (that case is already handled above by
+            // the stalled/count<=0 retry) but a valid header declaring TransferSize=0. This is the
+            // same "phantom empty reply before the real one" firmware behavior the comment above
+            // already retries for, just manifesting as a complete empty message instead of a
+            // failed read. Re-issue the request once and take whatever comes back, real or empty -
+            // a second empty reply in a row is treated as a legitimately empty response rather than
+            // retried forever.
+            requestTag = SendRequestDevDepMsgIn(device);
             count = device.ReadBulkIn(readBuffer, out _);
+            if (count <= 0)
+            {
+                throw new IOException("USBTMC device returned no data for the query.");
+            }
+
+            header = UsbtmcCodec.DecodeHeader(readBuffer.AsSpan(0, count), requestTag);
+            if (header.TransferSize > _options.Value.MaxResponseSize)
+            {
+                throw new IOException(
+                    $"USBTMC device declared a TransferSize of {header.TransferSize} byte(s), exceeding the configured MaxResponseSize of {_options.Value.MaxResponseSize} byte(s).");
+            }
+        }
+
+        var firstPayload = UsbtmcCodec.ExtractPayload(readBuffer.AsSpan(0, count), header);
+        if (firstPayload.Length > 0)
+        {
+            chunks.Add(firstPayload.ToArray());
+        }
+
+        var remaining = header.TransferSize - firstPayload.Length;
+
+        while (remaining > 0)
+        {
+            count = device.ReadBulkIn(readBuffer, out _);
+            if (count <= 0)
+            {
+                throw new IOException("USBTMC continuation read returned no data before TransferSize was fully received.");
+            }
+
+            var take = Math.Min(count, remaining);
+            chunks.Add(readBuffer.AsSpan(0, take).ToArray());
+            remaining -= take;
         }
 
         return chunks;
     }
 
-    private void SendRequestDevDepMsgIn(IUsbtmcDevice device)
+    private byte SendRequestDevDepMsgIn(IUsbtmcDevice device)
     {
         _bulkOutTag = UsbtmcCodec.NextTag(_bulkOutTag);
-        var requestFrame = UsbtmcCodec.EncodeRequestDevDepMsgIn(_bulkOutTag, device.MaxTransferSize, termChar: 0, termCharEnabled: false);
+        var requestFrame = UsbtmcCodec.EncodeRequestDevDepMsgIn(_bulkOutTag, int.MaxValue, termChar: 0, termCharEnabled: false);
         device.WriteBulkOut(requestFrame);
+        return _bulkOutTag;
     }
 }

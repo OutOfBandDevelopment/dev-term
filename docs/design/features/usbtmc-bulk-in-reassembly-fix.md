@@ -1,5 +1,32 @@
 # Task: Fix USBTMC bulk-IN reassembly bug causing Rigol (DG1022, DM3058E, DS1102E) communication lockups
 
+## Status: implemented (2026-09-24)
+
+All four "Required fixes" below landed in `UsbtmcCodec.cs`/`UsbtmcTransport.cs`/
+`UsbtmcTransportOptions.cs`, covered by `tests/DevTerm.Transports.Usbtmc.Tests` (the mandatory
+multi-transfer-reassembly and bogus-header-not-reparsed tests from "Testing requirement" included),
+and verified against real hardware:
+
+- **DM3058E** — `*IDN?`, `:MEASure:VOLTage:DC?`, `:SYSTem:ERRor?` all round-trip correctly, no
+  regression from the pre-fix behavior.
+- **DS1102E** — works correctly, but exposed a *separate* real-hardware quirk not in this doc's
+  original scope: a query sent immediately after `OpenAsync` sometimes gets back a fully
+  well-formed, EOM-terminated, zero-byte logical message (not a physical zero-byte transfer, which
+  the stall-retry logic above already handles) before the real reply. Fixed the same way as the
+  existing `stalled` retry: re-issue `REQUEST_DEV_DEP_MSG_IN` once and take whatever comes back,
+  treating a *second* empty reply as legitimately empty. This does not violate this doc's "Do not
+  change" section below — it's a retry after a *complete* logical response, not a second request for
+  the same in-flight one.
+- **DG1022** — the original silent-forever hang is fixed: a stuck device now surfaces as a clean,
+  catchable `IOException` ("USBTMC device returned no data for the query.") instead of hanging the
+  process. The device itself remained unresponsive to every bulk-IN request across repeated retries
+  in this session's bench state, which this fix does not resolve — see
+  `docs/protocols/usbtmc/USBTMC-libusb-winusb-implementation-guide.md`'s §7.5
+  `INITIATE_CLEAR`/`CHECK_CLEAR_STATUS` and `libusb_clear_halt` recovery guidance for a device stuck
+  in this way; adding that recovery path is tracked in `BACKLOG.md` as follow-up, out of scope here
+  since it needs new `IUsbtmcDevice`/`SystemUsbtmcDevice` control-transfer support this doc's "Do not
+  change" section explicitly excluded.
+
 ## Context
 `DevTerm.Transports.Usbtmc` talks SCPI over USBTMC to Rigol test instruments via
 LibUsbDotNet/libusb. Field reports show communication "locking up" against

@@ -28,4 +28,13 @@ public sealed class UsbtmcTransportOptions
     /// docs/design/usbtmc-transport.md's <c>ITransport</c> mapping section.
     /// </summary>
     public int MaxTransferSize { get; set; } = 65536;
+
+    /// <summary>
+    /// Upper bound on a single logical response's declared TransferSize. A well-formed but
+    /// implausible value here (firmware bug, not framing corruption) is otherwise
+    /// indistinguishable from a legitimately large reply, and the continuation-read loop
+    /// has no other way to bail out.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int MaxResponseSize { get; set; } = 16 * 1024 * 1024;
 }

@@ -18,6 +18,16 @@ Living design docs for dev-term, written during the pre-implementation design ph
 
 These documents describe intent and direction, not a finished spec — update them as design decisions are made or revisited, rather than letting the code and the docs drift apart.
 
+## Features
+
+[`features/`](features/) holds proposals/task docs that have actually been completed and verified —
+moved out of `proposals/` once done, so that directory stays a list of what's still ahead. Each
+still carries its own "Status" section with what was built and what was actually verified against
+real hardware vs. assumed.
+
+- [SCPI bench instrument control module](features/scpi-instrument-control.md) — **implemented** (2026-09-23) as `DevTerm.Devices.Scpi`, a data-driven profile mechanism (JSON command sets, no rebuild to add an instrument) for SCPI-compatible bench test equipment, sourced from a planning-stage project in `mwwhited-notes/shared`. The first real instance of the declarative command/response schema discussed in [device-control-modules.md](device-control-modules.md). Verified against one real instrument so far (HP/Agilent/Keysight 34401A over RS-232); the other five curated profiles remain unverified.
+- [USBTMC bulk-IN reassembly fix](features/usbtmc-bulk-in-reassembly-fix.md) — **implemented** (2026-09-24): fixed the bug where a multi-transfer bulk-IN reply re-decoded a continuation transfer's raw bytes as a bogus header and hung forever, plus two compounding hardening gaps (unbounded reply size, no header integrity check). Verified against real DM3058E/DS1102E/DG1022 hardware; also fixed a DS1102E-specific "phantom empty reply right after connect" quirk found during that verification. The DG1022's separate, still-unresolved bulk-IN stall (now a clean error instead of a silent hang) is tracked in `BACKLOG.md`.
+
 ## Proposals
 
 [`proposals/`](proposals/) holds concrete feature proposals for specific transports, decoders, or
@@ -25,7 +35,6 @@ device control modules — narrower and more actionable than the docs above, whi
 general contracts these proposals build on, and each grounded in an actual piece of target
 hardware rather than a hypothetical. Each proposal notes where it came from at the top.
 
-- [SCPI bench instrument control module](proposals/scpi-instrument-control.md) — **implemented** (2026-09-23) as `DevTerm.Devices.Scpi`, a data-driven profile mechanism (JSON command sets, no rebuild to add an instrument) for SCPI-compatible bench test equipment, sourced from a planning-stage project in `mwwhited-notes/shared`. The first real instance of the declarative command/response schema discussed in [device-control-modules.md](device-control-modules.md). Verified against one real instrument so far (HP/Agilent/Keysight 34401A over RS-232); the other five curated profiles remain unverified.
 - [Tektronix 2230 protocol](proposals/tektronix-2230-protocol.md) — a pre-SCPI, "codes"-style protocol for an older two-channel scope, predating SCPI entirely and out of scope for the module above beyond a minimal one-command profile (`ID?`). Captures the one confirmed real exchange against the project's own two owned units; full command enumeration still needs real-hardware probing.
 - [DER EE DE-5000 LCR meter protocol](proposals/de5000-lcr-meter-protocol.md) — a fully-specified, checksum-free 17-byte binary decoder (Cyrustek ES51919 chipset) reverse-engineered by the hobbyist community. Physically unusual: the meter's own optical/IR UART output is bridged to BLE via a custom-built adapter, so this is gated on the not-yet-built BLE Serial transport rather than a decoder gap — but that transport already has real target hardware pushing for it. A second real `ICompositeDecoder`/bitfield candidate now that Favero is shelved.
 - [Radex One geiger counter protocol](proposals/radex-one-protocol.md) — a fully-specified binary protocol (framing, checksum, four command types; decoder + control surface) for a USB geiger counter, sourced from a finished reverse-engineering writeup in `mwwhited-notes/shared`. The device turned out to enumerate as USB HID, not a virtual COM port as the source doc assumed — so this is now gated on the not-yet-built USB HID transport, not just decoder work.
