@@ -119,7 +119,7 @@ the doc tree and how to keep it in sync.
 
 ## Documentation
 
-Five kinds of doc, each with a distinct job — don't blend them:
+Six kinds of doc, each with a distinct job — don't blend them:
 
 - **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
   left stale) as work completes. A finished entry is **deleted outright, not replaced with a "done,
@@ -146,6 +146,13 @@ Five kinds of doc, each with a distinct job — don't blend them:
 - **[`docs/user-guide/`](docs/user-guide/README.md)** — task-oriented walkthroughs, one file per user
   flow (not per front end) — see what a flow looks like across CLI/TUI/WPF together. Every screenshot/
   transcript is real captured output (`ScreenshotTests` et al.), never a hand-typed mockup.
+- **`docs/test/{yyyy-MM-dd-HH-mm-ss}.md`** — the report from one real-hardware bench test session:
+  bench topology, the device/profile/transport matrix exercised, exact commands sent and raw replies,
+  and findings. One file per session (timestamped to the second, not just dated, since more than one
+  session can happen in a day) — see the `hardware-test` skill, which runs these sessions and writes
+  this file. The full detail lives here, not in `docs/changes/`; only add a `docs/changes/` entry if
+  the session led to an actual code/doc change, cross-referencing the `docs/test/` file rather than
+  repeating its content.
 
 **Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
 a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has

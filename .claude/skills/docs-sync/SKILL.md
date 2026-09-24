@@ -18,6 +18,7 @@ separate follow-up:
 | `docs/changes/YYYY-MM-DD.md` | Daily log of what was verified and how | Any non-trivial change, especially anything verified against real hardware |
 | `TODO.md` | Current in-progress state (active work only) | An in-progress item's status changes, or work starts on a new one. When an item finishes, delete it outright once its detail is in `docs/changes/` — never replace it with a "done, see docs/changes/..." pointer. |
 | `BACKLOG.md` | Not-yet-started backlog/research, kept out of `TODO.md` to keep it lean | A backlog item is finished (remove it, note it landed in `TODO.md`'s narrative), or a new one is identified |
+| `docs/test/{yyyy-MM-dd-HH-mm-ss}.md` | One real-hardware bench test session's full report (topology, device/profile matrix, commands + raw replies, findings) | A real-hardware test session runs — see the `hardware-test` skill. Only cross-reference it from `docs/changes/`; don't duplicate its content there. |
 
 ## Screenshots are tests, not manual chores
 

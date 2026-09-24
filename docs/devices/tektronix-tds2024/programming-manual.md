@@ -1,16 +1,16 @@
-# Tektronix TDS2024 Remote Command Reference — RS-232 / TDS2MM Configuration
+# Tektronix TDS2024 Remote Command Reference — RS-232 / TDS2CMA Configuration
 
-This reference lists the commands supported by a **TDS2024** (4-channel, 200 MHz, 1 GS/s) fitted with a **TDS2MM Measurement Extension Module**, controlled over **RS-232**. Source: Tektronix Programmer Manual 071-1075-02.
+This reference lists the commands supported by a **TDS2024** (4-channel, 200 MHz, 1 GS/s) fitted with a **TDS2CMA Communications Module**, controlled over **RS-232**. Source: Tektronix Programmer Manual 071-1075-02. Confirmed against real hardware: the scope's own `ID?` reply reports `TDS2CM:CMV:v1.04` (see `docs/changes/2026-09-24.md`), and `CM` is the module-type code the manual documents for a TDS2CM/TDS2CMA (as opposed to `MM` for a measurement module).
 
 Two things this configuration implies:
-- **Math/FFT is already native to the TDS2024.** The TDS2MM module exists to add Math and Measurement commands to the *TDS200* series, which lacks them natively. On a TDS1000/TDS2000-family scope like the TDS2024, those functions are already built in — so the TDS2MM here just gives you the physical port, and the `MATH:*`/`MEASUrement:*` command set behaves identically to what a TDS2024 already provides.
+- **Math/FFT is already native to the TDS2024.** Unlike the TDS200 series (TDS210/220/224), which needs a TDS2MM measurement module to gain Math/FFT/rise-fall-time/pulse-width measurement capability at all, every TDS1000/TDS2000-family scope — including the TDS2024 — has that capability built in natively, regardless of which communications module is installed. (TDS2MM itself isn't even a supported module for a TDS1000/TDS2000-series scope — the vendor manual's scope statement for this document lists only TDS2CM/TDS2CMA/TDS2MEM as compatible with these series.)
 - **This module also has a GPIB port**, but since you're using it over RS-232, GPIB-only syntax details (EOI/END-message framing, GPIB device addressing) have been trimmed from this reference. Everything here is written for the RS-232 wire.
 
 ## Before you start
 
 - Connect via the module's RS-232 (DB-9) port, not the front panel — the TDS2024 has no built-in serial or GPIB port.
 - Set matching serial parameters on both ends using the `RS232:*` commands (§10) — baud rate, parity, and flow control must match your terminal/PC settings before anything else will respond.
-- The TDS2MM does **not** include the TDS2MEM's CompactFlash storage. That means `FILESystem:*`, `SAVe:IMAge`, `DATE`, `TIME`, and `HARDCopy:BUTTON` are **not available** in this configuration — they need a TDS2MEM module instead. They've been left out of this reference entirely; see §18 if you need them.
+- The TDS2CMA does **not** include the TDS2MEM's CompactFlash storage. That means `FILESystem:*`, `SAVe:IMAge`, `DATE`, `TIME`, and `HARDCopy:BUTTON` are **not available** in this configuration — they need a TDS2MEM module instead. They've been left out of this reference entirely; see §18 if you need them.
 
 ## Command syntax rules
 
@@ -209,7 +209,7 @@ DISplay:PERSistence?   -> :DISPLAY:PERSISTENCE OFF
 
 **`HARDCopy:FORMat { BMP | BMPColor | DESKJET | DPU411 | DPU412 | DPU3445 | EPSColor | EPSMono | EPSOn | INTERLEAF | JPEG | LASERJET | PCX | PCXCOLOR | PCXEPSON | RLE | THINKJET | TIFF }`** — output format (available options depend on connected printer).
 
-**`HARDCopy:PORT { RS232 | GPIB | CENTRONICS }`** — output interface for the hardcopy job itself. On a TDS2MM this can legitimately be `GPIB` too (the module has both ports), but since you're running over RS-232, set it to `RS232` to route hardcopy output down the same serial link you're already using. `CENTRONICS` needs a physical parallel-printer port, which the TDS2MM doesn't provide.
+**`HARDCopy:PORT { CENtronics | RS232 | GPIb }`** — output interface for the hardcopy job itself. On a TDS2CMA this can legitimately be `GPIb` too (the module has both a GPIB and a Centronics parallel port alongside RS-232), but since you're running over RS-232, set it to `RS232` to route hardcopy output down the same serial link you're already using. (The vendor manual's own constraint here is the opposite of what you might expect: it's `GPIb` that's unavailable — specifically on a TDS2MEM module or a TPS2000 — not `CENtronics`, which is available on any communications module including the TDS2CMA installed here.)
 
 ```
 HARDCopy:PORT RS232
@@ -253,7 +253,7 @@ HORizontal:SCAle?      -> 5.00E-4
 
 ## 7. Math Commands
 
-*(Native to the TDS2024's TDS2000-series firmware — fully present with the TDS2MM installed, same as it would be with any other communications module.)*
+*(Native to the TDS2024's TDS2000-series firmware — fully present with the TDS2CMA installed, same as it would be with any other communications module.)*
 
 | Command | Type | Description |
 |---|---|---|
@@ -353,13 +353,17 @@ MEASUrement:IMMed:VALue?    -> 1.0000E3
 
 **`AUTOSet:SIGNAL?`** — returns `{ LEVEL | SINE | SQUARE | VIDPAL | VIDNTSC | OTHER | NONe }`, the signal type autoset last classified.
 
-**`*IDN?`** — returns manufacturer, model, serial number, firmware version, e.g.:
+**`*IDN?`** — returns manufacturer, model, and firmware version, plus a module-identity suffix (`TDS2XX:XXV:v<module firmware>`, where `XX` is `CM` for a TDS2CM/TDS2CMA communications module or `MM` for a measurement module), e.g.:
 ```
 *IDN?
--> TEKTRONIX,TDS 2024,0,CF:91.1CT FV:v22.01
+-> TEKTRONIX,TDS 2024,0,CF:91.1CT FV:v22.01 TDS2CM:CMV:v1.04
 ```
 
-**`ID?`** — Tektronix legacy equivalent of `*IDN?`, same information in a slightly different format.
+**`ID?`** — Tektronix legacy equivalent of `*IDN?`, same information in a slightly different (comma-separated, non-IEEE-488.2) format. Confirmed against real hardware:
+```
+ID?
+-> ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04
+```
 
 **`*RST`** — resets most settings to factory defaults (does not affect communication parameters like GPIB address).
 
@@ -436,7 +440,7 @@ SAVe:WAVEform MATH,REFA
 
 **`RECAll:WAVEform REF<x>,<wfm>`** — the reverse: loads a stored reference waveform back into a channel/math slot for redisplay.
 
-Note: `SAVe:IMAge` (screen-capture-to-file) isn't available here — it needs the TDS2MEM's CompactFlash storage, not present on a TDS2MM. To get a screen image over this link, use the `HARDCopy` commands (§5) instead, which stream the image out over RS-232 rather than saving to a card.
+Note: `SAVe:IMAge` (screen-capture-to-file) isn't available here — it needs the TDS2MEM's CompactFlash storage, not present on a TDS2CMA. To get a screen image over this link, use the `HARDCopy` commands (§5) instead, which stream the image out over RS-232 rather than saving to a card.
 
 ---
 
@@ -753,12 +757,12 @@ CURVe?
 - **Abbreviate freely** — only the capitalized letters in each mnemonic are required, e.g. `ACQuire:NUMAVg` → `ACQ:NUMA`.
 - **Binary block transfers over RS-232 are slower and less robust than GPIB** — no EOI line to mark end-of-data, and flow control (`RS232:HARDFlagging`/`:SOFTFlagging`) matters more at higher baud rates or with large `CURVe?` transfers (2500 bytes at width=1). If you see truncated/garbled waveform data, try a lower baud rate or `ASCIi` encoding first to rule out a flow-control mismatch.
 
-## 18. What's Different With This Configuration (TDS2MM, RS-232)
+## 18. What's Different With This Configuration (TDS2CMA, RS-232)
 
-Everything in this document works as written with a TDS2MM module over RS-232. Two things worth knowing if your setup ever changes:
+Everything in this document works as written with a TDS2CMA module over RS-232. Two things worth knowing if your setup ever changes:
 
-- **If you switch to GPIB** (the TDS2MM supports it too): binary block transfers become far more reliable (EOI marks the end of data cleanly), and you can drop the RS-232-specific caveats in §10/§18 above. `HARDCopy:PORT GPIB` becomes usable at that point.
-- **If you add/swap to a TDS2MEM module**: you gain `FILESystem:*`, `SAVe:IMAge`/`:FILEFormat`, `DATE`, `TIME`, and `HARDCopy:BUTTON` (all omitted here since TDS2MM doesn't support them) — but you lose GPIB, since TDS2MEM is RS-232 only.
+- **If you switch to GPIB** (the TDS2CMA supports it too): binary block transfers become far more reliable (EOI marks the end of data cleanly), and you can drop the RS-232-specific caveats in §10/§18 above. `HARDCopy:PORT GPIb` becomes usable at that point.
+- **If you add/swap to a TDS2MEM module**: you gain `FILESystem:*`, `SAVe:IMAge`/`:FILEFormat`, `DATE`, `TIME`, and `HARDCopy:BUTTON` (all omitted here since TDS2CMA doesn't support them) — but you lose GPIB, since TDS2MEM is RS-232/Centronics only (no GPIB port at all).
 
 Commands excluded from this document entirely because the TDS2024 hardware can't support them under **any** module: `POWer:*`, `HARmonics:*`, `SWLoss:*`, `POWerANALYSIS:*`, `WAVEFORMANALYSIS:*` (TPS2000 + Power Analysis application only), `AUTORange:*`, `CH<x>:CURRENTPRObe`, `CH<x>:YUNit`, `DISplay:BRIGHTness`, `MATH:VERtical:POSition`/`:SCAle`, `MEASUrement:IMMed:SOUrce2`, `CURSor:VBArs:HDELTa?`/`:HPOS<x>?`/`:VDELTa?`/`:SLOPE?` — these are all TPS2000-only, several additionally requiring the TPS2PWR1 Power Analysis key.
 
