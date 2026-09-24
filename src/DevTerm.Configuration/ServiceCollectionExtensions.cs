@@ -57,6 +57,8 @@ public static class ServiceCollectionExtensions
                 o.VendorId = cliOptions.VendorId;
                 o.ProductId = cliOptions.ProductId;
                 o.SerialNumber = cliOptions.SerialNumber;
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))

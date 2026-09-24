@@ -22,9 +22,14 @@ public interface IUsbtmcDevice : IDisposable
 
     /// <summary>
     /// Reads one bulk-IN transfer into <paramref name="buffer"/>, returning the number of bytes
-    /// actually read, or 0 if the read timed out with nothing available.
+    /// actually read, or 0 if the read timed out or came back an empty transfer with nothing
+    /// available. <paramref name="stalled"/> reports whether the endpoint STALLed and was cleared
+    /// and retried internally (even when this call still returns data) - a caller that was reading
+    /// the start of a fresh reply should treat that as a sign the device may have discarded the
+    /// bulk-OUT request this read was meant to answer, not just a slow response, and re-send it
+    /// rather than only retrying the read - see <see cref="UsbtmcTransport"/>.
     /// </summary>
-    int ReadBulkIn(byte[] buffer);
+    int ReadBulkIn(byte[] buffer, out bool stalled);
 
     /// <summary>
     /// Best-effort USB488 subclass REN_CONTROL (<paramref name="remote"/> true) / GO_TO_LOCAL

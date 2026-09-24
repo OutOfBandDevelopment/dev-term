@@ -107,7 +107,7 @@ Completed work is logged by date under `docs/changes/`.
   command set as data; `ScpiProfileCatalog` loads bundled `Profiles/*.json` plus a drop-in
   `ScpiProfiles/` folder next to the executable, so adding an instrument later needs a new JSON
   file, not a rebuild — six curated starter profiles ship: HP/Agilent/Keysight 34401A, Rigol
-  DM3058E, Rigol DG1022/DG1022Z, Rigol DS1105E, Korad KA3005P, Korad KA6003P, plus a code-built
+  DM3058E, Rigol DG1022/DG1022Z, Rigol DS1102E, Korad KA3005P, Korad KA6003P, plus a code-built
   Generic fallback (`*IDN?`/`*RST`/`*CLS`/`*OPC?`). `ScpiControlSurface` does `{Name}`-token
   template substitution, numeric clamping, and a `sendCustom` verbatim passthrough escape hatch.
   `ScpiReplyPresenter` (`IPresenter`/`IStructuredPresenter`/`IScpiReplyTracker`) line-buffers ASCII
@@ -132,7 +132,9 @@ Completed work is logged by date under `docs/changes/`.
   **Real-hardware verification status** (see the later same-day entries in
   `docs/changes/2026-09-23.md`): the HP/Agilent/Keysight 34401A (RS-232 remote-mode root cause) and
   both Korad KA3005P/KA6003P (including a real load test) are now confirmed working end-to-end. The
-  Rigol DM3058E/DG1022/DS1105E curated profiles remain unconfirmed against real hardware. The
+  Rigol DM3058E/DG1022 curated profiles remain unconfirmed against real hardware. The Rigol
+  DS1102E profile (renamed 2026-09-24 from the wrong-model DS1105E) is now confirmed against real
+  hardware too — see `docs/changes/2026-09-24.md` and `docs/test/2026-09-24-09-54-39.md`. The
   Tektronix 2230 was originally out of scope for this module entirely (pre-SCPI, doesn't speak this
   protocol at all) but got a minimal one-command profile anyway — see
   `docs/design/proposals/tektronix-2230-protocol.md` — now confirmed live over TCP, as has a
@@ -194,13 +196,13 @@ Completed work is logged by date under `docs/changes/`.
     `ScpiControlSurface.InvokeAsync` change** (recognizes the custom-command field's own id, same as a
     multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
     `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
-  - **Remaining real-hardware verification opportunity**: Korad KA3005P/KA6003P and the HP/Agilent/
-    Keysight 34401A are now confirmed (see the SCPI module entry above); the Rigol DM3058E/DG1022/
-    DS1105E profiles are still unconfirmed. The newly-available Rigol bench units (DG1000Z, DG3000,
-    DM3000, DS1000) are different specific models than these three bundled profiles, so verifying
-    likely means adding sibling profiles rather than confirming the existing ones unmodified — and,
-    for any of them reachable only over USB rather than RS-232/LAN, is blocked on the USBTMC
-    transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
+  - **Remaining real-hardware verification opportunity**: Korad KA3005P/KA6003P, the HP/Agilent/
+    Keysight 34401A, and now the Rigol DS1102E are confirmed (see the SCPI module entry above); the
+    Rigol DM3058E/DG1022 profiles are still unconfirmed. The newly-available Rigol bench units
+    (DG1000Z, DG3000, DM3000, DS1000) are different specific models than these bundled profiles, so
+    verifying likely means adding sibling profiles rather than confirming the existing ones
+    unmodified — and, for any of them reachable only over USB rather than RS-232/LAN, is blocked on
+    the USBTMC transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
 
 ## Backlog / research
 

@@ -1,8 +1,8 @@
 {
   "Name": "Rigol DS1102E Oscilloscope",
   "IdnPattern": "DS1102E",
-  "Terminator": "\n",
-  "Notes": "Built from docs/devices/rigol-ds1102e/programming-manual.md (RIGOL Programming Guide, DS1000E/DS1000D Series, Sept. 2010). Replaces the earlier rigol-ds1105e.json, which had the wrong model in its own name/IdnPattern - DS1105E is not a real Rigol model and never matched this bench's actual scope; the real unit identifies as 'RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00' (see docs/changes/2026-09-24.md and docs/test/2026-09-24-07-16-34.md). The command set is identical whether reached over USBTMC or RS-232 - only the physical connection/driver differs (see the manual's 'Before you start'). On this bench the DS1102E is USBTMC VID 0x1AB1 PID 0x0588, and shares that exact PID with a Rigol DG1022 function generator also on the bench - both enumerate under the same VID:PID, so --serialnumber is required to target one specifically (see BACKLOG.md). This model has no built-in logic analyzer (DS1000E series, not DS1000D) - deliberately excludes every LA/digital-channel command, and the Pattern/Duration trigger modes, per the manual's own scope notes; do not add them back without first adding a DS1000D-series profile with different scope.",
+  "Terminator": "",
+  "Notes": "Built from docs/devices/rigol-ds1102e/programming-manual.md (RIGOL Programming Guide, DS1000E/DS1000D Series, Sept. 2010). Replaces the earlier rigol-ds1105e.json, which had the wrong model in its own name/IdnPattern - DS1105E is not a real Rigol model and never matched this bench's actual scope; the real unit identifies as 'RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00' (see docs/changes/2026-09-24.md and docs/test/2026-09-24-07-16-34.md). The command set is identical whether reached over USBTMC or RS-232 - only the physical connection/driver differs (see the manual's 'Before you start'). On this bench the DS1102E is USBTMC VID 0x1AB1 PID 0x0588, and shares that exact PID with a Rigol DG1022 function generator also on the bench - both enumerate under the same VID:PID, so --serialnumber is required to target one specifically (see BACKLOG.md). This model has no built-in logic analyzer (DS1000E series, not DS1000D) - deliberately excludes every LA/digital-channel command, and the Pattern/Duration trigger modes, per the manual's own scope notes; do not add them back without first adding a DS1000D-series profile with different scope. Terminator is deliberately empty, not '\\n': confirmed against real hardware that a DS1102E USBTMC reply carries no CR/LF at all - the bulk-IN transfer's EOM bit alone marks the message boundary (see docs/design/usbtmc-transport.md) - so ScpiReplyPresenter needs its terminator-less mode, exactly like the Korad KA3005P/KA6003P profiles' empty Terminator for the same reason.",
   "Commands": [
     { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
     { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
@@ -287,7 +287,7 @@
       "Id": "measVavgQuery",
       "Label": "Measure Average Voltage",
       "Category": "Measure",
-      "Template": ":MEAS:VAVG? {Source}",
+      "Template": ":MEAS:VAV? {Source}",
       "IsQuery": true,
       "Parameters": [
         { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
@@ -347,7 +347,7 @@
       "Id": "measRiseQuery",
       "Label": "Measure Rise Time",
       "Category": "Measure",
-      "Template": ":MEAS:RISE? {Source}",
+      "Template": ":MEAS:RIS? {Source}",
       "IsQuery": true,
       "Parameters": [
         { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }

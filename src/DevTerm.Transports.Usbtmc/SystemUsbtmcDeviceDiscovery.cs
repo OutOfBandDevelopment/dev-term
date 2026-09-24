@@ -94,7 +94,12 @@ public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
     {
         try
         {
-            return accessor();
+            // LibUsbDotNet's string-descriptor properties come back padded with trailing NUL
+            // characters from the underlying fixed-size descriptor buffer - confirmed against real
+            // hardware (a Rigol DS1102E's serial number read back as "DS1ET180300759\0"), which
+            // otherwise shows up as literal control characters in --listusbtmcdevices output and
+            // breaks exact-match comparisons elsewhere (see SystemUsbtmcDevice.TryGetSerialNumber).
+            return accessor()?.TrimEnd('\0');
         }
         catch
         {

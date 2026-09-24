@@ -4,9 +4,10 @@
 
 Built as `DevTerm.Devices.Scpi` — a data-driven profile mechanism rather than one hardcoded module
 per instrument, per the "Proposed shape" section below. Confirmed target hardware, one curated
-profile each: HP/Agilent/Keysight 34401A, Rigol DM3058E, Rigol DG1022/DG1022Z, Rigol **DS1105E**
-(not DS1102E/DS1105EM — the earlier "Target hardware" table below predates this correction), Korad
-KA3005P, Korad KA6003P. See:
+profile each: HP/Agilent/Keysight 34401A, Rigol DM3058E, Rigol DG1022/DG1022Z, Rigol **DS1102E**
+(the profile originally shipped as `rigol-ds1105e.json` — DS1105E is not a real Rigol model and
+never matched the bench's actual scope; corrected 2026-09-24, see docs/changes/2026-09-24.md and
+docs/test/2026-09-24-09-54-39.md), Korad KA3005P, Korad KA6003P. See:
 
 - `ScpiInstrumentProfile`/`ScpiCommandDefinition`/`ScpiParameterDefinition` — the declarative
   command/response schema this doc's own "Open questions" flagged as undecided; JSON, loaded by
@@ -33,8 +34,10 @@ KA3005P, Korad KA6003P. See:
   instrument never auto-enters remote mode the way GPIB does, so `SYSTem:REMote` must be sent before
   any query or it answers SCPI error `+550 "Command not allowed in local"`. The bundled
   `hp-agilent-keysight-34401a.json` profile now has a `remote` command plus a `Notes` field (below)
-  documenting this. The other five curated command sets remain unverified against real hardware
-  (Rigol DM3058E, Rigol DG1022/DG1022Z, Rigol DS1105E, Korad KA3005P, Korad KA6003P) — a
+  documenting this. Korad KA3005P/KA6003P were confirmed 2026-09-23 (see docs/changes/2026-09-23.md)
+  and Rigol DS1102E (renamed from the wrong-model DS1105E) was confirmed 2026-09-24 (see
+  docs/test/2026-09-24-09-54-39.md). Rigol DM3058E and DG1022/DG1022Z remain unverified against real
+  hardware (DM3058E is blocked on the still-parked USBTMC bulk-IN stall — see BACKLOG.md) — a
   reasonable-effort starting point per each instrument's public SCPI reference, not confirmed
   correct. GPIB-only paths (bare HP 34401A) remain unreachable, per the open question below.
 - **Four follow-ups from that real-hardware pass, also landed 2026-09-23**:

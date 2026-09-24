@@ -190,7 +190,7 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
         }
     }
 
-    public int ReadBulkIn(byte[] buffer)
+    public int ReadBulkIn(byte[] buffer, out bool stalled)
     {
         if (_reader is null)
         {
@@ -198,7 +198,8 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
         }
 
         var error = _reader.Read(buffer, _options.ReadTimeoutMs, out var transferred);
-        if (error == Error.Pipe)
+        stalled = error == Error.Pipe;
+        if (stalled)
         {
             _reader.ClearHalt();
             error = _reader.Read(buffer, _options.ReadTimeoutMs, out transferred);
@@ -240,7 +241,11 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
     {
         try
         {
-            return device.Info.SerialNumber;
+            // LibUsbDotNet's string-descriptor properties come back padded with trailing NUL
+            // characters from the underlying fixed-size descriptor buffer - confirmed against real
+            // hardware (a Rigol DS1102E's serial number read back as "DS1ET180300759\0"), which
+            // silently fails an exact/case-insensitive match against a clean --serialnumber value.
+            return device.Info.SerialNumber?.TrimEnd('\0');
         }
         catch (Exception ex)
         {

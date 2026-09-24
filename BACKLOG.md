@@ -88,10 +88,14 @@ ordered against the rest.
   [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is **implemented**
   (2026-09-23, `DevTerm.Devices.Scpi`) — the first real declarative-schema instance, needing no new
   transport for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
-  Real-hardware-confirmed for the HP/Agilent/Keysight 34401A and both Korad KA3005P/KA6003P curated
-  profiles (2026-09-23, see `docs/changes/2026-09-23.md`); the Rigol DM3058E/DG1022/DS1105E profiles
-  remain unconfirmed, and verifying them against the newly-available bench units is blocked on the
-  USBTMC bulk-IN stall noted above for any of them reachable only over USB.
+  Real-hardware-confirmed for the HP/Agilent/Keysight 34401A, both Korad KA3005P/KA6003P curated
+  profiles (2026-09-23, see `docs/changes/2026-09-23.md`), and the Rigol DS1102E (renamed from the
+  wrong-model DS1105E, 2026-09-24, see `docs/changes/2026-09-24.md`); the Rigol DM3058E/DG1022
+  profiles remain unconfirmed, and verifying them against the newly-available bench units is blocked
+  on the USBTMC bulk-IN stall noted above for any of them reachable only over USB. No
+  `DevTerm.Transports.Usbtmc.Tests` project exists yet either — worth adding given the transport code
+  (`UsbtmcTransport.IsQuery`, `SystemUsbtmcDevice`'s NUL-stripping helpers) has already needed two
+  real-hardware-discovered fixes with no unit coverage of its own.
   [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
   transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
   transport dependency (USB HID) is now built, but it still needs its HID report-framing question

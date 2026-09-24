@@ -150,8 +150,13 @@ public sealed class UsbtmcTransport : ITransport
         GC.SuppressFinalize(this);
     }
 
-    // A SCPI-style query ends with '?', once any trailing line-ending bytes a presenter/CLI added
-    // to the typed line are trimmed off.
+    // A SCPI-style query's mnemonic ends with '?', but a query can still take a
+    // space-separated parameter after it (e.g. ":MEAS:VPP? CHAN1") - checking only the very
+    // last character misses every one of those. Confirmed against a real Rigol DS1102E: with
+    // the last-character-only check, ":MEAS:VPP? CHAN1" was sent as a fire-and-forget write with
+    // no REQUEST_DEV_DEP_MSG_IN/read ever issued, silently dropping the reply (and leaving it
+    // unread in the device, which then risked misaligning the next command's read). Any trailing
+    // line-ending bytes a presenter/CLI added to the typed line are trimmed off first.
     private static bool IsQuery(ReadOnlySpan<byte> data)
     {
         var trimmed = data;
@@ -160,26 +165,37 @@ public sealed class UsbtmcTransport : ITransport
             trimmed = trimmed[..^1];
         }
 
-        return trimmed.Length > 0 && trimmed[^1] == (byte)'?';
+        var spaceIndex = trimmed.IndexOf((byte)' ');
+        var mnemonic = spaceIndex >= 0 ? trimmed[..spaceIndex] : trimmed;
+
+        return mnemonic.Length > 0 && mnemonic[^1] == (byte)'?';
     }
 
     private List<byte[]> ReadReply(IUsbtmcDevice device)
     {
-        _bulkOutTag = UsbtmcCodec.NextTag(_bulkOutTag);
-        var requestFrame = UsbtmcCodec.EncodeRequestDevDepMsgIn(_bulkOutTag, device.MaxTransferSize, termChar: 0, termCharEnabled: false);
-        device.WriteBulkOut(requestFrame);
+        SendRequestDevDepMsgIn(device);
 
         var chunks = new List<byte[]>();
         var readBuffer = new byte[UsbtmcCodec.HeaderSize + device.MaxTransferSize];
-        bool eom;
-        do
+
+        var count = device.ReadBulkIn(readBuffer, out var stalled);
+        if (count <= 0)
         {
-            var count = device.ReadBulkIn(readBuffer);
-            if (count <= 0)
+            // Some Rigol firmware answers a REQUEST_DEV_DEP_MSG_IN with an empty transfer before
+            // the real one (see libsigrok's scpi_usbtmc_libusb.c, which retries for exactly this
+            // reason against a Rigol DS1054Z), and a reported stall can mean the device discarded
+            // the pending request rather than just being slow to answer it - re-send the request
+            // first in that case, then give the read one more chance either way before giving up.
+            if (stalled)
             {
-                break;
+                SendRequestDevDepMsgIn(device);
             }
 
+            count = device.ReadBulkIn(readBuffer, out _);
+        }
+
+        while (count > 0)
+        {
             var header = UsbtmcCodec.DecodeHeader(readBuffer.AsSpan(0, count));
             var payload = UsbtmcCodec.ExtractPayload(readBuffer.AsSpan(0, count), header);
             if (payload.Length > 0)
@@ -187,10 +203,21 @@ public sealed class UsbtmcTransport : ITransport
                 chunks.Add(payload.ToArray());
             }
 
-            eom = header.Eom;
+            if (header.Eom)
+            {
+                break;
+            }
+
+            count = device.ReadBulkIn(readBuffer, out _);
         }
-        while (!eom);
 
         return chunks;
+    }
+
+    private void SendRequestDevDepMsgIn(IUsbtmcDevice device)
+    {
+        _bulkOutTag = UsbtmcCodec.NextTag(_bulkOutTag);
+        var requestFrame = UsbtmcCodec.EncodeRequestDevDepMsgIn(_bulkOutTag, device.MaxTransferSize, termChar: 0, termCharEnabled: false);
+        device.WriteBulkOut(requestFrame);
     }
 }
