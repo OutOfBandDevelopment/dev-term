@@ -1,784 +1,485 @@
-# RIGOL DM3058E Remote Command Reference — USB (USB-TMC/VISA) Configuration
+# Rigol DM3058E — Programming Manual (USB / RS-232)
 
-This reference lists the commands supported by a **RIGOL DM3058E** digital multimeter controlled over
-**USB (USB-TMC/VISA)**. Source: *RIGOL Programming Guide, DM3058/DM3058E Digital Multimeter*, RIGOL
-Technologies, Inc., Jan. 2015 (covers both the DM3058 and DM3058E in one document; no separate
-part/document number is printed in the front matter).
+5½-digit digital multimeter. This manual covers the native RIGOL SCPI-style command set
+reachable over the DM3058E's **USB** and **RS-232** interfaces — the two remote interfaces
+this hardware actually has.
 
-Three things this configuration implies:
+## Source document
 
-- **GPIB and LAN are DM3058-only.** The manual states this explicitly, twice: *"The GPIB and LAN
-  interfaces are only supported by DM3058."* The entire `:LXI` command subsystem (LAN-based) and the
-  GPIB/LAN `:UTILity:INTErface:*` commands are **excluded from this reference entirely** — the
-  DM3058E has no LAN interface at all, so they're not a "use a different interface" caveat, they're
-  hardware the DM3058E doesn't have.
-- **RS-232 is also supported on this exact model**, but since you're using USB, the two RS-232
-  configuration commands (`:UTILity:INTErface:RS232:BAUD`/`:PARIty`) have been left out of the main
-  reference — see "What's Excluded and Why" below.
-- **The instrument has three parallel, mutually exclusive command sets** — RIGOL's own (native,
-  power-on default), Agilent-34401A-compatible, and Fluke-45-compatible — switched by a single
-  `CMDSET` command. This is not a USB-vs-other-interface distinction; it applies identically over any
-  interface. See "Command Set Selection" below — it's the single most important thing to understand
-  before sending anything else in this document.
+**RIGOL Programming Guide — DM3058/DM3058E Digital Multimeter**, Jan. 2015, RIGOL
+Technologies, Inc. (No separate publication number was printed in the extracted copyright
+block of this edition.) This single guide documents both the DM3058 and DM3058E together,
+calling out per-model interface differences inline — it is the sole, canonical, current
+vendor source used here.
+
+Critically, the guide states outright (Chapter 1, "Programming Introduction"):
+
+> "Note\*: The GPIB and LAN interfaces are only supported by DM3058."
+
+and, in the `:LXI Commands` section:
+
+> "Note: :LXI commands are only applicable to DM3058 because DM3058E has no LAN interface."
+
+So on the **DM3058E** specifically, only **USB** and **RS-232** are real remote-control
+options — see "What's excluded and why" for how this shaped this manual's scope.
 
 ## Before you start
 
-- Connect via the DM3058E's rear-panel USB device port. The instrument enumerates as a USB-TMC
-  device; you'll need a VISA runtime (NI-VISA, Keysight IO Libraries, or RIGOL's own Ultra Sigma/
-  RIGOL VISA) installed on the controlling PC to open a VISA resource string against it. No
-  USB-specific SCPI commands exist — the manual documents no baud/address/mode settings for USB; once
-  the VISA layer is connected, it "just works."
-- **Interface compatibility table:**
+### Physical connection
 
-  | Interface | DM3058 | DM3058E |
-  |---|---|---|
-  | USB | Yes | Yes |
-  | RS-232 | Yes | Yes |
-  | GPIB | Yes | **No** |
-  | LAN / `:LXI` | Yes | **No** |
+- **USB** — a USB port on the rear panel presenting as a USB-TMC-class device; connect with
+  a standard USB cable to a PC. No RIGOL-specific driver is required for the command
+  protocol itself beyond a generic USB-TMC/VISA driver (e.g. NI-VISA or Rigol's own IVI
+  driver package), the same pattern used by other Rigol USB-Device instruments.
+- **RS-232** — a standard RS-232 port on the rear panel for direct serial connection to a PC
+  (or via a USB-to-RS232 adapter).
 
-- **Command set matters more than interface.** Immediately after connecting, decide (and send) which
-  of the three command sets you intend to use — see the next section. Don't assume the instrument is
-  in the command set you expect; if it was last powered off in a non-default state and
-  `:SYSTem:CONFigure:POWEron LAST` is active, it can power back on in whatever set (and even whatever
-  measurement function) it was last left in.
-- **A note for anyone using this manual to build or fix a dev-term `DevTerm.Devices.Scpi` profile**:
-  the existing bundled `rigol-dm3058e.json` profile's commands (`MEAS:VOLT:DC?`, `CONF:VOLT:DC
-  {Range}` with literal-value ranges like `AUTO|0.2|2|20|200|1000`) match this document's **Agilent-
-  compatible command set**, not the RIGOL-native one — see "Command Set Selection" below. That means
-  the profile implicitly depends on the instrument already being in `CMDSET AGILENT` mode, but it has
-  no command that sends `CMDSET AGILENT` itself. On a factory-default instrument (RIGOL native mode
-  at power-on), every command that profile sends will be rejected as invalid syntax until something —
-  the profile itself, or the operator manually beforehand — sends `CMDSET AGILENT` first. This is
-  flagged here as research findings; fixing the profile is separate follow-up work, not part of this
-  document.
+Both interfaces carry the identical SCPI-style command set described below.
+
+### RS-232 settings
+
+| Setting | Value |
+|---|---|
+| Baud rate | Configurable: 1200 / 2400 / 4800 / 9600 / 19200 / 38400 / 57600 / 115200 (set via `:UTILity:INTErface:RS232:BAUD`) |
+| Parity / data bits | Configurable as a coupled pair via `:UTILity:INTErface:RS232:PARIty` — see the command's own entry below; there is no independent data-bits setting |
+| Stop bits | Not separately configurable in this command set — treat as fixed (1) |
+| Flow control | Not documented as configurable — assume none |
+
+**You must set these to match on both ends** (front-panel `Utility` menu on the instrument,
+matching serial port config on the PC) before RS-232 communication will work; there is no
+auto-bauding.
 
 ## Command syntax conventions
 
-- **Colon `:`** begins a command / separates a keyword from a lower-level keyword, e.g.
-  `:MEASure:VOLTage:DC?` (native set). The Agilent-compatible set generally omits the *leading* colon
-  (`MEASure:VOLTage:DC?`) — this is a real, distinguishing difference between the two sets, not just a
-  style choice; see below.
-- **Query `?`** at the end of a command header forms the query form.
-- **Braces `{ }`** with `|`-separated elements: exactly one element must be chosen, e.g. `{ON|OFF}`.
-- **Angle brackets `< >`**: placeholder to be replaced with an actual value, e.g. `<range>`.
-- **Square brackets `[ ]`**: optional/ignorable keyword; if omitted, the instrument uses a default,
-  e.g. `[SENSe:]FUNCtion` (the `SENSe:` header itself is optional in the Agilent-compatible set),
-  `CALCulate:LIMit:LOWer? [MINimum|MAXimum]`.
-- **Abbreviation**: within a keyword, the capitalized portion is the minimum required abbreviation,
-  the lowercase portion is optional — `:MEASure` can be sent as `:MEAS`. Applies to both command sets.
-- **Parameter types**:
-  - *Consecutive integer* — a whole number in range; sending a decimal where an integer is expected
-    can raise an "unexpected exception."
-  - *Consecutive real number* — an arbitrary value within range, default precision 6 digits after the
-    decimal point.
-  - *Discrete* — only specific cited values are legal (e.g. an index code like `{0|1|2|3|4}`, or a
-    literal-value set like `{200mV|2V|20V|200V|1000V|AUTO}`).
-  - *Boolean* — `ON`, `OFF`, `0`, or `1`.
-  - *ASCII string* — a user-defined, quoted string.
-- **No message terminator is documented anywhere in the manual's own examples.** dev-term's existing
-  profile terminates with `\n`, the conventional SCPI terminator, and nothing in the source document
-  contradicts that choice.
-- The Agilent-compatible command set carries one extra, explicitly stated syntax warning (verbatim):
-  *"the compatible commands must follow the syntax strictly... unwanted characters are not allowed in
-  command trees; command trees and parameters should be separated by a space, unwanted characters are
-  also not allowed to follow parameters, or else the instrument will beep to alarm for an execution
-  error."* This is stricter than the RIGOL-native set and is a real, distinct gotcha — see Common
-  Gotchas.
+- Commands are ASCII strings, case-insensitive, with keyword abbreviation supported —
+  wherever a command name has capitalized letters embedded (e.g. `:MEASure`, `:CONTinuity`),
+  those capitalized letters are the minimum abbreviation; the rest is optional. Everything in
+  this manual follows that convention in how commands are spelled.
+- A command normally begins with a colon (`:`), separating the root keyword from
+  lower-level keywords.
+- A **query** is formed by appending `?` to the end of a command.
+- **Braces `{ }`** with items separated by `|` mean choose exactly one, e.g. `{ON|OFF}`.
+- **Triangle brackets `< >`** mark a placeholder to be replaced with an actual value.
+- **Square brackets `[ ]`** mark an optional keyword or parameter — if omitted, the
+  instrument applies a default, e.g. `STATus:OPERation[:EVENt]?` can be sent as either
+  `STATus:OPERation?` or `STATus:OPERation:EVENt?`.
+- Parameter types used throughout: **consecutive integer** (whole numbers only — sending a
+  decimal where an integer is expected raises an error), **consecutive real number**
+  (typically 6 significant digits of precision), **discrete** (one of a fixed enumerated set,
+  often a small integer selecting a range/mode), **boolean** (`ON`/`OFF`/`1`/`0`), and
+  **ASCII string**.
+- **This instrument actually supports three separate command *languages*, selectable at
+  runtime:**
 
-## 1. Command Set Selection (`CMDSET`)
+  ```text
+  CMDSET {RIGOL|AGILENT|FLUKE}
+  CMDSET?
+  ```
 
-| Command | Type | Description |
+  RIGOL's native command tree (documented in full below) is active by default at power-on.
+  Sending `CMDSET AGILENT` or `CMDSET FLUKE` switches the instrument to accept
+  Agilent-34401A-compatible or Fluke-45-compatible syntax instead. This manual documents
+  only the native RIGOL command set (see "What's excluded and why" for the other two) — but
+  if you ever see unfamiliar non-colon-prefixed commands like `conf:volt:dc auto` or
+  `calc:aver:max?` in captured traffic or an old script, that's a sign the instrument was left
+  in `AGILENT` (or `FLUKE`) mode, not that this manual is wrong; send `CMDSET RIGOL` (or
+  power-cycle, since RIGOL mode is the power-on default) to get back to the commands below.
+
+## Command reference
+
+### IEEE 488 Common Commands (Chapter 2)
+
+Standard `*`-prefixed commands, identical in spirit to any SCPI instrument.
+
+| Command | Form | Description |
 |---|---|---|
-| `CMDSET` | Set | Switch active command set |
-| `CMDSET?` | Query | Return active command set |
+| `*CLS` | set | Resets all Event Registers and clears the Error Queue. |
+| `*ESE <enable_value>` / `*ESE?` | set/query | Sets/queries the Event Status Register (ESR) enable mask. `<enable_value>` range: 0–189. |
+| `*ESR?` | query | Queries the ESR's current event value. |
+| `*IDN?` | query | Queries instrument identification. Returns a comma-separated string: `RIGOL Technologies,DM3058,<serial>,<firmware>` — e.g. `RIGOL Technologies,DM3058,DM3A020080808,99.00.00.00.00.00` (confirmed via the vendor's own worked example; note the model field reads `DM3058` even on a DM3058E unit — the two share one identity string format). |
+| `*OPC` / `*OPC?` | set/query | `*OPC` sets ESR bit 0 once the current operation completes; `*OPC?` queries completion and returns `1` when done. |
+| `*PSC {0\|1}` / `*PSC?` | set/query | Enables/disables "power-on status clear." `*PSC 0` = registers retain LAST STATE across power-on; `*PSC 1` = registers reset at power-on. |
+| `*RST` | set | Resets the instrument to its default state. |
+| `*SRE <enable_value>` / `*SRE?` | set/query | Sets/queries the Status Byte Register (STB) enable mask. `<enable_value>` range: 0–188. |
+| `*STB?` | query | Queries the STB's current condition value. |
+| `*TRG` | set | Issues a trigger while the instrument is in "wait-for-trigger" state. |
+| `*TST?` | query | Runs the self-test; returns `0` (pass) or `1` (failure). |
+| `*WAI` | set | Blocks until all pending operations complete. |
 
-**`CMDSET {RIGOL\|AGILENT\|FLUKE}`**
-Switches which of the three mutually exclusive command vocabularies the instrument currently parses.
-- `RIGOL` — the instrument's own native command set (Chapter 3 below). **This is the power-on
-  default.**
-- `AGILENT` — an Agilent/HP 34401A-compatible command set (Chapter 4/§7–14 below). Commands from this
-  set are simply invalid syntax while the instrument is still in `RIGOL` mode.
-- `FLUKE` — a Fluke-45-compatible command set. Out of scope for this document (not used by anything
-  in dev-term); mentioned only so you recognize the third option if `CMDSET?` ever returns it
-  unexpectedly.
+**Use `*IDN?` as your connectivity smoke test** — it's read-only with a well-known reply
+shape, the safest first command on a new connection.
 
-```
-CMDSET AGILENT
-CMDSET?          -> AGILENT
-MEAS:VOLT:DC?    -> +1.234567E-01
-```
+### STATus Commands (Chapter 2)
 
-Whether the instrument remembers this across a power cycle depends on `:SYSTem:CONFigure:POWEron`
-(native set, §15) — `LAST` restores whatever was active when it last powered off, `DEF` always
-restores the RIGOL-native factory default. **A script that wants Agilent-compatible mnemonics should
-send `CMDSET AGILENT` once, itself, near the start of every session, rather than assuming the
-instrument is already in that mode.**
+Set/query the Questionable Status Register and Operation Status Register (separate from the
+Event Status Register/Status Byte Register covered by the `*`-commands above).
 
-## 2. IEEE 488 Common Commands
-
-Shared identically across all three command sets — these are not RIGOL/Agilent/Fluke specific.
-
-| Command | Type | Description |
+| Command | Form | Description |
 |---|---|---|
-| `*CLS` | Set | Clear status: resets Event Registers, clears the Error Queue |
-| `*ESE` | Set/Query | Event Status Register enable mask (0–189) |
-| `*ESR?` | Query | Current Event Status Register value |
-| `*IDN?` | Query | Instrument identification string |
-| `*OPC` | Set/Query | Operation-complete flag/query |
-| `*PSC` | Set/Query | Power-on status clear behavior |
-| `*RST` | Set | Reset the instrument to default state |
-| `*SRE` | Set/Query | Status Byte Register enable mask (0–188) |
-| `*STB?` | Query | Current Status Byte Register value |
-| `*TRG` | Set | Software trigger while in "Wait-for-trigger" state |
-| `*TST?` | Query | Self-test: `0` = pass, `1` = fail |
-| `*WAI` | Set | Wait until all pending operations complete |
+| `STATus:OPERation:CONDition?` | query | Queries the Operation Status Register's Condition Register. |
+| `STATus:OPERation:ENABle <enable_value>` / `?` | set/query | Sets/queries the Operation Status Register's Enable Register. Range: 0–1841. |
+| `STATus:OPERation[:EVENt]?` | query | Queries the Operation Status Register's Event Register. |
+| `STATus:PRESet` | set | Resets the Enable Register in both the Operation and Questionable Status Registers. |
+| `STATus:QUEStionable:CONDition?` | query | Queries the Questionable Status Register's Condition Register. |
+| `STATus:QUEStionable:ENABle <enable_value>` / `?` | set/query | Sets/queries the Questionable Status Register's Enable Register. Range: 0–24375. |
+| `STATus:QUEStionable[:EVENt]?` | query | Queries the Questionable Status Register's Event Register. |
 
-**`*IDN?`** — returns an identification string of at least 35 characters (manufacturer, model, serial
-number, firmware — exact field layout not itemized in the source text beyond the length guarantee).
-```
+**Gotcha:** the vendor guide describes the register *bit layout* only via a referenced
+figure ("Figure 2-1, The Status Register diagram") that did not survive text extraction from
+the source PDF — if you need specific bit-to-condition mappings (e.g. which bit means
+"measurement overload"), consult the figure in the original PDF directly; this manual can
+only confirm the command syntax and register names, not each bit's individual meaning.
+
+### General SYSTem Commands (Chapter 2)
+
+Distinct from the RIGOL-specific `:SYSTem` subsystem in Chapter 3 (below) — these are the
+instrument-wide basics shared conceptually across all three command languages (RIGOL/
+Agilent/Fluke).
+
+| Command | Form | Description |
+|---|---|---|
+| `SYSTem:BEEPer` | set | Issues a single beep immediately. No effect if the beeper is currently disabled (see next). |
+| `SYSTem:BEEPer:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables the beeper. Example: `SYSTem:BEEPer:STATe ON`. Gotcha: if you send `SYSTem:BEEPer:STATe OFF`, subsequent `SYSTem:BEEPer` calls are silently ineffective until re-enabled. |
+| `SYSTem:ERRor?` | query | Pops the oldest entry off the Error Queue. Returns `<code>,"<description>"`, e.g. `0,"No error"` when the queue is empty. |
+| `SYSTem:VERSion?` | query | Queries the instrument's SCPI standard version, e.g. `"1999.0"`. |
+
+### `:CALCulate` Commands (math functions)
+
+Sets up the multimeter's math/statistics layer (relative, dB, dBm, min/max/average
+statistics, pass/fail limit testing). All of these operate on whatever measurement function
+is currently active (set via `:FUNCtion`, below) — switching the active measurement function
+generally resets or invalidates the math state, so apply `:CALCulate` commands *after*
+selecting the measurement function you want to analyze.
+
+| Command | Form | Description |
+|---|---|---|
+| `:CALCulate:FUNCtion {NONE\|REL\|DB\|DBM\|MIN\|MAX\|AVERAGE\|TOTAL\|PF}` / `?` | set/query | Selects which math operation(s) are active. `NONE` disables all. `TOTAL` turns on MIN+MAX+AVERAGE together. Multiple simultaneously-active operations can be reported combined, e.g. `REL+PF`. Default: `NONE`. |
+| `:CALCulate:STATistic:MIN?` / `:MAX?` / `:AVERage?` | query | Returns the running min/max/average of the current statistics run. Each is valid **only** when its corresponding operation is enabled via `:CALCulate:FUNCtion`. |
+| `:CALCulate:STATistic:COUNt?` | query | Returns how many measurements have been counted into the current statistics run. Resets when the measurement function changes. |
+| `:CALCulate:STATistic:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables statistics collection outright. Example: `:CALCulate:STATistic:STATe OFF`. |
+| `:CALCulate:REL:OFFSet {<range>\|MIN\|MAX\|DEF\|CURR}` / `?` | set/query | Sets the relative-measurement offset. Valid range and default depend on the active measurement type (DC voltage ±1200 V, AC voltage ±900 V, DC current ±12 A, AC current ±12 A, resistance ±1.2e8 Ω, capacitance ±1.2e-2 F, frequency ±1.2e6 Hz — all default to `0`). `CURR` sets the offset to the current live reading. |
+| `:CALCulate:REL:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables the REL (relative) operation. Example: `:CALCulate:REL:STATe OFF`. |
+| `:CALCulate:DB?` | query | Returns the calculated dB value. Valid only when dB operation is enabled. |
+| `:CALCulate:DB:REFErence {<range>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets the dB reference. Range −120 to +120 dBm, integer, default `0`. |
+| `:CALCulate:DB:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables dB operation. |
+| `:CALCulate:DBM?` | query | Returns the calculated dBm value. Valid only when dBm operation is enabled. |
+| `:CALCulate:DBM:REFErence {<range>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets the dBm reference resistance in Ω. Range 2–8000, integer, default `600`. |
+| `:CALCulate:DBM:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables dBm operation. |
+| `:CALCulate:PF?` | query | Returns the pass/fail (limit-test) result: `PASS`, `HI`, or `LO`. |
+| `:CALCulate:PF:LOWEr {<range>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets the lower limit for pass/fail testing. Range/unit varies by measurement type (see the DC/AC voltage/current/resistance/capacitance/period/frequency ranges under `:MEASure`, below); default `0`. |
+| `:CALCulate:PF:UPPEr {<range>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets the upper limit for pass/fail testing. Same ranges as `:LOWEr`; default `1`. |
+| `:CALCulate:PF:STATe {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables pass/fail testing. Example: `:CALCulate:PF:STATe OFF`. |
+
+### `:FUNCtion` Commands (primary/main-display measurement function)
+
+Each of these is a bare set command (no parameters) that switches the primary measurement
+mode — equivalent to pressing the corresponding front-panel button.
+
+| Command | `:FUNCtion?` reply after sending it |
+|---|---|
+| `:FUNCtion:VOLTage:DC` | `DCV` |
+| `:FUNCtion:VOLTage:AC` | `ACV` |
+| `:FUNCtion:CURRent:DC` | `DCI` |
+| `:FUNCtion:CURRent:AC` | `ACI` |
+| `:FUNCtion:RESistance` (2-wire) | `2WR` |
+| `:FUNCtion:FRESistance` (4-wire) | `4WR` |
+| `:FUNCtion:FREQuency` | `FREQ` |
+| `:FUNCtion:PERiod` | `PERI` |
+| `:FUNCtion:CONTinuity` | `CONT` |
+| `:FUNCtion:DIODe` | `DIODE` |
+| `:FUNCtion:CAPacitance` | `CAP` |
+
+`:FUNCtion?` (query, no arguments needed) returns the currently active function using the
+same mnemonics as the right-hand column above. If double-display (vice-display) is active,
+this query reports the **main** display's function only — see `:FUNCtion2` below for the
+secondary display.
+
+### `:FUNCtion2` Commands (secondary/vice-display measurement function)
+
+Controls the DM3058E's second measurement display, which can show a related measurement
+alongside the main one (e.g. frequency alongside AC voltage).
+
+| Command | Form | Description |
+|---|---|---|
+| `:FUNCtion2?` | query | Returns the vice-display's active function (`DCV`, `ACV`, `DCI`, `ACI`, `2WR`, `CAP`, `4WR`, `FREQ`, `PERI`). Valid only when the vice-display is enabled. |
+| `:FUNCtion2:VALUe1?` | query | Returns the main display's measured value. Valid only when the vice-display is enabled. |
+| `:FUNCtion2:VALUe2?` | query | Returns the vice-display's measured value. Valid only when the vice-display is enabled. |
+| `:FUNCtion2:VOLTage:DC` / `:VOLTage:AC` / `:CURRent:DC` / `:CURRent:AC` / `:FREQuency` / `:PERiod` / `:RESistance` / `:FRESistance` / `:CAPacitance` | set | Enables the vice-display with the named function. **Gotcha:** each of these *constrains* what the main-display function may simultaneously be — e.g. after `:FUNCtion2:VOLTage:DC`, the main display can only be DCV/DCI/ACV/ACI; after `:FUNCtion2:FREQuency`, the main display can only be ACV/FREQUENCY/PERIOD. Check the per-command explanation if you hit an unexpected function-selection failure. |
+| `:FUNCtion2:ON?` | query | Queries the current vice-display function/state. |
+| `:FUNCtion2:CLEar` | set | Disables the vice-display, returning to single-display mode. |
+
+### `:MEASure` Commands (readings and per-function ranging)
+
+The core measurement subsystem. Each measurement type follows a **consistent four-command
+pattern** — this table shows the pattern once, then the per-type specifics:
+
+- **`:MEASure:<type>?`** — query, returns the live measured value in scientific notation
+  (e.g. `8.492853e-05`), in the type's natural unit. **Unavailable while the vice-display
+  (`:FUNCtion2`) is active** for most types.
+- **`:MEASure:<type> {<range>|MIN|MAX|DEF}`** — set command, selects the measurement range
+  (a small discrete integer per the tables below) and, for several types, the resolution.
+  Setting a range switches the measurement type to "Manual" automatically (see `:MEASure
+  {AUTO|MANU}` below).
+  Discrete input like `3` and the equivalent named `MIN`/`MAX`/`DEF` alias are interchangeable, e.g. `:MEASure:VOLTage:DC 3` and `:MEASure:VOLTage:DC MAX` are NOT
+  necessarily the same value — check each type's table for which integer maps to `MIN`/`MAX`/`DEF`.
+- **`:MEASure:<type>:RANGe?`** — query, returns which range index (from the same table) is
+  currently active.
+- A `:FILTer[:STATe]` sub-command exists for DC voltage and DC current only (see below).
+
+| Command | Form | Description |
+|---|---|---|
+| `:MEASure?` | query | Returns `TRUE`/`FALSE` — whether new data has been acquired under the current trigger setting. |
+| `:MEASure {AUTO\|MANU}` | set | Selects Auto or Manual measurement type. Example: `:MEASure MANU`. |
+
+**DC Voltage** — `:MEASure:VOLTage:DC?` / `:MEASure:VOLTage:DC {<range>|MIN|MAX|DEF}` /
+`:MEASure:VOLTage:DC:RANGe?`:
+
+| `<range>` | Range | Resolution |
+|---|---|---|
+| 0 (MIN) | 200 mV | 100 nV |
+| 1 | 2 V | 1 µV |
+| 2 (DEF) | 20 V | 10 µV |
+| 3 | 200 V | 100 µV |
+| 4 (MAX) | 1000 V | 1 mV |
+
+Plus `:MEASure:VOLTage:DC:IMPEdance {10M|10G}` / `?` — sets/queries input impedance; `10G`
+(>10 GΩ) is only selectable when the DC voltage range is 200 mV or 2 V. And
+`:MEASure:VOLTage:DC:FILTer[:STATe] {ON|OFF|1|0}` / `?` — the AC filter under DC voltage
+measurement.
+
+**AC Voltage** — `:MEASure:VOLTage:AC?` / `:MEASure:VOLTage:AC {<range>|MIN|MAX|DEF}` /
+`:MEASure:VOLTage:AC:RANGe?`:
+
+| `<range>` | Range |
+|---|---|
+| 0 (MIN) | 200 mV |
+| 1 | 2 V |
+| 2 (DEF) | 20 V |
+| 3 | 200 V |
+| 4 (MAX) | 750 V |
+
+**DC Current** — `:MEASure:CURRent:DC?` / `:MEASure:CURRent:DC {<range>|MIN|MAX|DEF}` /
+`:MEASure:CURRent:DC:RANGe?`:
+
+| `<range>` | Range | Resolution |
+|---|---|---|
+| 0 (MIN) | 200 µA | 1 nA |
+| 1 | 2 mA | 10 nA |
+| 2 | 20 mA | 100 nA |
+| 3 (DEF) | 200 mA | 1 µA |
+| 4 | 2 A | 10 µA |
+| 5 (MAX) | 10 A | 100 µA |
+
+Plus `:MEASure:CURRent:DC:FILTer[:STATe] {ON|OFF|1|0}` / `?`, same semantics as the DC
+voltage filter above.
+
+**AC Current** — `:MEASure:CURRent:AC?` / `:MEASure:CURRent:AC {<range>|MIN|MAX|DEF}` /
+`:MEASure:CURRent:AC:RANGe?`:
+
+| `<range>` | Range |
+|---|---|
+| 0 (MIN) | 20 mA |
+| 1 (DEF) | 200 mA |
+| 2 | 2 A |
+| 3 (MAX) | 10 A |
+
+**2-Wire Resistance** — `:MEASure:RESistance?` / `:MEASure:RESistance {<range>|MIN|MAX|DEF}`
+/ `:MEASure:RESistance:RANGe?` (4-wire is identical in range/shape — see next):
+
+| `<range>` | Range |
+|---|---|
+| 0 (MIN) | 200 Ω |
+| 1 | 2 kΩ |
+| 2 | 20 kΩ |
+| 3 (DEF) | 200 kΩ |
+| 4 | 1 MΩ |
+| 5 | 10 MΩ |
+| 6 (MAX) | 100 MΩ |
+
+**4-Wire Resistance** — `:MEASure:FRESistance?` / `:MEASure:FRESistance
+{<range>|MIN|MAX|DEF}` / `:MEASure:FRESistance:RANGe?` — same range table as 2-wire above.
+
+**Frequency** — `:MEASure:FREQuency?` / `:MEASure:FREQuency {<range>|MIN|MAX|DEF}` /
+`:MEASure:FREQuency:RANGe?`. Measurable range 20 Hz–1 MHz. The `<range>` parameter here
+actually selects the **input voltage range** (reuses the AC-voltage range table above, 0–4),
+not a frequency range — a quirk worth flagging explicitly since the name suggests otherwise.
+
+**Period** — `:MEASure:PERiod?` / `:MEASure:PERiod {<range>|MIN|MAX|DEF}` /
+`:MEASure:PERiod:RANGe?`. Measurable range 1 s–50 ms. Same quirk as Frequency: `<range>`
+selects input voltage range (AC-voltage table), not a period range.
+
+**Continuity** — `:MEASure:CONTinuity?` (returns measured resistance under continuity test,
+e.g. `8.888000e+03` Ω) / `:MEASure:CONTinuity {<range>|MIN|MAX|DEF}` — sets the resistance
+threshold in Ω, a consecutive integer from 1 to 2000, default 10. Example:
+`:MEASure:CONTinuity 1000` sets a 1 kΩ threshold.
+
+**Diode** — `:MEASure:DIODe?` — returns the measured diode forward voltage. Beep threshold
+is 1 V ≤ Vmeasured ≤ 2.4 V by default (fixed, not user-configurable via this command).
+
+**Capacitance** — `:MEASure:CAPacitance?` / `:MEASure:CAPacitance {<range>|MIN|MAX|DEF}` /
+`:MEASure:CAPacitance:RANGe?`:
+
+| `<range>` | Range |
+|---|---|
+| 0 (MIN) | 2 nF |
+| 1 | 20 nF |
+| 2 (DEF) | 200 nF |
+| 3 | 2 µF |
+| 4 | 200 µF |
+| 5 (MAX) | 10000 µF |
+
+### `:RATE` Commands (measurement speed)
+
+All follow the identical shape: `:RATE:<type> {F|M|S}` / `?`, where `F` = Fast (123
+readings/s, 50 Hz refresh), `M` = Medium (20 readings/s, 20 Hz refresh), `S` = Slow (2.5
+readings/s, 2.5 Hz refresh). Each query is valid only when its corresponding measurement
+function is currently active.
+
+| Command | Applies to |
+|---|---|
+| `:RATE:VOLTage:DC {F\|M\|S}` / `?` | DC voltage |
+| `:RATE:VOLTage:AC {F\|M\|S}` / `?` | AC voltage |
+| `:RATE:CURRent:DC {F\|M\|S}` / `?` | DC current |
+| `:RATE:CURRent:AC {F\|M\|S}` / `?` | AC current |
+| `:RATE:RESistance {F\|M\|S}` / `?` | 2-wire resistance |
+| `:RATE:FRESistance {F\|M\|S}` / `?` | 4-wire resistance |
+| `:RATE:SENSor {M\|S}` | Sensor measurement — note: **no Fast option** here, only Medium/Slow. |
+
+Example: `:RATE:VOLTage:DC M` sets DC voltage measurement to Medium rate.
+
+### `:SYSTem` Commands (RIGOL-specific, Chapter 3)
+
+| Command | Form | Description |
+|---|---|---|
+| `:SYSTem:CONFigure:POWESwitch {ON\|OFF\|1\|0}` | set | Controls whether the instrument requires a manual front-panel power-switch press after mains power is applied. `OFF`/`0` = auto-starts on power application; `ON`/`1` = waits for the front-panel switch. |
+| `:SYSTem:CONFigure:POWEron {LAST\|DEF}` | set | Sets power-on state to the last-used configuration (`LAST`) or factory defaults (`DEF`). |
+| `:SYSTem:CONFigure:DEFault` | set | Resets system configuration to factory defaults immediately. |
+| `:SYSTem:LANGuage {CHINESE\|ENGLISH}` / `?` | set/query | Sets/queries the front-panel UI language. |
+| `:SYSTem:FORMat:DECImal {COMMA\|DOT}` / `?` | set/query | Sets/queries the decimal-point display character. **Gotcha:** the vendor guide itself warns "this command causes easily the format changes of data delimiter, please use it modestly" — changing this can also shift how returned numeric strings are delimited, so avoid toggling it mid-script. |
+| `:SYSTem:FORMat:SEPArate {ON\|NONE\|SPACE}` / `?` | set/query | Sets/queries the delimiter used in displayed system data. `ON` = default `,`, `NONE` = no delimiter, `SPACE` = space-delimited. |
+| `:SYSTem:DISPlay:BRIGht <value>` / `?` | set/query | Screen brightness, integer 0–32, default 22. |
+| `:SYSTem:DISPlay:CONTrast <value>` / `?` | set/query | Screen contrast, integer 0–32, default 19. |
+| `:SYSTem:DISPlay:INVErt` | set | Toggles inverted screen display. |
+
+### `:TRIGger` Commands
+
+| Command | Form | Description |
+|---|---|---|
+| `:TRIGger:SOURce {AUTO\|SINGLE\|EXT}` / `?` | set/query | Selects trigger source: automatic, single (software-triggered), or external (hardware line). |
+| `:TRIGger:AUTO:INTErval <value>` / `?` | set/query | Sets the auto-trigger interval in ms. Valid range depends on the active `:RATE` — Fast: 8–2000 ms (default 8); Medium: 50–2000 ms (default 50); Slow: 400–2000 ms (default 400, and Slow is the instrument's overall default rate). |
+| `:TRIGger:AUTO:HOLD {ON\|OFF\|1\|0}` / `?` | set/query | Enables/disables the "hold" function under auto trigger (holds the display when the reading is stable). |
+| `:TRIGger:AUTO:HOLD:SENSitivity {<value>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets hold sensitivity: `0`/MIN=0.01%, `1`=0.1%, `2`/DEF=1%, `3`/MAX=10%. |
+| `:TRIGger:SINGle {<value>\|MIN\|MAX\|DEF}` / `?` | set/query | Sets the sample count for single-trigger mode. Integer 1–2000, default 1. |
+| `:TRIGger:SINGle:TRIGgered` | set | Fires one manual trigger — equivalent to the front-panel single-trigger button. |
+| `:TRIGger:EXT {RISE\|FALL\|HIGH\|LOW}` / `?` | set/query | Sets external trigger type (edge or level). Default: `RISE`. |
+| `:TRIGger:VMComplete:POLAr {POS\|NEG}` / `?` | set/query | Sets the "voltage measurement complete" (VMC) output signal polarity. Default: `POS`. |
+| `:TRIGger:VMComplete:PULSewidth <value>` / `?` | set/query | Sets VMC output pulse width in ms. Default 100 ms. **Gotcha:** valid range depends on the active `:RATE` — Slow: 1–399 ms, Medium: 1–49 ms, Fast: 1–7 ms — so changing measurement rate can silently invalidate a previously-set pulse width. |
+
+### `:UTILity` Commands (interface & misc configuration)
+
+Only the entries relevant to USB/RS-232 are detailed here — see "What's excluded and why"
+for the LAN/GPIB entries this instrument doesn't support.
+
+| Command | Form | Description |
+|---|---|---|
+| `:UTILity:INTErface:RS232:BAUD <value>` / `?` | set/query | Sets/queries the RS-232 baud rate. Discrete values: `1200\|2400\|4800\|9600\|19200\|38400\|57600\|115200`. |
+| `:UTILity:INTErface:RS232:PARIty {NONE\|ODD\|EVEN}` / `?` | set/query | Sets/queries parity **and, coupled with it, the data-bit count** — this is one combined setting, not two independent ones. `NONE` = no parity check, 8 data bits. `ODD` = odd parity, 7 data bits. `EVEN` = even parity, 7 data bits. Query returns `NONE8BITS`, `ODD7BITS`, or `EVEN7BITS` — note the reply format bundles both pieces of information into one token; parse accordingly. |
+
+The `:UTILity` section header itself warns: "Please make sure that communication interface
+has been connected stably to avoid errors or abnormal phenomena" — i.e. don't reconfigure
+the very interface you're issuing the command over without expecting the session to drop
+(e.g. changing RS-232 baud rate via an RS-232 connection will desync your terminal from the
+new rate immediately after the command is accepted).
+
+## Worked end-to-end example: DC voltage max-statistics measurement
+
+Adapted from the vendor guide's own "Example 1: Reading Statistic" (native RIGOL command
+form) — resets the instrument, confirms identity, enables DC voltage measurement, and
+tracks a running maximum:
+
+```text
+*RST                          (reset the instrument to a known state)
+CMDSET RIGOL                  (explicitly select the native RIGOL command language)
+
 *IDN?
--> RIGOL TECHNOLOGIES,DM3058E,DM3xxxxxxxxxx,00.02.06
+  -> RIGOL Technologies,DM3058,DM3A020080808,99.00.00.00.00.00
+                               (confirms connectivity and instrument identity)
+
+:FUNCtion:VOLTage:DC          (enable DC voltage measurement)
+:MEASure AUTO                 (use auto-ranging)
+
+:CALCulate:FUNCtion MAX       (enable running-maximum statistics)
+
+                               (... let the instrument take readings for a while ...)
+
+:CALCulate:STATistic:MAX?
+  -> 5.000064e-02              (current maximum DC voltage observed, in volts)
+
+:CALCulate:STATistic:COUNt?
+  -> 252                       (number of auto-measurements counted so far)
+
+:CALCulate:FUNCtion NONE      (exit the math/statistics function when done)
 ```
 
-**`*RST`** — resets the instrument. Does not itself change the active `CMDSET`.
-
-**`*PSC {0|1}`** — `0` = status registers keep their last state across a power cycle; `1` = registers
-reset at power-on.
-
-**`*OPC` / `*OPC?`** — `*OPC` sets bit 0 of ESR once the current operation completes; `*OPC?` blocks
-and returns `"1"` once done. Prefer `*OPC?` over polling a measurement query to know when a
-longer-running operation (e.g. a triggered `INITiate` sequence) has actually finished.
-
-## 3. STATus Commands
-
-Shared across all three command sets — the standard SCPI status-register model (Condition, Enable,
-and Event registers feeding the Operation and Questionable Status queues, which roll up into
-`*STB?`/`*ESR?`).
-
-| Command | Type | Description |
-|---|---|---|
-| `STATus:OPERation:CONDition?` | Query | Operation register condition value |
-| `STATus:OPERation:ENABle` | Set/Query | Operation register enable mask (0–1841) |
-| `STATus:OPERation[:EVENt]?` | Query | Operation register event value |
-| `STATus:PRESet` | Set | Resets Enable Registers of both status queues |
-| `STATus:QUEStionable:CONDition?` | Query | Questionable-status condition value |
-| `STATus:QUEStionable:ENABle` | Set/Query | Questionable-status enable mask (0–24375) |
-| `STATus:QUEStionable[:EVENt]?` | Query | Questionable-status event value |
-
-```
-STATus:PRESet
-STATus:OPERation:ENABle 256
-STATus:OPERation:CONDition?
-```
-
-## 4. SYSTem Commands (shared)
-
-Shared, general system commands — distinct from the RIGOL-native `:SYSTem:*` commands in §15, which
-cover instrument configuration rather than these basics.
-
-| Command | Type | Description |
-|---|---|---|
-| `SYSTem:BEEPer` | Set | Issue one immediate beep |
-| `SYSTem:BEEPer:STATe` | Set/Query | Beeper enabled/disabled |
-| `SYSTem:ERRor?` | Query | Dequeue one error from the error queue |
-| `SYSTem:VERSion?` | Query | SCPI version string |
-
-**`SYSTem:BEEPer`** — beeps once immediately; a no-op if the beeper has been disabled via
-`SYSTem:BEEPer:STATe OFF` (re-enable first).
-
-**`SYSTem:BEEPer:STATe {ON|OFF|1|0}`** — query returns `1`/`0`.
-
-**`SYSTem:ERRor?`** — returns `<code>,"<description>"`, or `0,"No error"` once the queue is empty.
-Call it in a loop after a command sequence to drain and inspect every pending error.
-```
-SYSTem:ERRor?
--> 0,"No error"
-```
-
-**`SYSTem:VERSion?`** — returns the supported SCPI version, e.g. `"1999.0"`.
-
----
-
-The remaining sections cover the **Agilent-34401A-compatible command set** (§5–14) — the primary
-reference for this document, since it matches the mnemonics already used by dev-term's bundled
-`rigol-dm3058e.json` profile — followed by the **RIGOL-native command set** (§15) as a secondary
-reference. **Remember: `CMDSET AGILENT` must be sent first**, or none of §5–14 will be recognized.
-
-## 5. CONFigure Commands (Agilent-compatible)
-
-Presets a measurement function, range, and resolution **without** triggering a measurement — the
-family the existing profile's `confVoltDc` command belongs to.
-
-| Command | Type | Description |
-|---|---|---|
-| `CONFigure?` | Query | Return the currently configured function/range/resolution |
-| `CONFigure:VOLTage:DC` | Set | Configure DC voltage |
-| `CONFigure:VOLTage:AC` | Set | Configure AC voltage |
-| `CONFigure:CURRent:DC` | Set | Configure DC current |
-| `CONFigure:CURRent:AC` | Set | Configure AC current |
-| `CONFigure:RESistance` | Set | Configure 2-wire resistance |
-| `CONFigure:FRESistance` | Set | Configure 4-wire resistance |
-| `CONFigure:FREQuency` | Set | Configure frequency |
-| `CONFigure:PERiod` | Set | Configure period |
-| `CONFigure:CONTinuity` | Set | Configure continuity (no parameters) |
-| `CONFigure:DIODe` | Set | Configure diode test (no parameters) |
-
-**`CONFigure:VOLTage:DC {<range>|MIN|MAX|DEF},{<resolution>|MIN|MAX|DEF}`**
-`<range>` discrete `{200mV|2V|20V|200V|1000V|AUTO}`, default `AUTO`; `MIN`=0.2 (200mV), `MAX`=1000.
-`<resolution>` per the resolution/rate table below, default 1 ppm × range.
-```
-CONFigure:VOLTage:DC 20,DEF
-CONFigure?    -> "VOLT:DC  2.000000E-01,2.000000E-07"
-```
-
-**`CONFigure:VOLTage:AC`** — same shape; range `{200mV|2V|20V|200V|750V|AUTO}`, default `AUTO`,
-`MIN`=0.2 (200mV), `MAX`=750.
-
-**`CONFigure:CURRent:DC`** — range `{200µA|2mA|20mA|200mA|2A|10A|AUTO}`, default `AUTO`,
-`MIN`=0.0002 (200µA), `MAX`=10.
-
-**`CONFigure:CURRent:AC`** — range `{20mA|200mA|2A|10A|AUTO}`, default `AUTO`, `MIN`=0.02 (20mA),
-`MAX`=10.
-
-**`CONFigure:RESistance` / `:FRESistance`** — range `{200Ω|2kΩ|20kΩ|200kΩ|2MΩ|10MΩ|100MΩ|AUTO}`,
-default `AUTO`, `MIN`=200, `MAX`=100000000. Both 2-wire and 4-wire share the same range table.
-
-**`CONFigure:FREQuency {<range>|MIN|MAX|DEF},{<resolution>|MIN|MAX|DEF}`** — unlike every other
-`CONFigure` command above, `<range>` here is a **consecutive real number** (not a discrete list),
-20 Hz–1 MHz; `MIN`=20, `MAX`=1000000.
-
-**`CONFigure:PERiod`** — `<range>` consecutive real, 1 µs–50 ms; `MIN`=0.000001, `MAX`=0.05. Default
-is a fixed 50 ms — the only `CONFigure` command whose default is *not* auto-ranging.
-
-**`CONFigure:CONTinuity` / `:DIODe`** — no parameters. Continuity's range is fixed at 2 kΩ.
-
-**`CONFigure?`** — returns a quoted string: `"<function>  <range>,<resolution>"`.
-
-## 6. MEASure Commands (Agilent-compatible)
-
-Same `{<range>|MIN|MAX|DEF},{<resolution>|MIN|MAX|DEF}` parameter shape as `CONFigure` above — the
-difference is that `MEASure` **presets range/resolution and immediately executes the measurement**,
-sending the reading straight to the output buffer, in one call.
-
-| Command | Type | Description |
-|---|---|---|
-| `MEASure:VOLTage:DC?` | Query | Configure + measure DC voltage |
-| `MEASure:VOLTage:AC?` | Query | Configure + measure AC voltage |
-| `MEASure:CURRent:DC?` | Query | Configure + measure DC current |
-| `MEASure:CURRent:AC?` | Query | Configure + measure AC current |
-| `MEASure:RESistance?` | Query | Configure + measure 2-wire resistance |
-| `MEASure:FRESistance?` | Query | Configure + measure 4-wire resistance |
-| `MEASure:FREQuency?` | Query | Configure + measure frequency |
-| `MEASure:PERiod?` | Query | Configure + measure period |
-| `MEASure:CONTinuity?` | Query | Measure continuity (no parameters, fixed 2 kΩ range) |
-| `MEASure:DIODe?` | Query | Measure diode test (no parameters) |
-
-Each `MEASure:<function>?` command's `{<range>|MIN|MAX|DEF},{<resolution>|MIN|MAX|DEF}` parameters
-match exactly the same-named `CONFigure:<function>` command's range/resolution rules in §5.
-```
-MEASure:VOLTage:DC? 20,DEF
--> +1.234567E-01
-```
-
-## 7. READ? / INITiate / FETCh? Commands (Agilent-compatible)
-
-Three different ways to get a reading, differing in whether/how internal memory is involved.
-
-| Command | Type | Description |
-|---|---|---|
-| `INITiate` | Set | Idle → Wait-for-trigger; stores up to 512 readings in internal memory on trigger |
-| `FETCh?` | Query | Transfer readings already in internal memory to the output buffer |
-| `READ?` | Query | Idle → Wait-for-trigger, measure, send reading straight to the output buffer |
-
-**`INITiate`** — no parameters, no query form. Moves the trigger state machine from Idle to
-Wait-for-trigger; when triggered, measures and stores results in internal memory (up to 512 readings)
-rather than sending them out immediately.
-
-**`FETCh?`** — pulls whatever's already in internal memory (from a prior `INITiate`) out to the
-output buffer. Does **not** trigger a new measurement — if nothing has been stored yet, this returns
-stale or no data.
-
-**`READ?`** — the "just get me a number" command: triggers a measurement and sends the result
-directly to the output buffer, skipping the internal-memory stage entirely.
-```
-INITiate
-*OPC?
-FETCh?        -> +1.234567E-01
-```
-
-## 8. SENSe Commands (Agilent-compatible)
-
-The literal-value range/resolution-setting family that `CONFigure`/`MEASure` are built on top of. The
-`SENSe:` header itself is optional (`[SENSe:]`) throughout this section.
-
-| Command | Type | Description |
-|---|---|---|
-| `[SENSe:]FUNCtion` | Set/Query | Active measurement function (quoted string, no default) |
-| `[SENSe:]VOLTage:DC:RANGe` | Set/Query | DC voltage range |
-| `[SENSe:]VOLTage:AC:RANGe` | Set/Query | AC voltage range |
-| `[SENSe:]CURRent:DC:RANGe` | Set/Query | DC current range |
-| `[SENSe:]CURRent:AC:RANGe` | Set/Query | AC current range |
-| `[SENSe:]RESistance:RANGe` | Set/Query | 2-wire resistance range (affects 4-wire too) |
-| `[SENSe:]FRESistance:RANGe` | Set/Query | 4-wire resistance range (affects 2-wire too) |
-| `[SENSe:]FREQuency:VOLTage:RANGe` | Set/Query | Input voltage range for frequency measurement |
-| `[SENSe:]PERiod:VOLTage:RANGe` | Set/Query | Input voltage range for period measurement |
-| `[SENSe:]<function>:RANGe:AUTO` | Set/Query | Auto-ranging toggle for a given function |
-| `[SENSe:]<function>:RESolution` | Set/Query | Measurement resolution for a given function |
-| `[SENSe:]VOLTage:DC:NPLC` | Set/Query | Integration time (power-line cycles) for DC voltage |
-| `[SENSe:]CURRent:DC:NPLC` | Set/Query | Integration time for DC current |
-| `[SENSe:]RESistance:NPLC` | Set/Query | Integration time for 2-wire resistance |
-| `[SENSe:]FRESistance:NPLC` | Set/Query | Integration time for 4-wire resistance |
-| `[SENSe:]FREQuency:APERture` | Set/Query | Gate time for frequency measurement |
-| `[SENSe:]PERiod:APERture` | Set/Query | Gate time for period measurement |
-| `[SENSe:]DETector:BANDwidth` | Set/Query | Documented no-op |
-| `[SENSe:]ZERO:AUTO` | Set/Query | Documented no-op (query always returns `"0"`) |
-
-**`[SENSe:]FUNCtion "<function>"`** — **must be set explicitly; there is no default.** Valid values:
-`VOLTage:DC`, `VOLTage:AC`, `CURRent:AC`, `CURRent:DC`, `FREQuency`, `PERiod`, `RESistance` (2-wire),
-`FRESistance` (4-wire), `CONTinuity`, `DIODe`.
-```
-SENSe:FUNCtion "VOLTage:DC"
-```
-
-**`[SENSe:]VOLTage:DC:RANGe {<range>|MIN|MAX}`** — discrete `{200mV|2V|20V|200V|1000V}`, default 20V.
-"If a 200mV range is required, enter 0.2" — values are entered in base units (volts), not scaled
-shorthand.
-
-**`[SENSe:]VOLTage:AC:RANGe`** — `{200mV|2V|20V|200V|750V}`, default 20V.
-
-**`[SENSe:]CURRent:DC:RANGe`** — `{200µA|2mA|20mA|200mA|2A|10A}`, default 200mA.
-
-**`[SENSe:]CURRent:AC:RANGe`** — `{20mA|200mA|2A|10A}`, default 200mA.
-
-**`[SENSe:]RESistance:RANGe` / `:FRESistance:RANGe`** — `{200Ω|2kΩ|20kΩ|200kΩ|2MΩ|10MΩ|100MΩ}`,
-default 200kΩ. "If a 2kΩ range is required, enter 2000" — values are entered in base ohms, not
-kΩ-scaled shorthand. **Setting one affects both the 2-wire and 4-wire range simultaneously** — a real
-device quirk, not independent settings.
-
-**`[SENSe:]FREQuency:VOLTage:RANGe` / `[SENSe:]PERiod:VOLTage:RANGe`** — both reuse the AC-voltage
-range table `{200mV|2V|20V|200V|750V}`, default 20V. This is the *input signal's voltage* range, not
-a frequency or time range — easy to misread at a glance.
-
-**`[SENSe:]<function>:RANGe:AUTO {ON|OFF}`** — available for `VOLTage:DC`, `VOLTage:AC`, `CURRent:DC`,
-`CURRent:AC`, `RESistance`, `FRESistance`, `FREQuency:VOLTage`, `PERiod:VOLTage`.
-
-**`[SENSe:]<function>:RESolution {<resolution>|MIN|MAX}`** — available for `VOLTage:DC`,
-`VOLTage:AC`, `CURRent:DC`, `CURRent:AC`, `RESistance`, `FRESistance`. Default 1 ppm × range (3 ppm
-for the two resistance functions).
-
-**Resolution/rate table** (applies to the `<resolution>` parameter in §5–6 and to `:RESolution`
-above):
-
-| Resolution | Rate | NPLC |
-|---|---|---|
-| 100 ppm × range | Fast | 0.02 |
-| 10 ppm × range | Medium | 0.2 |
-| 3 ppm × range | Medium | 1 |
-| 1 ppm × range | Slow | 10 |
-| 0.3 ppm × range | Slow | 100 |
-
-**`[SENSe:]VOLTage:DC:NPLC {0.02|0.2|1|10|100|MIN|MAX}`** — integration time in power-line cycles.
-`MIN`=0.02, `MAX`=100, default 1. Same shape for `CURRent:DC:NPLC`, `RESistance:NPLC`,
-`FRESistance:NPLC`.
-
-**`[SENSe:]FREQuency:APERture {0.01|0.1|1|MIN|MAX}`** — gate time in seconds. `MIN`=10ms, `MAX`=1s,
-default 100ms. Same shape for `PERiod:APERture`.
-
-**`[SENSe:]DETector:BANDwidth`** and **`[SENSe:]ZERO:AUTO`** — both accepted but **documented as
-having no practical effect** ("only responded without practical operation"). `ZERO:AUTO?` always
-returns `"0"` regardless of what was set. Include these in a script only if you specifically want to
-document intent — don't rely on them to change behavior.
-
-## 9. CALCulate Commands (Agilent-compatible)
-
-Math operations layered on top of whatever the active measurement function is.
-
-| Command | Type | Description |
-|---|---|---|
-| `CALCulate:STATe` | Set/Query | Enable/disable the whole CALCulate subsystem |
-| `CALCulate:FUNCtion` | Set/Query | Which math operation is active |
-| `CALCulate:LIMit:LOWer` | Set/Query | Lower pass/fail limit |
-| `CALCulate:LIMit:UPPer` | Set/Query | Upper pass/fail limit |
-| `CALCulate:DB:REFerence` | Set/Query | dB reference value |
-| `CALCulate:DBM:REFerence` | Set/Query | dBm reference resistance |
-| `CALCulate:NULL:OFFSet` | Set/Query | Null (relative) offset |
-| `CALCulate:AVERage:AVERage?` | Query | Running average |
-| `CALCulate:AVERage:COUNt?` | Query | Sample count for statistics |
-| `CALCulate:AVERage:MAXimum?` | Query | Running maximum |
-| `CALCulate:AVERage:MINimum?` | Query | Running minimum |
-
-**`CALCulate:STATe {OFF|ON}`** — must be `ON` before any `CALCulate:FUNCtion`-specific behavior
-applies; this is a top-level gate on top of the function-specific ones below.
-
-**`CALCulate:FUNCtion {NULL|DB|DBM|AVERage|LIMit}`**, default `NULL`. Maps to the RIGOL-native math
-ops as: `NULL`↔`REL`, `LIMIT`↔`PF`; `DB`/`DBM`/`AVERAGE` map 1:1.
-
-**`CALCulate:LIMit:LOWer {<value>|MINimum|MAXimum}`** / **`:UPPer`** — default 0 each; valid only when
-`CALCulate:FUNCtion LIMIT` and `CALCulate:STATe ON`; range ±120% of the active function's max range.
-
-**`CALCulate:DB:REFerence`** — −120..+120 dB, default 0; requires `CALCulate:FUNCtion DB` + `STATe
-ON`.
-
-**`CALCulate:DBM:REFerence`** — 2..8000 Ω, default 600 Ω; requires `CALCulate:FUNCtion DBM` + `STATe
-ON`.
-
-**`CALCulate:NULL:OFFSet`** — ±120% of max range; requires `CALCulate:FUNCtion NULL` + `STATe ON`.
-
-**`CALCulate:AVERage:*?`** — statistics queries, valid only once `CALCulate:FUNCtion AVERage` + `STATe
-ON`; readable at any time thereafter.
-```
-CALCulate:STATe ON
-CALCulate:FUNCtion AVERage
-CALCulate:AVERage:AVERage?    -> +1.234567E-01
-CALCulate:AVERage:COUNt?      -> +25
-```
-
-## 10. TRIGger Commands (Agilent-compatible)
-
-Distinct from the RIGOL-native `:TRIGger:*` commands in §17 — different mnemonics, different
-parameter shapes.
-
-| Command | Type | Description |
-|---|---|---|
-| `TRIGger:COUNt` | Set/Query | Number of triggers per `INITiate` |
-| `TRIGger:DELay` | Set/Query | Delay before each measurement |
-| `TRIGger:DELay:AUTO` | Set/Query | Automatic delay on/off |
-| `TRIGger:SOURce` | Set/Query | Trigger source |
-
-**`TRIGger:COUNt {<value>|MIN|MAX|INFinite}`** — 1–2000; the manual states parameters must be set
-explicitly (no default documented).
-
-**`TRIGger:DELay {<seconds>|MIN|MAX}`** — 0–3600 s; also explicitly "must be set."
-
-**`TRIGger:DELay:AUTO {ON|OFF}`**.
-
-**`TRIGger:SOURce {IMMediate|EXTernal|BUS}`** — `IMMediate` fires immediately (this is what
-`MEASure`/`READ?` implicitly assume); `EXTernal` waits for the rear-panel external trigger input;
-`BUS` waits for a software trigger via `*TRG`. **Gotcha**: after selecting a non-immediate source, the
-instrument must actually be put into "waiting trigger" mode (e.g. via `INITiate`) or the source
-selection itself is refused. To get back to immediate mode, run `CONFigure`/`MEASure?` again rather
-than trying to set `TRIGger:SOURce IMMediate` directly mid-sequence. The manual specifically
-recommends pairing `SENSe:<function>:RANGe:AUTO OFF` with an explicit `SENSe:<function>:RANGe` (or
-`CONFigure`/`MEASure?`) whenever using `EXTernal`/`BUS` sources, rather than relying on auto-ranging.
-
-## 11. SAMPle Commands (Agilent-compatible)
-
-| Command | Type | Description |
-|---|---|---|
-| `SAMPle:COUNt` | Set/Query | Number of samples taken per trigger |
-
-**`SAMPle:COUNt {<value>|MIN|MAX}`** — 1–2000. No default is documented for this one specifically.
-
-## 12. DISPlay Commands (Agilent-compatible)
-
-| Command | Type | Description |
-|---|---|---|
-| `DISPlay` | Set/Query | Enable/disable the display |
-| `DISPlay:TEXT` | Set/Query | Custom text shown on the display |
-| `DISPlay:TEXT:CLEar` | Set | Clear custom display text |
-
-**`DISPlay {OFF|ON}`** — turns the whole front-panel display off/on (measurements still happen with
-the display off).
-
-**`DISPlay:TEXT "<quoted string>"`** — shows arbitrary text on the display, useful for annotating what
-an automated test is currently doing. `DISPlay:TEXT:CLEar` removes it.
-
-## 13. DATA / INPut / ROUTe Commands (Agilent-compatible)
-
-Three small, mostly-inert groups — included for completeness, but the manual itself documents each
-as non-functional or fixed-output on this instrument.
-
-| Command | Type | Description |
-|---|---|---|
-| `DATA:FEED` | Set | Documented as accepted but non-functional |
-| `DATA:FEED?` | Query | Always returns `"CALC"` |
-| `DATA:POINts?` | Query | Number of readings in internal memory |
-| `INPut:IMPedance:AUTO` | Set/Query | Documented no-op; query always returns `"0"` |
-| `ROUTe:TERMinals?` | Query | Always returns `"FRON"` |
-
-**`DATA:FEED RDG_STORE,{"CALCulate"|""}`** — the manual's own note describes this as "restricted by
-working principle": the command is accepted syntactically but performs no real operation, and
-`DATA:FEED?` always reports back `"CALC"` regardless of what was set.
-
-**`DATA:POINts?`** — the one command in this group that does return real, useful information: the
-count of readings currently held in internal memory (populated by `INITiate`).
-
-**`INPut:IMPedance:AUTO`** — accepted but inert; the query always returns `"0"` no matter what was
-last set.
-
-**`ROUTe:TERMinals?`** — always returns `"FRON"` (front-panel terminals); the instrument has no
-rear-terminal option to route to, so this is a fixed, informational-only query.
-
-## 14. RIGOL-Native Command Set (Secondary Reference)
-
-Everything below uses the **RIGOL-native command set** (`CMDSET RIGOL`, the power-on default) rather
-than the Agilent-compatible one in §5–13 above. It's presented as a secondary reference because it's
-what the instrument speaks out of the box, and it exposes a few things the Agilent-compatible set
-doesn't cleanly offer — measurement-rate control, capacitance, and math statistics — but its range
-parameters are **index-coded integers** (e.g. `{0|1|2|3|4}`), not literal values, which is a real,
-easy-to-miss difference from §5–13. Case-insensitive; every command below requires a **mandatory
-leading colon** (`:MEASure:...`), unlike the Agilent-compatible set's headers.
-
-### `:FUNCtion` / `:FUNCtion2` — measurement function selection
-
-| Command | Type | Description |
-|---|---|---|
-| `:FUNCtion?` | Query | Active main-display function |
-| `:FUNCtion:VOLTage:DC` etc. | Set | Select main-display function (one command per function) |
-| `:FUNCtion2?` | Query | Active vice-display (dual-display) function |
-| `:FUNCtion2:VALUe1?` / `:VALUe2?` | Query | Main-display / vice-display measured values |
-| `:FUNCtion2:VOLTage:DC` etc. | Set | Select vice-display function |
-| `:FUNCtion2:ON?` | Query | Current vice-display function/state |
-| `:FUNCtion2:CLEar` | Set | Disable vice-display (dual-display off) |
-
-**`:FUNCtion?`** returns one of `DCV, ACV, DCI, ACI, RESISTANCE, CAPACITANCE, CONTINUITY,
-FRESISTANCE, DIODE, FREQUENCY, PERIOD`. Select a function with the matching bare set command:
-`:FUNCtion:VOLTage:DC`, `:FUNCtion:VOLTage:AC`, `:FUNCtion:CURRent:DC`, `:FUNCtion:CURRent:AC`,
-`:FUNCtion:RESistance` (2-wire), `:FUNCtion:FRESistance` (4-wire), `:FUNCtion:FREQuency`,
-`:FUNCtion:PERiod`, `:FUNCtion:CONTinuity`, `:FUNCtion:DIODe`, `:FUNCtion:CAPacitance` — none take a
-parameter; the function selection *is* the command.
-
-**Gotcha**: selecting a vice-display function via `:FUNCtion2:*` restricts which main-display
-functions remain legal afterward — e.g. after `:FUNCtion2:VOLTage:DC`, the main display can only be
-DCV/DCI/ACV/ACI; after `:FUNCtion2:FREQuency`, the main display can only be ACV/FREQUENCY/PERIOD.
-This is a genuine device interaction, not just documentation noise.
-
-### `:MEASure` — native measure/range
-
-Ranges here are discrete **index codes**, not literal values — this is the defining contrast with the
-Agilent-compatible `MEASure`/`CONFigure` in §5–6.
-
-| Command | Type | Description |
-|---|---|---|
-| `:MEASure?` | Query | Whether new data has been acquired under the current trigger setting |
-| `:MEASure` | Set | Select Auto (`AUTO`) vs Manual (`MANU`) measurement type |
-| `:MEASure:VOLTage:DC?` | Query | DC voltage reading |
-| `:MEASure:VOLTage:DC` | Set/Query | DC voltage range (index `0`–`4`, default `2` = 20V) |
-| `:MEASure:VOLTage:DC:RANGe?` | Query | Current DC voltage range index |
-| `:MEASure:VOLTage:DC:IMPEdance` | Set/Query | Input impedance `{10M\|10G}` |
-| `:MEASure:VOLTage:DC:FILTer[:STATe]` | Set/Query | AC filter under DC voltage |
-| `:MEASure:VOLTage:AC?` / `:VOLTage:AC` / `:RANGe?` | — | AC voltage, same shape (index `0`–`4`) |
-| `:MEASure:CURRent:DC?` / `:CURRent:DC` / `:RANGe?` | — | DC current (index `0`–`5`) |
-| `:MEASure:CURRent:AC?` / `:CURRent:AC` / `:RANGe?` | — | AC current (index `0`–`3`) |
-| `:MEASure:RESistance?` / `:RESistance` / `:RANGe?` | — | 2-wire resistance (index `0`–`6`) |
-| `:MEASure:FRESistance?` / `:FRESistance` / `:RANGe?` | — | 4-wire resistance (same index table) |
-| `:MEASure:FREQuency?` / `:FREQuency` / `:RANGe?` | — | Frequency (reuses AC-voltage index table) |
-| `:MEASure:PERiod?` / `:PERiod` / `:RANGe?` | — | Period (reuses AC-voltage index table) |
-| `:MEASure:CONTinuity?` / `:CONTinuity` | — | Continuity threshold, **real ohms, not index-coded** |
-| `:MEASure:DIODe?` | Query | Diode test reading |
-| `:MEASure:CAPacitance?` / `:CAPacitance` / `:RANGe?` | — | Capacitance (index `0`–`5`) |
-
-**`:MEASure:VOLTage:DC {<range>|MIN|MAX|DEF}`** — index `{0|1|2|3|4}`, default `2`:
-`0`=200mV (100nV res), `1`=2V (1µV), `2`=20V (10µV), `3`=200V (100µV), `4`=1000V (1mV); `MIN`=0,
-`MAX`=4, `DEF`=2 (20V). Setting a range switches measurement type to Manual automatically.
-`:MEASure:VOLTage:DC:RANGe?` (index `0..4`) requires DC voltage to have been used at least once
-first. `:MEASure:VOLTage:DC:IMPEdance {10M|10G}` — `10G` (>10 GΩ) is only legal when range is 200mV
-or 2V.
-
-**`:MEASure:VOLTage:AC {<range>|MIN|MAX|DEF}`** — index `{0|1|2|3|4}`, default `2`: `0`=200mV,
-`1`=2V, `2`=20V, `3`=200V, `4`=750V.
-
-**`:MEASure:CURRent:DC {<range>|MIN|MAX|DEF}`** — index `{0..5}`. `0`=200µA (1nA), `1`=2mA (10nA),
-`2`=20mA (100nA), `3`=200mA (1µA), `4`=2A (10µA), `5`=10A (100µA); `MIN`=0, `MAX`=5. The manual's own
-default-value table shows a tension here — the parameter's "Default" column says `0`, but the row
-the `DEF` *keyword* actually targets is 200mA (index `3`); both are preserved here as documented
-rather than "corrected," since the source text itself has this apparent inconsistency.
-
-**`:MEASure:CURRent:AC {<range>|MIN|MAX|DEF}`** — index `{0|1|2|3}`, default `1`: `0`=20mA, `1`=200mA,
-`2`=2A, `3`=10A. (The manual's prose says the range query can return "0,1,2,3 or 4," but its own table
-only lists 4 rows, 0–3 — likely a manual typo; the 4-row table is treated as authoritative here.)
-
-**`:MEASure:RESistance {<range>|MIN|MAX|DEF}`** — index `{0..6}`, default `3`: `0`=200Ω, `1`=2kΩ,
-`2`=20kΩ, `3`=200kΩ, `4`=1MΩ, `5`=10MΩ, `6`=100MΩ. `:MEASure:FRESistance` shares the same table.
-
-**`:MEASure:FREQuency {<range>|MIN|MAX|DEF}`** / **`:MEASure:PERiod`** — index `{0..4}`, default `2`;
-the range is actually the *input voltage* range (reusing the AC-voltage index table above), not a
-frequency/period range. Usable measurement ranges: 20 Hz–1 MHz for frequency, 1 µs–50 ms for period.
-
-**`:MEASure:CONTinuity {<range>|MIN|MAX|DEF}`** — a genuine **consecutive integer** 1–2000 Ω, default
-10 Ω (the resistance threshold for the continuity beep) — not index-coded like everything else in this
-section.
-
-**`:MEASure:DIODe?`** — beep condition documented as 1V ≤ Vmeasured ≤ 2.4V by default.
-
-**`:MEASure:CAPacitance {<range>|MIN|MAX|DEF}`** — index `{0..5}`, default `2`: `0`=2nF, `1`=20nF,
-`2`=200nF, `3`=2µF, `4`=200µF, `5`=10000µF.
-
-### `:RATE` — measurement speed
-
-| Command | Type | Description |
-|---|---|---|
-| `:RATE:VOLTage:DC` etc. | Set/Query | `{F\|M\|S}` per function |
-| `:RATE:SENSor` | Set/Query | `{M\|S}` — no Fast option |
-
-**`:RATE:VOLTage:DC` / `:VOLTage:AC` / `:CURRent:DC` / `:CURRent:AC` / `:RESistance` /
-`:FRESistance` {F|M|S}`** — each valid only when its function is the currently active one. `F` (Fast)
-= 123 rdg/s (50 Hz refresh), `M` (Medium) = 20 rdg/s (20 Hz), `S` (Slow) = 2.5 rdg/s (2.5 Hz).
-```
-:FUNCtion:VOLTage:DC
-:RATE:VOLTage:DC F
-```
-
-### `:CALCulate` — native math/statistics
-
-| Command | Type | Description |
-|---|---|---|
-| `:CALCulate:FUNCtion` | Set/Query | Active math op: `{NONE\|REL\|DB\|DBM\|MIN\|MAX\|AVERAGE\|TOTAL\|PF}` |
-| `:CALCulate:STATistic:MIN?` / `:MAX?` / `:AVERage?` / `:COUNt?` | Query | Statistics, need the matching op enabled |
-| `:CALCulate:STATistic:STATe` | Set/Query | Statistics on/off |
-| `:CALCulate:REL:OFFSet` / `:STATe` | Set/Query | Relative offset value/enable |
-| `:CALCulate:DB?` / `:DB:REFErence` / `:DB:STATe` | — | dB result/reference/enable |
-| `:CALCulate:DBM?` / `:DBM:REFErence` / `:DBM:STATe` | — | dBm result/reference/enable |
-| `:CALCulate:PF?` / `:PF:LOWEr` / `:PF:UPPEr` / `:PF:STATe` | — | Pass/fail result/limits/enable |
-
-**`:CALCulate:FUNCtion {NONE|REL|DB|DBM|MIN|MAX|AVERAGE|TOTAL|PF}`**, default `NONE`; a query can
-return a combination like `REL+PF`; `TOTAL` turns on MIN+MAX+AVERAGE together. Most sub-features
-below are only meaningful once the matching op is selected here — e.g. `:CALCulate:DB?` only returns
-something sensible once `DB` is active.
-
-**`:CALCulate:REL:OFFSet {<range>|MIN|MAX|DEF|CURR}`** — default 0; valid range/units depend on the
-active measurement function: DC V ±1200 V, AC V ±900 V, DC/AC I ±12 A, Resistance ±1.2×10⁸ Ω,
-Capacitance ±1.2×10⁻² F, Frequency ±1.2×10⁶ Hz.
-
-**`:CALCulate:DB:REFErence {<range>|MIN|MAX|DEF}`** — −120..+120 dBm, default 0.
-
-**`:CALCulate:DBM:REFErence`** — 2–8000 Ω, default 600 Ω.
-
-**`:CALCulate:PF?`** — returns `PASS`, `HI`, or `LO`. **`:PF:LOWEr` / `:PF:UPPEr`** — default 0/1;
-range depends on active function per: DC V ±1200 V, AC V 0–900 V, DC I ±12 A, AC I 0–12 A, Resistance
-0–1.2×10⁸ Ω, Capacitance 0–1.2×10⁻² F, Period 1.0×10⁻⁶–100 s, Frequency 0–1.2×10⁶ Hz.
-
-### `:SYSTem` — native instrument configuration
-
-| Command | Type | Description |
-|---|---|---|
-| `:SYSTem:CONFigure:POWESwitch` | Set/Query | Require manual power-switch press after mains on |
-| `:SYSTem:CONFigure:POWEron` | Set/Query | Power-on state: `{LAST\|DEF}` |
-| `:SYSTem:CONFigure:DEFault` | Set | Reset system configuration now |
-| `:SYSTem:LANGuage` | Set/Query | UI language `{CHINESE\|ENGLISH}` |
-| `:SYSTem:FORMat:DECImal` | Set/Query | Decimal separator `{COMMA\|DOT}` |
-| `:SYSTem:FORMat:SEPArate` | Set/Query | Data delimiter `{ON\|NONE\|SPACE}` |
-| `:SYSTem:DISPlay:BRIGht` | Set/Query | Screen brightness `0`–`32`, default 22 |
-| `:SYSTem:DISPlay:CONTrast` | Set/Query | Screen contrast `0`–`32`, default 19 |
-| `:SYSTem:DISPlay:INVErt` | Set | Invert screen display (no query) |
-
-**`:SYSTem:CONFigure:POWEron {LAST|DEF}`** — the setting that decides whether the instrument (and
-critically, its `CMDSET`) comes back up in whatever state it was last in, or always resets to RIGOL
-defaults. Relevant to every script in this document per §1's `CMDSET` discussion.
-
-**`:SYSTem:FORMat:DECImal {COMMA|DOT}`** — the manual specifically warns this "causes easily the
-format changes of data delimiter, please use it modestly" — i.e. changing it can have side effects on
-how numeric replies are formatted; don't toggle it casually mid-script.
-
-### `:TRIGger` — native trigger control
-
-Distinct from the Agilent-compatible `TRIGger:*` in §10.
-
-| Command | Type | Description |
-|---|---|---|
-| `:TRIGger:SOURce` | Set/Query | `{AUTO\|SINGLE\|EXT}` |
-| `:TRIGger:AUTO:INTErval` | Set/Query | Auto-trigger interval (ms), range depends on active rate |
-| `:TRIGger:AUTO:HOLD` | Set/Query | Auto-hold on/off |
-| `:TRIGger:AUTO:HOLD:SENSitivity` | Set/Query | Hold sensitivity, index `{0..3}` |
-| `:TRIGger:SINGle` | Set/Query | Sample count for single-trigger mode, `1`–`2000`, default 1 |
-| `:TRIGger:SINGle:TRIGgered` | Set | Fire one manual single-trigger |
-| `:TRIGger:EXT` | Set/Query | External trigger edge/level `{RISE\|FALL\|HIGH\|LOW}`, default `RISE` |
-| `:TRIGger:VMComplete:POLAr` | Set/Query | Output polarity `{POS\|NEG}`, default `POS` |
-| `:TRIGger:VMComplete:PULSewidth` | Set/Query | Pulse width (ms), range depends on active rate |
-
-**`:TRIGger:AUTO:INTErval`** — legal range depends on the active `:RATE`: Fast 8–2000ms (default 8),
-Medium 50–2000ms (default 50), Slow 400–2000ms (default 400; the overall power-on default, since Slow
-is the default rate).
-
-### RS-232 configuration (out of scope for this USB manual — see below)
-
-**`:UTILity:INTErface:RS232:BAUD {1200|2400|4800|9600|19200|38400|57600|115200}`** and
-**`:UTILity:INTErface:RS232:PARIty {NONE|ODD|EVEN}`** (query returns `NONE8BITS`, `ODD7BITS`, or
-`EVEN7BITS`) exist and are relevant to the DM3058E specifically (RS-232 is supported on this model),
-but are excluded from the main reference above per this document's USB scope — see "What's Excluded
-and Why."
-
-## Worked Example: Full Measurement Script
-
-A typical automated sequence using the Agilent-compatible command set — select `CMDSET AGILENT`,
-configure a function/range, take a reading, then check for errors:
-
-```
-*CLS                        ! clear status
-CMDSET AGILENT              ! switch into the Agilent-compatible command set (not the default!)
-*IDN?                       ! confirm you're talking to the right instrument
-SYSTem:ERRor?                -> 0,"No error"
-
-SENSe:FUNCtion "VOLTage:DC"
-SENSe:VOLTage:DC:RANGe 20
-SENSe:VOLTage:DC:NPLC 10
-SENSe:VOLTage:DC:RANGe:AUTO OFF
-
-READ?                        -> +1.234567E-01
-
-SYSTem:ERRor?                -> 0,"No error"
-```
-
-Equivalent one-shot form using `MEASure` instead of the `SENSe`/`READ?` sequence above:
-```
-CMDSET AGILENT
-MEASure:VOLTage:DC? 20,DEF   -> +1.234567E-01
-```
-
-## Common Gotchas
-
-- **The instrument boots into RIGOL-native mode, not Agilent-compatible mode**, unless
-  `:SYSTem:CONFigure:POWEron LAST` is active *and* it was last powered off in Agilent mode. Any script
-  using §5–13's mnemonics should send `CMDSET AGILENT` itself, every session, rather than assuming.
-  This is the single most common way a script that "used to work" against a factory-reset or
-  power-cycled instrument suddenly gets nothing but syntax errors back.
-- **The Agilent-compatible command set enforces stricter syntax than the RIGOL-native set** — extra
-  whitespace, stray characters in a command tree, or a character following a parameter will make the
-  instrument beep an execution error rather than silently tolerating it. If a command that looks
-  correct is failing, check for exactly this before anything else.
-- **RIGOL-native ranges are index codes (`0`,`1`,`2`,...); Agilent-compatible ranges are literal
-  values (`200mV`,`2V`,`20V`,...)** — sending an index code to an Agilent-compatible `CONFigure`/
-  `MEASure`/`SENSe` command (or vice versa) is a parameter-value error, not a syntax error, so it may
-  fail less obviously than a typo would.
-- **`CALCulate:STATe ON` (Agilent-compatible) is a separate, top-level gate on top of
-  `CALCulate:FUNCtion`** — both must be set, in either order, before any function-specific math
-  command (`DB:REFerence`, `LIMit:LOWer`, etc.) does anything meaningful.
-- **Several Agilent-compatible commands are accepted but functionally inert on real hardware**:
-  `INPut:IMPedance:AUTO`, `[SENSe:]DETector:BANDwidth`, `[SENSe:]ZERO:AUTO`, `DATA:FEED`/`DATA:FEED?`,
-  `ROUTe:TERMinals?` (always `"FRON"`). They won't error, but they also won't do what their names
-  suggest — don't build logic that depends on them actually changing instrument behavior.
-- **`TRIGger:SOURce {EXTernal|BUS}` (Agilent-compatible) requires the instrument to actually be in
-  "waiting trigger" state, or the source selection itself is refused.** Pair a non-immediate trigger
-  source with manual ranging (`SENSe:<function>:RANGe:AUTO OFF` + an explicit range) rather than
-  relying on auto-ranging, per the manual's own recommendation.
-- **`:FUNCtion2:*` (RIGOL-native dual-display) restricts which main-display function remains legal**
-  — setting a vice-display function can silently narrow what you're allowed to select as the main
-  display afterward. If a subsequent `:FUNCtion:*` call unexpectedly fails, check whether a
-  `:FUNCtion2:*` call earlier in the same session set up an incompatible pairing.
-- **`SYSTem:ERRor?` (shared) dequeues one error per call** — call it in a loop until it returns
-  `0,"No error"` to fully drain the queue; a single call after a multi-command sequence may leave
-  earlier errors hidden behind later ones.
-
-## What's Excluded and Why
-
-- **GPIB and LAN interfaces, and the entire `:LXI` command subsystem** — excluded outright. The
-  manual states twice, verbatim, that *"The GPIB and LAN interfaces are only supported by DM3058"* —
-  the DM3058E has no LAN interface and no GPIB port at all, so `:UTILity:INTErface:GPIB:ADDRess`,
-  `:UTILity:INTErface:LAN:*`, and every `:LXI:*` command are not a configuration choice, they're
-  commands this exact model cannot execute regardless of interface. **If you were instead documenting
-  a DM3058** (not the E variant), these would all belong back in the reference, plus a GPIB address
-  command and the full LAN/mDNS/LXI configuration commands.
-- **RS-232 configuration commands** (`:UTILity:INTErface:RS232:BAUD`/`:PARIty`) — present on the
-  DM3058E, but out of scope here because this document is written for USB. They're listed at the end
-  of §14 for reference. **If you switch this instrument to RS-232 instead of USB**, add those two
-  commands back into your working set and set matching baud/parity on both ends before anything else
-  will respond — same idea as any RS-232 instrument.
-- **Fluke-45-compatible command set** (`CMDSET FLUKE`) — the manual documents a full third command
-  vocabulary compatible with Fluke 45 multimeters. Excluded entirely since nothing in dev-term uses
-  it and it serves the same purpose as the Agilent-compatible set (compatibility with a different
-  vendor's existing scripts), just for a different vendor.
-- **Chapter 6's eight worked "Application Examples" and the manual's Appendix of incompatible
-  Agilent/Fluke commands** were reviewed but not transcribed verbatim here — their content is already
-  folded into this document's own Worked Example and Common Gotchas sections rather than repeated as
-  a separate, redundant example set.
+Note the `*IDN?` reply reports the model as `DM3058` even when run against a DM3058E unit —
+this is expected per the vendor guide's own example and is not a sign of misconfiguration.
+
+## Common gotchas
+
+- **Three command languages share one instrument.** `CMDSET RIGOL|AGILENT|FLUKE` switches
+  the entire accepted syntax. If a script written against this manual stops working, check
+  `CMDSET?` first — something may have left the instrument in Agilent or Fluke compatibility
+  mode. RIGOL mode is the power-on default, so a `*RST`/power-cycle also resets this.
+- **Setting a `:MEASure:<type>` range switches you into Manual mode automatically**, silently
+  overriding whatever `:MEASure {AUTO|MANU}` state was active — if your script relies on
+  auto-ranging, re-issue `:MEASure AUTO` after any explicit range-setting call, not before.
+- **`:FUNCtion2` (vice-display) constrains what the main display can show**, and vice versa —
+  the valid combinations are asymmetric and type-specific (see the `:FUNCtion2` table above).
+  Trying to select an incompatible pairing will not necessarily error loudly; check
+  `:FUNCtion?` / `:FUNCtion2?` after switching if the display doesn't show what you expect.
+  Also, most `:MEASure:<type>?` value queries are **unavailable while the vice-display is
+  active** — disable it (`:FUNCtion2:CLEar`) if you need the single-display query behavior.
+- **`:MEASure:FREQuency` and `:MEASure:PERiod`'s `<range>` parameter selects an input
+  *voltage* range, not a frequency/period range** — easy to misread from the command name
+  alone; both reuse the AC-voltage range table (0–4, 200 mV–750 V).
+- **Sending `:UTILity:INTErface:RS232:BAUD` over the RS-232 connection you're reconfiguring
+  breaks that connection as soon as the instrument applies the new rate** — don't expect a
+  reply over the old baud rate; reconnect your terminal/script at the new rate afterward.
+- **The Error Queue (`SYSTem:ERRor?`) is FIFO and must be drained one entry at a time.** A
+  single query pops the oldest error; if you suspect multiple things went wrong, poll it
+  repeatedly until it returns `0,"No error"`.
+
+## What's excluded and why
+
+- **GPIB is excluded — hardware absence, not a scope choice.** The vendor guide states
+  plainly that "The GPIB and LAN interfaces are only supported by DM3058" (the non-E base
+  model). The DM3058E has no GPIB port at all, so `:UTILity:INTErface:GPIB:ADDRess` and any
+  GPIB-specific framing are out of scope here.
+- **LAN, and the entire `:LXI` command subsystem, are excluded for the same reason.** The
+  guide's own note on the `:LXI` section reads: "`:LXI` commands are only applicable to
+  DM3058 because DM3058E has no LAN interface." That covers `:LXI:IDENtify[:STATe]`,
+  `:LXI:MDNS:*`, `:LXI:RESet`, `:LXI:RESTart`, and the LAN-configuration entries under
+  `:UTILity:INTErface:LAN:*` (`DHCP`, `AUTOip`, `MANUip`, `IP`, `MASK`, `GATEway`, `DNS`) — all
+  present in the source document (since it covers both models together) but inapplicable to
+  this instrument.
+- **Chapter 4 "Compatible Agilent Commands" is excluded from per-command treatment — a scope
+  choice, not a hardware limitation.** This is a full alternate command-language layer (the
+  guide documents it as compatible with the Agilent 34401A specifically) that the instrument
+  accepts once you send `CMDSET AGILENT`. It exists and works on this hardware; it just isn't
+  needed for native programmatic control and wasn't part of what was asked for. If a future
+  need arises to interoperate with existing Agilent-34401A-targeted scripts unchanged, that
+  chapter (source pages 4-1 through 4-52, covering `CALCulate`, `CONFigure`, `DATA`,
+  `DISPlay`, `FETCh?`, `INITiate`, `INPut`, `MEASure`, `READ?`, `ROUTe`, `SENSe`, `SAMPle`, and
+  `TRIGger` commands in Agilent's own syntax) would need a dedicated research/documentation
+  pass — it is not simply "the same commands with periods instead of colons."
+- **Chapter 5 "Compatible Fluke Commands" is excluded for the identical reason** — a Fluke-45
+  -compatible alternate syntax (Function, Function Regulation, Range and Rate, Measurement,
+  Compare, Trigger, Format, and Reading command groups, source pages 5-1 through 5-24),
+  reachable via `CMDSET FLUKE`, out of scope unless specifically needed later.
+- **The Appendix's "Incompatible Agilent/Fluke Commands" lists are excluded** since they only
+  matter to someone actively using those two alternate command languages, which this manual
+  doesn't cover in detail.
+- **Status-register bit-level layout (Figure 2-1) could not be extracted** from the source
+  PDF's text conversion — the command syntax for reading/writing the registers is fully
+  documented above, but the specific bit-to-condition mapping is not; consult the original
+  vendor PDF's figure directly if that level of detail is needed.
