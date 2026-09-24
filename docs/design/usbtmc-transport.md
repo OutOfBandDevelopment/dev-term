@@ -294,26 +294,25 @@ own repeated practice of not trusting a fix until checked against real hardware:
   `ConnectionEditorViewModel`'s default real discovery). Fixed by disposing every enumerated device
   that isn't kept, in both `SystemUsbtmcDeviceDiscovery.GetDevices()` and `SystemUsbtmcDevice.Open()`,
   plus disposing (not just closing) the kept device on `Close()`/on `Open()`'s exception path.
-- **Pending code review of `SystemUsbtmcDevice`, to act on whenever this transport is picked back
-  up** (queued 2026-09-23, not yet applied — filed here rather than acted on immediately since this
-  work is deprioritized above pending the packet capture):
-  - **Real bug**: endpoint selection (`iface.Endpoints.First(...)`) filters by direction
+- **Code review of `SystemUsbtmcDevice`, applied** (queued 2026-09-23, applied 2026-09-24): all four
+  findings below were fixed; only the packet capture above remains as an actual blocker for this
+  transport.
+  - **Real bug, fixed**: endpoint selection (`iface.Endpoints.First(...)`) filtered by direction
     (`EndpointAddress & 0x80`) only, not transfer type — a USBTMC interface can expose an optional
-    Interrupt-IN endpoint (for USB488 SRQ) alongside Bulk-IN/-OUT, and if it sorts before Bulk-IN in
-    the descriptor, it gets picked as the "bulk in" reader instead. Fix: also filter
-    `(e.Attributes & 0x03) == 0x02` (Bulk) on both lookups, and raise an explicit exception rather
-    than relying on `First()`'s generic `InvalidOperationException` if either lookup comes up empty.
-  - **Spec nit**: `REN_CONTROL`/`GO_TO_LOCAL`'s `wValue` should be `0` per the USB488 subclass spec —
-    enable/disable is encoded in which `bRequest` is sent, not in `wValue`. Currently sends
-    `remote ? 1 : 0`; most instruments ignore this, but it's not per-spec. Leave as-is only if
-    already confirmed the DM3058E reads `wValue` meaningfully.
-  - **Minor**: `TryGetSerialNumber`'s catch silently swallows an exception (e.g. a `LibUsbException`
-    from `Info.SerialNumber` on a not-fully-enumerated device) before returning `null` — worth
-    logging inside the catch so an unexpected "every candidate rejected" doesn't look silent.
-  - **Minor**: `Open()`'s failure-path catch (after `ClaimInterface` succeeds but before/during
-    `OpenEndpointReader`/`Writer`) closes/disposes the device but never explicitly calls
-    `ReleaseInterface(_interfaceNumber)` first — whether `Close()`/`Dispose()` implicitly releases the
-    claim depends on the libusb backend; add an explicit release in that branch for safety unless
-    confirmed unnecessary.
+    Interrupt-IN endpoint (for USB488 SRQ) alongside Bulk-IN/-OUT, and one sorting before Bulk-IN in
+    the descriptor would get picked as the "bulk in" reader instead. Fixed by also filtering
+    `(e.Attributes & 0x03) == 0x02` (Bulk) on both lookups, and raising an explicit `IOException`
+    instead of relying on `First()`'s generic `InvalidOperationException` if either lookup comes up
+    empty.
+  - **Spec nit, fixed**: `REN_CONTROL`/`GO_TO_LOCAL`'s `wValue` is now always `0` per the USB488
+    subclass spec — enable/disable is encoded in which `bRequest` is sent, not in `wValue`. It
+    previously sent `remote ? 1 : 0`; no real device this was tested against relied on that value.
+  - **Minor, fixed**: `TryGetSerialNumber`'s catch now logs the swallowed exception via
+    `Debug.WriteLine` before returning `null`, so an unexpected "every candidate rejected" is
+    traceable instead of silent.
+  - **Minor, fixed**: `Open()`'s failure-path catch (after `ClaimInterface` succeeds but
+    before/during `OpenEndpointReader`/`Writer`) now explicitly calls
+    `ReleaseInterface(_interfaceNumber)` before `Close()`/`Dispose()`, since whether those implicitly
+    release the claim depends on the libusb backend.
   - Everything else in the review (stall recovery, short-write detection, timeout-as-empty-read) was
     assessed as correct and matching real USBTMC device behavior as already implemented.

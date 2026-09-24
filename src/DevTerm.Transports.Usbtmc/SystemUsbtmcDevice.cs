@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LibUsbDotNet;
 using LibUsbDotNet.LibUsb;
 using LibUsbDotNet.Main;
@@ -12,6 +13,13 @@ namespace DevTerm.Transports.Usbtmc;
 public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 {
     private const byte UsbtmcInterfaceSubClass = 0x03;
+
+    // Endpoint descriptor Attributes bits 0-1 = transfer type (USB 2.0 spec table 9-13);
+    // 0x02 = Bulk. A USBTMC interface can also expose an optional Interrupt-IN endpoint (for
+    // USB488 SRQ) alongside Bulk-IN/-OUT, so endpoint selection must filter on this, not just
+    // direction, or an Interrupt-IN sorting before Bulk-IN in the descriptor gets picked instead.
+    private const byte UsbEndpointTransferTypeMask = 0x03;
+    private const byte UsbEndpointTransferTypeBulk = 0x02;
 
     // USB488 subclass extension control requests (USBTMC USB488 spec, table 8) - bmRequestType
     // 0xA1 = Device-to-Host | Class | Interface, matching that spec's request definitions.
@@ -92,8 +100,12 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 
             matched.ClaimInterface(_interfaceNumber);
 
-            var bulkIn = iface.Endpoints.First(e => (e.EndpointAddress & 0x80) != 0);
-            var bulkOut = iface.Endpoints.First(e => (e.EndpointAddress & 0x80) == 0);
+            var bulkIn = iface.Endpoints.FirstOrDefault(e =>
+                (e.EndpointAddress & 0x80) != 0 && (e.Attributes & UsbEndpointTransferTypeMask) == UsbEndpointTransferTypeBulk)
+                ?? throw new IOException("USBTMC interface has no bulk-IN endpoint.");
+            var bulkOut = iface.Endpoints.FirstOrDefault(e =>
+                (e.EndpointAddress & 0x80) == 0 && (e.Attributes & UsbEndpointTransferTypeMask) == UsbEndpointTransferTypeBulk)
+                ?? throw new IOException("USBTMC interface has no bulk-OUT endpoint.");
 
             _reader = matched.OpenEndpointReader((ReadEndpointID)bulkIn.EndpointAddress, _options.MaxTransferSize, EndpointType.Bulk);
             _writer = matched.OpenEndpointWriter((WriteEndpointID)bulkOut.EndpointAddress, EndpointType.Bulk);
@@ -112,6 +124,10 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
         {
             if (matched is not null)
             {
+                // Whether Close()/Dispose() implicitly releases a claimed interface depends on the
+                // libusb backend - release explicitly first so a failure between ClaimInterface and
+                // OpenEndpointReader/Writer doesn't leave the interface claimed by this process.
+                try { matched.ReleaseInterface(_interfaceNumber); } catch { }
                 try { matched.Close(); } catch { }
                 try { matched.Dispose(); } catch { }
             }
@@ -130,10 +146,12 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 
         try
         {
+            // Per the USB488 subclass spec, enable/disable is encoded in which bRequest is sent
+            // (REN_CONTROL vs. GO_TO_LOCAL), not in wValue - wValue is always 0 here.
             var setup = new UsbSetupPacket(
                 bRequestType: Usb488RequestType,
                 bRequest: remote ? Usb488RenControl : Usb488GoToLocal,
-                wValue: remote ? 1 : 0,
+                wValue: 0,
                 wIndex: _interfaceNumber,
                 wlength: 1);
             var buffer = new byte[1];
@@ -220,6 +238,17 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 
     private static string? TryGetSerialNumber(IUsbDevice device)
     {
-        try { return device.Info.SerialNumber; } catch { return null; }
+        try
+        {
+            return device.Info.SerialNumber;
+        }
+        catch (Exception ex)
+        {
+            // Not every candidate is fully enumerated at this point (e.g. a device the OS hasn't
+            // finished binding a driver for) - swallowing this is correct, but silently is not: an
+            // unexpected "every candidate rejected" result should be traceable back to this.
+            Debug.WriteLine($"USBTMC: failed to read serial number: {ex}");
+            return null;
+        }
     }
 }
