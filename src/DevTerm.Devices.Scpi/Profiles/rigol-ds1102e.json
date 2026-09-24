@@ -1,0 +1,467 @@
+{
+  "Name": "Rigol DS1102E Oscilloscope",
+  "IdnPattern": "DS1102E",
+  "Terminator": "\n",
+  "Notes": "Built from docs/devices/rigol-ds1102e/programming-manual.md (RIGOL Programming Guide, DS1000E/DS1000D Series, Sept. 2010). Replaces the earlier rigol-ds1105e.json, which had the wrong model in its own name/IdnPattern - DS1105E is not a real Rigol model and never matched this bench's actual scope; the real unit identifies as 'RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00' (see docs/changes/2026-09-24.md and docs/test/2026-09-24-07-16-34.md). The command set is identical whether reached over USBTMC or RS-232 - only the physical connection/driver differs (see the manual's 'Before you start'). On this bench the DS1102E is USBTMC VID 0x1AB1 PID 0x0588, and shares that exact PID with a Rigol DG1022 function generator also on the bench - both enumerate under the same VID:PID, so --serialnumber is required to target one specifically (see BACKLOG.md). This model has no built-in logic analyzer (DS1000E series, not DS1000D) - deliberately excludes every LA/digital-channel command, and the Pattern/Duration trigger modes, per the manual's own scope notes; do not add them back without first adding a DS1000D-series profile with different scope.",
+  "Commands": [
+    { "Id": "idn", "Label": "Identify", "Category": "Common", "Template": "*IDN?", "IsQuery": true },
+    { "Id": "rst", "Label": "Reset", "Category": "Common", "Template": "*RST" },
+
+    { "Id": "run", "Label": "Run", "Category": "Acquisition", "Template": ":RUN" },
+    { "Id": "stop", "Label": "Stop", "Category": "Acquisition", "Template": ":STOP" },
+    { "Id": "auto", "Label": "Auto-scale", "Category": "Acquisition", "Template": ":AUTO" },
+    {
+      "Id": "acqType",
+      "Label": "Set Acquisition Type",
+      "Category": "Acquisition",
+      "Template": ":ACQ:TYPE {Type}",
+      "Parameters": [
+        { "Name": "Type", "Kind": "Choice", "Options": ["NORMAL", "AVERAGE", "PEAKDETECT"], "DefaultValue": "NORMAL" }
+      ]
+    },
+    { "Id": "acqTypeQuery", "Label": "Query Acquisition Type", "Category": "Acquisition", "Template": ":ACQ:TYPE?", "IsQuery": true },
+    {
+      "Id": "acqMode",
+      "Label": "Set Sampling Mode",
+      "Category": "Acquisition",
+      "Template": ":ACQ:MODE {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["RTIM", "ETIM"], "DefaultValue": "RTIM" }
+      ]
+    },
+    { "Id": "acqModeQuery", "Label": "Query Sampling Mode", "Category": "Acquisition", "Template": ":ACQ:MODE?", "IsQuery": true },
+    {
+      "Id": "acqAverages",
+      "Label": "Set Average Count",
+      "Category": "Acquisition",
+      "Template": ":ACQ:AVER {Count}",
+      "Parameters": [
+        { "Name": "Count", "Kind": "Choice", "Options": ["2", "4", "8", "16", "32", "64", "128", "256"], "DefaultValue": "16" }
+      ]
+    },
+    { "Id": "acqAveragesQuery", "Label": "Query Average Count", "Category": "Acquisition", "Template": ":ACQ:AVER?", "IsQuery": true },
+    {
+      "Id": "acqMemDepth",
+      "Label": "Set Memory Depth",
+      "Category": "Acquisition",
+      "Template": ":ACQ:MEMD {Depth}",
+      "Parameters": [
+        { "Name": "Depth", "Kind": "Choice", "Options": ["NORMAL", "LONG"], "DefaultValue": "NORMAL" }
+      ]
+    },
+    { "Id": "acqMemDepthQuery", "Label": "Query Memory Depth", "Category": "Acquisition", "Template": ":ACQ:MEMD?", "IsQuery": true },
+    {
+      "Id": "acqSampRateQuery",
+      "Label": "Query Sample Rate",
+      "Category": "Acquisition",
+      "Template": ":ACQ:SAMP? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+
+    {
+      "Id": "chanDisplay",
+      "Label": "Set Channel Display",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:DISP {State}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    {
+      "Id": "chanCoupling",
+      "Label": "Set Channel Coupling",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:COUP {Coupling}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Coupling", "Kind": "Choice", "Options": ["DC", "AC", "GND"], "DefaultValue": "DC" }
+      ]
+    },
+    {
+      "Id": "chanScale",
+      "Label": "Set Channel Vertical Scale",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:SCAL {Scale}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0.002, "Maximum": 10000, "Unit": "V/div", "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "chanScaleQuery",
+      "Label": "Query Channel Vertical Scale",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:SCAL?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+    {
+      "Id": "chanOffset",
+      "Label": "Set Channel Vertical Offset",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:OFFS {Offset}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -40, "Maximum": 40, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    {
+      "Id": "chanProbe",
+      "Label": "Set Probe Attenuation",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:PROB {Attenuation}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "Attenuation", "Kind": "Choice", "Options": ["1", "5", "10", "50", "100", "500", "1000"], "DefaultValue": "10" }
+      ]
+    },
+    {
+      "Id": "chanInvert",
+      "Label": "Set Channel Invert",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:INV {State}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "chanBwLimit",
+      "Label": "Set Bandwidth Limit",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:BWL {State}",
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" },
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "chanMemDepthQuery",
+      "Label": "Query Channel Memory Depth",
+      "Category": "Channel",
+      "Template": ":CHAN{Channel}:MEMD?",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Channel", "Kind": "Choice", "Options": ["1", "2"], "DefaultValue": "1" }
+      ]
+    },
+
+    {
+      "Id": "timMode",
+      "Label": "Set Timebase Mode",
+      "Category": "Timebase",
+      "Template": ":TIM:MODE {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["MAIN", "DELAYED"], "DefaultValue": "MAIN" }
+      ]
+    },
+    { "Id": "timModeQuery", "Label": "Query Timebase Mode", "Category": "Timebase", "Template": ":TIM:MODE?", "IsQuery": true },
+    {
+      "Id": "timScale",
+      "Label": "Set Horizontal Scale",
+      "Category": "Timebase",
+      "Template": ":TIM:SCAL {Scale}",
+      "Parameters": [
+        { "Name": "Scale", "Kind": "Numeric", "Minimum": 0.000000002, "Maximum": 50, "Unit": "s/div", "DefaultValue": "0.001" }
+      ]
+    },
+    { "Id": "timScaleQuery", "Label": "Query Horizontal Scale", "Category": "Timebase", "Template": ":TIM:SCAL?", "IsQuery": true },
+    {
+      "Id": "timOffset",
+      "Label": "Set Horizontal Offset",
+      "Category": "Timebase",
+      "Template": ":TIM:OFFS {Offset}",
+      "Parameters": [
+        { "Name": "Offset", "Kind": "Numeric", "Minimum": -500, "Maximum": 500, "Unit": "s", "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "timOffsetQuery", "Label": "Query Horizontal Offset", "Category": "Timebase", "Template": ":TIM:OFFS?", "IsQuery": true },
+
+    {
+      "Id": "trigMode",
+      "Label": "Set Trigger Mode",
+      "Category": "Trigger",
+      "Template": ":TRIG:MODE {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["EDGE", "PULSE", "VIDEO", "SLOPE", "ALTERNATION"], "DefaultValue": "EDGE" }
+      ]
+    },
+    { "Id": "trigModeQuery", "Label": "Query Trigger Mode", "Category": "Trigger", "Template": ":TRIG:MODE?", "IsQuery": true },
+    {
+      "Id": "trigEdgeSource",
+      "Label": "Set Edge Trigger Source",
+      "Category": "Trigger",
+      "Template": ":TRIG:EDGE:SOUR {Source}",
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2", "EXT", "ACLINE"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    { "Id": "trigEdgeSourceQuery", "Label": "Query Edge Trigger Source", "Category": "Trigger", "Template": ":TRIG:EDGE:SOUR?", "IsQuery": true },
+    {
+      "Id": "trigEdgeSlope",
+      "Label": "Set Edge Trigger Slope",
+      "Category": "Trigger",
+      "Template": ":TRIG:EDGE:SLOP {Slope}",
+      "Parameters": [
+        { "Name": "Slope", "Kind": "Choice", "Options": ["POSITIVE", "NEGATIVE"], "DefaultValue": "POSITIVE" }
+      ]
+    },
+    {
+      "Id": "trigLevel",
+      "Label": "Set Edge Trigger Level",
+      "Category": "Trigger",
+      "Template": ":TRIG:EDGE:LEV {Level}",
+      "Parameters": [
+        { "Name": "Level", "Kind": "Numeric", "Minimum": -60, "Maximum": 60, "Unit": "V", "DefaultValue": "0" }
+      ]
+    },
+    { "Id": "trigLevelQuery", "Label": "Query Edge Trigger Level", "Category": "Trigger", "Template": ":TRIG:EDGE:LEV?", "IsQuery": true },
+    {
+      "Id": "trigSweep",
+      "Label": "Set Trigger Sweep",
+      "Category": "Trigger",
+      "Template": ":TRIG:EDGE:SWE {Sweep}",
+      "Parameters": [
+        { "Name": "Sweep", "Kind": "Choice", "Options": ["AUTO", "NORMAL", "SINGLE"], "DefaultValue": "AUTO" }
+      ]
+    },
+    {
+      "Id": "trigCoupling",
+      "Label": "Set Trigger Coupling",
+      "Category": "Trigger",
+      "Template": ":TRIG:EDGE:COUP {Coupling}",
+      "Parameters": [
+        { "Name": "Coupling", "Kind": "Choice", "Options": ["DC", "AC", "HF", "LF"], "DefaultValue": "DC" }
+      ]
+    },
+    {
+      "Id": "trigHoldoff",
+      "Label": "Set Trigger Holdoff",
+      "Category": "Trigger",
+      "Template": ":TRIG:HOLD {Holdoff}",
+      "Parameters": [
+        { "Name": "Holdoff", "Kind": "Numeric", "Minimum": 0.0000005, "Maximum": 1.5, "Unit": "s", "DefaultValue": "0.0005" }
+      ]
+    },
+    { "Id": "trigStatusQuery", "Label": "Query Trigger Status", "Category": "Trigger", "Template": ":TRIG:STAT?", "IsQuery": true },
+    { "Id": "trigForce", "Label": "Force Trigger", "Category": "Trigger", "Template": ":FORC" },
+    { "Id": "trig50", "Label": "Trigger Level to 50%", "Category": "Trigger", "Template": ":Trig%50" },
+
+    {
+      "Id": "measVppQuery",
+      "Label": "Measure Peak-to-Peak Voltage",
+      "Category": "Measure",
+      "Template": ":MEAS:VPP? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measVmaxQuery",
+      "Label": "Measure Maximum Voltage",
+      "Category": "Measure",
+      "Template": ":MEAS:VMAX? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measVminQuery",
+      "Label": "Measure Minimum Voltage",
+      "Category": "Measure",
+      "Template": ":MEAS:VMIN? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measVavgQuery",
+      "Label": "Measure Average Voltage",
+      "Category": "Measure",
+      "Template": ":MEAS:VAVG? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measVrmsQuery",
+      "Label": "Measure RMS Voltage",
+      "Category": "Measure",
+      "Template": ":MEAS:VRMS? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measFreqQuery",
+      "Label": "Measure Frequency",
+      "Category": "Measure",
+      "Template": ":MEAS:FREQ? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measPeriodQuery",
+      "Label": "Measure Period",
+      "Category": "Measure",
+      "Template": ":MEAS:PER? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measPwidthQuery",
+      "Label": "Measure Positive Pulse Width",
+      "Category": "Measure",
+      "Template": ":MEAS:PWID? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measNwidthQuery",
+      "Label": "Measure Negative Pulse Width",
+      "Category": "Measure",
+      "Template": ":MEAS:NWID? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measRiseQuery",
+      "Label": "Measure Rise Time",
+      "Category": "Measure",
+      "Template": ":MEAS:RISE? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "measFallQuery",
+      "Label": "Measure Fall Time",
+      "Category": "Measure",
+      "Template": ":MEAS:FALL? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    { "Id": "measClear", "Label": "Clear Measurements", "Category": "Measure", "Template": ":MEAS:CLE" },
+
+    {
+      "Id": "wavDataQuery",
+      "Label": "Read Waveform Data",
+      "Category": "Waveform",
+      "Template": ":WAV:DATA? {Source}",
+      "IsQuery": true,
+      "Parameters": [
+        { "Name": "Source", "Kind": "Choice", "Options": ["CHAN1", "CHAN2", "MATH", "FFT"], "DefaultValue": "CHAN1" }
+      ]
+    },
+    {
+      "Id": "wavPointsMode",
+      "Label": "Set Waveform Points Mode",
+      "Category": "Waveform",
+      "Template": ":WAV:POIN:MODE {Mode}",
+      "Parameters": [
+        { "Name": "Mode", "Kind": "Choice", "Options": ["NORMAL", "MAXIMUM", "RAW"], "DefaultValue": "NORMAL" }
+      ]
+    },
+    { "Id": "wavPointsModeQuery", "Label": "Query Waveform Points Mode", "Category": "Waveform", "Template": ":WAV:POIN:MODE?", "IsQuery": true },
+
+    {
+      "Id": "dispType",
+      "Label": "Set Display Type",
+      "Category": "Display",
+      "Template": ":DISP:TYPE {Type}",
+      "Parameters": [
+        { "Name": "Type", "Kind": "Choice", "Options": ["VECTORS", "DOTS"], "DefaultValue": "VECTORS" }
+      ]
+    },
+    {
+      "Id": "dispGrid",
+      "Label": "Set Display Grid",
+      "Category": "Display",
+      "Template": ":DISP:GRID {Grid}",
+      "Parameters": [
+        { "Name": "Grid", "Kind": "Choice", "Options": ["FULL", "HALF", "NONE"], "DefaultValue": "FULL" }
+      ]
+    },
+    {
+      "Id": "dispPersist",
+      "Label": "Set Waveform Persistence",
+      "Category": "Display",
+      "Template": ":DISP:PERS {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    { "Id": "dispClear", "Label": "Clear Display", "Category": "Display", "Template": ":DISP:CLE" },
+    {
+      "Id": "dispBrightness",
+      "Label": "Set Grid Brightness",
+      "Category": "Display",
+      "Template": ":DISP:BRIG {Brightness}",
+      "Parameters": [
+        { "Name": "Brightness", "Kind": "Numeric", "Minimum": 0, "Maximum": 32, "DefaultValue": "16" }
+      ]
+    },
+    {
+      "Id": "dispIntensity",
+      "Label": "Set Waveform Intensity",
+      "Category": "Display",
+      "Template": ":DISP:INT {Intensity}",
+      "Parameters": [
+        { "Name": "Intensity", "Kind": "Numeric", "Minimum": 0, "Maximum": 32, "DefaultValue": "16" }
+      ]
+    },
+
+    {
+      "Id": "mathDisplay",
+      "Label": "Set Math Display",
+      "Category": "Math",
+      "Template": ":MATH:DISP {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "OFF" }
+      ]
+    },
+    {
+      "Id": "mathOperate",
+      "Label": "Set Math Operation",
+      "Category": "Math",
+      "Template": ":MATH:OPER {Operation}",
+      "Parameters": [
+        { "Name": "Operation", "Kind": "Choice", "Options": ["A+B", "A-B", "AB", "FFT"], "DefaultValue": "A-B" }
+      ]
+    },
+
+    { "Id": "storFactoryLoad", "Label": "Recall Factory Defaults", "Category": "System", "Template": ":STOR:FACT:LOAD" },
+    {
+      "Id": "beepEnable",
+      "Label": "Set Beeper",
+      "Category": "System",
+      "Template": ":BEEP:ENAB {State}",
+      "Parameters": [
+        { "Name": "State", "Kind": "Choice", "Options": ["ON", "OFF"], "DefaultValue": "ON" }
+      ]
+    },
+    { "Id": "beepAction", "Label": "Sound Beeper", "Category": "System", "Template": ":BEEP:ACT" }
+  ]
+}
