@@ -6,15 +6,8 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **UI Definitions model** (`DevTerm.UiDefinitions`), landed 2026-09-15 — a framework-agnostic,
-  JSON/XML-serializable model for declaring a device control panel once (`UiDefinition` →
-  `UiSection`s → seven `UiControl` kinds: button/toggle/slider/numeric/choice/textField/indicator),
-  so every front end can render it generically instead of hand-coding UI per device per front end.
-  Built from real device mockups already written (Kuando Busylight, Velleman K8055, EByte, Zoom
-  H4n), not designed in the abstract — see docs/design/ui-definitions.md. Polymorphic serialization
-  uses the framework's own support (`System.Text.Json`'s `[JsonDerivedType]`, `XmlSerializer`'s
-  `[XmlElement]` per derived type on the collection) rather than hand-rolled discriminator parsing.
-  Round-trip tested against a full real panel (the Busylight mockup, reproduced as data).
+- **UI Definitions model** (`DevTerm.UiDefinitions`) — done, landed 2026-09-15. See
+  `docs/design/ui-definitions.md` and `docs/changes/2026-09-15.md`.
 
 - **Generic `UiDefinition`/`IControlSurface` renderer, proven against the real K8055**, landed
   2026-09-22 — `IControlSurface` (`DevTerm.Core.Control`) and `IStructuredPresenter`
@@ -54,64 +47,15 @@ Completed work is logged by date under `docs/changes/`.
   landed as a software-only pass; the user will do the physical hardware review later, the same way
   the K8055's remaining digital-in/TUI checklist items are deferred to them.
 
-- **Live user feedback on the K8055/Busylight panels, addressed same day (2026-09-22)** — after the
-  above landed, real hands-on use of the K8055 and Busylight panels surfaced five real issues, all
-  fixed the same day (see `docs/changes/2026-09-22.md` for the full write-up):
-  - **K8055 digital inputs never read as anything but 0** — `K8055Decoder` read `digitalInRaw` from
-    byte 0 of the 9-byte input frame, but byte 0 is the same leading HID report-ID byte confirmed
-    elsewhere in this codebase (always `0x00`, never real device data), so it could never have
-    carried digital-input state. Fixed to read byte 1 instead. **Confirmed against real hardware
-    2026-09-23**: digital inputs now read correctly.
-  - **Busylight's "Custom..." button did nothing** — added `ButtonControl.ColorPickerTargetCommandId`,
-    a new generic, device-agnostic field on the UI-definitions model (any device's button can declare
-    "open a modal RGB/HSV color picker; on confirm, send `\"r,g,b\"` to this command id" without the
-    renderer hardcoding Busylight-specific ids). Implemented in both front ends: WPF `ColorPickerWindow`
-    (sliders + hex box for RGB, sliders for HSV) and the TUI's `ControlPanelMode.PickColor` (a nested
-    `Dialog` with text fields for both). `BusylightControlSurface.SetColor` now accepts either a named
-    preset or an `"r,g,b"` triple.
-  - **Busylight's "Program Sequence..." button did nothing** — already a confirmed, real-hardware-
-    tested no-op (see `docs/design/proposals/kuando-busylight-protocol.md`'s open questions); removed
-    from `BusylightUiDefinition` rather than investigated further, since a button with no effect on
-    real hardware is worse than no button. `programSequence` is still accepted as a no-op command for
-    backward compatibility.
-  - Also brought the TUI's output pane in line with the WPF main window's existing capped-output rule
-    (`MainWindow.MaxOutputLines`, 1000): the TUI's `TuiMode.AppendOutput` grew an unbounded
-    concatenated string forever, and WPF itself had a handful of raw `OutputList.Items.Add` call sites
-    that bypassed its own cap. Both fixed: WPF now routes every output line through the capped
-    `AppendOutput` helper, and TUI gained the same bounded-buffer rule at a shorter cap (300, not
-    1000) since its output pane rebuilds one `TextView.Text` string on every trim rather than using a
-    virtualized items list.
-  - **K8055 live indicators re-rendered on every streamed report, even unchanged ones** — the board
-    streams its input report continuously and unprompted, and most consecutive frames repeat the same
-    reading, but `K8055Decoder.ValuesChanged` fired the full 5-key dictionary on every frame
-    regardless ("runaway data streaming"). Fixed by tracking the last published value per key and only
-    including (and only raising the event for) keys that actually changed since the previous frame;
-    both control panels already update indicators by per-key lookup, so a partial dictionary needed no
-    consumer-side change.
-  - **Control-panel indicators never updated when the device was selected via the Device Profiles/
-    Configure Connection GUI, only via `--presenter` on the command line** — reported as "I can now
-    set the outputs but the input values dont capture the data." `ConnectionEditorViewModel.PresenterOptions`
-    (the checkbox list backing both front ends' presenter picker) was hardcoded to the six built-in
-    text presenters and never included `k8055`/`busylight`, so picking a device through the editor
-    could get the transport right but had no way to also enable its decoder — outbound commands still
-    worked (they write to the session directly), but the decoder was never wired into the session's
-    `Pipeline` and its indicators never received data. Fixed by adding both names to
-    `PresenterOptions`.
+- **Live user feedback on the K8055/Busylight panels** — done, addressed 2026-09-22 (five real
+  issues found via hands-on use, all fixed same day: the K8055 digital-input byte-offset bug — now
+  also confirmed against real hardware 2026-09-23 — Busylight's custom-color/program-sequence
+  buttons, unbounded output-pane growth, runaway indicator re-rendering, and the presenter-picker gap
+  when a device is selected via the GUI instead of `--presenter`). See `docs/changes/2026-09-22.md`.
 
-- **Device Manifests** (`DevTerm.DeviceManifests`), landed 2026-09-15 — a no-code `DeviceManifest`
-  (identity, a transport hint, the declarative command/response schema already sketched in
-  device-control-modules.md, and a `UiDefinition`) plus a `DeviceManifestLoader` handling all three
-  shapes from docs/design/device-manifests.md: a single JSON file, a folder (`device.json` at its
-  root, referenced files resolved relative to it), or a `.zip` of one (extracted, then loaded
-  exactly like a folder). Found and fixed a real bug immediately via testing: `XmlSerializer`
-  can't serialize `Dictionary<string,string>` at all (throws at reflection time) — switched
-  `TransportHint.Options` to a `List<TransportOption>` Key/Value pair list, which both JSON and XML
-  handle natively; noted in `CLAUDE.md` as a constraint for any future XML-round-tripped type.
-  7 tests (JSON/XML round-trip with an inline UI, folder-mode with an external UI file, zip-mode,
-  missing-referenced-file failures) — 147 tests across the solution now. **Step one only, same as
-  UI Definitions**: the manifest only *references* a Kaitai `.ksy` file by path, doesn't parse one;
-  nothing turns a loaded manifest into a working `IControlSurface`/decoder pair or opens a
-  connection from it.
+- **Device Manifests** (`DevTerm.DeviceManifests`) — done, landed 2026-09-15 (model + loader only;
+  turning a manifest into a working control surface/connection is separate future work, already
+  tracked in `BACKLOG.md`). See `docs/design/device-manifests.md` and `docs/changes/2026-09-15.md`.
 
 - **Connection Editor, from the 2026-09-15 Architect Notes.** Landing incrementally since
   2026-09-15 — full detail on each increment is in `docs/changes/2026-09-15.md`/
@@ -169,46 +113,14 @@ Completed work is logged by date under `docs/changes/`.
   (192.168.0.108, 192.168.0.110) — both passed everywhere they're exercised; the third configured
   host (192.168.0.107) wasn't reachable and its `DataRow`s failed as expected, not a regression.
 
-- **`LoopbackTransport` test helper**, added 2026-09-22 — a scripted, deterministic in-process
-  `ITransport` (`DevTerm.Console.Tests`) for exercising `Session`/`TuiMode`/`MainWindow` logic
-  against realistic request/response and multi-line "event stream" behavior without a real device or
-  even a real socket, filling the gap between the dumb `FakeTransport` (manual push/record only) and
-  a real `TcpListener` loopback (`INTEGRATION`-tier, and overkill when the network stream itself
-  isn't what's under test). See `docs/design/testing.md`'s "Scripted responses without a real
-  device" section and `docs/changes/2026-09-22.md`. Not yet used by any TUI/WPF-level test — it's a
-  building block, added because real devices aren't always available to test against by hand.
+- **`LoopbackTransport` test helper** — done, added 2026-09-22. See `docs/design/testing.md`'s
+  "Scripted responses without a real device" section and `docs/changes/2026-09-22.md`.
 
-- **Production `loopback` transport**, added 2026-09-22 — promotes the same scripted-fake-device
-  idea from the `LoopbackTransport` test helper above into a real, user-selectable transport
-  (`DevTerm.Transports.Loopback`) so someone without any hardware attached can pick "loopback" in
-  the TUI Configure screen or WPF Device Profiles/Connection Editor and get a working, zero-
-  configuration fake device to exercise the UI end-to-end. Deliberately a separate project, not a
-  reuse of the test-only prototype in `tests/DevTerm.Console.Tests/` (which stays exactly as-is —
-  see `docs/design/testing.md`); this one is wired through the same DI/validation/description path
-  every other transport uses (`AddDevTermFrontEnd`, `CliOptionsValidator`, `ConnectionDescription`)
-  and both front ends' transport pickers. Same three example commands as the test helper (`hello`,
-  `Send Stream: N, ascii`, `Send Events: N`), plus a fourth added the same day: `help`/`?`, which
-  prints the command list (`LoopbackScript.HelpLines`); all matching is case-insensitive. No
+- **Production `loopback` transport** (`DevTerm.Transports.Loopback`) — done, added 2026-09-22; no
   user-configurable custom script yet. See `docs/design/transports.md`'s "Loopback" section and
   `docs/changes/2026-09-22.md`.
 
-- **Global unhandled-exception handling**, added 2026-09-22 — an unexpected exception (one that
-  slips past every existing, deliberate `ConnectionErrorMessages.IsConnectionFailure` catch) no
-  longer takes the whole app down with it. `DevTerm.Wpf`'s `App.xaml.cs` hooks
-  `Application.DispatcherUnhandledException` (reports via `MessageBox`, sets `e.Handled = true`) and
-  `TaskScheduler.UnobservedTaskException` (a faulted, never-awaited background `Task`; marshaled to
-  the UI thread via `Dispatcher.BeginInvoke` since it fires on the finalizer thread). `DevTerm.Console`
-  has no `Dispatcher` to intercept a synchronous exception the same way, so its two front ends split
-  the equivalent behavior: `Program.cs` hooks `TaskScheduler.UnobservedTaskException` process-wide
-  (reports to stderr), and `TuiMode.RunAsync` passes an `errorHandler` to `Application.Run` (a real
-  Terminal.Gui v2.5.0 API — reports via `MessageBox.ErrorQuery` and returns `true` to resume the main
-  loop instead of exiting). Per Terminal.Gui's own doc comment, that `errorHandler` only takes effect
-  in RELEASE builds — a DEBUG build still rethrows so a debugger can break on the original exception.
-  `CliMode` needed no change beyond the process-wide `UnobservedTaskException` hook: it already
-  catches the same known failure modes per line (`ConnectionErrorMessages.IsConnectionFailure`,
-  `TimeoutException`) the other front ends do, and letting anything past that crash with a non-zero
-  exit code is the right behavior for a scriptable/automatable mode — swallowing an unanticipated
-  exception there would hide a real bug from whatever's driving it via a script/CI pipeline. See
+- **Global unhandled-exception handling** — done, added 2026-09-22. See
   `docs/changes/2026-09-22.md`.
 
 - **SCPI instrument control module** (`DevTerm.Devices.Scpi`), landed 2026-09-23 — a data-driven
@@ -240,11 +152,14 @@ Completed work is logged by date under `docs/changes/`.
   `ControlPanelModeTests`/`ControlPanelWindowTests`, and `"scpi"` added to
   `ConnectionEditorViewModel.PresenterOptions` (and both its checkbox-list test assertions) up
   front, avoiding the exact `k8055`/`busylight` omission bug fixed earlier the same week.
-  **Not yet verified against any real hardware** — none of the six curated command sets has been
-  confirmed against an actual instrument; only a code-review/unit-test pass so far. The Tektronix
-  2230 remains explicitly out of scope (pre-SCPI, doesn't speak this protocol at all) — see the new
-  `docs/design/proposals/tektronix-2230-protocol.md` for what's known and what real-hardware
-  probing it still needs.
+  **Real-hardware verification status** (see the later same-day entries in
+  `docs/changes/2026-09-23.md`): the HP/Agilent/Keysight 34401A (RS-232 remote-mode root cause) and
+  both Korad KA3005P/KA6003P (including a real load test) are now confirmed working end-to-end. The
+  Rigol DM3058E/DG1022/DS1105E curated profiles remain unconfirmed against real hardware. The
+  Tektronix 2230 was originally out of scope for this module entirely (pre-SCPI, doesn't speak this
+  protocol at all) but got a minimal one-command profile anyway — see
+  `docs/design/proposals/tektronix-2230-protocol.md` — now confirmed live over TCP, as has a
+  same-day `tektronix-tds2024.json` profile.
 
 - **SCPI follow-ups from real-hardware use against a physical HP/Agilent/Keysight 34401A**, landed
   2026-09-23 — driving the 34401A over real RS-232 surfaced correct settings (9600/8/2/None,
@@ -270,31 +185,13 @@ Completed work is logged by date under `docs/changes/`.
   detecting/warning about the gap. Covered by new `UNIT` tests; **not yet re-verified against the
   physical 34401A** (no real-hardware access this session).
 
-- **`CliOptions.ExportDirectory`**, landed 2026-09-23 — a configurable destination for
-  not-yet-built auto-saved captures (see the Stream Monitor proposal in `BACKLOG.md`), defaulting to
-  `~/.dev-term/exports` (`DevTermUserDataPaths.ExportsDirectory`) via `EffectiveExportDirectory`.
-  Bound through the same `DevTermConfiguration` command-line/environment-variable/settings-file
-  layering every other `CliOptions` property already gets — no special-case binding code needed for
-  a plain nullable string, unlike the `Presenter` array property. No editor UI row yet (same as the
-  existing, also-editorless `ManifestName`) — this is prep for the Stream Monitor feature itself,
-  not a user-facing setting on its own yet.
+- **`CliOptions.ExportDirectory`** — done, landed 2026-09-23 (prep for the not-yet-built Stream
+  Monitor feature in `BACKLOG.md`; no editor UI row yet, same as `ManifestName`). See
+  `docs/changes/2026-09-23.md`.
 
-- **Send-line history recall (Up/Down)**, landed 2026-09-23 — a new, shared `SendHistory`
-  (`DevTerm.Configuration`), a bounded (100-entry), most-recent-first, in-memory-only history of
-  lines sent from the live session screen's send field, so pressing Up recalls the last line sent
-  (and repeatedly, older ones), Down steps back toward the newest, matching ordinary shell-history
-  semantics. WPF's `MainWindow.SendBox` changed from a plain `TextBox` to an editable `ComboBox`
-  (`ItemsSource` bound directly to `SendHistory.Items` for a live drop-down), with Enter/Up/Down
-  handled via `PreviewKeyDown` rather than the bubbling `KeyDown` (the same "don't trust unverified
-  native widget key routing" precedent as Ctrl+Q), pulled into a directly-testable
-  `HandleSendBoxKey(Key)` method rather than only reachable through the routed event. Terminal.Gui
-  2.5.0 has no combo box, so the TUI's `sendField` stays a plain `TextField`; its existing `KeyDown`
-  handler gained `Key.CursorUp`/`Key.CursorDown` branches doing the same recall, with no visible
-  drop-down. Both front ends record a line via `SendHistory.Add` at the same point they already
-  clear the field on Enter/Send, regardless of whether the send itself succeeds. Not persisted
-  across restarts — in-memory for the life of the process only. 17 new `UNIT` tests: 12 in
-  `DevTerm.Configuration.Tests` (`SendHistoryTests`) covering bounding/trimming/cursor semantics, 3
-  in `DevTerm.Wpf.Tests` (`MainWindowTests`), 2 in `DevTerm.Console.Tests` (`TuiModeTests`) — see
+- **Send-line history recall (Up/Down)** — done, landed 2026-09-23, confirmed working in real use
+  2026-09-23 (both front ends); not persisted across restarts. One known bug (duplicate entry when
+  the same line is sent twice in a row) is tracked in the Architect's bug list below. See
   `docs/changes/2026-09-23.md`.
 
 - **Real-hardware/real-usage bugs reported by the Architect (2026-09-23), not yet fixed.** Raw notes
@@ -325,20 +222,21 @@ Completed work is logged by date under `docs/changes/`.
     regresses.
   - **Device presenter "Custom Command" section** (SCPI and any device profile using the always-present
     custom-command escape hatch): pressing Enter in the "Command" field throws an exception; clicking
-    "Send" with a value typed in "Command" also throws — likely the same root cause, not yet
-    root-caused.
-  - **Tektronix 2230**: the `id` command's outbound terminator should be `\r`, not the `\n` guessed in
-    `Profiles/tektronix-2230.json`/[tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)
-    (a correction from the device owner, not yet applied to the profile or re-verified with a fresh
-    capture).
-  - **New real hardware now available for testing** (previously only two 2230 scopes and the
-    K8055/Busylight were confirmed reachable): USB Rigol DG1000Z, DG3000, DM3000, DS1000, plus Korad
-    KA3005P on COM6 and KA6003P on COM7. This is a real opportunity to verify the SCPI module's six
-    curated profiles (still flagged "not yet verified against any real hardware" above) — note the
-    newly-available units are different specific models than the profiles currently bundled
-    (`rigol-dg1022.json`, `rigol-dm3058e.json`, `rigol-ds1105e.json`), so verifying may also mean
-    adding sibling profiles for the DG1000Z/DG3000/DM3000/DS1000 families rather than assuming an
-    existing profile just works unmodified.
+    "Send" with a value typed in "Command" also throws. **Likely fixed by the same-day
+    `ScpiControlSurface.InvokeAsync` change** (recognizes the custom-command field's own id, same as a
+    multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
+    `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
+  - **Tektronix 2230 terminator** — done: the `id` command's outbound terminator was corrected from
+    the guessed `\n` to the device owner's confirmed `\r` in `Profiles/tektronix-2230.json` and
+    [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md), and reconfirmed
+    with a fresh capture. See `docs/changes/2026-09-23.md`.
+  - **Remaining real-hardware verification opportunity**: Korad KA3005P/KA6003P and the HP/Agilent/
+    Keysight 34401A are now confirmed (see the SCPI module entry above); the Rigol DM3058E/DG1022/
+    DS1105E profiles are still unconfirmed. The newly-available Rigol bench units (DG1000Z, DG3000,
+    DM3000, DS1000) are different specific models than these three bundled profiles, so verifying
+    likely means adding sibling profiles rather than confirming the existing ones unmodified — and,
+    for any of them reachable only over USB rather than RS-232/LAN, is blocked on the USBTMC
+    transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
 
 ## Backlog / research
 

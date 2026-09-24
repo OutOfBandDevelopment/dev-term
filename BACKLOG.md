@@ -79,8 +79,11 @@ ordered against the rest.
   item above for the command/response definition piece specifically.
   [SCPI instrument control](docs/design/proposals/scpi-instrument-control.md) is **implemented**
   (2026-09-23, `DevTerm.Devices.Scpi`) — the first real declarative-schema instance, needing no new
-  transport for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above);
-  not yet verified against any of its six curated target instruments' real hardware.
+  transport for its RS-232/USB-CDC/LAN devices (USBTMC-only local-USB devices excepted — see above).
+  Real-hardware-confirmed for the HP/Agilent/Keysight 34401A and both Korad KA3005P/KA6003P curated
+  profiles (2026-09-23, see `docs/changes/2026-09-23.md`); the Rigol DM3058E/DG1022/DS1105E profiles
+  remain unconfirmed, and verifying them against the newly-available bench units is blocked on the
+  USBTMC bulk-IN stall noted above for any of them reachable only over USB.
   [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
   transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
   transport dependency (USB HID) is now built, but it still needs its HID report-framing question
@@ -202,7 +205,8 @@ ordered against the rest.
   [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md)'s own "why this
   isn't (fully) folded into the SCPI module" open question in favor of the separate-module option,
   once real-hardware probing (still needed — see that doc) turns up enough of the 2230's command set
-  to justify it. See `TODO.md` for a reported terminator correction (`\r`, not `\n`) to apply first.
+  to justify it. (The reported terminator correction, `\r` not `\n`, was already applied and
+  reconfirmed 2026-09-23 — see `docs/changes/2026-09-23.md`.)
 
 ## Research (not backlog-ready)
 
