@@ -122,9 +122,13 @@ the doc tree and how to keep it in sync.
 Five kinds of doc, each with a distinct job — don't blend them:
 
 - **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
-  left stale) as work completes: replace a finished entry with a short "done, see
-  `docs/changes/YYYY-MM-DD.md`" summary, or remove it, rather than leaving a completed item worded as
-  still-in-progress. **[`BACKLOG.md`](BACKLOG.md)** is the same idea for not-yet-started work.
+  left stale) as work completes. A finished entry is **deleted outright, not replaced with a "done,
+  see `docs/changes/YYYY-MM-DD.md`" pointer** — once its detail has actually landed in a
+  `docs/changes/` entry, `TODO.md` no longer needs to say anything about it at all; a pointer left
+  behind is still stale bookkeeping, just shorter. Only remove an entry once you've confirmed its
+  full detail already exists under `docs/changes/`; if it doesn't yet, write it there first, then
+  delete the `TODO.md` entry in the same change. **[`BACKLOG.md`](BACKLOG.md)** is the same idea for
+  not-yet-started work.
 - **`docs/changes/YYYY-MM-DD.md`** — the authoritative, detailed changelog. Append to today's file as
   work lands within a day; don't rewrite prior days'. This is where a real root cause, a fix's actual
   detail, or a "verified against real hardware" note belongs — `TODO.md`/proposal docs cross-reference

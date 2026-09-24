@@ -6,9 +6,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **UI Definitions model** (`DevTerm.UiDefinitions`) — done, landed 2026-09-15. See
-  `docs/design/ui-definitions.md` and `docs/changes/2026-09-15.md`.
-
 - **Generic `UiDefinition`/`IControlSurface` renderer, proven against the real K8055**, landed
   2026-09-22 — `IControlSurface` (`DevTerm.Core.Control`) and `IStructuredPresenter`
   (`DevTerm.Core.Presenters`) now exist in code, and both front ends read any `UiDefinition`
@@ -46,16 +43,6 @@ Completed work is logged by date under `docs/changes/`.
   (`DevTerm.Devices.Busylight.Tests`). **Not yet verified against a real physical Busylight** — this
   landed as a software-only pass; the user will do the physical hardware review later, the same way
   the K8055's remaining digital-in/TUI checklist items are deferred to them.
-
-- **Live user feedback on the K8055/Busylight panels** — done, addressed 2026-09-22 (five real
-  issues found via hands-on use, all fixed same day: the K8055 digital-input byte-offset bug — now
-  also confirmed against real hardware 2026-09-23 — Busylight's custom-color/program-sequence
-  buttons, unbounded output-pane growth, runaway indicator re-rendering, and the presenter-picker gap
-  when a device is selected via the GUI instead of `--presenter`). See `docs/changes/2026-09-22.md`.
-
-- **Device Manifests** (`DevTerm.DeviceManifests`) — done, landed 2026-09-15 (model + loader only;
-  turning a manifest into a working control surface/connection is separate future work, already
-  tracked in `BACKLOG.md`). See `docs/design/device-manifests.md` and `docs/changes/2026-09-15.md`.
 
 - **Connection Editor, from the 2026-09-15 Architect Notes.** Landing incrementally since
   2026-09-15 — full detail on each increment is in `docs/changes/2026-09-15.md`/
@@ -112,16 +99,6 @@ Completed work is logged by date under `docs/changes/`.
   `docs/changes/2026-09-22.md`) against the two real TCP devices actually available
   (192.168.0.108, 192.168.0.110) — both passed everywhere they're exercised; the third configured
   host (192.168.0.107) wasn't reachable and its `DataRow`s failed as expected, not a regression.
-
-- **`LoopbackTransport` test helper** — done, added 2026-09-22. See `docs/design/testing.md`'s
-  "Scripted responses without a real device" section and `docs/changes/2026-09-22.md`.
-
-- **Production `loopback` transport** (`DevTerm.Transports.Loopback`) — done, added 2026-09-22; no
-  user-configurable custom script yet. See `docs/design/transports.md`'s "Loopback" section and
-  `docs/changes/2026-09-22.md`.
-
-- **Global unhandled-exception handling** — done, added 2026-09-22. See
-  `docs/changes/2026-09-22.md`.
 
 - **SCPI instrument control module** (`DevTerm.Devices.Scpi`), landed 2026-09-23 — a data-driven
   profile mechanism for SCPI bench instruments rather than one hardcoded module per device, per
@@ -185,15 +162,6 @@ Completed work is logged by date under `docs/changes/`.
   detecting/warning about the gap. Covered by new `UNIT` tests; **not yet re-verified against the
   physical 34401A** (no real-hardware access this session).
 
-- **`CliOptions.ExportDirectory`** — done, landed 2026-09-23 (prep for the not-yet-built Stream
-  Monitor feature in `BACKLOG.md`; no editor UI row yet, same as `ManifestName`). See
-  `docs/changes/2026-09-23.md`.
-
-- **Send-line history recall (Up/Down)** — done, landed 2026-09-23, confirmed working in real use
-  2026-09-23 (both front ends); not persisted across restarts. One known bug (duplicate entry when
-  the same line is sent twice in a row) is tracked in the Architect's bug list below. See
-  `docs/changes/2026-09-23.md`.
-
 - **Real-hardware/real-usage bugs reported by the Architect (2026-09-23), not yet fixed.** Raw notes
   triaged into this file and `BACKLOG.md` the same day — design-level items (collapsible groups,
   per-field data-type/control-type metadata, an info icon showing the underlying command, Busylight
@@ -226,10 +194,6 @@ Completed work is logged by date under `docs/changes/`.
     `ScpiControlSurface.InvokeAsync` change** (recognizes the custom-command field's own id, same as a
     multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
     `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
-  - **Tektronix 2230 terminator** — done: the `id` command's outbound terminator was corrected from
-    the guessed `\n` to the device owner's confirmed `\r` in `Profiles/tektronix-2230.json` and
-    [tektronix-2230-protocol.md](docs/design/proposals/tektronix-2230-protocol.md), and reconfirmed
-    with a fresh capture. See `docs/changes/2026-09-23.md`.
   - **Remaining real-hardware verification opportunity**: Korad KA3005P/KA6003P and the HP/Agilent/
     Keysight 34401A are now confirmed (see the SCPI module entry above); the Rigol DM3058E/DG1022/
     DS1105E profiles are still unconfirmed. The newly-available Rigol bench units (DG1000Z, DG3000,

@@ -42,11 +42,19 @@ ordered against the rest.
   confirmed NOT a firmware limitation (the same units work fine under Rigol's own Ultra
   Sigma/NI-VISA), so it's specifically something about generic WinUSB/libusb access these Rigol units
   don't like; the actual fix needs a USB packet capture of a working NI-VISA exchange to diff against,
-  which hasn't been done. Parked rather than chased further with more blind guesses — see
+  which hasn't been done — reconfirmed still unchanged 2026-09-24 (`docs/changes/2026-09-24.md`).
+  USBPcap + Wireshark are now installed on the bench PC; the next concrete step is capturing a
+  working NI-VISA `*IDN?` exchange and comparing it against both `LibUsbDotNet`'s and an independent
+  Python `pyusb`/`python-usbtmc` exchange (a second non-.NET reference makes it easier to tell
+  "LibUsbDotNet-specific" apart from "any generic libusb/WinUSB binding") — not yet done. Parked
+  rather than chased further with more blind guesses — see
   `docs/design/usbtmc-transport.md`'s "Open questions" and `docs/changes/2026-09-23.md` for the full
-  investigation. Real target hardware still to check: the plain **Rigol DG1022** (no LAN option,
-  unlike the DG1022Z/DG1062Z) and the **Rigol DS1102E** oscilloscope (confirmed to have USB, likely
-  USBTMC for this era of Rigol scope but not yet confirmed for this specific unit).
+  investigation. Real target hardware confirmed reachable over USBTMC 2026-09-24: the plain
+  **Rigol DG1022** and the **Rigol DS1102E** oscilloscope both enumerate
+  (`--listusbtmcdevices true`), but share the same USB PID (`0x0588`) and the DG1022 unit's own
+  descriptor misreports its series as "DG3000" rather than "DG1000" — a serial number, not VID/PID
+  alone, would be needed to target one specifically; neither responds to a query yet, same stall as
+  above.
 - Declarative command/response schema for device control modules (send template + response
   pattern, `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/), an SCPI
   baseline for common bench-instrument commands) — see the new section in

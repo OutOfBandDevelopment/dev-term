@@ -16,7 +16,7 @@ separate follow-up:
 | `CLAUDE.md` | Non-obvious constraints that will bite the next change if forgotten | You hit a real, non-googleable gotcha (an API restriction, a threading/lifecycle hazard, a serialization limitation) — verified empirically, not guessed |
 | `docs/design/*.md` | Why a feature exists, the shared architecture behind it | The architecture or rationale changes (new shared component, new cross-cutting concern) |
 | `docs/changes/YYYY-MM-DD.md` | Daily log of what was verified and how | Any non-trivial change, especially anything verified against real hardware |
-| `TODO.md` | Current in-progress state (active work only) | An in-progress item's status changes, or work starts on a new one |
+| `TODO.md` | Current in-progress state (active work only) | An in-progress item's status changes, or work starts on a new one. When an item finishes, delete it outright once its detail is in `docs/changes/` — never replace it with a "done, see docs/changes/..." pointer. |
 | `BACKLOG.md` | Not-yet-started backlog/research, kept out of `TODO.md` to keep it lean | A backlog item is finished (remove it, note it landed in `TODO.md`'s narrative), or a new one is identified |
 
 ## Screenshots are tests, not manual chores
