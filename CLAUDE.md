@@ -272,6 +272,20 @@ file only points there, it doesn't restate them.**
   handling it was correct. `PipeReader.TryRead(out ReadResult)` is the non-blocking alternative,
   returning `false` immediately when nothing's been written and the pipe is still open — use it (not
   a bare `ReadAsync`) whenever a test's whole point is asserting that a read produced nothing.
+- **A real-hardware serial/transport test choosing the terminatorless `RawPresenter` over
+  `AsciiPresenter` must match the actual device, not just avoid an `AsciiPresenter` hang** —
+  `RawPresenter` emits whatever bytes arrived in a single transport read verbatim, firing a separate
+  `Session.Output` per read with no buffering. For a device with a real line terminator, a reply can
+  legitimately arrive over the wire in more than one read; `RawPresenter` then silently surfaces only
+  the first fragment (e.g. `Received: H` instead of the real `*IDN?` string) as if it were the whole
+  reply — the test still passes (non-empty, no fault/timeout, which is all these tests assert) even
+  though the captured value is garbage. Confirmed against a real HP 34401A
+  (`docs/test/2026-09-25-18-57-22.md`; `tests/DevTerm.Console.Tests/RealHardwareSerialTests.cs`).
+  `RawPresenter` is only trustworthy for a genuinely terminatorless device (the Korad KA3005P/
+  KA6003P, the Rigol DS1102E) — a device with a real terminator (the HP 34401A's LF, both Tektronix
+  scopes) needs `AsciiPresenter` instead, which buffers until that terminator even though it's
+  tempting to reach for `RawPresenter` everywhere just to sidestep `AsciiPresenter` never flushing a
+  terminatorless reply.
 - **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
   `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
   view-model property that already had a value at construction time still read back empty
