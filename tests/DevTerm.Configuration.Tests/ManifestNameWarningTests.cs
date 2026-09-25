@@ -28,7 +28,7 @@ public sealed class ManifestNameWarningTests
         var warning = ManifestNameWarning.For(new CliOptions { ManifestName = name });
 
         Assert.IsNotNull(warning);
-        StringAssert.Contains(warning, name);
-        StringAssert.Contains(warning, "Warning:");
+        Assert.Contains(name, warning);
+        Assert.Contains("Warning:", warning);
     }
 }

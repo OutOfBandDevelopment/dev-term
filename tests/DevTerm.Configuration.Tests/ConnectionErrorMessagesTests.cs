@@ -9,7 +9,7 @@ public sealed class ConnectionErrorMessagesTests
     {
         var message = ConnectionErrorMessages.For("serial", new IOException("Could not find file 'COM9'."));
 
-        StringAssert.Contains(message, "--listports");
+        Assert.Contains("--listports", message);
     }
 
     [TestMethod]
@@ -25,7 +25,7 @@ public sealed class ConnectionErrorMessagesTests
     {
         var message = ConnectionErrorMessages.For("serial", new IOException("Could not find file 'COM9'."));
 
-        StringAssert.Contains(message, "Could not find file 'COM9'.");
+        Assert.Contains("Could not find file 'COM9'.", message);
     }
 
     [TestMethod]
@@ -46,8 +46,8 @@ public sealed class ConnectionErrorMessagesTests
     {
         var message = ConnectionErrorMessages.For("hid", new TimeoutException("The operation has timed out."));
 
-        StringAssert.Contains(message, "The operation has timed out.");
-        StringAssert.Contains(message, "--listhiddevices");
+        Assert.Contains("The operation has timed out.", message);
+        Assert.Contains("--listhiddevices", message);
     }
 
     [TestMethod]
@@ -55,6 +55,6 @@ public sealed class ConnectionErrorMessagesTests
     {
         var message = ConnectionErrorMessages.For("SERIAL", new UnauthorizedAccessException("Access denied"));
 
-        StringAssert.Contains(message, "--listports");
+        Assert.Contains("--listports", message);
     }
 }

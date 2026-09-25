@@ -11,7 +11,7 @@ namespace DevTerm.Devices.Busylight;
 /// docs/design/features/kuando-busylight-protocol.md. Every command other than "apply" only mutates
 /// internal state; "apply" is the only command that actually sends a frame, matching the mockup's
 /// explicit [Apply] button rather than sending on every field change. The "color" command accepts
-/// either a known preset name (see <see cref="Colors"/>) or a custom <c>"r,g,b"</c> triple (each
+/// either a known preset name (see <see cref="_colors"/>) or a custom <c>"r,g,b"</c> triple (each
 /// 0-255, invariant culture) as sent by either front end's RGB/HSV color-picker modal (opened via
 /// <c>ButtonControl.ColorPickerTargetCommandId</c> on the "Custom..." button — this surface never
 /// shows UI itself). "customColor" itself is a documented no-op — the button opens a color picker
@@ -23,7 +23,7 @@ namespace DevTerm.Devices.Busylight;
 /// </summary>
 public sealed class BusylightControlSurface : IControlSurface
 {
-    private static readonly IReadOnlyDictionary<string, (byte R, byte G, byte B)> Colors = new Dictionary<string, (byte R, byte G, byte B)>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, (byte R, byte G, byte B)> _colors = new Dictionary<string, (byte R, byte G, byte B)>(StringComparer.OrdinalIgnoreCase)
     {
         ["Red"] = (0xFF, 0x00, 0x00),
         ["Green"] = (0x00, 0xFF, 0x00),
@@ -32,7 +32,7 @@ public sealed class BusylightControlSurface : IControlSurface
         ["Off"] = (0x00, 0x00, 0x00),
     };
 
-    private static readonly string[] Tracks = ["Funky", "Nordic", "Quiet", "Open Office", "Kuando"];
+    private static readonly string[] _tracks = ["Funky", "Nordic", "Quiet", "Open Office", "Kuando"];
 
     private readonly Session _session;
     private readonly object _stateLock = new();
@@ -111,7 +111,7 @@ public sealed class BusylightControlSurface : IControlSurface
             return;
         }
 
-        if (Colors.TryGetValue(value, out var rgb))
+        if (_colors.TryGetValue(value, out var rgb))
         {
             (_r, _g, _b) = rgb;
             return;
@@ -163,7 +163,7 @@ public sealed class BusylightControlSurface : IControlSurface
 
     private void SetTrack(string? value)
     {
-        var index = value is null ? -1 : Array.IndexOf(Tracks, value);
+        var index = value is null ? -1 : Array.IndexOf(_tracks, value);
         if (index >= 0)
         {
             _trackIndex = index;

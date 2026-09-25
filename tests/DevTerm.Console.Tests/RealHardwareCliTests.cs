@@ -23,11 +23,11 @@ public sealed class RealHardwareCliTests
 {
     public TestContext TestContext { get; set; } = null!;
 
-    private static readonly string ConsoleAppDirectory = AppContext.BaseDirectory.Replace(
+    private static readonly string _consoleAppDirectory = AppContext.BaseDirectory.Replace(
         Path.Combine("tests", "DevTerm.Console.Tests"),
         Path.Combine("src", "DevTerm.Console"));
 
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(15);
 
     private string? GetProperty(string name) => TestContext.Properties.ContainsKey(name) ? TestContext.Properties[name] as string : null;
 
@@ -48,10 +48,10 @@ public sealed class RealHardwareCliTests
         var query = GetProperty(queryParameterName);
         var expectedReplySubstring = GetProperty(expectedReplyParameterName);
 
-        this.TestContext.WriteLine($"Host: {host}");
-        this.TestContext.WriteLine($"Port: {port}");
-        this.TestContext.WriteLine($"Query: {query}");
-        this.TestContext.WriteLine($"Expected Reply Subtring: {expectedReplySubstring}");
+        TestContext.WriteLine($"Host: {host}");
+        TestContext.WriteLine($"Port: {port}");
+        TestContext.WriteLine($"Query: {query}");
+        TestContext.WriteLine($"Expected Reply Subtring: {expectedReplySubstring}");
 
         if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(port) || string.IsNullOrEmpty(query) || string.IsNullOrEmpty(expectedReplySubstring))
         {
@@ -61,7 +61,7 @@ public sealed class RealHardwareCliTests
 
         var startInfo = new ProcessStartInfo(
             "dotnet",
-            $"\"{Path.Combine(ConsoleAppDirectory, "DevTerm.Console.dll")}\" --transport tcp --host {host} --port {port} --presenter ascii --lineending Cr --cli true")
+            $"\"{Path.Combine(_consoleAppDirectory, "DevTerm.Console.dll")}\" --transport tcp --host {host} --port {port} --presenter ascii --lineending Cr --cli true")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -73,22 +73,22 @@ public sealed class RealHardwareCliTests
         using var process = Process.Start(startInfo)!;
 
         await process.StandardInput.WriteLineAsync(query);
-        await process.StandardInput.FlushAsync();
+        await process.StandardInput.FlushAsync(TestContext.CancellationToken);
 
         string? line;
         do
         {
-            line = await process.StandardOutput.ReadLineAsync().WaitAsync(Timeout);
+            line = await process.StandardOutput.ReadLineAsync(TestContext.CancellationToken).AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
         }
         while (line is not null && !line.Contains("[ascii]", StringComparison.Ordinal));
 
-        this.TestContext.WriteLine($"Reply: {line}");
+        TestContext.WriteLine($"Reply: {line}");
 
         Assert.IsNotNull(line, $"Expected a decoded reply from the real device at {host}:{port} before the process ran out of output.");
-        StringAssert.Contains(line, expectedReplySubstring);
+        Assert.Contains(expectedReplySubstring, line);
 
         process.StandardInput.Close();
-        await process.WaitForExitAsync().WaitAsync(Timeout);
+        await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         Assert.AreEqual(0, process.ExitCode);
     }
 }

@@ -10,7 +10,7 @@ namespace DevTerm.Transports.Usbtmc;
 /// </summary>
 public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
 {
-    private const byte UsbtmcInterfaceSubClass = 0x03;
+    private const byte _usbtmcInterfaceSubClass = 0x03;
 
     public IReadOnlyList<UsbtmcDeviceDescriptor> GetDevices()
     {
@@ -29,7 +29,7 @@ public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
             try
             {
                 var isUsbtmc = device.Configs.Any(config => config.Interfaces.Any(
-                    iface => iface.Class == ClassCode.Application && iface.SubClass == UsbtmcInterfaceSubClass));
+                    iface => iface.Class == ClassCode.Application && iface.SubClass == _usbtmcInterfaceSubClass));
 
                 if (!isUsbtmc)
                 {

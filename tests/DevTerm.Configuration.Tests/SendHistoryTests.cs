@@ -38,7 +38,7 @@ public sealed class SendHistoryTests
         history.Add("first");
         history.Add("second");
 
-        CollectionAssert.AreEqual(new[] { "second", "first" }, history.Items);
+        Assert.AreSequenceEqual(new[] { "second", "first" }, history.Items);
     }
 
     [TestMethod]
@@ -134,6 +134,6 @@ public sealed class SendHistoryTests
         history.ResetCursor();
 
         Assert.AreEqual("first", history.Previous());
-        CollectionAssert.AreEqual(new[] { "first" }, history.Items);
+        Assert.AreSequenceEqual(new[] { "first" }, history.Items);
     }
 }

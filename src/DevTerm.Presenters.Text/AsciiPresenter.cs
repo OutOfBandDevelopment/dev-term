@@ -21,8 +21,8 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
 {
     public const int DefaultMaxLineLength = 4096;
 
-    private const byte LineFeed = (byte)'\n';
-    private const byte CarriageReturn = (byte)'\r';
+    private const byte _lineFeed = (byte)'\n';
+    private const byte _carriageReturn = (byte)'\r';
 
     private readonly List<byte> _buffer = [];
     private bool _pendingCr;
@@ -57,7 +57,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
         {
             foreach (var b in segment.Span)
             {
-                if (b == LineFeed)
+                if (b == _lineFeed)
                 {
                     if (_pendingCr)
                     {
@@ -72,7 +72,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
 
                 _pendingCr = false;
 
-                if (b == CarriageReturn)
+                if (b == _carriageReturn)
                 {
                     (lines ??= []).Add(Flush());
                     _pendingCr = true;

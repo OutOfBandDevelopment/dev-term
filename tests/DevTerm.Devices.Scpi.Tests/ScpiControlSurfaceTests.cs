@@ -66,7 +66,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("rst", null);
+        await surface.InvokeAsync("rst", null, TestContext.CancellationToken);
 
         VerifySent(transport, "*RST\n");
     }
@@ -77,7 +77,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("freq", "123.5");
+        await surface.InvokeAsync("freq", "123.5", TestContext.CancellationToken);
 
         VerifySent(transport, "SOUR1:FREQ 123.5\n");
     }
@@ -88,7 +88,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("conf", "VOLT:AC,10");
+        await surface.InvokeAsync("conf", "VOLT:AC,10", TestContext.CancellationToken);
 
         VerifySent(transport, "CONF:VOLT:AC 10\n");
     }
@@ -99,7 +99,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("freq", "5000");
+        await surface.InvokeAsync("freq", "5000", TestContext.CancellationToken);
 
         VerifySent(transport, "SOUR1:FREQ 1000\n");
     }
@@ -110,7 +110,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("freq", null);
+        await surface.InvokeAsync("freq", null, TestContext.CancellationToken);
 
         VerifySent(transport, "SOUR1:FREQ 10\n");
     }
@@ -121,7 +121,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(terminator: string.Empty), tracker: null);
 
-        await surface.InvokeAsync("rst", null);
+        await surface.InvokeAsync("rst", null, TestContext.CancellationToken);
 
         VerifySent(transport, "*RST");
     }
@@ -132,7 +132,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "MEAS:VOLT:DC?");
+        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "MEAS:VOLT:DC?", TestContext.CancellationToken);
 
         VerifySent(transport, "MEAS:VOLT:DC?\n");
     }
@@ -144,7 +144,7 @@ public sealed class ScpiControlSurfaceTests
         var tracker = new Mock<IScpiReplyTracker>();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
 
-        await surface.InvokeAsync("idn", null);
+        await surface.InvokeAsync("idn", null, TestContext.CancellationToken);
 
         tracker.Verify(t => t.QuerySent("idn.reply"), Times.Once);
     }
@@ -156,7 +156,7 @@ public sealed class ScpiControlSurfaceTests
         var tracker = new Mock<IScpiReplyTracker>();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
 
-        await surface.InvokeAsync("rst", null);
+        await surface.InvokeAsync("rst", null, TestContext.CancellationToken);
 
         tracker.Verify(t => t.QuerySent(It.IsAny<string>()), Times.Never);
     }
@@ -168,7 +168,7 @@ public sealed class ScpiControlSurfaceTests
         var tracker = new Mock<IScpiReplyTracker>();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
 
-        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "*IDN?");
+        await surface.InvokeAsync(ScpiControlSurface.SendCustomCommandId, "*IDN?", TestContext.CancellationToken);
 
         tracker.Verify(t => t.QuerySent($"{ScpiControlSurface.SendCustomCommandId}.reply"), Times.Once);
     }
@@ -200,7 +200,7 @@ public sealed class ScpiControlSurfaceTests
         };
         var surface = new ScpiControlSurface(session, profile, tracker: null);
 
-        await surface.InvokeAsync("vset", "5");
+        await surface.InvokeAsync("vset", "5", TestContext.CancellationToken);
 
         VerifySent(transport, "VSET1:05.00");
     }
@@ -211,7 +211,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, _) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -227,7 +227,7 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync("freq.Frequency", "42");
+        await surface.InvokeAsync("freq.Frequency", "42", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -240,8 +240,10 @@ public sealed class ScpiControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
 
-        await surface.InvokeAsync(ScpiUiDefinitionBuilder.CustomCommandFieldId, "*IDN?");
+        await surface.InvokeAsync(ScpiUiDefinitionBuilder.CustomCommandFieldId, "*IDN?", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    public TestContext TestContext { get; set; }
 }

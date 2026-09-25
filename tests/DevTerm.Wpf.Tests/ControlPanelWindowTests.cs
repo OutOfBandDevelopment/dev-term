@@ -101,7 +101,7 @@ public sealed class ControlPanelWindowTests
             var window = new ControlPanelWindow(BuildSampleDefinition(), new FakeControlSurface(), null) { ShowInTaskbar = false };
             StaTestRunner.DoEvents();
 
-            StringAssert.Contains(window.StatusText.Text, "Not decoding");
+            Assert.Contains("Not decoding", window.StatusText.Text);
 
             await Task.CompletedTask;
         });

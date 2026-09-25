@@ -17,7 +17,7 @@ public sealed class DecimalPresenterTests
 
     [TestMethod]
     public void Parse_SplitsOnSpaces() =>
-        CollectionAssert.AreEqual(new byte[] { 0, 128, 255 }, _presenter.Parse("0 128 255"));
+        Assert.AreSequenceEqual(new byte[] { 0, 128, 255 }, _presenter.Parse("0 128 255"));
 
     [TestMethod]
     public void RoundTrip_RenderThenParse_ReturnsOriginalBytes()
@@ -26,6 +26,6 @@ public sealed class DecimalPresenterTests
 
         var result = _presenter.Parse(_presenter.Render(Of(original)).Single());
 
-        CollectionAssert.AreEqual(original, result);
+        Assert.AreSequenceEqual(original, result);
     }
 }

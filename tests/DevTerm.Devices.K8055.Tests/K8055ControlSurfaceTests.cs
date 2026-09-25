@@ -27,7 +27,7 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("digitalOut1", "1");
+        await surface.InvokeAsync("digitalOut1", "1", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -40,7 +40,7 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("digitalOut8", "1");
+        await surface.InvokeAsync("digitalOut8", "1", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -53,8 +53,8 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("digitalOut1", "1");
-        await surface.InvokeAsync("digitalOut3", "1");
+        await surface.InvokeAsync("digitalOut1", "1", TestContext.CancellationToken);
+        await surface.InvokeAsync("digitalOut3", "1", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -67,8 +67,8 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("digitalOut1", "1");
-        await surface.InvokeAsync("digitalOut1", "0");
+        await surface.InvokeAsync("digitalOut1", "1", TestContext.CancellationToken);
+        await surface.InvokeAsync("digitalOut1", "0", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -81,7 +81,7 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("analogOut1", "128");
+        await surface.InvokeAsync("analogOut1", "128", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 128, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -94,8 +94,8 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("analogOut1", "128");
-        await surface.InvokeAsync("analogOut2", "64");
+        await surface.InvokeAsync("analogOut1", "128", TestContext.CancellationToken);
+        await surface.InvokeAsync("analogOut2", "64", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 128, 64, 0x00, 0x00, 0x00, 0x00 })),
@@ -108,7 +108,7 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("resetCounter1", null);
+        await surface.InvokeAsync("resetCounter1", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -121,7 +121,7 @@ public sealed class K8055ControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await surface.InvokeAsync("resetCounter2", null);
+        await surface.InvokeAsync("resetCounter2", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
@@ -134,6 +134,8 @@ public sealed class K8055ControlSurfaceTests
         var (session, _) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
-        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
+
+    public TestContext TestContext { get; set; }
 }

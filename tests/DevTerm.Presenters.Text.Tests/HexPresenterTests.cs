@@ -17,13 +17,13 @@ public sealed class HexPresenterTests
 
     [TestMethod]
     public void Parse_AcceptsUnprefixedHex() =>
-        CollectionAssert.AreEqual(new byte[] { 0xFF, 0x00, 0xA5 }, _presenter.Parse("FF00A5"));
+        Assert.AreSequenceEqual(new byte[] { 0xFF, 0x00, 0xA5 }, _presenter.Parse("FF00A5"));
 
     [TestMethod]
     public void Parse_AcceptsSpacedAndPrefixedHex() =>
-        CollectionAssert.AreEqual(new byte[] { 0xFF, 0x00, 0xA5 }, _presenter.Parse("0xFF 0x00 0xA5"));
+        Assert.AreSequenceEqual(new byte[] { 0xFF, 0x00, 0xA5 }, _presenter.Parse("0xFF 0x00 0xA5"));
 
     [TestMethod]
     public void Parse_IsCaseInsensitiveForThe0xPrefix() =>
-        CollectionAssert.AreEqual(new byte[] { 0xAB }, _presenter.Parse("0XAB"));
+        Assert.AreSequenceEqual(new byte[] { 0xAB }, _presenter.Parse("0XAB"));
 }

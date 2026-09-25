@@ -26,18 +26,18 @@ namespace DevTerm.Console.Tests;
 /// </summary>
 internal static class TuiScreenshot
 {
-    private const int CellWidth = 9;
-    private const int CellHeight = 18;
+    private const int _cellWidth = 9;
+    private const int _cellHeight = 18;
 
     public static void Save(string path)
     {
         var buffer = Application.Driver!.GetOutputBuffer();
-        var width = buffer.Cols * CellWidth;
-        var height = buffer.Rows * CellHeight;
+        var width = buffer.Cols * _cellWidth;
+        var height = buffer.Rows * _cellHeight;
 
         using var bitmap = new Bitmap(width, height);
         using var graphics = Graphics.FromImage(bitmap);
-        using var font = new Font("Cascadia Mono", CellHeight - 4f, FontStyle.Regular, GraphicsUnit.Pixel);
+        using var font = new Font("Cascadia Mono", _cellHeight - 4f, FontStyle.Regular, GraphicsUnit.Pixel);
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
         graphics.Clear(Color.White);
 
@@ -46,14 +46,14 @@ internal static class TuiScreenshot
             for (var col = 0; col < buffer.Cols; col++)
             {
                 var cell = buffer.Contents[row, col];
-                var x = col * CellWidth;
-                var y = row * CellHeight;
+                var x = col * _cellWidth;
+                var y = row * _cellHeight;
 
                 var (background, foreground) = ResolveColors(cell.Attribute);
 
                 using (var backgroundBrush = new SolidBrush(background))
                 {
-                    graphics.FillRectangle(backgroundBrush, x, y, CellWidth, CellHeight);
+                    graphics.FillRectangle(backgroundBrush, x, y, _cellWidth, _cellHeight);
                 }
 
                 if (!string.IsNullOrWhiteSpace(cell.Grapheme))

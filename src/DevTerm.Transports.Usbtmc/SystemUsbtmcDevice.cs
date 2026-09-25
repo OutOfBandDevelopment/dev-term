@@ -12,20 +12,20 @@ namespace DevTerm.Transports.Usbtmc;
 /// </summary>
 public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 {
-    private const byte UsbtmcInterfaceSubClass = 0x03;
+    private const byte _usbtmcInterfaceSubClass = 0x03;
 
     // Endpoint descriptor Attributes bits 0-1 = transfer type (USB 2.0 spec table 9-13);
     // 0x02 = Bulk. A USBTMC interface can also expose an optional Interrupt-IN endpoint (for
     // USB488 SRQ) alongside Bulk-IN/-OUT, so endpoint selection must filter on this, not just
     // direction, or an Interrupt-IN sorting before Bulk-IN in the descriptor gets picked instead.
-    private const byte UsbEndpointTransferTypeMask = 0x03;
-    private const byte UsbEndpointTransferTypeBulk = 0x02;
+    private const byte _usbEndpointTransferTypeMask = 0x03;
+    private const byte _usbEndpointTransferTypeBulk = 0x02;
 
     // USB488 subclass extension control requests (USBTMC USB488 spec, table 8) - bmRequestType
     // 0xA1 = Device-to-Host | Class | Interface, matching that spec's request definitions.
-    private const byte Usb488RequestType = 0xA1;
-    private const byte Usb488RenControl = 0xA0;
-    private const byte Usb488GoToLocal = 0xA1;
+    private const byte _usb488RequestType = 0xA1;
+    private const byte _usb488RenControl = 0xA0;
+    private const byte _usb488GoToLocal = 0xA1;
 
     private readonly UsbtmcTransportOptions _options;
     private UsbContext? _context;
@@ -65,7 +65,7 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
                 }
 
                 var isUsbtmc = candidate.Configs.Any(config => config.Interfaces.Any(
-                    iface => iface.Class == ClassCode.Application && iface.SubClass == UsbtmcInterfaceSubClass));
+                    iface => iface.Class == ClassCode.Application && iface.SubClass == _usbtmcInterfaceSubClass));
                 if (!isUsbtmc)
                 {
                     candidate.Dispose();
@@ -95,16 +95,16 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
 
             var iface = matched.Configs
                 .SelectMany(config => config.Interfaces)
-                .First(i => i.Class == ClassCode.Application && i.SubClass == UsbtmcInterfaceSubClass);
+                .First(i => i.Class == ClassCode.Application && i.SubClass == _usbtmcInterfaceSubClass);
             _interfaceNumber = iface.Number;
 
             matched.ClaimInterface(_interfaceNumber);
 
             var bulkIn = iface.Endpoints.FirstOrDefault(e =>
-                (e.EndpointAddress & 0x80) != 0 && (e.Attributes & UsbEndpointTransferTypeMask) == UsbEndpointTransferTypeBulk)
+                (e.EndpointAddress & 0x80) != 0 && (e.Attributes & _usbEndpointTransferTypeMask) == _usbEndpointTransferTypeBulk)
                 ?? throw new IOException("USBTMC interface has no bulk-IN endpoint.");
             var bulkOut = iface.Endpoints.FirstOrDefault(e =>
-                (e.EndpointAddress & 0x80) == 0 && (e.Attributes & UsbEndpointTransferTypeMask) == UsbEndpointTransferTypeBulk)
+                (e.EndpointAddress & 0x80) == 0 && (e.Attributes & _usbEndpointTransferTypeMask) == _usbEndpointTransferTypeBulk)
                 ?? throw new IOException("USBTMC interface has no bulk-OUT endpoint.");
 
             _reader = matched.OpenEndpointReader((ReadEndpointID)bulkIn.EndpointAddress, _options.MaxTransferSize, EndpointType.Bulk);
@@ -149,8 +149,8 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
             // Per the USB488 subclass spec, enable/disable is encoded in which bRequest is sent
             // (REN_CONTROL vs. GO_TO_LOCAL), not in wValue - wValue is always 0 here.
             var setup = new UsbSetupPacket(
-                bRequestType: Usb488RequestType,
-                bRequest: remote ? Usb488RenControl : Usb488GoToLocal,
+                bRequestType: _usb488RequestType,
+                bRequest: remote ? _usb488RenControl : _usb488GoToLocal,
                 wValue: 0,
                 wIndex: _interfaceNumber,
                 wlength: 1);

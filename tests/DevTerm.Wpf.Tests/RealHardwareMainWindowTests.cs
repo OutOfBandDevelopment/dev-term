@@ -20,7 +20,7 @@ public sealed class RealHardwareMainWindowTests
 {
     public TestContext TestContext { get; set; } = null!;
 
-    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(10);
 
     [TestMethod]
     [DataRow("RealTcpDeviceHost3")]
@@ -51,12 +51,12 @@ public sealed class RealHardwareMainWindowTests
             window.SendBox.Text = "ID?";
             await window.SendCurrentInputAsync();
 
-            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
             Assert.IsTrue(appeared, $"Expected a decoded reply from the real device at {host}:{port}.");
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "TEK/2230");
+            Assert.Contains("TEK/2230", (string)window.OutputList.Items[0]!);
 
-            await session.CloseAsync();
+            await session.CloseAsync(TestContext.CancellationToken);
             await session.DisposeAsync();
         });
     }

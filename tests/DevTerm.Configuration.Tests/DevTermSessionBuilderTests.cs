@@ -10,7 +10,7 @@ public sealed class DevTermSessionBuilderTests
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["hex"] });
 
         Assert.IsNotNull(result.Session);
-        CollectionAssert.AreEqual(new[] { "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray());
+        Assert.AreSequenceEqual(new[] { "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray());
         Assert.AreEqual(Core.Transports.ConnectionState.Closed, result.Session.State);
     }
 
@@ -20,7 +20,7 @@ public sealed class DevTermSessionBuilderTests
         var options = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["not-a-real-presenter"] };
 
         var ex = Assert.ThrowsExactly<InvalidOperationException>(() => DevTermSessionBuilder.Build(options));
-        StringAssert.Contains(ex.Message, "not-a-real-presenter");
+        Assert.Contains("not-a-real-presenter", ex.Message);
     }
 
     [TestMethod]
@@ -28,7 +28,7 @@ public sealed class DevTermSessionBuilderTests
     {
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "hex", "ASCII"] });
 
-        CollectionAssert.AreEqual(new[] { "ascii", "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray(), "Duplicates (any case) collapse.");
+        Assert.AreSequenceEqual(new[] { "ascii", "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray(), "Duplicates (any case) collapse.");
     }
 
     [TestMethod]
@@ -37,7 +37,7 @@ public sealed class DevTermSessionBuilderTests
         var options = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Parser = "nope" };
 
         var ex = Assert.ThrowsExactly<InvalidOperationException>(() => DevTermSessionBuilder.Build(options));
-        StringAssert.Contains(ex.Message, "nope");
+        Assert.Contains("nope", ex.Message);
     }
 
     [TestMethod]
@@ -46,7 +46,7 @@ public sealed class DevTermSessionBuilderTests
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["decimal", "hex"] });
 
         Assert.IsTrue(result.Catalog.TryGetInput("decimal", out _));
-        CollectionAssert.AreEquivalent(new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" }, result.Catalog.InputNames.ToArray());
+        Assert.AreSequenceEqual(new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" }, result.Catalog.InputNames.ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]

@@ -72,11 +72,11 @@ public sealed class Hp34401aProfileTests
             var field = (ChoiceControl)section.Controls.Single(c => c.Id == $"{id}.Range");
             var button = (ButtonControl)section.Controls.Single(c => c.Id == $"{id}.send");
 
-            CollectionAssert.AreEqual(new[] { "DEF", "MIN", "MAX" }, field.Options, $"unexpected Range options for {id}");
+            Assert.AreSequenceEqual(new[] { "DEF", "MIN", "MAX" }, field.Options, $"unexpected Range options for {id}");
             Assert.AreEqual("DEF", field.DefaultValue, $"unexpected Range default for {id}");
             Assert.AreEqual(id, button.CommandId);
-            CollectionAssert.AreEqual(new[] { $"{id}.Range" }, button.ParameterFieldIds);
-            Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == $"{id}.reply"));
+            Assert.AreSequenceEqual(new[] { $"{id}.Range" }, button.ParameterFieldIds);
+            Assert.DoesNotContain(c => c.Id == $"{id}.reply", section.Controls.OfType<IndicatorControl>());
         }
     }
 
@@ -89,11 +89,11 @@ public sealed class Hp34401aProfileTests
         var field = (ChoiceControl)section.Controls.Single(c => c.Id == "confVoltDc.Range");
         var button = (ButtonControl)section.Controls.Single(c => c.Id == "confVoltDc.send");
 
-        CollectionAssert.AreEqual(new[] { "DEF", "0.1", "1", "10", "100", "1000" }, field.Options);
+        Assert.AreSequenceEqual(new[] { "DEF", "0.1", "1", "10", "100", "1000" }, field.Options);
         Assert.AreEqual("DEF", field.DefaultValue);
         Assert.AreEqual("confVoltDc", button.CommandId);
-        CollectionAssert.AreEqual(new[] { "confVoltDc.Range" }, button.ParameterFieldIds);
-        Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == "confVoltDc.reply"));
+        Assert.AreSequenceEqual(new[] { "confVoltDc.Range" }, button.ParameterFieldIds);
+        Assert.DoesNotContain(c => c.Id == "confVoltDc.reply", section.Controls.OfType<IndicatorControl>());
     }
 
     [TestMethod]
@@ -107,7 +107,7 @@ public sealed class Hp34401aProfileTests
             var button = (ButtonControl)section.Controls.Single(c => c.Id == id);
             Assert.IsNull(button.CommandId);
             Assert.IsNull(button.ParameterFieldIds);
-            Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == $"{id}.reply"));
+            Assert.DoesNotContain(c => c.Id == $"{id}.reply", section.Controls.OfType<IndicatorControl>());
         }
     }
 
@@ -133,10 +133,10 @@ public sealed class Hp34401aProfileTests
         Assert.IsNotNull(section.Controls.OfType<IndicatorControl>().SingleOrDefault(c => c.Id == "sysErr.reply"));
 
         var dispField = (ChoiceControl)section.Controls.Single(c => c.Id == "disp.State");
-        CollectionAssert.AreEqual(new[] { "ON", "OFF" }, dispField.Options);
+        Assert.AreSequenceEqual(new[] { "ON", "OFF" }, dispField.Options);
 
         var beeperField = (ChoiceControl)section.Controls.Single(c => c.Id == "beeperState.State");
-        CollectionAssert.AreEqual(new[] { "ON", "OFF" }, beeperField.Options);
+        Assert.AreSequenceEqual(new[] { "ON", "OFF" }, beeperField.Options);
     }
 
     [TestMethod]
@@ -145,7 +145,7 @@ public sealed class Hp34401aProfileTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, Profile, tracker: null);
 
-        await surface.InvokeAsync("measVoltDc", null);
+        await surface.InvokeAsync("measVoltDc", null, TestContext.CancellationToken);
 
         VerifySent(transport, "MEAS:VOLT:DC?\n");
     }
@@ -156,7 +156,7 @@ public sealed class Hp34401aProfileTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new ScpiControlSurface(session, Profile, tracker: null);
 
-        await surface.InvokeAsync("confVoltDc", "10");
+        await surface.InvokeAsync("confVoltDc", "10", TestContext.CancellationToken);
 
         VerifySent(transport, "CONF:VOLT:DC 10\n");
     }
@@ -197,4 +197,6 @@ public sealed class Hp34401aProfileTests
         Assert.AreEqual("measVoltDc.reply", fired[1].Key);
         Assert.AreEqual("+1.234560E-01", fired[1].Value);
     }
+
+    public TestContext TestContext { get; set; }
 }

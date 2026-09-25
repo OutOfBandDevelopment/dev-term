@@ -31,7 +31,7 @@ public sealed class LoopbackTransportTests
     {
         var transport = CreateTransport();
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         Assert.AreEqual(ConnectionState.Open, transport.State);
     }
@@ -40,9 +40,9 @@ public sealed class LoopbackTransportTests
     public async Task CloseAsync_SetsStateToClosed()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
 
         Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
@@ -51,9 +51,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithLiteralRule_PushesItsFixedResponseLine()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("hello\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("hello\r\n"), TestContext.CancellationToken);
 
         Assert.AreEqual("From Loopback test", await ReadLineAsync(CreateReader(transport)));
     }
@@ -62,9 +62,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithSendStreamCommand_PushesADeterministicAsciiRun()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("Send Stream: 30, ascii\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("Send Stream: 30, ascii\r\n"), TestContext.CancellationToken);
 
         Assert.AreEqual("ABCDEFGHIJKLMNOPQRSTUVWXYZABCD", await ReadLineAsync(CreateReader(transport)));
     }
@@ -73,9 +73,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithSendEventsCommand_PushesOneLinePerEvent()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("Send Events: 3\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("Send Events: 3\r\n"), TestContext.CancellationToken);
 
         var reader = CreateReader(transport);
         Assert.AreEqual("Event 1", await ReadLineAsync(reader));
@@ -87,9 +87,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithHelpCommand_PushesTheCommandList()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("help\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("help\r\n"), TestContext.CancellationToken);
 
         var reader = CreateReader(transport);
         foreach (var expected in LoopbackScript.HelpLines)
@@ -102,9 +102,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithQuestionMarkCommand_PushesTheCommandList()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("?\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("?\r\n"), TestContext.CancellationToken);
 
         Assert.AreEqual(LoopbackScript.HelpLines[0], await ReadLineAsync(CreateReader(transport)));
     }
@@ -113,9 +113,9 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithDifferentCasing_StillMatches()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("HELLO\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("HELLO\r\n"), TestContext.CancellationToken);
 
         Assert.AreEqual("From Loopback test", await ReadLineAsync(CreateReader(transport)));
     }
@@ -124,10 +124,12 @@ public sealed class LoopbackTransportTests
     public async Task WriteAsync_WithUnrecognizedCommand_PushesAVisibleMarker()
     {
         var transport = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("not a real command\r\n"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("not a real command\r\n"), TestContext.CancellationToken);
 
-        StringAssert.Contains(await ReadLineAsync(CreateReader(transport)), "not a real command");
+        Assert.Contains("not a real command", await ReadLineAsync(CreateReader(transport)));
     }
+
+    public TestContext TestContext { get; set; }
 }

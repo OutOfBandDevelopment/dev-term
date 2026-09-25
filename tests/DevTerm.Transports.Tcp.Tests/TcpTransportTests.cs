@@ -36,13 +36,13 @@ public sealed class TcpTransportTests
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         source.Verify(s => s.ConnectAsync(It.Is<TcpTransportOptions>(o => o.Host == "device.local"), It.IsAny<CancellationToken>()), Times.Once);
         source.Verify(s => s.AcceptAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.AreEqual(ConnectionState.Open, transport.State);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -55,13 +55,13 @@ public sealed class TcpTransportTests
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Listener, host: null, port: 9000));
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         source.Verify(s => s.AcceptAsync(It.Is<TcpTransportOptions>(o => o.Port == 9000), It.IsAny<CancellationToken>()), Times.Once);
         source.Verify(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.AreEqual(ConnectionState.Open, transport.State);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -76,11 +76,11 @@ public sealed class TcpTransportTests
         var states = new List<ConnectionState>();
         transport.StateChanged += (_, e) => states.Add(e.Current);
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        CollectionAssert.AreEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+        Assert.AreSequenceEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -92,7 +92,7 @@ public sealed class TcpTransportTests
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
 
-        await Assert.ThrowsExactlyAsync<SocketExceptionStub>(() => transport.OpenAsync());
+        await Assert.ThrowsExactlyAsync<SocketExceptionStub>(() => transport.OpenAsync(TestContext.CancellationToken));
         Assert.AreEqual(ConnectionState.Faulted, transport.State);
     }
 
@@ -101,7 +101,7 @@ public sealed class TcpTransportTests
     {
         var transport = new TcpTransport(Mock.Of<ITcpConnectionSource>(), Options(TcpTransportMode.Client));
 
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }, TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -113,14 +113,14 @@ public sealed class TcpTransportTests
             .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         var payload = new byte[] { 0x01, 0x02, 0x03 };
-        await transport.WriteAsync(payload);
+        await transport.WriteAsync(payload, TestContext.CancellationToken);
 
         connection.Verify(c => c.Write(payload, 0, payload.Length), Times.Once);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -132,16 +132,16 @@ public sealed class TcpTransportTests
             .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         var payload = new byte[] { 0xDE, 0xAD };
-        await wirePipe.Writer.WriteAsync(payload);
+        await wirePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
 
-        var result = await transport.Input.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-        CollectionAssert.AreEqual(payload, result.Buffer.ToArray());
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(payload, result.Buffer.ToArray());
         transport.Input.AdvanceTo(result.Buffer.End);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -162,10 +162,10 @@ public sealed class TcpTransportTests
             }
         };
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
         await wirePipe.Writer.CompleteAsync();
 
-        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
 
@@ -178,9 +178,9 @@ public sealed class TcpTransportTests
             .ReturnsAsync(connection.Object);
 
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        await transport.CloseAsync(TestContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         connection.Verify(c => c.Dispose(), Times.Once);
         Assert.AreEqual(ConnectionState.Closed, transport.State);
@@ -192,11 +192,13 @@ public sealed class TcpTransportTests
         var source = new Mock<ITcpConnectionSource>();
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
 
         source.Verify(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>Stand-in for a real socket exception so the test doesn't depend on actual networking.</summary>
     private sealed class SocketExceptionStub : Exception;
+
+    public TestContext TestContext { get; set; }
 }

@@ -41,9 +41,9 @@ namespace DevTerm.Console.Tests;
 /// </summary>
 internal static class TuiTestRunner
 {
-    private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _stopTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _invokeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// A one-presenter catalog for tests that fake a single presenter: the send format is pinned to
@@ -162,7 +162,7 @@ internal static class TuiTestRunner
         };
         thread.Start();
 
-        if (!ready.Wait(StartTimeout))
+        if (!ready.Wait(_startTimeout))
         {
             throw new TimeoutException("The TUI run loop did not start in time.");
         }
@@ -179,7 +179,7 @@ internal static class TuiTestRunner
         finally
         {
             Application.Invoke(() => Application.RequestStop());
-            thread.Join(StopTimeout);
+            thread.Join(_stopTimeout);
             Application.Shutdown();
         }
     }
@@ -217,7 +217,7 @@ internal static class TuiTestRunner
         };
         thread.Start();
 
-        if (!ready.Wait(StartTimeout))
+        if (!ready.Wait(_startTimeout))
         {
             throw new TimeoutException("The TUI run loop did not start in time.");
         }
@@ -234,7 +234,7 @@ internal static class TuiTestRunner
         finally
         {
             Application.Invoke(() => Application.RequestStop());
-            thread.Join(StopTimeout);
+            thread.Join(_stopTimeout);
             Application.Shutdown();
         }
     }
@@ -262,7 +262,7 @@ internal static class TuiTestRunner
             }
         });
 
-        if (!done.Wait(InvokeTimeout))
+        if (!done.Wait(_invokeTimeout))
         {
             throw new TimeoutException("Application.Invoke did not run within the timeout.");
         }

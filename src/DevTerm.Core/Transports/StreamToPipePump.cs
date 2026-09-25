@@ -17,7 +17,7 @@ namespace DevTerm.Core.Transports;
 /// </summary>
 public static class StreamToPipePump
 {
-    private const int MinimumBufferSize = 4096;
+    private const int _minimumBufferSize = 4096;
 
     public static async Task RunAsync(Stream source, PipeWriter writer, CancellationToken cancellationToken)
     {
@@ -28,7 +28,7 @@ public static class StreamToPipePump
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var memory = writer.GetMemory(MinimumBufferSize);
+                var memory = writer.GetMemory(_minimumBufferSize);
 
                 int bytesRead;
                 try

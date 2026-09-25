@@ -36,13 +36,13 @@ public sealed class HidTransportTests
 
         var transport = new HidTransport(factory.Object, Options(vendorId: 0x1234));
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         factory.Verify(f => f.Create(It.Is<HidTransportOptions>(o => o.VendorId == 0x1234)), Times.Once);
         device.Verify(d => d.Open(), Times.Once);
         Assert.AreEqual(ConnectionState.Open, transport.State);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -56,11 +56,11 @@ public sealed class HidTransportTests
         var states = new List<ConnectionState>();
         transport.StateChanged += (_, e) => states.Add(e.Current);
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        CollectionAssert.AreEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+        Assert.AreSequenceEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -73,7 +73,7 @@ public sealed class HidTransportTests
 
         var transport = new HidTransport(factory.Object, Options());
 
-        await Assert.ThrowsExactlyAsync<IOException>(() => transport.OpenAsync());
+        await Assert.ThrowsExactlyAsync<IOException>(() => transport.OpenAsync(TestContext.CancellationToken));
         Assert.AreEqual(ConnectionState.Faulted, transport.State);
         device.Verify(d => d.Dispose(), Times.Once);
     }
@@ -83,7 +83,7 @@ public sealed class HidTransportTests
     {
         var transport = new HidTransport(Mock.Of<IHidDeviceFactory>(), Options());
 
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }, TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -94,14 +94,14 @@ public sealed class HidTransportTests
         factory.Setup(f => f.Create(It.IsAny<HidTransportOptions>())).Returns(device.Object);
 
         var transport = new HidTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         var payload = new byte[] { 0x01, 0x02, 0x03 };
-        await transport.WriteAsync(payload);
+        await transport.WriteAsync(payload, TestContext.CancellationToken);
 
         device.Verify(d => d.Write(payload, 0, payload.Length), Times.Once);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -112,13 +112,13 @@ public sealed class HidTransportTests
         factory.Setup(f => f.Create(It.IsAny<HidTransportOptions>())).Returns(device.Object);
 
         var transport = new HidTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(ReadOnlyMemory<byte>.Empty);
+        await transport.WriteAsync(ReadOnlyMemory<byte>.Empty, TestContext.CancellationToken);
 
         device.Verify(d => d.Write(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -129,16 +129,16 @@ public sealed class HidTransportTests
         factory.Setup(f => f.Create(It.IsAny<HidTransportOptions>())).Returns(device.Object);
 
         var transport = new HidTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         var payload = new byte[] { 0xDE, 0xAD };
-        await devicePipe.Writer.WriteAsync(payload);
+        await devicePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
 
-        var result = await transport.Input.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-        CollectionAssert.AreEqual(payload, result.Buffer.ToArray());
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(payload, result.Buffer.ToArray());
         transport.Input.AdvanceTo(result.Buffer.End);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -158,10 +158,10 @@ public sealed class HidTransportTests
             }
         };
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
         await devicePipe.Writer.CompleteAsync();
 
-        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
 
@@ -173,9 +173,9 @@ public sealed class HidTransportTests
         factory.Setup(f => f.Create(It.IsAny<HidTransportOptions>())).Returns(device.Object);
 
         var transport = new HidTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        await transport.CloseAsync(TestContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         device.Verify(d => d.Close(), Times.Once);
         device.Verify(d => d.Dispose(), Times.Once);
@@ -188,8 +188,10 @@ public sealed class HidTransportTests
         var factory = new Mock<IHidDeviceFactory>();
         var transport = new HidTransport(factory.Object, Options());
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
 
         factory.Verify(f => f.Create(It.IsAny<HidTransportOptions>()), Times.Never);
     }
+
+    public TestContext TestContext { get; set; }
 }

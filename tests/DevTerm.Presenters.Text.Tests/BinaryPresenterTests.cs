@@ -22,6 +22,6 @@ public sealed class BinaryPresenterTests
 
         var result = _presenter.Parse(_presenter.Render(Of(original)).Single());
 
-        CollectionAssert.AreEqual(original, result);
+        Assert.AreSequenceEqual(original, result);
     }
 }

@@ -17,7 +17,7 @@ public sealed class AsciiPresenterTests
 
     [TestMethod]
     public void Parse_EncodesAsciiBytes() =>
-        CollectionAssert.AreEqual(new byte[] { 0x48, 0x69, 0x21 }, _presenter.Parse("Hi!"));
+        Assert.AreSequenceEqual(new byte[] { 0x48, 0x69, 0x21 }, _presenter.Parse("Hi!"));
 
     [TestMethod]
     public void Render_WithoutATerminator_BuffersAndReturnsNothingYet()
@@ -32,7 +32,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\n"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
     }
 
     [TestMethod]
@@ -40,7 +40,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\r"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
     }
 
     [TestMethod]
@@ -48,7 +48,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\r\n"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
     }
 
     [TestMethod]
@@ -57,7 +57,7 @@ public sealed class AsciiPresenterTests
         var first = _presenter.Render(Of("Hi!\r"u8.ToArray()));
         var second = _presenter.Render(Of("\nNext"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "Hi!" }, first.ToArray());
+        Assert.AreSequenceEqual(new[] { "Hi!" }, first.ToArray());
         Assert.IsEmpty(second, "The LF half of the CRLF pair should be swallowed, not start a new empty line.");
     }
 
@@ -70,7 +70,7 @@ public sealed class AsciiPresenterTests
 
         Assert.IsEmpty(afterH);
         Assert.IsEmpty(afterI);
-        CollectionAssert.AreEqual(new[] { "Hi" }, afterTerminator.ToArray());
+        Assert.AreSequenceEqual(new[] { "Hi" }, afterTerminator.ToArray());
     }
 
     [TestMethod]
@@ -78,7 +78,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("one\ntwo\n"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "one", "two" }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { "one", "two" }, result.ToArray());
     }
 
     [TestMethod]
@@ -88,7 +88,7 @@ public sealed class AsciiPresenterTests
 
         var result = presenter.Render(Of("abcdef"u8.ToArray()));
 
-        CollectionAssert.AreEqual(new[] { "abc", "def" }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { "abc", "def" }, result.ToArray());
     }
 
     [TestMethod]
@@ -116,6 +116,6 @@ public sealed class AsciiPresenterTests
         var bytes = _presenter.Parse(original);
         var result = _presenter.Render(Of([.. bytes, (byte)'\n']));
 
-        CollectionAssert.AreEqual(new[] { original }, result.ToArray());
+        Assert.AreSequenceEqual(new[] { original }, result.ToArray());
     }
 }

@@ -11,7 +11,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 [TestClass]
 public sealed class ScpiProfileCatalogTests
 {
-    private const string MinimalProfileJson = """
+    private const string _minimalProfileJson = """
         {
             "Name": "Synthetic Instrument",
             "IdnPattern": "SYN9000",
@@ -59,7 +59,7 @@ public sealed class ScpiProfileCatalogTests
         {
             var profilesDir = Path.Combine(baseDirectory, "Profiles");
             Directory.CreateDirectory(profilesDir);
-            File.WriteAllText(Path.Combine(profilesDir, "synthetic.json"), MinimalProfileJson);
+            File.WriteAllText(Path.Combine(profilesDir, "synthetic.json"), _minimalProfileJson);
 
             var profiles = ScpiProfileCatalog.Load(baseDirectory);
 
@@ -82,7 +82,7 @@ public sealed class ScpiProfileCatalogTests
         {
             var dropInDir = Path.Combine(baseDirectory, "ScpiProfiles");
             Directory.CreateDirectory(dropInDir);
-            File.WriteAllText(Path.Combine(dropInDir, "synthetic.json"), MinimalProfileJson);
+            File.WriteAllText(Path.Combine(dropInDir, "synthetic.json"), _minimalProfileJson);
 
             var profiles = ScpiProfileCatalog.Load(baseDirectory);
 
@@ -105,8 +105,8 @@ public sealed class ScpiProfileCatalogTests
             var dropInDir = Path.Combine(baseDirectory, "ScpiProfiles");
             Directory.CreateDirectory(profilesDir);
             Directory.CreateDirectory(dropInDir);
-            File.WriteAllText(Path.Combine(profilesDir, "bundled.json"), MinimalProfileJson.Replace("Synthetic Instrument", "Bundled"));
-            File.WriteAllText(Path.Combine(dropInDir, "extra.json"), MinimalProfileJson.Replace("Synthetic Instrument", "DroppedIn"));
+            File.WriteAllText(Path.Combine(profilesDir, "bundled.json"), _minimalProfileJson.Replace("Synthetic Instrument", "Bundled"));
+            File.WriteAllText(Path.Combine(dropInDir, "extra.json"), _minimalProfileJson.Replace("Synthetic Instrument", "DroppedIn"));
 
             var profiles = ScpiProfileCatalog.Load(baseDirectory);
 
@@ -126,7 +126,7 @@ public sealed class ScpiProfileCatalogTests
         var generic = ScpiProfileCatalog.Generic;
 
         Assert.IsTrue(string.IsNullOrEmpty(generic.IdnPattern));
-        CollectionAssert.AreEquivalent(new[] { "idn", "rst", "cls", "opc" }, generic.Commands.Select(c => c.Id).ToArray());
+        Assert.AreSequenceEqual(new[] { "idn", "rst", "cls", "opc" }, generic.Commands.Select(c => c.Id).ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -160,7 +160,7 @@ public sealed class ScpiProfileCatalogTests
         var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.StartsWith("Tektronix 2230", StringComparison.OrdinalIgnoreCase));
 
         Assert.IsTrue(string.IsNullOrEmpty(tek2230.IdnPattern));
-        Assert.IsTrue(tek2230.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
+        Assert.Contains(c => c.Id == "id" && c.Template == "ID?", tek2230.Commands);
     }
 
     [TestMethod]
@@ -169,8 +169,8 @@ public sealed class ScpiProfileCatalogTests
         var tds2024 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("TDS2024", StringComparison.OrdinalIgnoreCase));
 
         Assert.IsFalse(string.IsNullOrEmpty(tds2024.IdnPattern));
-        Assert.IsTrue(tds2024.Commands.Any(c => c.Id == "idn" && c.Template == "*IDN?"));
-        Assert.IsTrue(tds2024.Commands.Any(c => c.Id == "id" && c.Template == "ID?"));
+        Assert.Contains(c => c.Id == "idn" && c.Template == "*IDN?", tds2024.Commands);
+        Assert.Contains(c => c.Id == "id" && c.Template == "ID?", tds2024.Commands);
 
         var matched = ScpiProfileCatalog.TryMatchByIdn("TEKTRONIX,TDS 2024,0,CF:91.1CT FV:v22.01");
 

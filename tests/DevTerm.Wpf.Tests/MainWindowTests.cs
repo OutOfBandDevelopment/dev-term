@@ -35,7 +35,7 @@ namespace DevTerm.Wpf.Tests;
 [DoNotParallelize]
 public sealed class MainWindowTests
 {
-    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(5);
 
     private static (MainWindow Window, FakeTransport Transport) CreateWindow(CliOptions? cliOptions = null)
     {
@@ -65,7 +65,7 @@ public sealed class MainWindowTests
             });
 
             Assert.HasCount(1, window.OutputList.Items);
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "Warning:");
+            Assert.Contains("Warning:", (string)window.OutputList.Items[0]!);
 
             await Task.CompletedTask;
         });
@@ -79,8 +79,8 @@ public sealed class MainWindowTests
             var (window, _) = CreateWindow();
             await window.ConnectAsync();
 
-            StringAssert.Contains(window.Title, "tcp://127.0.0.1:23");
-            StringAssert.Contains(window.Title, "ascii");
+            Assert.Contains("tcp://127.0.0.1:23", window.Title);
+            Assert.Contains("ascii", window.Title);
             Assert.IsTrue(window.SendBox.IsEnabled);
         });
     }
@@ -102,20 +102,20 @@ public sealed class MainWindowTests
                 ShowInTaskbar = false,
             };
             await window.ConnectAsync();
-            CollectionAssert.AreEquivalent(new[] { "ascii", "hex" }, window.ParserBox.Items.Cast<string>().ToArray());
+            Assert.AreSequenceEqual(new[] { "ascii", "hex" }, window.ParserBox.Items.Cast<string>().ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
             Assert.AreEqual("ascii", window.ParserBox.SelectedItem, "The box starts at the profile's parser.");
 
             window.SendBox.Text = "ff";
             await window.SendCurrentInputAsync();
 
             window.ParserBox.SelectedItem = "hex";
-            StringAssert.Contains(window.Title, "send as hex");
+            Assert.Contains("send as hex", window.Title);
             window.SendBox.Text = "ff";
             await window.SendCurrentInputAsync();
 
             Assert.HasCount(2, transport.WrittenPayloads);
-            CollectionAssert.AreEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0]);
-            CollectionAssert.AreEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1]);
+            Assert.AreSequenceEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0]);
+            Assert.AreSequenceEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1]);
         });
     }
 
@@ -137,7 +137,7 @@ public sealed class MainWindowTests
             };
             await window.ConnectAsync();
 
-            StringAssert.Contains(window.Title, "ascii, hex; send as ascii");
+            Assert.Contains("ascii, hex; send as ascii", window.Title);
         });
     }
 
@@ -151,11 +151,11 @@ public sealed class MainWindowTests
 
             await transport.PushIncomingAsync(Encoding.ASCII.GetBytes("ID TEK/2230\r"));
 
-            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
             Assert.IsTrue(appeared, "Expected the decoded line to arrive via the real Session pull loop + Dispatcher.Invoke.");
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "[ascii]");
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "ID TEK/2230");
+            Assert.Contains("[ascii]", (string)window.OutputList.Items[0]!);
+            Assert.Contains("ID TEK/2230", (string)window.OutputList.Items[0]!);
         });
     }
 
@@ -296,7 +296,7 @@ public sealed class MainWindowTests
 
             window.Close();
 
-            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout), "The window should finish closing once the async cleanup is done.");
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, _pumpTimeout), "The window should finish closing once the async cleanup is done.");
             await Task.CompletedTask;
         });
     }
@@ -314,7 +314,7 @@ public sealed class MainWindowTests
 
             window.Close();
 
-            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout));
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, _pumpTimeout));
         });
     }
 
@@ -330,7 +330,7 @@ public sealed class MainWindowTests
 
             window.Close();
 
-            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, PumpTimeout));
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, _pumpTimeout));
         });
     }
 }

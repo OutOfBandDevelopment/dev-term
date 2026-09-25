@@ -5,8 +5,8 @@ using DevTerm.UiDefinitions;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console.Tests;
 
@@ -235,7 +235,7 @@ public sealed class ControlPanelModeTests
     {
         RunHeadless(new FakeControlSurface(), null, _ =>
         {
-            StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Not decoding");
+            Assert.Contains("Not decoding", TuiTestRunner.DumpBuffer());
         });
     }
 
@@ -267,9 +267,9 @@ public sealed class ControlPanelModeTests
     /// </summary>
     private static class TuiWindowPartsHarness
     {
-        private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _stopTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _invokeTimeout = TimeSpan.FromSeconds(5);
 
         public static void RunWithLoop(IControlSurface surface, IPresenter structuredSource, Action<ControlPanelWindowParts> body)
         {
@@ -297,7 +297,7 @@ public sealed class ControlPanelModeTests
             };
             thread.Start();
 
-            if (!ready.Wait(StartTimeout))
+            if (!ready.Wait(_startTimeout))
             {
                 throw new TimeoutException("The TUI run loop did not start in time.");
             }
@@ -314,7 +314,7 @@ public sealed class ControlPanelModeTests
             finally
             {
                 Application.Invoke(() => Application.RequestStop());
-                thread.Join(StopTimeout);
+                thread.Join(_stopTimeout);
                 Application.Shutdown();
             }
         }
@@ -332,7 +332,7 @@ public sealed class ControlPanelModeTests
                     done.Set();
                 });
 
-                if (!done.Wait(InvokeTimeout))
+                if (!done.Wait(_invokeTimeout))
                 {
                     throw new TimeoutException("Application.Invoke did not run within the timeout.");
                 }

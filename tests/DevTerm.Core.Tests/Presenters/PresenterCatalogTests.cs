@@ -47,6 +47,6 @@ public sealed class PresenterCatalogTests
 
         var catalog = new PresenterCatalog([hex.Object, ascii.Object]);
 
-        CollectionAssert.AreEquivalent(new[] { "hex", "ascii" }, catalog.Names.ToArray());
+        Assert.AreSequenceEqual(new[] { "hex", "ascii" }, catalog.Names.ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 }

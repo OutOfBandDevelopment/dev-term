@@ -4,8 +4,8 @@ using System.IO.Ports;
 using DevTerm.Configuration;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console;
 

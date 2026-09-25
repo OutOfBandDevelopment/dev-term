@@ -35,7 +35,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("tcp", vm.Transport);
             Assert.AreEqual("192.168.0.107", vm.Host);
             Assert.AreEqual("23", vm.TcpPort);
-            CollectionAssert.AreEqual(new[] { "ascii" }, vm.SelectedPresenters.ToArray());
+            Assert.AreSequenceEqual(new[] { "ascii" }, vm.SelectedPresenters.ToArray());
             Assert.AreEqual("ascii", vm.Parser, "An initial CliOptions with no Parser sends as its first presenter, as before.");
             Assert.AreEqual("some error", vm.StatusMessage);
         }
@@ -116,7 +116,7 @@ public sealed class ConnectionEditorViewModelTests
 
             Assert.IsFalse(closeRequested);
             Assert.IsNull(vm.Result);
-            StringAssert.Contains(vm.StatusMessage, "--port");
+            Assert.Contains("--port", vm.StatusMessage);
         }
         finally
         {
@@ -143,7 +143,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.SaveCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Saved profile 'tek108'");
+            Assert.Contains("Saved profile 'tek108'", vm.StatusMessage);
             Assert.Contains("tek108", vm.Profiles);
             Assert.AreEqual("tek108", vm.SaveName, "SaveName should stay put after a successful save, so Save Profile can be clicked again to update the same profile.");
 
@@ -157,7 +157,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("tcp", fresh.Transport);
             Assert.AreEqual("192.168.0.108", fresh.Host);
             Assert.AreEqual("23", fresh.TcpPort);
-            CollectionAssert.AreEqual(new[] { "ascii", "hex" }, fresh.SelectedPresenters.ToArray());
+            Assert.AreSequenceEqual(new[] { "ascii", "hex" }, fresh.SelectedPresenters.ToArray());
             Assert.AreEqual("decimal", fresh.Parser);
         }
         finally
@@ -176,7 +176,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.LoadCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Select a profile first");
+            Assert.Contains("Select a profile first", vm.StatusMessage);
         }
         finally
         {
@@ -201,7 +201,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ExportCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Exported to");
+            Assert.Contains("Exported to", vm.StatusMessage);
             Assert.IsTrue(File.Exists(path));
 
             var fresh = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "serial" })
@@ -214,7 +214,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("hid", fresh.Transport);
             Assert.AreEqual("4216", fresh.VendorId);
             Assert.AreEqual("63560", fresh.ProductId);
-            StringAssert.Contains(fresh.StatusMessage, "Imported");
+            Assert.Contains("Imported", fresh.StatusMessage);
         }
         finally
         {
@@ -249,13 +249,13 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ExportSelectedProfilesCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Exported 2 profile(s)");
+            Assert.Contains("Exported 2 profile(s)", vm.StatusMessage);
             Assert.IsTrue(File.Exists(zipPath));
 
             var importDirectory = CreateTempDirectory();
             var importStore = new ConnectionProfileStore(importDirectory);
             importStore.ImportZip(zipPath);
-            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
         }
         finally
         {
@@ -276,7 +276,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ExportSelectedProfilesCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Select one or more saved profiles");
+            Assert.Contains("Select one or more saved profiles", vm.StatusMessage);
         }
         finally
         {
@@ -307,12 +307,12 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ExportAllProfilesCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Exported 2 profile(s)");
+            Assert.Contains("Exported 2 profile(s)", vm.StatusMessage);
 
             var importDirectory = CreateTempDirectory();
             var importStore = new ConnectionProfileStore(importDirectory);
             importStore.ImportZip(zipPath);
-            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
         }
         finally
         {
@@ -339,7 +339,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ImportCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Imported 1 profile(s)");
+            Assert.Contains("Imported 1 profile(s)", vm.StatusMessage);
             Assert.Contains("alpha", vm.Profiles);
             Assert.AreEqual("serial", vm.Transport, "A zip import saves straight into the store; it shouldn't load fields the way a single-profile JSON import does.");
         }
@@ -372,7 +372,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ImportCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "skipped 1");
+            Assert.Contains("skipped 1", vm.StatusMessage);
             Assert.AreEqual("existing", destStore.Load("alpha").Host);
         }
         finally
@@ -395,7 +395,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ImportCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Could not import");
+            Assert.Contains("Could not import", vm.StatusMessage);
         }
         finally
         {
@@ -464,7 +464,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.SaveCommand.Execute(null);
 
             Assert.Contains("existing", confirmPrompts);
-            StringAssert.Contains(vm.StatusMessage, "already exists");
+            Assert.Contains("already exists", vm.StatusMessage);
             Assert.AreEqual("1.1.1.1", store.Load("existing").Host, "Declining the overwrite should leave the existing profile untouched.");
 
             vm.ConfirmOverwrite = _ => true;
@@ -510,9 +510,9 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(store, new CliOptions()) { SelectedProfileName = "tek108" };
             vm.DeleteCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Deleted profile 'tek108'");
+            Assert.Contains("Deleted profile 'tek108'", vm.StatusMessage);
             Assert.DoesNotContain("tek108", vm.Profiles);
-            Assert.IsFalse(store.List().Contains("tek108"));
+            Assert.DoesNotContain("tek108", store.List());
         }
         finally
         {
@@ -530,7 +530,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.DeleteCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Select a profile first");
+            Assert.Contains("Select a profile first", vm.StatusMessage);
         }
         finally
         {
@@ -767,7 +767,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.LoadCommand.Execute(null);
 
             Assert.AreEqual("something typed but never saved", vm.Host, "Declining should leave the unsaved edit in place, not overwrite it.");
-            StringAssert.Contains(vm.StatusMessage, "cancelled");
+            Assert.Contains("cancelled", vm.StatusMessage);
 
             vm.ConfirmDiscardChanges = () => true;
             vm.LoadCommand.Execute(null);
@@ -795,7 +795,7 @@ public sealed class ConnectionEditorViewModelTests
             // profile while this editor is already open, not this same instance's own Save.
             new ConnectionProfileStore(directory).Save("added-elsewhere", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
 
-            Assert.IsTrue(raised.Wait(TimeSpan.FromSeconds(5)), "Expected the real FileSystemWatcher to notice a profile saved by a different store instance.");
+            Assert.IsTrue(raised.Wait(TimeSpan.FromSeconds(5), TestContext.CancellationToken), "Expected the real FileSystemWatcher to notice a profile saved by a different store instance.");
         }
         finally
         {
@@ -882,11 +882,9 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
 
-            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray());
-            CollectionAssert.AreEqual(
-                new[] { "COM3", "COM7" },
-                vm.SerialPortOptions.Select(o => o.Display).ToArray(),
-                "With no descriptions known, each port shows as just its short name.");
+            Assert.AreSequenceEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray());
+            Assert.AreSequenceEqual(
+                new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray(), "With no descriptions known, each port shows as just its short name.");
         }
         finally
         {
@@ -907,13 +905,10 @@ public sealed class ConnectionEditorViewModelTests
                     ["COM3", "COM7"],
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["COM3"] = "Prolific USB-to-Serial Comm Port" }));
 
-            CollectionAssert.AreEqual(
-                new[] { "COM3 — Prolific USB-to-Serial Comm Port", "COM7" },
-                vm.SerialPortOptions.Select(o => o.Display).ToArray());
-            CollectionAssert.AreEqual(
-                new[] { "COM3", "COM7" },
-                vm.SerialPortOptions.Select(o => o.Name).ToArray(),
-                "The value that gets written into Port stays the short name.");
+            Assert.AreSequenceEqual(
+                new[] { "COM3 — Prolific USB-to-Serial Comm Port", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
+            Assert.AreSequenceEqual(
+                new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray(), "The value that gets written into Port stays the short name.");
         }
         finally
         {
@@ -956,7 +951,7 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 serialPortDiscovery: new FailingDescriptionsSerialPortDiscovery(["COM3", "COM7"]));
 
-            CollectionAssert.AreEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
+            Assert.AreSequenceEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
         }
         finally
         {
@@ -1339,7 +1334,7 @@ public sealed class ConnectionEditorViewModelTests
         }
     }
 
-    private static readonly HidDeviceDescriptor[] ThreeHidDevices =
+    private static readonly HidDeviceDescriptor[] _threeHidDevices =
     [
         new HidDeviceDescriptor(0x046D, 0xC08B, "G502 HERO Gaming Mouse", null, "hid#vid_046d&pid_c08b#0&0&0000#{guid}"),
         new HidDeviceDescriptor(0x046D, 0xC31C, "Keyboard K120", null, "hid#vid_046d&pid_c31c#0&0&0000#{guid}"),
@@ -1354,7 +1349,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
 
             Assert.HasCount(3, vm.HidDeviceOptions);
             Assert.IsFalse(vm.HidDevicesHiddenByFilter);
@@ -1371,10 +1366,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.VendorId = 0x046D.ToString();
 
-            CollectionAssert.AreEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
             Assert.IsTrue(vm.HidDevicesHiddenByFilter);
         }
         finally
@@ -1389,10 +1384,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.ProductId = 0x0368.ToString();
 
-            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
         finally
         {
@@ -1406,11 +1401,11 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.VendorId = 0x046D.ToString();
             vm.ProductId = 0xC31C.ToString();
 
-            CollectionAssert.AreEqual(new[] { "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(new[] { "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
 
             vm.ProductId = 0x0368.ToString();
 
@@ -1429,15 +1424,14 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.VendorId = 0x0699.ToString();
             Assert.HasCount(1, vm.HidDeviceOptions);
 
             vm.VendorId = "0";
 
-            CollectionAssert.AreEqual(
-                new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024" },
-                HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(
+                new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
         finally
         {
@@ -1451,11 +1445,11 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.IdsShowHex = true;
             vm.VendorIdDisplay = "0699";
 
-            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
         finally
         {
@@ -1469,7 +1463,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             vm.VendorId = "12ab";
 
             Assert.HasCount(3, vm.HidDeviceOptions);
@@ -1489,9 +1483,9 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(
                 new ConnectionProfileStore(directory),
                 new CliOptions { Transport = "hid", VendorId = 0x0699 },
-                hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+                hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
 
-            CollectionAssert.AreEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
         }
         finally
         {
@@ -1505,7 +1499,7 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             var before = vm.HidDeviceOptions;
             var changes = 0;
             ((System.Collections.Specialized.INotifyCollectionChanged)before).CollectionChanged += (_, _) => changes++;
@@ -1527,13 +1521,13 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(ThreeHidDevices));
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
             Assert.IsFalse(vm.IsDirty);
 
             vm.SelectedHidDevice = vm.HidDeviceOptions[0];
 
             Assert.IsTrue(vm.IsDirty, "Picking a device fills in the ids, which is a real edit...");
-            CollectionAssert.AreEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse" }, HidOptionDisplays(vm), "...and the picked device stays in the filtered list.");
+            Assert.AreSequenceEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse" }, HidOptionDisplays(vm), "...and the picked device stays in the filtered list.");
         }
         finally
         {
@@ -1737,8 +1731,8 @@ public sealed class ConnectionEditorViewModelTests
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
 
-            CollectionAssert.AreEqual(vm.PresenterOptions.ToArray(), vm.PresenterChoices.Select(c => c.Name).ToArray());
-            CollectionAssert.AreEqual(new[] { "hex" }, vm.SelectedPresenters.ToArray(), "A default CliOptions displays as hex.");
+            Assert.AreSequenceEqual(vm.PresenterOptions.ToArray(), vm.PresenterChoices.Select(c => c.Name).ToArray());
+            Assert.AreSequenceEqual(new[] { "hex" }, vm.SelectedPresenters.ToArray(), "A default CliOptions displays as hex.");
         }
         finally
         {
@@ -1758,7 +1752,7 @@ public sealed class ConnectionEditorViewModelTests
 
             var options = vm.BuildOptions();
 
-            CollectionAssert.AreEqual(new[] { "ascii", "binary" }, options.Presenter);
+            Assert.AreSequenceEqual(new[] { "ascii", "binary" }, options.Presenter);
             Assert.AreEqual("hex", options.Parser, "The send format is independent of which presenters display.");
         }
         finally
@@ -1797,7 +1791,7 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ConnectCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "at least one presenter");
+            Assert.Contains("at least one presenter", vm.StatusMessage);
             Assert.IsNull(vm.Result);
         }
         finally
@@ -1826,9 +1820,9 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Deleted 2 profile(s).");
-            CollectionAssert.AreEqual(new[] { "beta" }, store.List().ToArray());
-            CollectionAssert.AreEqual(new[] { "beta" }, vm.Profiles.ToArray(), "The list refreshes itself.");
+            Assert.Contains("Deleted 2 profile(s).", vm.StatusMessage);
+            Assert.AreSequenceEqual(new[] { "beta" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "beta" }, vm.Profiles.ToArray(), "The list refreshes itself.");
             Assert.IsEmpty(vm.SelectedProfileNames);
             Assert.IsNull(vm.SelectedProfileName, "The single-selection was one of the deleted profiles.");
         }
@@ -1850,8 +1844,8 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "Select one or more saved profiles to delete");
-            CollectionAssert.AreEqual(new[] { "alpha" }, store.List().ToArray());
+            Assert.Contains("Select one or more saved profiles to delete", vm.StatusMessage);
+            Assert.AreSequenceEqual(new[] { "alpha" }, store.List().ToArray());
         }
         finally
         {
@@ -1882,9 +1876,9 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
-            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, asked!.ToArray(), "The confirmation is told exactly which profiles are about to go.");
+            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, asked!.ToArray(), "The confirmation is told exactly which profiles are about to go.");
             Assert.AreEqual("Delete cancelled.", vm.StatusMessage);
-            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, store.List().ToArray());
         }
         finally
         {
@@ -1956,11 +1950,11 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.AreEqual((2, 1), asked, "The confirmation is told how many profiles will go and how many come in.");
-            CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
-            CollectionAssert.AreEqual(new[] { "new-one" }, vm.Profiles.ToArray());
+            Assert.AreSequenceEqual(new[] { "new-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "new-one" }, vm.Profiles.ToArray());
             Assert.IsNull(vm.SelectedProfileName);
             Assert.IsEmpty(vm.SelectedProfileNames);
-            StringAssert.Contains(vm.StatusMessage, "Replaced 2 saved profile(s) with 1");
+            Assert.Contains("Replaced 2 saved profile(s) with 1", vm.StatusMessage);
         }
         finally
         {
@@ -1985,7 +1979,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.AreEqual("Replace All cancelled.", vm.StatusMessage);
-            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
         }
         finally
         {
@@ -2014,10 +2008,10 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ReplaceAllFromZipCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "broken.json");
-            StringAssert.Contains(vm.StatusMessage, "Nothing was deleted");
+            Assert.Contains("broken.json", vm.StatusMessage);
+            Assert.Contains("Nothing was deleted", vm.StatusMessage);
             Assert.IsFalse(asked, "A bad archive is rejected before the user is even asked.");
-            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
         }
         finally
         {
@@ -2040,8 +2034,8 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.ReplaceAllFromZipCommand.Execute(null);
 
-            StringAssert.Contains(vm.StatusMessage, "contains no profiles");
-            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.Contains("contains no profiles", vm.StatusMessage);
+            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
         }
         finally
         {
@@ -2070,7 +2064,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.IsFalse(asked, "There's nothing to lose, so there's nothing to confirm.");
-            CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "new-one" }, store.List().ToArray());
         }
         finally
         {
@@ -2089,17 +2083,19 @@ public sealed class ConnectionEditorViewModelTests
             var vm = new ConnectionEditorViewModel(store, new CliOptions());
 
             vm.ReplaceAllFromZipCommand.Execute(null);
-            StringAssert.Contains(vm.StatusMessage, "Type a file path");
+            Assert.Contains("Type a file path", vm.StatusMessage);
 
             vm.ImportExportPath = Path.Combine(directory, "single.json");
             vm.ReplaceAllFromZipCommand.Execute(null);
-            StringAssert.Contains(vm.StatusMessage, "needs a .zip file");
+            Assert.Contains("needs a .zip file", vm.StatusMessage);
 
-            CollectionAssert.AreEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
         }
         finally
         {
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    public TestContext TestContext { get; set; }
 }

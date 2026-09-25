@@ -10,8 +10,8 @@ using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console;
 
@@ -32,7 +32,7 @@ public static class TuiMode
     /// virtualized items list; keeping it smaller keeps that rebuild cheap. Oldest lines are dropped
     /// first.
     /// </summary>
-    private const int MaxOutputLines = 300;
+    private const int _maxOutputLines = 300;
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
@@ -152,7 +152,7 @@ public static class TuiMode
             Application.Invoke(() =>
             {
                 outputLines.Add(line);
-                if (outputLines.Count > MaxOutputLines)
+                if (outputLines.Count > _maxOutputLines)
                 {
                     outputLines.RemoveAt(0);
                 }
@@ -236,7 +236,7 @@ public static class TuiMode
                         return;
                     }
 
-                    if (picked == ScpiAutoDetectChoice)
+                    if (picked == _scpiAutoDetectChoice)
                     {
                         // *IDN? is a real send/await over the live transport - unlike the two panels
                         // above, this can't finish before the menu action returns, so it's fire-and-
@@ -247,7 +247,7 @@ public static class TuiMode
                         return;
                     }
 
-                    var profile = picked == ScpiGenericChoice
+                    var profile = picked == _scpiGenericChoice
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
                     OpenScpiInstrumentWindow(session, structuredSource, profile);
@@ -525,9 +525,9 @@ public static class TuiMode
     }
 
     /// <summary>Centralized on <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/> so a saved <c>CliOptions.ScpiProfile</c> choice and this picker always agree on the exact same literal.</summary>
-    private const string ScpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
+    private const string _scpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
 
-    private static readonly string ScpiGenericChoice = ScpiProfileCatalog.Generic.Name;
+    private static readonly string _scpiGenericChoice = ScpiProfileCatalog.Generic.Name;
 
     /// <summary>
     /// Resolves the registered "scpi" presenter and binds it into <paramref name="session"/>'s live
@@ -567,7 +567,7 @@ public static class TuiMode
             return null;
         }
 
-        if (saved == ScpiAutoDetectChoice || saved == ScpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
+        if (saved == _scpiAutoDetectChoice || saved == _scpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
         {
             return saved;
         }
@@ -636,7 +636,7 @@ public static class TuiMode
 
     private static string? PickScpiProfileChoice()
     {
-        var items = new List<string> { ScpiAutoDetectChoice, ScpiGenericChoice };
+        var items = new List<string> { _scpiAutoDetectChoice, _scpiGenericChoice };
         items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));
         return PickFromList("Select SCPI Instrument", items);
     }

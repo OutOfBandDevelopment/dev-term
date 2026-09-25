@@ -36,8 +36,8 @@ namespace DevTerm.Devices.Scpi;
 /// </remarks>
 public sealed class ScpiReplyPresenter : IPresenter, IStructuredPresenter, IScpiReplyTracker
 {
-    private const byte LineFeed = (byte)'\n';
-    private const byte CarriageReturn = (byte)'\r';
+    private const byte _lineFeed = (byte)'\n';
+    private const byte _carriageReturn = (byte)'\r';
 
     private readonly List<byte> _buffer = [];
     private readonly ConcurrentQueue<string> _pendingReplyIds = new();
@@ -65,7 +65,7 @@ public sealed class ScpiReplyPresenter : IPresenter, IStructuredPresenter, IScpi
         {
             foreach (var b in segment.Span)
             {
-                if (b == LineFeed)
+                if (b == _lineFeed)
                 {
                     if (_pendingCr)
                     {
@@ -80,7 +80,7 @@ public sealed class ScpiReplyPresenter : IPresenter, IStructuredPresenter, IScpi
 
                 _pendingCr = false;
 
-                if (b == CarriageReturn)
+                if (b == _carriageReturn)
                 {
                     Complete(lines);
                     _pendingCr = true;
