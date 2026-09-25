@@ -2,6 +2,7 @@ using System.Text;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 using Moq;
 
@@ -16,7 +17,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// either front end; nothing previously exercised this specific profile's actual command set, only
 /// small hand-built profiles shaped similarly to it. No real instrument involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class Hp34401aProfileTests
 {

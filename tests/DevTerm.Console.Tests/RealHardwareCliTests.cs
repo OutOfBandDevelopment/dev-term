@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Console.Tests;
 
@@ -17,7 +18,7 @@ namespace DevTerm.Console.Tests;
 /// expected reply, see below) can't silently assert something guessed, and adding a fourth real
 /// device later needs only new runsettings parameters plus one new `DataRow`, no code change.
 /// </summary>
-[TestCategory("DEV-LOCAL")]
+[TestCategory(TestCategories.DevLocal)]
 [TestClass]
 public sealed class RealHardwareCliTests
 {
@@ -56,6 +57,18 @@ public sealed class RealHardwareCliTests
         if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(port) || string.IsNullOrEmpty(query) || string.IsNullOrEmpty(expectedReplySubstring))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort'/'{queryParameterName}'/'{expectedReplyParameterName}' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            return;
+        }
+
+        if (!int.TryParse(port, out var portNumber))
+        {
+            Assert.Inconclusive($"'RealTcpDevicePort' value '{port}' is not a valid port number.");
+            return;
+        }
+
+        if (!await RealDeviceReachability.IsTcpReachableAsync(host, portNumber, TestContext.CancellationToken))
+        {
+            Assert.Inconclusive($"Real device at {host}:{port} is not reachable (TCP connect attempt timed out/refused within {RealDeviceReachability.DefaultTimeout.TotalSeconds}s) — is it powered on and networked?");
             return;
         }
 

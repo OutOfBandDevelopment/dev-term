@@ -1,9 +1,10 @@
 using System.IO.Ports;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class CliOptionsBindingTests
 {

@@ -47,6 +47,7 @@
 
     <!-- Controls parallelism within MSTest (across classes/methods in the same assembly) -->
     <MSTest>
+        <TestTimeout>5000</TestTimeout>
         <Parallelize>
             <Workers>0</Workers>
             <!-- 0 = number of available cores -->

@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

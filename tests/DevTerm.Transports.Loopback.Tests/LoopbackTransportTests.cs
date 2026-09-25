@@ -1,5 +1,6 @@
 using System.Text;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Transports.Loopback.Tests;
@@ -9,7 +10,7 @@ namespace DevTerm.Transports.Loopback.Tests;
 /// composition is covered at the console-front-end level) to prove the scripted request/response
 /// behavior works as designed. No real transport I/O anywhere, so this is <c>UNIT</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class LoopbackTransportTests
 {

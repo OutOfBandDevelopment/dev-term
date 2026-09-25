@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Configuration\DevTerm.Configuration.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Devices.Scpi\DevTerm.Devices.Scpi.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

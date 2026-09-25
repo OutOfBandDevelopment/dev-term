@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\src\DevTerm.Devices.Scpi\DevTerm.Devices.Scpi.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
   <ItemGroup>

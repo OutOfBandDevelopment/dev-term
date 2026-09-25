@@ -3,6 +3,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 using Terminal.Gui.App;
 
@@ -20,7 +21,7 @@ namespace DevTerm.Console.Tests;
 /// class (<c>dotnet test --filter ClassName~ScreenshotTests</c>) and re-embed the refreshed PNGs on
 /// the relevant doc page whenever a screen's layout changes.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScreenshotTests

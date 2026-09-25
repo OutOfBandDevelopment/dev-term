@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Wpf\DevTerm.Wpf.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Configuration\DevTerm.Configuration.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

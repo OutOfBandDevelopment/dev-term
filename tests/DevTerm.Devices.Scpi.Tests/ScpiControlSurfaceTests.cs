@@ -2,6 +2,7 @@ using System.Text;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Devices.Scpi.Tests;
@@ -12,7 +13,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// <see cref="ITransport"/> behind a real <see cref="Session"/>, and its query/tracker
 /// correlation via a mocked <see cref="IScpiReplyTracker"/>. No real instrument involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiControlSurfaceTests
 {

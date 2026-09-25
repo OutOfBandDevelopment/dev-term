@@ -5,6 +5,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -19,7 +20,7 @@ namespace DevTerm.Wpf.Tests;
 /// The object graph (FakeTransport → Session → presenter → surface → ControlPanelWindow) mirrors
 /// <see cref="ScpiControlPanelEndToEndTests"/>, which already proves this wiring works end to end.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ControlPanelScreenshotTests

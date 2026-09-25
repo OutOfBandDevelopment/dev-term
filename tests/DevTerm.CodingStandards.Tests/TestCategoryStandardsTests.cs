@@ -1,4 +1,5 @@
 using System.Reflection;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.CodingStandards.Tests;
 
@@ -16,12 +17,12 @@ namespace DevTerm.CodingStandards.Tests;
 /// <see cref="EveryTestMethod_HasAnEffectiveRecognizedTestCategory"/> checks that resolved set
 /// directly rather than just assuming the class-level convention holds everywhere forever.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class TestCategoryStandardsTests
 {
     /// <summary>The only values docs/coding-standards.md and CLAUDE.md's Testing section recognize — add a new one here in the same change that starts using it.</summary>
-    private static readonly string[] _knownCategories = ["UNIT", "INTEGRATION", "DEV-LOCAL"];
+    private static readonly string[] _knownCategories = ["UNIT", "INTEGRATION", "DevLocal"];
 
     private static readonly Assembly[] _testAssemblies =
     [

@@ -2,6 +2,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,7 @@ namespace DevTerm.Wpf.Tests;
 /// real <see cref="TcpTransport"/> instead of <see cref="FakeTransport"/>. Reports
 /// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
 /// </summary>
-[TestCategory("DEV-LOCAL")]
+[TestCategory(TestCategories.DevLocal)]
 [TestClass]
 [DoNotParallelize]
 public sealed class RealHardwareMainWindowTests
@@ -25,13 +26,19 @@ public sealed class RealHardwareMainWindowTests
     [TestMethod]
     [DataRow("RealTcpDeviceHost3")]
     [DataRow("RealTcpDeviceHost2")]
-    public void MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
+    public async Task MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
     {
         var host = TestContext.Properties.ContainsKey(hostParameterName) ? TestContext.Properties[hostParameterName] as string : null;
         var portText = TestContext.Properties.ContainsKey("RealTcpDevicePort") ? TestContext.Properties["RealTcpDevicePort"] as string : null;
         if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort' — run with a settings file (see devterm.runsettings) to exercise this against real hardware.");
+            return;
+        }
+
+        if (!await RealDeviceReachability.IsTcpReachableAsync(host, port, TestContext.CancellationToken))
+        {
+            Assert.Inconclusive($"Real device at {host}:{port} is not reachable (TCP connect attempt timed out/refused within {RealDeviceReachability.DefaultTimeout.TotalSeconds}s) — is it powered on and networked?");
             return;
         }
 

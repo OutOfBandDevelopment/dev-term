@@ -2,6 +2,7 @@ using System.Text;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -14,7 +15,7 @@ namespace DevTerm.Console.Tests;
 /// <c>INTEGRATION</c> (contrast <c>TuiModeSwitchProfileTests</c>, which needs a real TCP loopback
 /// socket because it goes through <c>DevTermSessionBuilder</c>).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class LoopbackTransportTests
 {

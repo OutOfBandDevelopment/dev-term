@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.Devices.Scpi.Tests;
@@ -10,7 +11,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// parameterized command), and the always-present Custom Command section. No real instrument
 /// involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiUiDefinitionBuilderTests
 {

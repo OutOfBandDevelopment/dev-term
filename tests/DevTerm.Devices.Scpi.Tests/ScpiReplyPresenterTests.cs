@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Devices.Scpi.Tests;
 
@@ -8,7 +9,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// fallback behavior for an unsolicited line (no pending query registered). No real instrument
 /// involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiReplyPresenterTests
 {

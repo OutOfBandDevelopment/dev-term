@@ -1,12 +1,13 @@
 using System.Buffers;
 using System.IO.Pipelines;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 using Moq;
 
 namespace DevTerm.Transports.Serial.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class SerialTransportTests
 {

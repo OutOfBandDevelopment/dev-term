@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Devices.Busylight.Tests;
 
@@ -7,7 +8,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// Feeds <see cref="BusylightDecoder"/> a sample poll reply and asserts the rendered text — no real
 /// device involved, so this is <c>UNIT</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class BusylightDecoderTests
 {

@@ -1,6 +1,7 @@
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -14,7 +15,7 @@ namespace DevTerm.Configuration.Tests;
 /// every front end (console CLI/TUI, WPF) relies on: the right <see cref="ITransport"/> for the
 /// selected transport, configured from <see cref="CliOptions"/>, plus the shared presenter set.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ServiceCollectionExtensionsTests
 {

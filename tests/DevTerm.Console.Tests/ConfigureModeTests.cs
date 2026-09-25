@@ -1,4 +1,5 @@
 using DevTerm.Configuration;
+using DevTerm.Test.Utilities;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -13,7 +14,7 @@ namespace DevTerm.Console.Tests;
 /// Uses a temp directory for <see cref="ConnectionProfileStore"/> rather than the real
 /// <c>~/.dev-term/profiles</c>, same isolation as <c>ConnectionProfileStoreTests</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ConfigureModeTests

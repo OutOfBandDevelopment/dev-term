@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Windows.Controls;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.Wpf.Tests;
@@ -15,7 +16,7 @@ namespace DevTerm.Wpf.Tests;
 /// never <c>Show()</c>, and a <see cref="StaTestRunner.DoEvents"/> pump right after construction
 /// (bindings/initial state don't populate synchronously before a pump).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ControlPanelWindowTests

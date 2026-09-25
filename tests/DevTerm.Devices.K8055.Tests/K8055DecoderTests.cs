@@ -1,4 +1,5 @@
 using System.Buffers;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Devices.K8055.Tests;
 
@@ -8,7 +9,7 @@ namespace DevTerm.Devices.K8055.Tests;
 /// human-readable <c>Render</c> text and its structured <see cref="K8055Decoder.ValuesChanged"/>
 /// output. No real device involved, so this is <c>UNIT</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class K8055DecoderTests
 {

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using DevTerm.Configuration;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -20,7 +21,7 @@ namespace DevTerm.Wpf.Tests;
 /// here (this window doesn't auto-connect on <c>Loaded</c>), but consistent with the rest of this
 /// assembly.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class DeviceProfilesWindowTests

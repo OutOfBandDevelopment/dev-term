@@ -1,8 +1,9 @@
+using DevTerm.Test.Utilities;
 using static DevTerm.Presenters.Text.Tests.TestSequence;
 
 namespace DevTerm.Presenters.Text.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class HexPresenterTests
 {

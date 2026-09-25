@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Text;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Usbtmc;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -15,7 +16,7 @@ namespace DevTerm.Transports.Usbtmc.Tests;
 /// out that a single-physical-transfer test alone would not catch the bulk-IN reassembly bug this
 /// class guards against.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class UsbtmcTransportTests
 {

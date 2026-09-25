@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration.Tests;
@@ -11,7 +12,7 @@ namespace DevTerm.Configuration.Tests;
 /// </summary>
 // Environment variables are process-global; run these in isolation so they can't race with
 // (or be raced by) any other test that also mutates them via Environment.SetEnvironmentVariable.
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class DevTermConfigurationTests

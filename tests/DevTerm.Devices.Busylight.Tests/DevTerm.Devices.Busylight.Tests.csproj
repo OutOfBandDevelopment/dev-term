@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Devices.Busylight\DevTerm.Devices.Busylight.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
 </Project>

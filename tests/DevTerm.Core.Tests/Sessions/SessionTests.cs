@@ -3,11 +3,12 @@ using System.IO.Pipelines;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Core.Tests.Sessions;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class SessionTests
 {

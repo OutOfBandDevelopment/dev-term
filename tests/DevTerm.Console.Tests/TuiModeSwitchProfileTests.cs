@@ -6,6 +6,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -22,7 +23,7 @@ namespace DevTerm.Console.Tests;
 /// (same as <c>ToggleConnectionAsync</c>), which never flushes without a real, actively-pumping
 /// <c>Application.Run()</c> loop — see <c>CLAUDE.md</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class TuiModeSwitchProfileTests

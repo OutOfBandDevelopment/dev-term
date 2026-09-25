@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.UiDefinitions.Tests;
@@ -7,7 +8,7 @@ namespace DevTerm.UiDefinitions.Tests;
 /// docs/design/features/kuando-busylight-protocol.md's @startsalt mockup, in this model's shape —
 /// through both serializers, rather than a synthetic minimal example.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class UiDefinitionSerializerTests
 {

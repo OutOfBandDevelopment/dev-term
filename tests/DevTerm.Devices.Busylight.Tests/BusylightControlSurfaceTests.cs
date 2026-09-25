@@ -1,6 +1,7 @@
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Devices.Busylight.Tests;
@@ -12,7 +13,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// tests set state then invoke "apply" to observe the resulting frame, per
 /// docs/design/features/kuando-busylight-protocol.md's confirmed single-command shape.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class BusylightControlSurfaceTests
 {

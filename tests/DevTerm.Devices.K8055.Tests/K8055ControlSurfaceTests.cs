@@ -1,6 +1,7 @@
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Devices.K8055.Tests;
@@ -10,7 +11,7 @@ namespace DevTerm.Devices.K8055.Tests;
 /// mocked <see cref="ITransport"/> behind a real <see cref="Session"/> — no real HID device
 /// involved, so this is <c>UNIT</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class K8055ControlSurfaceTests
 {

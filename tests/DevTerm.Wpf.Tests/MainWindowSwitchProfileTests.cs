@@ -6,6 +6,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -23,7 +24,7 @@ namespace DevTerm.Wpf.Tests;
 /// untested-by-necessity gap <c>ConnectAsync</c>/<c>ToggleConnectionAsync</c>'s own failure paths
 /// already have.
 /// </summary>
-[TestCategory("INTEGRATION")]
+[TestCategory(TestCategories.Integration)]
 [TestClass]
 [DoNotParallelize]
 public sealed class MainWindowSwitchProfileTests

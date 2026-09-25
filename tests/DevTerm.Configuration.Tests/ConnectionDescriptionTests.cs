@@ -1,8 +1,9 @@
 using System.IO.Ports;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Configuration.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ConnectionDescriptionTests
 {

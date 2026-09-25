@@ -98,6 +98,13 @@ standard below gets declared that StyleCop already knows how to check.
   assembly and fails if a class is missing one, uses an unrecognized value, or (checking what MSTest
   actually resolves per test, class-level plus method-level combined) a method ends up with no
   effective category at all.
+- **A `DEV-LOCAL` test preflights that its device actually exists/is reachable, with a short,
+  bounded timeout, before touching it, and reports `Assert.Inconclusive` (never a failure or a hang)
+  when it doesn't** — a device intentionally offline is an expected bench state, not a red build.
+  Not currently reflection-enforced (unlike the `[TestCategory]` rule above); share the check via
+  `tests/DevTerm.Test.Utilities` (`RealDeviceReachability` for TCP today) rather than reimplementing
+  it per test class. See `docs/design/testing.md`'s "Rule: every `DEV-LOCAL` test preflights device
+  presence" section.
 
 ## Adding a new standard
 

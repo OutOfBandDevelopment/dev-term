@@ -4,6 +4,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -19,7 +20,7 @@ namespace DevTerm.Console.Tests;
 /// <c>DevTerm.Wpf.Tests.MainWindowTests</c> need <c>[DoNotParallelize]</c> for its own, WPF-specific
 /// reason).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class TuiModeTests

@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using DevTerm.Devices.Scpi;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 
@@ -12,7 +13,7 @@ namespace DevTerm.Configuration.Tests;
 /// (see that class's own tests, <c>DevTerm.Console.Tests.ConfigureModeTests</c>, for the
 /// Terminal.Gui-specific half of this).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ConnectionEditorViewModelTests
 {

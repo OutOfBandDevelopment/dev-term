@@ -4,6 +4,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -30,7 +31,7 @@ namespace DevTerm.Wpf.Tests;
 /// isolation intermittently failed when run alongside the others) — the same class of problem
 /// <c>DevTermConfigurationTests</c> already avoids for its own (different) reason.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class MainWindowTests

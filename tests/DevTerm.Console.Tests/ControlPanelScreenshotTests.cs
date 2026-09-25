@@ -4,6 +4,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
+using DevTerm.Test.Utilities;
 using Terminal.Gui.App;
 
 namespace DevTerm.Console.Tests;
@@ -18,7 +19,7 @@ namespace DevTerm.Console.Tests;
 /// <see cref="TuiScreenshot"/> the same way <see cref="ScreenshotTests"/> already does for
 /// ConfigureMode/TuiMode.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ControlPanelScreenshotTests

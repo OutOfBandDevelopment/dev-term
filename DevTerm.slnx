@@ -34,6 +34,7 @@
     <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
+    <Project Path="tests/DevTerm.Test.Utilities/DevTerm.Test.Utilities.csproj" />
     <Project Path="tests/DevTerm.Transports.Usbtmc.Tests/DevTerm.Transports.Usbtmc.Tests.csproj" />
     <Project Path="tests/DevTerm.UiDefinitions.Tests/DevTerm.UiDefinitions.Tests.csproj" />
     <Project Path="tests/DevTerm.Wpf.Tests/DevTerm.Wpf.Tests.csproj" />

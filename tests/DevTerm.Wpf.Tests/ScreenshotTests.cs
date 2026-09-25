@@ -3,6 +3,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Wpf.Tests;
@@ -22,7 +23,7 @@ namespace DevTerm.Wpf.Tests;
 /// <see cref="WpfScreenshot.ShowOffScreen"/> rather than calling <c>ConnectAsync</c> directly —
 /// calling both opens the session twice concurrently (see <c>CLAUDE.md</c>'s constraint on this).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScreenshotTests

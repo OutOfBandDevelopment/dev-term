@@ -1,6 +1,7 @@
 using System.Buffers;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
@@ -17,7 +18,7 @@ namespace DevTerm.Console.Tests;
 /// <see cref="DevTerm.Devices.K8055.K8055UiDefinition"/> for the real one) plus a fake
 /// <see cref="IControlSurface"/>/<see cref="IStructuredPresenter"/> stand in for a real device.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ControlPanelModeTests

@@ -1,3 +1,5 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Devices.Scpi.Tests;
 
 /// <summary>
@@ -7,7 +9,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// string parsing, IDN auto-detect matching, and the code-constructed Generic fallback. No real
 /// instrument involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiProfileCatalogTests
 {

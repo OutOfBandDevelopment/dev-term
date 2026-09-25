@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Devices.Scpi;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -19,7 +20,7 @@ namespace DevTerm.Wpf.Tests;
 /// subscribed, or the button never actually reaching <see cref="IControlSurface.InvokeAsync"/>).
 /// Same <see cref="StaTestRunner"/>/no-<c>Show()</c> conventions as <see cref="MainWindowTests"/>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScpiControlPanelEndToEndTests

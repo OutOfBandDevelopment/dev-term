@@ -1,3 +1,5 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Configuration.Tests;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace DevTerm.Configuration.Tests;
 /// docs/design/connection-profiles.md — every front end calls <see cref="ManifestNameWarning.For"/>
 /// instead of resolving/formatting this itself.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ManifestNameWarningTests
 {

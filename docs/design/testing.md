@@ -63,6 +63,29 @@ Tektronix 2230 (over a serial-to-Ethernet bridge) already used for manual real-h
 verification throughout this project's `docs/changes/` history, now automated the same way rather
 than only ever checked by hand.
 
+## Rule: every `DEV-LOCAL` test preflights device presence, with a short timeout, before touching it
+
+Even with a `.runsettings` file supplying a target, the device itself might be powered off or
+unplugged — a bench state that's expected, not a build failure. A `DEV-LOCAL` test must check the
+device actually exists/is reachable *before* attempting the real interaction, and report
+`Assert.Inconclusive` (never fail, and never hang) if it doesn't. Reuse or extend `tests/
+DevTerm.Test.Utilities` for this rather than reimplementing the check per test class:
+
+- **TCP** — `RealDeviceReachability.IsTcpReachableAsync` (used by both `RealHardwareCliTests` and
+  `RealHardwareMainWindowTests`), a short (3s default) `TcpClient.ConnectAsync` probe against the
+  configured host:port. A TCP connect, not an ICMP ping, is the reachability check here — these
+  targets are serial-to-Ethernet bridges, which may not answer ICMP even when the TCP service
+  itself is up — and it needs no elevated/raw-socket privilege either way.
+- **Serial/COM port** or **USB (HID/USBTMC) by vendor/product ID** — no `DEV-LOCAL` test exists for
+  either yet, but when one is written, its existence check (is the COM port present /
+  does a USB device matching the VID:PID enumerate) belongs in `DevTerm.Test.Utilities` alongside
+  `RealDeviceReachability`, following the same shape: a short, bounded check, `Assert.Inconclusive`
+  on absence, referenced from whichever test project needs it instead of copy-pasted.
+
+Keep the timeout short (single-digit seconds) — a `DEV-LOCAL` run already opts in via `.runsettings`
+and is never on a CI critical path, but a slow/hung reachability check still makes local iteration
+on these tests painful.
+
 ## WPF automation: in-process, not OS-level UI Automation
 
 `DevTerm.Wpf.Tests` drives a real `MainWindow` — real XAML, real controls — but through its

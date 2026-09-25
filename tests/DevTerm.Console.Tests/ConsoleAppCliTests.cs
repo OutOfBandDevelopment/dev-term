@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Console.Tests;
 
@@ -12,7 +13,7 @@ namespace DevTerm.Console.Tests;
 /// end-to-end case drives it against a real local TCP socket this test controls — no real
 /// hardware, but a real transport and a real process, not a call into internal methods.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ConsoleAppCliTests
 {

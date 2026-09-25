@@ -1,10 +1,11 @@
 using System.Buffers;
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Core.Tests.Presenters;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class PipelineTests
 {
