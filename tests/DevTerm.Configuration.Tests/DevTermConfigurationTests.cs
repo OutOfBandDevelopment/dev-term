@@ -35,7 +35,7 @@ public sealed class DevTermConfigurationTests
 
             Assert.AreEqual("COM1", options.Port, "Untouched settings should still come from the file.");
             Assert.AreEqual(4800, options.Baud, "Command line should override the file.");
-            Assert.AreSequenceEqual(new[] { "hex" }, options.Presenter, "An older profile's single-string Presenter still loads.");
+            Assert.AreSequenceEqual(["hex"], options.Presenter, "An older profile's single-string Presenter still loads.");
         }
         finally
         {
@@ -98,7 +98,7 @@ public sealed class DevTermConfigurationTests
         Assert.AreEqual("COM3", roundTripped.Port);
         Assert.AreEqual(4800, roundTripped.Baud);
         Assert.AreEqual(System.IO.Ports.Handshake.RequestToSend, roundTripped.Handshake);
-        Assert.AreSequenceEqual(new[] { "ascii", "hex" }, roundTripped.Presenter);
+        Assert.AreSequenceEqual(["ascii", "hex"], roundTripped.Presenter);
         Assert.AreEqual("decimal", roundTripped.Parser);
         Assert.AreEqual(LineEnding.Cr, roundTripped.LineEnding);
         Assert.AreEqual("tek-2230", roundTripped.ManifestName);

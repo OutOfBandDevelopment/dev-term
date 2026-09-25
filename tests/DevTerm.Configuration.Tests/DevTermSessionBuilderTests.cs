@@ -12,7 +12,7 @@ public sealed class DevTermSessionBuilderTests
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["hex"] });
 
         Assert.IsNotNull(result.Session);
-        Assert.AreSequenceEqual(new[] { "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray());
+        Assert.AreSequenceEqual(["hex"], [.. result.Session.Presenters.Select(p => p.Name)]);
         Assert.AreEqual(Core.Transports.ConnectionState.Closed, result.Session.State);
     }
 
@@ -30,7 +30,7 @@ public sealed class DevTermSessionBuilderTests
     {
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "hex", "ASCII"] });
 
-        Assert.AreSequenceEqual(new[] { "ascii", "hex" }, result.Session.Presenters.Select(p => p.Name).ToArray(), "Duplicates (any case) collapse.");
+        Assert.AreSequenceEqual(["ascii", "hex"], [.. result.Session.Presenters.Select(p => p.Name)], "Duplicates (any case) collapse.");
     }
 
     [TestMethod]
@@ -48,7 +48,7 @@ public sealed class DevTermSessionBuilderTests
         var result = DevTermSessionBuilder.Build(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["decimal", "hex"] });
 
         Assert.IsTrue(result.Catalog.TryGetInput("decimal", out _));
-        Assert.AreSequenceEqual(new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary" }, result.Catalog.InputNames.ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(["ascii", "utf8", "hex", "decimal", "octal", "binary"], [.. result.Catalog.InputNames], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]

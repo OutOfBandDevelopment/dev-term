@@ -286,7 +286,7 @@ public sealed class ScreenshotTests
         await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
         {
             dump = TuiTestRunner.DumpBuffer();
@@ -307,7 +307,7 @@ public sealed class ScreenshotTests
         await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
             // Sets the field directly rather than going through TuiTestRunner.TypeText's key
@@ -357,7 +357,7 @@ public sealed class ScreenshotTests
         await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
             transport.PushIncomingAsync(Encoding.ASCII.GetBytes("ID TEK/2230,V81.1,VERS:14\r")).GetAwaiter().GetResult();

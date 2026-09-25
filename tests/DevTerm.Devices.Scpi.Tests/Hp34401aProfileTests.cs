@@ -73,10 +73,10 @@ public sealed class Hp34401aProfileTests
             var field = (ChoiceControl)section.Controls.Single(c => c.Id == $"{id}.Range");
             var button = (ButtonControl)section.Controls.Single(c => c.Id == $"{id}.send");
 
-            Assert.AreSequenceEqual(new[] { "DEF", "MIN", "MAX" }, field.Options, $"unexpected Range options for {id}");
+            Assert.AreSequenceEqual(["DEF", "MIN", "MAX"], field.Options, $"unexpected Range options for {id}");
             Assert.AreEqual("DEF", field.DefaultValue, $"unexpected Range default for {id}");
             Assert.AreEqual(id, button.CommandId);
-            Assert.AreSequenceEqual(new[] { $"{id}.Range" }, button.ParameterFieldIds);
+            Assert.AreSequenceEqual([$"{id}.Range"], button.ParameterFieldIds);
             Assert.DoesNotContain(c => c.Id == $"{id}.reply", section.Controls.OfType<IndicatorControl>());
         }
     }
@@ -90,10 +90,10 @@ public sealed class Hp34401aProfileTests
         var field = (ChoiceControl)section.Controls.Single(c => c.Id == "confVoltDc.Range");
         var button = (ButtonControl)section.Controls.Single(c => c.Id == "confVoltDc.send");
 
-        Assert.AreSequenceEqual(new[] { "DEF", "0.1", "1", "10", "100", "1000" }, field.Options);
+        Assert.AreSequenceEqual(["DEF", "0.1", "1", "10", "100", "1000"], field.Options);
         Assert.AreEqual("DEF", field.DefaultValue);
         Assert.AreEqual("confVoltDc", button.CommandId);
-        Assert.AreSequenceEqual(new[] { "confVoltDc.Range" }, button.ParameterFieldIds);
+        Assert.AreSequenceEqual(["confVoltDc.Range"], button.ParameterFieldIds);
         Assert.DoesNotContain(c => c.Id == "confVoltDc.reply", section.Controls.OfType<IndicatorControl>());
     }
 
@@ -134,10 +134,10 @@ public sealed class Hp34401aProfileTests
         Assert.IsNotNull(section.Controls.OfType<IndicatorControl>().SingleOrDefault(c => c.Id == "sysErr.reply"));
 
         var dispField = (ChoiceControl)section.Controls.Single(c => c.Id == "disp.State");
-        Assert.AreSequenceEqual(new[] { "ON", "OFF" }, dispField.Options);
+        Assert.AreSequenceEqual(["ON", "OFF"], dispField.Options);
 
         var beeperField = (ChoiceControl)section.Controls.Single(c => c.Id == "beeperState.State");
-        Assert.AreSequenceEqual(new[] { "ON", "OFF" }, beeperField.Options);
+        Assert.AreSequenceEqual(["ON", "OFF"], beeperField.Options);
     }
 
     [TestMethod]

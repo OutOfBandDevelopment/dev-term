@@ -128,7 +128,7 @@ public sealed class ScpiProfileCatalogTests
         var generic = ScpiProfileCatalog.Generic;
 
         Assert.IsTrue(string.IsNullOrEmpty(generic.IdnPattern));
-        Assert.AreSequenceEqual(new[] { "idn", "rst", "cls", "opc" }, generic.Commands.Select(c => c.Id).ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(["idn", "rst", "cls", "opc"], [.. generic.Commands.Select(c => c.Id)], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]

@@ -461,13 +461,13 @@ public sealed class DeviceProfilesWindowTests
                 window.PresenterChoicesList.UpdateLayout();
                 var boxes = FindVisualChildren<System.Windows.Controls.CheckBox>(window.PresenterChoicesList).ToList();
                 Assert.AreSequenceEqual(
-                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi" }, boxes.Select(b => (string)b.Content).ToArray());
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. boxes.Select(b => (string)b.Content)]);
                 Assert.AreSequenceEqual(
-                    new[] { true, false, false, false, false, true, false, false, false }, boxes.Select(b => b.IsChecked == true).ToArray(), "Each checkbox should reflect its presenter's IsSelected.");
+                    [true, false, false, false, false, true, false, false, false], [.. boxes.Select(b => b.IsChecked == true)], "Each checkbox should reflect its presenter's IsSelected.");
                 Assert.AreEqual("hex", window.ParserBox.SelectedItem, "The Send as box shows the profile's parser, separately from the presenters.");
 
                 boxes[1].IsChecked = true; // utf8
-                Assert.AreSequenceEqual(new[] { "ascii", "utf8", "binary" }, window.ViewModel.SelectedPresenters.ToArray());
+                Assert.AreSequenceEqual(["ascii", "utf8", "binary"], [.. window.ViewModel.SelectedPresenters]);
                 Assert.IsTrue(window.ViewModel.IsDirty);
 
                 await Task.CompletedTask;
@@ -568,11 +568,11 @@ public sealed class DeviceProfilesWindowTests
                 window.ProfilesList.SelectedItems.Add("alpha");
                 window.ProfilesList.SelectedItems.Add("beta");
 
-                Assert.AreSequenceEqual(new[] { "alpha", "beta" }, window.ViewModel.SelectedProfileNames.ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+                Assert.AreSequenceEqual(["alpha", "beta"], [.. window.ViewModel.SelectedProfileNames], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
 
                 window.ProfilesList.SelectedItems.Remove("alpha");
 
-                Assert.AreSequenceEqual(new[] { "beta" }, window.ViewModel.SelectedProfileNames.ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+                Assert.AreSequenceEqual(["beta"], [.. window.ViewModel.SelectedProfileNames], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
 
                 await Task.CompletedTask;
             });
@@ -609,7 +609,7 @@ public sealed class DeviceProfilesWindowTests
                 Assert.Contains("Exported 2 profile(s)", window.ViewModel.StatusMessage);
                 var importStore = new ConnectionProfileStore(Path.Combine(directory, "import"));
                 importStore.ImportZip(zipPath);
-                Assert.AreSequenceEqual(new[] { "alpha", "gamma" }, importStore.List().ToArray());
+                Assert.AreSequenceEqual(["alpha", "gamma"], [.. importStore.List()]);
 
                 await Task.CompletedTask;
             });
@@ -709,9 +709,9 @@ public sealed class DeviceProfilesWindowTests
                 window.ProfilesList.SelectedItems.Add("gamma");
                 window.ViewModel.DeleteSelectedProfilesCommand.Execute(null);
 
-                Assert.AreSequenceEqual(new[] { "alpha", "gamma" }, asked!.ToArray());
-                Assert.AreSequenceEqual(new[] { "beta" }, store.List().ToArray());
-                Assert.AreSequenceEqual(new[] { "beta" }, window.ProfilesList.Items.Cast<string>().ToArray());
+                Assert.AreSequenceEqual(["alpha", "gamma"], [.. asked!]);
+                Assert.AreSequenceEqual(["beta"], [.. store.List()]);
+                Assert.AreSequenceEqual(["beta"], [.. window.ProfilesList.Items.Cast<string>()]);
 
                 await Task.CompletedTask;
             });

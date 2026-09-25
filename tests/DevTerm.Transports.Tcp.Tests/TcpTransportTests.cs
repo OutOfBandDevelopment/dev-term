@@ -79,7 +79,7 @@ public sealed class TcpTransportTests
 
         await transport.OpenAsync(TestContext.CancellationToken);
 
-        Assert.AreSequenceEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+        Assert.AreSequenceEqual([ConnectionState.Opening, ConnectionState.Open], states);
 
         await transport.CloseAsync(TestContext.CancellationToken);
     }

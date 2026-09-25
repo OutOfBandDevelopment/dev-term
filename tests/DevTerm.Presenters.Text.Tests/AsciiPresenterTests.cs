@@ -33,7 +33,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\n"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(["Hi!"], [.. result]);
     }
 
     [TestMethod]
@@ -41,7 +41,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\r"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(["Hi!"], [.. result]);
     }
 
     [TestMethod]
@@ -49,7 +49,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("Hi!\r\n"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "Hi!" }, result.ToArray());
+        Assert.AreSequenceEqual(["Hi!"], [.. result]);
     }
 
     [TestMethod]
@@ -58,7 +58,7 @@ public sealed class AsciiPresenterTests
         var first = _presenter.Render(Of("Hi!\r"u8.ToArray()));
         var second = _presenter.Render(Of("\nNext"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "Hi!" }, first.ToArray());
+        Assert.AreSequenceEqual(["Hi!"], [.. first]);
         Assert.IsEmpty(second, "The LF half of the CRLF pair should be swallowed, not start a new empty line.");
     }
 
@@ -71,7 +71,7 @@ public sealed class AsciiPresenterTests
 
         Assert.IsEmpty(afterH);
         Assert.IsEmpty(afterI);
-        Assert.AreSequenceEqual(new[] { "Hi" }, afterTerminator.ToArray());
+        Assert.AreSequenceEqual(["Hi"], [.. afterTerminator]);
     }
 
     [TestMethod]
@@ -79,7 +79,7 @@ public sealed class AsciiPresenterTests
     {
         var result = _presenter.Render(Of("one\ntwo\n"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "one", "two" }, result.ToArray());
+        Assert.AreSequenceEqual(["one", "two"], [.. result]);
     }
 
     [TestMethod]
@@ -89,7 +89,7 @@ public sealed class AsciiPresenterTests
 
         var result = presenter.Render(Of("abcdef"u8.ToArray()));
 
-        Assert.AreSequenceEqual(new[] { "abc", "def" }, result.ToArray());
+        Assert.AreSequenceEqual(["abc", "def"], [.. result]);
     }
 
     [TestMethod]
@@ -97,7 +97,7 @@ public sealed class AsciiPresenterTests
     {
         var presenter = Create(maxLineLength: 0);
 
-        var longRun = presenter.Render(Of(new string('a', 10_000).Select(c => (byte)c).ToArray()));
+        var longRun = presenter.Render(Of([.. new string('a', 10_000).Select(c => (byte)c)]));
         Assert.IsEmpty(longRun, "Length alone should never flush when MaxLineLength is 0.");
 
         var afterTerminator = presenter.Render(Of((byte)'\n'));
@@ -117,6 +117,6 @@ public sealed class AsciiPresenterTests
         var bytes = _presenter.Parse(original);
         var result = _presenter.Render(Of([.. bytes, (byte)'\n']));
 
-        Assert.AreSequenceEqual(new[] { original }, result.ToArray());
+        Assert.AreSequenceEqual([original], [.. result]);
     }
 }

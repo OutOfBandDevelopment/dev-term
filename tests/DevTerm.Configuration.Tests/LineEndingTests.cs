@@ -7,7 +7,7 @@ namespace DevTerm.Configuration.Tests;
 public sealed class LineEndingTests
 {
     [TestMethod]
-    public void ToBytes_None_ReturnsEmpty() => Assert.AreSequenceEqual(Array.Empty<byte>(), LineEnding.None.ToBytes());
+    public void ToBytes_None_ReturnsEmpty() => Assert.AreSequenceEqual([], LineEnding.None.ToBytes());
 
     [TestMethod]
     public void ToBytes_Cr_ReturnsCarriageReturn() => Assert.AreSequenceEqual(new byte[] { 0x0D }, LineEnding.Cr.ToBytes());

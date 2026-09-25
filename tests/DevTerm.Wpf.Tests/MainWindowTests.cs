@@ -103,7 +103,7 @@ public sealed class MainWindowTests
                 ShowInTaskbar = false,
             };
             await window.ConnectAsync();
-            Assert.AreSequenceEqual(new[] { "ascii", "hex" }, window.ParserBox.Items.Cast<string>().ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
+            Assert.AreSequenceEqual(["ascii", "hex"], [.. window.ParserBox.Items.Cast<string>()], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
             Assert.AreEqual("ascii", window.ParserBox.SelectedItem, "The box starts at the profile's parser.");
 
             window.SendBox.Text = "ff";

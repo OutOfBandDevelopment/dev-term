@@ -93,7 +93,7 @@ public sealed class LoopbackTransportTests
         await session.SendAsync(Encoding.ASCII.GetBytes("Send Events: 10\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 10);
-        Assert.AreSequenceEqual(Enumerable.Range(1, 10).Select(i => $"Event {i}").ToArray(), received.ToArray());
+        Assert.AreSequenceEqual([.. Enumerable.Range(1, 10).Select(i => $"Event {i}")], [.. received]);
 
         await session.CloseAsync(TestContext.CancellationToken);
     }

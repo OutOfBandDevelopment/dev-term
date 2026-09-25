@@ -91,7 +91,7 @@ public sealed class SessionTests
         await outputTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         Assert.AreSequenceEqual(
-            new[] { new PresenterOutput("hex", "2A"), new PresenterOutput("ascii", "*") }, received);
+            [new PresenterOutput("hex", "2A"), new PresenterOutput("ascii", "*")], received);
     }
 
     [TestMethod]

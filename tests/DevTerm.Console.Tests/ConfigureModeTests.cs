@@ -140,9 +140,9 @@ public sealed class ConfigureModeTests
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 Assert.AreSequenceEqual(
-                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi" }, parts.PresenterCheckBoxes.Select(c => c.Text.ToString()).ToArray());
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
                 Assert.AreSequenceEqual(
-                    new[] { true, false, false, false, false, true, false, false, false }, parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked).ToArray());
+                    [true, false, false, false, false, true, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
                 Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 
                 parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8
@@ -152,7 +152,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ConnectButton);
 
                 Assert.IsNotNull(parts.Result);
-                Assert.AreSequenceEqual(new[] { "utf8", "binary" }, parts.Result.Presenter);
+                Assert.AreSequenceEqual(["utf8", "binary"], parts.Result.Presenter);
                 Assert.AreEqual("decimal", parts.Result.Parser);
             });
         }
@@ -710,7 +710,7 @@ public sealed class ConfigureModeTests
                 var importStore = new ConnectionProfileStore(CreateTempProfilesDirectory());
                 var result = importStore.ImportZip(zipPath);
                 Assert.AreEqual(1, result.Imported);
-                Assert.AreSequenceEqual(new[] { "tek2230" }, importStore.List().ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. importStore.List()]);
             });
         }
         finally
@@ -894,9 +894,9 @@ public sealed class ConfigureModeTests
                 parts.ProfilesList.MarkUnmarkSelectedItem();
                 Click(parts.DeleteSelectedButton);
 
-                Assert.AreSequenceEqual(new[] { "tek2230" }, asked!.ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. asked!]);
                 Assert.Contains("Deleted 1 profile(s).", parts.ErrorLabel.Text);
-                Assert.AreSequenceEqual(new[] { "other" }, store.List().ToArray());
+                Assert.AreSequenceEqual(["other"], [.. store.List()]);
             });
         }
         finally
@@ -922,7 +922,7 @@ public sealed class ConfigureModeTests
                 Click(parts.DeleteSelectedButton);
 
                 Assert.AreEqual("Delete cancelled.", parts.ErrorLabel.Text);
-                Assert.AreSequenceEqual(new[] { "tek2230" }, store.List().ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. store.List()]);
             });
         }
         finally
@@ -964,7 +964,7 @@ public sealed class ConfigureModeTests
 
                     Assert.AreEqual((1, 1), asked);
                     Assert.Contains("Replaced 1 saved profile(s) with 1", parts.ErrorLabel.Text);
-                    Assert.AreSequenceEqual(new[] { "new-one" }, store.List().ToArray());
+                    Assert.AreSequenceEqual(["new-one"], [.. store.List()]);
                 });
             }
             finally

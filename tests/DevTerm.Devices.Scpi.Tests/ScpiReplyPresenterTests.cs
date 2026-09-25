@@ -32,7 +32,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("HELLO\n"));
 
-        Assert.AreSequenceEqual(new[] { "HELLO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. lines]);
     }
 
     [TestMethod]
@@ -42,7 +42,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("HELLO\r\n"));
 
-        Assert.AreSequenceEqual(new[] { "HELLO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. lines]);
     }
 
     [TestMethod]
@@ -56,7 +56,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04\r"));
 
-        Assert.AreSequenceEqual(new[] { "ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04" }, lines.ToArray());
+        Assert.AreSequenceEqual(["ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04"], [.. lines]);
     }
 
     [TestMethod]
@@ -66,7 +66,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("ONE\nTWO\n"));
 
-        Assert.AreSequenceEqual(new[] { "ONE", "TWO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["ONE", "TWO"], [.. lines]);
     }
 
     [TestMethod]
@@ -78,7 +78,7 @@ public sealed class ScpiReplyPresenterTests
         var second = presenter.Render(Bytes("LO\n"));
 
         Assert.IsEmpty(first);
-        Assert.AreSequenceEqual(new[] { "HELLO" }, second.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. second]);
     }
 
     [TestMethod]
@@ -90,7 +90,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("UNSOLICITED\n"));
 
-        Assert.AreSequenceEqual(new[] { "UNSOLICITED" }, lines.ToArray());
+        Assert.AreSequenceEqual(["UNSOLICITED"], [.. lines]);
         Assert.IsFalse(raised);
     }
 
@@ -138,7 +138,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("05.00"));
 
-        Assert.AreSequenceEqual(new[] { "05.00" }, lines.ToArray());
+        Assert.AreSequenceEqual(["05.00"], [.. lines]);
     }
 
     [TestMethod]

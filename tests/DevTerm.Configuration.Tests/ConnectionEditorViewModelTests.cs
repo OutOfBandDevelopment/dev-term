@@ -36,7 +36,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("tcp", vm.Transport);
             Assert.AreEqual("192.168.0.107", vm.Host);
             Assert.AreEqual("23", vm.TcpPort);
-            Assert.AreSequenceEqual(new[] { "ascii" }, vm.SelectedPresenters.ToArray());
+            Assert.AreSequenceEqual(["ascii"], [.. vm.SelectedPresenters]);
             Assert.AreEqual("ascii", vm.Parser, "An initial CliOptions with no Parser sends as its first presenter, as before.");
             Assert.AreEqual("some error", vm.StatusMessage);
         }
@@ -158,7 +158,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("tcp", fresh.Transport);
             Assert.AreEqual("192.168.0.108", fresh.Host);
             Assert.AreEqual("23", fresh.TcpPort);
-            Assert.AreSequenceEqual(new[] { "ascii", "hex" }, fresh.SelectedPresenters.ToArray());
+            Assert.AreSequenceEqual(["ascii", "hex"], [.. fresh.SelectedPresenters]);
             Assert.AreEqual("decimal", fresh.Parser);
         }
         finally
@@ -256,7 +256,7 @@ public sealed class ConnectionEditorViewModelTests
             var importDirectory = CreateTempDirectory();
             var importStore = new ConnectionProfileStore(importDirectory);
             importStore.ImportZip(zipPath);
-            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. importStore.List()]);
         }
         finally
         {
@@ -313,7 +313,7 @@ public sealed class ConnectionEditorViewModelTests
             var importDirectory = CreateTempDirectory();
             var importStore = new ConnectionProfileStore(importDirectory);
             importStore.ImportZip(zipPath);
-            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, importStore.List().ToArray());
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. importStore.List()]);
         }
         finally
         {
@@ -603,9 +603,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
-
-            vm.Host = "192.168.0.108";
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Host = "192.168.0.108"
+            };
 
             Assert.IsTrue(vm.IsDirty);
         }
@@ -735,9 +736,11 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions()) { Host = "192.168.0.108" };
-
-            vm.ConfirmDiscardChanges = () => false;
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Host = "192.168.0.108",
+                ConfirmDiscardChanges = () => false
+            };
             Assert.IsFalse(vm.ConfirmClose());
 
             vm.ConfirmDiscardChanges = () => true;
@@ -762,9 +765,8 @@ public sealed class ConnectionEditorViewModelTests
             {
                 Host = "something typed but never saved",
                 SelectedProfileName = "tek108",
+                ConfirmDiscardChanges = () => false
             };
-
-            vm.ConfirmDiscardChanges = () => false;
             vm.LoadCommand.Execute(null);
 
             Assert.AreEqual("something typed but never saved", vm.Host, "Declining should leave the unsaved edit in place, not overwrite it.");
@@ -883,9 +885,9 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 serialPortDiscovery: new FakeSerialPortDiscovery(["COM3", "COM7"]));
 
-            Assert.AreSequenceEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray());
+            Assert.AreSequenceEqual(["COM3", "COM7"], [.. vm.SerialPortOptions.Select(o => o.Name)]);
             Assert.AreSequenceEqual(
-                new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray(), "With no descriptions known, each port shows as just its short name.");
+                ["COM3", "COM7"], [.. vm.SerialPortOptions.Select(o => o.Display)], "With no descriptions known, each port shows as just its short name.");
         }
         finally
         {
@@ -907,9 +909,9 @@ public sealed class ConnectionEditorViewModelTests
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["COM3"] = "Prolific USB-to-Serial Comm Port" }));
 
             Assert.AreSequenceEqual(
-                new[] { "COM3 — Prolific USB-to-Serial Comm Port", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
+                ["COM3 — Prolific USB-to-Serial Comm Port", "COM7"], [.. vm.SerialPortOptions.Select(o => o.Display)]);
             Assert.AreSequenceEqual(
-                new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Name).ToArray(), "The value that gets written into Port stays the short name.");
+                ["COM3", "COM7"], [.. vm.SerialPortOptions.Select(o => o.Name)], "The value that gets written into Port stays the short name.");
         }
         finally
         {
@@ -952,7 +954,7 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions(),
                 serialPortDiscovery: new FailingDescriptionsSerialPortDiscovery(["COM3", "COM7"]));
 
-            Assert.AreSequenceEqual(new[] { "COM3", "COM7" }, vm.SerialPortOptions.Select(o => o.Display).ToArray());
+            Assert.AreSequenceEqual(["COM3", "COM7"], [.. vm.SerialPortOptions.Select(o => o.Display)]);
         }
         finally
         {
@@ -1367,10 +1369,12 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.VendorId = 0x046D.ToString();
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                VendorId = 0x046D.ToString()
+            };
 
-            Assert.AreSequenceEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(["046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120"], HidOptionDisplays(vm));
             Assert.IsTrue(vm.HidDevicesHiddenByFilter);
         }
         finally
@@ -1385,10 +1389,12 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.ProductId = 0x0368.ToString();
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                ProductId = 0x0368.ToString()
+            };
 
-            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(["0699:0368  TDS 2024"], HidOptionDisplays(vm));
         }
         finally
         {
@@ -1402,11 +1408,13 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.VendorId = 0x046D.ToString();
-            vm.ProductId = 0xC31C.ToString();
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                VendorId = 0x046D.ToString(),
+                ProductId = 0xC31C.ToString()
+            };
 
-            Assert.AreSequenceEqual(new[] { "046D:C31C  Keyboard K120" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(["046D:C31C  Keyboard K120"], HidOptionDisplays(vm));
 
             vm.ProductId = 0x0368.ToString();
 
@@ -1425,14 +1433,16 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.VendorId = 0x0699.ToString();
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                VendorId = 0x0699.ToString()
+            };
             Assert.HasCount(1, vm.HidDeviceOptions);
 
             vm.VendorId = "0";
 
             Assert.AreSequenceEqual(
-                new[] { "046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+                ["046D:C08B  G502 HERO Gaming Mouse", "046D:C31C  Keyboard K120", "0699:0368  TDS 2024"], HidOptionDisplays(vm));
         }
         finally
         {
@@ -1446,11 +1456,13 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.IdsShowHex = true;
-            vm.VendorIdDisplay = "0699";
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                IdsShowHex = true,
+                VendorIdDisplay = "0699"
+            };
 
-            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(["0699:0368  TDS 2024"], HidOptionDisplays(vm));
         }
         finally
         {
@@ -1464,8 +1476,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
-            vm.VendorId = "12ab";
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions(), hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices))
+            {
+                VendorId = "12ab"
+            };
 
             Assert.HasCount(3, vm.HidDeviceOptions);
         }
@@ -1486,7 +1500,7 @@ public sealed class ConnectionEditorViewModelTests
                 new CliOptions { Transport = "hid", VendorId = 0x0699 },
                 hidDeviceDiscovery: new FakeHidDeviceDiscovery(_threeHidDevices));
 
-            Assert.AreSequenceEqual(new[] { "0699:0368  TDS 2024" }, HidOptionDisplays(vm));
+            Assert.AreSequenceEqual(["0699:0368  TDS 2024"], HidOptionDisplays(vm));
         }
         finally
         {
@@ -1528,7 +1542,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.SelectedHidDevice = vm.HidDeviceOptions[0];
 
             Assert.IsTrue(vm.IsDirty, "Picking a device fills in the ids, which is a real edit...");
-            Assert.AreSequenceEqual(new[] { "046D:C08B  G502 HERO Gaming Mouse" }, HidOptionDisplays(vm), "...and the picked device stays in the filtered list.");
+            Assert.AreSequenceEqual(["046D:C08B  G502 HERO Gaming Mouse"], HidOptionDisplays(vm), "...and the picked device stays in the filtered list.");
         }
         finally
         {
@@ -1686,9 +1700,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
-
-            vm.IdsShowHex = true;
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                IdsShowHex = true
+            };
 
             Assert.IsFalse(vm.IsDirty, "Toggling the display format is a presentation preference, not a connection-field edit.");
         }
@@ -1704,9 +1719,10 @@ public sealed class ConnectionEditorViewModelTests
         var directory = CreateTempDirectory();
         try
         {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
-
-            vm.VendorIdDisplay = "1234";
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                VendorIdDisplay = "1234"
+            };
 
             Assert.IsTrue(vm.IsDirty);
         }
@@ -1732,8 +1748,8 @@ public sealed class ConnectionEditorViewModelTests
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
 
-            Assert.AreSequenceEqual(vm.PresenterOptions.ToArray(), vm.PresenterChoices.Select(c => c.Name).ToArray());
-            Assert.AreSequenceEqual(new[] { "hex" }, vm.SelectedPresenters.ToArray(), "A default CliOptions displays as hex.");
+            Assert.AreSequenceEqual([.. vm.PresenterOptions], [.. vm.PresenterChoices.Select(c => c.Name)]);
+            Assert.AreSequenceEqual(["hex"], [.. vm.SelectedPresenters], "A default CliOptions displays as hex.");
         }
         finally
         {
@@ -1753,7 +1769,7 @@ public sealed class ConnectionEditorViewModelTests
 
             var options = vm.BuildOptions();
 
-            Assert.AreSequenceEqual(new[] { "ascii", "binary" }, options.Presenter);
+            Assert.AreSequenceEqual(["ascii", "binary"], options.Presenter);
             Assert.AreEqual("hex", options.Parser, "The send format is independent of which presenters display.");
         }
         finally
@@ -1814,16 +1830,18 @@ public sealed class ConnectionEditorViewModelTests
                 store.Save(name, new CliOptions { Transport = "tcp", Host = "192.168.0.1", Port = "23" });
             }
 
-            var vm = new ConnectionEditorViewModel(store, new CliOptions());
-            vm.SelectedProfileName = "alpha";
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                SelectedProfileName = "alpha"
+            };
             vm.SelectedProfileNames.Add("alpha");
             vm.SelectedProfileNames.Add("gamma");
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
             Assert.Contains("Deleted 2 profile(s).", vm.StatusMessage);
-            Assert.AreSequenceEqual(new[] { "beta" }, store.List().ToArray());
-            Assert.AreSequenceEqual(new[] { "beta" }, vm.Profiles.ToArray(), "The list refreshes itself.");
+            Assert.AreSequenceEqual(["beta"], [.. store.List()]);
+            Assert.AreSequenceEqual(["beta"], [.. vm.Profiles], "The list refreshes itself.");
             Assert.IsEmpty(vm.SelectedProfileNames);
             Assert.IsNull(vm.SelectedProfileName, "The single-selection was one of the deleted profiles.");
         }
@@ -1846,7 +1864,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
             Assert.Contains("Select one or more saved profiles to delete", vm.StatusMessage);
-            Assert.AreSequenceEqual(new[] { "alpha" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["alpha"], [.. store.List()]);
         }
         finally
         {
@@ -1877,9 +1895,9 @@ public sealed class ConnectionEditorViewModelTests
 
             vm.DeleteSelectedProfilesCommand.Execute(null);
 
-            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, asked!.ToArray(), "The confirmation is told exactly which profiles are about to go.");
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. asked!], "The confirmation is told exactly which profiles are about to go.");
             Assert.AreEqual("Delete cancelled.", vm.StatusMessage);
-            Assert.AreSequenceEqual(new[] { "alpha", "beta" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. store.List()]);
         }
         finally
         {
@@ -1944,15 +1962,15 @@ public sealed class ConnectionEditorViewModelTests
                     asked = (existing, incoming);
                     return true;
                 },
+                SelectedProfileName = "old-one"
             };
-            vm.SelectedProfileName = "old-one";
             vm.SelectedProfileNames.Add("old-two");
 
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.AreEqual((2, 1), asked, "The confirmation is told how many profiles will go and how many come in.");
-            Assert.AreSequenceEqual(new[] { "new-one" }, store.List().ToArray());
-            Assert.AreSequenceEqual(new[] { "new-one" }, vm.Profiles.ToArray());
+            Assert.AreSequenceEqual(["new-one"], [.. store.List()]);
+            Assert.AreSequenceEqual(["new-one"], [.. vm.Profiles]);
             Assert.IsNull(vm.SelectedProfileName);
             Assert.IsEmpty(vm.SelectedProfileNames);
             Assert.Contains("Replaced 2 saved profile(s) with 1", vm.StatusMessage);
@@ -1980,7 +1998,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.AreEqual("Replace All cancelled.", vm.StatusMessage);
-            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["old-one"], [.. store.List()]);
         }
         finally
         {
@@ -2012,7 +2030,7 @@ public sealed class ConnectionEditorViewModelTests
             Assert.Contains("broken.json", vm.StatusMessage);
             Assert.Contains("Nothing was deleted", vm.StatusMessage);
             Assert.IsFalse(asked, "A bad archive is rejected before the user is even asked.");
-            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["old-one"], [.. store.List()]);
         }
         finally
         {
@@ -2036,7 +2054,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.Contains("contains no profiles", vm.StatusMessage);
-            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["old-one"], [.. store.List()]);
         }
         finally
         {
@@ -2065,7 +2083,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
 
             Assert.IsFalse(asked, "There's nothing to lose, so there's nothing to confirm.");
-            Assert.AreSequenceEqual(new[] { "new-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["new-one"], [.. store.List()]);
         }
         finally
         {
@@ -2090,7 +2108,7 @@ public sealed class ConnectionEditorViewModelTests
             vm.ReplaceAllFromZipCommand.Execute(null);
             Assert.Contains("needs a .zip file", vm.StatusMessage);
 
-            Assert.AreSequenceEqual(new[] { "old-one" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["old-one"], [.. store.List()]);
         }
         finally
         {
