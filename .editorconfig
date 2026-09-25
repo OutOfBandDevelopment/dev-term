@@ -1,6 +1,7 @@
 # Baseline coding standards for dev-term — see docs/coding-standards.md for the human-readable
-# version of these rules and the process for changing them. Severities are mostly `suggestion`/
-# `warning`, not `error`: nothing here should turn a currently-green build red on its own.
+# version of these rules and the process for changing them. Directory.Build.props' TreatWarningsAsErrors
+# means every `warning`-severity line here already breaks the build; `error` on a specific rule below
+# is just documentation that it's load-bearing, not a functional difference.
 root = true
 
 [*]
