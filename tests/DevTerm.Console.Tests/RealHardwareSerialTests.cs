@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.Channels;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Serial;
 using Microsoft.Extensions.Options;
@@ -16,9 +17,14 @@ namespace DevTerm.Console.Tests;
 /// container), the same in-process pattern as <c>DevTerm.Devices.K8055.Tests.RealHardwareK8055Tests</c>
 /// / <c>DevTerm.Devices.Busylight.Tests.RealHardwareBusylightTests</c> — no reason to spawn/pipe a
 /// whole <c>DevTerm.Console.dll</c> child process and scrape its stdout when the transport itself is
-/// directly constructible; that also sidesteps <see cref="DevTerm.Presenters.Text.AsciiPresenter"/>'s
-/// CR/LF-terminator-based line buffering, which would never flush a Korad reply (no terminator at
-/// all — see <see cref="RawPresenter"/>, shared with <c>RealHardwareUsbtmcTests</c>).
+/// directly constructible. Each test picks its own presenter to match its device's real framing
+/// (passed into <see cref="RunAsync"/>): the Korads use the terminatorless <see cref="RawPresenter"/>
+/// (shared with <c>RealHardwareUsbtmcTests</c>), since neither carries a line terminator at all and
+/// <see cref="AsciiPresenter"/> would never flush a reply; the HP 34401A — which IS line-terminated —
+/// uses <see cref="AsciiPresenter"/> instead, since a single serial read can legitimately split a
+/// terminated reply across multiple <see cref="Session.Output"/> events, which <c>RawPresenter</c>
+/// would surface as a truncated first fragment rather than the full line (real-hardware confirmed,
+/// docs/test/2026-09-25-15-02-44.md — see the fixed BACKLOG.md "Tooling" entry for this finding).
 ///
 /// Parameterized entirely via <c>.runsettings</c> (see <c>devterm.runsettings</c>) — COM port
 /// assignment is reassigned by Windows whenever a USB-serial adapter is replugged into a different
@@ -55,6 +61,14 @@ public sealed class RealHardwareSerialTests
     /// instrument replies with SCPI error +550 — it sends no reply of its own, so it's not one of
     /// the "expects a reply" steps below. <c>MEAS:VOLT:DC?</c> is the one core measurement function
     /// exercised beyond identity, per the user's "a few core functions, not every operation" ask.
+    ///
+    /// Uses <see cref="AsciiPresenter"/>, not the shared terminatorless <see cref="RawPresenter"/>
+    /// the Korad tests below use — real-hardware confirmed (docs/test/2026-09-25-15-02-44.md,
+    /// re-confirmed live 2026-09-25) that this device's line-terminated replies can arrive over
+    /// serial in multiple chunks, each firing <see cref="Session.Output"/> separately;
+    /// <c>RawPresenter</c> surfaces the first chunk alone (e.g. "Received: H" instead of the real
+    /// reply). <c>AsciiPresenter</c> buffers until this profile's own LF terminator instead. See
+    /// BACKLOG.md's now-resolved "Tooling" entry for this exact finding.
     /// </summary>
     [TestMethod]
     [TestCategory(TestCategories.Hp_34401a)]
@@ -63,8 +77,9 @@ public sealed class RealHardwareSerialTests
         RunAsync(
             "RealSerialHp34401a",
             "\n",
+            () => new AsciiPresenter(Options.Create(new AsciiPresenterOptions())),
             [
-                //("SYSTem:REMote", false),
+                ("SYSTem:REMote", false),
                 ("*IDN?", true),
                 ("MEAS:VOLT:DC?", true),
             ]);
@@ -84,6 +99,7 @@ public sealed class RealHardwareSerialTests
         RunAsync(
             "RealSerialKa3005p",
             string.Empty,
+            static () => new RawPresenter(),
             [
                 ("*IDN?", true),
                 ("VOUT1?", true),
@@ -98,13 +114,14 @@ public sealed class RealHardwareSerialTests
         RunAsync(
             "RealSerialKa6003p",
             string.Empty,
+            static () => new RawPresenter(),
             [
                 ("*IDN?", true),
                 ("VOUT1?", true),
                 ("IOUT1?", true),
             ]);
 
-    private async Task RunAsync(string parameterPrefix, string commandTerminator, (string Command, bool ExpectsReply)[] steps)
+    private async Task RunAsync(string parameterPrefix, string commandTerminator, Func<IPresenter> presenterFactory, (string Command, bool ExpectsReply)[] steps)
     {
         var port = GetProperty($"{parameterPrefix}Port");
         var baud = GetProperty($"{parameterPrefix}Baud");
@@ -142,7 +159,7 @@ public sealed class RealHardwareSerialTests
 
         await using var transport = new SerialTransport(new SystemSerialPortFactory(), options);
         var replies = Channel.CreateUnbounded<string>();
-        await using var session = new Session(transport, new Pipeline([new RawPresenter()]));
+        await using var session = new Session(transport, new Pipeline([presenterFactory()]));
         session.Output += (_, output) => replies.Writer.TryWrite(output.Text);
 
         TestContext.WriteLine("Opening connection...");

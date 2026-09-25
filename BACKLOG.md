@@ -194,17 +194,6 @@ detected serial ports.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-- **`RealHardwareSerialTests`/`RealHardwareUsbtmcTests`'s shared `RunAsync` reads exactly one item
-  off `Session.Output` per sent command, using the terminatorless `RawPresenter`** — real-hardware
-  confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): against the HP 34401A (whose
-  profile IS line-terminated, unlike the Korads/DS1102E this pattern was designed around), a reply
-  can arrive over serial in multiple chunks, each firing `Session.Output` separately — the test only
-  consumes the first chunk, so it logs `Received: H`/`Received: ?` instead of the real replies, while
-  still passing (non-empty, no fault/timeout, which is all it currently asserts). Needs a fix (e.g.
-  drain the channel until a short quiet gap before treating a reply as complete, or use
-  `AsciiPresenter` with the profile's own terminator for devices that have one) before this test's
-  pass/fail is trustworthy for a terminated-reply device.
-
 ### Logging
 
 - A logger mode — capture every sent/received message with a direction prefix and a sequence
