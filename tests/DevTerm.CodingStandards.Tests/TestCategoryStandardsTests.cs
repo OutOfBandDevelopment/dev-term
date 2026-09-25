@@ -26,6 +26,7 @@ public sealed class TestCategoryStandardsTests
     [
         TestCategories.Unit,
         TestCategories.Integration,
+        TestCategories.Hardware,
         TestCategories.Serial,
         TestCategories.Tcp,
         TestCategories.Hid,

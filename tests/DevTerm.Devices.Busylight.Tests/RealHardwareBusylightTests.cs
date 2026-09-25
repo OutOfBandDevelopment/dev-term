@@ -19,6 +19,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.Hid)]
 [TestCategory(TestCategories.Kuando_Busylight)]
+[TestCategory(TestCategories.Hardware)]
 [TestClass]
 public sealed class RealHardwareBusylightTests
 {

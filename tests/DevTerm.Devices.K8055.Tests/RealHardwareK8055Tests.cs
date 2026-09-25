@@ -25,6 +25,7 @@ namespace DevTerm.Devices.K8055.Tests;
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.Hid)]
 [TestCategory(TestCategories.Velleman_K8055)]
+[TestCategory(TestCategories.Hardware)]
 [TestClass]
 public sealed class RealHardwareK8055Tests
 {
@@ -35,18 +36,22 @@ public sealed class RealHardwareK8055Tests
     private string? GetProperty(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 
     [TestMethod]
-    public async Task RealDevice_ResetCounter1_CompletesWithoutFaultOrTimeout()
+    [DataRow("K8055-1")]
+    [DataRow("K8055-2")]
+    [DataRow("K8055-3")]
+    [DataRow("K8055-4")]
+    public async Task RealDevice_ResetCounter1_CompletesWithoutFaultOrTimeout(string name)
     {
-        var vendorIdText = GetProperty("RealHidK8055VendorId");
-        var productIdText = GetProperty("RealHidK8055ProductId");
-        var devicePath = GetProperty("RealHidK8055DevicePath");
+        var vendorIdText = GetProperty($"RealHid{name}-VendorId");
+        var productIdText = GetProperty($"RealHid{name}-ProductId");
+        var devicePath = GetProperty($"RealHid{name}-DevicePath");
 
         TestContext.WriteLine($"VendorId/ProductId/DevicePath: {vendorIdText}/{productIdText}/{devicePath}");
 
         if (string.IsNullOrEmpty(vendorIdText) || string.IsNullOrEmpty(productIdText)
             || !int.TryParse(vendorIdText, out var vendorId) || !int.TryParse(productIdText, out var productId))
         {
-            Assert.Inconclusive("No 'RealHidK8055VendorId'/'RealHidK8055ProductId' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            Assert.Inconclusive($"No 'RealHid{name}-VendorId'/'RealHid{name}-ProductId' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
             return;
         }
 

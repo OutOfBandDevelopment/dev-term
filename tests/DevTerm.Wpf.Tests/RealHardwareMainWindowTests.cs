@@ -15,6 +15,7 @@ namespace DevTerm.Wpf.Tests;
 /// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.Hardware)]
 [TestCategory(TestCategories.Tcp)]
 [TestClass]
 [DoNotParallelize]

@@ -18,7 +18,7 @@ namespace DevTerm.Console.Tests;
 /// whole <c>DevTerm.Console.dll</c> child process and scrape its stdout when the transport itself is
 /// directly constructible; that also sidesteps <see cref="DevTerm.Presenters.Text.AsciiPresenter"/>'s
 /// CR/LF-terminator-based line buffering, which would never flush a Korad reply (no terminator at
-/// all — see <see cref="RawPresenter"/> below).
+/// all — see <see cref="RawPresenter"/>, shared with <c>RealHardwareUsbtmcTests</c>).
 ///
 /// Parameterized entirely via <c>.runsettings</c> (see <c>devterm.runsettings</c>) — COM port
 /// assignment is reassigned by Windows whenever a USB-serial adapter is replugged into a different
@@ -47,21 +47,6 @@ public sealed class RealHardwareSerialTests
 
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(15);
 
-    /// <summary>
-    /// Emits whatever bytes arrived in a single read verbatim, with no line-terminator buffering —
-    /// unlike <see cref="DevTerm.Presenters.Text.AsciiPresenter"/>, this correctly surfaces a
-    /// terminatorless Korad reply (e.g. "05.00" for VOUT1?, real-hardware-confirmed to arrive with
-    /// no CR/LF at all) as well as an LF-terminated HP34401A reply, since this test only needs "some
-    /// bytes came back" rather than exact line framing.
-    /// </summary>
-    private sealed class RawPresenter : IPresenter
-    {
-        public string Name => "raw";
-
-        public IReadOnlyList<string> Render(System.Buffers.ReadOnlySequence<byte> data) =>
-            data.IsEmpty ? [] : [Encoding.ASCII.GetString(System.Buffers.BuffersExtensions.ToArray(data))];
-    }
-
     private string? GetProperty(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 
     /// <summary>
@@ -73,6 +58,7 @@ public sealed class RealHardwareSerialTests
     /// </summary>
     [TestMethod]
     [TestCategory(TestCategories.Hp_34401a)]
+    [TestCategory(TestCategories.Hardware)]
     public Task CliMode_AgainstHp34401a_AnswersIdentityAndMeasuresVoltage() =>
         RunAsync(
             "RealSerialHp34401a",
@@ -93,6 +79,7 @@ public sealed class RealHardwareSerialTests
     /// </summary>
     [TestMethod]
     [TestCategory(TestCategories.Korad_Ka3005p)]
+    [TestCategory(TestCategories.Hardware)]
     public Task CliMode_AgainstKoradKa3005p_AnswersIdentityAndQueriesOutput() =>
         RunAsync(
             "RealSerialKa3005p",
@@ -106,6 +93,7 @@ public sealed class RealHardwareSerialTests
     /// <summary>Korad KA6003P: same protocol/settings notes as the KA3005P above.</summary>
     [TestMethod]
     [TestCategory(TestCategories.Korad_Ka6003p)]
+    [TestCategory(TestCategories.Hardware)]
     public Task CliMode_AgainstKoradKa6003p_AnswersIdentityAndQueriesOutput() =>
         RunAsync(
             "RealSerialKa6003p",

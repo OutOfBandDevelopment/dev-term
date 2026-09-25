@@ -19,6 +19,7 @@ namespace DevTerm.Console.Tests;
 /// device later needs only new runsettings parameters plus one new `DataRow`, no code change.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.Hardware)]
 [TestCategory(TestCategories.Tcp)]
 [TestClass]
 public sealed class RealHardwareCliTests

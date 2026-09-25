@@ -134,6 +134,7 @@ public sealed class ScpiProfileCatalogTests
 
     [TestMethod]
     [TestCategory(TestCategories.Rigol_Dg1022)]
+    [TestCategory(TestCategories.Hardware)]
     public void TryMatchByIdn_MatchingReply_ReturnsThatBundledProfile()
     {
         var matched = ScpiProfileCatalog.TryMatchByIdn("RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01");
@@ -160,6 +161,7 @@ public sealed class ScpiProfileCatalogTests
 
     [TestMethod]
     [TestCategory(TestCategories.Tektronix_2230)]
+    [TestCategory(TestCategories.Hardware)]
     public void Tektronix2230_HasNoIdnPatternSoItIsNeverAutoDetected()
     {
         var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.StartsWith("Tektronix 2230", StringComparison.OrdinalIgnoreCase));
@@ -170,6 +172,7 @@ public sealed class ScpiProfileCatalogTests
 
     [TestMethod]
     [TestCategory(TestCategories.Tektronix_Tds2024)]
+    [TestCategory(TestCategories.Hardware)]
     public void TektronixTds2024_SupportsIeee4882IdnAutoDetection()
     {
         var tds2024 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("TDS2024", StringComparison.OrdinalIgnoreCase));

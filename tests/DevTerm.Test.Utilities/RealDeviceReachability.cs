@@ -1,5 +1,6 @@
 using System.IO.Ports;
 using System.Net.Sockets;
+using DevTerm.Transports.Usbtmc;
 using HidSharp;
 
 namespace DevTerm.Test.Utilities;
@@ -60,5 +61,24 @@ public static class RealDeviceReachability
         return string.IsNullOrEmpty(devicePath)
             ? candidates.Any()
             : candidates.Any(d => string.Equals(d.DevicePath, devicePath, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Whether a USBTMC device matching <paramref name="vendorId"/>/<paramref name="productId"/> —
+    /// and, when <paramref name="serialNumber"/> is non-blank, that exact serial number too — is
+    /// currently enumerated. A serial number match matters on at least one real bench: a Rigol
+    /// DS1102E and a Rigol DG1022 enumerate under the exact same VID:PID there (see
+    /// rigol-ds1102e.json's Notes and BACKLOG.md's USBTMC entry), so VID:PID alone can't tell them
+    /// apart. Uses the same <see cref="SystemUsbtmcDeviceDiscovery"/> libusb enumeration
+    /// <see cref="UsbtmcTransport"/> itself opens through, rather than re-deriving the USBTMC
+    /// interface-class filter here.
+    /// </summary>
+    public static bool IsUsbtmcDeviceAvailable(int vendorId, int productId, string? serialNumber = null)
+    {
+        var candidates = new SystemUsbtmcDeviceDiscovery().GetDevices()
+            .Where(d => d.VendorId == vendorId && d.ProductId == productId);
+        return string.IsNullOrEmpty(serialNumber)
+            ? candidates.Any()
+            : candidates.Any(d => string.Equals(d.SerialNumber, serialNumber, StringComparison.Ordinal));
     }
 }

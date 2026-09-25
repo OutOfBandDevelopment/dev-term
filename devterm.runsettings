@@ -34,6 +34,27 @@
   RealSerialKa6003pExpectedReply is filled in below because it's the one *IDN? reply actually
   confirmed against real hardware so far (see docs/changes/2026-09-23.md); the others are left
   blank rather than asserting an unverified guess.
+
+  Real USBTMC devices (RealHardwareUsbtmcTests, in DevTerm.Console.Tests) - three Rigol bench
+  instruments. VendorId/ProductId are decimal (Windows/libusb report hex; convert before setting
+  these, same convention as UsbtmcTransportOptions itself) and come from a real bench
+  `- -listusbtmcdevices true` enumeration, not guesses - see docs/test/2026-09-24-07-16-34.md.
+  0x1AB1 (Rigol Technologies) = 6833 decimal in every row below.
+
+  RealUsbtmcDs1102eSerialNumber matters here in a way none of the other real-hardware parameters do:
+  a Rigol DG1022 function generator also on that bench enumerates under the exact same VID:PID as
+  the DS1102E (0x1AB1:0x0588 = 6833:1416), so VendorId/ProductId alone can't tell them apart -
+  RealUsbtmcDs1102eSerialNumber is the DS1102E's own real, confirmed serial number
+  ("DS1ET180300759", see rigol-ds1102e.json's Notes) and RealHardwareUsbtmcTests only matches a
+  device whose serial number equals it exactly. The DG1062Z/DM3058E don't have a similar collision
+  on this bench (nothing else shares their PID), so their SerialNumber parameters are left blank.
+
+  RealUsbtmcDs1102eExpectedIdnReply is filled in because the DS1102E's *IDN? reply is real-hardware
+  confirmed (docs/changes/2026-09-24.md: "RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00").
+  The DM3058E/DG1062Z rows are left blank: the DM3058E has a previously-parked USBTMC bulk-IN stall
+  (docs/changes/2026-09-23.md/BACKLOG.md) that has blocked ever completing a real *IDN? round-trip,
+  and the DG1062Z's profile was never attempted against real hardware at all - asserting either
+  reply here would bake in an unverified guess.
 -->
 <RunSettings>
     <TestRunParameters>
@@ -81,12 +102,41 @@
         <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
              DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback
              match when DevicePath is blank, mirroring SystemHidDevice.Open's own match order. -->
-        <Parameter name="RealHidK8055VendorId" value="4303" />
-        <Parameter name="RealHidK8055ProductId" value="21760" />
-        <Parameter name="RealHidK8055DevicePath" value="" />
+        <Parameter name="RealHidK8055-1-VendorId" value="4303" />
+        <Parameter name="RealHidK8055-1-ProductId" value="21760" />
+        <Parameter name="RealHidK8055-1-DevicePath" value="" />
+        <Parameter name="RealHidK8055-2-VendorId" value="4303" />
+        <Parameter name="RealHidK8055-2-ProductId" value="21761" />
+        <Parameter name="RealHidK8055-2-DevicePath" value="" />
+        <Parameter name="RealHidK8055-3-VendorId" value="4303" />
+        <Parameter name="RealHidK8055-3-ProductId" value="21762" />
+        <Parameter name="RealHidK8055-3-DevicePath" value="" />
+        <Parameter name="RealHidK8055-4-VendorId" value="4303" />
+        <Parameter name="RealHidK8055-4-ProductId" value="21763" />
+        <Parameter name="RealHidK8055-4-DevicePath" value="" />
         <Parameter name="RealHidBusylightVendorId" value="1240" />
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
+
+        <!-- Rigol DM3058E multimeter: USBTMC, VID 0x1AB1 PID 0x09C4. -->
+        <Parameter name="RealUsbtmcDm3058eVendorId" value="6833" />
+        <Parameter name="RealUsbtmcDm3058eProductId" value="2500" />
+        <Parameter name="RealUsbtmcDm3058eSerialNumber" value="" />
+        <Parameter name="RealUsbtmcDm3058eExpectedIdnReply" value="" />
+
+        <!-- Rigol DS1102E oscilloscope: USBTMC, VID 0x1AB1 PID 0x0588 - shares this exact VID:PID
+             with a Rigol DG1022 also on this bench, so SerialNumber is required to target the
+             DS1102E specifically (see the comment block above). -->
+        <Parameter name="RealUsbtmcDs1102eVendorId" value="6833" />
+        <Parameter name="RealUsbtmcDs1102eProductId" value="1416" />
+        <Parameter name="RealUsbtmcDs1102eSerialNumber" value="DS1ET180300759" />
+        <Parameter name="RealUsbtmcDs1102eExpectedIdnReply" value="DS1102E" />
+
+        <!-- Rigol DG1062Z function generator: USBTMC, VID 0x1AB1 PID 0x0642. -->
+        <Parameter name="RealUsbtmcDg1062zVendorId" value="6833" />
+        <Parameter name="RealUsbtmcDg1062zProductId" value="1602" />
+        <Parameter name="RealUsbtmcDg1062zSerialNumber" value="" />
+        <Parameter name="RealUsbtmcDg1062zExpectedIdnReply" value="" />
     </TestRunParameters>
 
     <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->
