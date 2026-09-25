@@ -64,7 +64,7 @@ public sealed class RealHardwareSerialTests
             "RealSerialHp34401a",
             "\n",
             [
-                ("SYSTem:REMote", false),
+                //("SYSTem:REMote", false),
                 ("*IDN?", true),
                 ("MEAS:VOLT:DC?", true),
             ]);

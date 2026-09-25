@@ -20,10 +20,11 @@
   substring, read by RealHardwareCliTests as separate parameters (not baked into the test as
   literals) so a new real device can be added later with only new parameters plus one new DataRow,
   no code change - and so an unverified guess can be corrected here instead of in code.
-  RealTcpDeviceHost3ExpectedReply ("TEKTRONIX", the standard *IDN? response's manufacturer field)
-  has NOT been confirmed against this specific real unit yet - tighten it once it has been (e.g.
-  the full model/firmware string), or clear it to make that DataRow report Inconclusive instead of
-  asserting an unverified value.
+  RealTcpDeviceHost3ExpectedReply is now the full real-hardware-confirmed reply
+  (docs/test/2026-09-25-15-02-44.md: "TEKTRONIX,TDS 2024,0,CF:91.1CT FV:v4.12 TDS2CM:CMV:v1.04") -
+  that confirmation had landed in that session's report but was never propagated here until
+  docs/test/2026-09-25-18-57-22.md caught the gap; tighten further only if a shorter/more specific
+  substring is ever needed.
 
   Real Serial devices (RealHardwareSerialTests, in DevTerm.Console.Tests) - three bench SCPI power
   supplies/meters, each on its own COM port (COM ports are reassigned by Windows whenever a USB
@@ -31,9 +32,10 @@
   literals - the whole point of parameterizing them per the user's request). Each *ExpectedReply
   value is optional: leave it blank to skip the substring assertion and just require a non-null,
   non-timed-out reply to each query (the "pass as long as it doesn't fault or timeout" bar) -
-  RealSerialKa6003pExpectedReply is filled in below because it's the one *IDN? reply actually
-  confirmed against real hardware so far (see docs/changes/2026-09-23.md); the others are left
-  blank rather than asserting an unverified guess.
+  RealSerialKa6003pExpectedReply and RealSerialKa3005pExpectedIdnReply are filled in below because
+  both *IDN? replies are real-hardware confirmed (docs/changes/2026-09-23.md for the KA6003P;
+  docs/test/2026-09-25-15-02-44.md and docs/test/2026-09-25-18-57-22.md for the KA3005P); the HP
+  34401A is left blank rather than asserting an unverified guess.
 
   Real USBTMC devices (RealHardwareUsbtmcTests, in DevTerm.Console.Tests) - four Rigol bench
   instruments. VendorId/ProductId are decimal (Windows/libusb report hex; convert before setting
@@ -71,11 +73,11 @@
         <Parameter name="RealTcpDeviceHost3Query" value="*IDN?" />
         <Parameter name="RealTcpDeviceHost1ExpectedReply" value="TEK/2230" />
         <Parameter name="RealTcpDeviceHost2ExpectedReply" value="TEK/2230" />
-        <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX" />
+        <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX,TDS 2024" />
 
         <!-- HP/Agilent/Keysight 34401A: 9600 8N2, no handshake, LF terminator, real hardware confirmed
              (see docs/changes/2026-09-23.md). SYSTem:REMote must be sent before any query. -->
-        <Parameter name="RealSerialHp34401aPort" value="COM5" />
+        <Parameter name="RealSerialHp34401aPort" value="COM9" />
         <Parameter name="RealSerialHp34401aBaud" value="9600" />
         <Parameter name="RealSerialHp34401aDataBits" value="8" />
         <Parameter name="RealSerialHp34401aParity" value="None" />
@@ -90,7 +92,7 @@
         <Parameter name="RealSerialKa3005pParity" value="None" />
         <Parameter name="RealSerialKa3005pStopBits" value="One" />
         <Parameter name="RealSerialKa3005pHandshake" value="None" />
-        <Parameter name="RealSerialKa3005pExpectedIdnReply" value="" />
+        <Parameter name="RealSerialKa3005pExpectedIdnReply" value="KORAD KA3005P" />
 
         <!-- Korad KA6003P: same settings as the KA3005P above. *IDN? reply confirmed against real
              hardware (docs/changes/2026-09-23.md): "KORAD KA6003P V5.8 SN:50266913" - the serial
@@ -170,7 +172,15 @@
 
     <!-- Controls parallelism within MSTest (across classes/methods in the same assembly) -->
     <MSTest>
-        <TestTimeout>5000</TestTimeout>
+        <!-- This is a global per-test-method deadline enforced by the MSTest framework itself,
+             separate from (and overriding) any per-step WaitAsync timeout written into a test body.
+             Real-hardware tests that send several sequential commands (e.g. RealHardwareTcpTests's
+             TDS2024 test: *IDN?, CH1?, TRIGger:MAIn:FREQuency?) can legitimately take longer than a
+             short deadline to complete real round-trips - confirmed real-hardware-confirmed
+             (docs/test/2026-09-25-18-57-22.md): the TDS2024 test answered *IDN?/CH1? correctly but
+             was killed by this timeout mid-flight on the third query ("timed out after 5000ms"),
+             not because the device failed to answer. Left generous rather than tight. -->
+        <TestTimeout>60000</TestTimeout>
         <Parallelize>
             <Workers>0</Workers>
             <!-- 0 = number of available cores -->

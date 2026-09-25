@@ -17,12 +17,6 @@ Completed work is logged by date under `docs/changes/`.
     profile name even though this was believed already landed (2026-09-18's "Architect's live window
     title" — needs re-checking, may be a regression); the send-line history (2026-09-23's Up/Down
     recall) adds a duplicate entry when the same line is sent twice in a row.
-  - **Device presenter "Custom Command" section** (SCPI and any device profile using the always-present
-    custom-command escape hatch): pressing Enter in the "Command" field throws an exception; clicking
-    "Send" with a value typed in "Command" also throws. **Likely fixed by the same-day
-    `ScpiControlSurface.InvokeAsync` change** (recognizes the custom-command field's own id, same as a
-    multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
-    `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
 
 ## Backlog / research
 
