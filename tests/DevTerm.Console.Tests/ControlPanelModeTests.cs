@@ -383,4 +383,40 @@ public sealed class ControlPanelModeTests
             Assert.AreEqual("*IDN?\n", System.Text.Encoding.ASCII.GetString(transport.WrittenPayloads[0]));
         });
     }
+
+    [TestMethod]
+    public void CustomColorSwatch_HiddenUntilSet_ThenShowsTheHexOnThatColor()
+    {
+        var unset = $"custom-{Guid.NewGuid():N}";
+        var set = $"custom-{Guid.NewGuid():N}";
+        DevTerm.Configuration.LastPickedColors.Set(set, (0x10, 0x20, 0x30));
+        var definition = new UiDefinition
+        {
+            Name = "Color Device",
+            Sections =
+            [
+                new UiSection
+                {
+                    Label = "Color",
+                    Controls =
+                    [
+                        new ButtonControl { Id = unset, Label = "Custom A...", ColorPickerTargetCommandId = "color" },
+                        new ButtonControl { Id = set, Label = "Custom B...", ColorPickerTargetCommandId = "color" },
+                    ],
+                },
+            ],
+        };
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, new FakeControlSurface(), null, "Colors");
+
+            Assert.IsFalse(parts.ControlViews[$"{unset}.swatch"].Visible);
+
+            var swatch = (Label)parts.ControlViews[$"{set}.swatch"];
+            Assert.IsTrue(swatch.Visible);
+            Assert.AreEqual(" #102030 ", swatch.Text);
+            Assert.AreEqual(new Terminal.Gui.Drawing.Color(0x10, 0x20, 0x30, 255), swatch.GetScheme().Normal.Background);
+        });
+    }
 }

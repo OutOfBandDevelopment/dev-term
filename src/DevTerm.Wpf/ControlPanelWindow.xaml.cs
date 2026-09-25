@@ -29,6 +29,7 @@ public partial class ControlPanelWindow : Window
     private readonly IControlSurface _surface;
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
+    private readonly Dictionary<string, Border> _colorSwatches = [];
     private readonly Dictionary<string, TextBlock> _controlLabels = [];
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
@@ -39,6 +40,9 @@ public partial class ControlPanelWindow : Window
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
     internal IReadOnlyDictionary<string, TextBlock> IndicatorLabels => _indicatorLabels;
+
+    /// <summary>Each color-picker button's swatch (keyed by the button's id) - see <see cref="BuildWidget"/>.</summary>
+    internal IReadOnlyDictionary<string, Border> ColorSwatches => _colorSwatches;
 
     public ControlPanelWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource)
     {
@@ -111,8 +115,32 @@ public partial class ControlPanelWindow : Window
             case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
                 {
                     var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+
+                    // A swatch next to the button showing the current custom color's hex value on a
+                    // background of that color - hidden until a custom color has been set (including
+                    // one picked in an earlier opening of this panel - see LastPickedColors).
+                    var swatch = new Border
+                    {
+                        Margin = new Thickness(6, 0, 0, 0),
+                        Padding = new Thickness(8, 2, 8, 2),
+                        MinWidth = 80,
+                        BorderBrush = System.Windows.Media.Brushes.Black,
+                        BorderThickness = new Thickness(1),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Visibility = Visibility.Collapsed,
+                        Child = new TextBlock { FontFamily = new System.Windows.Media.FontFamily("Consolas"), HorizontalAlignment = HorizontalAlignment.Center },
+                    };
+                    _colorSwatches[button.Id] = swatch;
+                    if (LastPickedColors.TryGet(button.Id, out var current))
+                    {
+                        ShowSwatch(swatch, current);
+                    }
+
                     view.Click += (_, _) => OpenColorPicker(button.Id, colorTargetId);
-                    return (view, view);
+                    var row = new StackPanel { Orientation = Orientation.Horizontal };
+                    row.Children.Add(view);
+                    row.Children.Add(swatch);
+                    return (row, view);
                 }
 
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
@@ -252,10 +280,25 @@ public partial class ControlPanelWindow : Window
         var picker = new ColorPickerWindow(r, g, b) { Owner = this };
         if (picker.ShowDialog() == true)
         {
-            LastPickedColors.Set(buttonId, (picker.SelectedR, picker.SelectedG, picker.SelectedB));
+            var picked = (picker.SelectedR, picker.SelectedG, picker.SelectedB);
+            LastPickedColors.Set(buttonId, picked);
+            if (_colorSwatches.TryGetValue(buttonId, out var swatch))
+            {
+                ShowSwatch(swatch, picked);
+            }
+
             var value = string.Create(CultureInfo.InvariantCulture, $"{picker.SelectedR},{picker.SelectedG},{picker.SelectedB}");
             Invoke(targetCommandId, value);
         }
+    }
+
+    private static void ShowSwatch(Border swatch, (byte R, byte G, byte B) color)
+    {
+        swatch.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B));
+        var text = (TextBlock)swatch.Child;
+        text.Text = LastPickedColors.ToHex(color);
+        text.Foreground = LastPickedColors.UseDarkText(color) ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
+        swatch.Visibility = Visibility.Visible;
     }
 
     /// <summary>

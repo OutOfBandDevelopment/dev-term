@@ -330,4 +330,50 @@ public sealed class ControlPanelWindowTests
             await Task.CompletedTask;
         });
     }
+
+    private static UiDefinition ColorButtonDefinition(string buttonId) => new()
+    {
+        Name = "Color Device",
+        Sections =
+        [
+            new UiSection
+            {
+                Label = "Color",
+                Controls = [new ButtonControl { Id = buttonId, Label = "Custom...", ColorPickerTargetCommandId = "color" }],
+            },
+        ],
+    };
+
+    [TestMethod]
+    public void CustomColorSwatch_HiddenUntilAColorIsSet()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var window = new ControlPanelWindow(ColorButtonDefinition($"custom-{Guid.NewGuid():N}"), new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.ColorSwatches.Values.Single().Visibility);
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void CustomColorSwatch_ShowsTheHexOnThatColor_WhenOneWasSetBefore()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            // Set in an earlier opening of the panel - the swatch shows it straight away.
+            var id = $"custom-{Guid.NewGuid():N}";
+            DevTerm.Configuration.LastPickedColors.Set(id, (0xFF, 0x80, 0x00));
+
+            var window = new ControlPanelWindow(ColorButtonDefinition(id), new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            var swatch = window.ColorSwatches[id];
+            Assert.AreEqual(System.Windows.Visibility.Visible, swatch.Visibility);
+            Assert.AreEqual("#FF8000", ((TextBlock)swatch.Child).Text);
+            Assert.AreEqual(System.Windows.Media.Color.FromRgb(0xFF, 0x80, 0x00), ((System.Windows.Media.SolidColorBrush)swatch.Background).Color);
+            await Task.CompletedTask;
+        });
+    }
 }

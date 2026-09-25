@@ -11,6 +11,11 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 indent_style = space
 
+# Visual Studio's built-in spell checker (IDE-only - it never runs in `dotnet build`, so
+# TreatWarningsAsErrors doesn't promote it): report misspellings as warnings, not errors. A typo in a
+# comment or string shouldn't look as severe as a real build error in the Error List.
+spelling_error_severity = warning
+
 [*.cs]
 indent_size = 4
 

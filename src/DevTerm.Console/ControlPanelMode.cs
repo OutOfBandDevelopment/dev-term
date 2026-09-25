@@ -221,19 +221,31 @@ internal static class ControlPanelMode
         {
             case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
                 var colorButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
+
+                // A swatch next to the button: the current custom color's hex value on a background of
+                // that color - hidden until one has been set (including in an earlier opening of this
+                // panel, see LastPickedColors). Registered under "{id}.swatch" in ControlViews.
+                var swatchLabel = new Label { X = Pos.Right(colorButtonView) + 1, Y = row, Visible = false };
+                if (LastPickedColors.TryGet(button.Id, out var current))
+                {
+                    ShowSwatch(swatchLabel, current);
+                }
+
                 colorButtonView.Accepting += (_, e) =>
                 {
                     var (lastR, lastG, lastB) = LastPickedColors.Get(button.Id);
                     if (PickColor(app, lastR, lastG, lastB) is { } picked)
                     {
                         LastPickedColors.Set(button.Id, picked);
+                        ShowSwatch(swatchLabel, picked);
                         Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
                     }
 
                     e.Handled = true;
                 };
-                frame.Add(colorButtonView);
+                frame.Add(colorButtonView, swatchLabel);
                 controlViews[control.Id] = colorButtonView;
+                controlViews[$"{control.Id}.swatch"] = swatchLabel;
                 break;
 
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
@@ -381,6 +393,17 @@ internal static class ControlPanelMode
     /// so every field is a bounded <see cref="TextField"/>, synced on Enter the same way
     /// Slider/Numeric rows above are.
     /// </summary>
+    private static void ShowSwatch(Label swatch, (byte R, byte G, byte B) color)
+    {
+        var background = new Terminal.Gui.Drawing.Color(color.R, color.G, color.B, 255);
+        var foreground = LastPickedColors.UseDarkText(color)
+            ? new Terminal.Gui.Drawing.Color(0, 0, 0, 255)
+            : new Terminal.Gui.Drawing.Color(255, 255, 255, 255);
+        swatch.Text = $" {LastPickedColors.ToHex(color)} ";
+        swatch.SetScheme(new Terminal.Gui.Drawing.Scheme(new Terminal.Gui.Drawing.Attribute(foreground, background)));
+        swatch.Visible = true;
+    }
+
     /// <summary>
     /// Sends one control's command without ever letting its failure escape: a rejected value (a
     /// control surface's own validation) or a device-side failure (the session has then already
