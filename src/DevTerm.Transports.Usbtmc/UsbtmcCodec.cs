@@ -52,6 +52,23 @@ public static class UsbtmcCodec
     /// </summary>
     public static DecodedHeader DecodeHeader(ReadOnlySpan<byte> transfer, byte expectedTag)
     {
+        var header = DecodeHeader(transfer);
+        if (header.BTag != expectedTag)
+        {
+            throw new InvalidOperationException($"USBTMC bulk-IN header bTag {header.BTag} does not match expected {expectedTag} (desynced?).");
+        }
+
+        return header;
+    }
+
+    /// <summary>
+    /// Decodes and structurally validates the header of one bulk-IN transfer without checking its
+    /// bTag against a specific request - lets <see cref="UsbtmcTransport"/> recognize a
+    /// well-formed but stale reply (one left over from an earlier, abandoned request) and skip
+    /// it, rather than treating it the same as a corrupt header.
+    /// </summary>
+    public static DecodedHeader DecodeHeader(ReadOnlySpan<byte> transfer)
+    {
         if (transfer.Length < HeaderSize)
         {
             throw new InvalidOperationException(
@@ -72,12 +89,15 @@ public static class UsbtmcCodec
             throw new InvalidOperationException($"USBTMC bulk-IN header failed bTag/~bTag consistency check (bTag={bTag}, ~bTag byte={bTagInverse}).");
         }
 
-        if (bTag != expectedTag)
+        var rawTransferSize = BinaryPrimitives.ReadUInt32LittleEndian(transfer[4..8]);
+        if (rawTransferSize > int.MaxValue)
         {
-            throw new InvalidOperationException($"USBTMC bulk-IN header bTag {bTag} does not match expected {expectedTag} (desynced?).");
+            // Cast straight to int this wraps negative, sails past any MaxResponseSize check, and
+            // silently turns into an empty reply.
+            throw new InvalidOperationException($"USBTMC bulk-IN header declares an implausible TransferSize of {rawTransferSize} byte(s).");
         }
 
-        var transferSize = (int)BinaryPrimitives.ReadUInt32LittleEndian(transfer[4..8]);
+        var transferSize = (int)rawTransferSize;
         var eom = (transfer[8] & _eomBit) != 0;
         return new DecodedHeader(msgId, bTag, transferSize, eom);
     }
@@ -91,6 +111,24 @@ public static class UsbtmcCodec
         var available = transfer.Length - HeaderSize;
         var length = Math.Clamp(header.TransferSize, 0, Math.Max(0, available));
         return transfer.Slice(HeaderSize, length);
+    }
+
+    /// <summary>
+    /// Sizes a bulk-IN read buffer: room for the header plus <paramref name="maxTransferSize"/>
+    /// payload bytes, rounded up to a whole number of <paramref name="maxPacketSize"/> packets.
+    /// A buffer whose tail can't hold a full packet makes libusb fail the read with an overflow
+    /// as soon as a reply is long enough to reach it, and a read that fills the buffer exactly is
+    /// the only way to tell "more of this transfer is coming" from "the device sent a short packet
+    /// and the transfer is over".
+    /// </summary>
+    public static int BulkInBufferSize(int maxTransferSize, int maxPacketSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxTransferSize, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxPacketSize, 1);
+
+        var wanted = (long)HeaderSize + maxTransferSize;
+        var packets = (wanted + maxPacketSize - 1) / maxPacketSize;
+        return checked((int)(packets * maxPacketSize));
     }
 
     /// <summary>Advances a bTag counter through the valid 1-255 range (0 is reserved by the USBTMC spec).</summary>

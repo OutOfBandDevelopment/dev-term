@@ -46,19 +46,19 @@
   (0x1AB1:0x0588 = 6833:1416), so VendorId/ProductId alone can't tell them apart -
   RealUsbtmcDs1102eSerialNumber is the DS1102E's own real, confirmed serial number
   ("DS1ET180300759", see rigol-ds1102e.json's Notes) and RealHardwareUsbtmcTests only matches a
-  device whose serial number equals it exactly; RealUsbtmcDg1022SerialNumber is left blank until the
-  DG1022's own serial number is confirmed against real hardware (see below). The DG1062Z/DM3058E
-  don't have a similar collision on this bench (nothing else shares their PID), so their
-  SerialNumber parameters are left blank.
+  device whose serial number equals it exactly; RealUsbtmcDg1022SerialNumber is likewise the
+  DG1022's own real, confirmed serial number (see below). The DG1062Z/DM3058E
+  don't have a similar collision on this bench (nothing else shares their PID), so they don't
+  need a SerialNumber to disambiguate - both are filled in anyway, with real, confirmed values.
 
   RealUsbtmcDs1102eExpectedIdnReply is filled in because the DS1102E's *IDN? reply is real-hardware
   confirmed (docs/changes/2026-09-24.md: "RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00").
   RealUsbtmcDg1062zExpectedIdnReply is filled in too, for the same reason
   (docs/test/2026-09-25-15-02-44.md: "Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12") - its
-  first attempt hit a USBTMC header-decode failure (BACKLOG.md's USBTMC entry) but a same-day re-run
-  passed cleanly, so this is intermittent, not a device that's never completed a round-trip. The
-  DM3058E row is left blank: it has a previously-parked USBTMC bulk-IN stall
-  (docs/changes/2026-09-23.md/BACKLOG.md) that has blocked ever completing a real *IDN? round-trip.
+  first attempts hit a USBTMC header-decode failure, since root-caused as a data-toggle desync from
+  clearing endpoint halts on open (docs/test/2026-09-25-18-03-06.md) and fixed. The
+  DM3058E row is filled in the same way (same report: "Rigol Technologies,DM3058E,DM3R232301438,
+  01.01.00.02.03.01"); its old parked bulk-IN stall no longer reproduces.
 -->
 <RunSettings>
     <TestRunParameters>
@@ -122,11 +122,12 @@
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
 
-        <!-- Rigol DM3058E multimeter: USBTMC, VID 0x1AB1 PID 0x09C4. -->
+        <!-- Rigol DM3058E multimeter: USBTMC, VID 0x1AB1 PID 0x09C4. SerialNumber/ExpectedIdnReply are
+             real-hardware confirmed (docs/test/2026-09-25-18-03-06.md). -->
         <Parameter name="RealUsbtmcDm3058eVendorId" value="6833" />
         <Parameter name="RealUsbtmcDm3058eProductId" value="2500" />
-        <Parameter name="RealUsbtmcDm3058eSerialNumber" value="" />
-        <Parameter name="RealUsbtmcDm3058eExpectedIdnReply" value="" />
+        <Parameter name="RealUsbtmcDm3058eSerialNumber" value="DM3R232301438" />
+        <Parameter name="RealUsbtmcDm3058eExpectedIdnReply" value="DM3058E" />
 
         <!-- Rigol DS1102E oscilloscope: USBTMC, VID 0x1AB1 PID 0x0588 - shares this exact VID:PID
              with a Rigol DG1022 also on this bench, so SerialNumber is required to target the
@@ -151,14 +152,14 @@
              VID:PID with the DS1102E above, so SerialNumber is required to target the DG1022
              specifically (see the comment block above and RealHardwareUsbtmcTests's class doc
              comment). SerialNumber ("DG1D125306284") is real-hardware confirmed via
-             `- -listusbtmcdevices true` (docs/test/2026-09-24-17-39-35.md). ExpectedIdnReply is left
-             blank: per that same session, *IDN? against this unit reproduced the already-tracked
-             zero-byte USBTMC stall (BACKLOG.md's USBTMC entry) rather than returning a reply, so no
-             real IDN string has ever been confirmed to assert against. -->
+             `- -listusbtmcdevices true` (docs/test/2026-09-24-17-39-35.md, re-confirmed in
+             docs/test/2026-09-25-18-03-06.md). ExpectedIdnReply ("DG1022") is real-hardware
+             confirmed too, now that its USBTMC "no reply" failures are fixed (same 2026-09-25 report):
+             *IDN? -> "RIGOL TECHNOLOGIES,DG1022 ,DG1D125306284,,00.02.00.06.00.02.07". -->
         <Parameter name="RealUsbtmcDg1022VendorId" value="6833" />
         <Parameter name="RealUsbtmcDg1022ProductId" value="1416" />
-        <Parameter name="RealUsbtmcDg1022SerialNumber" value="" />
-        <Parameter name="RealUsbtmcDg1022ExpectedIdnReply" value="" />
+        <Parameter name="RealUsbtmcDg1022SerialNumber" value="DG1D125306284" />
+        <Parameter name="RealUsbtmcDg1022ExpectedIdnReply" value="DG1022" />
     </TestRunParameters>
 
     <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->

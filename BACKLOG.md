@@ -52,6 +52,13 @@ the rest.
 - Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
   `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
   single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
+- **Typing non-hex text with the hex parser crashes the CLI** — with `--presenter hex` and no
+  `--parser`, the hex parser encodes typed lines, which is intended. But a line that isn't valid hex
+  (e.g. `OUTPut?`) throws an unhandled `FormatException` ("not a multiple of 2") out of
+  `Program.<Main>$`, killing the process. `CliMode`'s send path only catches
+  `ConnectionErrorMessages.IsConnectionFailure`. A parse failure should be reported for that
+  line (the TUI/WPF send paths are worth checking too), not end the session. Found 2026-09-25 while bench-testing the DG1022
+  (`docs/test/2026-09-25-18-03-06.md`).
 
 ### Device control modules & hardware profiles
 
@@ -69,31 +76,12 @@ the rest.
 
 ### USBTMC
 
-- **Rigol DG1062Z's `*IDN?` bulk-IN reply intermittently fails USBTMC header decoding** —
-  real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): on the first attempt,
-  the first bulk-IN transfer back from the device after sending `*IDN?` was only 2 bytes, short of
-  the mandatory 12-byte USBTMC header, so `UsbtmcCodec.DecodeHeader` threw. A later re-run the same
-  day (`CliMode_AgainstRigolDg1062z_AnswersIdentityAndQueriesChannel1`, same test, same bench) passed
-  cleanly against real hardware — `*IDN?` → `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`,
-  plus real replies from `SOURce1:APPLy?`/`SOURce1:FREQuency?` — so this is intermittent, not
-  permanent, matching the pattern already seen on the DG1022 below and the (since-resolved) DM3058E
-  bulk-IN stall. Not investigated further — same "needs a packet capture, not more blind retries"
-  conclusion; worth noting both intermittent USBTMC failures seen this session were on the *first*
-  query after opening the connection, which may be a clue about connection warm-up timing rather than
-  a per-device issue, but that's speculation, not confirmed.
-- **Rigol DG1022's zero-byte-reply stall (`docs/changes/2026-09-24.md`) is intermittent, not
-  permanent** — real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`'s
-  follow-up section) via a new `RealHardwareUsbtmcTests.CliMode_AgainstRigolDg1022...` test
-  (`RealUsbtmcDg1022SerialNumber` now set to the real, confirmed `DG1D125306284`, per
-  `docs/test/2026-09-24-17-39-35.md`). Two consecutive automated runs both got a real, correct
-  `*IDN?` reply (`RIGOL TECHNOLOGIES,DG1022 ,DG1D125306284,,00.02.00.06.00.02.07`) but then hit
-  the already-fixed empty-reply retry's terminal case (`IOException: "USBTMC device returned no
-  data for the query."`, from `UsbtmcTransport.ReadReply`) on the very next query (`OUTPut?`) both
-  times. A separate rapid-fire manual CLI probe (three queries piped to stdin with no wait between
-  sends) failed on all three queries including `*IDN?`, suggesting timing/pacing between commands
-  may matter for this unit specifically. Not investigated further — same "needs a packet capture,
-  not more blind retries" conclusion as the DG1062Z item above and the original 2026-09-24 finding;
-  this narrows it (the device isn't unconditionally stuck) without root-causing it.
+- **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
+  device omits the terminating zero-length packet when a reply ends exactly on a 64-byte boundary. The rework would
+  wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
+  padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
+  The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
+  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report).
 
 ### Connection Editor
 

@@ -29,6 +29,7 @@ namespace DevTerm.Console.Tests;
 [TestCategory(TestCategories.Usbtmc)]
 [TestCategory(TestCategories.Scpi)]
 [TestClass]
+[DoNotParallelize]
 public sealed class RealHardwareUsbtmcTests
 {
     public TestContext TestContext { get; set; } = null!;
