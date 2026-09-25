@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.Versioning;
-using Terminal.Gui.App;
 
 [assembly: SupportedOSPlatform("windows")]
 
@@ -31,7 +30,7 @@ internal static class TuiScreenshot
 
     public static void Save(string path)
     {
-        var buffer = Application.Driver!.GetOutputBuffer();
+        var buffer = TuiTestRunner.CurrentApp.Driver!.GetOutputBuffer();
         var width = buffer.Cols * _cellWidth;
         var height = buffer.Rows * _cellHeight;
 
@@ -45,7 +44,13 @@ internal static class TuiScreenshot
         {
             for (var col = 0; col < buffer.Cols; col++)
             {
+                if (buffer.Contents == null)
+                {
+                    continue;
+                }
+
                 var cell = buffer.Contents[row, col];
+
                 var x = col * _cellWidth;
                 var y = row * _cellHeight;
 

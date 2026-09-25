@@ -73,14 +73,12 @@ public sealed class ControlPanelModeTests
         ],
     };
 
-    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body)
-    {
-        Application.Init("dotnet");
-        try
+    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body) =>
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ControlPanelMode.BuildWindow(BuildSampleDefinition(), surface, structuredSource, "Test Panel");
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -88,14 +86,9 @@ public sealed class ControlPanelModeTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
-    }
+        });
 
     // Same InvokeCommand(Command.Accept) mechanism ConfigureModeTests.Click uses for Button — and
     // it doubles as the way to commit a TextField-backed Slider/Numeric/TextField control here,
@@ -271,6 +264,7 @@ public sealed class ControlPanelModeTests
         private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan _stopTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan _invokeTimeout = TimeSpan.FromSeconds(5);
+        private static IApplication? _currentApp;
 
         public static void RunWithLoop(IControlSurface surface, IPresenter structuredSource, Action<ControlPanelWindowParts> body)
         {
@@ -282,10 +276,11 @@ public sealed class ControlPanelModeTests
             {
                 try
                 {
-                    Application.Init("dotnet");
-                    parts = ControlPanelMode.BuildWindow(BuildSampleDefinition(), surface, structuredSource, "Test Panel");
-                    Application.Invoke(() => ready.Set());
-                    Application.Run(parts.Window);
+                    var app = Application.Create().Init("dotnet");
+                    _currentApp = app;
+                    parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel");
+                    app.Invoke(() => ready.Set());
+                    app.Run(parts.Window);
                 }
                 catch (Exception ex)
                 {
@@ -314,9 +309,10 @@ public sealed class ControlPanelModeTests
             }
             finally
             {
-                Application.Invoke(() => Application.RequestStop());
+                _currentApp!.Invoke(() => _currentApp.RequestStop());
                 thread.Join(_stopTimeout);
-                Application.Shutdown();
+                _currentApp.Dispose();
+                _currentApp = null;
             }
         }
 
@@ -327,7 +323,7 @@ public sealed class ControlPanelModeTests
             {
                 var done = new ManualResetEventSlim(false);
                 var result = false;
-                Application.Invoke(() =>
+                _currentApp!.Invoke(() =>
                 {
                     result = predicate();
                     done.Set();

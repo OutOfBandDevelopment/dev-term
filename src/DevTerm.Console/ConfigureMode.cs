@@ -57,16 +57,16 @@ public static class ConfigureMode
     /// <returns>Valid <see cref="CliOptions"/> once the user presses Connect with something that validates; <see langword="null"/> if they quit instead.</returns>
     public static CliOptions? Run(CliOptions initial, string? validationError)
     {
-        Application.Init();
+        var app = Application.Create().Init();
         try
         {
-            var parts = BuildWindow(initial, validationError, new ConnectionProfileStore());
-            Application.Run(parts.Window);
+            var parts = BuildWindow(app, initial, validationError, new ConnectionProfileStore());
+            app.Run(parts.Window);
             return parts.Result;
         }
         finally
         {
-            Application.Shutdown();
+            app.Dispose();
         }
     }
 
@@ -77,7 +77,7 @@ public static class ConfigureMode
     /// provides. <paramref name="profileStore"/> is a parameter (rather than constructed here)
     /// so tests can point it at a temp directory instead of the real <c>~/.dev-term/profiles</c>.
     /// </summary>
-    internal static ConfigureWindowParts BuildWindow(CliOptions initial, string? validationError, ConnectionProfileStore profileStore)
+    internal static ConfigureWindowParts BuildWindow(IApplication app, CliOptions initial, string? validationError, ConnectionProfileStore profileStore)
     {
         var viewModel = new ConnectionEditorViewModel(profileStore, initial, validationError);
 
@@ -460,7 +460,7 @@ public static class ConfigureMode
 
         scpiProfilePickButton.Accepting += (_, e) =>
         {
-            var index = PickFromList("SCPI instrument profile", viewModel.ScpiProfileOptions);
+            var index = PickFromList(app, "SCPI instrument profile", viewModel.ScpiProfileOptions);
             if (index is int i)
             {
                 scpiProfileField.Text = viewModel.ScpiProfileOptions[i];
@@ -472,12 +472,12 @@ public static class ConfigureMode
         // The TUI's own "overwrite '{name}'?" confirmation - Terminal.Gui's MessageBox.Query is the
         // equivalent of the WPF window's MessageBox.Show wiring for the same ConfirmOverwrite hook.
         viewModel.ConfirmOverwrite = name =>
-            MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
+            MessageBox.Query(app, "dev-term", $"A profile named '{name}' already exists. Overwrite it?", ["Yes", "No"]) == 0;
         viewModel.ConfirmDiscardChanges = () =>
-            MessageBox.Query(Application.Instance!, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
+            MessageBox.Query(app, "dev-term", "You have unsaved changes. Close without saving?", ["Yes", "No"]) == 0;
         viewModel.ConfirmDeleteProfiles = names =>
             MessageBox.Query(
-                Application.Instance!,
+                app,
                 "dev-term",
                 names.Count == 1
                     ? $"Delete profile '{names[0]}'? This can't be undone."
@@ -485,12 +485,12 @@ public static class ConfigureMode
                 ["Yes", "No"]) == 0;
         viewModel.ConfirmReplaceAllProfiles = (existing, incoming) =>
             MessageBox.Query(
-                Application.Instance!,
+                app,
                 "dev-term",
                 $"Delete all {existing} saved profile(s) and import the {incoming} in the zip? This can't be undone.",
                 ["Yes", "No"]) == 0;
         viewModel.ResolveZipImportConflict = name =>
-            MessageBox.Query(Application.Instance!, "dev-term", $"A profile named '{name}' already exists.", ["Replace", "Rename", "Skip"]) switch
+            MessageBox.Query(app, "dev-term", $"A profile named '{name}' already exists.", ["Replace", "Rename", "Skip"]) switch
             {
                 1 => ZipImportConflictResolution.Rename,
                 2 => ZipImportConflictResolution.Skip,
@@ -511,7 +511,7 @@ public static class ConfigureMode
         {
             try
             {
-                Application.Invoke(() =>
+                app.Invoke(() =>
                 {
                     viewModel.RefreshCommand.Execute(null);
                     PullFieldsFromViewModel();
@@ -526,7 +526,7 @@ public static class ConfigureMode
         viewModel.CloseRequested += (_, _) =>
         {
             parts.Result = viewModel.Result;
-            Application.RequestStop();
+            app.RequestStop();
         };
 
         void SelectProfileIntoViewModel()
@@ -603,7 +603,7 @@ public static class ConfigureMode
         browseButton.Accepting += (_, e) =>
         {
             var dialog = new OpenDialog { Path = pathField.Text };
-            Application.Run(dialog);
+            app.Run(dialog);
             if (!dialog.Canceled && dialog.FilePaths.Count > 0)
             {
                 pathField.Text = dialog.FilePaths[0];
@@ -620,7 +620,7 @@ public static class ConfigureMode
         saveAsButton.Accepting += (_, e) =>
         {
             var dialog = new SaveDialog { Path = pathField.Text };
-            Application.Run(dialog);
+            app.Run(dialog);
             if (!dialog.Canceled && dialog.FileName is { Length: > 0 } fileName)
             {
                 pathField.Text = fileName;
@@ -642,11 +642,11 @@ public static class ConfigureMode
         // string match (as this used to return) would always resolve to the first match regardless
         // of which row was actually selected. Indexing the caller's own list with this index instead
         // is unambiguous no matter how many rows render identically.
-        static int? PickFromList(string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
+        static int? PickFromList(IApplication app, string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
         {
             if (items.Count == 0)
             {
-                MessageBox.Query(Application.Instance!, "dev-term", emptyMessage, ["OK"]);
+                MessageBox.Query(app, "dev-term", emptyMessage, ["OK"]);
                 return null;
             }
 
@@ -662,7 +662,7 @@ public static class ConfigureMode
                 }
 
                 e.Handled = true;
-                Application.RequestStop();
+                app.RequestStop();
             };
             var selectButton = new Button { X = 0, Y = Pos.Bottom(listView), Text = "Select", IsDefault = true };
             selectButton.Accepting += (_, e) =>
@@ -673,23 +673,23 @@ public static class ConfigureMode
                 }
 
                 e.Handled = true;
-                Application.RequestStop();
+                app.RequestStop();
             };
             var cancelButton = new Button { X = Pos.Right(selectButton) + 1, Y = Pos.Top(selectButton), Text = "Cancel" };
             cancelButton.Accepting += (_, e) =>
             {
                 e.Handled = true;
-                Application.RequestStop();
+                app.RequestStop();
             };
             dialog.Add(listView, selectButton, cancelButton);
-            Application.Run(dialog);
+            app.Run(dialog);
             return picked;
         }
 
         detectPortButton.Accepting += (_, e) =>
         {
             var ports = viewModel.SerialPortOptions;
-            var index = PickFromList("Detected serial ports", [.. ports.Select(p => p.Display)]);
+            var index = PickFromList(app, "Detected serial ports", [.. ports.Select(p => p.Display)]);
             if (index is int i)
             {
                 portField.Text = ports[i].Name;
@@ -707,6 +707,7 @@ public static class ConfigureMode
             PushFieldsIntoViewModel();
             var devices = viewModel.HidDeviceOptions;
             var index = PickFromList(
+                app,
                 "Detected HID devices",
                 [.. devices.Select(d => d.Display)],
                 viewModel.HidDevicesHiddenByFilter
@@ -732,6 +733,7 @@ public static class ConfigureMode
             PushFieldsIntoViewModel();
             var devices = viewModel.UsbtmcDeviceOptions;
             var index = PickFromList(
+                app,
                 "Detected USBTMC devices",
                 [.. devices.Select(d => d.Display)],
                 viewModel.UsbtmcDevicesHiddenByFilter
@@ -853,7 +855,7 @@ public static class ConfigureMode
 
             parts.Result = null;
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
 
         formContent.Add(
@@ -946,8 +948,8 @@ public static class ConfigureMode
             ScrollBy(delta);
             key.Handled = true;
         };
-        Application.KeyDown += scrollOnKey;
-        window.Disposing += (_, _) => Application.KeyDown -= scrollOnKey;
+        app.Keyboard.KeyDown += scrollOnKey;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= scrollOnKey;
 
         formContent.MouseEvent += (_, mouse) =>
         {

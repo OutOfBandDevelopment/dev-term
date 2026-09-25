@@ -5,7 +5,6 @@ using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
-using Terminal.Gui.App;
 
 namespace DevTerm.Console.Tests;
 
@@ -50,13 +49,12 @@ public sealed class ScreenshotTests
 
     private static string CaptureConfigureMode(CliOptions initial, ConnectionProfileStore store, string baseName)
     {
-        Application.Init("dotnet");
-        string dump;
-        try
+        var dump = "";
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ConfigureMode.BuildWindow(initial, validationError: null, store);
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, store);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -66,13 +64,9 @@ public sealed class ScreenshotTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
+        });
 
         File.WriteAllText(Path.Combine(_imagesDirectory, baseName + ".txt"), dump);
         return dump;
@@ -129,19 +123,18 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "hid", VendorId = 4216, ProductId = 63560, Presenter = ["hex"] };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+                app.LayoutAndDraw(true);
 
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
                     Directory.CreateDirectory(_imagesDirectory);
@@ -149,13 +142,9 @@ public sealed class ScreenshotTests
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
             File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-hid.txt"), dump);
 
@@ -181,19 +170,18 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
 
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
                     Directory.CreateDirectory(_imagesDirectory);
@@ -201,13 +189,9 @@ public sealed class ScreenshotTests
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
             File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-loopback.txt"), dump);
 
@@ -227,13 +211,12 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
 
                 try
                 {
@@ -242,9 +225,9 @@ public sealed class ScreenshotTests
                     // Focus off the saved-profiles list first: PageDown is the list's own while it
                     // has focus, which it now really does at startup.
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
                     Directory.CreateDirectory(_imagesDirectory);
@@ -252,13 +235,9 @@ public sealed class ScreenshotTests
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
             File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-scrolled.txt"), dump);
 
@@ -318,7 +297,7 @@ public sealed class ScreenshotTests
             // SendField in a later test when both ran in the same process. A screenshot doesn't
             // need real key routing, just the visible end state.
             parts.SendField.Text = "ID?";
-            Terminal.Gui.App.Application.LayoutAndDraw(true);
+            TuiTestRunner.CurrentApp.LayoutAndDraw(true);
             dump = TuiTestRunner.DumpBuffer();
             TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-typing.png"));
         });
@@ -337,7 +316,7 @@ public sealed class ScreenshotTests
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
             var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", _waitTimeout);
             Assert.IsTrue(disconnected, "Expected the menu item's title to flip to _Connect after disconnecting.");

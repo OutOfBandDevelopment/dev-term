@@ -5,7 +5,6 @@ using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
 using DevTerm.Test.Utilities;
-using Terminal.Gui.App;
 
 namespace DevTerm.Console.Tests;
 
@@ -58,7 +57,7 @@ public sealed class ControlPanelScreenshotTests
 
         var dump = string.Empty;
         TuiTestRunner.RunWithLoop(
-            () => ControlPanelMode.BuildWindow(definition, surface, decoder, "dev-term — K8055 Control Panel"),
+            app => ControlPanelMode.BuildWindow(app, definition, surface, decoder, "dev-term — K8055 Control Panel"),
             parts =>
             {
                 // A real 9-byte K8055 input report — see K8055Decoder's doc comment for the layout:
@@ -96,13 +95,12 @@ public sealed class ControlPanelScreenshotTests
         var surface = new BusylightControlSurface(session);
         var definition = BusylightUiDefinition.Build();
 
-        Application.Init("dotnet");
-        string dump;
-        try
+        var dump = "";
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ControlPanelMode.BuildWindow(definition, surface, structuredSource: null, "dev-term — Busylight Control Panel");
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ControlPanelMode.BuildWindow(app, definition, surface, structuredSource: null, "dev-term — Busylight Control Panel");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -112,13 +110,9 @@ public sealed class ControlPanelScreenshotTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
+        });
 
         SaveDump("tui-control-panel-busylight", dump);
         Assert.Contains("Color", dump);
@@ -139,7 +133,7 @@ public sealed class ControlPanelScreenshotTests
 
         var dump = string.Empty;
         TuiTestRunner.RunWithLoop(
-            () => ControlPanelMode.BuildWindow(definition, surface, presenter, $"dev-term — {profile.Name}"),
+            app => ControlPanelMode.BuildWindow(app, definition, surface, presenter, $"dev-term — {profile.Name}"),
             parts =>
             {
                 // Same command a "Query Set Voltage" button click invokes — exercises both the

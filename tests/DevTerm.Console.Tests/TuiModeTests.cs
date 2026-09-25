@@ -137,7 +137,7 @@ public sealed class TuiModeTests
             var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
             Assert.IsFalse(runnable.StopRequested);
 
-            Terminal.Gui.App.Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
+            TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
 
             Assert.IsTrue(runnable.StopRequested, "Ctrl+Q should call Application.RequestStop(), setting the window's StopRequested.");
         });
@@ -174,14 +174,14 @@ public sealed class TuiModeTests
             Assert.AreEqual(ConnectionState.Open, session.State);
             Assert.AreEqual("_Disconnect", parts.ConnectMenuItem.Title);
 
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
             var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", _waitTimeout);
             Assert.IsTrue(disconnected, "Expected the menu item's title to flip to _Connect after disconnecting.");
             Assert.AreEqual(ConnectionState.Closed, session.State);
             Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
 
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
             var reconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Disconnect", _waitTimeout);
             Assert.IsTrue(reconnected, "Expected the menu item's title to flip back to _Disconnect after reconnecting.");

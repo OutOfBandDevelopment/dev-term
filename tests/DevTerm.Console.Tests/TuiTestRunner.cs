@@ -46,6 +46,41 @@ internal static class TuiTestRunner
     private static readonly TimeSpan _invokeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
+    /// The <see cref="IApplication"/> instance for whichever run is currently active — set by
+    /// <see cref="RunHeadless"/>/<see cref="RunWithLoop(Session, PresenterCatalog, CliOptions, Action{TuiWindowParts}, ConnectionProfileStore)"/>
+    /// and read by <see cref="TypeText"/>/<see cref="PressKey"/>/<see cref="DumpBuffer"/>, which have
+    /// no other way to reach it (they're called from a test body that only holds a
+    /// <c>TuiWindowParts</c>/<c>ControlPanelWindowParts</c>). Mirrors the old <c>Application.Instance</c>
+    /// static-singleton convention this replaced — safe here because this test runner's own doc
+    /// comment already establishes that only one TUI run is ever active per process at a time.
+    /// </summary>
+    private static IApplication? _currentApp;
+
+    /// <summary>Exposes <see cref="_currentApp"/> to <see cref="TuiScreenshot"/> and to other test classes' own window-building helpers (e.g. <c>ConfigureModeTests</c>, <c>ControlPanelModeTests</c>), which have no other way to reach the active run's <see cref="IApplication"/>.</summary>
+    internal static IApplication CurrentApp => _currentApp!;
+
+    /// <summary>
+    /// Same headless <c>Init</c> → body → <c>Dispose</c> shape as <see cref="RunHeadless"/>, generalized
+    /// for a test class that builds its own window-parts type (not <see cref="TuiWindowParts"/>) —
+    /// <paramref name="body"/> receives the live <see cref="IApplication"/> to pass into its own
+    /// <c>BuildWindow</c> call and to drive <c>Begin</c>/<c>LayoutAndDraw</c>/<c>End</c> itself.
+    /// </summary>
+    internal static void RunHeadlessApp(Action<IApplication> body)
+    {
+        var app = Application.Create().Init("dotnet");
+        _currentApp = app;
+        try
+        {
+            body(app);
+        }
+        finally
+        {
+            _currentApp = null;
+            app.Dispose();
+        }
+    }
+
+    /// <summary>
     /// A one-presenter catalog for tests that fake a single presenter: the send format is pinned to
     /// that presenter's name (a default <see cref="CliOptions"/> would otherwise ask for "hex", which
     /// a catalog holding only, say, ASCII can't resolve).
@@ -68,13 +103,14 @@ internal static class TuiTestRunner
 
     public static void RunHeadless(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null)
     {
-        Application.Init("dotnet");
+        var app = Application.Create().Init("dotnet");
+        _currentApp = app;
         try
         {
-            var parts = TuiMode.BuildWindow(session, presenter, cliOptions, profileStore ?? EmptyProfiles());
+            var parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles());
             parts.SendField.SetFocus();
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -82,48 +118,49 @@ internal static class TuiTestRunner
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
         }
         finally
         {
-            Application.Shutdown();
+            _currentApp = null;
+            app.Dispose();
         }
     }
 
     /// <summary>Injects each character of <paramref name="text"/> as a key press into whichever view currently has focus (see <see cref="RunHeadless"/>'s doc comment for why this only works headlessly, not with a running <c>Application.Run()</c> loop).</summary>
     public static void TypeText(string text)
     {
-        var injector = Application.Instance!.GetInputInjector();
+        var injector = _currentApp!.GetInputInjector();
         foreach (var ch in text)
         {
             injector.InjectKey(new Key(ch), new InputInjectionOptions());
         }
 
         injector.ProcessQueue();
-        Application.LayoutAndDraw(true);
+        _currentApp.LayoutAndDraw(true);
     }
 
     public static void PressEnter() => PressKey(Key.Enter);
 
     public static void PressKey(Key key)
     {
-        var injector = Application.Instance!.GetInputInjector();
+        var injector = _currentApp!.GetInputInjector();
         injector.InjectKey(key, new InputInjectionOptions());
         injector.ProcessQueue();
-        Application.LayoutAndDraw(true);
+        _currentApp.LayoutAndDraw(true);
     }
 
     /// <summary>Renders the current screen buffer as plain text, one line per row — a text "screenshot" of the TUI, usable both for assertions and for docs/user-guide.</summary>
     public static string DumpBuffer()
     {
-        var buffer = Application.Driver!.GetOutputBuffer();
+        var buffer = _currentApp!.Driver!.GetOutputBuffer();
         var text = new StringBuilder();
         for (var row = 0; row < buffer.Rows; row++)
         {
             for (var col = 0; col < buffer.Cols; col++)
             {
-                text.Append(buffer.Contents[row, col].Grapheme);
+                text.Append(buffer.Contents?[row, col].Grapheme);
             }
 
             text.Append('\n');
@@ -138,6 +175,7 @@ internal static class TuiTestRunner
     public static void RunWithLoop(Session session, PresenterCatalog presenter, CliOptions cliOptions, Action<TuiWindowParts> body, ConnectionProfileStore? profileStore = null)
     {
         TuiWindowParts? parts = null;
+        IApplication? app = null;
         var ready = new ManualResetEventSlim(false);
         Exception? threadException = null;
 
@@ -145,11 +183,12 @@ internal static class TuiTestRunner
         {
             try
             {
-                Application.Init("dotnet");
-                parts = TuiMode.BuildWindow(session, presenter, cliOptions, profileStore ?? EmptyProfiles());
+                app = Application.Create().Init("dotnet");
+                _currentApp = app;
+                parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles());
                 parts.SendField.SetFocus();
-                Application.Invoke(() => ready.Set());
-                Application.Run(parts.Window);
+                app.Invoke(() => ready.Set());
+                app.Run(parts.Window);
             }
             catch (Exception ex)
             {
@@ -178,9 +217,10 @@ internal static class TuiTestRunner
         }
         finally
         {
-            Application.Invoke(() => Application.RequestStop());
+            app!.Invoke(() => app.RequestStop());
             thread.Join(_stopTimeout);
-            Application.Shutdown();
+            _currentApp = null;
+            app.Dispose();
         }
     }
 
@@ -191,9 +231,10 @@ internal static class TuiTestRunner
     /// itself, e.g. to capture a live-updating indicator that only marshals via
     /// <c>Application.Invoke</c> when a real loop is pumping.
     /// </summary>
-    public static void RunWithLoop(Func<ControlPanelWindowParts> buildParts, Action<ControlPanelWindowParts> body)
+    public static void RunWithLoop(Func<IApplication, ControlPanelWindowParts> buildParts, Action<ControlPanelWindowParts> body)
     {
         ControlPanelWindowParts? parts = null;
+        IApplication? app = null;
         var ready = new ManualResetEventSlim(false);
         Exception? threadException = null;
 
@@ -201,10 +242,11 @@ internal static class TuiTestRunner
         {
             try
             {
-                Application.Init("dotnet");
-                parts = buildParts();
-                Application.Invoke(() => ready.Set());
-                Application.Run(parts.Window);
+                app = Application.Create().Init("dotnet");
+                _currentApp = app;
+                parts = buildParts(app);
+                app.Invoke(() => ready.Set());
+                app.Run(parts.Window);
             }
             catch (Exception ex)
             {
@@ -233,9 +275,10 @@ internal static class TuiTestRunner
         }
         finally
         {
-            Application.Invoke(() => Application.RequestStop());
+            app!.Invoke(() => app.RequestStop());
             thread.Join(_stopTimeout);
-            Application.Shutdown();
+            _currentApp = null;
+            app.Dispose();
         }
     }
 
@@ -246,7 +289,7 @@ internal static class TuiTestRunner
         var result = default(T);
         Exception? exception = null;
 
-        Application.Invoke(() =>
+        _currentApp!.Invoke(() =>
         {
             try
             {

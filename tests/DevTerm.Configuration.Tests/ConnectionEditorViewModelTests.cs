@@ -568,8 +568,14 @@ public sealed class ConnectionEditorViewModelTests
         try
         {
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
-            var raised = new List<string?>();
-            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+            var raised = new List<string>();
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.PropertyName))
+                {
+                    raised.Add(e.PropertyName);
+                }
+            };
 
             vm.Transport = "tcp";
 

@@ -26,14 +26,12 @@ public sealed class ConfigureModeTests
         return directory;
     }
 
-    private static void RunHeadless(CliOptions initial, string? validationError, ConnectionProfileStore profileStore, Action<ConfigureWindowParts> body)
-    {
-        Application.Init("dotnet");
-        try
+    private static void RunHeadless(CliOptions initial, string? validationError, ConnectionProfileStore profileStore, Action<ConfigureWindowParts> body) =>
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ConfigureMode.BuildWindow(initial, validationError, profileStore);
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ConfigureMode.BuildWindow(app, initial, validationError, profileStore);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -41,14 +39,9 @@ public sealed class ConfigureModeTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
-    }
+        });
 
     /// <summary>
     /// Simulates pressing a button via <c>View.InvokeCommand(Command.Accept)</c> — a direct,
@@ -81,7 +74,7 @@ public sealed class ConfigureModeTests
                 parts.DescriptionField.SetFocus();
 
                 Assert.IsTrue(parts.DescriptionField.HasFocus, "The Description field couldn't take focus.");
-                Assert.AreSame(parts.DescriptionField, Application.Navigation?.GetFocused());
+                Assert.AreSame(parts.DescriptionField, TuiTestRunner.CurrentApp.Navigation?.GetFocused());
             });
         }
         finally
@@ -105,17 +98,17 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            Application.Init("dotnet");
+            var app = Application.Create().Init("dotnet");
             try
             {
-                var parts = ConfigureMode.BuildWindow(new CliOptions(), null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
-                Application.End(token);
+                var parts = ConfigureMode.BuildWindow(app, new CliOptions(), null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+                app.End(token);
             }
             finally
             {
-                Application.Shutdown();
+                app.Dispose();
             }
 
             File.WriteAllText(Path.Combine(directory, "late.json"), "{}");
@@ -571,8 +564,8 @@ public sealed class ConfigureModeTests
                 // Focus is moved off the saved-profiles list first: now that focus really lands
                 // there at startup, PageDown is (deliberately) the list's own - see scrollOnKey.
                 parts.DescriptionField.SetFocus();
-                Application.RaiseKeyDownEvent(Key.PageDown);
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Key.PageDown);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
                 var after = TuiTestRunner.DumpBuffer();
                 Assert.Contains("Line ending:", after, "Expected PageDown to scroll the form down far enough to reveal a control that was below the fold.");
@@ -597,12 +590,12 @@ public sealed class ConfigureModeTests
                 Assert.DoesNotContain("Import/export file path:", TuiTestRunner.DumpBuffer(), "Precondition: the path field starts below the fold.");
 
                 parts.PathField.SetFocus();
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
                 Assert.Contains("Import/export file path:", TuiTestRunner.DumpBuffer(), "Focusing the path field should have scrolled it into view.");
 
                 parts.DescriptionField.SetFocus();
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
                 Assert.Contains("Description:", TuiTestRunner.DumpBuffer(), "Focusing a field above the viewport should scroll back up to it.");
             });
