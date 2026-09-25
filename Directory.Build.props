@@ -16,6 +16,15 @@
          .editorconfig's own header comment for why. Flip specific rules to `error` severity in
          .editorconfig once they're solid enough to actually block a build over. -->
     <WarningsAsErrors />
+
+    <!-- StyleCop.Analyzers 1.1.118 crashes (not a real finding, an unhandled exception inside the
+         analyzer itself) on a `record struct` declaration (SA1201's member-order table has no
+         entry for that syntax kind) and on DevTerm.Transports.Tcp.Tests's SocketExceptionStub class
+         (SA1500/SA1502/SA1508 all NullReferenceException in the same token lookup). Roslyn reports
+         these as AD0001, which is a `NotConfigurable` diagnostic - `dotnet_diagnostic.AD0001.severity`
+         in .editorconfig is silently ignored for it, so NoWarn (a compiler-option-level filter) is
+         the only thing that actually suppresses it. Revisit if/when StyleCop.Analyzers ships a fix. -->
+    <NoWarn>$(NoWarn);AD0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
