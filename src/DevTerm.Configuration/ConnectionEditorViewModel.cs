@@ -494,8 +494,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool ConnectedDeviceNotFound =>
         IsSerialTransport ? !string.IsNullOrEmpty(Port) && SelectedSerialPort is null
         : IsHidTransport ? HasUsbIdentity && SelectedHidDevice is null
-        : IsUsbtmcTransport ? HasUsbIdentity && SelectedUsbtmcDevice is null
-        : false;
+        : IsUsbtmcTransport && HasUsbIdentity && SelectedUsbtmcDevice is null;
 
     private bool HasUsbIdentity => ParseFilterId(_vendorId) != 0 || ParseFilterId(_productId) != 0;
 
