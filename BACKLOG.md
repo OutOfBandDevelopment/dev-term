@@ -88,17 +88,22 @@ the rest.
   conclusion; worth noting both intermittent USBTMC failures seen this session were on the *first*
   query after opening the connection, which may be a clue about connection warm-up timing rather than
   a per-device issue, but that's speculation, not confirmed.
-- **Re-verify the `dev/usbtmc-fix` rework on the DS1102E, DG1062Z and DM3058E** — only the DG1022
-  has been bench-tested since the protocol-conformance rework
-  (`docs/design/features/usbtmc-protocol-conformance.md`). The rework changes what goes over the wire:
-  - REN_CONTROL now really asserts REN on the DG1062Z/DM3058E, if they advertise it.
+- **Re-verify the `dev/usbtmc-fix` rework on the DG1062Z and DM3058E** — the DG1022 and DS1102E
+  have been bench-tested since the protocol-conformance rework
+  (`docs/design/features/usbtmc-protocol-conformance.md`, `docs/test/2026-09-25-18-03-06.md`). The
+  rework changes what goes over the wire:
+  - REN_CONTROL now really asserts REN, if the device advertises it. Neither of these two is on the 0x0588 quirk.
   - Timeouts now send INITIATE_ABORT_BULK_IN/OUT.
   - Continuation reads run until a short packet arrives.
-- **DS1102E `:WAV:DATA?` framing quirks (pyvisa-py #472, not yet reproduced here)** — two problems are reported:
-  - The header's TransferSize is reportedly 10 bytes short, because the IEEE block prefix isn't counted. The rework discards the surplus as alignment bytes.
-  - The device reportedly omits the terminating ZLP at an exact packet boundary. That costs one `ReadTimeoutMs`, then raises an error.
 
-  Both need a per-device `UsbtmcDeviceQuirks` entry once reproduced, and python-usbtmc's Rigol handling is the reference.
+  Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Rigol_Dg1062z|TestCategory=Rigol_Dm3058e"`
+  with each attached. That includes the new `RealHardwareUsbtmcTransportTests`.
+- **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
+  device omits the terminating zero-length packet when a reply ends exactly on a 64-byte boundary. The rework would
+  wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
+  padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
+  The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
+  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report).
 - **A/B test dropping the open-time `ClearHalt` on both endpoints for 0x1AB1:0x0588** — libsigrok removed
   exactly this for the same PID to fix a hang, and CLEAR_FEATURE resets the data toggle, which buggy firmware may not
   mirror. It's a candidate cause of first-query-after-open failures.

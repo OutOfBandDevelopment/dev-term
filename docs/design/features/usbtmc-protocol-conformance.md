@@ -1,11 +1,12 @@
 # USBTMC transport: protocol-conformance rework and Rigol quirks
 
-## Status: implemented (2026-09-25), DG1022 verified against real hardware
+## Status: implemented (2026-09-25), DG1022 and DS1102E verified against real hardware
 
 Branch `dev/usbtmc-fix`. Follows [`usbtmc-bulk-in-reassembly-fix.md`](usbtmc-bulk-in-reassembly-fix.md),
-whose reassembly fix stays, generalized below. Verified against a real **Rigol DG1022**
-(`docs/test/2026-09-25-18-03-06.md`). **Not yet re-verified on the DS1102E, DG1062Z or DM3058E.**
-Those devices need a bench pass before merge, because this change alters what goes over the wire:
+whose reassembly fix stays, generalized below. Verified against a real **Rigol DG1022** and a real
+**Rigol DS1102E**, including a byte-exact waveform read (`docs/test/2026-09-25-18-03-06.md`; covered by
+`DevTerm.Console.Tests.RealHardwareUsbtmcTransportTests`). **Not yet re-verified on the DG1062Z or
+DM3058E.** Those devices need a bench pass before merge, because this change alters what goes over the wire:
 - REN_CONTROL now actually asserts REN.
 - Aborts are sent on a timeout.
 - Continuation reads run until a short packet arrives.
@@ -84,10 +85,10 @@ Those devices need a bench pass before merge, because this change alters what go
 
 ## Open / follow-up (see `BACKLOG.md`)
 
-- **DS1102E `:WAV:DATA?`:** pyvisa-py #472 reports its TransferSize is 10 bytes short (the IEEE block prefix isn't
-  counted) and that it may omit the terminating ZLP at an exact packet boundary. With this change the extra 10
-  bytes are discarded as alignment. A missing ZLP costs one `ReadTimeoutMs` and then raises an error. A per-device
-  quirk is likely needed once this is reproduced on the bench.
+- **DS1102E `:WAV:DATA?`, checked on the bench:** TransferSize is exact (`#800000600` + 600 samples = 610). The 10 extra
+  bytes that follow are constant padding, and the rework correctly drops them as alignment. That contradicts pyvisa-py
+  #472's "10 bytes short" reading. Still unexercised: #472's missing ZLP at an exact packet boundary, which would cost one
+  `ReadTimeoutMs` and then raise an error. It needs a reply that lands on a 64-byte boundary.
 - **ClearHalt on both endpoints at open** (kept from before) is implicated in libsigrok's 0x0588 hang workaround and
   can desync data toggles. It hasn't been A/B tested on the bench.
-- **Real-hardware re-verification** on the DS1102E, DG1062Z and DM3058E.
+- **Real-hardware re-verification** on the DG1062Z and DM3058E.

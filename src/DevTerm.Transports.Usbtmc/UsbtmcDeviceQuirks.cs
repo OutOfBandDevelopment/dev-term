@@ -21,7 +21,9 @@ public sealed record UsbtmcDeviceQuirks(int RequestDelayMs, bool SupportsRemoteC
             // RequestDelayMs: confirmed against a real DG1022 (docs/test/2026-09-25-18-03-06.md): a
             // REQUEST_DEV_DEP_MSG_IN sent back-to-back with the query's DEV_DEP_MSG_OUT is never
             // answered - every query times out, reproducibly - while even a ~1 ms gap makes every
-            // query answer normally. 20 ms is margin, not a measured minimum.
+            // query answer normally. 20 ms is margin, not a measured minimum. The DS1102E
+            // shares this VID:PID but doesn't need it (bench-checked with a 0 ms gap, same
+            // report) - it just pays the 20 ms, since the two can't be told apart by VID:PID.
             //
             // SupportsRemoteControl: libsigrok blacklists RL1 for this VID:PID ("publishes RL1
             // support, but doesn't support it"); a real DG1022 timed out GO_TO_LOCAL too.
