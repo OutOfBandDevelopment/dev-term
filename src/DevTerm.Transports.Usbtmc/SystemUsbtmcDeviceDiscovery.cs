@@ -51,7 +51,9 @@ public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
                         info.ProductId,
                         TryGet(() => info.Manufacturer),
                         TryGet(() => info.Product),
-                        TryGet(() => info.SerialNumber)));
+                        TryGet(() => info.SerialNumber),
+                        null)//TODO: MWHITED 20260925 fix this later maybe?
+                        );
                 }
                 finally
                 {

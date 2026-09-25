@@ -14,6 +14,8 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// docs/design/features/kuando-busylight-protocol.md's confirmed single-command shape.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Kuando_Busylight)]
 [TestClass]
 public sealed class BusylightControlSurfaceTests
 {

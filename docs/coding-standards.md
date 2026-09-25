@@ -14,7 +14,12 @@ in the same change; a rule that's only written down here but not enforced anywhe
   StyleCop.Analyzers solution-wide and sets `EnforceCodeStyleInBuild=true`, so `.editorconfig`'s
   style rules actually surface as `dotnet build` warnings, not just IDE squiggles — matching
   `CLAUDE.md`'s existing "no separate lint step; `dotnet build` surfaces analyzer warnings"
-  convention rather than adding a second one.
+  convention rather than adding a second one. Also sets `TreatWarningsAsErrors` (see below) and
+  `<NoWarn>AD0001</NoWarn>` — AD0001 is Roslyn's `NotConfigurable` diagnostic tag, so an
+  `.editorconfig` `dotnet_diagnostic.AD0001.severity` line is silently ignored for it; `NoWarn`, a
+  compiler-option-level filter, is the only thing that actually suppresses it (verified empirically:
+  a `.editorconfig` severity override left the warnings byte-for-byte unchanged across a clean
+  rebuild with the build server shut down, ruling out staleness before concluding it doesn't work).
 - **`tests/DevTerm.CodingStandards.Tests`** — a small MSTest project that reflects over every other
   test assembly (via `ProjectReference`, not a Roslyn analyzer) to check standards `.editorconfig`
   has no way to express, like "every `[TestClass]`/`[TestMethod]` has a real `[TestCategory]`" (see
@@ -26,22 +31,32 @@ in the same change; a rule that's only written down here but not enforced anywhe
   "every `ITransport` implementation must no-op on an empty write, not throw" — see `CLAUDE.md`'s
   constraints list for why that one matters). Added once an actual rule needs it, not speculatively.
 
-**Severities are `suggestion`/`warning`, essentially never `error`**, deliberately: this project's
-existing convention is that a warning is a real, worth-reading signal (see `CLAUDE.md`'s Terminal.Gui
-obsolete-API warnings, tracked and accepted on purpose, not suppressed) — turning a style preference
-into a build-breaking error is a bigger step than "declare a standard," and hasn't been asked for.
+**Every warning is a build-breaking error** (`Directory.Build.props`'s `TreatWarningsAsErrors`) — the
+baseline is 0 warnings across the whole solution, enforced rather than aspirational: a
+`severity = warning` `.editorconfig` line (or an analyzer's own out-of-the-box default) now fails
+`dotnet build`, not just an IDE squiggle. A handful of specific diagnostics are bumped further, all
+the way to an explicit `error` severity in `.editorconfig`'s "My Rules" section anyway (`CS0618`,
+`CS8604`, `CA2016`, `MA0040`, `IDE1006`, and the collection-expression/object-initializer `IDE0xxx`
+rules) — with `TreatWarningsAsErrors` already blocking the build on any of them, the explicit `error`
+is documentation ("this one is load-bearing, not just provisional") rather than a functional
+difference from `warning`. Genuinely-still-a-suggestion style preferences (most `csharp_style_*`/
+`dotnet_style_*` keys) stay at `suggestion` deliberately — `EnforceCodeStyleInBuild` doesn't turn
+those into build warnings at all, so they remain IDE-only nudges, never a red build.
 
-## A known StyleCop quirk
+## A known StyleCop quirk (worked around, not just noted)
 
 `severity = none` (including the category-level bulk suppressions above) stops a rule's diagnostic
-from being *reported*, but doesn't stop the analyzer from *running* — a few of StyleCop's
-`LayoutRules` analyzers (`SA1500`, `SA1502`, `SA1508`, seen so far in `DevTerm.Transports.Tcp.Tests`)
-throw an internal `NullReferenceException` against some as-yet-unidentified syntax shape in this
-codebase even while fully silenced, surfacing as a harmless `AD0001` meta-warning ("Analyzer '...'
-threw an exception"). Confirmed non-blocking — 0 build errors, no effect on test results, reproduced
-consistently on a clean rebuild — so not chased further for now; if it gets noisy enough to matter,
-the fix is likely narrowing which projects reference `StyleCop.Analyzers` at all (`Directory.Build.props`
-currently applies it solution-wide) rather than anything in `.editorconfig`.
+from being *reported*, but doesn't stop the analyzer from *running* — a few of StyleCop's analyzers
+crash instead of just not firing: `SA1201` on a `record struct` declaration (its member-order lookup
+table has no entry for that syntax kind) and `SA1500`/`SA1502`/`SA1508` against
+`DevTerm.Transports.Tcp.Tests`'s `SocketExceptionStub` class layout (all `NullReferenceException` in
+the same internal token-lookup helper). Roslyn reports a crashing analyzer as `AD0001`, which is its
+`NotConfigurable` diagnostic tag — an `.editorconfig` `dotnet_diagnostic.AD0001.severity` line is
+silently ignored for it, confirmed empirically (a build-server shutdown plus a clean rebuild with
+`obj`/`bin` deleted still showed the identical warnings). The actual fix is
+`Directory.Build.props`'s `<NoWarn>$(NoWarn);AD0001</NoWarn>` — a compiler-option-level filter,
+independent of analyzer severity config entirely. Revisit if/when StyleCop.Analyzers ships a fix for
+either crash upstream.
 
 ## StyleCop.Analyzers starts silent, on purpose
 
@@ -78,6 +93,10 @@ standard below gets declared that StyleCop already knows how to check.
   existing usage (no `this.` prefix anywhere in the codebase today).
 - **`using` directives**: `System.*` first, then alphabetical, outside the namespace block, no blank
   line between groups.
+- **Primary constructors are not preferred** —
+  `csharp_style_prefer_primary_constructors = false:silent`. The handful of existing files already
+  using one are left as-is (retroactively flagging them for removal would be a bigger, unasked-for
+  change), but `IDE0290` no longer nags to convert an ordinary constructor into one.
 - **`private readonly` for a field that's never reassigned outside the constructor** — a field that
   *does* need reassignment later (e.g. `MainWindow._session`, mutable for live profile switching —
   see `docs/design/connection-profiles.md`) is deliberately not `readonly`, and this rule doesn't

@@ -8,6 +8,7 @@ using Moq;
 namespace DevTerm.Transports.Serial.Tests;
 
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Serial)]
 [TestClass]
 public sealed class SerialTransportTests
 {

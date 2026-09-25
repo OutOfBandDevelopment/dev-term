@@ -19,6 +19,8 @@ namespace DevTerm.Console.Tests;
 /// device later needs only new runsettings parameters plus one new `DataRow`, no code change.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.Hardware)]
+[TestCategory(TestCategories.Tcp)]
 [TestClass]
 public sealed class RealHardwareCliTests
 {
@@ -83,8 +85,11 @@ public sealed class RealHardwareCliTests
             CreateNoWindow = true,
         };
 
+        using var job = new ChildProcessJob();
         using var process = Process.Start(startInfo)!;
+        job.Add(process);
 
+        TestContext.WriteLine($"Sending: {query}");
         await process.StandardInput.WriteLineAsync(query);
         await process.StandardInput.FlushAsync(TestContext.CancellationToken);
 
@@ -95,7 +100,7 @@ public sealed class RealHardwareCliTests
         }
         while (line is not null && !line.Contains("[ascii]", StringComparison.Ordinal));
 
-        TestContext.WriteLine($"Reply: {line}");
+        TestContext.WriteLine($"Received: {line}");
 
         Assert.IsNotNull(line, $"Expected a decoded reply from the real device at {host}:{port} before the process ran out of output.");
         Assert.Contains(expectedReplySubstring, line);

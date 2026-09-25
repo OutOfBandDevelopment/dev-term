@@ -11,6 +11,7 @@ namespace DevTerm.Transports.Loopback.Tests;
 /// behavior works as designed. No real transport I/O anywhere, so this is <c>UNIT</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Loopback)]
 [TestClass]
 public sealed class LoopbackTransportTests
 {

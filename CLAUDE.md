@@ -248,6 +248,30 @@ file only points there, it doesn't restate them.**
   a regression test confirmed to fail without this fix). Both `TuiMode`/`MainWindow`'s
   `ToggleConnectionAsync` methods call `Session.OpenAsync`/`CloseAsync` repeatedly on the same
   `Session` instance, so this matters for any future code doing the same.
+- **`Session.OpenAsync`'s own `cancellationToken` parameter must never be forwarded into
+  `Task.Run`'s scheduling-cancellation argument for the read loop** — a mechanical CA2016/MA0040
+  "forward the CancellationToken parameter" fix did exactly that
+  (`Task.Run(() => PumpAsync(_readLoopCts.Token), cancellationToken)`) and it's a real, silent-failure
+  bug: if `OpenAsync`'s token were cancelled before the thread pool started the delegate, `Task.Run`
+  yields an already-`Canceled` task **without ever running `PumpAsync`** — the read loop never starts,
+  but `OpenAsync` itself doesn't throw (it doesn't await `_readLoopTask`), so the connection reports
+  open with no data ever read; a later `StopAsync`'s `await _readLoopTask` then throws
+  `TaskCanceledException` uncaught out of `CloseAsync`/`DisposeAsync`. The read loop's lifetime is
+  governed solely by `_readLoopCts.Token` (owned by `StopAsync`), which is a different token than the
+  one `OpenAsync` receives — pass `CancellationToken.None` explicitly to `Task.Run` to satisfy
+  CA2016 without misusing a token for a lifetime it doesn't own. Found via a pre-merge branch review,
+  not a live symptom — worth rechecking after *any* future "forward the CancellationToken parameter"
+  cleanup pass near `Task.Run`/`Task.Factory.StartNew`, since the analyzer can't tell the two tokens
+  apart.
+- **A `PipeReader.ReadAsync` in a test blocks forever against a genuinely, correctly empty reply** —
+  it has no signal for "confirmed nothing's coming," only "no data yet": a writer that flushes zero
+  bytes without ever calling `Advance` or completing the pipe never unblocks a pending `ReadAsync`.
+  This made `DevTerm.Transports.Usbtmc.Tests.UsbtmcTransportTests`'s
+  `WriteAsync_TwoConsecutiveValidZeroLengthMessages...` test hang (not fail — hang) against a
+  legitimately well-formed, zero-length USBTMC reply, even though the production `ReadReply` logic
+  handling it was correct. `PipeReader.TryRead(out ReadResult)` is the non-blocking alternative,
+  returning `false` immediately when nothing's been written and the pipe is still open — use it (not
+  a bare `ReadAsync`) whenever a test's whole point is asserting that a read produced nothing.
 - **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
   `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
   view-model property that already had a value at construction time still read back empty

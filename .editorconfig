@@ -1,6 +1,7 @@
 # Baseline coding standards for dev-term — see docs/coding-standards.md for the human-readable
-# version of these rules and the process for changing them. Severities are mostly `suggestion`/
-# `warning`, not `error`: nothing here should turn a currently-green build red on its own.
+# version of these rules and the process for changing them. Directory.Build.props' TreatWarningsAsErrors
+# means every `warning`-severity line here already breaks the build; `error` on a specific rule below
+# is just documentation that it's load-bearing, not a functional difference.
 root = true
 
 [*]
@@ -49,9 +50,8 @@ csharp_style_expression_bodied_methods = when_on_single_line:suggestion
 csharp_style_expression_bodied_constructors = false:suggestion
 csharp_style_expression_bodied_operators = when_on_single_line:suggestion
 
-# Braces always required, even for a single-statement if/for/while body — matches Session.cs and
-# every other file's existing usage; never the single-line `if (x) return;` style.
-csharp_prefer_braces = true:warning
+# IDE0011 (add braces) is not enforced — left to the author's judgment per call site.
+csharp_prefer_braces = true:silent
 
 # Allman brace placement (opening brace on its own line) — the style used throughout already.
 csharp_new_line_before_open_brace = all

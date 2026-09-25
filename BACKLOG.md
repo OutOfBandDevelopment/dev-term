@@ -67,6 +67,34 @@ the rest.
   - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
   already-built adapter cable, no new transport needed) remains buildable today, like SCPI was.
 
+### USBTMC
+
+- **Rigol DG1062Z's `*IDN?` bulk-IN reply intermittently fails USBTMC header decoding** —
+  real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): on the first attempt,
+  the first bulk-IN transfer back from the device after sending `*IDN?` was only 2 bytes, short of
+  the mandatory 12-byte USBTMC header, so `UsbtmcCodec.DecodeHeader` threw. A later re-run the same
+  day (`CliMode_AgainstRigolDg1062z_AnswersIdentityAndQueriesChannel1`, same test, same bench) passed
+  cleanly against real hardware — `*IDN?` → `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`,
+  plus real replies from `SOURce1:APPLy?`/`SOURce1:FREQuency?` — so this is intermittent, not
+  permanent, matching the pattern already seen on the DG1022 below and the (since-resolved) DM3058E
+  bulk-IN stall. Not investigated further — same "needs a packet capture, not more blind retries"
+  conclusion; worth noting both intermittent USBTMC failures seen this session were on the *first*
+  query after opening the connection, which may be a clue about connection warm-up timing rather than
+  a per-device issue, but that's speculation, not confirmed.
+- **Rigol DG1022's zero-byte-reply stall (`docs/changes/2026-09-24.md`) is intermittent, not
+  permanent** — real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`'s
+  follow-up section) via a new `RealHardwareUsbtmcTests.CliMode_AgainstRigolDg1022...` test
+  (`RealUsbtmcDg1022SerialNumber` now set to the real, confirmed `DG1D125306284`, per
+  `docs/test/2026-09-24-17-39-35.md`). Two consecutive automated runs both got a real, correct
+  `*IDN?` reply (`RIGOL TECHNOLOGIES,DG1022 ,DG1D125306284,,00.02.00.06.00.02.07`) but then hit
+  the already-fixed empty-reply retry's terminal case (`IOException: "USBTMC device returned no
+  data for the query."`, from `UsbtmcTransport.ReadReply`) on the very next query (`OUTPut?`) both
+  times. A separate rapid-fire manual CLI probe (three queries piped to stdin with no wait between
+  sends) failed on all three queries including `*IDN?`, suggesting timing/pacing between commands
+  may matter for this unit specifically. Not investigated further — same "needs a packet capture,
+  not more blind retries" conclusion as the DG1062Z item above and the original 2026-09-24 finding;
+  this narrows it (the device isn't unconditionally stuck) without root-causing it.
+
 ### Connection Editor
 
 **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
@@ -163,6 +191,17 @@ detected serial ports.
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
+
+- **`RealHardwareSerialTests`/`RealHardwareUsbtmcTests`'s shared `RunAsync` reads exactly one item
+  off `Session.Output` per sent command, using the terminatorless `RawPresenter`** — real-hardware
+  confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): against the HP 34401A (whose
+  profile IS line-terminated, unlike the Korads/DS1102E this pattern was designed around), a reply
+  can arrive over serial in multiple chunks, each firing `Session.Output` separately — the test only
+  consumes the first chunk, so it logs `Received: H`/`Received: ?` instead of the real replies, while
+  still passing (non-empty, no fault/timeout, which is all it currently asserts). Needs a fix (e.g.
+  drain the channel until a short quiet gap before treating a reply as complete, or use
+  `AsciiPresenter` with the profile's own terminator for devices that have one) before this test's
+  pass/fail is trustworthy for a terminated-reply device.
 
 ### Logging
 

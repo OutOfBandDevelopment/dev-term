@@ -35,7 +35,9 @@ public sealed class ConsoleAppCliTests
     [TestMethod]
     public async Task ListPorts_ExitsZeroWithoutCrashing()
     {
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--listports true"))!;
+        job.Add(process);
         await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -45,7 +47,9 @@ public sealed class ConsoleAppCliTests
     [TestMethod]
     public async Task ListHidDevices_ExitsZeroWithoutCrashing()
     {
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--listhiddevices true"))!;
+        job.Add(process);
         await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -58,7 +62,9 @@ public sealed class ConsoleAppCliTests
         // 65535/65535 is not a real, assigned USB vendor/product id, so whatever's actually plugged
         // into the machine running this test is guaranteed not to match — proves the filter narrows
         // the list (to empty here) rather than just proving the flags parse without crashing.
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--listhiddevices true --vendorid 65535 --productid 65535"))!;
+        job.Add(process);
         var stdout = await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -69,7 +75,9 @@ public sealed class ConsoleAppCliTests
     [TestMethod]
     public async Task ListUsbtmcDevices_ExitsZeroWithoutCrashing()
     {
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--listusbtmcdevices true"))!;
+        job.Add(process);
         await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -79,7 +87,9 @@ public sealed class ConsoleAppCliTests
     [TestMethod]
     public async Task ListUsbtmcDevices_WithVendorAndProductIdFilter_ExitsZeroAndOmitsNonMatchingDevices()
     {
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--listusbtmcdevices true --vendorid 65535 --productid 65535"))!;
+        job.Add(process);
         var stdout = await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -90,7 +100,9 @@ public sealed class ConsoleAppCliTests
     [TestMethod]
     public async Task UnknownTransport_PrintsErrorAndUsage_ExitsOne()
     {
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo("--transport carrier-pigeon --cli true"))!;
+        job.Add(process);
         var stderr = await process.StandardError.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
 
@@ -107,8 +119,10 @@ public sealed class ConsoleAppCliTests
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
 
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo(
             $"--transport tcp --host 127.0.0.1 --port {port} --presenter ascii --lineending Cr --cli true"))!;
+        job.Add(process);
 
         using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
         using var stream = client.GetStream();
@@ -148,8 +162,10 @@ public sealed class ConsoleAppCliTests
 
         // Presenter is a comma-separated list on the command line (a JSON array in a profile), and
         // Parser - what encodes typed lines - is independent of which presenters display.
+        using var job = new ChildProcessJob();
         using var process = Process.Start(BuildStartInfo(
             $"--transport tcp --host 127.0.0.1 --port {port} --presenter ascii,hex --parser hex --lineending None --cli true"))!;
+        job.Add(process);
 
         using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
         using var stream = client.GetStream();

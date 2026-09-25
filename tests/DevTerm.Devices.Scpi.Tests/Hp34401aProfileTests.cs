@@ -18,6 +18,8 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// small hand-built profiles shaped similarly to it. No real instrument involved, so UNIT.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Scpi)]
+[TestCategory(TestCategories.Hp_34401a)]
 [TestClass]
 public sealed class Hp34401aProfileTests
 {

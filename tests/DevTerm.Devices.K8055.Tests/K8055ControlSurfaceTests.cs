@@ -12,6 +12,8 @@ namespace DevTerm.Devices.K8055.Tests;
 /// involved, so this is <c>UNIT</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Velleman_K8055)]
 [TestClass]
 public sealed class K8055ControlSurfaceTests
 {

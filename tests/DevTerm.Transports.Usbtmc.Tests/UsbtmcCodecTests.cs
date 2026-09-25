@@ -5,6 +5,7 @@ using DevTerm.Transports.Usbtmc;
 namespace DevTerm.Transports.Usbtmc.Tests;
 
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Usbtmc)]
 [TestClass]
 public sealed class UsbtmcCodecTests
 {

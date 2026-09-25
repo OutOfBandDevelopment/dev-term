@@ -9,6 +9,8 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// device involved, so this is <c>UNIT</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Kuando_Busylight)]
 [TestClass]
 public sealed class BusylightDecoderTests
 {

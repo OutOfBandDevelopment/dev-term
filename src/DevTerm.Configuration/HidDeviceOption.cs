@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using DevTerm.Transports.Hid;
 
@@ -23,7 +24,7 @@ namespace DevTerm.Configuration;
 /// choice for a serial-less device like the K8055, at the accepted cost that moving it to a different
 /// USB hub/port makes it look unmatched.
 /// </summary>
-public sealed record HidDeviceOption(string Display, int VendorId, int ProductId, string? SerialNumber, string DevicePath)
+public sealed record HidDeviceOption(string Display, int VendorId, int ProductId, string? SerialNumber, string DevicePath) : IUsbDeviceOption
 {
     public static HidDeviceOption FromDescriptor(HidDeviceDescriptor descriptor)
     {

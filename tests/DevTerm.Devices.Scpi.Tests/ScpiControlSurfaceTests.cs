@@ -14,6 +14,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// correlation via a mocked <see cref="IScpiReplyTracker"/>. No real instrument involved, so UNIT.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Scpi)]
 [TestClass]
 public sealed class ScpiControlSurfaceTests
 {

@@ -46,7 +46,13 @@ public sealed class Session : IAsyncDisposable
         // scenario now that front ends have a Connect/Disconnect menu item) would otherwise start
         // the new read loop with an already-cancelled token, ending it immediately.
         _readLoopCts = new CancellationTokenSource();
-        _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token), cancellationToken);
+
+        // CancellationToken.None, deliberately: OpenAsync's own cancellationToken governs opening
+        // the transport above, not the read loop's lifetime - that's _readLoopCts.Token, owned by
+        // StopAsync. Forwarding OpenAsync's token here would let it cancel Task.Run's scheduling
+        // before PumpAsync ever starts, leaving the loop silently never running while the caller
+        // still sees an open connection.
+        _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token), CancellationToken.None);
     }
 
     public Task CloseAsync(CancellationToken cancellationToken = default) => StopAsync(cancellationToken);

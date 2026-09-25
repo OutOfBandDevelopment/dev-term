@@ -7,4 +7,21 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Versions matched to src/DevTerm.Transports.Serial and src/DevTerm.Transports.Hid's own
+       PackageReferences, so RealDeviceReachability's Serial/HID preflight checks use the exact
+       same enumeration APIs those transports themselves rely on. -->
+  <ItemGroup>
+    <PackageReference Include="HidSharp" Version="2.6.4" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.12" />
+  </ItemGroup>
+
+  <!-- DevTerm.Core: RawPresenter implements IPresenter. DevTerm.Transports.Usbtmc: unlike the
+       Serial/HID checks above, USBTMC device discovery isn't a bare library call — it needs the
+       same interface-class filtering SystemUsbtmcDeviceDiscovery already implements, so
+       RealDeviceReachability's USBTMC preflight reuses that class instead of duplicating it. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Usbtmc\DevTerm.Transports.Usbtmc.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -10,9 +10,12 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// instrument involved, so UNIT.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Scpi)]
 [TestClass]
 public sealed class ScpiProfileCatalogTests
 {
+    public TestContext TestContext { get; set; } = null!;
+
     private const string _minimalProfileJson = """
         {
             "Name": "Synthetic Instrument",
@@ -132,9 +135,15 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.Rigol_Dg1022)]
+    [TestCategory(TestCategories.Hardware)]
     public void TryMatchByIdn_MatchingReply_ReturnsThatBundledProfile()
     {
-        var matched = ScpiProfileCatalog.TryMatchByIdn("RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01");
+        const string idnReply = "RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01";
+        TestContext.WriteLine($"IDN reply: {idnReply}");
+
+        var matched = ScpiProfileCatalog.TryMatchByIdn(idnReply);
+        TestContext.WriteLine($"Matched profile: {matched?.Name}");
 
         Assert.IsNotNull(matched);
         Assert.IsTrue(matched!.Name.Contains("DG1022", StringComparison.OrdinalIgnoreCase));
@@ -157,6 +166,8 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.Tektronix_2230)]
+    [TestCategory(TestCategories.Hardware)]
     public void Tektronix2230_HasNoIdnPatternSoItIsNeverAutoDetected()
     {
         var tek2230 = ScpiProfileCatalog.All.Single(p => p.Name.StartsWith("Tektronix 2230", StringComparison.OrdinalIgnoreCase));
@@ -166,6 +177,8 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.Tektronix_Tds2024)]
+    [TestCategory(TestCategories.Hardware)]
     public void TektronixTds2024_SupportsIeee4882IdnAutoDetection()
     {
         var tds2024 = ScpiProfileCatalog.All.Single(p => p.Name.Contains("TDS2024", StringComparison.OrdinalIgnoreCase));

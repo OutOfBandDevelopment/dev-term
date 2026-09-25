@@ -17,6 +17,7 @@ namespace DevTerm.Transports.Usbtmc.Tests;
 /// class guards against.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Usbtmc)]
 [TestClass]
 public sealed class UsbtmcTransportTests
 {

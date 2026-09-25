@@ -19,6 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Devices.Busylight\DevTerm.Devices.Busylight.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <!-- Real-hardware Integration tests (RealHardwareBusylightTests) construct a real HidTransport
+         directly - same reasoning as DevTerm.Devices.K8055.Tests' equivalent reference. -->
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 
