@@ -86,7 +86,7 @@ public sealed class SessionTests
         };
 
         await session.OpenAsync(TestContext.CancellationToken);
-        await pipe.Writer.WriteAsync(new byte[] { 0x2A }, TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
         await outputTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
@@ -160,7 +160,7 @@ public sealed class SessionTests
 
         var received = new TaskCompletionSource();
         session.Output += (_, _) => received.TrySetResult();
-        await currentPipe.Writer.WriteAsync(new byte[] { 0x2A }, TestContext.CancellationToken);
+        await currentPipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
         await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
     }
@@ -183,7 +183,7 @@ public sealed class SessionTests
 
         var received = new TaskCompletionSource<PresenterOutput>();
         session.Output += (_, output) => received.TrySetResult(output);
-        await pipe.Writer.WriteAsync(new byte[] { 0x2A }, TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
         var output = await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 

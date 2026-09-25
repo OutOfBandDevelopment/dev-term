@@ -261,7 +261,7 @@ public sealed class TuiModeTests
         await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.HasCount(2, transport.WrittenPayloads);
-        Assert.AreSequenceEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0], "As ascii, 'ff' is two characters.");
+        Assert.AreSequenceEqual("ff"u8.ToArray(), transport.WrittenPayloads[0], "As ascii, 'ff' is two characters.");
         Assert.AreSequenceEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1], "As hex, 'ff' is one byte.");
     }
 

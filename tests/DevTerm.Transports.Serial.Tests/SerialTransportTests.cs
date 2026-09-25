@@ -115,7 +115,7 @@ public sealed class SerialTransportTests
         var transport = new SerialTransport(factory.Object, Options());
         await transport.OpenAsync(TestContext.CancellationToken);
 
-        var payload = new byte[] { 0xDE, 0xAD };
+        var payload = "ޭ"u8.ToArray();
         await devicePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
 
         var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);

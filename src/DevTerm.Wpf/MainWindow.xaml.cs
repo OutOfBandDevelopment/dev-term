@@ -161,10 +161,7 @@ public partial class MainWindow : Window
 
     private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => _ = ToggleConnectionAsync();
 
-    private void OnSessionOutput(object? sender, PresenterOutput output)
-    {
-        Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
-    }
+    private void OnSessionOutput(object? sender, PresenterOutput output) => Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
 
     private void AppendOutput(string line)
     {

@@ -28,8 +28,8 @@ public sealed class RealHardwareMainWindowTests
     [DataRow("RealTcpDeviceHost2")]
     public async Task MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
     {
-        var host = TestContext.Properties.ContainsKey(hostParameterName) ? TestContext.Properties[hostParameterName] as string : null;
-        var portText = TestContext.Properties.ContainsKey("RealTcpDevicePort") ? TestContext.Properties["RealTcpDevicePort"] as string : null;
+        var host = TestContext.Properties.TryGetValue(hostParameterName, out var value) ? value as string : null;
+        var portText = TestContext.Properties.TryGetValue("RealTcpDevicePort", out var portValue) ? portValue as string : null;
         if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort' — run with a settings file (see devterm.runsettings) to exercise this against real hardware.");

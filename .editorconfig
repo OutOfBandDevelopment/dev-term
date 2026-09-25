@@ -151,3 +151,4 @@ dotnet_diagnostic.IDE0007.severity = error    # Use 'var' instead of explicit ty
 dotnet_diagnostic.IDE0017.severity = error    # Simplify object initialization
 dotnet_diagnostic.IDE0301.severity = error    # Use collection expression for empty collection
 dotnet_diagnostic.IDE0305.severity = error    # Use collection expression for fluent-built collection
+dotnet_diagnostic.CA1854.severity = error     # Prefer TryGetValue over ContainsKey + indexer

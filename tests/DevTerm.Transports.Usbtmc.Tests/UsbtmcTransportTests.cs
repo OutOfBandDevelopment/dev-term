@@ -153,7 +153,6 @@ public sealed class UsbtmcTransportTests
     [TestMethod]
     public async Task WriteAsync_Query_RequestsAnEffectivelyUnlimitedTransferSize()
     {
-        var cancellationToken = TestContext.CancellationToken;
         var (transport, device) = CreateTransport();
         await transport.OpenAsync(TestContext.CancellationToken);
 

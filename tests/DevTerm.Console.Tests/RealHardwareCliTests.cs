@@ -30,7 +30,7 @@ public sealed class RealHardwareCliTests
 
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(15);
 
-    private string? GetProperty(string name) => TestContext.Properties.ContainsKey(name) ? TestContext.Properties[name] as string : null;
+    private string? GetProperty(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 
     [TestMethod]
     [DataRow("RealTcpDeviceHost1", "RealTcpDeviceHost1Query", "RealTcpDeviceHost1ExpectedReply")]

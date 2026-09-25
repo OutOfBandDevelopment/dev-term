@@ -12,7 +12,7 @@ internal sealed class FakeUsbtmcDevice : IUsbtmcDevice
 {
     private readonly Queue<(byte[] Data, bool Stalled)> _reads = new();
 
-    public List<byte[]> WrittenFrames { get; } = new();
+    public List<byte[]> WrittenFrames { get; } = [];
 
     public bool IsOpen { get; private set; }
 

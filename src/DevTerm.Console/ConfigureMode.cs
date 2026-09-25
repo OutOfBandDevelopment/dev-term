@@ -365,7 +365,7 @@ public static class ConfigureMode
             stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
             handshakeLabel.Visible = handshakeSelector.Visible = selected == TransportChoice.Serial;
             hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
-            var isUsbDevice = selected == TransportChoice.Hid || selected == TransportChoice.Usbtmc;
+            var isUsbDevice = selected is TransportChoice.Hid or TransportChoice.Usbtmc;
             vendorLabel.Visible = vendorField.Visible = productLabel.Visible = productField.Visible = idsShowHexCheckBox.Visible = isUsbDevice;
             serialNumberLabel.Visible = serialNumberField.Visible = isUsbDevice;
             detectHidButton.Visible = selected == TransportChoice.Hid;

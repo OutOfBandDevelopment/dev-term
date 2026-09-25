@@ -115,7 +115,7 @@ public sealed class MainWindowTests
             await window.SendCurrentInputAsync();
 
             Assert.HasCount(2, transport.WrittenPayloads);
-            Assert.AreSequenceEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0]);
+            Assert.AreSequenceEqual("ff"u8.ToArray(), transport.WrittenPayloads[0]);
             Assert.AreSequenceEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1]);
         });
     }

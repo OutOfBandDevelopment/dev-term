@@ -23,7 +23,7 @@ namespace DevTerm.Devices.Busylight;
 /// </summary>
 public sealed class BusylightControlSurface : IControlSurface
 {
-    private static readonly IReadOnlyDictionary<string, (byte R, byte G, byte B)> _colors = new Dictionary<string, (byte R, byte G, byte B)>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, (byte R, byte G, byte B)> _colors = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Red"] = (0xFF, 0x00, 0x00),
         ["Green"] = (0x00, 0xFF, 0x00),
@@ -35,7 +35,7 @@ public sealed class BusylightControlSurface : IControlSurface
     private static readonly string[] _tracks = ["Funky", "Nordic", "Quiet", "Open Office", "Kuando"];
 
     private readonly Session _session;
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
     private byte _r;
     private byte _g;
     private byte _b;

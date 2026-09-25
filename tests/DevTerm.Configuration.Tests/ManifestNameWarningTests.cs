@@ -12,10 +12,7 @@ namespace DevTerm.Configuration.Tests;
 public sealed class ManifestNameWarningTests
 {
     [TestMethod]
-    public void For_NoManifestName_ReturnsNull()
-    {
-        Assert.IsNull(ManifestNameWarning.For(new CliOptions()));
-    }
+    public void For_NoManifestName_ReturnsNull() => Assert.IsNull(ManifestNameWarning.For(new CliOptions()));
 
     [TestMethod]
     public void For_ManifestNameThatDoesNotResolve_ReturnsAWarning()

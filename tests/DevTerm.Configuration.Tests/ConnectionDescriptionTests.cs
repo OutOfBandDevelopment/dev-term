@@ -60,7 +60,7 @@ public sealed class ConnectionDescriptionTests
     {
         var options = new CliOptions { Transport = "TCP", Host = "device.local", Port = "502" };
 
-        StringAssert.StartsWith(ConnectionDescription.For(options), "TCP ");
+        Assert.StartsWith("TCP ", ConnectionDescription.For(options));
     }
 
     [TestMethod]
@@ -81,16 +81,12 @@ public sealed class ConnectionDescriptionTests
 
 
     [TestMethod]
-    public void Definition_Tcp_IsATcpUri()
-    {
+    public void Definition_Tcp_IsATcpUri() =>
         Assert.AreEqual("tcp://192.168.0.110:23", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" }));
-    }
 
     [TestMethod]
-    public void Definition_TcpListener_ShowsTheWildcardHost()
-    {
+    public void Definition_TcpListener_ShowsTheWildcardHost() =>
         Assert.AreEqual("tcp://*:9000 (listening)", ConnectionDescription.Definition(new CliOptions { Transport = "tcp", Listen = true, Port = "9000" }));
-    }
 
     [TestMethod]
     public void Definition_Serial_IsPortBaudDataBitsParityLetterStopBits()
@@ -111,10 +107,7 @@ public sealed class ConnectionDescriptionTests
     }
 
     [TestMethod]
-    public void Definition_Hid_IsVendorAndProductInHex()
-    {
-        Assert.AreEqual("hid://1915.AFDA", ConnectionDescription.Definition(new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA }));
-    }
+    public void Definition_Hid_IsVendorAndProductInHex() => Assert.AreEqual("hid://1915.AFDA", ConnectionDescription.Definition(new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA }));
 
     [TestMethod]
     public void Definition_HidWithSerialNumber_AppendsItAsTheInstance()

@@ -29,7 +29,7 @@ public sealed class K8055ControlSurface : IControlSurface
     private const byte _resetCounter2Command = 0x04;
 
     private readonly Session _session;
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
     private readonly bool[] _digitalOut = new bool[8];
     private byte _analogOut1;
     private byte _analogOut2;

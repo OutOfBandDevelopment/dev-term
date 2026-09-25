@@ -93,7 +93,7 @@ public sealed class ServiceCollectionExtensionsTests
 
         var catalog = provider.GetRequiredService<PresenterCatalog>();
 
-        CollectionAssert.Contains(catalog.Names.ToList(), "ascii");
-        CollectionAssert.Contains(catalog.Names.ToList(), "hex");
+        Assert.Contains("ascii", catalog.Names.ToList());
+        Assert.Contains("hex", catalog.Names.ToList());
     }
 }

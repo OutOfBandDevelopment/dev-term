@@ -135,7 +135,7 @@ public sealed class TcpTransportTests
         var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client));
         await transport.OpenAsync(TestContext.CancellationToken);
 
-        var payload = new byte[] { 0xDE, 0xAD };
+        var payload = "ޭ"u8.ToArray();
         await wirePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
 
         var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);

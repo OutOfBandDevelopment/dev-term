@@ -10,13 +10,13 @@ public sealed class LineEndingTests
     public void ToBytes_None_ReturnsEmpty() => Assert.AreSequenceEqual([], LineEnding.None.ToBytes());
 
     [TestMethod]
-    public void ToBytes_Cr_ReturnsCarriageReturn() => Assert.AreSequenceEqual(new byte[] { 0x0D }, LineEnding.Cr.ToBytes());
+    public void ToBytes_Cr_ReturnsCarriageReturn() => Assert.AreSequenceEqual("\r"u8.ToArray(), LineEnding.Cr.ToBytes());
 
     [TestMethod]
-    public void ToBytes_Lf_ReturnsLineFeed() => Assert.AreSequenceEqual(new byte[] { 0x0A }, LineEnding.Lf.ToBytes());
+    public void ToBytes_Lf_ReturnsLineFeed() => Assert.AreSequenceEqual("\n"u8.ToArray(), LineEnding.Lf.ToBytes());
 
     [TestMethod]
-    public void ToBytes_CrLf_ReturnsCarriageReturnThenLineFeed() => Assert.AreSequenceEqual(new byte[] { 0x0D, 0x0A }, LineEnding.CrLf.ToBytes());
+    public void ToBytes_CrLf_ReturnsCarriageReturnThenLineFeed() => Assert.AreSequenceEqual("\r\n"u8.ToArray(), LineEnding.CrLf.ToBytes());
 
     [TestMethod]
     public void Append_None_ReturnsPayloadUnchanged()
@@ -37,18 +37,18 @@ public sealed class LineEndingTests
     [TestMethod]
     public void Append_CrLf_AppendsBothBytesInOrder()
     {
-        var payload = new byte[] { 0x41 };
+        var payload = "A"u8.ToArray();
 
-        Assert.AreSequenceEqual(new byte[] { 0x41, 0x0D, 0x0A }, LineEnding.CrLf.Append(payload));
+        Assert.AreSequenceEqual("A\r\n"u8.ToArray(), LineEnding.CrLf.Append(payload));
     }
 
     [TestMethod]
     public void Append_DoesNotMutateTheOriginalPayloadArray()
     {
-        var payload = new byte[] { 0x41 };
+        var payload = "A"u8.ToArray();
 
         _ = LineEnding.Cr.Append(payload);
 
-        Assert.AreSequenceEqual(new byte[] { 0x41 }, payload);
+        Assert.AreSequenceEqual("A"u8.ToArray(), payload);
     }
 }

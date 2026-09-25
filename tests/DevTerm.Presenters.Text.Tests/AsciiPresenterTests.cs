@@ -18,12 +18,12 @@ public sealed class AsciiPresenterTests
 
     [TestMethod]
     public void Parse_EncodesAsciiBytes() =>
-        Assert.AreSequenceEqual(new byte[] { 0x48, 0x69, 0x21 }, _presenter.Parse("Hi!"));
+        Assert.AreSequenceEqual("Hi!"u8.ToArray(), _presenter.Parse("Hi!"));
 
     [TestMethod]
     public void Render_WithoutATerminator_BuffersAndReturnsNothingYet()
     {
-        var result = _presenter.Render(Of(0x48, 0x69)); // "Hi", no CR/LF
+        var result = _presenter.Render(Of("Hi"u8.ToArray())); // "Hi", no CR/LF
 
         Assert.IsEmpty(result);
     }
@@ -65,9 +65,9 @@ public sealed class AsciiPresenterTests
     [TestMethod]
     public void Render_AccumulatesAcrossMultipleCallsUntilATerminatorArrives()
     {
-        var afterH = _presenter.Render(Of((byte)'H'));
-        var afterI = _presenter.Render(Of((byte)'i'));
-        var afterTerminator = _presenter.Render(Of((byte)'\n'));
+        var afterH = _presenter.Render(Of("H"u8.ToArray()));
+        var afterI = _presenter.Render(Of("i"u8.ToArray()));
+        var afterTerminator = _presenter.Render(Of("\n"u8.ToArray()));
 
         Assert.IsEmpty(afterH);
         Assert.IsEmpty(afterI);
@@ -100,7 +100,7 @@ public sealed class AsciiPresenterTests
         var longRun = presenter.Render(Of([.. new string('a', 10_000).Select(c => (byte)c)]));
         Assert.IsEmpty(longRun, "Length alone should never flush when MaxLineLength is 0.");
 
-        var afterTerminator = presenter.Render(Of((byte)'\n'));
+        var afterTerminator = presenter.Render(Of("\n"u8.ToArray()));
         Assert.HasCount(1, afterTerminator);
         Assert.AreEqual(10_000, afterTerminator[0].Length);
     }

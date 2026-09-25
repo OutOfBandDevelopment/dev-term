@@ -31,10 +31,7 @@ public sealed class ConnectionErrorMessagesTests
     }
 
     [TestMethod]
-    public void IsConnectionFailure_TreatsATimeoutAsAConnectionFailure_NotACrash()
-    {
-        Assert.IsTrue(ConnectionErrorMessages.IsConnectionFailure(new TimeoutException("The operation has timed out.")));
-    }
+    public void IsConnectionFailure_TreatsATimeoutAsAConnectionFailure_NotACrash() => Assert.IsTrue(ConnectionErrorMessages.IsConnectionFailure(new TimeoutException("The operation has timed out.")));
 
     [TestMethod]
     public void IsConnectionFailure_StillRejectsAnUnrelatedBug()

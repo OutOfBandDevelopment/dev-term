@@ -148,7 +148,7 @@ public sealed class ConnectionProfileStoreTests
             store.Save("tek2230", BuildSerialOptions());
 
             Assert.IsTrue(store.Delete("tek2230"));
-            CollectionAssert.DoesNotContain(store.List().ToArray(), "tek2230");
+            Assert.DoesNotContain("tek2230", [.. store.List()]);
         }
         finally
         {
