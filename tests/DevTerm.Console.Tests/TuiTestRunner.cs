@@ -9,7 +9,7 @@ using Terminal.Gui.Testing;
 namespace DevTerm.Console.Tests;
 
 /// <summary>
-/// Drives a real <see cref="TuiMode"/> window — real <c>Window</c>/<c>TextView</c>/<c>TextField</c>,
+/// Drives a real <see cref="TuiMode"/> window — real <c>Window</c>/<c>Editor</c>/<c>TextField</c>,
 /// built by the actual production <see cref="TuiMode.BuildWindow"/> — using Terminal.Gui v2.5.0's
 /// own official testing primitives (<c>Terminal.Gui.Testing.IInputInjector</c>, <c>IOutputBuffer</c>)
 /// rather than OS-level UI Automation: no real terminal, real display, or external automation

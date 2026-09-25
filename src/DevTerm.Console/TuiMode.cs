@@ -9,6 +9,7 @@ using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
 using Terminal.Gui.App;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -28,7 +29,7 @@ public static class TuiMode
     /// <summary>
     /// Caps the scrolling output pane the same way <c>MainWindow.MaxOutputLines</c> does for WPF, so
     /// a long-running session doesn't grow it without bound — but shorter than WPF's 1000, since this
-    /// pane is a single concatenated <see cref="TextView.Text"/> string rebuilt on every trim, not a
+    /// pane is a single concatenated <see cref="Editor.Text"/> string rebuilt on every trim, not a
     /// virtualized items list; keeping it smaller keeps that rebuild cheap. Oldest lines are dropped
     /// first.
     /// </summary>
@@ -114,7 +115,7 @@ public static class TuiMode
             Height = Dim.Fill(),
         };
 
-        var output = new TextView
+        var output = new Editor
         {
             X = 0,
             Y = 1,
@@ -158,7 +159,7 @@ public static class TuiMode
                 }
 
                 output.Text = string.Join('\n', outputLines);
-                output.MoveEnd();
+                output.CaretOffset = output.Text.Length;
             });
         }
 
@@ -689,4 +690,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls).</summary>
-internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser);
