@@ -24,7 +24,6 @@ public sealed class SystemHidDevice : IHidDevice
     public Stream BaseStream => _readStream
         ?? throw new InvalidOperationException("The HID device has not been opened.");
 
-    [Obsolete]
     public void Open()
     {
         // HidSharp's own GetHidDeviceOrNull(serialNumber:) only ever matches a device's real serial
@@ -39,7 +38,7 @@ public sealed class SystemHidDevice : IHidDevice
         HidDevice? device = null;
         if (!string.IsNullOrEmpty(_options.SerialNumber))
         {
-            device = candidates.FirstOrDefault(d => string.Equals(d.SerialNumber, _options.SerialNumber, StringComparison.Ordinal));
+            device = candidates.FirstOrDefault(d => string.Equals(d.GetSerialNumber(), _options.SerialNumber, StringComparison.Ordinal));
         }
 
         if (device is null && !string.IsNullOrEmpty(_options.DevicePath))

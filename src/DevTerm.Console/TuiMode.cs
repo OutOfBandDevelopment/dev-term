@@ -269,8 +269,7 @@ public static class TuiMode
         // child first (sendField has focus in normal use) - checked directly, Ctrl+Q reached
         // window.KeyDown when nothing else had focus but not once sendField did. Application.KeyDown
         // fires ahead of per-view focus routing, so it works regardless of what's currently focused.
-        EventHandler<Key>? quitOnCtrlQ = null;
-        quitOnCtrlQ = (_, key) =>
+        void quitOnCtrlQ(object? _, Key key)
         {
             if (key != Key.Q.WithCtrl)
             {
@@ -279,7 +278,8 @@ public static class TuiMode
 
             key.Handled = true;
             app.RequestStop();
-        };
+        }
+
         app.Keyboard.KeyDown += quitOnCtrlQ;
         window.Disposing += (_, _) => app.Keyboard.KeyDown -= quitOnCtrlQ;
 

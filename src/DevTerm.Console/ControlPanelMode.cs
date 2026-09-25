@@ -143,8 +143,7 @@ internal static class ControlPanelMode
             formContent.Viewport = formContent.Viewport with { Y = newY };
         }
 
-        EventHandler<Key>? scrollOnKey = null;
-        scrollOnKey = (_, key) =>
+        void scrollOnKey(object? _, Key key)
         {
             var delta = key == Key.PageDown ? formContent.Viewport.Height
                 : key == Key.PageUp ? -formContent.Viewport.Height
@@ -157,7 +156,8 @@ internal static class ControlPanelMode
 
             ScrollBy(delta);
             key.Handled = true;
-        };
+        }
+
         app.Keyboard.KeyDown += scrollOnKey;
         window.Disposing += (_, _) => app.Keyboard.KeyDown -= scrollOnKey;
 

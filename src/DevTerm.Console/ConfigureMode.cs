@@ -928,8 +928,7 @@ public static class ConfigureMode
             };
         }
 
-        EventHandler<Key>? scrollOnKey = null;
-        scrollOnKey = (_, key) =>
+        void scrollOnKey(object? _, Key key)
         {
             if (profilesList.HasFocus)
             {
@@ -947,7 +946,8 @@ public static class ConfigureMode
 
             ScrollBy(delta);
             key.Handled = true;
-        };
+        }
+
         app.Keyboard.KeyDown += scrollOnKey;
         window.Disposing += (_, _) => app.Keyboard.KeyDown -= scrollOnKey;
 
