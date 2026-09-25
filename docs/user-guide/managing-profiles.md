@@ -71,11 +71,7 @@ takes a `.zip`, not a single-profile `.json` file.
 
 ## What's not built yet
 
-A few Architect Notes items are still open, worth knowing if you're looking for them:
-
-- **Descriptions for detected serial ports on Linux and macOS** — on Windows the "Detected ports"
-  picker shows e.g. "COM3 — Prolific USB-to-Serial Comm Port"; elsewhere it shows short names only
-  (`/dev/ttyUSB0`).
-
-See [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items for the full,
-prioritized list.
+Nothing from the Connection Editor's requested list is still open — the last item, descriptions for
+detected serial ports on Linux and macOS, landed 2026-09-25. See
+[`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items and
+[`BACKLOG.md`](../../BACKLOG.md) for smaller follow-ups.

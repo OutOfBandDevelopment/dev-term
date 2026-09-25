@@ -28,7 +28,7 @@ Shown in two situations:
 |---|---|---|---|---|
 | Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
-| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; on Windows each entry is shown as `COM3 — Prolific USB-to-Serial Comm Port` (see Per-front-end notes), but only the short name is written into the field |
+| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
 | Data bits (serial) | integer, typed as text | `8` | Same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
@@ -193,6 +193,20 @@ Shown in two situations:
   COM3 entry was found and correctly not listed), then with a live Prolific USB-to-Serial adapter
   (enumerated as COM4: `COM4 => Prolific USB-to-Serial Comm Port` returned, ghost COM3 still not
   listed).
+- **Linux and macOS describe a port from its USB device's string descriptors** (landed 2026-09-25;
+  unit-tested against sample sysfs/`ioreg` data only, not yet run on a real Linux or macOS machine).
+  Both produce `<manufacturer> <product> (<vid>:<pid>, serial <serial>)` — the manufacturer dropped
+  when the product already starts with it, `USB device <vid>:<pid>` when the device has no strings —
+  keyed by the full path `GetPortNames()` reports there (`/dev/ttyUSB0`, `/dev/cu.usbserial-…`).
+  `LinuxSerialPortDescriptions` resolves `/sys/class/tty/<name>/device` (a physical realpath, since
+  `/sys/class/tty/<name>` is itself a link) and walks up to the nearest directory with `idVendor` —
+  the USB device, not its interface or an upstream hub — reading `manufacturer`/`product`/`serial`/
+  `idVendor`/`idProduct`. `MacSerialPortDescriptions` runs `/usr/sbin/ioreg -a -l -r -c
+  IOUSBHostDevice` (3 s bound, killed on timeout) and maps every `IOSerialBSDClient`'s
+  `IOCalloutDevice`/`IODialinDevice` (both `cu.*` and `tty.*`) to its nearest `IOUSBHostDevice`'s
+  `USB Vendor Name`/`USB Product Name`/`USB Serial Number` (or the `kUSB*String` twins). A port
+  with no USB device behind it (`ttyS0`, `cu.Bluetooth-Incoming-Port`), unreadable sysfs, or a
+  missing/failing/hung `ioreg` just gets no description.
 - **The HID and USBTMC pickers are each filtered by the shared ID fields, live, independently.**
   `HidDeviceOptions`/`UsbtmcDeviceOptions` are not the raw discovery results: each is
   `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId
@@ -286,9 +300,7 @@ Shown in two situations:
 
 ## Open items
 
-Requested but not yet built, prioritized 2026-09-16 (the presenter picker and per-input-line parser both landed 2026-09-18 — see Fields and Per-front-end notes):
+None right now. Everything requested 2026-09-16 has landed: the presenter picker and per-input-line
+parser on 2026-09-18, and the last item, serial-port descriptions on Linux/macOS, on 2026-09-25 (see
+Fields and Per-front-end notes). Remaining Connection Editor follow-ups live in `BACKLOG.md`.
 
-- **Serial-port descriptions on Linux/macOS.** The "Detected ports" picker decorates each port with
-  the OS's description on Windows only (landed 2026-09-18, see Per-front-end notes); Linux
-  (`/sys/class/tty/*/device` → udev/`ID_MODEL`) and macOS (IOKit) still show short names only.
-  `ISerialPortDiscovery.GetPortDescriptions()` is the seam — nothing else changes to add them.

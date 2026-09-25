@@ -95,11 +95,8 @@ a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resoluti
 (`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
 `docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
 all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
-detected serial ports.
+detected serial ports; the Linux/macOS half landed 2026-09-25 (`docs/changes/2026-09-25.md`).
 
-- **Detected serial port descriptions on Linux/macOS** — the Windows description landed
-  2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
-  Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
 - **WPF "not found" hint for a disconnected saved device** — the TUI's `ConfigureMode` shows a
   "(not found)" label next to the Serial port row and the shared HID/USBTMC vendor/product/serial
   row when `ConnectionEditorViewModel.ConnectedDeviceNotFound` is true (see

@@ -130,8 +130,12 @@ nothing plugged in afterward shows up without reopening the editor.
 
 On Windows each detected serial port is listed with the name Device Manager gives it — for example
 "COM3 — Prolific USB-to-Serial Comm Port" — which makes it much easier to tell adapters apart;
-picking one still fills in just `COM3`. A port Windows has no name for, and every port on Linux and
-macOS, is listed by its short name alone. (`--listports` still prints short names only.)
+picking one still fills in just `COM3`. On Linux and macOS a USB serial adapter is listed with the
+manufacturer, product, vendor/product ID and serial number the device itself reports — for example
+"/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)" — and picking it fills in just
+`/dev/ttyUSB0`. (The Linux/macOS descriptions have so far only been checked against sample data, not
+on a real Linux or macOS machine.) A port the OS has nothing to say about — a built-in `ttyS0`, a
+Bluetooth port — is listed by its short name alone. (`--listports` still prints short names only.)
 
 ### Viewing Vendor/Product ID as hex
 
