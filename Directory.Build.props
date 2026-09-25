@@ -12,10 +12,10 @@
          warnings" convention rather than adding a second, separate lint step. -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
-    <!-- Analyzer diagnostics are warnings, not build-breaking errors, for this baseline — see
-         .editorconfig's own header comment for why. Flip specific rules to `error` severity in
-         .editorconfig once they're solid enough to actually block a build over. -->
-    <WarningsAsErrors />
+    <!-- Every warning breaks the build — the baseline is 0 warnings, so anything new (a fresh
+         analyzer finding, a new compiler warning) has to be fixed or explicitly suppressed in
+         .editorconfig rather than silently accumulating. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!-- StyleCop.Analyzers 1.1.118 crashes (not a real finding, an unhandled exception inside the
          analyzer itself) on a `record struct` declaration (SA1201's member-order table has no
