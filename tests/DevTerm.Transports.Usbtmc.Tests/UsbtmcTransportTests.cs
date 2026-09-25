@@ -202,8 +202,19 @@ public sealed class UsbtmcTransportTests
 
         await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input, cancellationToken);
-        Assert.IsEmpty(reply);
+        // WrittenFrames[0] is the DEV_DEP_MSG_OUT command, [1]/[2] are the two
+        // REQUEST_DEV_DEP_MSG_IN retries (tags 2 and 3) - asserting 3 here (rather than just "no
+        // data arrived") is what actually proves the SECOND queued empty header was consumed and
+        // tag-validated by the retry-once path, not just that the first one alone produced nothing.
+        Assert.HasCount(3, device.WrittenFrames);
+
+        // A genuinely empty reply never advances any bytes into the pipe and the pipe is never
+        // completed, so the blocking ReadAvailableAsync (a bare PipeReader.ReadAsync) used by every
+        // other test in this file would hang forever here waiting for bytes that are never coming -
+        // that's what made this test hang before this fix, not a bug in WriteAsync/ReadReply itself.
+        // TryRead is non-blocking: it returns false when nothing has been written yet, which is
+        // exactly "an empty reply" for a pipe that's still open.
+        Assert.IsFalse(transport.Input.TryRead(out _));
     }
 
     [TestMethod]
