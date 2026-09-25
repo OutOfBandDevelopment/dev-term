@@ -24,6 +24,16 @@
   has NOT been confirmed against this specific real unit yet - tighten it once it has been (e.g.
   the full model/firmware string), or clear it to make that DataRow report Inconclusive instead of
   asserting an unverified value.
+
+  Real Serial devices (RealHardwareSerialTests, in DevTerm.Console.Tests) - three bench SCPI power
+  supplies/meters, each on its own COM port (COM ports are reassigned by Windows whenever a USB
+  adapter is replugged into a different physical port, so these are per-machine parameters, not
+  literals - the whole point of parameterizing them per the user's request). Each *ExpectedReply
+  value is optional: leave it blank to skip the substring assertion and just require a non-null,
+  non-timed-out reply to each query (the "pass as long as it doesn't fault or timeout" bar) -
+  RealSerialKa6003pExpectedReply is filled in below because it's the one *IDN? reply actually
+  confirmed against real hardware so far (see docs/changes/2026-09-23.md); the others are left
+  blank rather than asserting an unverified guess.
 -->
 <RunSettings>
     <TestRunParameters>
@@ -37,6 +47,46 @@
         <Parameter name="RealTcpDeviceHost1ExpectedReply" value="TEK/2230" />
         <Parameter name="RealTcpDeviceHost2ExpectedReply" value="TEK/2230" />
         <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX" />
+
+        <!-- HP/Agilent/Keysight 34401A: 9600 8N2, no handshake, LF terminator, real hardware confirmed
+             (see docs/changes/2026-09-23.md). SYSTem:REMote must be sent before any query. -->
+        <Parameter name="RealSerialHp34401aPort" value="COM5" />
+        <Parameter name="RealSerialHp34401aBaud" value="9600" />
+        <Parameter name="RealSerialHp34401aDataBits" value="8" />
+        <Parameter name="RealSerialHp34401aParity" value="None" />
+        <Parameter name="RealSerialHp34401aStopBits" value="Two" />
+        <Parameter name="RealSerialHp34401aHandshake" value="None" />
+        <Parameter name="RealSerialHp34401aExpectedIdnReply" value="" />
+
+        <!-- Korad KA3005P: 9600 8N1, no handshake, no terminator (empty Terminator in its profile). -->
+        <Parameter name="RealSerialKa3005pPort" value="COM6" />
+        <Parameter name="RealSerialKa3005pBaud" value="9600" />
+        <Parameter name="RealSerialKa3005pDataBits" value="8" />
+        <Parameter name="RealSerialKa3005pParity" value="None" />
+        <Parameter name="RealSerialKa3005pStopBits" value="One" />
+        <Parameter name="RealSerialKa3005pHandshake" value="None" />
+        <Parameter name="RealSerialKa3005pExpectedIdnReply" value="" />
+
+        <!-- Korad KA6003P: same settings as the KA3005P above. *IDN? reply confirmed against real
+             hardware (docs/changes/2026-09-23.md): "KORAD KA6003P V5.8 SN:50266913" - the serial
+             number is unit-specific, so only the model prefix is asserted. -->
+        <Parameter name="RealSerialKa6003pPort" value="COM7" />
+        <Parameter name="RealSerialKa6003pBaud" value="9600" />
+        <Parameter name="RealSerialKa6003pDataBits" value="8" />
+        <Parameter name="RealSerialKa6003pParity" value="None" />
+        <Parameter name="RealSerialKa6003pStopBits" value="One" />
+        <Parameter name="RealSerialKa6003pHandshake" value="None" />
+        <Parameter name="RealSerialKa6003pExpectedIdnReply" value="KORAD KA6003P" />
+
+        <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
+             DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback
+             match when DevicePath is blank, mirroring SystemHidDevice.Open's own match order. -->
+        <Parameter name="RealHidK8055VendorId" value="4303" />
+        <Parameter name="RealHidK8055ProductId" value="21760" />
+        <Parameter name="RealHidK8055DevicePath" value="" />
+        <Parameter name="RealHidBusylightVendorId" value="1240" />
+        <Parameter name="RealHidBusylightProductId" value="63560" />
+        <Parameter name="RealHidBusylightDevicePath" value="" />
     </TestRunParameters>
 
     <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->

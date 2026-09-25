@@ -19,6 +19,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Devices.K8055\DevTerm.Devices.K8055.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <!-- Real-hardware Integration tests (RealHardwareK8055Tests) construct a real HidTransport
+         directly - K8055's binary fixed-length HID frames don't fit the CLI's text-line I/O the
+         way the SCPI serial devices do, so this test drives Session+IControlSurface in-process
+         instead of spawning DevTerm.Console. -->
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 

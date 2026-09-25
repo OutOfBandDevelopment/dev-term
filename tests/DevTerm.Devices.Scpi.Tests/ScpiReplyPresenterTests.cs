@@ -10,6 +10,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// involved, so UNIT.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Scpi)]
 [TestClass]
 public sealed class ScpiReplyPresenterTests
 {

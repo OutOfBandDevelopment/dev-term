@@ -3,6 +3,7 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Transports.Tcp.Tests;
 
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Tcp)]
 [TestClass]
 public sealed class TcpTransportOptionsValidatorTests
 {

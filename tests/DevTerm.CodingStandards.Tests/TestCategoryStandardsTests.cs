@@ -22,7 +22,28 @@ namespace DevTerm.CodingStandards.Tests;
 public sealed class TestCategoryStandardsTests
 {
     /// <summary>The only values docs/coding-standards.md recognizes — add a new one here in the same change that starts using it.</summary>
-    private static readonly string[] _knownCategories = [TestCategories.Unit, TestCategories.Integration];
+    private static readonly string[] _knownCategories =
+    [
+        TestCategories.Unit,
+        TestCategories.Integration,
+        TestCategories.Serial,
+        TestCategories.Tcp,
+        TestCategories.Hid,
+        TestCategories.Usbtmc,
+        TestCategories.Loopback,
+        TestCategories.Scpi,
+        TestCategories.Tektronix_2230,
+        TestCategories.Tektronix_Tds2024,
+        TestCategories.Korad_Ka3005p,
+        TestCategories.Korad_Ka6003p,
+        TestCategories.Hp_34401a,
+        TestCategories.Rigol_Ds1102e,
+        TestCategories.Rigol_Dm3058e,
+        TestCategories.Rigol_Dg1022,
+        TestCategories.Rigol_Dg1062z,
+        TestCategories.Velleman_K8055,
+        TestCategories.Kuando_Busylight,
+    ];
 
     private static readonly Assembly[] _testAssemblies =
     [
@@ -30,10 +51,15 @@ public sealed class TestCategoryStandardsTests
         typeof(DevTerm.Console.Tests.ConfigureModeTests).Assembly,
         typeof(DevTerm.Core.Tests.Presenters.PipelineTests).Assembly,
         typeof(DevTerm.DeviceManifests.Tests.DeviceManifestTests).Assembly,
+        typeof(DevTerm.Devices.Busylight.Tests.BusylightDecoderTests).Assembly,
+        typeof(DevTerm.Devices.K8055.Tests.K8055DecoderTests).Assembly,
+        typeof(DevTerm.Devices.Scpi.Tests.ScpiProfileCatalogTests).Assembly,
         typeof(DevTerm.Presenters.Text.Tests.AsciiPresenterTests).Assembly,
         typeof(DevTerm.Transports.Hid.Tests.HidTransportTests).Assembly,
+        typeof(DevTerm.Transports.Loopback.Tests.LoopbackTransportOptionsValidatorTests).Assembly,
         typeof(DevTerm.Transports.Serial.Tests.SerialTransportTests).Assembly,
         typeof(DevTerm.Transports.Tcp.Tests.TcpTransportOptionsValidatorTests).Assembly,
+        typeof(DevTerm.Transports.Usbtmc.Tests.UsbtmcTransportTests).Assembly,
         typeof(DevTerm.UiDefinitions.Tests.UiDefinitionSerializerTests).Assembly,
         typeof(DevTerm.Wpf.Tests.DeviceProfilesWindowTests).Assembly,
     ];

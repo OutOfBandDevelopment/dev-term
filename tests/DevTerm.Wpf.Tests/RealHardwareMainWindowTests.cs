@@ -15,6 +15,7 @@ namespace DevTerm.Wpf.Tests;
 /// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
+[TestCategory(TestCategories.Tcp)]
 [TestClass]
 [DoNotParallelize]
 public sealed class RealHardwareMainWindowTests
@@ -24,12 +25,16 @@ public sealed class RealHardwareMainWindowTests
     private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(10);
 
     [TestMethod]
-    [DataRow("RealTcpDeviceHost3")]
+    [DataRow("RealTcpDeviceHost1")]
     [DataRow("RealTcpDeviceHost2")]
     public async Task MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
     {
         var host = TestContext.Properties.TryGetValue(hostParameterName, out var value) ? value as string : null;
         var portText = TestContext.Properties.TryGetValue("RealTcpDevicePort", out var portValue) ? portValue as string : null;
+
+        TestContext.WriteLine($"Host: {host}");
+        TestContext.WriteLine($"Port: {portText}");
+
         if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort' — run with a settings file (see devterm.runsettings) to exercise this against real hardware.");
@@ -54,17 +59,23 @@ public sealed class RealHardwareMainWindowTests
                 ShowInTaskbar = false,
             };
 
+            TestContext.WriteLine("Connecting...");
             await window.ConnectAsync();
+            TestContext.WriteLine("Connected.");
+
+            TestContext.WriteLine("Sending: ID?");
             window.SendBox.Text = "ID?";
             await window.SendCurrentInputAsync();
 
             var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
             Assert.IsTrue(appeared, $"Expected a decoded reply from the real device at {host}:{port}.");
+            TestContext.WriteLine($"Received: {window.OutputList.Items[0]}");
             Assert.Contains("TEK/2230", (string)window.OutputList.Items[0]!);
 
             await session.CloseAsync(TestContext.CancellationToken);
             await session.DisposeAsync();
+            TestContext.WriteLine("Closed.");
         });
     }
 }

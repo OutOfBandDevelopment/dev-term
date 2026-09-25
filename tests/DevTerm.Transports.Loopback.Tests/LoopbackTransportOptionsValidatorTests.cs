@@ -3,6 +3,7 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Transports.Loopback.Tests;
 
 [TestCategory(TestCategories.Unit)]
+[TestCategory(TestCategories.Loopback)]
 [TestClass]
 public sealed class LoopbackTransportOptionsValidatorTests
 {
