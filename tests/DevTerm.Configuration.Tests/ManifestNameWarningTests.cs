@@ -1,3 +1,5 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Configuration.Tests;
 
 /// <summary>
@@ -5,15 +7,12 @@ namespace DevTerm.Configuration.Tests;
 /// docs/design/connection-profiles.md — every front end calls <see cref="ManifestNameWarning.For"/>
 /// instead of resolving/formatting this itself.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ManifestNameWarningTests
 {
     [TestMethod]
-    public void For_NoManifestName_ReturnsNull()
-    {
-        Assert.IsNull(ManifestNameWarning.For(new CliOptions()));
-    }
+    public void For_NoManifestName_ReturnsNull() => Assert.IsNull(ManifestNameWarning.For(new CliOptions()));
 
     [TestMethod]
     public void For_ManifestNameThatDoesNotResolve_ReturnsAWarning()
@@ -28,7 +27,7 @@ public sealed class ManifestNameWarningTests
         var warning = ManifestNameWarning.For(new CliOptions { ManifestName = name });
 
         Assert.IsNotNull(warning);
-        StringAssert.Contains(warning, name);
-        StringAssert.Contains(warning, "Warning:");
+        Assert.Contains(name, warning);
+        Assert.Contains("Warning:", warning);
     }
 }

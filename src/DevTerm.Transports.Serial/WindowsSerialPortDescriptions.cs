@@ -19,14 +19,14 @@ namespace DevTerm.Transports.Serial;
 [SupportedOSPlatform("windows")]
 internal static class WindowsSerialPortDescriptions
 {
-    private const string EnumKey = @"SYSTEM\CurrentControlSet\Enum";
+    private const string _enumKey = @"SYSTEM\CurrentControlSet\Enum";
 
     public static IReadOnlyDictionary<string, string> Read()
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            using var enumRoot = Registry.LocalMachine.OpenSubKey(EnumKey);
+            using var enumRoot = Registry.LocalMachine.OpenSubKey(_enumKey);
             if (enumRoot is null)
             {
                 return result;

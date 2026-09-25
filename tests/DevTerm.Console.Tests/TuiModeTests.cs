@@ -4,6 +4,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -19,12 +20,12 @@ namespace DevTerm.Console.Tests;
 /// <c>DevTerm.Wpf.Tests.MainWindowTests</c> need <c>[DoNotParallelize]</c> for its own, WPF-specific
 /// reason).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class TuiModeTests
 {
-    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(5);
 
     private static (Session Session, FakeTransport Transport, IPresenter Presenter) CreateSession()
     {
@@ -38,7 +39,7 @@ public sealed class TuiModeTests
     public async Task BuildWindow_WithAManifestNameThatDoesNotResolve_ShowsAWarningInOutput()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions
         {
             Transport = "tcp",
@@ -49,36 +50,36 @@ public sealed class TuiModeTests
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
-            StringAssert.Contains(parts.Output.Text, "Warning:");
+            Assert.Contains("Warning:", parts.Output.Text);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task BuildWindow_RendersTitleAndSendPrompt()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
-            StringAssert.Contains(parts.Window.Title, "tcp://127.0.0.1:23");
-            StringAssert.Contains(parts.Window.Title, "ascii");
+            Assert.Contains("tcp://127.0.0.1:23", parts.Window.Title);
+            Assert.Contains("ascii", parts.Window.Title);
 
             var screen = TuiTestRunner.DumpBuffer();
-            StringAssert.Contains(screen, "Send:");
+            Assert.Contains("Send:", screen);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task TypingAndEnter_SendsLineWithLineEndingToTheTransport()
     {
         var (session, transport, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
@@ -87,7 +88,7 @@ public sealed class TuiModeTests
             TuiTestRunner.PressEnter();
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.HasCount(1, transport.WrittenPayloads);
         Assert.AreEqual("ID?\r", Encoding.ASCII.GetString(transport.WrittenPayloads[0]));
@@ -97,7 +98,7 @@ public sealed class TuiModeTests
     public async Task EmptyInput_Enter_DoesNotWriteToTheTransport()
     {
         var (session, transport, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
@@ -105,7 +106,7 @@ public sealed class TuiModeTests
             TuiTestRunner.PressEnter();
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.IsEmpty(transport.WrittenPayloads);
     }
@@ -114,7 +115,7 @@ public sealed class TuiModeTests
     public async Task CtrlQ_RequestsStop()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
@@ -136,21 +137,21 @@ public sealed class TuiModeTests
             var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
             Assert.IsFalse(runnable.StopRequested);
 
-            Terminal.Gui.App.Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
+            TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
 
             Assert.IsTrue(runnable.StopRequested, "Ctrl+Q should call Application.RequestStop(), setting the window's StopRequested.");
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task TypingAndEnter_WhileDisconnected_DoesNotWriteToTheTransport()
     {
         var (session, transport, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.Cr };
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
         {
@@ -165,7 +166,7 @@ public sealed class TuiModeTests
     public async Task ToggleConnectionAsync_DisconnectsThenReconnects()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
@@ -173,44 +174,44 @@ public sealed class TuiModeTests
             Assert.AreEqual(ConnectionState.Open, session.State);
             Assert.AreEqual("_Disconnect", parts.ConnectMenuItem.Title);
 
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
-            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", WaitTimeout);
+            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", _waitTimeout);
             Assert.IsTrue(disconnected, "Expected the menu item's title to flip to _Connect after disconnecting.");
             Assert.AreEqual(ConnectionState.Closed, session.State);
             Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
 
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
-            var reconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Disconnect", WaitTimeout);
+            var reconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Disconnect", _waitTimeout);
             Assert.IsTrue(reconnected, "Expected the menu item's title to flip back to _Disconnect after reconnecting.");
             Assert.AreEqual(ConnectionState.Open, session.State);
             Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task IncomingBytes_AppearInOutputThroughTheRealSessionPipeline()
     {
         var (session, transport, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
             transport.PushIncomingAsync(Encoding.ASCII.GetBytes("ID TEK/2230\r")).GetAwaiter().GetResult();
 
-            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Length > 0, WaitTimeout);
+            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Length > 0, _waitTimeout);
             Assert.IsTrue(appeared, "Expected the decoded line to arrive via the real Session pull loop + Application.Invoke.");
 
             var text = TuiTestRunner.InvokeOnLoop(() => parts.Output.Text);
-            StringAssert.Contains(text, "[ascii]");
-            StringAssert.Contains(text, "ID TEK/2230");
+            Assert.Contains("[ascii]", text);
+            Assert.Contains("ID TEK/2230", text);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -220,15 +221,15 @@ public sealed class TuiModeTests
         var ascii = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var hex = new HexPresenter();
         var session = new Session(transport, new Pipeline([ascii, hex]));
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii", "hex"] };
 
         TuiTestRunner.RunHeadless(session, new PresenterCatalog([ascii, hex]), cliOptions, parts =>
         {
-            StringAssert.Contains(parts.Window.Title, "ascii, hex; send as ascii");
+            Assert.Contains("ascii, hex; send as ascii", parts.Window.Title);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -238,7 +239,7 @@ public sealed class TuiModeTests
         var ascii = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var hex = new HexPresenter();
         var session = new Session(transport, new Pipeline([ascii]));
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii"], Parser = "ascii" };
 
         // Raises the send field's own KeyDown directly instead of injecting a key through
@@ -251,24 +252,24 @@ public sealed class TuiModeTests
             parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
 
             parts.SetParser("hex");
-            StringAssert.Contains(parts.Window.Title, "send as hex");
+            Assert.Contains("send as hex", parts.Window.Title);
 
             parts.SendField.Text = "ff";
             parts.SendField.NewKeyDownEvent(Terminal.Gui.Input.Key.Enter);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.HasCount(2, transport.WrittenPayloads);
-        CollectionAssert.AreEqual(new byte[] { 0x66, 0x66 }, transport.WrittenPayloads[0], "As ascii, 'ff' is two characters.");
-        CollectionAssert.AreEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1], "As hex, 'ff' is one byte.");
+        Assert.AreSequenceEqual("ff"u8.ToArray(), transport.WrittenPayloads[0], "As ascii, 'ff' is two characters.");
+        Assert.AreSequenceEqual(new byte[] { 0xFF }, transport.WrittenPayloads[1], "As hex, 'ff' is one byte.");
     }
 
     [TestMethod]
     public async Task CursorUp_AfterSendingALine_RecallsIt()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         // Raises the send field's own KeyDown directly (see SetParser_...'s comment above) rather
@@ -283,14 +284,14 @@ public sealed class TuiModeTests
             Assert.AreEqual("ID?", parts.SendField.Text);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task CursorUpTwiceThenCursorDown_RecallsTheNewerLine()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", LineEnding = LineEnding.None };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
@@ -307,14 +308,14 @@ public sealed class TuiModeTests
             Assert.AreEqual("second", parts.SendField.Text);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task SendAsMenu_ListsEveryPresenterThatCanEncodeInput()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
         var catalog = new PresenterCatalog([presenter, new HexPresenter()]);
         cliOptions.Parser = "ascii";
@@ -322,10 +323,10 @@ public sealed class TuiModeTests
         TuiTestRunner.RunHeadless(session, catalog, cliOptions, _ =>
         {
             // The menu bar renders its top-level titles; the per-item entries only appear once opened.
-            StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Send as");
+            Assert.Contains("Send as", TuiTestRunner.DumpBuffer());
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
 
@@ -333,7 +334,7 @@ public sealed class TuiModeTests
     public async Task BuildWindow_WhenTheConnectionIsASavedProfile_TitlesTheWindowWithTheProfileName()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
         try
         {
@@ -343,8 +344,8 @@ public sealed class TuiModeTests
 
             TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
             {
-                StringAssert.Contains(parts.Window.Title, "bench-scope");
-                Assert.IsFalse(parts.Window.Title.Contains("tcp://"), "A saved profile is titled by name, not by its connection string.");
+                Assert.Contains("bench-scope", parts.Window.Title);
+                Assert.DoesNotContain("tcp://", parts.Window.Title, "A saved profile is titled by name, not by its connection string.");
             }, store);
         }
         finally
@@ -352,4 +353,6 @@ public sealed class TuiModeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    public required TestContext TestContext { get; set; }
 }

@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Devices.Busylight.Tests;
 
@@ -7,7 +8,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// Feeds <see cref="BusylightDecoder"/> a sample poll reply and asserts the rendered text — no real
 /// device involved, so this is <c>UNIT</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class BusylightDecoderTests
 {
@@ -18,7 +19,7 @@ public sealed class BusylightDecoderTests
 
         var lines = decoder.Render(ReadOnlySequence<byte>.Empty);
 
-        Assert.AreEqual(0, lines.Count);
+        Assert.IsEmpty(lines);
     }
 
     [TestMethod]
@@ -29,7 +30,7 @@ public sealed class BusylightDecoderTests
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(bytes));
 
-        Assert.AreEqual(1, lines.Count);
+        Assert.HasCount(1, lines);
         Assert.AreEqual("BUSYLIGHT: 0001PLENOM0000010000000", lines[0]);
     }
 

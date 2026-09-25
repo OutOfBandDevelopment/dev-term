@@ -24,12 +24,12 @@ namespace DevTerm.Devices.K8055;
 /// </summary>
 public sealed class K8055ControlSurface : IControlSurface
 {
-    private const byte SetOutputsCommand = 0x05;
-    private const byte ResetCounter1Command = 0x03;
-    private const byte ResetCounter2Command = 0x04;
+    private const byte _setOutputsCommand = 0x05;
+    private const byte _resetCounter1Command = 0x03;
+    private const byte _resetCounter2Command = 0x04;
 
     private readonly Session _session;
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
     private readonly bool[] _digitalOut = new bool[8];
     private byte _analogOut1;
     private byte _analogOut2;
@@ -53,8 +53,8 @@ public sealed class K8055ControlSurface : IControlSurface
         {
             "analogOut1" => SetAnalogOutAsync(ParseByte(value), null, cancellationToken),
             "analogOut2" => SetAnalogOutAsync(null, ParseByte(value), cancellationToken),
-            "resetCounter1" => SendFixedFrameAsync(ResetCounter1Command, cancellationToken),
-            "resetCounter2" => SendFixedFrameAsync(ResetCounter2Command, cancellationToken),
+            "resetCounter1" => SendFixedFrameAsync(_resetCounter1Command, cancellationToken),
+            "resetCounter2" => SendFixedFrameAsync(_resetCounter2Command, cancellationToken),
             _ => throw new ArgumentException($"Unknown K8055 command '{commandId}'.", nameof(commandId)),
         };
     }
@@ -129,7 +129,7 @@ public sealed class K8055ControlSurface : IControlSurface
             }
         }
 
-        return [0x00, SetOutputsCommand, digitalOutByte, _analogOut1, _analogOut2, 0x00, 0x00, 0x00, 0x00];
+        return [0x00, _setOutputsCommand, digitalOutByte, _analogOut1, _analogOut2, 0x00, 0x00, 0x00, 0x00];
     }
 
     private Task SendFixedFrameAsync(byte command, CancellationToken cancellationToken) =>

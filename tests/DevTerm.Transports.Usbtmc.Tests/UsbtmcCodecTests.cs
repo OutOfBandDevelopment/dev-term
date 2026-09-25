@@ -1,9 +1,10 @@
 using System.Buffers.Binary;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Usbtmc;
 
 namespace DevTerm.Transports.Usbtmc.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class UsbtmcCodecTests
 {

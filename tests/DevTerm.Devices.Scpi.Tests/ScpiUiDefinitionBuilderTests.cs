@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.Devices.Scpi.Tests;
@@ -10,7 +11,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// parameterized command), and the always-present Custom Command section. No real instrument
 /// involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiUiDefinitionBuilderTests
 {
@@ -40,7 +41,7 @@ public sealed class ScpiUiDefinitionBuilderTests
     {
         var definition = ScpiUiDefinitionBuilder.Build(BuildProfile());
 
-        CollectionAssert.AreEquivalent(new[] { "Common", "Source", "Custom Command" }, definition.Sections.Select(s => s.Label).ToArray());
+        Assert.AreSequenceEqual(["Common", "Source", "Custom Command"], definition.Sections.Select(s => s.Label).ToArray(), Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 
     [TestMethod]
@@ -80,7 +81,7 @@ public sealed class ScpiUiDefinitionBuilderTests
         var definition = ScpiUiDefinitionBuilder.Build(BuildProfile());
         var section = FindSection(definition, "Common");
 
-        Assert.IsFalse(section.Controls.OfType<IndicatorControl>().Any(c => c.Id == "rst.reply"));
+        Assert.DoesNotContain(c => c.Id == "rst.reply", section.Controls.OfType<IndicatorControl>());
     }
 
     [TestMethod]
@@ -105,7 +106,7 @@ public sealed class ScpiUiDefinitionBuilderTests
         var button = (ButtonControl)section.Controls.Single(c => c.Id == "freq.send");
 
         Assert.AreEqual("freq", button.CommandId);
-        CollectionAssert.AreEqual(new[] { "freq.Frequency" }, button.ParameterFieldIds);
+        Assert.AreSequenceEqual(["freq.Frequency"], button.ParameterFieldIds);
     }
 
     [TestMethod]
@@ -120,7 +121,7 @@ public sealed class ScpiUiDefinitionBuilderTests
 
         Assert.AreEqual(ScpiUiDefinitionBuilder.CustomCommandFieldId, textField.Id);
         Assert.AreEqual(ScpiControlSurface.SendCustomCommandId, button.Id);
-        CollectionAssert.AreEqual(new[] { ScpiUiDefinitionBuilder.CustomCommandFieldId }, button.ParameterFieldIds);
+        Assert.AreSequenceEqual([ScpiUiDefinitionBuilder.CustomCommandFieldId], button.ParameterFieldIds);
         Assert.AreEqual($"{ScpiControlSurface.SendCustomCommandId}.reply", indicator.Id);
     }
 
@@ -145,7 +146,7 @@ public sealed class ScpiUiDefinitionBuilderTests
         var definition = ScpiUiDefinitionBuilder.Build(profile);
         var field = (ChoiceControl)FindSection(definition, "Commands").Controls.Single(c => c.Id == "conf.Range");
 
-        CollectionAssert.AreEqual(new[] { "AUTO", "10" }, field.Options);
+        Assert.AreSequenceEqual(["AUTO", "10"], field.Options);
         Assert.AreEqual("AUTO", field.DefaultValue);
     }
 }

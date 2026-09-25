@@ -1,10 +1,11 @@
 using System.Buffers;
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Core.Tests.Presenters;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class PipelineTests
 {
@@ -21,11 +22,10 @@ public sealed class PipelineTests
 
         var pipeline = new Pipeline([hex.Object, ascii.Object]);
 
-        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48, 0x49 }));
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>([0x48, 0x49]));
 
-        CollectionAssert.AreEqual(
-            new[] { new PresenterOutput("hex", "48 49"), new PresenterOutput("ascii", "HI") },
-            outputs.ToArray());
+        Assert.AreSequenceEqual(
+            [new PresenterOutput("hex", "48 49"), new PresenterOutput("ascii", "HI")], [.. outputs]);
     }
 
     [TestMethod]
@@ -37,7 +37,7 @@ public sealed class PipelineTests
 
         var pipeline = new Pipeline([buffering.Object]);
 
-        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>([0x48]));
 
         Assert.IsEmpty(outputs);
     }
@@ -51,11 +51,10 @@ public sealed class PipelineTests
 
         var pipeline = new Pipeline([buffering.Object]);
 
-        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>([0x48]));
 
-        CollectionAssert.AreEqual(
-            new[] { new PresenterOutput("buffering", "one"), new PresenterOutput("buffering", "two") },
-            outputs.ToArray());
+        Assert.AreSequenceEqual(
+            [new PresenterOutput("buffering", "one"), new PresenterOutput("buffering", "two")], [.. outputs]);
     }
 
     [TestMethod]
@@ -63,7 +62,7 @@ public sealed class PipelineTests
     {
         var pipeline = new Pipeline([]);
 
-        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 1, 2, 3 }));
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>([1, 2, 3]));
 
         Assert.IsEmpty(outputs);
     }
@@ -78,7 +77,7 @@ public sealed class PipelineTests
 
         var pipeline = new Pipeline([first.Object, second.Object]);
 
-        CollectionAssert.AreEqual(new[] { first.Object, second.Object }, pipeline.Presenters.ToArray());
+        Assert.AreSequenceEqual([first.Object, second.Object], [.. pipeline.Presenters]);
     }
 
     [TestMethod]
@@ -92,7 +91,7 @@ public sealed class PipelineTests
         var pipeline = new Pipeline([first.Object]);
         pipeline.AddPresenter(added.Object);
 
-        CollectionAssert.AreEqual(new[] { first.Object, added.Object }, pipeline.Presenters.ToArray());
+        Assert.AreSequenceEqual([first.Object, added.Object], [.. pipeline.Presenters]);
     }
 
     [TestMethod]
@@ -104,7 +103,7 @@ public sealed class PipelineTests
         var pipeline = new Pipeline([presenter.Object]);
         pipeline.AddPresenter(presenter.Object);
 
-        CollectionAssert.AreEqual(new[] { presenter.Object }, pipeline.Presenters.ToArray());
+        Assert.AreSequenceEqual([presenter.Object], [.. pipeline.Presenters]);
     }
 
     [TestMethod]
@@ -117,8 +116,8 @@ public sealed class PipelineTests
         var pipeline = new Pipeline([]);
         pipeline.AddPresenter(added.Object);
 
-        var outputs = pipeline.Render(new ReadOnlySequence<byte>(new byte[] { 0x48 }));
+        var outputs = pipeline.Render(new ReadOnlySequence<byte>([0x48]));
 
-        CollectionAssert.AreEqual(new[] { new PresenterOutput("added", "hi") }, outputs.ToArray());
+        Assert.AreSequenceEqual([new PresenterOutput("added", "hi")], [.. outputs]);
     }
 }

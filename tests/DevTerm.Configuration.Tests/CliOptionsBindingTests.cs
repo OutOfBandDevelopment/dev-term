@@ -1,9 +1,10 @@
 using System.IO.Ports;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class CliOptionsBindingTests
 {
@@ -34,7 +35,7 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual("serial", options.Transport, "Transport should keep its default.");
         Assert.AreEqual("COM3", options.Port);
         Assert.AreEqual(115200, options.Baud);
-        CollectionAssert.AreEqual(new[] { "hex" }, options.EffectivePresenters.ToArray(), "Presenter should keep its default.");
+        Assert.AreSequenceEqual(["hex"], [.. options.EffectivePresenters], "Presenter should keep its default.");
     }
 
     [TestMethod]
@@ -45,7 +46,7 @@ public sealed class CliOptionsBindingTests
         Assert.AreEqual("tcp", options.Transport);
         Assert.AreEqual("device.local", options.Host);
         Assert.AreEqual("502", options.Port);
-        CollectionAssert.AreEqual(new[] { "ascii" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["ascii"], [.. options.EffectivePresenters]);
         Assert.IsFalse(options.Listen);
     }
 
@@ -66,7 +67,7 @@ public sealed class CliOptionsBindingTests
         var options = Bind();
 
         Assert.AreEqual("serial", options.Transport);
-        CollectionAssert.AreEqual(new[] { "hex" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["hex"], [.. options.EffectivePresenters]);
         Assert.IsNull(options.Parser);
         Assert.AreEqual("hex", options.EffectiveParser);
         Assert.AreEqual(9600, options.Baud);
@@ -204,7 +205,7 @@ public sealed class CliOptionsBindingTests
     {
         var options = Bind("--presenter", "ascii, hex");
 
-        CollectionAssert.AreEqual(new[] { "ascii", "hex" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["ascii", "hex"], [.. options.EffectivePresenters]);
     }
 
     [TestMethod]
@@ -214,7 +215,7 @@ public sealed class CliOptionsBindingTests
 
         // The binder appends array items to an existing default array, so a non-empty default would
         // have produced ["hex", "ascii", "decimal"] - the reason Presenter defaults to empty.
-        CollectionAssert.AreEqual(new[] { "ascii", "decimal" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["ascii", "decimal"], [.. options.EffectivePresenters]);
     }
 
     [TestMethod]
@@ -222,7 +223,7 @@ public sealed class CliOptionsBindingTests
     {
         var options = BindLayers("""{ "Presenter": "ascii" }""");
 
-        CollectionAssert.AreEqual(new[] { "ascii" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["ascii"], [.. options.EffectivePresenters]);
     }
 
     [TestMethod]
@@ -230,7 +231,7 @@ public sealed class CliOptionsBindingTests
     {
         var options = BindLayers("""{ "Presenter": ["ascii", "decimal"] }""", "--presenter", "binary");
 
-        CollectionAssert.AreEqual(new[] { "binary" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["binary"], [.. options.EffectivePresenters]);
     }
 
     [TestMethod]
@@ -238,7 +239,7 @@ public sealed class CliOptionsBindingTests
     {
         var options = new CliOptions { Presenter = ["hex", " ", "HEX", "ascii"] };
 
-        CollectionAssert.AreEqual(new[] { "hex", "ascii" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["hex", "ascii"], [.. options.EffectivePresenters]);
     }
 
     [TestMethod]
@@ -255,6 +256,6 @@ public sealed class CliOptionsBindingTests
         var options = Bind("--presenter", "ascii,hex", "--parser", "decimal");
 
         Assert.AreEqual("decimal", options.EffectiveParser);
-        CollectionAssert.AreEqual(new[] { "ascii", "hex" }, options.EffectivePresenters.ToArray());
+        Assert.AreSequenceEqual(["ascii", "hex"], [.. options.EffectivePresenters]);
     }
 }

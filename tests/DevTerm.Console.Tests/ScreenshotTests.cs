@@ -3,8 +3,8 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
-using Terminal.Gui.App;
 
 namespace DevTerm.Console.Tests;
 
@@ -20,7 +20,7 @@ namespace DevTerm.Console.Tests;
 /// class (<c>dotnet test --filter ClassName~ScreenshotTests</c>) and re-embed the refreshed PNGs on
 /// the relevant doc page whenever a screen's layout changes.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScreenshotTests
@@ -37,8 +37,8 @@ public sealed class ScreenshotTests
             ?? throw new InvalidOperationException($"Could not find the repo root (DevTerm.slnx) above '{AppContext.BaseDirectory}'.");
     }
 
-    private static readonly string ImagesDirectory = Path.Combine(FindRepoRoot(), "docs", "user-guide", "images");
-    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly string _imagesDirectory = Path.Combine(FindRepoRoot(), "docs", "user-guide", "images");
+    private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(5);
 
     private static string CreateTempProfilesDirectory()
     {
@@ -49,31 +49,26 @@ public sealed class ScreenshotTests
 
     private static string CaptureConfigureMode(CliOptions initial, ConnectionProfileStore store, string baseName)
     {
-        Application.Init("dotnet");
-        string dump;
-        try
+        var dump = "";
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ConfigureMode.BuildWindow(initial, validationError: null, store);
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, store);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+            app.LayoutAndDraw(true);
 
             try
             {
                 dump = TuiTestRunner.DumpBuffer();
-                Directory.CreateDirectory(ImagesDirectory);
-                TuiScreenshot.Save(Path.Combine(ImagesDirectory, baseName + ".png"));
+                Directory.CreateDirectory(_imagesDirectory);
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, baseName + ".png"));
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
+        });
 
-        File.WriteAllText(Path.Combine(ImagesDirectory, baseName + ".txt"), dump);
+        File.WriteAllText(Path.Combine(_imagesDirectory, baseName + ".txt"), dump);
         return dump;
     }
 
@@ -86,10 +81,10 @@ public sealed class ScreenshotTests
             var initial = new CliOptions { Transport = "serial", Port = "COM3", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
-            StringAssert.Contains(dump, "Transport:");
-            StringAssert.Contains(dump, "Serial port:");
-            StringAssert.Contains(dump, "COM3");
-            StringAssert.Contains(dump, "Baud:");
+            Assert.Contains("Transport:", dump);
+            Assert.Contains("Serial port:", dump);
+            Assert.Contains("COM3", dump);
+            Assert.Contains("Baud:", dump);
         }
         finally
         {
@@ -106,9 +101,9 @@ public sealed class ScreenshotTests
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-tcp");
 
-            StringAssert.Contains(dump, "TCP host:");
-            StringAssert.Contains(dump, "192.168.0.107");
-            StringAssert.Contains(dump, "Port:");
+            Assert.Contains("TCP host:", dump);
+            Assert.Contains("192.168.0.107", dump);
+            Assert.Contains("Port:", dump);
         }
         finally
         {
@@ -128,39 +123,34 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "hid", VendorId = 4216, ProductId = 63560, Presenter = ["hex"] };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+                app.LayoutAndDraw(true);
 
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
-                    Directory.CreateDirectory(ImagesDirectory);
-                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-hid.png"));
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-hid.png"));
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
-            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-hid.txt"), dump);
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-hid.txt"), dump);
 
-            StringAssert.Contains(dump, "Vendor ID:");
-            StringAssert.Contains(dump, "4216");
-            StringAssert.Contains(dump, "Product ID:");
+            Assert.Contains("Vendor ID:", dump);
+            Assert.Contains("4216", dump);
+            Assert.Contains("Product ID:", dump);
         }
         finally
         {
@@ -180,37 +170,32 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
 
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
-                    Directory.CreateDirectory(ImagesDirectory);
-                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-loopback.png"));
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-loopback.png"));
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
-            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-loopback.txt"), dump);
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-loopback.txt"), dump);
 
-            StringAssert.Contains(dump, "No configuration needed");
+            Assert.Contains("No configuration needed", dump);
         }
         finally
         {
@@ -226,13 +211,12 @@ public sealed class ScreenshotTests
         {
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
 
-            Application.Init("dotnet");
-            string dump;
-            try
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
             {
-                var parts = ConfigureMode.BuildWindow(initial, validationError: null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
 
                 try
                 {
@@ -241,28 +225,24 @@ public sealed class ScreenshotTests
                     // Focus off the saved-profiles list first: PageDown is the list's own while it
                     // has focus, which it now really does at startup.
                     parts.DescriptionField.SetFocus();
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    Application.LayoutAndDraw(true);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();
-                    Directory.CreateDirectory(ImagesDirectory);
-                    TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-configure-scrolled.png"));
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-scrolled.png"));
                 }
                 finally
                 {
-                    Application.End(token);
+                    app.End(token);
                 }
-            }
-            finally
-            {
-                Application.Shutdown();
-            }
+            });
 
-            File.WriteAllText(Path.Combine(ImagesDirectory, "tui-configure-scrolled.txt"), dump);
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-scrolled.txt"), dump);
 
-            StringAssert.Contains(dump, "Connect");
-            StringAssert.Contains(dump, "Quit");
+            Assert.Contains("Connect", dump);
+            Assert.Contains("Quit", dump);
         }
         finally
         {
@@ -282,31 +262,31 @@ public sealed class ScreenshotTests
     public async Task TuiMode_ConnectedEmpty_IsCaptured()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, _ =>
         {
             dump = TuiTestRunner.DumpBuffer();
-            Directory.CreateDirectory(ImagesDirectory);
-            TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-main-connected.png"));
+            Directory.CreateDirectory(_imagesDirectory);
+            TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-connected.png"));
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
-        StringAssert.Contains(dump, "tcp://192.168.0.107:23");
-        StringAssert.Contains(dump, "Send:");
+        Assert.Contains("tcp://192.168.0.107:23", dump);
+        Assert.Contains("Send:", dump);
     }
 
     [TestMethod]
     public async Task TuiMode_TypingACommand_IsCaptured()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
         {
             // Sets the field directly rather than going through TuiTestRunner.TypeText's key
@@ -317,33 +297,33 @@ public sealed class ScreenshotTests
             // SendField in a later test when both ran in the same process. A screenshot doesn't
             // need real key routing, just the visible end state.
             parts.SendField.Text = "ID?";
-            Terminal.Gui.App.Application.LayoutAndDraw(true);
+            TuiTestRunner.CurrentApp.LayoutAndDraw(true);
             dump = TuiTestRunner.DumpBuffer();
-            TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-main-typing.png"));
+            TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-typing.png"));
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
-        StringAssert.Contains(dump, "Send: ID?");
+        Assert.Contains("Send: ID?", dump);
     }
 
     [TestMethod]
     public async Task TuiMode_Disconnected_IsCaptured()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
-            TuiMode.ToggleConnectionAsync(session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
 
-            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", WaitTimeout);
+            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", _waitTimeout);
             Assert.IsTrue(disconnected, "Expected the menu item's title to flip to _Connect after disconnecting.");
 
             TuiTestRunner.InvokeOnLoop(() =>
             {
-                TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-main-disconnected.png"));
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-disconnected.png"));
                 return true;
             });
         });
@@ -353,27 +333,29 @@ public sealed class ScreenshotTests
     public async Task TuiMode_AfterReplyArrives_IsCaptured()
     {
         var (session, transport, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
 
-        string dump = "";
+        var dump = "";
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
             transport.PushIncomingAsync(Encoding.ASCII.GetBytes("ID TEK/2230,V81.1,VERS:14\r")).GetAwaiter().GetResult();
 
-            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Length > 0, WaitTimeout);
+            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Length > 0, _waitTimeout);
             Assert.IsTrue(appeared, "Expected the decoded reply to appear via the real Session pull loop.");
 
             dump = TuiTestRunner.InvokeOnLoop(TuiTestRunner.DumpBuffer);
             TuiTestRunner.InvokeOnLoop(() =>
             {
-                TuiScreenshot.Save(Path.Combine(ImagesDirectory, "tui-main-after-reply.png"));
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-after-reply.png"));
                 return true;
             });
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
-        StringAssert.Contains(dump, "[ascii] ID TEK/2230,V81.1,VERS:14");
+        Assert.Contains("[ascii] ID TEK/2230,V81.1,VERS:14", dump);
     }
+
+    public required TestContext TestContext { get; set; }
 }

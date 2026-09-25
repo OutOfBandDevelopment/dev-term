@@ -1,9 +1,10 @@
 using System.IO.Compression;
 using System.IO.Ports;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Configuration.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ConnectionProfileStoreTests
 {
@@ -41,7 +42,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual("COM3", loaded.Port);
             Assert.AreEqual(4800, loaded.Baud);
             Assert.AreEqual(Handshake.RequestToSend, loaded.Handshake);
-            CollectionAssert.AreEqual(new[] { "ascii" }, loaded.Presenter);
+            Assert.AreSequenceEqual(["ascii"], loaded.Presenter);
             Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
             Assert.AreEqual(512, loaded.AsciiMaxLineLength);
             Assert.AreEqual("tek-2230", loaded.ManifestName);
@@ -104,7 +105,7 @@ public sealed class ConnectionProfileStoreTests
             store.Save("zebra", BuildSerialOptions());
             store.Save("alpha", BuildSerialOptions());
 
-            CollectionAssert.AreEqual(new[] { "alpha", "zebra" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["alpha", "zebra"], [.. store.List()]);
         }
         finally
         {
@@ -147,7 +148,7 @@ public sealed class ConnectionProfileStoreTests
             store.Save("tek2230", BuildSerialOptions());
 
             Assert.IsTrue(store.Delete("tek2230"));
-            CollectionAssert.DoesNotContain(store.List().ToArray(), "tek2230");
+            Assert.DoesNotContain("tek2230", [.. store.List()]);
         }
         finally
         {
@@ -185,7 +186,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual("serial", loaded.Transport);
             Assert.AreEqual("COM3", loaded.Port);
             Assert.AreEqual(4800, loaded.Baud);
-            CollectionAssert.AreEqual(new[] { "ascii" }, loaded.Presenter);
+            Assert.AreSequenceEqual(["ascii"], loaded.Presenter);
             Assert.AreEqual(LineEnding.Cr, loaded.LineEnding);
             Assert.AreEqual("tek-2230", loaded.ManifestName);
 
@@ -235,7 +236,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual(2, result.Imported);
             Assert.AreEqual(0, result.Skipped);
             Assert.AreEqual(0, result.Renamed);
-            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, dest.List().ToArray());
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. dest.List()]);
         }
         finally
         {
@@ -326,7 +327,7 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual(1, result.Imported);
             Assert.AreEqual(0, result.Skipped);
             Assert.AreEqual(1, result.Renamed);
-            CollectionAssert.AreEqual(new[] { "tek2230", "tek2230 (2)" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["tek2230", "tek2230 (2)"], [.. store.List()]);
             Assert.AreEqual("COM9", store.Load("tek2230 (2)").Port);
         }
         finally
@@ -471,7 +472,7 @@ public sealed class ConnectionProfileStoreTests
 
             var profiles = ConnectionProfileStore.ReadZip(zip);
 
-            CollectionAssert.AreEquivalent(new[] { "alpha", "beta" }, profiles.Select(p => p.Name).ToArray());
+            Assert.AreSequenceEqual(["alpha", "beta"], [.. profiles.Select(p => p.Name)], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
             Assert.AreEqual("{ \"Transport\": \"tcp\" }", profiles.Single(p => p.Name == "alpha").Json);
         }
         finally
@@ -490,7 +491,7 @@ public sealed class ConnectionProfileStoreTests
 
             var ex = Assert.ThrowsExactly<InvalidDataException>(() => ConnectionProfileStore.ReadZip(zip));
 
-            StringAssert.Contains(ex.Message, "broken.json");
+            Assert.Contains("broken.json", ex.Message);
         }
         finally
         {
@@ -508,8 +509,8 @@ public sealed class ConnectionProfileStoreTests
 
             var profiles = ConnectionProfileStore.ReadZip(zip);
 
-            Assert.AreEqual(1, profiles.Count);
-            StringAssert.Contains(profiles[0].Json, "last");
+            Assert.HasCount(1, profiles);
+            Assert.Contains("last", profiles[0].Json);
         }
         finally
         {
@@ -531,7 +532,7 @@ public sealed class ConnectionProfileStoreTests
             var removed = store.ReplaceAll(ConnectionProfileStore.ReadZip(zip));
 
             Assert.AreEqual(2, removed);
-            CollectionAssert.AreEqual(new[] { "fresh", "shared" }, store.List().ToArray());
+            Assert.AreSequenceEqual(["fresh", "shared"], [.. store.List()]);
             Assert.AreEqual("192.168.9.9", store.Load("shared").Host, "An overwritten name takes the zip's content.");
         }
         finally

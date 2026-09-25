@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
 using System.Text;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Usbtmc;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -15,10 +16,12 @@ namespace DevTerm.Transports.Usbtmc.Tests;
 /// out that a single-physical-transfer test alone would not catch the bulk-IN reassembly bug this
 /// class guards against.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class UsbtmcTransportTests
 {
+    public required TestContext TestContext { get; set; }
+
     private static byte[] BuildReplyHeader(byte bTag, int transferSize, bool eom)
     {
         var header = new byte[UsbtmcCodec.HeaderSize];
@@ -51,9 +54,9 @@ public sealed class UsbtmcTransportTests
         return (new UsbtmcTransport(factory.Object, options), device);
     }
 
-    private static async Task<byte[]> ReadAvailableAsync(PipeReader reader)
+    private static async Task<byte[]> ReadAvailableAsync(PipeReader reader, CancellationToken cancellationToken)
     {
-        var result = await reader.ReadAsync();
+        var result = await reader.ReadAsync(cancellationToken);
         var data = result.Buffer.ToArray();
         reader.AdvanceTo(result.Buffer.End);
         return data;
@@ -76,59 +79,63 @@ public sealed class UsbtmcTransportTests
     // transport's first query (first is the DEV_DEP_MSG_OUT command frame, tag 1; second is the
     // REQUEST_DEV_DEP_MSG_IN, tag 2) - so a reply header must claim bTag 2 to pass the new
     // expected-tag validation.
-    private const byte FirstQueryRequestTag = 2;
+    private const byte _firstQueryRequestTag = 2;
 
     [TestMethod]
     public async Task WriteAsync_ReplySpanningTwoPhysicalTransfers_ReassemblesCorrectly()
     {
+        var cancellationToken = TestContext.CancellationToken;
+
         var (transport, device) = CreateTransport(maxTransferSize: 4);
-        await transport.OpenAsync();
+        await transport.OpenAsync(cancellationToken);
 
         // Logical reply is 8 bytes ("ABCDEFGH"); the first physical transfer only has room for 4
         // (the read buffer is HeaderSize + MaxTransferSize), so EOM is not set there. The second
         // transfer is pure continuation payload with NO header at all.
-        device.EnqueueRead(Concat(BuildReplyHeader(FirstQueryRequestTag, transferSize: 8, eom: false), Encoding.ASCII.GetBytes("ABCD")));
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: 8, eom: false), Encoding.ASCII.GetBytes("ABCD")));
         device.EnqueueRead(Encoding.ASCII.GetBytes("EFGH"));
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input);
+        var reply = await ReadAvailableAsync(transport.Input, cancellationToken);
         Assert.AreEqual("ABCDEFGH", Encoding.ASCII.GetString(reply));
     }
 
     [TestMethod]
     public async Task WriteAsync_ContinuationBytesThatWouldDecodeAsABogusHeader_AreNeverReparsed()
     {
+        var cancellationToken = TestContext.CancellationToken;
         var (transport, device) = CreateTransport(maxTransferSize: 16);
-        await transport.OpenAsync();
+        await transport.OpenAsync(cancellationToken);
 
         // The continuation transfer below is deliberately built to look like a *valid* header if
         // (incorrectly) re-decoded: matching MsgID/bTag/~bTag, but with an absurd TransferSize and
         // EOM set. If ReadReply ever re-parses a continuation transfer as a header again, this
         // would be misread as a short, final, empty-payload reply instead of 12 bytes of real data.
-        var bogusLookingContinuation = BuildReplyHeader(FirstQueryRequestTag, transferSize: int.MaxValue, eom: true);
+        var bogusLookingContinuation = BuildReplyHeader(_firstQueryRequestTag, transferSize: int.MaxValue, eom: true);
 
-        device.EnqueueRead(Concat(BuildReplyHeader(FirstQueryRequestTag, transferSize: 16, eom: false), Encoding.ASCII.GetBytes("AAAA")));
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: 16, eom: false), Encoding.ASCII.GetBytes("AAAA")));
         device.EnqueueRead(bogusLookingContinuation);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input);
+        var reply = await ReadAvailableAsync(transport.Input, cancellationToken);
         var expected = Concat(Encoding.ASCII.GetBytes("AAAA"), bogusLookingContinuation);
-        CollectionAssert.AreEqual(expected, reply);
+        Assert.AreSequenceEqual(expected, reply);
     }
 
     [TestMethod]
     public async Task WriteAsync_SingleTransferReply_StillWorks()
     {
+        var cancellationToken = TestContext.CancellationToken;
         var (transport, device) = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(cancellationToken);
 
-        device.EnqueueRead(Concat(BuildReplyHeader(FirstQueryRequestTag, transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input);
+        var reply = await ReadAvailableAsync(transport.Input, cancellationToken);
         Assert.AreEqual("HELLO", Encoding.ASCII.GetString(reply));
     }
 
@@ -136,22 +143,22 @@ public sealed class UsbtmcTransportTests
     public async Task WriteAsync_DeclaredTransferSizeExceedsMaxResponseSize_Throws()
     {
         var (transport, device) = CreateTransport(maxResponseSize: 8);
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        device.EnqueueRead(Concat(BuildReplyHeader(FirstQueryRequestTag, transferSize: 1000, eom: true), Encoding.ASCII.GetBytes("HELLO")));
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: 1000, eom: true), Encoding.ASCII.GetBytes("HELLO")));
 
-        await Assert.ThrowsExactlyAsync<IOException>(() => transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?")));
+        await Assert.ThrowsExactlyAsync<IOException>(() => transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), TestContext.CancellationToken));
     }
 
     [TestMethod]
     public async Task WriteAsync_Query_RequestsAnEffectivelyUnlimitedTransferSize()
     {
         var (transport, device) = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        device.EnqueueRead(Concat(BuildReplyHeader(FirstQueryRequestTag, transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), TestContext.CancellationToken);
 
         // WrittenFrames[0] is the DEV_DEP_MSG_OUT command; [1] is the REQUEST_DEV_DEP_MSG_IN whose
         // TransferSize field (bytes 4..8) is the requested max reply size.
@@ -163,45 +170,60 @@ public sealed class UsbtmcTransportTests
     [TestMethod]
     public async Task WriteAsync_FirstReplyIsAValidZeroLengthMessage_RetriesAndReturnsTheRealReply()
     {
+        var cancellationToken = TestContext.CancellationToken;
         var (transport, device) = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(cancellationToken);
 
         // Confirmed against a real Rigol DS1102E: a query sent right after OpenAsync sometimes
         // gets back a fully well-formed, EOM-terminated, zero-byte logical message before the
         // real reply - not a physical zero-byte transfer (that's the separate stalled/count<=0
         // path), but a valid header declaring TransferSize=0. A second REQUEST_DEV_DEP_MSG_IN
         // should recover the real data.
-        device.EnqueueRead(BuildReplyHeader(FirstQueryRequestTag, transferSize: 0, eom: true));
-        device.EnqueueRead(Concat(BuildReplyHeader((byte)(FirstQueryRequestTag + 1), transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
+        device.EnqueueRead(BuildReplyHeader(_firstQueryRequestTag, transferSize: 0, eom: true));
+        device.EnqueueRead(Concat(BuildReplyHeader((byte)(_firstQueryRequestTag + 1), transferSize: 5, eom: true), Encoding.ASCII.GetBytes("HELLO")));
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input);
+        var reply = await ReadAvailableAsync(transport.Input, cancellationToken);
         Assert.AreEqual("HELLO", Encoding.ASCII.GetString(reply));
     }
 
     [TestMethod]
+    [Timeout(5000, CooperativeCancellation = true)]
     public async Task WriteAsync_TwoConsecutiveValidZeroLengthMessages_ReturnsAnEmptyReplyWithoutThrowing()
     {
+        var cancellationToken = TestContext.CancellationToken;
+
         var (transport, device) = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(cancellationToken);
 
-        device.EnqueueRead(BuildReplyHeader(FirstQueryRequestTag, transferSize: 0, eom: true));
-        device.EnqueueRead(BuildReplyHeader((byte)(FirstQueryRequestTag + 1), transferSize: 0, eom: true));
+        device.EnqueueRead(BuildReplyHeader(_firstQueryRequestTag, transferSize: 0, eom: true));
+        device.EnqueueRead(BuildReplyHeader((byte)(_firstQueryRequestTag + 1), transferSize: 0, eom: true));
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?"), cancellationToken);
 
-        var reply = await ReadAvailableAsync(transport.Input);
-        Assert.HasCount(0, reply);
+        // WrittenFrames[0] is the DEV_DEP_MSG_OUT command, [1]/[2] are the two
+        // REQUEST_DEV_DEP_MSG_IN retries (tags 2 and 3) - asserting 3 here (rather than just "no
+        // data arrived") is what actually proves the SECOND queued empty header was consumed and
+        // tag-validated by the retry-once path, not just that the first one alone produced nothing.
+        Assert.HasCount(3, device.WrittenFrames);
+
+        // A genuinely empty reply never advances any bytes into the pipe and the pipe is never
+        // completed, so the blocking ReadAvailableAsync (a bare PipeReader.ReadAsync) used by every
+        // other test in this file would hang forever here waiting for bytes that are never coming -
+        // that's what made this test hang before this fix, not a bug in WriteAsync/ReadReply itself.
+        // TryRead is non-blocking: it returns false when nothing has been written yet, which is
+        // exactly "an empty reply" for a pipe that's still open.
+        Assert.IsFalse(transport.Input.TryRead(out _));
     }
 
     [TestMethod]
     public async Task WriteAsync_NonQuery_DoesNotReadAReply()
     {
         var (transport, device) = CreateTransport();
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.WriteAsync(Encoding.ASCII.GetBytes("OUTP ON"));
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("OUTP ON"), TestContext.CancellationToken);
 
         // A non-query never issues REQUEST_DEV_DEP_MSG_IN - only the DEV_DEP_MSG_OUT command frame.
         Assert.HasCount(1, device.WrittenFrames);

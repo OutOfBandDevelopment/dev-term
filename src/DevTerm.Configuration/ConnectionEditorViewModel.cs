@@ -24,7 +24,7 @@ namespace DevTerm.Configuration;
 /// </summary>
 public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
-    private static readonly CliOptionsValidator Validator = new();
+    private static readonly CliOptionsValidator _validator = new();
 
     private readonly ConnectionProfileStore _store;
     private readonly FileSystemWatcher? _profilesWatcher;
@@ -65,7 +65,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
     /// purposes — transient UI/status state, not a connection field a user could lose.
     /// </summary>
-    private static readonly HashSet<string> NonDirtyProperties = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> _nonDirtyProperties = new(StringComparer.Ordinal)
     {
         nameof(StatusMessage),
         nameof(SelectedProfileName),
@@ -93,7 +93,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// (<c>SelectionMode="Extended"</c>) via a <c>SelectionChanged</c> handler, the TUI's
     /// <c>ListView.GetAllMarkedItems()</c> (<c>MarkMultiple = true</c>) read once right before the
     /// export button's own handler runs — plain mutation, not itself a tracked edit (see
-    /// <see cref="NonDirtyProperties"/>' comment on <see cref="SelectedProfileName"/>: this is the
+    /// <see cref="_nonDirtyProperties"/>' comment on <see cref="SelectedProfileName"/>: this is the
     /// same kind of transient UI state).
     /// </summary>
     public ObservableCollection<string> SelectedProfileNames { get; } = [];
@@ -494,8 +494,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool ConnectedDeviceNotFound =>
         IsSerialTransport ? !string.IsNullOrEmpty(Port) && SelectedSerialPort is null
         : IsHidTransport ? HasUsbIdentity && SelectedHidDevice is null
-        : IsUsbtmcTransport ? HasUsbIdentity && SelectedUsbtmcDevice is null
-        : false;
+        : IsUsbtmcTransport && HasUsbIdentity && SelectedUsbtmcDevice is null;
 
     private bool HasUsbIdentity => ParseFilterId(_vendorId) != 0 || ParseFilterId(_productId) != 0;
 
@@ -520,7 +519,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>
     /// Bound to a picker (WPF's editable "Known ports" combobox; the TUI's "Detect..." button) —
     /// setting it copies the choice into <see cref="Port"/> and is otherwise not itself a tracked
-    /// edit (see <see cref="NonDirtyProperties"/>; <see cref="Port"/> changing is what actually
+    /// edit (see <see cref="_nonDirtyProperties"/>; <see cref="Port"/> changing is what actually
     /// marks the editor dirty). <see langword="null"/> doesn't clear <see cref="Port"/> — it just
     /// means nothing from the list is currently selected.
     /// </summary>
@@ -947,7 +946,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private ValidateOptionsResult ValidateFields(CliOptions options) =>
         SelectedPresenters.Count == 0
             ? ValidateOptionsResult.Fail("Select at least one presenter.")
-            : Validator.Validate(null, options);
+            : _validator.Validate(null, options);
 
     public void RefreshProfiles()
     {
@@ -1307,7 +1306,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             RefreshUsbtmcDeviceOptions();
         }
 
-        if (propertyName is not null && !NonDirtyProperties.Contains(propertyName))
+        if (propertyName is not null && !_nonDirtyProperties.Contains(propertyName))
         {
             IsDirty = true;
         }

@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.UiDefinitions.Tests;
@@ -7,7 +8,7 @@ namespace DevTerm.UiDefinitions.Tests;
 /// docs/design/features/kuando-busylight-protocol.md's @startsalt mockup, in this model's shape —
 /// through both serializers, rather than a synthetic minimal example.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class UiDefinitionSerializerTests
 {
@@ -104,11 +105,11 @@ public sealed class UiDefinitionSerializerTests
     {
         var json = UiDefinitionSerializer.ToJson(BuildBusylightPanel());
 
-        StringAssert.Contains(json, "\"kind\": \"choice\"");
-        StringAssert.Contains(json, "\"kind\": \"button\"");
-        StringAssert.Contains(json, "\"kind\": \"numeric\"");
-        StringAssert.Contains(json, "\"kind\": \"toggle\"");
-        StringAssert.Contains(json, "\"kind\": \"slider\"");
+        Assert.Contains("\"kind\": \"choice\"", json);
+        Assert.Contains("\"kind\": \"button\"", json);
+        Assert.Contains("\"kind\": \"numeric\"", json);
+        Assert.Contains("\"kind\": \"toggle\"", json);
+        Assert.Contains("\"kind\": \"slider\"", json);
     }
 
     [TestMethod]
@@ -116,11 +117,11 @@ public sealed class UiDefinitionSerializerTests
     {
         var xml = UiDefinitionSerializer.ToXml(BuildBusylightPanel());
 
-        StringAssert.Contains(xml, "<Choice>");
-        StringAssert.Contains(xml, "<Button>");
-        StringAssert.Contains(xml, "<Numeric>");
-        StringAssert.Contains(xml, "<Toggle>");
-        StringAssert.Contains(xml, "<Slider>");
+        Assert.Contains("<Choice>", xml);
+        Assert.Contains("<Button>", xml);
+        Assert.Contains("<Numeric>", xml);
+        Assert.Contains("<Toggle>", xml);
+        Assert.Contains("<Slider>", xml);
     }
 
     private static void AssertEquivalent(UiDefinition expected, UiDefinition actual)
@@ -174,7 +175,7 @@ public sealed class UiDefinitionSerializerTests
                 break;
             case ChoiceControl e:
                 var choice = (ChoiceControl)actual;
-                CollectionAssert.AreEqual(e.Options, choice.Options, $"{context} Options");
+                Assert.AreSequenceEqual(e.Options, choice.Options, $"{context} Options");
                 Assert.AreEqual(e.DefaultValue, choice.DefaultValue, $"{context} DefaultValue");
                 Assert.AreEqual(e.Style, choice.Style, $"{context} Style");
                 break;

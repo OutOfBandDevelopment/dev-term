@@ -2,6 +2,7 @@ using System.Text;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -14,11 +15,11 @@ namespace DevTerm.Console.Tests;
 /// <c>INTEGRATION</c> (contrast <c>TuiModeSwitchProfileTests</c>, which needs a real TCP loopback
 /// socket because it goes through <c>DevTermSessionBuilder</c>).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class LoopbackTransportTests
 {
-    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(5);
 
     private static (Session Session, List<string> Lines) CreateSession(LoopbackTransport transport)
     {
@@ -37,7 +38,7 @@ public sealed class LoopbackTransportTests
 
     private static async Task<IReadOnlyList<string>> WaitForLinesAsync(List<string> lines, int count)
     {
-        var deadline = DateTime.UtcNow + WaitTimeout;
+        var deadline = DateTime.UtcNow + _waitTimeout;
         while (DateTime.UtcNow < deadline)
         {
             lock (lines)
@@ -59,71 +60,73 @@ public sealed class LoopbackTransportTests
     public async Task LiteralRule_RespondsWithItsFixedLine()
     {
         var (session, lines) = CreateSession(new LoopbackTransport());
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.SendAsync(Encoding.ASCII.GetBytes("hello\r\n"));
+        await session.SendAsync(Encoding.ASCII.GetBytes("hello\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 1);
         Assert.AreEqual("From Loopback test", received[0]);
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task SendStream_RespondsWithADeterministicAsciiRun()
     {
         var (session, lines) = CreateSession(new LoopbackTransport());
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.SendAsync(Encoding.ASCII.GetBytes("Send Stream: 30, ascii\r\n"));
+        await session.SendAsync(Encoding.ASCII.GetBytes("Send Stream: 30, ascii\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 1);
         Assert.AreEqual("ABCDEFGHIJKLMNOPQRSTUVWXYZABCD", received[0]);
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task SendEvents_RespondsWithOneLinePerEvent()
     {
         var (session, lines) = CreateSession(new LoopbackTransport());
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.SendAsync(Encoding.ASCII.GetBytes("Send Events: 10\r\n"));
+        await session.SendAsync(Encoding.ASCII.GetBytes("Send Events: 10\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 10);
-        CollectionAssert.AreEqual(Enumerable.Range(1, 10).Select(i => $"Event {i}").ToArray(), received.ToArray());
+        Assert.AreSequenceEqual([.. Enumerable.Range(1, 10).Select(i => $"Event {i}")], [.. received]);
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task UnrecognizedCommand_RespondsWithAVisibleMarker_RatherThanSilence()
     {
         var (session, lines) = CreateSession(new LoopbackTransport());
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.SendAsync(Encoding.ASCII.GetBytes("not a real command\r\n"));
+        await session.SendAsync(Encoding.ASCII.GetBytes("not a real command\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 1);
-        StringAssert.Contains(received[0], "not a real command");
+        Assert.Contains("not a real command", received[0]);
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
     public async Task CustomRules_OverrideTheDefaultScript()
     {
         var (session, lines) = CreateSession(new LoopbackTransport([LoopbackRule.Literal("ping", "pong")]));
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.SendAsync(Encoding.ASCII.GetBytes("hello\r\n"));
-        await session.SendAsync(Encoding.ASCII.GetBytes("ping\r\n"));
+        await session.SendAsync(Encoding.ASCII.GetBytes("hello\r\n"), TestContext.CancellationToken);
+        await session.SendAsync(Encoding.ASCII.GetBytes("ping\r\n"), TestContext.CancellationToken);
 
         var received = await WaitForLinesAsync(lines, 2);
-        StringAssert.Contains(received[0], "Unrecognized");
+        Assert.Contains("Unrecognized", received[0]);
         Assert.AreEqual("pong", received[1]);
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
+
+    public required TestContext TestContext { get; set; }
 }

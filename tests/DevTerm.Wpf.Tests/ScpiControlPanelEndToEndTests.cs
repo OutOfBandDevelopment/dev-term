@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Devices.Scpi;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -19,12 +20,12 @@ namespace DevTerm.Wpf.Tests;
 /// subscribed, or the button never actually reaching <see cref="IControlSurface.InvokeAsync"/>).
 /// Same <see cref="StaTestRunner"/>/no-<c>Show()</c> conventions as <see cref="MainWindowTests"/>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScpiControlPanelEndToEndTests
 {
-    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(5);
 
     private static ScpiInstrumentProfile Profile =>
         ScpiProfileCatalog.All.Single(p => p.Name.Contains("34401A", StringComparison.OrdinalIgnoreCase));
@@ -40,7 +41,7 @@ public sealed class ScpiControlPanelEndToEndTests
             var surface = new ScpiControlSurface(session, Profile, presenter);
             var definition = ScpiUiDefinitionBuilder.Build(Profile);
             var window = new ControlPanelWindow(definition, surface, presenter) { ShowInTaskbar = false };
-            await session.OpenAsync();
+            await session.OpenAsync(TestContext.CancellationToken);
             StaTestRunner.DoEvents();
 
             // This is exactly what a user does: click the button. Nothing here reaches into
@@ -57,11 +58,11 @@ public sealed class ScpiControlPanelEndToEndTests
             // ValuesChanged.Invoke shortcut.
             await transport.PushIncomingAsync(Encoding.ASCII.GetBytes("+1.234560E-01\r\n"));
 
-            var updated = StaTestRunner.PumpUntil(() => window.IndicatorLabels["measVoltDc.reply"].Text == "+1.234560E-01", PumpTimeout);
+            var updated = StaTestRunner.PumpUntil(() => window.IndicatorLabels["measVoltDc.reply"].Text == "+1.234560E-01", _pumpTimeout);
 
             Assert.IsTrue(updated, $"Expected the indicator to show the decoded reply; actual text was '{window.IndicatorLabels["measVoltDc.reply"].Text}'.");
 
-            await session.CloseAsync();
+            await session.CloseAsync(TestContext.CancellationToken);
         });
     }
 
@@ -82,7 +83,7 @@ public sealed class ScpiControlPanelEndToEndTests
             var surface = new ScpiControlSurface(session, Profile, tracker: null); // <- the bug shape
             var definition = ScpiUiDefinitionBuilder.Build(Profile);
             var window = new ControlPanelWindow(definition, surface, presenter) { ShowInTaskbar = false };
-            await session.OpenAsync();
+            await session.OpenAsync(TestContext.CancellationToken);
             StaTestRunner.DoEvents();
 
             var button = (Button)window.ControlViews["measVoltDc"];
@@ -97,7 +98,9 @@ public sealed class ScpiControlPanelEndToEndTests
 
             Assert.AreEqual(string.Empty, window.IndicatorLabels["measVoltDc.reply"].Text);
 
-            await session.CloseAsync();
+            await session.CloseAsync(TestContext.CancellationToken);
         });
     }
+
+    public required TestContext TestContext { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.CodingStandards.Tests;
 
@@ -16,14 +17,14 @@ namespace DevTerm.CodingStandards.Tests;
 /// <see cref="EveryTestMethod_HasAnEffectiveRecognizedTestCategory"/> checks that resolved set
 /// directly rather than just assuming the class-level convention holds everywhere forever.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class TestCategoryStandardsTests
 {
-    /// <summary>The only values docs/coding-standards.md and CLAUDE.md's Testing section recognize — add a new one here in the same change that starts using it.</summary>
-    private static readonly string[] KnownCategories = ["UNIT", "INTEGRATION", "DEV-LOCAL"];
+    /// <summary>The only values docs/coding-standards.md recognizes — add a new one here in the same change that starts using it.</summary>
+    private static readonly string[] _knownCategories = [TestCategories.Unit, TestCategories.Integration];
 
-    private static readonly Assembly[] TestAssemblies =
+    private static readonly Assembly[] _testAssemblies =
     [
         typeof(DevTerm.Configuration.Tests.CliOptionsBindingTests).Assembly,
         typeof(DevTerm.Console.Tests.ConfigureModeTests).Assembly,
@@ -38,7 +39,7 @@ public sealed class TestCategoryStandardsTests
     ];
 
     private static IEnumerable<Type> TestClasses() =>
-        TestAssemblies.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<TestClassAttribute>() is not null);
+        _testAssemblies.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<TestClassAttribute>() is not null);
 
     [TestMethod]
     public void EveryTestClass_DeclaresARecognizedTestCategory()
@@ -53,7 +54,7 @@ public sealed class TestCategoryStandardsTests
                 continue;
             }
 
-            foreach (var category in categories.Where(c => !KnownCategories.Contains(c, StringComparer.Ordinal)))
+            foreach (var category in categories.Where(c => !_knownCategories.Contains(c, StringComparer.Ordinal)))
             {
                 problems.Add($"{type.FullName}: unrecognized category '{category}'");
             }
@@ -61,7 +62,7 @@ public sealed class TestCategoryStandardsTests
 
         Assert.IsEmpty(
             problems,
-            $"Every [TestClass] needs a [TestCategory(...)] from {{{string.Join(", ", KnownCategories)}}} (see docs/coding-standards.md). Problems: {string.Join("; ", problems)}");
+            $"Every [TestClass] needs a [TestCategory(...)] from {{{string.Join(", ", _knownCategories)}}} (see docs/coding-standards.md). Problems: {string.Join("; ", problems)}");
     }
 
     [TestMethod]
@@ -86,7 +87,7 @@ public sealed class TestCategoryStandardsTests
                     continue;
                 }
 
-                foreach (var category in effective.Where(c => !KnownCategories.Contains(c, StringComparer.Ordinal)))
+                foreach (var category in effective.Where(c => !_knownCategories.Contains(c, StringComparer.Ordinal)))
                 {
                     problems.Add($"{type.FullName}.{method.Name}: unrecognized category '{category}'");
                 }
@@ -95,6 +96,6 @@ public sealed class TestCategoryStandardsTests
 
         Assert.IsEmpty(
             problems,
-            $"Every [TestMethod] needs an effective (class- or method-level) [TestCategory(...)] from {{{string.Join(", ", KnownCategories)}}} (see docs/coding-standards.md). Problems: {string.Join("; ", problems)}");
+            $"Every [TestMethod] needs an effective (class- or method-level) [TestCategory(...)] from {{{string.Join(", ", _knownCategories)}}} (see docs/coding-standards.md). Problems: {string.Join("; ", problems)}");
     }
 }

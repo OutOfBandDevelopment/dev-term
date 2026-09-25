@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Devices.Scpi.Tests;
 
@@ -8,7 +9,7 @@ namespace DevTerm.Devices.Scpi.Tests;
 /// fallback behavior for an unsolicited line (no pending query registered). No real instrument
 /// involved, so UNIT.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class ScpiReplyPresenterTests
 {
@@ -31,7 +32,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("HELLO\n"));
 
-        CollectionAssert.AreEqual(new[] { "HELLO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. lines]);
     }
 
     [TestMethod]
@@ -41,7 +42,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("HELLO\r\n"));
 
-        CollectionAssert.AreEqual(new[] { "HELLO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. lines]);
     }
 
     [TestMethod]
@@ -55,7 +56,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04\r"));
 
-        CollectionAssert.AreEqual(new[] { "ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04" }, lines.ToArray());
+        Assert.AreSequenceEqual(["ID TEK/TDS 2024,CF:91.1CT,FV:v4.12 TDS2CM:CMV:v1.04"], [.. lines]);
     }
 
     [TestMethod]
@@ -65,7 +66,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("ONE\nTWO\n"));
 
-        CollectionAssert.AreEqual(new[] { "ONE", "TWO" }, lines.ToArray());
+        Assert.AreSequenceEqual(["ONE", "TWO"], [.. lines]);
     }
 
     [TestMethod]
@@ -77,7 +78,7 @@ public sealed class ScpiReplyPresenterTests
         var second = presenter.Render(Bytes("LO\n"));
 
         Assert.IsEmpty(first);
-        CollectionAssert.AreEqual(new[] { "HELLO" }, second.ToArray());
+        Assert.AreSequenceEqual(["HELLO"], [.. second]);
     }
 
     [TestMethod]
@@ -89,7 +90,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("UNSOLICITED\n"));
 
-        CollectionAssert.AreEqual(new[] { "UNSOLICITED" }, lines.ToArray());
+        Assert.AreSequenceEqual(["UNSOLICITED"], [.. lines]);
         Assert.IsFalse(raised);
     }
 
@@ -137,7 +138,7 @@ public sealed class ScpiReplyPresenterTests
 
         var lines = presenter.Render(Bytes("05.00"));
 
-        CollectionAssert.AreEqual(new[] { "05.00" }, lines.ToArray());
+        Assert.AreSequenceEqual(["05.00"], [.. lines]);
     }
 
     [TestMethod]

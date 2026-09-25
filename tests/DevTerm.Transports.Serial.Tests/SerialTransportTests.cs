@@ -1,12 +1,13 @@
 using System.Buffers;
 using System.IO.Pipelines;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 using Moq;
 
 namespace DevTerm.Transports.Serial.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class SerialTransportTests
 {
@@ -36,13 +37,13 @@ public sealed class SerialTransportTests
 
         var transport = new SerialTransport(factory.Object, Options("COM3"));
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         factory.Verify(f => f.Create(It.Is<SerialTransportOptions>(o => o.PortName == "COM3")), Times.Once);
         port.Verify(p => p.Open(), Times.Once);
         Assert.AreEqual(ConnectionState.Open, transport.State);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -56,11 +57,11 @@ public sealed class SerialTransportTests
         var states = new List<ConnectionState>();
         transport.StateChanged += (_, e) => states.Add(e.Current);
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        CollectionAssert.AreEqual(new[] { ConnectionState.Opening, ConnectionState.Open }, states);
+        Assert.AreSequenceEqual([ConnectionState.Opening, ConnectionState.Open], states);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -73,7 +74,7 @@ public sealed class SerialTransportTests
 
         var transport = new SerialTransport(factory.Object, Options());
 
-        await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(() => transport.OpenAsync());
+        await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(() => transport.OpenAsync(TestContext.CancellationToken));
         Assert.AreEqual(ConnectionState.Faulted, transport.State);
         port.Verify(p => p.Dispose(), Times.Once);
     }
@@ -83,7 +84,7 @@ public sealed class SerialTransportTests
     {
         var transport = new SerialTransport(Mock.Of<ISerialPortFactory>(), Options());
 
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => transport.WriteAsync(new byte[] { 1 }, TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -94,14 +95,14 @@ public sealed class SerialTransportTests
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
         var transport = new SerialTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
         var payload = new byte[] { 0x01, 0x02, 0x03 };
-        await transport.WriteAsync(payload);
+        await transport.WriteAsync(payload, TestContext.CancellationToken);
 
         port.Verify(p => p.Write(payload, 0, payload.Length), Times.Once);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -112,16 +113,16 @@ public sealed class SerialTransportTests
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
         var transport = new SerialTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        var payload = new byte[] { 0xDE, 0xAD };
-        await devicePipe.Writer.WriteAsync(payload);
+        var payload = "ޭ"u8.ToArray();
+        await devicePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
 
-        var result = await transport.Input.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-        CollectionAssert.AreEqual(payload, result.Buffer.ToArray());
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(payload, result.Buffer.ToArray());
         transport.Input.AdvanceTo(result.Buffer.End);
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -141,10 +142,10 @@ public sealed class SerialTransportTests
             }
         };
 
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
         await devicePipe.Writer.CompleteAsync();
 
-        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await closedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         Assert.AreEqual(ConnectionState.Closed, transport.State);
     }
 
@@ -156,9 +157,9 @@ public sealed class SerialTransportTests
         factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
 
         var transport = new SerialTransport(factory.Object, Options());
-        await transport.OpenAsync();
+        await transport.OpenAsync(TestContext.CancellationToken);
 
-        await transport.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        await transport.CloseAsync(TestContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         port.Verify(p => p.Close(), Times.Once);
         port.Verify(p => p.Dispose(), Times.Once);
@@ -171,8 +172,10 @@ public sealed class SerialTransportTests
         var factory = new Mock<ISerialPortFactory>();
         var transport = new SerialTransport(factory.Object, Options());
 
-        await transport.CloseAsync();
+        await transport.CloseAsync(TestContext.CancellationToken);
 
         factory.Verify(f => f.Create(It.IsAny<SerialTransportOptions>()), Times.Never);
     }
+
+    public required TestContext TestContext { get; set; }
 }

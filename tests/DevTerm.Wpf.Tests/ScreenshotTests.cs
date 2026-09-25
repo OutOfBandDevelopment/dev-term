@@ -3,6 +3,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Wpf.Tests;
@@ -22,13 +23,13 @@ namespace DevTerm.Wpf.Tests;
 /// <see cref="WpfScreenshot.ShowOffScreen"/> rather than calling <c>ConnectAsync</c> directly —
 /// calling both opens the session twice concurrently (see <c>CLAUDE.md</c>'s constraint on this).
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ScreenshotTests
 {
-    private static readonly string ImagesDirectory = Path.Combine(FindRepoRoot(), "docs", "user-guide", "images");
-    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(5);
+    private static readonly string _imagesDirectory = Path.Combine(FindRepoRoot(), "docs", "user-guide", "images");
+    private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(5);
 
     private static string FindRepoRoot()
     {
@@ -72,13 +73,13 @@ public sealed class ScreenshotTests
             var (window, transport) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), _pumpTimeout);
             await transport.PushIncomingAsync("ID TEK/2230,V81.1,VERS:14\r"u8.ToArray());
-            StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
-            WpfScreenshot.Save(window, Path.Combine(ImagesDirectory, "wpf-main-window-connected.png"));
+            WpfScreenshot.Save(window, Path.Combine(_imagesDirectory, "wpf-main-window-connected.png"));
 
-            AssertRealImage(Path.Combine(ImagesDirectory, "wpf-main-window-connected.png"));
+            AssertRealImage(Path.Combine(_imagesDirectory, "wpf-main-window-connected.png"));
         });
     }
 
@@ -90,11 +91,11 @@ public sealed class ScreenshotTests
             var (window, _) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), _pumpTimeout);
             await window.ToggleConnectionAsync();
-            StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+            StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
-            var path = Path.Combine(ImagesDirectory, "wpf-main-window.png");
+            var path = Path.Combine(_imagesDirectory, "wpf-main-window.png");
             WpfScreenshot.Save(window, path);
 
             AssertRealImage(path);
@@ -121,7 +122,7 @@ public sealed class ScreenshotTests
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
                 WpfScreenshot.ShowOffScreen(window);
 
-                var path = Path.Combine(ImagesDirectory, "wpf-device-profiles-serial.png");
+                var path = Path.Combine(_imagesDirectory, "wpf-device-profiles-serial.png");
                 WpfScreenshot.Save(window, path);
 
                 AssertRealImage(path);
@@ -150,7 +151,7 @@ public sealed class ScreenshotTests
                 var window = new DeviceProfilesWindow(store, initial);
                 WpfScreenshot.ShowOffScreen(window);
 
-                var path = Path.Combine(ImagesDirectory, "wpf-device-profiles-tcp.png");
+                var path = Path.Combine(_imagesDirectory, "wpf-device-profiles-tcp.png");
                 WpfScreenshot.Save(window, path);
 
                 AssertRealImage(path);
@@ -175,7 +176,7 @@ public sealed class ScreenshotTests
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
                 WpfScreenshot.ShowOffScreen(window);
 
-                var path = Path.Combine(ImagesDirectory, "wpf-device-profiles-hid.png");
+                var path = Path.Combine(_imagesDirectory, "wpf-device-profiles-hid.png");
                 WpfScreenshot.Save(window, path);
 
                 AssertRealImage(path);
@@ -200,7 +201,7 @@ public sealed class ScreenshotTests
                 var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), initial);
                 WpfScreenshot.ShowOffScreen(window);
 
-                var path = Path.Combine(ImagesDirectory, "wpf-device-profiles-loopback.png");
+                var path = Path.Combine(_imagesDirectory, "wpf-device-profiles-loopback.png");
                 WpfScreenshot.Save(window, path);
 
                 AssertRealImage(path);

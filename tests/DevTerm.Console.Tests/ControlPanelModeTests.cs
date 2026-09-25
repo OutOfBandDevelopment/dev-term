@@ -1,12 +1,13 @@
 using System.Buffers;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console.Tests;
 
@@ -17,7 +18,7 @@ namespace DevTerm.Console.Tests;
 /// <see cref="DevTerm.Devices.K8055.K8055UiDefinition"/> for the real one) plus a fake
 /// <see cref="IControlSurface"/>/<see cref="IStructuredPresenter"/> stand in for a real device.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ControlPanelModeTests
@@ -72,14 +73,12 @@ public sealed class ControlPanelModeTests
         ],
     };
 
-    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body)
-    {
-        Application.Init("dotnet");
-        try
+    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body) =>
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ControlPanelMode.BuildWindow(BuildSampleDefinition(), surface, structuredSource, "Test Panel");
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -87,14 +86,9 @@ public sealed class ControlPanelModeTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
-    }
+        });
 
     // Same InvokeCommand(Command.Accept) mechanism ConfigureModeTests.Click uses for Button — and
     // it doubles as the way to commit a TextField-backed Slider/Numeric/TextField control here,
@@ -235,7 +229,7 @@ public sealed class ControlPanelModeTests
     {
         RunHeadless(new FakeControlSurface(), null, _ =>
         {
-            StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Not decoding");
+            Assert.Contains("Not decoding", TuiTestRunner.DumpBuffer());
         });
     }
 
@@ -267,9 +261,10 @@ public sealed class ControlPanelModeTests
     /// </summary>
     private static class TuiWindowPartsHarness
     {
-        private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _stopTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _invokeTimeout = TimeSpan.FromSeconds(5);
+        private static IApplication? _currentApp;
 
         public static void RunWithLoop(IControlSurface surface, IPresenter structuredSource, Action<ControlPanelWindowParts> body)
         {
@@ -281,10 +276,11 @@ public sealed class ControlPanelModeTests
             {
                 try
                 {
-                    Application.Init("dotnet");
-                    parts = ControlPanelMode.BuildWindow(BuildSampleDefinition(), surface, structuredSource, "Test Panel");
-                    Application.Invoke(() => ready.Set());
-                    Application.Run(parts.Window);
+                    var app = Application.Create().Init("dotnet");
+                    _currentApp = app;
+                    parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel");
+                    app.Invoke(() => ready.Set());
+                    app.Run(parts.Window);
                 }
                 catch (Exception ex)
                 {
@@ -297,7 +293,7 @@ public sealed class ControlPanelModeTests
             };
             thread.Start();
 
-            if (!ready.Wait(StartTimeout))
+            if (!ready.Wait(_startTimeout))
             {
                 throw new TimeoutException("The TUI run loop did not start in time.");
             }
@@ -313,9 +309,10 @@ public sealed class ControlPanelModeTests
             }
             finally
             {
-                Application.Invoke(() => Application.RequestStop());
-                thread.Join(StopTimeout);
-                Application.Shutdown();
+                _currentApp!.Invoke(() => _currentApp.RequestStop());
+                thread.Join(_stopTimeout);
+                _currentApp.Dispose();
+                _currentApp = null;
             }
         }
 
@@ -326,13 +323,13 @@ public sealed class ControlPanelModeTests
             {
                 var done = new ManualResetEventSlim(false);
                 var result = false;
-                Application.Invoke(() =>
+                _currentApp!.Invoke(() =>
                 {
                     result = predicate();
                     done.Set();
                 });
 
-                if (!done.Wait(InvokeTimeout))
+                if (!done.Wait(_invokeTimeout))
                 {
                     throw new TimeoutException("Application.Invoke did not run within the timeout.");
                 }

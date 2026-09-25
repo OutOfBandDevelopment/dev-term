@@ -1,9 +1,10 @@
 using DevTerm.Core.Presenters;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Core.Tests.Presenters;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class PresenterCatalogTests
 {
@@ -47,6 +48,6 @@ public sealed class PresenterCatalogTests
 
         var catalog = new PresenterCatalog([hex.Object, ascii.Object]);
 
-        CollectionAssert.AreEquivalent(new[] { "hex", "ascii" }, catalog.Names.ToArray());
+        Assert.AreSequenceEqual(["hex", "ascii"], [.. catalog.Names], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
     }
 }

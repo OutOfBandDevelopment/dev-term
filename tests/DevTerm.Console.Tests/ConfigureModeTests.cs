@@ -1,4 +1,5 @@
 using DevTerm.Configuration;
+using DevTerm.Test.Utilities;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
@@ -13,7 +14,7 @@ namespace DevTerm.Console.Tests;
 /// Uses a temp directory for <see cref="ConnectionProfileStore"/> rather than the real
 /// <c>~/.dev-term/profiles</c>, same isolation as <c>ConnectionProfileStoreTests</c>.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class ConfigureModeTests
@@ -25,14 +26,12 @@ public sealed class ConfigureModeTests
         return directory;
     }
 
-    private static void RunHeadless(CliOptions initial, string? validationError, ConnectionProfileStore profileStore, Action<ConfigureWindowParts> body)
-    {
-        Application.Init("dotnet");
-        try
+    private static void RunHeadless(CliOptions initial, string? validationError, ConnectionProfileStore profileStore, Action<ConfigureWindowParts> body) =>
+        TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ConfigureMode.BuildWindow(initial, validationError, profileStore);
-            var token = Application.Begin(parts.Window);
-            Application.LayoutAndDraw(true);
+            var parts = ConfigureMode.BuildWindow(app, initial, validationError, profileStore);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
 
             try
             {
@@ -40,14 +39,9 @@ public sealed class ConfigureModeTests
             }
             finally
             {
-                Application.End(token);
+                app.End(token);
             }
-        }
-        finally
-        {
-            Application.Shutdown();
-        }
-    }
+        });
 
     /// <summary>
     /// Simulates pressing a button via <c>View.InvokeCommand(Command.Accept)</c> — a direct,
@@ -80,7 +74,7 @@ public sealed class ConfigureModeTests
                 parts.DescriptionField.SetFocus();
 
                 Assert.IsTrue(parts.DescriptionField.HasFocus, "The Description field couldn't take focus.");
-                Assert.AreSame(parts.DescriptionField, Application.Navigation?.GetFocused());
+                Assert.AreSame(parts.DescriptionField, TuiTestRunner.CurrentApp.Navigation?.GetFocused());
             });
         }
         finally
@@ -104,17 +98,17 @@ public sealed class ConfigureModeTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            Application.Init("dotnet");
+            var app = Application.Create().Init("dotnet");
             try
             {
-                var parts = ConfigureMode.BuildWindow(new CliOptions(), null, new ConnectionProfileStore(directory));
-                var token = Application.Begin(parts.Window);
-                Application.LayoutAndDraw(true);
-                Application.End(token);
+                var parts = ConfigureMode.BuildWindow(app, new CliOptions(), null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+                app.End(token);
             }
             finally
             {
-                Application.Shutdown();
+                app.Dispose();
             }
 
             File.WriteAllText(Path.Combine(directory, "late.json"), "{}");
@@ -138,12 +132,10 @@ public sealed class ConfigureModeTests
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii", "binary"], Parser = "hex" };
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
-                CollectionAssert.AreEqual(
-                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi" },
-                    parts.PresenterCheckBoxes.Select(c => c.Text.ToString()).ToArray());
-                CollectionAssert.AreEqual(
-                    new[] { true, false, false, false, false, true, false, false, false },
-                    parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked).ToArray());
+                Assert.AreSequenceEqual(
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
+                Assert.AreSequenceEqual(
+                    [true, false, false, false, false, true, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
                 Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 
                 parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8
@@ -153,7 +145,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ConnectButton);
 
                 Assert.IsNotNull(parts.Result);
-                CollectionAssert.AreEqual(new[] { "utf8", "binary" }, parts.Result.Presenter);
+                Assert.AreSequenceEqual(["utf8", "binary"], parts.Result.Presenter);
                 Assert.AreEqual("decimal", parts.Result.Parser);
             });
         }
@@ -180,7 +172,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ConnectButton);
 
                 Assert.IsNull(parts.Result);
-                StringAssert.Contains(parts.ErrorLabel.Text, "at least one presenter");
+                Assert.Contains("at least one presenter", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -198,7 +190,7 @@ public sealed class ConfigureModeTests
             var initial = new CliOptions { Transport = "serial" }; // invalid: no Port
             RunHeadless(initial, "Missing required '--port' for the serial transport.", new ConnectionProfileStore(directory), parts =>
             {
-                StringAssert.Contains(parts.ErrorLabel.Text, "Missing required");
+                Assert.Contains("Missing required", parts.ErrorLabel.Text);
 
                 parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
                 parts.HostField.Text = "192.168.0.107";
@@ -230,7 +222,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ConnectButton);
 
                 Assert.IsNull(parts.Result);
-                StringAssert.Contains(parts.ErrorLabel.Text, "--port");
+                Assert.Contains("--port", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -319,7 +311,7 @@ public sealed class ConfigureModeTests
             {
                 parts.SaveNameField.Text = "tek108";
                 Click(parts.SaveButton);
-                StringAssert.Contains(parts.ErrorLabel.Text, "Saved profile 'tek108'");
+                Assert.Contains("Saved profile 'tek108'", parts.ErrorLabel.Text);
             });
 
             Assert.Contains("tek108", store.List());
@@ -354,7 +346,7 @@ public sealed class ConfigureModeTests
                 parts.ProfilesList.SelectedItem = 0;
                 Click(parts.LoadButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Loaded profile 'tek108'");
+                Assert.Contains("Loaded profile 'tek108'", parts.ErrorLabel.Text);
                 Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
@@ -385,7 +377,7 @@ public sealed class ConfigureModeTests
                 // class's own Click(Button) helper uses to simulate a button press.
                 parts.ProfilesList.InvokeCommand(Command.Accept);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Loaded profile 'tek108'");
+                Assert.Contains("Loaded profile 'tek108'", parts.ErrorLabel.Text);
                 Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
@@ -411,10 +403,10 @@ public sealed class ConfigureModeTests
                 parts.ProfilesList.SelectedItem = 0;
                 Click(parts.DeleteButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Deleted profile 'tek108'");
+                Assert.Contains("Deleted profile 'tek108'", parts.ErrorLabel.Text);
             });
 
-            Assert.IsFalse(store.List().Contains("tek108"));
+            Assert.DoesNotContain("tek108", store.List());
         }
         finally
         {
@@ -509,7 +501,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = exportPath;
                 Click(parts.ExportButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Exported to");
+                Assert.Contains("Exported to", parts.ErrorLabel.Text);
                 Assert.IsTrue(File.Exists(exportPath));
             });
 
@@ -518,7 +510,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = exportPath;
                 Click(parts.ImportButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Imported");
+                Assert.Contains("Imported", parts.ErrorLabel.Text);
                 Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
@@ -541,7 +533,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = Path.Combine(directory, "does-not-exist.json");
                 Click(parts.ImportButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Could not import");
+                Assert.Contains("Could not import", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -559,7 +551,7 @@ public sealed class ConfigureModeTests
             RunHeadless(new CliOptions(), null, new ConnectionProfileStore(directory), parts =>
             {
                 var before = TuiTestRunner.DumpBuffer();
-                StringAssert.Contains(before, "Stop bits:");
+                Assert.Contains("Stop bits:", before);
                 Assert.DoesNotContain("Presenter:", before, "The form is taller than the default window - Presenter and everything after it (pushed one row further down by the HID hex-toggle checkbox) shouldn't be visible before scrolling.");
                 Assert.DoesNotContain("Line ending:", before, "The form is taller than the default window - Line ending and everything after it shouldn't be visible before scrolling.");
 
@@ -572,11 +564,11 @@ public sealed class ConfigureModeTests
                 // Focus is moved off the saved-profiles list first: now that focus really lands
                 // there at startup, PageDown is (deliberately) the list's own - see scrollOnKey.
                 parts.DescriptionField.SetFocus();
-                Application.RaiseKeyDownEvent(Key.PageDown);
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Key.PageDown);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
                 var after = TuiTestRunner.DumpBuffer();
-                StringAssert.Contains(after, "Line ending:", "Expected PageDown to scroll the form down far enough to reveal a control that was below the fold.");
+                Assert.Contains("Line ending:", after, "Expected PageDown to scroll the form down far enough to reveal a control that was below the fold.");
             });
         }
         finally
@@ -598,14 +590,14 @@ public sealed class ConfigureModeTests
                 Assert.DoesNotContain("Import/export file path:", TuiTestRunner.DumpBuffer(), "Precondition: the path field starts below the fold.");
 
                 parts.PathField.SetFocus();
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
-                StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Import/export file path:", "Focusing the path field should have scrolled it into view.");
+                Assert.Contains("Import/export file path:", TuiTestRunner.DumpBuffer(), "Focusing the path field should have scrolled it into view.");
 
                 parts.DescriptionField.SetFocus();
-                Application.LayoutAndDraw(true);
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
-                StringAssert.Contains(TuiTestRunner.DumpBuffer(), "Description:", "Focusing a field above the viewport should scroll back up to it.");
+                Assert.Contains("Description:", TuiTestRunner.DumpBuffer(), "Focusing a field above the viewport should scroll back up to it.");
             });
         }
         finally
@@ -671,7 +663,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = Path.Combine(directory, "export.zip");
                 Click(parts.ExportSelectedButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Select one or more saved profiles");
+                Assert.Contains("Select one or more saved profiles", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -705,13 +697,13 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = zipPath;
                 Click(parts.ExportSelectedButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Exported 1 profile(s)");
+                Assert.Contains("Exported 1 profile(s)", parts.ErrorLabel.Text);
                 Assert.IsTrue(File.Exists(zipPath));
 
                 var importStore = new ConnectionProfileStore(CreateTempProfilesDirectory());
                 var result = importStore.ImportZip(zipPath);
                 Assert.AreEqual(1, result.Imported);
-                CollectionAssert.AreEqual(new[] { "tek2230" }, importStore.List().ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. importStore.List()]);
             });
         }
         finally
@@ -736,7 +728,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = zipPath;
                 Click(parts.ExportAllButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Exported 2 profile(s)");
+                Assert.Contains("Exported 2 profile(s)", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -762,7 +754,7 @@ public sealed class ConfigureModeTests
                 parts.PathField.Text = zipPath;
                 Click(parts.ImportButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Imported 1 profile(s)");
+                Assert.Contains("Imported 1 profile(s)", parts.ErrorLabel.Text);
                 Assert.Contains("tek2230", parts.ViewModel.Profiles);
             });
         }
@@ -859,7 +851,7 @@ public sealed class ConfigureModeTests
             {
                 Click(parts.DeleteSelectedButton);
 
-                StringAssert.Contains(parts.ErrorLabel.Text, "Select one or more saved profiles to delete");
+                Assert.Contains("Select one or more saved profiles to delete", parts.ErrorLabel.Text);
             });
         }
         finally
@@ -895,9 +887,9 @@ public sealed class ConfigureModeTests
                 parts.ProfilesList.MarkUnmarkSelectedItem();
                 Click(parts.DeleteSelectedButton);
 
-                CollectionAssert.AreEqual(new[] { "tek2230" }, asked!.ToArray());
-                StringAssert.Contains(parts.ErrorLabel.Text, "Deleted 1 profile(s).");
-                CollectionAssert.AreEqual(new[] { "other" }, store.List().ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. asked!]);
+                Assert.Contains("Deleted 1 profile(s).", parts.ErrorLabel.Text);
+                Assert.AreSequenceEqual(["other"], [.. store.List()]);
             });
         }
         finally
@@ -923,7 +915,7 @@ public sealed class ConfigureModeTests
                 Click(parts.DeleteSelectedButton);
 
                 Assert.AreEqual("Delete cancelled.", parts.ErrorLabel.Text);
-                CollectionAssert.AreEqual(new[] { "tek2230" }, store.List().ToArray());
+                Assert.AreSequenceEqual(["tek2230"], [.. store.List()]);
             });
         }
         finally
@@ -964,8 +956,8 @@ public sealed class ConfigureModeTests
                     Click(parts.ReplaceAllButton);
 
                     Assert.AreEqual((1, 1), asked);
-                    StringAssert.Contains(parts.ErrorLabel.Text, "Replaced 1 saved profile(s) with 1");
-                    CollectionAssert.AreEqual(new[] { "new-one" }, store.List().ToArray());
+                    Assert.Contains("Replaced 1 saved profile(s) with 1", parts.ErrorLabel.Text);
+                    Assert.AreSequenceEqual(["new-one"], [.. store.List()]);
                 });
             }
             finally

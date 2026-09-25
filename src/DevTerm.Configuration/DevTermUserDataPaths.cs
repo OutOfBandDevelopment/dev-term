@@ -8,14 +8,14 @@ namespace DevTerm.Configuration;
 /// </summary>
 public static class DevTermUserDataPaths
 {
-    private static readonly string UserRootDirectory =
+    private static readonly string _userRootDirectory =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dev-term");
 
     /// <summary><c>~/.dev-term/profiles</c> — one JSON file per named connection profile.</summary>
-    public static string ProfilesDirectory => Path.Combine(UserRootDirectory, "profiles");
+    public static string ProfilesDirectory => Path.Combine(_userRootDirectory, "profiles");
 
     /// <summary><c>~/.dev-term/manifests</c> — the user's own, personal device manifests.</summary>
-    public static string UserManifestsDirectory => Path.Combine(UserRootDirectory, "manifests");
+    public static string UserManifestsDirectory => Path.Combine(_userRootDirectory, "manifests");
 
     /// <summary>
     /// <c>~/.dev-term/exports</c> — the default destination for auto-saved captures (e.g. the Stream
@@ -23,7 +23,7 @@ public static class DevTermUserDataPaths
     /// docs/design/proposals/stream-content-detection.md) when <see cref="CliOptions.ExportDirectory"/>
     /// isn't set to something else.
     /// </summary>
-    public static string ExportsDirectory => Path.Combine(UserRootDirectory, "exports");
+    public static string ExportsDirectory => Path.Combine(_userRootDirectory, "exports");
 
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");

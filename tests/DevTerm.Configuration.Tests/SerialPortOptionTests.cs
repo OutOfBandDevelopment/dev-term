@@ -1,7 +1,9 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Configuration.Tests;
 
 [TestClass]
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 public sealed class SerialPortOptionTests
 {
     [TestMethod]

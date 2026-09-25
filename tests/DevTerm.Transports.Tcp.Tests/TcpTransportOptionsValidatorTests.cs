@@ -1,6 +1,8 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Transports.Tcp.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class TcpTransportOptionsValidatorTests
 {

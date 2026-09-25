@@ -1,6 +1,8 @@
+using DevTerm.Test.Utilities;
+
 namespace DevTerm.Configuration.Tests;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class SendHistoryTests
 {
@@ -38,7 +40,7 @@ public sealed class SendHistoryTests
         history.Add("first");
         history.Add("second");
 
-        CollectionAssert.AreEqual(new[] { "second", "first" }, history.Items);
+        Assert.AreSequenceEqual(["second", "first"], history.Items);
     }
 
     [TestMethod]
@@ -134,6 +136,6 @@ public sealed class SendHistoryTests
         history.ResetCursor();
 
         Assert.AreEqual("first", history.Previous());
-        CollectionAssert.AreEqual(new[] { "first" }, history.Items);
+        Assert.AreSequenceEqual(["first"], history.Items);
     }
 }

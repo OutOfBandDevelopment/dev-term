@@ -91,13 +91,24 @@ standard below gets declared that StyleCop already knows how to check.
 
 ### Testing
 
-- **Every `[TestClass]` carries a `[TestCategory]`** whose value is one of `UNIT`, `INTEGRATION`, or
-  `DEV-LOCAL` (see `CLAUDE.md`'s Testing section for what each means) — always at the class level in
-  this codebase, never per-method, so every test in a class shares one category. Enforced by
+- **Every `[TestClass]` carries a `[TestCategory]`** whose value is one of the two declared in
+  `DevTerm.Test.Utilities.TestCategories`: `Unit` (fast, hardware-free) or `Integration` (crosses a
+  real process/socket boundary, or drives real physical hardware — see `docs/design/testing.md`'s
+  "Two categories" section for the full breakdown) — always at the class level in this codebase,
+  never per-method, so every test in a class shares one category. Enforced by
   `tests/DevTerm.CodingStandards.Tests.TestCategoryStandardsTests`, which reflects over every test
   assembly and fails if a class is missing one, uses an unrecognized value, or (checking what MSTest
   actually resolves per test, class-level plus method-level combined) a method ends up with no
   effective category at all.
+- **A real-hardware `Integration` test preflights that its device actually exists/is reachable,
+  with a short, bounded timeout, before touching it, and reports `Assert.Inconclusive` (never a
+  failure or a hang) when it doesn't** — a device intentionally offline is an expected bench state,
+  not a red build. There is no separate category for hardware-backed tests; this preflight is what
+  lets them share `Integration` with process/socket-only tests while still degrading cleanly when
+  no hardware is present. Not currently reflection-enforced (unlike the `[TestCategory]` rule
+  above); share the check via `tests/DevTerm.Test.Utilities` (`RealDeviceReachability` for TCP
+  today) rather than reimplementing it per test class. See `docs/design/testing.md`'s "Rule: every
+  real-hardware test preflights device presence" section.
 
 ## Adding a new standard
 

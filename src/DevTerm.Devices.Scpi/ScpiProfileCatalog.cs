@@ -15,7 +15,7 @@ namespace DevTerm.Devices.Scpi;
 /// </summary>
 public static class ScpiProfileCatalog
 {
-    private const string DropInFolderName = "ScpiProfiles";
+    private const string _dropInFolderName = "ScpiProfiles";
 
     /// <summary>
     /// The synthetic "pick a profile at runtime" choice both front ends' SCPI instrument pickers
@@ -25,7 +25,7 @@ public static class ScpiProfileCatalog
     /// </summary>
     public const string AutoDetectChoiceName = "Auto-detect (*IDN?)";
 
-    private static readonly JsonSerializerOptions SerializerOptions = new()
+    private static readonly JsonSerializerOptions _serializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
@@ -71,7 +71,7 @@ public static class ScpiProfileCatalog
     {
         var profiles = new List<ScpiInstrumentProfile>();
         LoadFrom(Path.Combine(baseDirectory, "Profiles"), profiles);
-        LoadFrom(Path.Combine(baseDirectory, DropInFolderName), profiles);
+        LoadFrom(Path.Combine(baseDirectory, _dropInFolderName), profiles);
         LoadFrom(UserProfilesDirectory, profiles);
         return profiles;
     }
@@ -95,7 +95,7 @@ public static class ScpiProfileCatalog
         foreach (var file in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
             var json = File.ReadAllText(file);
-            var profile = JsonSerializer.Deserialize<ScpiInstrumentProfile>(json, SerializerOptions);
+            var profile = JsonSerializer.Deserialize<ScpiInstrumentProfile>(json, _serializerOptions);
             if (profile is not null)
             {
                 profiles.Add(profile);

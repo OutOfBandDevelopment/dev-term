@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     /// <see cref="OutputList"/> without bound — an unbounded <c>ItemsControl</c> eventually makes the
     /// whole window unresponsive. Oldest lines are dropped first.
     /// </summary>
-    private const int MaxOutputLines = 1000;
+    private const int _maxOutputLines = 1000;
 
     private Session _session;
     private PresenterCatalog _catalog;
@@ -161,15 +161,12 @@ public partial class MainWindow : Window
 
     private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => _ = ToggleConnectionAsync();
 
-    private void OnSessionOutput(object? sender, PresenterOutput output)
-    {
-        Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
-    }
+    private void OnSessionOutput(object? sender, PresenterOutput output) => Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
 
     private void AppendOutput(string line)
     {
         OutputList.Items.Add(line);
-        while (OutputList.Items.Count > MaxOutputLines)
+        while (OutputList.Items.Count > _maxOutputLines)
         {
             OutputList.Items.RemoveAt(0);
         }

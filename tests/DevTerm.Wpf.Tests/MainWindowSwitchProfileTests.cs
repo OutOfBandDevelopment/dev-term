@@ -6,6 +6,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -23,12 +24,12 @@ namespace DevTerm.Wpf.Tests;
 /// untested-by-necessity gap <c>ConnectAsync</c>/<c>ToggleConnectionAsync</c>'s own failure paths
 /// already have.
 /// </summary>
-[TestCategory("INTEGRATION")]
+[TestCategory(TestCategories.Integration)]
 [TestClass]
 [DoNotParallelize]
 public sealed class MainWindowSwitchProfileTests
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(15);
 
     [TestMethod]
     public void SwitchProfileAsync_ToAWorkingProfile_ClosesOldSessionAndOpensNew()
@@ -49,24 +50,24 @@ public sealed class MainWindowSwitchProfileTests
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var acceptTask = listener.AcceptTcpClientAsync();
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
 
             var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] });
 
-            using var client = await acceptTask.WaitAsync(Timeout);
+            using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
             using var stream = client.GetStream();
 
             Assert.IsTrue(switched);
-            StringAssert.Contains(window.Title, $"tcp://127.0.0.1:{port}");
-            StringAssert.Contains(window.Title, "hex");
+            Assert.Contains($"tcp://127.0.0.1:{port}", window.Title);
+            Assert.Contains("hex", window.Title);
             Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
             Assert.AreEqual(1, window.OutputList.Items.Count, "Old output should be cleared; only the 'Switched to ...' line should remain.");
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "Switched to");
+            Assert.Contains("Switched to", (string)window.OutputList.Items[0]!);
 
-            await stream.WriteAsync(Encoding.ASCII.GetBytes("AB"));
-            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 1, Timeout);
+            await stream.WriteAsync(Encoding.ASCII.GetBytes("AB"), TestContext.CancellationToken);
+            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 1, _timeout);
             Assert.IsTrue(appeared, "Expected the new (real TCP) session's incoming bytes to reach the output list.");
-            StringAssert.Contains((string)window.OutputList.Items[1]!, "[hex]");
+            Assert.Contains("[hex]", (string)window.OutputList.Items[1]!);
         });
     }
 
@@ -91,21 +92,21 @@ public sealed class MainWindowSwitchProfileTests
                     ShowInTaskbar = false,
                 };
                 await window.ConnectAsync();
-                StringAssert.Contains(window.Title, "tcp://127.0.0.1:1");
+                Assert.Contains("tcp://127.0.0.1:1", window.Title);
 
                 using var listener = new TcpListener(IPAddress.Loopback, 0);
                 listener.Start();
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-                var acceptTask = listener.AcceptTcpClientAsync();
+                var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
                 var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] };
                 new ConnectionProfileStore(directory).Save("bench-scope", target);
 
                 var switched = await window.SwitchProfileAsync(target);
-                using var client = await acceptTask.WaitAsync(TimeSpan.FromSeconds(10));
+                using var client = await acceptTask.AsTask().WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
 
                 Assert.IsTrue(switched);
-                StringAssert.Contains(window.Title, "bench-scope");
-                Assert.IsFalse(window.Title.Contains("tcp://"), "A saved profile is titled by name, not by its connection string.");
+                Assert.Contains("bench-scope", window.Title);
+                Assert.DoesNotContain("tcp://", window.Title, "A saved profile is titled by name, not by its connection string.");
             });
         }
         finally
@@ -116,4 +117,6 @@ public sealed class MainWindowSwitchProfileTests
             }
         }
     }
+
+    public required TestContext TestContext { get; set; }
 }

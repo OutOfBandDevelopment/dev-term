@@ -17,15 +17,15 @@ public static class UsbtmcCodec
 
     public const int HeaderSize = 12;
 
-    private const byte EomBit = 0x01;
-    private const byte TermCharEnabledBit = 0x02;
+    private const byte _eomBit = 0x01;
+    private const byte _termCharEnabledBit = 0x02;
 
     /// <summary>Encodes a host-to-device DEV_DEP_MSG_OUT transfer: header + payload padded to a 4-byte boundary.</summary>
     public static byte[] EncodeDevDepMsgOut(byte bTag, ReadOnlySpan<byte> payload, bool eom)
     {
         var padded = PadTo4(payload.Length);
         var buffer = new byte[HeaderSize + padded];
-        WriteHeader(buffer, DevDepMsgOut, bTag, payload.Length, eom ? EomBit : (byte)0, termChar: 0);
+        WriteHeader(buffer, DevDepMsgOut, bTag, payload.Length, eom ? _eomBit : (byte)0, termChar: 0);
         payload.CopyTo(buffer.AsSpan(HeaderSize));
         return buffer;
     }
@@ -34,7 +34,7 @@ public static class UsbtmcCodec
     public static byte[] EncodeRequestDevDepMsgIn(byte bTag, int maxTransferSize, byte termChar, bool termCharEnabled)
     {
         var buffer = new byte[HeaderSize];
-        WriteHeader(buffer, RequestDevDepMsgIn, bTag, maxTransferSize, termCharEnabled ? TermCharEnabledBit : (byte)0, termChar);
+        WriteHeader(buffer, RequestDevDepMsgIn, bTag, maxTransferSize, termCharEnabled ? _termCharEnabledBit : (byte)0, termChar);
         return buffer;
     }
 
@@ -78,7 +78,7 @@ public static class UsbtmcCodec
         }
 
         var transferSize = (int)BinaryPrimitives.ReadUInt32LittleEndian(transfer[4..8]);
-        var eom = (transfer[8] & EomBit) != 0;
+        var eom = (transfer[8] & _eomBit) != 0;
         return new DecodedHeader(msgId, bTag, transferSize, eom);
     }
 

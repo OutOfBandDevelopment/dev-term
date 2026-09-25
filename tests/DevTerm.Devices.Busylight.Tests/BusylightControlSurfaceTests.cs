@@ -1,6 +1,7 @@
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Devices.Busylight.Tests;
@@ -12,7 +13,7 @@ namespace DevTerm.Devices.Busylight.Tests;
 /// tests set state then invoke "apply" to observe the resulting frame, per
 /// docs/design/features/kuando-busylight-protocol.md's confirmed single-command shape.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class BusylightControlSurfaceTests
 {
@@ -29,8 +30,8 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("color", "Red");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("color", "Red", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x01, 0x00, 0x80 })),
@@ -43,8 +44,8 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("color", "Blue");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("color", "Blue", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x01, 0x00, 0x80 })),
@@ -57,8 +58,8 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("blinkMode", "Slow");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("blinkMode", "Slow", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x50, 0x80 })),
@@ -71,9 +72,9 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("onMs", "10");
-        await surface.InvokeAsync("offMs", "20");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("onMs", "10", TestContext.CancellationToken);
+        await surface.InvokeAsync("offMs", "20", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 10, 20, 0x80 })),
@@ -86,8 +87,8 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("mute", "1");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("mute", "1", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(
             It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00 })),
@@ -100,9 +101,9 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("track", "Nordic");
-        await surface.InvokeAsync("volume", "5");
-        await surface.InvokeAsync("apply", null);
+        await surface.InvokeAsync("track", "Nordic", TestContext.CancellationToken);
+        await surface.InvokeAsync("volume", "5", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
 
         // Play bit set (not muted) | track index 1 (Nordic) << 3 | volume 5 = 0x80 | 0x08 | 0x05.
         transport.Verify(t => t.WriteAsync(
@@ -116,7 +117,7 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("customColor", null);
+        await surface.InvokeAsync("customColor", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -127,7 +128,7 @@ public sealed class BusylightControlSurfaceTests
         var (session, transport) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await surface.InvokeAsync("programSequence", null);
+        await surface.InvokeAsync("programSequence", null, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -138,6 +139,8 @@ public sealed class BusylightControlSurfaceTests
         var (session, _) = CreateSurfaceSession();
         var surface = new BusylightControlSurface(session);
 
-        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
+
+    public required TestContext TestContext { get; set; }
 }

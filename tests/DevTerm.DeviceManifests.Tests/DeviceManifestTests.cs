@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.DeviceManifests.Tests;
@@ -8,7 +9,7 @@ namespace DevTerm.DeviceManifests.Tests;
 /// docs/design/features/scpi-instrument-control.md's actual target hardware — rather than a
 /// synthetic minimal example.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class DeviceManifestTests
 {

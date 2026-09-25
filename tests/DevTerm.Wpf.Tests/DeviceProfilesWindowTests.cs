@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using DevTerm.Configuration;
+using DevTerm.Test.Utilities;
 
 namespace DevTerm.Wpf.Tests;
 
@@ -20,7 +21,7 @@ namespace DevTerm.Wpf.Tests;
 /// here (this window doesn't auto-connect on <c>Loaded</c>), but consistent with the rest of this
 /// assembly.
 /// </summary>
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class DeviceProfilesWindowTests
@@ -179,8 +180,8 @@ public sealed class DeviceProfilesWindowTests
                 window.ProfilesList.SelectedItem = "tek108";
                 window.ViewModel.DeleteCommand.Execute(null);
 
-                StringAssert.Contains(window.ViewModel.StatusMessage, "Deleted profile 'tek108'");
-                Assert.IsFalse(store.List().Contains("tek108"));
+                Assert.Contains("Deleted profile 'tek108'", window.ViewModel.StatusMessage);
+                Assert.DoesNotContain("tek108", store.List());
 
                 await Task.CompletedTask;
             });
@@ -246,7 +247,7 @@ public sealed class DeviceProfilesWindowTests
 
                 ClickRow(window, 0, clickCount: 2);
 
-                StringAssert.Contains(window.ViewModel.StatusMessage, "Loaded profile 'tek108'");
+                Assert.Contains("Loaded profile 'tek108'", window.ViewModel.StatusMessage);
                 Assert.AreEqual("192.168.0.108", window.HostBox.Text);
 
                 await Task.CompletedTask;
@@ -281,7 +282,7 @@ public sealed class DeviceProfilesWindowTests
                 // ListBox happens to report as its primary SelectedItem.
                 ClickRow(window, 1, clickCount: 2);
 
-                StringAssert.Contains(window.ViewModel.StatusMessage, "Loaded profile 'beta'");
+                Assert.Contains("Loaded profile 'beta'", window.ViewModel.StatusMessage);
                 Assert.AreEqual("10.0.0.2", window.HostBox.Text);
 
                 await Task.CompletedTask;
@@ -459,17 +460,14 @@ public sealed class DeviceProfilesWindowTests
                 window.PresenterChoicesList.Arrange(new Rect(0, 0, 500, 200));
                 window.PresenterChoicesList.UpdateLayout();
                 var boxes = FindVisualChildren<System.Windows.Controls.CheckBox>(window.PresenterChoicesList).ToList();
-                CollectionAssert.AreEqual(
-                    new[] { "ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi" },
-                    boxes.Select(b => (string)b.Content).ToArray());
-                CollectionAssert.AreEqual(
-                    new[] { true, false, false, false, false, true, false, false, false },
-                    boxes.Select(b => b.IsChecked == true).ToArray(),
-                    "Each checkbox should reflect its presenter's IsSelected.");
+                Assert.AreSequenceEqual(
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. boxes.Select(b => (string)b.Content)]);
+                Assert.AreSequenceEqual(
+                    [true, false, false, false, false, true, false, false, false], [.. boxes.Select(b => b.IsChecked == true)], "Each checkbox should reflect its presenter's IsSelected.");
                 Assert.AreEqual("hex", window.ParserBox.SelectedItem, "The Send as box shows the profile's parser, separately from the presenters.");
 
                 boxes[1].IsChecked = true; // utf8
-                CollectionAssert.AreEqual(new[] { "ascii", "utf8", "binary" }, window.ViewModel.SelectedPresenters.ToArray());
+                Assert.AreSequenceEqual(["ascii", "utf8", "binary"], [.. window.ViewModel.SelectedPresenters]);
                 Assert.IsTrue(window.ViewModel.IsDirty);
 
                 await Task.CompletedTask;
@@ -570,11 +568,11 @@ public sealed class DeviceProfilesWindowTests
                 window.ProfilesList.SelectedItems.Add("alpha");
                 window.ProfilesList.SelectedItems.Add("beta");
 
-                CollectionAssert.AreEquivalent(new[] { "alpha", "beta" }, window.ViewModel.SelectedProfileNames.ToArray());
+                Assert.AreSequenceEqual(["alpha", "beta"], [.. window.ViewModel.SelectedProfileNames], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
 
                 window.ProfilesList.SelectedItems.Remove("alpha");
 
-                CollectionAssert.AreEquivalent(new[] { "beta" }, window.ViewModel.SelectedProfileNames.ToArray());
+                Assert.AreSequenceEqual(["beta"], [.. window.ViewModel.SelectedProfileNames], Microsoft.VisualStudio.TestTools.UnitTesting.SequenceOrder.InAnyOrder);
 
                 await Task.CompletedTask;
             });
@@ -608,10 +606,10 @@ public sealed class DeviceProfilesWindowTests
 
                 window.ViewModel.ExportSelectedProfilesCommand.Execute(null);
 
-                StringAssert.Contains(window.ViewModel.StatusMessage, "Exported 2 profile(s)");
+                Assert.Contains("Exported 2 profile(s)", window.ViewModel.StatusMessage);
                 var importStore = new ConnectionProfileStore(Path.Combine(directory, "import"));
                 importStore.ImportZip(zipPath);
-                CollectionAssert.AreEqual(new[] { "alpha", "gamma" }, importStore.List().ToArray());
+                Assert.AreSequenceEqual(["alpha", "gamma"], [.. importStore.List()]);
 
                 await Task.CompletedTask;
             });
@@ -711,9 +709,9 @@ public sealed class DeviceProfilesWindowTests
                 window.ProfilesList.SelectedItems.Add("gamma");
                 window.ViewModel.DeleteSelectedProfilesCommand.Execute(null);
 
-                CollectionAssert.AreEqual(new[] { "alpha", "gamma" }, asked!.ToArray());
-                CollectionAssert.AreEqual(new[] { "beta" }, store.List().ToArray());
-                CollectionAssert.AreEqual(new[] { "beta" }, window.ProfilesList.Items.Cast<string>().ToArray());
+                Assert.AreSequenceEqual(["alpha", "gamma"], [.. asked!]);
+                Assert.AreSequenceEqual(["beta"], [.. store.List()]);
+                Assert.AreSequenceEqual(["beta"], [.. window.ProfilesList.Items.Cast<string>()]);
 
                 await Task.CompletedTask;
             });

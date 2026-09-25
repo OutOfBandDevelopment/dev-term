@@ -29,8 +29,7 @@ internal static class NumericBasePresenter
     }
 
     public static byte[] Parse(string input, int fromBase) =>
-        input
+        [.. input
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Select(token => Convert.ToByte(token, fromBase))
-            .ToArray();
+            .Select(token => Convert.ToByte(token, fromBase))];
 }

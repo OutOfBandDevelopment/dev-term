@@ -57,8 +57,5 @@ internal sealed class FakeTransport : ITransport
     public async ValueTask DisposeAsync() => await CloseAsync();
 
     /// <summary>Simulates a device sending bytes back, as if they'd arrived over the wire.</summary>
-    public async Task PushIncomingAsync(byte[] data)
-    {
-        await _pipe.Writer.WriteAsync(data);
-    }
+    public async Task PushIncomingAsync(byte[] data) => await _pipe.Writer.WriteAsync(data);
 }

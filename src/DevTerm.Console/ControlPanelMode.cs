@@ -5,8 +5,8 @@ using DevTerm.Core.Presenters;
 using DevTerm.UiDefinitions;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console;
 
@@ -28,7 +28,7 @@ namespace DevTerm.Console;
 /// </remarks>
 internal static class ControlPanelMode
 {
-    internal static ControlPanelWindowParts BuildWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource, string title)
+    internal static ControlPanelWindowParts BuildWindow(IApplication app, UiDefinition definition, IControlSurface surface, IPresenter? structuredSource, string title)
     {
         var window = new Window
         {
@@ -60,7 +60,7 @@ internal static class ControlPanelMode
         var indicatorLabels = new Dictionary<string, Label>();
 
         View? previousFrame = null;
-        if (hasDescription)
+        if (hasDescription && !string.IsNullOrWhiteSpace(definition.Description))
         {
             var descriptionLabel = new Label
             {
@@ -87,7 +87,7 @@ internal static class ControlPanelMode
 
             for (var row = 0; row < section.Controls.Count; row++)
             {
-                AddControlRow(frame, row, section.Controls[row], surface, controlViews, indicatorLabels);
+                AddControlRow(app, frame, row, section.Controls[row], surface, controlViews, indicatorLabels);
             }
 
             formContent.Add(frame);
@@ -114,7 +114,7 @@ internal static class ControlPanelMode
             {
                 try
                 {
-                    Application.Invoke(() =>
+                    app.Invoke(() =>
                     {
                         foreach (var (id, value) in values)
                         {
@@ -143,8 +143,7 @@ internal static class ControlPanelMode
             formContent.Viewport = formContent.Viewport with { Y = newY };
         }
 
-        EventHandler<Key>? scrollOnKey = null;
-        scrollOnKey = (_, key) =>
+        void scrollOnKey(object? _, Key key)
         {
             var delta = key == Key.PageDown ? formContent.Viewport.Height
                 : key == Key.PageUp ? -formContent.Viewport.Height
@@ -157,9 +156,10 @@ internal static class ControlPanelMode
 
             ScrollBy(delta);
             key.Handled = true;
-        };
-        Application.KeyDown += scrollOnKey;
-        window.Disposing += (_, _) => Application.KeyDown -= scrollOnKey;
+        }
+
+        app.Keyboard.KeyDown += scrollOnKey;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= scrollOnKey;
 
         formContent.MouseEvent += (_, mouse) =>
         {
@@ -205,6 +205,7 @@ internal static class ControlPanelMode
     }
 
     private static void AddControlRow(
+        IApplication app,
         FrameView frame,
         int row,
         UiControl control,
@@ -221,7 +222,7 @@ internal static class ControlPanelMode
                 var colorButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
                 colorButtonView.Accepting += (_, e) =>
                 {
-                    if (PickColor(255, 255, 255) is { } picked)
+                    if (PickColor(app, 255, 255, 255) is { } picked)
                     {
                         _ = surface.InvokeAsync(colorTargetId, $"{picked.R},{picked.G},{picked.B}");
                     }
@@ -377,7 +378,7 @@ internal static class ControlPanelMode
     /// so every field is a bounded <see cref="TextField"/>, synced on Enter the same way
     /// Slider/Numeric rows above are.
     /// </summary>
-    private static (byte R, byte G, byte B)? PickColor(byte initialR, byte initialG, byte initialB)
+    private static (byte R, byte G, byte B)? PickColor(IApplication app, byte initialR, byte initialG, byte initialB)
     {
         (byte R, byte G, byte B)? picked = null;
         var dialog = new Dialog { Title = "Custom Color", Width = 40, Height = 12 };
@@ -441,13 +442,13 @@ internal static class ControlPanelMode
         {
             picked = (CurrentR(), CurrentG(), CurrentB());
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
         var cancelButton = new Button { X = Pos.Right(okButton) + 1, Y = 6, Text = "Cancel" };
         cancelButton.Accepting += (_, e) =>
         {
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
 
         dialog.Add(
@@ -462,7 +463,7 @@ internal static class ControlPanelMode
             cancelButton);
 
         SetFromRgb(initialR, initialG, initialB);
-        Application.Run(dialog);
+        app.Run(dialog);
         return picked;
     }
 

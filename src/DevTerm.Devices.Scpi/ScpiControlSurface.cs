@@ -44,16 +44,16 @@ public sealed class ScpiControlSurface : IControlSurface
         // threw. Recognizing that shape here and no-oping it is simpler than teaching the two generic
         // renderers about a per-field "don't auto-invoke" flag that would also affect other,
         // legitimately dual-purpose fields (see ControlPanelModeTests' shared fixture).
-        _parameterFieldIds = new HashSet<string>(
-            profile.Commands
+        _parameterFieldIds =
+        [
+            .. profile.Commands
                 .Where(c => c.Parameters.Count > 0)
-                .SelectMany(c => c.Parameters.Select(p => $"{c.Id}.{p.Name}")))
-        {
+                .SelectMany(c => c.Parameters.Select(p => $"{c.Id}.{p.Name}")),
             // The always-present "Custom Command" text field (see ScpiUiDefinitionBuilder) is the
             // same shape of value-holder-not-a-command field, just for sendCustom rather than a
             // per-parameter button.
             ScpiUiDefinitionBuilder.CustomCommandFieldId,
-        };
+        ];
     }
 
     public Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default)

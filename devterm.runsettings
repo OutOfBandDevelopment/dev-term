@@ -26,16 +26,33 @@
   asserting an unverified value.
 -->
 <RunSettings>
-  <TestRunParameters>
-    <Parameter name="RealTcpDeviceHost1" value="192.168.0.107" />
-    <Parameter name="RealTcpDeviceHost2" value="192.168.0.108" />
-    <Parameter name="RealTcpDeviceHost3" value="192.168.0.110" />
-    <Parameter name="RealTcpDevicePort" value="23" />
-    <Parameter name="RealTcpDeviceHost1Query" value="ID?" />
-    <Parameter name="RealTcpDeviceHost2Query" value="ID?" />
-    <Parameter name="RealTcpDeviceHost3Query" value="*IDN?" />
-    <Parameter name="RealTcpDeviceHost1ExpectedReply" value="TEK/2230" />
-    <Parameter name="RealTcpDeviceHost2ExpectedReply" value="TEK/2230" />
-    <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX" />
-  </TestRunParameters>
+    <TestRunParameters>
+        <Parameter name="RealTcpDeviceHost1" value="192.168.0.107" />
+        <Parameter name="RealTcpDeviceHost2" value="192.168.0.108" />
+        <Parameter name="RealTcpDeviceHost3" value="192.168.0.110" />
+        <Parameter name="RealTcpDevicePort" value="23" />
+        <Parameter name="RealTcpDeviceHost1Query" value="ID?" />
+        <Parameter name="RealTcpDeviceHost2Query" value="ID?" />
+        <Parameter name="RealTcpDeviceHost3Query" value="*IDN?" />
+        <Parameter name="RealTcpDeviceHost1ExpectedReply" value="TEK/2230" />
+        <Parameter name="RealTcpDeviceHost2ExpectedReply" value="TEK/2230" />
+        <Parameter name="RealTcpDeviceHost3ExpectedReply" value="TEKTRONIX" />
+    </TestRunParameters>
+
+    <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->
+    <RunConfiguration>
+        <MaxCpuCount>0</MaxCpuCount>
+        <!-- 0 = use all available cores; or set a specific number like 4 -->
+    </RunConfiguration>
+
+    <!-- Controls parallelism within MSTest (across classes/methods in the same assembly) -->
+    <MSTest>
+        <TestTimeout>5000</TestTimeout>
+        <Parallelize>
+            <Workers>0</Workers>
+            <!-- 0 = number of available cores -->
+            <Scope>MethodLevel</Scope>
+            <!-- or ClassLevel -->
+        </Parallelize>
+    </MSTest>
 </RunSettings>

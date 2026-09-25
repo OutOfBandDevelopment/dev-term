@@ -30,7 +30,7 @@ namespace DevTerm.Devices.K8055;
 /// </remarks>
 public sealed class K8055Decoder : IPresenter, IStructuredPresenter
 {
-    private const int FrameLength = 9;
+    private const int _frameLength = 9;
 
     private readonly List<byte> _buffer = [];
     private readonly Dictionary<string, string> _lastValues = [];
@@ -47,10 +47,10 @@ public sealed class K8055Decoder : IPresenter, IStructuredPresenter
         }
 
         var lines = new List<string>();
-        while (_buffer.Count >= FrameLength)
+        while (_buffer.Count >= _frameLength)
         {
-            var frame = _buffer.GetRange(0, FrameLength);
-            _buffer.RemoveRange(0, FrameLength);
+            var frame = _buffer.GetRange(0, _frameLength);
+            _buffer.RemoveRange(0, _frameLength);
             lines.Add(DecodeFrame(frame, out var values));
 
             // The device streams a report continuously and unprompted (confirmed live — see

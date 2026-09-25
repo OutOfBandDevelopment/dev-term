@@ -9,9 +9,10 @@ using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.Scpi;
 using Terminal.Gui.App;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
-using Terminal.Gui.Views;
 using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console;
 
@@ -28,11 +29,11 @@ public static class TuiMode
     /// <summary>
     /// Caps the scrolling output pane the same way <c>MainWindow.MaxOutputLines</c> does for WPF, so
     /// a long-running session doesn't grow it without bound — but shorter than WPF's 1000, since this
-    /// pane is a single concatenated <see cref="TextView.Text"/> string rebuilt on every trim, not a
+    /// pane is a single concatenated <see cref="Editor.Text"/> string rebuilt on every trim, not a
     /// virtualized items list; keeping it smaller keeps that rebuild cheap. Oldest lines are dropped
     /// first.
     /// </summary>
-    private const int MaxOutputLines = 300;
+    private const int _maxOutputLines = 300;
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
@@ -46,10 +47,10 @@ public static class TuiMode
             return 1;
         }
 
-        Application.Init();
+        var app = Application.Create().Init();
         try
         {
-            var parts = BuildWindow(session, catalog, cliOptions, profileStore);
+            var parts = BuildWindow(app, session, catalog, cliOptions, profileStore);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -58,20 +59,20 @@ public static class TuiMode
             // loop rather than letting the whole TUI die. Per Terminal.Gui's own doc comment on this
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
-            Application.Run(parts.Window, OnUnhandledException);
+            app.Run(parts.Window, OnUnhandledException);
         }
         finally
         {
-            Application.Shutdown();
+            app.Dispose();
         }
 
         await session.CloseAsync();
         return 0;
 
-        static bool OnUnhandledException(Exception ex)
+        bool OnUnhandledException(Exception ex)
         {
             MessageBox.ErrorQuery(
-                Application.Instance,
+                app,
                 "dev-term — unexpected error",
                 $"An unexpected error occurred and has been ignored so dev-term can keep running:\n\n{ex}",
                 "Ok");
@@ -85,7 +86,7 @@ public static class TuiMode
     /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         // Also what "is this connection a saved profile?" (the title) is answered against, and what the
         // Device Profiles screen edits - a test passes an isolated one rather than the real user folder.
@@ -114,7 +115,7 @@ public static class TuiMode
             Height = Dim.Fill(),
         };
 
-        var output = new TextView
+        var output = new Editor
         {
             X = 0,
             Y = 1,
@@ -149,16 +150,16 @@ public static class TuiMode
 
         void AppendOutput(string line)
         {
-            Application.Invoke(() =>
+            app.Invoke(() =>
             {
                 outputLines.Add(line);
-                if (outputLines.Count > MaxOutputLines)
+                if (outputLines.Count > _maxOutputLines)
                 {
                     outputLines.RemoveAt(0);
                 }
 
                 output.Text = string.Join('\n', outputLines);
-                output.MoveEnd();
+                output.CaretOffset = output.Text.Length;
             });
         }
 
@@ -166,7 +167,7 @@ public static class TuiMode
             session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
-        connectMenuItem.Action = () => _ = ToggleConnectionAsync(session, cliOptions, connectMenuItem, sendField, AppendOutput);
+        connectMenuItem.Action = () => _ = ToggleConnectionAsync(app, session, cliOptions, connectMenuItem, sendField, AppendOutput);
 
         void SetParser(string name)
         {
@@ -183,8 +184,8 @@ public static class TuiMode
                 connectMenuItem,
                 new MenuItem("_Device Profiles...", string.Empty, () =>
                 {
-                    var configureParts = ConfigureMode.BuildWindow(cliOptions, null, profileStore);
-                    Application.Run(configureParts.Window);
+                    var configureParts = ConfigureMode.BuildWindow(app, cliOptions, null, profileStore);
+                    app.Run(configureParts.Window);
 
                     if (configureParts.Result is { } chosen)
                     {
@@ -192,7 +193,7 @@ public static class TuiMode
                         _ = SwitchProfileAsync(chosen);
                     }
                 }),
-                new MenuItem("_Quit", "Ctrl+Q", () => Application.RequestStop(), Key.Q.WithCtrl),
+                new MenuItem("_Quit", "Ctrl+Q", () => app.RequestStop(), Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
             // line typed on (the title bar shows which is current). Built from the catalog as of
@@ -208,21 +209,23 @@ public static class TuiMode
                 {
                     var structuredSource = catalog.TryGet("k8055", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
+                        app,
                         K8055UiDefinition.Build(),
                         new K8055ControlSurface(session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
-                    Application.Run(panelParts.Window);
+                    app.Run(panelParts.Window);
                 }),
                 new MenuItem("_Busylight Control Panel...", string.Empty, () =>
                 {
                     var structuredSource = catalog.TryGet("busylight", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
+                        app,
                         BusylightUiDefinition.Build(),
                         new BusylightControlSurface(session),
                         structuredSource,
                         "dev-term — Busylight Control Panel");
-                    Application.Run(panelParts.Window);
+                    app.Run(panelParts.Window);
                 }),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
@@ -230,27 +233,27 @@ public static class TuiMode
                 new MenuItem("_SCPI Instrument...", string.Empty, () =>
                 {
                     var structuredSource = ResolveActiveScpiPresenter(session, catalog);
-                    var picked = ResolveSavedScpiProfileChoice(cliOptions.ScpiProfile) ?? PickScpiProfileChoice();
+                    var picked = ResolveSavedScpiProfileChoice(cliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
                     if (picked is null)
                     {
                         return;
                     }
 
-                    if (picked == ScpiAutoDetectChoice)
+                    if (picked == _scpiAutoDetectChoice)
                     {
                         // *IDN? is a real send/await over the live transport - unlike the two panels
                         // above, this can't finish before the menu action returns, so it's fire-and-
                         // forget with the eventual window open marshaled back via Application.Invoke,
                         // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
                         // reason (real async I/O resumes off the UI thread).
-                        _ = DetectAndOpenScpiInstrumentAsync(session, structuredSource);
+                        _ = DetectAndOpenScpiInstrumentAsync(app, session, structuredSource);
                         return;
                     }
 
-                    var profile = picked == ScpiGenericChoice
+                    var profile = picked == _scpiGenericChoice
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
-                    OpenScpiInstrumentWindow(session, structuredSource, profile);
+                    OpenScpiInstrumentWindow(app, session, structuredSource, profile);
                 }),
             ]),
         ]);
@@ -266,8 +269,7 @@ public static class TuiMode
         // child first (sendField has focus in normal use) - checked directly, Ctrl+Q reached
         // window.KeyDown when nothing else had focus but not once sendField did. Application.KeyDown
         // fires ahead of per-view focus routing, so it works regardless of what's currently focused.
-        EventHandler<Key>? quitOnCtrlQ = null;
-        quitOnCtrlQ = (_, key) =>
+        void quitOnCtrlQ(object? _, Key key)
         {
             if (key != Key.Q.WithCtrl)
             {
@@ -275,10 +277,11 @@ public static class TuiMode
             }
 
             key.Handled = true;
-            Application.RequestStop();
-        };
-        Application.KeyDown += quitOnCtrlQ;
-        window.Disposing += (_, _) => Application.KeyDown -= quitOnCtrlQ;
+            app.RequestStop();
+        }
+
+        app.Keyboard.KeyDown += quitOnCtrlQ;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= quitOnCtrlQ;
 
         // A named handler, not an inline lambda, so SwitchProfileAsync below can unsubscribe it
         // from the old session before subscribing it to the new one.
@@ -334,7 +337,7 @@ public static class TuiMode
             parser = newOptions.EffectiveParser;
             mySession.Output += OnSessionOutput;
 
-            Application.Invoke(() =>
+            app.Invoke(() =>
             {
                 window.Title = TitleFor();
                 output.Text = string.Empty;
@@ -365,7 +368,7 @@ public static class TuiMode
                 }
 
                 AppendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
-                Application.Invoke(() =>
+                app.Invoke(() =>
                 {
                     connectMenuItem.Title = "_Connect";
                     sendField.Enabled = false;
@@ -383,7 +386,7 @@ public static class TuiMode
                 return false;
             }
 
-            Application.Invoke(() =>
+            app.Invoke(() =>
             {
                 connectMenuItem.Title = "_Disconnect";
                 sendField.Enabled = true;
@@ -460,12 +463,12 @@ public static class TuiMode
     /// send field's enabled state to match. Exposed as a testable method (not just reachable
     /// through the menu item's <c>Action</c> delegate) the same way <see cref="SendAsync"/> is.
     /// </summary>
-    internal static async Task ToggleConnectionAsync(Session session, CliOptions cliOptions, MenuItem connectMenuItem, TextField sendField, Action<string> appendOutput)
+    internal static async Task ToggleConnectionAsync(IApplication app, Session session, CliOptions cliOptions, MenuItem connectMenuItem, TextField sendField, Action<string> appendOutput)
     {
         if (session.State == ConnectionState.Open)
         {
             await session.CloseAsync();
-            Application.Invoke(() =>
+            app.Invoke(() =>
             {
                 connectMenuItem.Title = "_Connect";
                 sendField.Enabled = false;
@@ -486,7 +489,7 @@ public static class TuiMode
             // building a fresh one - but the menu title/send field still need to reflect "not
             // connected" on a failed *retry*, not just a failed first attempt (BuildWindow already
             // set them correctly for that case before this was ever wired up).
-            Application.Invoke(() =>
+            app.Invoke(() =>
             {
                 connectMenuItem.Title = "_Connect";
                 sendField.Enabled = false;
@@ -494,7 +497,7 @@ public static class TuiMode
             return;
         }
 
-        Application.Invoke(() =>
+        app.Invoke(() =>
         {
             connectMenuItem.Title = "_Disconnect";
             sendField.Enabled = true;
@@ -525,9 +528,9 @@ public static class TuiMode
     }
 
     /// <summary>Centralized on <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/> so a saved <c>CliOptions.ScpiProfile</c> choice and this picker always agree on the exact same literal.</summary>
-    private const string ScpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
+    private const string _scpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
 
-    private static readonly string ScpiGenericChoice = ScpiProfileCatalog.Generic.Name;
+    private static readonly string _scpiGenericChoice = ScpiProfileCatalog.Generic.Name;
 
     /// <summary>
     /// Resolves the registered "scpi" presenter and binds it into <paramref name="session"/>'s live
@@ -567,7 +570,7 @@ public static class TuiMode
             return null;
         }
 
-        if (saved == ScpiAutoDetectChoice || saved == ScpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
+        if (saved == _scpiAutoDetectChoice || saved == _scpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
         {
             return saved;
         }
@@ -613,13 +616,13 @@ public static class TuiMode
         }
     }
 
-    private static async Task DetectAndOpenScpiInstrumentAsync(Session session, IPresenter? structuredSource)
+    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource)
     {
         var detected = await DetectProfileAsync(session, structuredSource);
-        Application.Invoke(() => OpenScpiInstrumentWindow(session, structuredSource, detected ?? ScpiProfileCatalog.Generic));
+        app.Invoke(() => OpenScpiInstrumentWindow(app, session, structuredSource, detected ?? ScpiProfileCatalog.Generic));
     }
 
-    private static void OpenScpiInstrumentWindow(Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)
+    private static void OpenScpiInstrumentWindow(IApplication app, Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)
     {
         if (structuredSource is ScpiReplyPresenter replyPresenter)
         {
@@ -627,18 +630,19 @@ public static class TuiMode
         }
 
         var panelParts = ControlPanelMode.BuildWindow(
+            app,
             ScpiUiDefinitionBuilder.Build(profile),
             new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
             structuredSource,
             $"dev-term — {profile.Name}");
-        Application.Run(panelParts.Window);
+        app.Run(panelParts.Window);
     }
 
-    private static string? PickScpiProfileChoice()
+    private static string? PickScpiProfileChoice(IApplication app)
     {
-        var items = new List<string> { ScpiAutoDetectChoice, ScpiGenericChoice };
+        var items = new List<string> { _scpiAutoDetectChoice, _scpiGenericChoice };
         items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));
-        return PickFromList("Select SCPI Instrument", items);
+        return PickFromList(app, "Select SCPI Instrument", items);
     }
 
     /// <summary>
@@ -646,7 +650,7 @@ public static class TuiMode
     /// local <c>PickFromList</c> uses for the same reason (no built-in combobox widget in the
     /// installed Terminal.Gui v2.5.0 — see docs/changes/2026-09-16.md).
     /// </summary>
-    private static string? PickFromList(string title, IReadOnlyList<string> items)
+    private static string? PickFromList(IApplication app, string title, IReadOnlyList<string> items)
     {
         string? picked = null;
         var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
@@ -660,7 +664,7 @@ public static class TuiMode
             }
 
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
         var selectButton = new Button { X = 0, Y = Pos.Bottom(listView), Text = "Select", IsDefault = true };
         selectButton.Accepting += (_, e) =>
@@ -671,19 +675,19 @@ public static class TuiMode
             }
 
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
         var cancelButton = new Button { X = Pos.Right(selectButton) + 1, Y = Pos.Top(selectButton), Text = "Cancel" };
         cancelButton.Accepting += (_, e) =>
         {
             e.Handled = true;
-            Application.RequestStop();
+            app.RequestStop();
         };
         dialog.Add(listView, selectButton, cancelButton);
-        Application.Run(dialog);
+        app.Run(dialog);
         return picked;
     }
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls).</summary>
-internal sealed record TuiWindowParts(Window Window, TextView Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser);

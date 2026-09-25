@@ -46,7 +46,7 @@ public sealed class Session : IAsyncDisposable
         // scenario now that front ends have a Connect/Disconnect menu item) would otherwise start
         // the new read loop with an already-cancelled token, ending it immediately.
         _readLoopCts = new CancellationTokenSource();
-        _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token));
+        _readLoopTask = Task.Run(() => PumpAsync(_readLoopCts.Token), cancellationToken);
     }
 
     public Task CloseAsync(CancellationToken cancellationToken = default) => StopAsync(cancellationToken);

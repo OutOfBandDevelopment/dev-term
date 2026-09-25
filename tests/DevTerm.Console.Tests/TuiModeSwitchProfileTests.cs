@@ -6,6 +6,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Console.Tests;
@@ -22,12 +23,12 @@ namespace DevTerm.Console.Tests;
 /// (same as <c>ToggleConnectionAsync</c>), which never flushes without a real, actively-pumping
 /// <c>Application.Run()</c> loop — see <c>CLAUDE.md</c>.
 /// </summary>
-[TestCategory("INTEGRATION")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class TuiModeSwitchProfileTests
 {
-    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(15);
 
     private static (Session Session, FakeTransport Transport, IPresenter Presenter) CreateSession()
     {
@@ -41,7 +42,7 @@ public sealed class TuiModeSwitchProfileTests
     public async Task SwitchProfileAsync_ToAWorkingProfile_ClosesOldSessionAndOpensNew()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
@@ -49,7 +50,7 @@ public sealed class TuiModeSwitchProfileTests
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var acceptTask = listener.AcceptTcpClientAsync();
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
 
             var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] })
                 .GetAwaiter().GetResult();
@@ -58,15 +59,15 @@ public sealed class TuiModeSwitchProfileTests
             using var stream = client.GetStream();
 
             Assert.IsTrue(switched);
-            var titleUpdated = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains($"tcp://127.0.0.1:{port}"), WaitTimeout);
+            var titleUpdated = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains($"tcp://127.0.0.1:{port}"), _waitTimeout);
             Assert.IsTrue(titleUpdated, "Expected the window title to reflect the newly-switched-to connection.");
-            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), "hex");
+            Assert.Contains("hex", TuiTestRunner.InvokeOnLoop(() => parts.Window.Title));
             Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title));
             Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
-            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Output.Text), "Switched to");
+            Assert.Contains("Switched to", TuiTestRunner.InvokeOnLoop(() => parts.Output.Text));
 
             stream.Write(Encoding.ASCII.GetBytes("AB"));
-            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Contains("[hex]"), WaitTimeout);
+            var appeared = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Contains("[hex]"), _waitTimeout);
             Assert.IsTrue(appeared, "Expected the new (real TCP) session's incoming bytes to reach the output.");
         });
     }
@@ -81,7 +82,7 @@ public sealed class TuiModeSwitchProfileTests
         // not have its eventual failure/cancellation reset connectMenuItem.Title/sendField.Enabled/
         // output after a second, newer switch has already established its own, real connection.
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
@@ -98,7 +99,7 @@ public sealed class TuiModeSwitchProfileTests
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var acceptTask = listener.AcceptTcpClientAsync();
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
 
             var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] })
                 .GetAwaiter().GetResult();
@@ -107,7 +108,7 @@ public sealed class TuiModeSwitchProfileTests
             Assert.IsTrue(switched, "The second (newer) switch should have connected for real.");
             Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title));
             Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
-            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), $"tcp://127.0.0.1:{port}");
+            Assert.Contains($"tcp://127.0.0.1:{port}", TuiTestRunner.InvokeOnLoop(() => parts.Window.Title));
 
             // The stale (superseded) attempt should resolve false - cancelled, not left hanging -
             // without ever having touched the UI state the newer attempt already set.
@@ -115,7 +116,7 @@ public sealed class TuiModeSwitchProfileTests
             Assert.IsFalse(staleResult);
             Assert.AreEqual("_Disconnect", TuiTestRunner.InvokeOnLoop(() => parts.ConnectMenuItem.Title), "The stale attempt's resolution must not have reverted the menu title.");
             Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled), "The stale attempt's resolution must not have disabled the send field.");
-            StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), $"tcp://127.0.0.1:{port}");
+            Assert.Contains($"tcp://127.0.0.1:{port}", TuiTestRunner.InvokeOnLoop(() => parts.Window.Title));
         });
     }
 
@@ -123,7 +124,7 @@ public sealed class TuiModeSwitchProfileTests
     public async Task SwitchProfileAsync_WithAnUnknownPresenter_ReportsAndKeepsTheOldSessionUnaffected()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23", Presenter = ["ascii"] };
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
@@ -133,11 +134,11 @@ public sealed class TuiModeSwitchProfileTests
 
             Assert.IsFalse(switched);
             Assert.AreEqual(ConnectionState.Open, session.State, "The original session should be untouched when the new profile fails to resolve a presenter.");
-            var reported = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Contains("Could not switch profile"), WaitTimeout);
+            var reported = TuiTestRunner.WaitUntilOnLoop(() => parts.Output.Text.Contains("Could not switch profile"), _waitTimeout);
             Assert.IsTrue(reported);
         });
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
     }
 
 
@@ -145,7 +146,7 @@ public sealed class TuiModeSwitchProfileTests
     public async Task SwitchProfileAsync_ToASavedProfile_RetitlesTheWindowWithItsName()
     {
         var (session, _, presenter) = CreateSession();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
         try
         {
@@ -153,12 +154,12 @@ public sealed class TuiModeSwitchProfileTests
 
             TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
             {
-                StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title), "tcp://127.0.0.1:1");
+                Assert.Contains("tcp://127.0.0.1:1", TuiTestRunner.InvokeOnLoop(() => parts.Window.Title));
 
                 using var listener = new TcpListener(IPAddress.Loopback, 0);
                 listener.Start();
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-                var acceptTask = listener.AcceptTcpClientAsync();
+                var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
                 var target = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] };
                 new ConnectionProfileStore(directory).Save("bench-scope", target);
 
@@ -166,7 +167,7 @@ public sealed class TuiModeSwitchProfileTests
                 using var client = acceptTask.GetAwaiter().GetResult();
 
                 Assert.IsTrue(switched);
-                var retitled = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains("bench-scope"), WaitTimeout);
+                var retitled = TuiTestRunner.WaitUntilOnLoop(() => parts.Window.Title.Contains("bench-scope"), _waitTimeout);
                 Assert.IsTrue(retitled, "Expected the title to name the saved profile just switched to.");
                 Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.Window.Title.Contains("tcp://")));
             }, new ConnectionProfileStore(directory));
@@ -179,4 +180,6 @@ public sealed class TuiModeSwitchProfileTests
             }
         }
     }
+
+    public required TestContext TestContext { get; set; }
 }

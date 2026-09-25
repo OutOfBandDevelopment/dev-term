@@ -109,134 +109,134 @@ public partial class ControlPanelWindow : Window
         switch (control)
         {
             case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
-            {
-                var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                view.Click += (_, _) => OpenColorPicker(button.Id, colorTargetId);
-                return (view, view);
-            }
+                {
+                    var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                    view.Click += (_, _) => OpenColorPicker(button.Id, colorTargetId);
+                    return (view, view);
+                }
 
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
-            {
-                var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                view.Click += (_, _) =>
                 {
-                    var joined = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                    _ = _surface.InvokeAsync(button.CommandId ?? button.Id, joined);
-                };
-                return (view, view);
-            }
+                    var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                    view.Click += (_, _) =>
+                    {
+                        var joined = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
+                        _ = _surface.InvokeAsync(button.CommandId ?? button.Id, joined);
+                    };
+                    return (view, view);
+                }
 
             case ButtonControl button:
-            {
-                var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                view.Click += (_, _) => _ = _surface.InvokeAsync(button.CommandId ?? button.Id, null);
-                return (view, view);
-            }
+                {
+                    var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                    view.Click += (_, _) => _ = _surface.InvokeAsync(button.CommandId ?? button.Id, null);
+                    return (view, view);
+                }
 
             case ToggleControl toggle:
-            {
-                var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
-                view.Checked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "1");
-                view.Unchecked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "0");
-                return (view, view);
-            }
+                {
+                    var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
+                    view.Checked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "1");
+                    view.Unchecked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "0");
+                    return (view, view);
+                }
 
             case SliderControl slider:
-            {
-                var view = new Slider
                 {
-                    Minimum = slider.Minimum,
-                    Maximum = slider.Maximum,
-                    TickFrequency = slider.Step,
-                    IsSnapToTickEnabled = slider.Step > 0,
-                    Value = slider.DefaultValue,
-                    Width = 160,
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-                var valueLabel = new TextBlock { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Text = FormatUnit(slider.DefaultValue, slider.Unit) };
-                view.ValueChanged += (_, e) =>
-                {
-                    valueLabel.Text = FormatUnit(e.NewValue, slider.Unit);
-                    _ = _surface.InvokeAsync(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
-                };
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-                panel.Children.Add(view);
-                panel.Children.Add(valueLabel);
-                return (panel, view);
-            }
+                    var view = new Slider
+                    {
+                        Minimum = slider.Minimum,
+                        Maximum = slider.Maximum,
+                        TickFrequency = slider.Step,
+                        IsSnapToTickEnabled = slider.Step > 0,
+                        Value = slider.DefaultValue,
+                        Width = 160,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    };
+                    var valueLabel = new TextBlock { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Text = FormatUnit(slider.DefaultValue, slider.Unit) };
+                    view.ValueChanged += (_, e) =>
+                    {
+                        valueLabel.Text = FormatUnit(e.NewValue, slider.Unit);
+                        _ = _surface.InvokeAsync(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
+                    };
+                    var panel = new StackPanel { Orientation = Orientation.Horizontal };
+                    panel.Children.Add(view);
+                    panel.Children.Add(valueLabel);
+                    return (panel, view);
+                }
 
             case NumericControl numeric:
-            {
-                var view = new TextBox { Width = 80, Text = numeric.DefaultValue.ToString(CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Center };
-                void Commit() => CommitNumeric(view, numeric.Id, numeric.Minimum, numeric.Maximum, numeric.DefaultValue);
-                view.LostFocus += (_, _) => Commit();
-                view.KeyDown += (_, e) =>
                 {
-                    if (e.Key == Key.Enter)
+                    var view = new TextBox { Width = 80, Text = numeric.DefaultValue.ToString(CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Center };
+                    void Commit() => CommitNumeric(view, numeric.Id, numeric.Minimum, numeric.Maximum, numeric.DefaultValue);
+                    view.LostFocus += (_, _) => Commit();
+                    view.KeyDown += (_, e) =>
                     {
-                        Commit();
-                    }
-                };
-                var hint = new TextBlock { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Text = $"[{numeric.Minimum:0.#}-{numeric.Maximum:0.#}]{numeric.Unit}" };
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-                panel.Children.Add(view);
-                panel.Children.Add(hint);
-                return (panel, view);
-            }
+                        if (e.Key == Key.Enter)
+                        {
+                            Commit();
+                        }
+                    };
+                    var hint = new TextBlock { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Text = $"[{numeric.Minimum:0.#}-{numeric.Maximum:0.#}]{numeric.Unit}" };
+                    var panel = new StackPanel { Orientation = Orientation.Horizontal };
+                    panel.Children.Add(view);
+                    panel.Children.Add(hint);
+                    return (panel, view);
+                }
 
             case ChoiceControl { Style: ChoiceStyle.RadioGroup } choice:
-            {
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-                var groupName = "choice_" + control.Id;
-                foreach (var option in choice.Options)
                 {
-                    var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
-                    radio.Checked += (_, _) => _ = _surface.InvokeAsync(choice.Id, option);
-                    panel.Children.Add(radio);
-                }
+                    var panel = new StackPanel { Orientation = Orientation.Horizontal };
+                    var groupName = "choice_" + control.Id;
+                    foreach (var option in choice.Options)
+                    {
+                        var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
+                        radio.Checked += (_, _) => _ = _surface.InvokeAsync(choice.Id, option);
+                        panel.Children.Add(radio);
+                    }
 
-                return (panel, panel);
-            }
+                    return (panel, panel);
+                }
 
             case ChoiceControl choice:
-            {
-                var view = new ComboBox { ItemsSource = choice.Options, SelectedItem = choice.DefaultValue ?? choice.Options.FirstOrDefault(), Width = 160, VerticalAlignment = VerticalAlignment.Center };
-                view.SelectionChanged += (_, _) =>
                 {
-                    if (view.SelectedItem is string selected)
+                    var view = new ComboBox { ItemsSource = choice.Options, SelectedItem = choice.DefaultValue ?? choice.Options.FirstOrDefault(), Width = 160, VerticalAlignment = VerticalAlignment.Center };
+                    view.SelectionChanged += (_, _) =>
                     {
-                        _ = _surface.InvokeAsync(choice.Id, selected);
-                    }
-                };
-                return (view, view);
-            }
-
-            case TextFieldControl textField:
-            {
-                var view = new TextBox { Text = textField.DefaultValue ?? string.Empty, Width = 160, VerticalAlignment = VerticalAlignment.Center };
-                if (textField.MaxLength is { } max)
-                {
-                    view.MaxLength = max;
+                        if (view.SelectedItem is string selected)
+                        {
+                            _ = _surface.InvokeAsync(choice.Id, selected);
+                        }
+                    };
+                    return (view, view);
                 }
 
-                void Commit() => _ = _surface.InvokeAsync(textField.Id, view.Text);
-                view.LostFocus += (_, _) => Commit();
-                view.KeyDown += (_, e) =>
+            case TextFieldControl textField:
                 {
-                    if (e.Key == Key.Enter)
+                    var view = new TextBox { Text = textField.DefaultValue ?? string.Empty, Width = 160, VerticalAlignment = VerticalAlignment.Center };
+                    if (textField.MaxLength is { } max)
                     {
-                        Commit();
+                        view.MaxLength = max;
                     }
-                };
-                return (view, view);
-            }
+
+                    void Commit() => _ = _surface.InvokeAsync(textField.Id, view.Text);
+                    view.LostFocus += (_, _) => Commit();
+                    view.KeyDown += (_, e) =>
+                    {
+                        if (e.Key == Key.Enter)
+                        {
+                            Commit();
+                        }
+                    };
+                    return (view, view);
+                }
 
             case IndicatorControl indicator:
-            {
-                var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
-                _indicatorLabels[control.Id] = view;
-                return (view, view);
-            }
+                {
+                    var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
+                    _indicatorLabels[control.Id] = view;
+                    return (view, view);
+                }
 
             default:
                 var fallback = new TextBlock { Text = "(unsupported control)" };

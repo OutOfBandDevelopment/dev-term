@@ -2,6 +2,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
+using DevTerm.Test.Utilities;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.Options;
 
@@ -13,25 +14,31 @@ namespace DevTerm.Wpf.Tests;
 /// real <see cref="TcpTransport"/> instead of <see cref="FakeTransport"/>. Reports
 /// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
 /// </summary>
-[TestCategory("DEV-LOCAL")]
+[TestCategory(TestCategories.Integration)]
 [TestClass]
 [DoNotParallelize]
 public sealed class RealHardwareMainWindowTests
 {
     public TestContext TestContext { get; set; } = null!;
 
-    private static readonly TimeSpan PumpTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _pumpTimeout = TimeSpan.FromSeconds(10);
 
     [TestMethod]
     [DataRow("RealTcpDeviceHost3")]
     [DataRow("RealTcpDeviceHost2")]
-    public void MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
+    public async Task MainWindow_AgainstRealDevice_ReceivesDecodedIdReply(string hostParameterName)
     {
-        var host = TestContext.Properties.ContainsKey(hostParameterName) ? TestContext.Properties[hostParameterName] as string : null;
-        var portText = TestContext.Properties.ContainsKey("RealTcpDevicePort") ? TestContext.Properties["RealTcpDevicePort"] as string : null;
+        var host = TestContext.Properties.TryGetValue(hostParameterName, out var value) ? value as string : null;
+        var portText = TestContext.Properties.TryGetValue("RealTcpDevicePort", out var portValue) ? portValue as string : null;
         if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
         {
             Assert.Inconclusive($"No '{hostParameterName}'/'RealTcpDevicePort' — run with a settings file (see devterm.runsettings) to exercise this against real hardware.");
+            return;
+        }
+
+        if (!await RealDeviceReachability.IsTcpReachableAsync(host, port, TestContext.CancellationToken))
+        {
+            Assert.Inconclusive($"Real device at {host}:{port} is not reachable (TCP connect attempt timed out/refused within {RealDeviceReachability.DefaultTimeout.TotalSeconds}s) — is it powered on and networked?");
             return;
         }
 
@@ -51,12 +58,12 @@ public sealed class RealHardwareMainWindowTests
             window.SendBox.Text = "ID?";
             await window.SendCurrentInputAsync();
 
-            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, PumpTimeout);
+            var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
             Assert.IsTrue(appeared, $"Expected a decoded reply from the real device at {host}:{port}.");
-            StringAssert.Contains((string)window.OutputList.Items[0]!, "TEK/2230");
+            Assert.Contains("TEK/2230", (string)window.OutputList.Items[0]!);
 
-            await session.CloseAsync();
+            await session.CloseAsync(TestContext.CancellationToken);
             await session.DisposeAsync();
         });
     }

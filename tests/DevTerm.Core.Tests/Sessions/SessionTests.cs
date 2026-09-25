@@ -3,11 +3,12 @@ using System.IO.Pipelines;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Test.Utilities;
 using Moq;
 
 namespace DevTerm.Core.Tests.Sessions;
 
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class SessionTests
 {
@@ -30,7 +31,7 @@ public sealed class SessionTests
         var (transport, _) = CreateOpenableTransport();
         await using var session = new Session(transport.Object, new Pipeline([]));
 
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
         transport.Verify(t => t.OpenAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -41,7 +42,7 @@ public sealed class SessionTests
         var transport = new Mock<ITransport>();
         await using var session = new Session(transport.Object, new Pipeline([]));
 
-        await session.CloseAsync();
+        await session.CloseAsync(TestContext.CancellationToken);
 
         transport.Verify(t => t.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -53,7 +54,7 @@ public sealed class SessionTests
         await using var session = new Session(transport.Object, new Pipeline([]));
         var payload = new byte[] { 1, 2, 3 };
 
-        await session.SendAsync(payload);
+        await session.SendAsync(payload, TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(payload, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -84,14 +85,13 @@ public sealed class SessionTests
             }
         };
 
-        await session.OpenAsync();
-        await pipe.Writer.WriteAsync(new byte[] { 0x2A });
+        await session.OpenAsync(TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
-        await outputTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await outputTcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
-        CollectionAssert.AreEqual(
-            new[] { new PresenterOutput("hex", "2A"), new PresenterOutput("ascii", "*") },
-            received);
+        Assert.AreSequenceEqual(
+            [new PresenterOutput("hex", "2A"), new PresenterOutput("ascii", "*")], received);
     }
 
     [TestMethod]
@@ -100,12 +100,12 @@ public sealed class SessionTests
         var (transport, pipe) = CreateOpenableTransport();
         await using var session = new Session(transport.Object, new Pipeline([]));
 
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
         await pipe.Writer.CompleteAsync();
 
         // The read loop should observe completion and exit on its own; CloseAsync should not
         // hang waiting for a read loop that never stops.
-        await session.CloseAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        await session.CloseAsync(TestContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         transport.Verify(t => t.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -127,9 +127,9 @@ public sealed class SessionTests
     {
         var (transport, _) = CreateOpenableTransport();
         var session = new Session(transport.Object, new Pipeline([]));
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
-        await session.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        await session.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         transport.Verify(t => t.DisposeAsync(), Times.Once);
     }
@@ -152,17 +152,17 @@ public sealed class SessionTests
 
         await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
 
-        await session.OpenAsync();
-        await session.CloseAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
+        await session.CloseAsync(TestContext.CancellationToken);
 
         currentPipe = new Pipe();
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
         var received = new TaskCompletionSource();
         session.Output += (_, _) => received.TrySetResult();
-        await currentPipe.Writer.WriteAsync(new byte[] { 0x2A });
+        await currentPipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
-        await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
     }
 
     [TestMethod]
@@ -174,7 +174,7 @@ public sealed class SessionTests
         // whole lifetime and nothing rebuilt it. AddPresenter must mutate that same live instance.
         var (transport, pipe) = CreateOpenableTransport();
         await using var session = new Session(transport.Object, new Pipeline([]));
-        await session.OpenAsync();
+        await session.OpenAsync(TestContext.CancellationToken);
 
         var late = new Mock<IPresenter>();
         late.SetupGet(p => p.Name).Returns("scpi");
@@ -183,9 +183,9 @@ public sealed class SessionTests
 
         var received = new TaskCompletionSource<PresenterOutput>();
         session.Output += (_, output) => received.TrySetResult(output);
-        await pipe.Writer.WriteAsync(new byte[] { 0x2A });
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
 
-        var output = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var output = await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
 
         Assert.AreEqual(new PresenterOutput("scpi", "reply"), output);
     }
@@ -200,4 +200,6 @@ public sealed class SessionTests
 
         Assert.AreEqual(ConnectionState.Open, session.State);
     }
+
+    public required TestContext TestContext { get; set; }
 }

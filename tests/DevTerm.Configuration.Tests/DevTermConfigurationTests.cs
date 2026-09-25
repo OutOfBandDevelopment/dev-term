@@ -1,3 +1,4 @@
+using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Configuration;
 
 namespace DevTerm.Configuration.Tests;
@@ -11,7 +12,7 @@ namespace DevTerm.Configuration.Tests;
 /// </summary>
 // Environment variables are process-global; run these in isolation so they can't race with
 // (or be raced by) any other test that also mutates them via Environment.SetEnvironmentVariable.
-[TestCategory("UNIT")]
+[TestCategory(TestCategories.Unit)]
 [TestClass]
 [DoNotParallelize]
 public sealed class DevTermConfigurationTests
@@ -34,7 +35,7 @@ public sealed class DevTermConfigurationTests
 
             Assert.AreEqual("COM1", options.Port, "Untouched settings should still come from the file.");
             Assert.AreEqual(4800, options.Baud, "Command line should override the file.");
-            CollectionAssert.AreEqual(new[] { "hex" }, options.Presenter, "An older profile's single-string Presenter still loads.");
+            Assert.AreSequenceEqual(["hex"], options.Presenter, "An older profile's single-string Presenter still loads.");
         }
         finally
         {
@@ -97,7 +98,7 @@ public sealed class DevTermConfigurationTests
         Assert.AreEqual("COM3", roundTripped.Port);
         Assert.AreEqual(4800, roundTripped.Baud);
         Assert.AreEqual(System.IO.Ports.Handshake.RequestToSend, roundTripped.Handshake);
-        CollectionAssert.AreEqual(new[] { "ascii", "hex" }, roundTripped.Presenter);
+        Assert.AreSequenceEqual(["ascii", "hex"], roundTripped.Presenter);
         Assert.AreEqual("decimal", roundTripped.Parser);
         Assert.AreEqual(LineEnding.Cr, roundTripped.LineEnding);
         Assert.AreEqual("tek-2230", roundTripped.ManifestName);
