@@ -132,5 +132,5 @@ public sealed class LoopbackTransportTests
         Assert.Contains("not a real command", await ReadLineAsync(CreateReader(transport)));
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

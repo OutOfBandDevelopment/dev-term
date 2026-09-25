@@ -138,5 +138,5 @@ public sealed class K8055ControlSurfaceTests
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

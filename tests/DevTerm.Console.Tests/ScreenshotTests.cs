@@ -357,5 +357,5 @@ public sealed class ScreenshotTests
         Assert.Contains("[ascii] ID TEK/2230,V81.1,VERS:14", dump);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

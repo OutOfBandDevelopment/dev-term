@@ -201,5 +201,5 @@ public sealed class SessionTests
         Assert.AreEqual(ConnectionState.Open, session.State);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

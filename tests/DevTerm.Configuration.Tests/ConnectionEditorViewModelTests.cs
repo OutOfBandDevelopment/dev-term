@@ -2122,5 +2122,5 @@ public sealed class ConnectionEditorViewModelTests
         }
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

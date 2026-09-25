@@ -194,5 +194,5 @@ public sealed class HidTransportTests
         factory.Verify(f => f.Create(It.IsAny<HidTransportOptions>()), Times.Never);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

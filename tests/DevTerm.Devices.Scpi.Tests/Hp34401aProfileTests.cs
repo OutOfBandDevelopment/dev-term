@@ -199,5 +199,5 @@ public sealed class Hp34401aProfileTests
         Assert.AreEqual("+1.234560E-01", fired[1].Value);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

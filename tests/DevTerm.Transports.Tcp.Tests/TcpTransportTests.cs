@@ -201,5 +201,5 @@ public sealed class TcpTransportTests
     /// <summary>Stand-in for a real socket exception so the test doesn't depend on actual networking.</summary>
     private sealed class SocketExceptionStub : Exception;
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

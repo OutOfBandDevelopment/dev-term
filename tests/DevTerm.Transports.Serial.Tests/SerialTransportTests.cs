@@ -177,5 +177,5 @@ public sealed class SerialTransportTests
         factory.Verify(f => f.Create(It.IsAny<SerialTransportOptions>()), Times.Never);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

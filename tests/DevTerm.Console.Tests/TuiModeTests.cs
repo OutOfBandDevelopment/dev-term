@@ -354,5 +354,5 @@ public sealed class TuiModeTests
         }
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

@@ -168,5 +168,5 @@ public sealed class ControlPanelScreenshotTests
         Assert.Contains(s => s.Label == "Custom Command", definition.Sections);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

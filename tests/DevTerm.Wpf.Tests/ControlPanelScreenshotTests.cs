@@ -132,5 +132,5 @@ public sealed class ControlPanelScreenshotTests
         });
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }

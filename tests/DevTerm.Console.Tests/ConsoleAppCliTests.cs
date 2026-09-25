@@ -181,5 +181,5 @@ public sealed class ConsoleAppCliTests
         Assert.AreEqual(0, process.ExitCode);
     }
 
-    public TestContext TestContext { get; set; }
+    public required TestContext TestContext { get; set; }
 }
