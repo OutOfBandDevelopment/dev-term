@@ -39,6 +39,12 @@ $ dotnet DevTerm.Console.dll --listhiddevices true
 04D8:F848  BLL Lamp
 ```
 
+Each `--listusbtmcdevices` line also ends with the instrument's physical USB location, e.g.
+`at usb:1-4.2` (bus 1, root port 4, port 2 of the hub on it). That's the value a USBTMC profile's
+`DevicePath` holds. It tells two identical instruments apart when neither reports a usable serial
+number, and it's only consulted when the serial number is blank. The Connection Editor fills it in
+when you pick a detected USBTMC device.
+
 `--listhiddevices`/`--listusbtmcdevices` both take the same optional `--vendorid <n>`/
 `--productid <n>` filter the Connection Editor's detected-devices picker uses — `0` (the default)
 means "any", a non-zero value narrows the list to just matching devices:
@@ -88,6 +94,11 @@ configured — no flags, no saved profile, or an invalid one. It's also reachabl
 
 ![WPF connection editor, serial transport](images/wpf-device-profiles-serial.png)
 
+These captures come from a machine with no COM3 attached. The red "(not found — …)" line is how
+both front ends flag a saved port or USB device that isn't connected right now; the TUI shows
+"(not found)" next to the field. It's only a hint: Connect still tries, and reports the error if the
+connection fails.
+
 **TCP**:
 
 ![TUI connection editor, TCP transport](images/tui-configure-tcp.png)
@@ -130,8 +141,12 @@ nothing plugged in afterward shows up without reopening the editor.
 
 On Windows each detected serial port is listed with the name Device Manager gives it — for example
 "COM3 — Prolific USB-to-Serial Comm Port" — which makes it much easier to tell adapters apart;
-picking one still fills in just `COM3`. A port Windows has no name for, and every port on Linux and
-macOS, is listed by its short name alone. (`--listports` still prints short names only.)
+picking one still fills in just `COM3`. On Linux and macOS a USB serial adapter is listed with the
+manufacturer, product, vendor/product ID and serial number the device itself reports — for example
+"/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)" — and picking it fills in just
+`/dev/ttyUSB0`. (The Linux/macOS descriptions have so far only been checked against sample data, not
+on a real Linux or macOS machine.) A port the OS has nothing to say about — a built-in `ttyS0`, a
+Bluetooth port — is listed by its short name alone. (`--listports` still prints short names only.)
 
 ### Viewing Vendor/Product ID as hex
 

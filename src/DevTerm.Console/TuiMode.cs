@@ -37,20 +37,23 @@ public static class TuiMode
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
+        // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
+        // so the user can retry (File > Connect) or pick a different connection (File > Device
+        // Profiles...) from there, rather than being dropped back to the shell.
+        string? startupError = null;
         try
         {
             await session.OpenAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception ex)
         {
-            System.Console.Error.WriteLine(ConnectionErrorMessages.For(cliOptions.Transport, ex));
-            return 1;
+            startupError = $"{ConnectionErrorMessages.For(cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.";
         }
 
         var app = Application.Create().Init();
         try
         {
-            var parts = BuildWindow(app, session, catalog, cliOptions, profileStore);
+            var parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -86,7 +89,7 @@ public static class TuiMode
     /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null)
     {
         // Also what "is this connection a saved profile?" (the title) is answered against, and what the
         // Device Profiles screen edits - a test passes an isolated one rather than the real user folder.
@@ -115,6 +118,17 @@ public static class TuiMode
             Height = Dim.Fill(),
         };
 
+        var outputLines = new List<string>();
+        if (ManifestNameWarning.For(cliOptions) is { } startupWarning)
+        {
+            outputLines.Add(startupWarning);
+        }
+
+        if (initialMessage is not null)
+        {
+            outputLines.Add(initialMessage);
+        }
+
         var output = new Editor
         {
             X = 0,
@@ -122,7 +136,7 @@ public static class TuiMode
             Width = Dim.Fill(),
             Height = Dim.Fill(1),
             ReadOnly = true,
-            Text = ManifestNameWarning.For(cliOptions) ?? string.Empty,
+            Text = string.Join('\n', outputLines),
         };
 
         var sendLabel = new Label
@@ -146,8 +160,6 @@ public static class TuiMode
         // DevTerm.Wpf.MainWindow's editable ComboBox for the WPF equivalent of the same history.
         var sendHistory = new SendHistory();
 
-        var outputLines = new List<string>();
-
         void AppendOutput(string line)
         {
             app.Invoke(() =>
@@ -167,7 +179,35 @@ public static class TuiMode
             session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
-        connectMenuItem.Action = () => _ = ToggleConnectionAsync(app, session, cliOptions, connectMenuItem, sendField, AppendOutput);
+        connectMenuItem.Action = () => Observe(ToggleConnectionAsync(app, session, cliOptions, connectMenuItem, sendField, AppendOutput), AppendOutput);
+
+        // A menu action that throws would otherwise escape into Application.Run - which only
+        // swallows it in RELEASE builds (see RunAsync's errorHandler). Report it and carry on.
+        Action Guarded(Action action) => () =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.ErrorQuery(app, "dev-term — error", ex.Message, "Ok");
+            }
+        };
+
+        // The session (this one, or whichever SwitchProfileAsync swaps in) closed itself because
+        // the connection ended - report why and flip the UI to "disconnected", ready to reconnect.
+        void OnSessionDisconnected(object? _, SessionDisconnectedEventArgs e)
+        {
+            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(cliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
+            app.Invoke(() =>
+            {
+                connectMenuItem.Title = "_Connect";
+                sendField.Enabled = false;
+            });
+        }
+
+        session.Disconnected += OnSessionDisconnected;
 
         void SetParser(string name)
         {
@@ -182,7 +222,7 @@ public static class TuiMode
             new MenuBarItem("_File",
             [
                 connectMenuItem,
-                new MenuItem("_Device Profiles...", string.Empty, () =>
+                new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
                     var configureParts = ConfigureMode.BuildWindow(app, cliOptions, null, profileStore);
                     app.Run(configureParts.Window);
@@ -190,9 +230,9 @@ public static class TuiMode
                     if (configureParts.Result is { } chosen)
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
-                        _ = SwitchProfileAsync(chosen);
+                        Observe(SwitchProfileAsync(chosen), AppendOutput);
                     }
-                }),
+                })),
                 new MenuItem("_Quit", "Ctrl+Q", () => app.RequestStop(), Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
@@ -205,7 +245,7 @@ public static class TuiMode
                 // competing one to the same physical device - reads the live "session"/"catalog"
                 // closure variables, which SwitchProfileAsync above reassigns on a profile switch,
                 // the same way the "_Device Profiles..." item above reads the live "cliOptions".
-                new MenuItem("_K8055 Control Panel...", string.Empty, () =>
+                new MenuItem("_K8055 Control Panel...", string.Empty, Guarded(() =>
                 {
                     var structuredSource = catalog.TryGet("k8055", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
@@ -215,8 +255,8 @@ public static class TuiMode
                         structuredSource,
                         "dev-term — K8055 Control Panel");
                     app.Run(panelParts.Window);
-                }),
-                new MenuItem("_Busylight Control Panel...", string.Empty, () =>
+                })),
+                new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
                 {
                     var structuredSource = catalog.TryGet("busylight", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
@@ -226,11 +266,11 @@ public static class TuiMode
                         structuredSource,
                         "dev-term — Busylight Control Panel");
                     app.Run(panelParts.Window);
-                }),
+                })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
-                new MenuItem("_SCPI Instrument...", string.Empty, () =>
+                new MenuItem("_SCPI Instrument...", string.Empty, Guarded(() =>
                 {
                     var structuredSource = ResolveActiveScpiPresenter(session, catalog);
                     var picked = ResolveSavedScpiProfileChoice(cliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
@@ -246,7 +286,7 @@ public static class TuiMode
                         // forget with the eventual window open marshaled back via Application.Invoke,
                         // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
                         // reason (real async I/O resumes off the UI thread).
-                        _ = DetectAndOpenScpiInstrumentAsync(app, session, structuredSource);
+                        Observe(DetectAndOpenScpiInstrumentAsync(app, session, structuredSource, AppendOutput), AppendOutput);
                         return;
                     }
 
@@ -254,7 +294,7 @@ public static class TuiMode
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
                     OpenScpiInstrumentWindow(app, session, structuredSource, profile);
-                }),
+                })),
             ]),
         ]);
 
@@ -328,6 +368,7 @@ public static class TuiMode
             var mySession = built.Session;
 
             session.Output -= OnSessionOutput;
+            session.Disconnected -= OnSessionDisconnected;
             await session.CloseAsync();
             await session.DisposeAsync();
 
@@ -336,6 +377,7 @@ public static class TuiMode
             cliOptions = newOptions;
             parser = newOptions.EffectiveParser;
             mySession.Output += OnSessionOutput;
+            mySession.Disconnected += OnSessionDisconnected;
 
             app.Invoke(() =>
             {
@@ -358,7 +400,7 @@ public static class TuiMode
                 // attempt owns the UI now, so this stale one reports nothing.
                 return false;
             }
-            catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+            catch (Exception ex)
             {
                 if (!ReferenceEquals(switchCts, cts))
                 {
@@ -381,6 +423,7 @@ public static class TuiMode
                 // Connected, but superseded in the meantime - close it rather than adopting a
                 // stray connection as current.
                 mySession.Output -= OnSessionOutput;
+                mySession.Disconnected -= OnSessionDisconnected;
                 await mySession.CloseAsync();
                 await mySession.DisposeAsync();
                 return false;
@@ -448,7 +491,7 @@ public static class TuiMode
                 return;
             }
 
-            _ = SendAsync(session, cliOptions, input, line, AppendOutput);
+            Observe(SendAsync(session, cliOptions, input, line, AppendOutput, parser), AppendOutput);
         };
 
         window.Add(menuBar, output, sendLabel, sendField);
@@ -481,7 +524,7 @@ public static class TuiMode
         {
             await session.OpenAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception ex)
         {
             appendOutput(ConnectionErrorMessages.For(cliOptions.Transport, ex));
 
@@ -505,9 +548,20 @@ public static class TuiMode
         appendOutput($"Connected to {ConnectionDescription.For(cliOptions)}.");
     }
 
-    internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput)
+    /// <summary>
+    /// Encodes and sends one typed line. A line the parser rejects is reported and not sent (the
+    /// connection is left alone); a device-side failure has already disconnected the session and
+    /// been reported by its <see cref="Session.Disconnected"/> handler, so it isn't reported twice.
+    /// Never throws.
+    /// </summary>
+    internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput, string? parserName = null)
     {
-        var payload = cliOptions.LineEnding.Append(input.Parse(line));
+        if (!TypedInput.TryEncode(input, parserName ?? cliOptions.EffectiveParser, line, cliOptions.LineEnding, out var payload, out var error))
+        {
+            appendOutput(error!);
+            return;
+        }
+
         if (payload.Length == 0)
         {
             return;
@@ -517,15 +571,26 @@ public static class TuiMode
         {
             await session.SendAsync(payload);
         }
-        catch (TimeoutException)
+        catch (Exception ex)
         {
-            appendOutput("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
-        }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
-        {
-            appendOutput($"Send failed: {ex.Message}");
+            if (session.State == ConnectionState.Open)
+            {
+                appendOutput($"Send failed: {ex.Message}");
+            }
         }
     }
+
+    /// <summary>
+    /// Observes a fire-and-forget task (a menu action or key handler can't await): anything it
+    /// throws is reported in the output pane instead of silently vanishing as an unobserved task
+    /// exception.
+    /// </summary>
+    private static void Observe(Task task, Action<string> appendOutput) =>
+        _ = task.ContinueWith(
+            t => appendOutput($"Unexpected error: {t.Exception!.GetBaseException().Message}"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
     /// <summary>Centralized on <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/> so a saved <c>CliOptions.ScpiProfile</c> choice and this picker always agree on the exact same literal.</summary>
     private const string _scpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
@@ -616,10 +681,32 @@ public static class TuiMode
         }
     }
 
-    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource)
+    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource, Action<string> appendOutput)
     {
-        var detected = await DetectProfileAsync(session, structuredSource);
-        app.Invoke(() => OpenScpiInstrumentWindow(app, session, structuredSource, detected ?? ScpiProfileCatalog.Generic));
+        ScpiInstrumentProfile? detected;
+        try
+        {
+            detected = await DetectProfileAsync(session, structuredSource);
+        }
+        catch (Exception ex)
+        {
+            // The *IDN? send failed - the session has disconnected itself and reported why, so
+            // there's no connection to open a panel against.
+            appendOutput($"SCPI auto-detect failed: {ex.Message}");
+            return;
+        }
+
+        app.Invoke(() =>
+        {
+            try
+            {
+                OpenScpiInstrumentWindow(app, session, structuredSource, detected ?? ScpiProfileCatalog.Generic);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.ErrorQuery(app, "dev-term — error", ex.Message, "Ok");
+            }
+        });
     }
 
     private static void OpenScpiInstrumentWindow(IApplication app, Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)

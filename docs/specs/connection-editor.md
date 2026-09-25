@@ -28,7 +28,7 @@ Shown in two situations:
 |---|---|---|---|---|
 | Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
-| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; on Windows each entry is shown as `COM3 — Prolific USB-to-Serial Comm Port` (see Per-front-end notes), but only the short name is written into the field |
+| Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
 | Data bits (serial) | integer, typed as text | `8` | Same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
@@ -50,7 +50,7 @@ Shown in two situations:
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested` | None | Shows the validation failure message; `Result` stays `null`, window stays open |
+| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`Dtr`, `Rts`, `WriteTimeoutMs`/`ReadTimeoutMs`, `AsciiMaxLineLength`, `ManifestName`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
 | **Close** (WPF) / **Quit** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
 | **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
@@ -73,6 +73,16 @@ Shown in two situations:
   within that group, only the Detected-devices picker for the *selected* one of `hid`/`usbtmc` is
   shown, since they're separate discovery sources (see Per-front-end notes). Presenter/Line ending/
   Description/Save/Import-export are always visible regardless of Transport.
+- **"Not found" hint** (`ConnectedDeviceNotFound`): when the loaded Port, or the USB identity (Vendor/Product
+  ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
+  ends show a hint next to it. The TUI shows `(not found)`. WPF shows `(not found — this port isn't connected right
+  now)` / `(not found — no connected device matches this vendor/product/serial)` in red under the detected-devices
+  picker; it was TUI-only until 2026-09-25. It never blocks Connect.
+- **USBTMC device location**: picking a detected USBTMC device also fills `DevicePath` with its physical USB
+  location (`usb:{bus}-{port chain}`, e.g. `usb:1-4.2`, the same form `--listusbtmcdevices` prints as
+  `at usb:…`). The transport consults it only when the serial number is blank, to tell identical serial-less
+  instruments apart. A serial number moves with the device between ports, a location doesn't, so the serial wins
+  whenever there is one.
 - **Status message**: a single line (`StatusMessage`) shows the most recent action's result or a
   validation failure — success and failure share the same field, there's no separate "error" vs.
   "info" styling today (WPF renders it in dark red regardless).
@@ -193,6 +203,20 @@ Shown in two situations:
   COM3 entry was found and correctly not listed), then with a live Prolific USB-to-Serial adapter
   (enumerated as COM4: `COM4 => Prolific USB-to-Serial Comm Port` returned, ghost COM3 still not
   listed).
+- **Linux and macOS describe a port from its USB device's string descriptors** (landed 2026-09-25;
+  unit-tested against sample sysfs/`ioreg` data only, not yet run on a real Linux or macOS machine).
+  Both produce `<manufacturer> <product> (<vid>:<pid>, serial <serial>)` — the manufacturer dropped
+  when the product already starts with it, `USB device <vid>:<pid>` when the device has no strings —
+  keyed by the full path `GetPortNames()` reports there (`/dev/ttyUSB0`, `/dev/cu.usbserial-…`).
+  `LinuxSerialPortDescriptions` resolves `/sys/class/tty/<name>/device` (a physical realpath, since
+  `/sys/class/tty/<name>` is itself a link) and walks up to the nearest directory with `idVendor` —
+  the USB device, not its interface or an upstream hub — reading `manufacturer`/`product`/`serial`/
+  `idVendor`/`idProduct`. `MacSerialPortDescriptions` runs `/usr/sbin/ioreg -a -l -r -c
+  IOUSBHostDevice` (3 s bound, killed on timeout) and maps every `IOSerialBSDClient`'s
+  `IOCalloutDevice`/`IODialinDevice` (both `cu.*` and `tty.*`) to its nearest `IOUSBHostDevice`'s
+  `USB Vendor Name`/`USB Product Name`/`USB Serial Number` (or the `kUSB*String` twins). A port
+  with no USB device behind it (`ttyS0`, `cu.Bluetooth-Incoming-Port`), unreadable sysfs, or a
+  missing/failing/hung `ioreg` just gets no description.
 - **The HID and USBTMC pickers are each filtered by the shared ID fields, live, independently.**
   `HidDeviceOptions`/`UsbtmcDeviceOptions` are not the raw discovery results: each is
   `detected.Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId
@@ -286,9 +310,7 @@ Shown in two situations:
 
 ## Open items
 
-Requested but not yet built, prioritized 2026-09-16 (the presenter picker and per-input-line parser both landed 2026-09-18 — see Fields and Per-front-end notes):
+None right now. Everything requested 2026-09-16 has landed: the presenter picker and per-input-line
+parser on 2026-09-18, and the last item, serial-port descriptions on Linux/macOS, on 2026-09-25 (see
+Fields and Per-front-end notes). Remaining Connection Editor follow-ups live in `BACKLOG.md`.
 
-- **Serial-port descriptions on Linux/macOS.** The "Detected ports" picker decorates each port with
-  the OS's description on Windows only (landed 2026-09-18, see Per-front-end notes); Linux
-  (`/sys/class/tty/*/device` → udev/`ID_MODEL`) and macOS (IOKit) still show short names only.
-  `ISerialPortDiscovery.GetPortDescriptions()` is the seam — nothing else changes to add them.

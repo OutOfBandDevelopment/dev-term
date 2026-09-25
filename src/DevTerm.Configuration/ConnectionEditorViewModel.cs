@@ -51,6 +51,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _importExportPath = string.Empty;
     private string _statusMessage = string.Empty;
     private string? _selectedProfileName;
+
+    // The profile most recently loaded into the form - see BuildOptions for why it's kept.
+    private CliOptions _loadedOptions = new();
     private bool _isDirty;
     private string? _selectedSerialPort;
     private HidDeviceOption? _selectedHidDevice;
@@ -740,6 +743,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
                 VendorId = value.VendorId.ToString(CultureInfo.InvariantCulture);
                 ProductId = value.ProductId.ToString(CultureInfo.InvariantCulture);
                 SerialNumber = value.SerialNumber ?? string.Empty;
+                DevicePath = value.DevicePath ?? string.Empty;
             }
 
             OnPropertyChanged(nameof(ConnectedDeviceNotFound));
@@ -837,6 +841,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public void LoadIntoFields(CliOptions options)
     {
+        _loadedOptions = options;
         Transport = options.Transport;
         Port = options.Port ?? string.Empty;
         SelectedSerialPort = SerialPortOptions.FirstOrDefault(p => string.Equals(p.Name, Port, StringComparison.Ordinal))?.Name;
@@ -866,7 +871,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             nameof(SelectedHidDevice));
         SetField(
             ref _selectedUsbtmcDevice,
-            FindBestUsbDeviceMatch(_detectedUsbtmcDevices, options.VendorId, options.ProductId, options.SerialNumber, null, d => d.VendorId, d => d.ProductId, d => d.SerialNumber, d => null),
+            FindBestUsbDeviceMatch(_detectedUsbtmcDevices, options.VendorId, options.ProductId, options.SerialNumber, options.DevicePath, d => d.VendorId, d => d.ProductId, d => d.SerialNumber, d => d.DevicePath),
             nameof(SelectedUsbtmcDevice));
         OnPropertyChanged(nameof(ConnectedDeviceNotFound));
 
@@ -891,7 +896,19 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
                 : (Port.Trim() is { Length: > 0 } p ? p : null),
             Host = Host.Trim() is { Length: > 0 } h ? h : null,
             Listen = Listen,
-            Presenter = [.. SelectedPresenters],
+            Presenter = [.. OrderLikeLoaded(SelectedPresenters, _loadedOptions.EffectivePresenters)],
+
+            // Settings this form doesn't expose, carried over from whatever was loaded rather than
+            // reset to CliOptions' defaults. Without this, loading a saved profile and pressing
+            // Connect silently changed the connection (a profile saved with DTR off came back with
+            // it on) and the result no longer matched the saved profile, which is how the window
+            // title identifies it - so the title lost the profile's name.
+            Dtr = _loadedOptions.Dtr,
+            Rts = _loadedOptions.Rts,
+            WriteTimeoutMs = _loadedOptions.WriteTimeoutMs,
+            ReadTimeoutMs = _loadedOptions.ReadTimeoutMs,
+            AsciiMaxLineLength = _loadedOptions.AsciiMaxLineLength,
+            ManifestName = _loadedOptions.ManifestName,
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
@@ -941,6 +958,14 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
         return options;
     }
+
+    // An untouched selection keeps the loaded profile's own presenter order (the picker lists
+    // presenters in a fixed order, which can differ), so load-then-connect round-trips exactly; once
+    // the user changes which presenters are ticked, the picker's order applies.
+    private static IReadOnlyList<string> OrderLikeLoaded(IReadOnlyList<string> selected, IReadOnlyList<string> loaded) =>
+        selected.Count == loaded.Count && selected.All(name => loaded.Contains(name, StringComparer.OrdinalIgnoreCase))
+            ? loaded
+            : selected;
 
     /// <summary><see cref="CliOptionsValidator"/> plus the one rule only this editor can break: an empty presenter picker (a bound <see cref="CliOptions"/> with no <c>Presenter</c> means "the default", so it can't tell).</summary>
     private ValidateOptionsResult ValidateFields(CliOptions options) =>

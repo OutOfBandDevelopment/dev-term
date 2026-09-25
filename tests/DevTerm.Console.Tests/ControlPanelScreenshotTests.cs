@@ -90,6 +90,8 @@ public sealed class ControlPanelScreenshotTests
     [TestMethod]
     public void ControlPanelMode_Busylight_IsCaptured()
     {
+        // No custom color set yet, so the swatch next to Custom... stays hidden (process-wide state).
+        DevTerm.Configuration.LastPickedColors.Forget("customColor");
         var transport = new FakeTransport();
         var session = new Session(transport, new Pipeline([]));
         var surface = new BusylightControlSurface(session);
@@ -169,4 +171,39 @@ public sealed class ControlPanelScreenshotTests
     }
 
     public required TestContext TestContext { get; set; }
+
+    [TestMethod]
+    public void ControlPanelMode_Busylight_WithACustomColorSet_IsCaptured()
+    {
+        DevTerm.Configuration.LastPickedColors.Set("customColor", (0xFF, 0x66, 0x00));
+        try
+        {
+            var session = new Session(new FakeTransport(), new Pipeline([]));
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var parts = ControlPanelMode.BuildWindow(app, BusylightUiDefinition.Build(), new BusylightControlSurface(session), structuredSource: null, "dev-term — Busylight Control Panel");
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+
+                try
+                {
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-control-panel-busylight-custom-color.png"));
+                }
+                finally
+                {
+                    app.End(token);
+                }
+            });
+
+            SaveDump("tui-control-panel-busylight-custom-color", dump);
+            Assert.Contains("#FF6600", dump);
+        }
+        finally
+        {
+            DevTerm.Configuration.LastPickedColors.Forget("customColor");
+        }
+    }
 }

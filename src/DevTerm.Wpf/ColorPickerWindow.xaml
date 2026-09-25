@@ -1,59 +1,68 @@
 <Window x:Class="DevTerm.Wpf.ColorPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="dev-term — Custom Color" Height="360" Width="360" MinHeight="360" MinWidth="360"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+        Title="dev-term — Custom Color" Width="360" MinWidth="300" MinHeight="200" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip" ShowInTaskbar="False">
+    <!-- This window used to be a fixed 360px tall with ResizeMode="NoResize" and the OK/Cancel row
+         docked last, so its content ran past the bottom (worse at higher DPI scaling) and the buttons
+         were cut off with no way to reach them. Now: it opens sized to its content, can be resized
+         freely, the controls scroll when the window is too short for them, and the button row is
+         docked first so it's always reserved and always visible. -->
     <DockPanel Margin="10">
-        <Border DockPanel.Dock="Top" x:Name="PreviewSwatch" Height="40" Margin="0,0,0,10" BorderBrush="Black" BorderThickness="1" />
-
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBlock Text="Hex:" VerticalAlignment="Center" Width="40" />
-            <TextBox x:Name="HexTextBox" Width="90" KeyDown="HexTextBox_KeyDown" LostFocus="HexTextBox_LostFocus" />
-        </StackPanel>
-
-        <GroupBox Header="RGB" DockPanel.Dock="Top" Margin="0,0,0,10">
-            <StackPanel Margin="4">
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="R:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="RValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="RSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
-                </DockPanel>
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="G:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="GValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="GSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
-                </DockPanel>
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="B:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="BValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="BSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
-                </DockPanel>
-            </StackPanel>
-        </GroupBox>
-
-        <GroupBox Header="HSV" DockPanel.Dock="Top" Margin="0,0,0,10">
-            <StackPanel Margin="4">
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="H:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="HValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="HSlider" Minimum="0" Maximum="360" ValueChanged="HsvSlider_ValueChanged" />
-                </DockPanel>
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="S:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="SValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="SSlider" Minimum="0" Maximum="100" ValueChanged="HsvSlider_ValueChanged" />
-                </DockPanel>
-                <DockPanel Margin="0,2">
-                    <TextBlock Text="V:" Width="20" VerticalAlignment="Center" />
-                    <TextBlock x:Name="VValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
-                    <Slider x:Name="VSlider" Minimum="0" Maximum="100" ValueChanged="HsvSlider_ValueChanged" />
-                </DockPanel>
-            </StackPanel>
-        </GroupBox>
-
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Content="OK" Width="80" Height="32" Margin="0,0,8,0" IsDefault="True" Click="OkButton_Click" />
-            <Button Content="Cancel" Width="80" Height="32" IsCancel="True" />
+            <Button x:Name="OkButton" Content="OK" Width="80" Height="32" Margin="0,0,8,0" IsDefault="True" Click="OkButton_Click" />
+            <Button x:Name="CancelButton" Content="Cancel" Width="80" Height="32" IsCancel="True" />
         </StackPanel>
+
+        <ScrollViewer x:Name="ControlsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Border x:Name="PreviewSwatch" Height="40" Margin="0,0,0,10" BorderBrush="Black" BorderThickness="1" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="Hex:" VerticalAlignment="Center" Width="40" />
+                    <TextBox x:Name="HexTextBox" Width="90" KeyDown="HexTextBox_KeyDown" LostFocus="HexTextBox_LostFocus" />
+                </StackPanel>
+
+                <GroupBox Header="RGB" Margin="0,0,0,10">
+                    <StackPanel Margin="4">
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="R:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="RSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
+                        </DockPanel>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="G:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="GValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="GSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
+                        </DockPanel>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="B:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="BValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="BSlider" Minimum="0" Maximum="255" ValueChanged="RgbSlider_ValueChanged" />
+                        </DockPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="HSV">
+                    <StackPanel Margin="4">
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="H:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="HValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="HSlider" Minimum="0" Maximum="360" ValueChanged="HsvSlider_ValueChanged" />
+                        </DockPanel>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="S:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="SValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="SSlider" Minimum="0" Maximum="100" ValueChanged="HsvSlider_ValueChanged" />
+                        </DockPanel>
+                        <DockPanel Margin="0,2">
+                            <TextBlock Text="V:" Width="20" VerticalAlignment="Center" />
+                            <TextBlock x:Name="VValueText" Width="30" VerticalAlignment="Center" DockPanel.Dock="Right" />
+                            <Slider x:Name="VSlider" Minimum="0" Maximum="100" ValueChanged="HsvSlider_ValueChanged" />
+                        </DockPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
     </DockPanel>
 </Window>

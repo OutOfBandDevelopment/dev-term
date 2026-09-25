@@ -73,10 +73,52 @@ The send box is an editable drop-down: click its arrow to see recently sent line
 field focused, press **Up**/**Down** the same way the TUI does — the same 100-line, this-run-only
 history.
 
-## If a send fails
+## If something goes wrong
 
-Same behavior across all three front ends: a device I/O failure (a timeout, a HID report whose
-length doesn't match the device's exact frame size, etc.) appears as a line in the output instead of
-crashing the app — see `ConnectionErrorMessages`/`CliMode`/`TuiMode.SendAsync`/
-`MainWindow.SendCurrentInputAsync` in [`docs/design/platform.md`](../design/platform.md) and
-`CLAUDE.md`'s constraints list for why the send path catches more than just `TimeoutException`.
+No front end crashes or exits over an error once it's running. It tells you what happened, and you
+carry on from there.
+
+**A line the send format can't encode is rejected, not sent**, and the connection is left alone.
+Here the send format is hex and the first line isn't hex. This is a real capture against the
+built-in loopback device (the rejection goes to stderr):
+
+```text
+$ dotnet DevTerm.Console.dll --transport loopback --presenter ascii --parser hex --cli true
+Connected to Loopback using 'ascii' (send as 'hex').
+Type a line and press Enter to send; Ctrl+C to exit.
+OUTPut?
+Not sent: 'OUTPut?' isn't valid hex input (The input is not a valid hex string as its length is not a multiple of 2.)
+68656C6C6F0A
+[ascii] From Loopback test
+```
+
+**A lost connection disconnects cleanly and can be resumed.** Causes include a read or send failure
+(an unplugged cable, a reset socket, a device that stopped answering) and the device hanging up.
+The session closes, the reason is reported once, and:
+
+- **CLI**: the next line you type reconnects first, then sends. Here is a real capture against a
+  local TCP stand-in that hangs up about a second after connecting, then accepts the reconnect and
+  answers like the Tektronix 2230 above:
+
+  ```text
+  $ dotnet DevTerm.Console.dll --transport tcp --host 127.0.0.1 --port 5599 --presenter ascii --lineending Cr --cli true
+  Connected to TCP 127.0.0.1:5599 using 'ascii' (send as 'ascii').
+  Type a line and press Enter to send; Ctrl+C to exit.
+  The device closed the connection. The next line you send will reconnect.
+  ID?
+  Reconnecting to TCP 127.0.0.1:5599...
+  Reconnected to TCP 127.0.0.1:5599.
+  [ascii] ID TEK/2230,V81.1,VERS:14
+  ```
+
+  If the reconnect fails, you get the error and the line isn't sent; the next line tries again. The
+  CLI still exits (code 1) only when the *first* connection fails, so a script sees that.
+- **TUI and WPF**: the output shows `Connection lost: {reason} Use File > Connect to reconnect.`
+  (or `The device closed the connection. …`), the send field is disabled, and the menu item switches
+  to **Connect**. Use it to reconnect, or **File > Device Profiles...** to pick another connection.
+  If the connection fails at startup, the window opens anyway, disconnected, showing the error. It
+  used to exit (TUI) or show a message box and close (WPF).
+
+A serial timeout adds a hint about hardware flow control (CTS / `--handshake`); other transports
+don't, since CTS has nothing to do with them. See `Session.Disconnected`, `TypedInput` and
+`ConnectionErrorMessages` in [`docs/design/architecture.md`](../design/architecture.md).

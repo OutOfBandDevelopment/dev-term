@@ -14,12 +14,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTextPresenters(this IServiceCollection services)
     {
         services.AddOptions<AsciiPresenterOptions>().ValidateDataAnnotations().ValidateOnStart();
-        services.AddSingleton<IPresenter, AsciiPresenter>();
-        services.AddSingleton<IPresenter, Utf8Presenter>();
-        services.AddSingleton<IPresenter, HexPresenter>();
-        services.AddSingleton<IPresenter, DecimalPresenter>();
-        services.AddSingleton<IPresenter, OctalPresenter>();
-        services.AddSingleton<IPresenter, BinaryPresenter>();
+        services.AddTransient<IPresenter, AsciiPresenter>();
+        services.AddTransient<IPresenter, Utf8Presenter>();
+        services.AddTransient<IPresenter, HexPresenter>();
+        services.AddTransient<IPresenter, DecimalPresenter>();
+        services.AddTransient<IPresenter, OctalPresenter>();
+        services.AddTransient<IPresenter, BinaryPresenter>();
         return services;
     }
 }

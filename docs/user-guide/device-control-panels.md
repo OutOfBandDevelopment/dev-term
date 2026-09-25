@@ -25,6 +25,23 @@ immediately — no setup, no picker. These two devices have one fixed, built-in 
 
 ![WPF Busylight control panel](images/wpf-control-panel-busylight.png)
 
+**Custom...** opens the RGB/HSV picker. It opens on the last color you picked, even if you've closed
+and reopened the panel since; before any pick it starts on white. Once a custom color has been set,
+a swatch next to the button shows its hex value on a background of that color. Here the color is
+`#FF6600`:
+
+![TUI Busylight control panel with a custom color set](images/tui-control-panel-busylight-custom-color.png)
+
+![WPF Busylight control panel with a custom color set](images/wpf-control-panel-busylight-custom-color.png)
+
+The WPF picker opens sized to fit its controls and can be resized. If you make it shorter than its
+controls they scroll, and OK/Cancel stay pinned at the bottom (they used to be cut off, with no way
+to resize the window to reach them):
+
+![WPF custom color picker](images/wpf-color-picker.png)
+
+The chosen color is remembered only while the app is running, not across restarts.
+
 Both only make sense connected to that actual device over HID — opening either panel against an
 unrelated connection just won't do anything useful.
 

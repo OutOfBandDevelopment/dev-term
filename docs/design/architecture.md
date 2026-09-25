@@ -18,6 +18,14 @@ Describes the high-level architecture of dev-term: the core abstractions, how da
 
 A `Session` binds one `ITransport` instance to a pipeline of presenters for a single logical connection to a device. Multiple sessions can be open concurrently (e.g., watching two serial ports, or a serial port and a TCP bridge, side by side).
 
+**Errors and disconnects (2026-09-25).** A connection can end on its own: the read side fails (an unplugged cable, a reset socket, a presenter throwing while rendering), the device or peer closes it, or a send fails. In each case the session closes itself and raises `Session.Disconnected` once, with the failure or `null` for a clean hang-up. It raises it before a failed `SendAsync` rethrows, so the event is the single place a front end reports a lost connection. It isn't raised for a caller's own `CloseAsync`/`DisposeAsync`. `CloseAsync` is safe to call at any time and never throws for a transport-close failure, and `OpenAsync` reconnects the same session afterward. Open/close/fault are serialized, and a fault from an earlier connection is ignored once a newer one exists.
+
+Every front end builds on that the same way:
+- Input the parser can't encode is rejected before anything is sent (`DevTerm.Configuration.TypedInput`), leaving the connection alone.
+- A device-side failure disconnects and is reported through `Disconnected` (`ConnectionErrorMessages.ForDisconnect`).
+- The user resumes from there: File > Connect in the TUI/WPF, or simply the next typed line in the CLI.
+- A failed *startup* connect opens the TUI/WPF disconnected instead of exiting.
+
 ### Transport
 
 `ITransport` — abstraction over a byte- or message-oriented, full-duplex (or receive-only) connection to a device: connection lifecycle (discover/open/close), device-specific configuration, and streaming bytes in and out. See [transports.md](transports.md).

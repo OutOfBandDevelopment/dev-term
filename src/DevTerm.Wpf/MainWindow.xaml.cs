@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         }
 
         _session.Output += OnSessionOutput;
+        _session.Disconnected += OnSessionDisconnected;
         Loaded += OnLoaded;
         Closing += OnClosing;
 
@@ -93,28 +94,54 @@ public partial class MainWindow : Window
     /// than only reachable through the <c>async void</c> event handler) so tests can drive and
     /// await it deterministically.
     /// </summary>
+    /// <remarks>
+    /// A failed connect leaves the window open and disconnected with the error in the output list,
+    /// so the user can retry (File > Connect) or choose another connection (File > Device
+    /// Profiles...) - it used to show a modal and then close the whole app.
+    /// </remarks>
     internal async Task ConnectAsync()
     {
+        Title = TitleText;
         try
         {
             await _session.OpenAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception ex)
         {
-            MessageBox.Show(
-                ConnectionErrorMessages.For(_cliOptions.Transport, ex),
-                "dev-term — connection failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Close();
+            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.");
+            SetConnectedUi(false);
             return;
         }
 
-        Title = TitleText;
-        ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = true;
+        SetConnectedUi(true);
         SendBox.Focus();
     }
+
+    private void SetConnectedUi(bool connected)
+    {
+        ConnectMenuItem.Header = connected ? "_Disconnect" : "_Connect";
+        SendBox.IsEnabled = connected;
+    }
+
+    // Raised on a background thread after the session closed itself (a read/send failure, or the
+    // device hanging up) - report why and flip the UI to "disconnected", ready to reconnect.
+    private void OnSessionDisconnected(object? sender, SessionDisconnectedEventArgs e) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(_cliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
+            SetConnectedUi(false);
+        });
+
+    /// <summary>
+    /// Observes a fire-and-forget task (an event handler can't await): anything it throws is
+    /// reported in the output list instead of surfacing later as an unobserved task exception.
+    /// </summary>
+    private void Observe(Task task) =>
+        _ = task.ContinueWith(
+            t => Dispatcher.BeginInvoke(() => AppendOutput($"Unexpected error: {t.Exception!.GetBaseException().Message}")),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
     /// <summary>
     /// The File > Connect/Disconnect menu item's action: closes an open session, or reopens a
@@ -126,8 +153,7 @@ public partial class MainWindow : Window
         if (_session.State == ConnectionState.Open)
         {
             await _session.CloseAsync();
-            ConnectMenuItem.Header = "_Connect";
-            SendBox.IsEnabled = false;
+            SetConnectedUi(false);
             AppendOutput("Disconnected.");
             return;
         }
@@ -136,30 +162,22 @@ public partial class MainWindow : Window
         {
             await _session.OpenAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception ex)
         {
-            MessageBox.Show(
-                ConnectionErrorMessages.For(_cliOptions.Transport, ex),
-                "dev-term — connection failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            AppendOutput(ConnectionErrorMessages.For(_cliOptions.Transport, ex));
 
-            // Unlike SwitchProfileAsync (which already resets these on a failed attempt), this
-            // reuses the same session/transport across retries - but the menu label/send box still
-            // need to reflect "not connected" on a failed *retry*, not just a failed first attempt
-            // (ConnectAsync already leaves them alone on a failed first attempt, since it closes the
-            // window instead). Same asymmetry found and fixed in TuiMode.ToggleConnectionAsync.
-            ConnectMenuItem.Header = "_Connect";
-            SendBox.IsEnabled = false;
+            // This reuses the same session/transport across retries - the menu label/send box
+            // still need to reflect "not connected" on a failed *retry*. Same asymmetry found and
+            // fixed in TuiMode.ToggleConnectionAsync.
+            SetConnectedUi(false);
             return;
         }
 
-        ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = true;
+        SetConnectedUi(true);
         AppendOutput($"Connected to {ConnectionDescription.For(_cliOptions)}.");
     }
 
-    private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => _ = ToggleConnectionAsync();
+    private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => Observe(ToggleConnectionAsync());
 
     private void OnSessionOutput(object? sender, PresenterOutput output) => Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
 
@@ -200,7 +218,7 @@ public partial class MainWindow : Window
         switch (key)
         {
             case Key.Enter:
-                _ = SendCurrentInputAsync();
+                Observe(SendCurrentInputAsync());
                 return true;
 
             case Key.Up:
@@ -224,12 +242,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Send_Click(object sender, RoutedEventArgs e) => _ = SendCurrentInputAsync();
+    private void Send_Click(object sender, RoutedEventArgs e) => Observe(SendCurrentInputAsync());
 
     /// <summary>
     /// Sends whatever's currently in <see cref="SendBox"/>, exposed as an awaitable method (rather
     /// than only reachable through the fire-and-forget UI event handlers) so tests can drive and
-    /// await it deterministically.
+    /// await it deterministically. A line the "Send as" parser rejects is reported and not sent
+    /// (the connection is left alone); a device-side failure has already disconnected the session
+    /// and been reported by <see cref="OnSessionDisconnected"/>, so it isn't reported twice.
+    /// Never throws.
     /// </summary>
     internal async Task SendCurrentInputAsync()
     {
@@ -242,7 +263,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var payload = _cliOptions.LineEnding.Append(input.Parse(line));
+        if (!TypedInput.TryEncode(input, CurrentParser, line, _cliOptions.LineEnding, out var payload, out var error))
+        {
+            AppendOutput(error!);
+            return;
+        }
+
         if (payload.Length == 0)
         {
             return;
@@ -258,16 +284,12 @@ public partial class MainWindow : Window
         {
             await _session.SendAsync(payload);
         }
-        catch (TimeoutException)
+        catch (Exception ex)
         {
-            AppendOutput("Send timed out — no response to hardware flow control (CTS)? Check the device or --handshake.");
-        }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
-        {
-            // Matches CliMode/TuiMode's send-path handling (see docs/changes/2026-09-15.md): a
-            // generic text presenter's typed input can't guarantee it matches a specific device's
-            // framing requirements, so report the failure instead of crashing.
-            AppendOutput($"Send failed: {ex.Message}");
+            if (_session.State == ConnectionState.Open)
+            {
+                AppendOutput($"Send failed: {ex.Message}");
+            }
         }
     }
 
@@ -279,7 +301,7 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
-            _ = SwitchProfileAsync(chosen);
+            Observe(SwitchProfileAsync(chosen));
         }
     }
 
@@ -334,7 +356,7 @@ public partial class MainWindow : Window
         var structuredSource = ResolveActiveScpiPresenter();
         if (chosen == ScpiInstrumentPickerWindow.AutoDetectChoice)
         {
-            _ = DetectAndOpenScpiInstrumentAsync(structuredSource);
+            Observe(DetectAndOpenScpiInstrumentAsync(structuredSource));
             return;
         }
 
@@ -397,7 +419,19 @@ public partial class MainWindow : Window
     // ToggleConnectionAsync/SwitchProfileAsync's own async-void-adjacent pattern for the same reason.
     private async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
-        var detected = await DetectScpiProfileAsync(structuredSource);
+        ScpiInstrumentProfile? detected;
+        try
+        {
+            detected = await DetectScpiProfileAsync(structuredSource);
+        }
+        catch (Exception ex)
+        {
+            // The *IDN? send failed - the session has disconnected itself and reported why, so
+            // there's no connection to open a panel against.
+            AppendOutput($"SCPI auto-detect failed: {ex.Message}");
+            return;
+        }
+
         OpenScpiInstrumentWindow(structuredSource, detected ?? ScpiProfileCatalog.Generic);
     }
 
@@ -477,11 +511,12 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppendOutput($"Could not switch profile: {ex.Message}");
             return false;
         }
 
         _session.Output -= OnSessionOutput;
+        _session.Disconnected -= OnSessionDisconnected;
         await _session.CloseAsync();
         await _session.DisposeAsync();
 
@@ -490,6 +525,7 @@ public partial class MainWindow : Window
         _cliOptions = newOptions;
         ParserBox.SelectedItem = newOptions.EffectiveParser;
         _session.Output += OnSessionOutput;
+        _session.Disconnected += OnSessionDisconnected;
 
         // A different profile means a different device/connection - clearing prior output avoids
         // mixing readings from the old connection in with the new one.
@@ -503,21 +539,16 @@ public partial class MainWindow : Window
         {
             await _session.OpenAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception ex)
         {
-            MessageBox.Show(
-                ConnectionErrorMessages.For(_cliOptions.Transport, ex),
-                "dev-term — connection failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            ConnectMenuItem.Header = "_Connect";
-            SendBox.IsEnabled = false;
+            Title = TitleText;
+            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.");
+            SetConnectedUi(false);
             return false;
         }
 
         Title = TitleText;
-        ConnectMenuItem.Header = "_Disconnect";
-        SendBox.IsEnabled = true;
+        SetConnectedUi(true);
         AppendOutput($"Switched to {ConnectionDescription.For(_cliOptions)}.");
         return true;
     }
@@ -535,12 +566,13 @@ public partial class MainWindow : Window
         // cancel the first close request, do the async cleanup, then close for real.
         e.Cancel = true;
         _session.Output -= OnSessionOutput;
+        _session.Disconnected -= OnSessionDisconnected;
         try
         {
             await _session.CloseAsync();
             await _session.DisposeAsync();
         }
-        catch (Exception ex) when (ConnectionErrorMessages.IsConnectionFailure(ex))
+        catch (Exception)
         {
             // The window is closing regardless - a device that timed out or vanished mid-close
             // isn't worth crashing the app over (and would leave the window unclosable).

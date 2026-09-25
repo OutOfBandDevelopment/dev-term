@@ -80,6 +80,8 @@ public sealed class ControlPanelScreenshotTests
     {
         StaTestRunner.Run(async () =>
         {
+            // No custom color set yet, so the swatch next to Custom... stays hidden (process-wide state).
+            DevTerm.Configuration.LastPickedColors.Forget("customColor");
             var transport = new FakeTransport();
             var session = new Session(transport, new Pipeline([]));
             var surface = new BusylightControlSurface(session);
@@ -133,4 +135,52 @@ public sealed class ControlPanelScreenshotTests
     }
 
     public required TestContext TestContext { get; set; }
+
+    [TestMethod]
+    public void ControlPanelWindow_Busylight_WithACustomColorSet_IsCaptured()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            DevTerm.Configuration.LastPickedColors.Set("customColor", (0xFF, 0x66, 0x00));
+            try
+            {
+                var session = new Session(new FakeTransport(), new Pipeline([]));
+                var window = new ControlPanelWindow(BusylightUiDefinition.Build(), new BusylightControlSurface(session), structuredSource: null) { ShowInTaskbar = false };
+                WpfScreenshot.ShowOffScreen(window);
+
+                var path = Path.Combine(_imagesDirectory, "wpf-control-panel-busylight-custom-color.png");
+                WpfScreenshot.Save(window, path);
+                AssertRealImage(path);
+            }
+            finally
+            {
+                DevTerm.Configuration.LastPickedColors.Forget("customColor");
+            }
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void ColorPickerWindow_AtItsNaturalSize_IsCaptured()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var window = new ColorPickerWindow(0xFF, 0x66, 0x00)
+            {
+                ShowInTaskbar = false,
+                WindowStartupLocation = System.Windows.WindowStartupLocation.Manual,
+                Left = -10000,
+                Top = -10000,
+            };
+            window.Show();
+            window.UpdateLayout();
+
+            var path = Path.Combine(_imagesDirectory, "wpf-color-picker.png");
+            WpfScreenshot.Save(window, path);
+            AssertRealImage(path);
+
+            await Task.CompletedTask;
+        });
+    }
 }

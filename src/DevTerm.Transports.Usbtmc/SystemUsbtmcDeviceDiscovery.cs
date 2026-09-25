@@ -52,8 +52,7 @@ public sealed class SystemUsbtmcDeviceDiscovery : IUsbtmcDeviceDiscovery
                         TryGet(() => info.Manufacturer),
                         TryGet(() => info.Product),
                         TryGet(() => info.SerialNumber),
-                        null)//TODO: MWHITED 20260925 fix this later maybe?
-                        );
+                        UsbtmcDeviceLocation.TryGet(device)));
                 }
                 finally
                 {
