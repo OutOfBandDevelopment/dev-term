@@ -2,15 +2,19 @@
 
 ## Purpose
 
-Describes how dev-term's tests are organized and why — three tiers, each with a real, different
-cost/hardware-dependency profile, distinguished by MSTest `[TestCategory]` so they can be run as
-separate subsets (`dotnet test --filter "TestCategory=..."`), which matters more as soon as any
-CI/CD pipeline exists (a pipeline can run `UNIT` and `INTEGRATION` on every push, and never attempt
-`DEV-LOCAL` at all — it depends on specific hardware on a specific home network).
+Describes how dev-term's tests are organized and why — two tiers, each with a real, different
+cost/hardware-dependency profile, distinguished by MSTest `[TestCategory]` (values declared in
+`DevTerm.Test.Utilities.TestCategories`, enforced by `tests/DevTerm.CodingStandards.Tests` — see
+`docs/coding-standards.md`'s Testing section) so they can be run as separate subsets
+(`dotnet test --filter "TestCategory=..."`), which matters more as soon as any CI/CD pipeline
+exists (a pipeline can run `Unit` on every push and treat `Integration` as slower/optional, without
+ever needing hardware-specific tiering — a hardware-backed `Integration` test degrades to
+`Assert.Inconclusive` on its own when the device isn't reachable, rather than needing a separate
+category to exclude it).
 
-## Three categories
+## Two categories
 
-- **`UNIT`** — fast, hardware-free, no process/OS boundary crossed. The large majority of the
+- **`Unit`** — fast, hardware-free, no process/OS boundary crossed. The large majority of the
   suite: transport tests against a fake port/device (a real `Pipe`, not a real socket/serial
   port/USB device — see `SerialTransportTests`/`TcpTransportTests`/`HidTransportTests`), presenter
   tests, serialization round-trips (`DevTerm.UiDefinitions`/`DevTerm.DeviceManifests`), WPF
@@ -25,7 +29,7 @@ CI/CD pipeline exists (a pipeline can run `UNIT` and `INTEGRATION` on every push
 `PushIncomingAsync` is a separate manual call to simulate a reply). That's fine for tests that only
 need one or two canned exchanges, but is tedious for anything wanting realistic request/response or
 multi-line "event stream" behavior — and a real `TcpListener` loopback socket (the pattern
-`TuiModeSwitchProfileTests`/`ConsoleAppCliTests` use) is `INTEGRATION`-tier overkill when the actual
+`TuiModeSwitchProfileTests`/`ConsoleAppCliTests` use) is `Integration`-tier overkill when the actual
 network stream isn't what's under test.
 
 `DevTerm.Console.Tests.LoopbackTransport` fills that gap: an in-process `ITransport`, same
@@ -42,16 +46,21 @@ parameterized "send me N events" command via `LoopbackGenerators.Events`); a tes
 rule list instead when it needs different behavior. See `LoopbackTransportTests` for usage through a
 real `Session`/`AsciiPresenter` pair — the same shape `TuiMode`/`MainWindow` use, just without
 `TuiTestRunner`/`StaTestRunner`'s UI-thread machinery, since nothing here touches Terminal.Gui or
-WPF. `UNIT`, not `INTEGRATION`: no socket, no process boundary, just a `Pipe`.
-- **`INTEGRATION`** — crosses a real process or OS boundary, but no real external hardware: spawns
-  the actual built `DevTerm.Console.dll` as a child process and drives it over real stdin/stdout,
-  against a real local TCP socket the test itself opens (loopback, not a real device) — see
-  `DevTerm.Console.Tests.ConsoleAppCliTests`. Slower than `UNIT`, still fully self-contained.
-- **`DEV-LOCAL`** — needs actual physical hardware reachable from wherever the test runs (a
-  specific home-network IP, a real instrument powered on). Never meaningful in CI. See
-  `RealHardwareCliTests`/`RealHardwareMainWindowTests` below.
+WPF. `Unit`, not `Integration`: no socket, no process boundary, just a `Pipe`.
+- **`Integration`** — crosses a real process, OS, or network boundary. This spans two different
+  things, both under the same category because both cross a real boundary `Unit` never does:
+  - **Process/socket, no real external hardware** — spawns the actual built `DevTerm.Console.dll`
+    as a child process and drives it over real stdin/stdout, against a real local TCP socket the
+    test itself opens (loopback, not a real device) — see `DevTerm.Console.Tests.ConsoleAppCliTests`.
+    Slower than `Unit`, still fully self-contained; never skips.
+  - **Real physical hardware** — needs an actual device reachable from wherever the test runs (a
+    specific home-network IP, a real instrument powered on). There is no separate category for
+    this: a hardware-backed `Integration` test preflights the device's presence at runtime and
+    reports `Assert.Inconclusive` (not a failure) when it's absent — see
+    `RealHardwareCliTests`/`RealHardwareMainWindowTests` and the rule below. This is what makes it
+    safe for `Integration` to run unconditionally in CI even though no CI runner has this hardware.
 
-## Real-hardware tests: opt-in via `.runsettings`, not hardcoded
+## Real-hardware tests: opt-in target via `.runsettings`, not hardcoded
 
 `RealHardware*Tests` classes read their target (host/port, currently) from
 `TestContext.Properties`, populated from a `.runsettings` file's `<TestRunParameters>` — see
@@ -63,28 +72,30 @@ Tektronix 2230 (over a serial-to-Ethernet bridge) already used for manual real-h
 verification throughout this project's `docs/changes/` history, now automated the same way rather
 than only ever checked by hand.
 
-## Rule: every `DEV-LOCAL` test preflights device presence, with a short timeout, before touching it
+## Rule: every real-hardware test preflights device presence, with a short timeout, before touching it
 
 Even with a `.runsettings` file supplying a target, the device itself might be powered off or
-unplugged — a bench state that's expected, not a build failure. A `DEV-LOCAL` test must check the
-device actually exists/is reachable *before* attempting the real interaction, and report
-`Assert.Inconclusive` (never fail, and never hang) if it doesn't. Reuse or extend `tests/
-DevTerm.Test.Utilities` for this rather than reimplementing the check per test class:
+unplugged — a bench state that's expected, not a build failure. A real-hardware `Integration` test
+must check the device actually exists/is reachable *before* attempting the real interaction, and
+report `Assert.Inconclusive` (never fail, and never hang) if it doesn't. This preflight-or-
+Inconclusive check is what distinguishes a hardware-backed `Integration` test from a
+process/socket-only one — it is a runtime behavior, not a separate `[TestCategory]` value. Reuse or
+extend `tests/DevTerm.Test.Utilities` for this rather than reimplementing the check per test class:
 
 - **TCP** — `RealDeviceReachability.IsTcpReachableAsync` (used by both `RealHardwareCliTests` and
   `RealHardwareMainWindowTests`), a short (3s default) `TcpClient.ConnectAsync` probe against the
   configured host:port. A TCP connect, not an ICMP ping, is the reachability check here — these
   targets are serial-to-Ethernet bridges, which may not answer ICMP even when the TCP service
   itself is up — and it needs no elevated/raw-socket privilege either way.
-- **Serial/COM port** or **USB (HID/USBTMC) by vendor/product ID** — no `DEV-LOCAL` test exists for
-  either yet, but when one is written, its existence check (is the COM port present /
+- **Serial/COM port** or **USB (HID/USBTMC) by vendor/product ID** — no real-hardware test exists
+  for either yet, but when one is written, its existence check (is the COM port present /
   does a USB device matching the VID:PID enumerate) belongs in `DevTerm.Test.Utilities` alongside
   `RealDeviceReachability`, following the same shape: a short, bounded check, `Assert.Inconclusive`
   on absence, referenced from whichever test project needs it instead of copy-pasted.
 
-Keep the timeout short (single-digit seconds) — a `DEV-LOCAL` run already opts in via `.runsettings`
-and is never on a CI critical path, but a slow/hung reachability check still makes local iteration
-on these tests painful.
+Keep the timeout short (single-digit seconds) — real hardware only actually gets exercised via
+`.runsettings` and this preflight is never on a CI critical path, but a slow/hung reachability check
+still makes local iteration on these tests painful.
 
 ## WPF automation: in-process, not OS-level UI Automation
 

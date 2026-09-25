@@ -3,8 +3,8 @@ using System.Net.Sockets;
 namespace DevTerm.Test.Utilities;
 
 /// <summary>
-/// Preflight checks for <c>DevLocal</c> tests so a real device left offline (bench powered down,
-/// bridge unplugged) degrades to <c>Assert.Inconclusive</c> the same way a missing
+/// Preflight checks for real-hardware <c>Integration</c> tests so a device left offline (bench
+/// powered down, bridge unplugged) degrades to <c>Assert.Inconclusive</c> the same way a missing
 /// <c>.runsettings</c> parameter already does, rather than failing or hanging. Shared by
 /// <c>DevTerm.Console.Tests.RealHardwareCliTests</c> and
 /// <c>DevTerm.Wpf.Tests.RealHardwareMainWindowTests</c> — any future serial/USB real-hardware test

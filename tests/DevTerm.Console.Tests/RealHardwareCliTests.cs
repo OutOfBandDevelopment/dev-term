@@ -18,7 +18,7 @@ namespace DevTerm.Console.Tests;
 /// expected reply, see below) can't silently assert something guessed, and adding a fourth real
 /// device later needs only new runsettings parameters plus one new `DataRow`, no code change.
 /// </summary>
-[TestCategory(TestCategories.DevLocal)]
+[TestCategory(TestCategories.Integration)]
 [TestClass]
 public sealed class RealHardwareCliTests
 {

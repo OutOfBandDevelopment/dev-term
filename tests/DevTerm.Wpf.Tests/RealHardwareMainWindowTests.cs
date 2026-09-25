@@ -14,7 +14,7 @@ namespace DevTerm.Wpf.Tests;
 /// real <see cref="TcpTransport"/> instead of <see cref="FakeTransport"/>. Reports
 /// <see cref="Assert.Inconclusive(string)"/> (not a failure) when run without a settings file.
 /// </summary>
-[TestCategory(TestCategories.DevLocal)]
+[TestCategory(TestCategories.Integration)]
 [TestClass]
 [DoNotParallelize]
 public sealed class RealHardwareMainWindowTests

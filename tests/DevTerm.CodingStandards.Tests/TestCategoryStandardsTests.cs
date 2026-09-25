@@ -21,8 +21,8 @@ namespace DevTerm.CodingStandards.Tests;
 [TestClass]
 public sealed class TestCategoryStandardsTests
 {
-    /// <summary>The only values docs/coding-standards.md and CLAUDE.md's Testing section recognize — add a new one here in the same change that starts using it.</summary>
-    private static readonly string[] _knownCategories = ["UNIT", "INTEGRATION", "DevLocal"];
+    /// <summary>The only values docs/coding-standards.md recognizes — add a new one here in the same change that starts using it.</summary>
+    private static readonly string[] _knownCategories = [TestCategories.Unit, TestCategories.Integration];
 
     private static readonly Assembly[] _testAssemblies =
     [

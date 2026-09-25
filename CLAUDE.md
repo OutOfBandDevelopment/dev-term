@@ -16,9 +16,9 @@ dotnet build                          # whole solution (DevTerm.slnx)
 dotnet test                           # whole solution — currently fast (well under a second per project)
 dotnet test tests/DevTerm.Core.Tests  # one project
 dotnet test --filter "FullyQualifiedName~AsciiPresenterTests"   # one class, any project
-dotnet test --filter "TestCategory=UNIT"          # fast, hardware-free (the default CI-safe subset)
-dotnet test --filter "TestCategory=INTEGRATION"   # spawns real processes/sockets, still no real hardware
-dotnet test --filter "TestCategory=DevLocal" --settings devterm.runsettings   # needs real hardware — see "Testing" below
+dotnet test --filter "TestCategory=Unit"          # fast, hardware-free (the default CI-safe subset)
+dotnet test --filter "TestCategory=Integration"   # real processes/sockets; real-hardware cases auto-skip (Inconclusive) without --settings
+dotnet test --filter "TestCategory=Integration" --settings devterm.runsettings   # also exercises real hardware — see "Testing" below
 dotnet run --project src/DevTerm.Console -- --listports true    # list serial ports
 dotnet run --project src/DevTerm.Console -- --listhiddevices true    # list USB HID devices
 dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true    # list USB USBTMC devices (see docs/design/usbtmc-transport.md)
@@ -172,33 +172,12 @@ easier to show than to describe in prose.
 
 ## Testing
 
-Every test class carries a `[TestCategory]`, one of `UNIT` (fast, hardware-free, the default subset once
-a CI pipeline exists — includes `DevTerm.Console.Tests.TuiModeTests`, which drives a real
-`TuiMode` window headlessly via Terminal.Gui's own testing API), `INTEGRATION` (spawns a real
-process and/or a real local socket, but no real external hardware — see
-`DevTerm.Console.Tests.ConsoleAppCliTests`), or `DevLocal` (needs an actual physical device
-reachable from wherever the test runs — see `RealHardwareCliTests`/`RealHardwareMainWindowTests`,
-opt-in via `devterm.runsettings` at the repo root; without a settings file they report
-`Assert.Inconclusive`, not a failure) — enforced, not just a convention: `tests/DevTerm.CodingStandards.Tests`
-reflects over every test assembly and fails on a class with no category, or an unrecognized one (see
-`docs/coding-standards.md`'s Testing section).
-
-**Any `DevLocal` test must also preflight-check that its device is actually present/reachable
-before touching it, with a short, bounded timeout, and report `Assert.Inconclusive` (never fail or
-hang) when it isn't** — a device intentionally powered off or disconnected is an expected bench
-state, not a red build. `DevTerm.Test.Utilities` (referenced by whichever test project needs it) is
-where this preflight logic lives — `RealDeviceReachability.IsTcpReachableAsync` today (a plain TCP
-connect, not ICMP, since these are serial-to-Ethernet bridges that may not answer ICMP even when
-the TCP service is up). A serial/COM-port or USB vendor/product-ID existence check for a future
-`DevLocal` test belongs there too, alongside it, rather than being reimplemented per test project.
-See `docs/design/testing.md`'s "Real-hardware tests" section for the full rationale.
-
-Full rationale, including two real WPF/async gotchas found
-building the `DevLocal` WPF tests (a missing `DispatcherSynchronizationContext` sends `await`
-continuations to the wrong thread; showing a `MainWindow` that's already been connected manually
-double-opens the session and corrupts the single-reader `PipeReader`) and the two Terminal.Gui
-`Application.Invoke`/`IInputInjector` gotchas below: see
-[`docs/design/testing.md`](docs/design/testing.md).
+Every test class carries a `[TestCategory]`, one of `Unit` (fast, hardware-free) or `Integration`
+(crosses a real process/socket boundary, or drives real physical hardware behind a
+preflight-or-`Assert.Inconclusive` check) — enforced by `tests/DevTerm.CodingStandards.Tests`.
+**`docs/design/testing.md` and `docs/coding-standards.md` are the authoritative references for the
+category rules, the real-hardware preflight pattern, and the WPF/TUI test-automation gotchas — this
+file only points there, it doesn't restate them.**
 
 ## Non-obvious constraints worth knowing before touching related code
 
