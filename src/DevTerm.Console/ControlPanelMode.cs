@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Globalization;
+using DevTerm.Configuration;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.UiDefinitions;
@@ -222,9 +223,11 @@ internal static class ControlPanelMode
                 var colorButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
                 colorButtonView.Accepting += (_, e) =>
                 {
-                    if (PickColor(app, 255, 255, 255) is { } picked)
+                    var (lastR, lastG, lastB) = LastPickedColors.Get(button.Id);
+                    if (PickColor(app, lastR, lastG, lastB) is { } picked)
                     {
-                        _ = surface.InvokeAsync(colorTargetId, $"{picked.R},{picked.G},{picked.B}");
+                        LastPickedColors.Set(button.Id, picked);
+                        Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
                     }
 
                     e.Handled = true;
@@ -238,7 +241,7 @@ internal static class ControlPanelMode
                 parameterButtonView.Accepting += (_, e) =>
                 {
                     var joined = string.Join(',', parameterFieldIds.Select(id => controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                    _ = surface.InvokeAsync(button.CommandId ?? button.Id, joined);
+                    Invoke(app, surface, button.CommandId ?? button.Id, joined);
                     e.Handled = true;
                 };
                 frame.Add(parameterButtonView);
@@ -249,7 +252,7 @@ internal static class ControlPanelMode
                 var buttonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
                 buttonView.Accepting += (_, e) =>
                 {
-                    _ = surface.InvokeAsync(button.CommandId ?? button.Id, null);
+                    Invoke(app, surface, button.CommandId ?? button.Id, null);
                     e.Handled = true;
                 };
                 frame.Add(buttonView);
@@ -264,7 +267,7 @@ internal static class ControlPanelMode
                     Value = toggle.DefaultValue ? CheckState.Checked : CheckState.UnChecked,
                 };
                 checkBox.ValueChanged += (_, _) =>
-                    _ = surface.InvokeAsync(toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
+                    Invoke(app, surface, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
                 frame.Add(checkBox);
                 controlViews[control.Id] = checkBox;
                 break;
@@ -281,7 +284,7 @@ internal static class ControlPanelMode
                 {
                     var clamped = Math.Clamp(ParseOr(sliderField.Text, slider.DefaultValue), slider.Minimum, slider.Maximum);
                     sliderField.Text = clamped.ToString(CultureInfo.InvariantCulture);
-                    _ = surface.InvokeAsync(slider.Id, clamped.ToString(CultureInfo.InvariantCulture));
+                    Invoke(app, surface, slider.Id, clamped.ToString(CultureInfo.InvariantCulture));
                     e.Handled = true;
                 };
                 frame.Add(sliderField);
@@ -302,7 +305,7 @@ internal static class ControlPanelMode
                 {
                     var clamped = Math.Clamp(ParseOr(numericField.Text, numeric.DefaultValue), numeric.Minimum, numeric.Maximum);
                     numericField.Text = clamped.ToString(CultureInfo.InvariantCulture);
-                    _ = surface.InvokeAsync(numeric.Id, clamped.ToString(CultureInfo.InvariantCulture));
+                    Invoke(app, surface, numeric.Id, clamped.ToString(CultureInfo.InvariantCulture));
                     e.Handled = true;
                 };
                 frame.Add(numericField);
@@ -326,7 +329,7 @@ internal static class ControlPanelMode
                 {
                     if (selector.Value is { } index && index >= 0 && index < choice.Options.Count)
                     {
-                        _ = surface.InvokeAsync(choice.Id, choice.Options[index]);
+                        Invoke(app, surface, choice.Id, choice.Options[index]);
                     }
                 };
                 frame.Add(selector);
@@ -341,7 +344,7 @@ internal static class ControlPanelMode
                         ? textFieldView.Text[..max]
                         : textFieldView.Text;
                     textFieldView.Text = value;
-                    _ = surface.InvokeAsync(textField.Id, value);
+                    Invoke(app, surface, textField.Id, value);
                     e.Handled = true;
                 };
                 frame.Add(textFieldView);
@@ -378,6 +381,31 @@ internal static class ControlPanelMode
     /// so every field is a bounded <see cref="TextField"/>, synced on Enter the same way
     /// Slider/Numeric rows above are.
     /// </summary>
+    /// <summary>
+    /// Sends one control's command without ever letting its failure escape: a rejected value (a
+    /// control surface's own validation) or a device-side failure (the session has then already
+    /// disconnected itself) is shown in an error dialog over this panel - which, being modal, hides
+    /// the main window's output pane where the disconnect is also reported.
+    /// </summary>
+    private static void Invoke(IApplication app, IControlSurface surface, string commandId, string? value)
+    {
+        void Report(Exception ex) =>
+            app.Invoke(() => MessageBox.ErrorQuery(app, "dev-term — command failed", ex.GetBaseException().Message, "Ok"));
+
+        Task task;
+        try
+        {
+            task = surface.InvokeAsync(commandId, value);
+        }
+        catch (Exception ex)
+        {
+            Report(ex);
+            return;
+        }
+
+        _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
+
     private static (byte R, byte G, byte B)? PickColor(IApplication app, byte initialR, byte initialG, byte initialB)
     {
         (byte R, byte G, byte B)? picked = null;

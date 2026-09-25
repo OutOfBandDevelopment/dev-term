@@ -772,4 +772,35 @@ public sealed class DeviceProfilesWindowTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [TestMethod]
+    public void SavedDeviceThatIsNotConnected_ShowsTheNotFoundHint_LikeTheTui()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                // A port name no real machine has, and a USB identity no real device has - so real
+                // discovery can never find either.
+                var serial = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "serial", Port = "COM_DEVTERM_NOPE" }) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+                Assert.AreEqual(Visibility.Visible, serial.PortNotFoundText.Visibility);
+
+                serial.ViewModel.Port = string.Empty;
+                StaTestRunner.DoEvents();
+                Assert.AreEqual(Visibility.Collapsed, serial.PortNotFoundText.Visibility, "No hint for a port that isn't set at all.");
+
+                var usb = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "usbtmc", VendorId = 0xFFFE, ProductId = 0xFFFE }) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+                Assert.AreEqual(Visibility.Visible, usb.UsbDeviceNotFoundText.Visibility);
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

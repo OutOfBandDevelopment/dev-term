@@ -58,6 +58,7 @@ public static class ServiceCollectionExtensions
                 o.VendorId = cliOptions.VendorId;
                 o.ProductId = cliOptions.ProductId;
                 o.SerialNumber = cliOptions.SerialNumber;
+                o.DevicePath = cliOptions.DevicePath;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
                 o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
             });

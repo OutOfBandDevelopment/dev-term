@@ -39,6 +39,12 @@ $ dotnet DevTerm.Console.dll --listhiddevices true
 04D8:F848  BLL Lamp
 ```
 
+Each `--listusbtmcdevices` line also ends with the instrument's physical USB location, e.g.
+`at usb:1-4.2` (bus 1, root port 4, port 2 of the hub on it). That's the value a USBTMC profile's
+`DevicePath` holds. It tells two identical instruments apart when neither reports a usable serial
+number, and it's only consulted when the serial number is blank. The Connection Editor fills it in
+when you pick a detected USBTMC device.
+
 `--listhiddevices`/`--listusbtmcdevices` both take the same optional `--vendorid <n>`/
 `--productid <n>` filter the Connection Editor's detected-devices picker uses — `0` (the default)
 means "any", a non-zero value narrows the list to just matching devices:
@@ -87,6 +93,11 @@ configured — no flags, no saved profile, or an invalid one. It's also reachabl
 ![TUI connection editor, serial transport](images/tui-configure-serial.png)
 
 ![WPF connection editor, serial transport](images/wpf-device-profiles-serial.png)
+
+These captures come from a machine with no COM3 attached. The red "(not found — …)" line is how
+both front ends flag a saved port or USB device that isn't connected right now; the TUI shows
+"(not found)" next to the field. It's only a hint: Connect still tries, and reports the error if the
+connection fails.
 
 **TCP**:
 

@@ -66,6 +66,65 @@ public sealed class ScpiControlPanelEndToEndTests
         });
     }
 
+    /// <summary>
+    /// Re-test of the 2026-09-23 report "pressing Enter in the Custom Command field throws, and so
+    /// does clicking Send with a command typed": committing the field (Enter and LostFocus share
+    /// the same commit) must not error, and Send must put exactly the typed command on the wire.
+    /// </summary>
+    [TestMethod]
+    public void CustomCommand_CommittingTheFieldThenClickingSend_SendsItWithNoError()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var transport = new FakeTransport();
+            var presenter = new ScpiReplyPresenter();
+            var session = new Session(transport, new Pipeline([presenter]));
+            var surface = new ScpiControlSurface(session, Profile, presenter);
+            var window = new ControlPanelWindow(ScpiUiDefinitionBuilder.Build(Profile), surface, presenter) { ShowInTaskbar = false };
+            await session.OpenAsync(TestContext.CancellationToken);
+            StaTestRunner.DoEvents();
+            var statusBefore = window.StatusText.Text;
+
+            var field = (TextBox)window.ControlViews[ScpiUiDefinitionBuilder.CustomCommandFieldId];
+            field.Text = "*IDN?";
+            field.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.UIElement.LostFocusEvent));
+            StaTestRunner.DoEvents();
+
+            Assert.IsEmpty(transport.WrittenPayloads, "Committing the field alone sends nothing.");
+
+            var send = (Button)window.ControlViews[ScpiControlSurface.SendCustomCommandId];
+            send.RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+            StaTestRunner.PumpUntil(() => transport.WrittenPayloads.Count > 0, _pumpTimeout);
+
+            Assert.HasCount(1, transport.WrittenPayloads);
+            Assert.AreEqual("*IDN?\n", Encoding.ASCII.GetString(transport.WrittenPayloads[0]));
+            Assert.AreEqual(statusBefore, window.StatusText.Text, "No 'Command failed' error was shown.");
+
+            await session.CloseAsync(TestContext.CancellationToken);
+        });
+    }
+
+    [TestMethod]
+    public void CommandFails_ShowsTheErrorInThePanelInsteadOfCrashing()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var transport = new FakeTransport();
+            var presenter = new ScpiReplyPresenter();
+            var session = new Session(transport, new Pipeline([presenter]));
+            var window = new ControlPanelWindow(ScpiUiDefinitionBuilder.Build(Profile), new ScpiControlSurface(session, Profile, presenter), presenter) { ShowInTaskbar = false };
+            await session.OpenAsync(TestContext.CancellationToken);
+            StaTestRunner.DoEvents();
+
+            transport.FailNextWrite(new System.IO.IOException("device unplugged"));
+            ((Button)window.ControlViews["measVoltDc"]).RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+
+            Assert.IsTrue(
+                StaTestRunner.PumpUntil(() => window.StatusText.Text.Contains("device unplugged", StringComparison.Ordinal), _pumpTimeout),
+                $"Expected the failure in the status line; actual: '{window.StatusText.Text}'.");
+        });
+    }
+
     [TestMethod]
     public void NoPresenterWiredAsTracker_ReplyStillArrivesButIndicatorNeverUpdates()
     {

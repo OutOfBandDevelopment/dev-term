@@ -50,7 +50,7 @@ Shown in two situations:
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested` | None | Shows the validation failure message; `Result` stays `null`, window stays open |
+| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`Dtr`, `Rts`, `WriteTimeoutMs`/`ReadTimeoutMs`, `AsciiMaxLineLength`, `ManifestName`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
 | **Close** (WPF) / **Quit** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
 | **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
@@ -73,6 +73,16 @@ Shown in two situations:
   within that group, only the Detected-devices picker for the *selected* one of `hid`/`usbtmc` is
   shown, since they're separate discovery sources (see Per-front-end notes). Presenter/Line ending/
   Description/Save/Import-export are always visible regardless of Transport.
+- **"Not found" hint** (`ConnectedDeviceNotFound`): when the loaded Port, or the USB identity (Vendor/Product
+  ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
+  ends show a hint next to it. The TUI shows `(not found)`. WPF shows `(not found — this port isn't connected right
+  now)` / `(not found — no connected device matches this vendor/product/serial)` in red under the detected-devices
+  picker; it was TUI-only until 2026-09-25. It never blocks Connect.
+- **USBTMC device location**: picking a detected USBTMC device also fills `DevicePath` with its physical USB
+  location (`usb:{bus}-{port chain}`, e.g. `usb:1-4.2`, the same form `--listusbtmcdevices` prints as
+  `at usb:…`). The transport consults it only when the serial number is blank, to tell identical serial-less
+  instruments apart. A serial number moves with the device between ports, a location doesn't, so the serial wins
+  whenever there is one.
 - **Status message**: a single line (`StatusMessage`) shows the most recent action's result or a
   validation failure — success and failure share the same field, there's no separate "error" vs.
   "info" styling today (WPF renders it in dark red regardless).

@@ -21,12 +21,19 @@ public sealed class SendHistory
 
     /// <summary>
     /// Records a newly sent line and resets Up/Down navigation back to "not currently recalling
-    /// anything." Blank lines are not recorded.
+    /// anything." Blank lines are not recorded, and neither is a line identical to the most
+    /// recent one (sending the same command twice in a row), matching shell history's
+    /// ignore-consecutive-duplicates behavior - so Up recalls the previous *different* command.
     /// </summary>
     public void Add(string line)
     {
         _cursor = -1;
         if (string.IsNullOrEmpty(line))
+        {
+            return;
+        }
+
+        if (_items.Count > 0 && string.Equals(_items[0], line, StringComparison.Ordinal))
         {
             return;
         }

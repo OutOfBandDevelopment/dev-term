@@ -162,7 +162,7 @@ public sealed class RealHardwareSerialTests
                 continue;
             }
 
-            var reply = await replies.Reader.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
+            var reply = await ReplyCollector.ReadReplyAsync(replies.Reader, _timeout, ReplyCollector.DefaultQuietGap, TestContext.CancellationToken);
             TestContext.WriteLine($"Received: {reply}");
             Assert.IsFalse(string.IsNullOrEmpty(reply), $"Expected a non-empty reply to '{command}' from the real device on {port} before the timeout elapsed.");
 

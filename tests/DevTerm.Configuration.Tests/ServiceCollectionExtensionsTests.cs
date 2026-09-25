@@ -96,4 +96,19 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.Contains("ascii", catalog.Names.ToList());
         Assert.Contains("hex", catalog.Names.ToList());
     }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_EachCatalogGetsItsOwnStatefulPresenterInstances()
+    {
+        // Two sessions in one process must never share a buffering presenter (the ASCII line
+        // accumulator, the SCPI pending-query queue) - they'd interleave each other's partial frames.
+        var cliOptions = new CliOptions { Transport = "serial", Port = "COM3" };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var first = provider.GetRequiredService<PresenterCatalog>();
+        var second = provider.GetRequiredService<PresenterCatalog>();
+
+        Assert.AreNotSame(first.Get("ascii"), second.Get("ascii"));
+        Assert.AreSame(first.Get("ascii"), first.Get("ascii"));
+    }
 }

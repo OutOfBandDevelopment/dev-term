@@ -49,16 +49,6 @@ the rest.
   and captures/exports them, phased so a graphics-free capture-and-auto-save capability (TUI: save
   as `{device}_{timestamp}.{ext}`; WPF: same, plus a free live preview for image formats WPF can
   already decode natively) ships ahead of the harder HPGL/PostScript/PCL rendering work above.
-- Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
-  `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
-  single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
-- **Typing non-hex text with the hex parser crashes the CLI** — with `--presenter hex` and no
-  `--parser`, the hex parser encodes typed lines, which is intended. But a line that isn't valid hex
-  (e.g. `OUTPut?`) throws an unhandled `FormatException` ("not a multiple of 2") out of
-  `Program.<Main>$`, killing the process. `CliMode`'s send path only catches
-  `ConnectionErrorMessages.IsConnectionFailure`. A parse failure should be reported for that
-  line (the TUI/WPF send paths are worth checking too), not end the session. Found 2026-09-25 while bench-testing the DG1022
-  (`docs/test/2026-09-25-18-03-06.md`).
 
 ### Device control modules & hardware profiles
 
@@ -95,13 +85,8 @@ a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resoluti
 (`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
 `docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
 all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
-detected serial ports; the Linux/macOS half landed 2026-09-25 (`docs/changes/2026-09-25.md`).
-
-- **WPF "not found" hint for a disconnected saved device** — the TUI's `ConfigureMode` shows a
-  "(not found)" label next to the Serial port row and the shared HID/USBTMC vendor/product/serial
-  row when `ConnectionEditorViewModel.ConnectedDeviceNotFound` is true (see
-  `docs/changes/2026-09-24.md`'s DevicePath/SerialNumber fix); `DeviceProfilesWindow.xaml` (WPF)
-  has no equivalent yet.
+detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
+(`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
 
 ### Device manifests & shared UI framework
 
@@ -177,16 +162,6 @@ detected serial ports; the Linux/macOS half landed 2026-09-25 (`docs/changes/202
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-- **`RealHardwareSerialTests`/`RealHardwareUsbtmcTests`'s shared `RunAsync` reads exactly one item
-  off `Session.Output` per sent command, using the terminatorless `RawPresenter`** — real-hardware
-  confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): against the HP 34401A (whose
-  profile IS line-terminated, unlike the Korads/DS1102E this pattern was designed around), a reply
-  can arrive over serial in multiple chunks, each firing `Session.Output` separately — the test only
-  consumes the first chunk, so it logs `Received: H`/`Received: ?` instead of the real replies, while
-  still passing (non-empty, no fault/timeout, which is all it currently asserts). Needs a fix (e.g.
-  drain the channel until a short quiet gap before treating a reply as complete, or use
-  `AsciiPresenter` with the profile's own terminator for devices that have one) before this test's
-  pass/fail is trustworthy for a terminated-reply device.
 
 ### Logging
 

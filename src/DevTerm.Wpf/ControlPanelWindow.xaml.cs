@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using DevTerm.Configuration;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.UiDefinitions;
@@ -29,7 +30,6 @@ public partial class ControlPanelWindow : Window
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
     private readonly Dictionary<string, TextBlock> _controlLabels = [];
-    private readonly Dictionary<string, (byte R, byte G, byte B)> _lastPickedColors = [];
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
@@ -121,7 +121,7 @@ public partial class ControlPanelWindow : Window
                     view.Click += (_, _) =>
                     {
                         var joined = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                        _ = _surface.InvokeAsync(button.CommandId ?? button.Id, joined);
+                        Invoke(button.CommandId ?? button.Id, joined);
                     };
                     return (view, view);
                 }
@@ -129,15 +129,15 @@ public partial class ControlPanelWindow : Window
             case ButtonControl button:
                 {
                     var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                    view.Click += (_, _) => _ = _surface.InvokeAsync(button.CommandId ?? button.Id, null);
+                    view.Click += (_, _) => Invoke(button.CommandId ?? button.Id, null);
                     return (view, view);
                 }
 
             case ToggleControl toggle:
                 {
                     var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
-                    view.Checked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "1");
-                    view.Unchecked += (_, _) => _ = _surface.InvokeAsync(toggle.Id, "0");
+                    view.Checked += (_, _) => Invoke(toggle.Id, "1");
+                    view.Unchecked += (_, _) => Invoke(toggle.Id, "0");
                     return (view, view);
                 }
 
@@ -157,7 +157,7 @@ public partial class ControlPanelWindow : Window
                     view.ValueChanged += (_, e) =>
                     {
                         valueLabel.Text = FormatUnit(e.NewValue, slider.Unit);
-                        _ = _surface.InvokeAsync(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
+                        Invoke(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
                     };
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     panel.Children.Add(view);
@@ -191,7 +191,7 @@ public partial class ControlPanelWindow : Window
                     foreach (var option in choice.Options)
                     {
                         var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
-                        radio.Checked += (_, _) => _ = _surface.InvokeAsync(choice.Id, option);
+                        radio.Checked += (_, _) => Invoke(choice.Id, option);
                         panel.Children.Add(radio);
                     }
 
@@ -205,7 +205,7 @@ public partial class ControlPanelWindow : Window
                     {
                         if (view.SelectedItem is string selected)
                         {
-                            _ = _surface.InvokeAsync(choice.Id, selected);
+                            Invoke(choice.Id, selected);
                         }
                     };
                     return (view, view);
@@ -219,7 +219,7 @@ public partial class ControlPanelWindow : Window
                         view.MaxLength = max;
                     }
 
-                    void Commit() => _ = _surface.InvokeAsync(textField.Id, view.Text);
+                    void Commit() => Invoke(textField.Id, view.Text);
                     view.LostFocus += (_, _) => Commit();
                     view.KeyDown += (_, e) =>
                     {
@@ -246,14 +246,41 @@ public partial class ControlPanelWindow : Window
 
     private void OpenColorPicker(string buttonId, string targetCommandId)
     {
-        var (r, g, b) = _lastPickedColors.GetValueOrDefault(buttonId, ((byte)255, (byte)255, (byte)255));
+        // Shared across panel openings (see LastPickedColors), not per window instance - a
+        // per-window dictionary here lost the color every time the panel was closed and reopened.
+        var (r, g, b) = LastPickedColors.Get(buttonId);
         var picker = new ColorPickerWindow(r, g, b) { Owner = this };
         if (picker.ShowDialog() == true)
         {
-            _lastPickedColors[buttonId] = (picker.SelectedR, picker.SelectedG, picker.SelectedB);
+            LastPickedColors.Set(buttonId, (picker.SelectedR, picker.SelectedG, picker.SelectedB));
             var value = string.Create(CultureInfo.InvariantCulture, $"{picker.SelectedR},{picker.SelectedG},{picker.SelectedB}");
-            _ = _surface.InvokeAsync(targetCommandId, value);
+            Invoke(targetCommandId, value);
         }
+    }
+
+    /// <summary>
+    /// Sends one control's command without ever letting its failure escape: a rejected value (the
+    /// control surface's own validation) or a device-side failure (the session has then already
+    /// disconnected itself, and the main window reports that too) is shown in this panel's status
+    /// line. Not a message box: a modal dialog would block the panel's own automated tests.
+    /// </summary>
+    private void Invoke(string commandId, string? value)
+    {
+        void Report(Exception ex) =>
+            Dispatcher.BeginInvoke(() => StatusText.Text = $"Command failed: {ex.GetBaseException().Message}");
+
+        Task task;
+        try
+        {
+            task = _surface.InvokeAsync(commandId, value);
+        }
+        catch (Exception ex)
+        {
+            Report(ex);
+            return;
+        }
+
+        _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
     private void CommitNumeric(TextBox field, string id, double minimum, double maximum, double fallback)
@@ -261,7 +288,7 @@ public partial class ControlPanelWindow : Window
         var parsed = double.TryParse(field.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
         var clamped = Math.Clamp(parsed, minimum, maximum);
         field.Text = clamped.ToString(CultureInfo.InvariantCulture);
-        _ = _surface.InvokeAsync(id, clamped.ToString(CultureInfo.InvariantCulture));
+        Invoke(id, clamped.ToString(CultureInfo.InvariantCulture));
     }
 
     private static string FormatUnit(double value, string? unit) => $"{value:0.#}{unit}";

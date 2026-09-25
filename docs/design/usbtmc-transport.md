@@ -192,6 +192,12 @@ against the same physical unit.
 - `OpenAsync`: enumerate/open the target device by VID/PID (mirroring `HidTransportOptions`' own
   VID/PID + optional serial-number matching), claim the USBTMC interface, do the USB488
   `REN_CONTROL` remote-enable handshake if the subclass is present.
+  - **`DevicePath` (2026-09-25)** is the device's physical USB location, `usb:{bus}-{port chain}`
+    (`UsbtmcDeviceLocation`, from libusb's bus number and port numbers). It fills the gap the
+    `DevicePath` descriptor field had been left `null` for. It's reported by discovery and
+    `--listusbtmcdevices`, and consulted only when `SerialNumber` is blank. Unlike HID, there is
+    **no** fall-back to "the first matching VID:PID": the DS1102E and DG1022 share one, so a
+    fall-back could silently open the wrong instrument.
 - `WriteAsync`: split into one or more `DEV_DEP_MSG_OUT` bulk-OUT transfers (single-transfer for
   anything under the device's reported max transfer size), alternating `bTag`.
 - Read path: request a reply via `DEV_DEP_MSG_IN`, pump bulk-IN transfers via `StreamToPipePump`

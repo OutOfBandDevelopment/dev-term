@@ -6,28 +6,19 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **Real-hardware/real-usage bugs reported by the Architect (2026-09-23), not yet fixed.** Raw notes
-  triaged into this file and `BACKLOG.md` the same day — design-level items (collapsible groups,
-  per-field data-type/control-type metadata, an info icon showing the underlying command, Busylight
-  custom-color UX, the Tektronix 2230 direction) moved to `BACKLOG.md`; these are concrete bugs
-  against already-shipped screens:
-  - **Busylight panel**: the custom-color dialog's values don't persist between openings (see also the
-    related UX item moved to `BACKLOG.md`).
-  - **Terminal screen (both front ends)**: the window title reportedly doesn't include the loaded
-    profile name even though this was believed already landed (2026-09-18's "Architect's live window
-    title" — needs re-checking, may be a regression); the send-line history (2026-09-23's Up/Down
-    recall) adds a duplicate entry when the same line is sent twice in a row.
-  - **Device presenter "Custom Command" section** (SCPI and any device profile using the always-present
-    custom-command escape hatch): pressing Enter in the "Command" field throws an exception; clicking
-    "Send" with a value typed in "Command" also throws. **Likely fixed by the same-day
-    `ScpiControlSurface.InvokeAsync` change** (recognizes the custom-command field's own id, same as a
-    multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
-    `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
+- **Re-check the window-title fix on the machine the 2026-09-23 report came from.** The report was that the
+  title doesn't show the loaded profile's name. A real cause was found and fixed on 2026-09-25: the Connection
+  Editor's Connect reset settings the form doesn't show, so the result no longer matched the saved profile the
+  title looks up. That cause is covered by a test, but the reporting machine's own profiles weren't available.
+  Confirm there that loading a profile in Device Profiles and connecting shows its name in the title (TUI and
+  WPF). See `docs/changes/2026-09-25.md`, "Front ends never crash on errors…".
+- **Re-run the real-hardware suites once devices are attached.** `ReplyCollector` (multi-chunk replies) and the
+  USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
+  - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
+  - Confirm the HP 34401A test now logs its full `*IDN?` reply.
+  - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
 
 ## Backlog / research
 
 Not-yet-started work, prioritization notes, and early-stage research now live in
-[`BACKLOG.md`](BACKLOG.md) — including the remaining Connection Editor remnants (serial-port
-descriptions on Linux/macOS; a WPF "not found" hint to match the TUI's; USBTMC's missing
-`DevicePath`-equivalent) and the design-level items from the Architect's 2026-09-23 notes (see
-above).
+[`BACKLOG.md`](BACKLOG.md), including the design-level items from the Architect's 2026-09-23 notes.

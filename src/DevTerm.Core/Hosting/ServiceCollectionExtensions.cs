@@ -12,7 +12,13 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddDevTermCore(this IServiceCollection services)
     {
-        services.AddSingleton<PresenterCatalog>();
+        // Transient, like every IPresenter registration: presenters are stateful (the ASCII
+        // presenter's line buffer, the SCPI presenter's pending-query queue), so each resolved
+        // catalog - one per session - builds its own instances instead of every session in the
+        // process sharing, and interleaving partial frames through, the same ones. Resolve the
+        // catalog once per session and pass that instance around; resolving it again gets a
+        // different, unconnected set of presenters.
+        services.AddTransient<PresenterCatalog>();
         services.AddSingleton<ISessionFactory, SessionFactory>();
         return services;
     }

@@ -90,7 +90,7 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
             // being finalized after their owning UsbContext was already freed).
             foreach (var candidate in context.List())
             {
-                if (matched is null && IsCandidate(candidate))
+                if (matched is null && IsCandidate(candidate) && MatchesLocation(candidate))
                 {
                     try
                     {
@@ -123,6 +123,7 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
                 throw new IOException(
                     $"No USBTMC device found for VID 0x{_options.VendorId:X4} PID 0x{_options.ProductId:X4}" +
                     (string.IsNullOrEmpty(_options.SerialNumber) ? string.Empty : $" serial '{_options.SerialNumber}'") +
+                    (string.IsNullOrEmpty(_options.DevicePath) ? string.Empty : $" at '{_options.DevicePath}'") +
                     (lastOpenFailure is null ? "." : $" (a matching device was found but could not be opened: {lastOpenFailure.Message})."),
                     lastOpenFailure);
             }
@@ -411,6 +412,15 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
         candidate.VendorId == _options.VendorId &&
         candidate.ProductId == _options.ProductId &&
         candidate.Configs.Any(config => config.Interfaces.Any(IsUsbtmcInterface));
+
+    // A serial number, when set, is the identity (it moves with the device between ports); the
+    // location only decides between devices with no serial to go on. Never falls back to "the
+    // first match" like HID does - a DS1102E and a DG1022 share a VID:PID, so that could silently
+    // open the wrong instrument. Location needs no open handle, so it's checked before opening.
+    private bool MatchesLocation(IUsbDevice candidate) =>
+        !string.IsNullOrEmpty(_options.SerialNumber) ||
+        string.IsNullOrEmpty(_options.DevicePath) ||
+        string.Equals(UsbtmcDeviceLocation.TryGet(candidate), _options.DevicePath, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUsbtmcInterface(UsbInterfaceInfo iface) =>
         iface.Class == ClassCode.Application && iface.SubClass == _usbtmcInterfaceSubClass;
