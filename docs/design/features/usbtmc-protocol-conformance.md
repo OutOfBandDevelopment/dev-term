@@ -1,15 +1,13 @@
 # USBTMC transport: protocol-conformance rework and Rigol quirks
 
-## Status: implemented (2026-09-25), DG1022 and DS1102E verified against real hardware
+## Status: implemented (2026-09-25), verified on all four bench Rigols
 
 Branch `dev/usbtmc-fix`. Follows [`usbtmc-bulk-in-reassembly-fix.md`](usbtmc-bulk-in-reassembly-fix.md),
-whose reassembly fix stays, generalized below. Verified against a real **Rigol DG1022** and a real
-**Rigol DS1102E**, including a byte-exact waveform read (`docs/test/2026-09-25-18-03-06.md`; covered by
-`DevTerm.Console.Tests.RealHardwareUsbtmcTransportTests`). **Not yet re-verified on the DG1062Z or
-DM3058E.** Those devices need a bench pass before merge, because this change alters what goes over the wire:
-- REN_CONTROL now actually asserts REN.
-- Aborts are sent on a timeout.
-- Continuation reads run until a short packet arrives.
+whose reassembly fix stays, generalized below. Verified against a real **Rigol DG1022, DS1102E, DG1062Z and
+DM3058E**, all attached at once (`docs/test/2026-09-25-18-03-06.md`):
+- All 13 USBTMC hardware tests pass (`TestCategory=Usbtmc&TestCategory=Hardware`: `RealHardwareUsbtmcTests`
+  plus the new `RealHardwareUsbtmcTransportTests`).
+- That includes a byte-exact DS1102E waveform read, and close/reopen ×3 for each device.
 
 ## What was wrong (a review of `DevTerm.Transports.Usbtmc` against `docs/protocols/usbtmc/`)
 
@@ -36,6 +34,13 @@ DM3058E.** Those devices need a bench pass before merge, because this change alt
     `SYST:ERR?;*CLS`.
 11. **Disposing twice threw** `ObjectDisposedException` (found live: `Session.DisposeAsync` disposes the
     transport, and the owner's `await using` disposes it again).
+12. **Clearing both endpoint halts on open desynced the DG1062Z's data toggle.** Found live. USB 2.0 §9.4.5 says
+    CLEAR_FEATURE(ENDPOINT_HALT) always resets the host toggle to DATA0, but the DG1062Z doesn't reset its own
+    toggle to match. The host then drops the device's next packet as a retransmission, so the first reply after
+    every open lost its first 64 bytes: `*IDN?` came back as its last 2 bytes, `\n+`. That happened on 12 of 12
+    opens with the clear and 0 of 12 without it. This was the root cause of the DG1062Z's "intermittent 2-byte first
+    read". It is now the `ClearHaltOnOpen` option, default off. A real STALL is still cleared and retried per
+    transfer, which also covers the DM3000 case the open-time clear was first added for.
 
 ## What changed
 
@@ -64,6 +69,7 @@ DM3058E.** Those devices need a bench pass before merge, because this change alt
   - `ClearOnOpen` (default **off**)
   - `RemoteOnOpen` (default on, subject to quirks)
   - `RequestDelayMs` (null = quirk default)
+  - `ClearHaltOnOpen` (default **off**, see item 12)
   - `[Range]` validation on the timeouts and `MaxTransferSize`
 - **`UsbtmcDeviceQuirks`**, keyed by VID:PID. The only entry so far is Rigol `0x1AB1:0x0588`, which the DS1102E *and* the DG1022 share:
   - `RequestDelayMs = 20`.
@@ -80,6 +86,8 @@ DM3058E.** Those devices need a bench pass before merge, because this change alt
   real DG1022 timed out GO_TO_LOCAL.
 - **INITIATE_CLEAR on open is off by default.** It is reported to hang the Rigol DS1000Z (python-usbtmc PR #62, issue #43),
   and neither the Linux driver nor pyvisa-py sends it on open.
+- **Don't clear endpoint halts on open.** See item 12. It is confirmed on the DG1062Z, and it's the same call libsigrok
+  dropped for 0x0588.
 - **The DG1022 ends replies with `\n\r`** (for example `OFF\n\r`), so an ASCII presenter splitting on both shows a blank line.
   This is device behavior, not a framing bug.
 
@@ -89,6 +97,3 @@ DM3058E.** Those devices need a bench pass before merge, because this change alt
   bytes that follow are constant padding, and the rework correctly drops them as alignment. That contradicts pyvisa-py
   #472's "10 bytes short" reading. Still unexercised: #472's missing ZLP at an exact packet boundary, which would cost one
   `ReadTimeoutMs` and then raise an error. It needs a reply that lands on a 64-byte boundary.
-- **ClearHalt on both endpoints at open** (kept from before) is implicated in libsigrok's 0x0588 hang workaround and
-  can desync data toggles. It hasn't been A/B tested on the bench.
-- **Real-hardware re-verification** on the DG1062Z and DM3058E.
