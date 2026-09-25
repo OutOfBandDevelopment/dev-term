@@ -15,7 +15,9 @@ both show a Configure screen instead of exiting with an error, and both also get
 Profiles" menu** (available at any time, not just at startup) for picking a named, saved connection
 — see [connection-profiles.md](connection-profiles.md) for the full shape, including how a profile
 can reference a [device manifest](device-manifests.md) so picking one also loads what that specific
-device can do. Design only so far, not yet built.
+device can do. **Implemented** (2026-09-15 through 2026-09-18) in both front ends — see
+connection-profiles.md's own Status for the full detail. Not yet wired to a device manifest's
+`IControlSurface`, though (see that doc's own "not yet" notes and `BACKLOG.md`).
 
 ## Executables
 

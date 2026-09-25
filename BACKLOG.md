@@ -122,6 +122,15 @@ detected serial ports.
 
 ### Device manifests & shared UI framework
 
+- **Wire a loaded `DeviceManifest` to an actual live `IControlSurface`/decoder pair and connection** —
+  `device-manifests.md` and `connection-profiles.md` both still describe this as unwired ("nothing yet
+  turns a loaded `DeviceManifest` into an actual `IControlSurface`/decoder pair or opens a connection
+  from one"), but that reasoning predates `IControlSurface` actually landing (2026-09-22, proven by
+  K8055/Busylight/SCPI). The blocker is no longer "the interface doesn't exist" — it's that nothing
+  builds one from a manifest's declarative command/response schema + `UiDefinition` at load time. This
+  is the actual payoff of the no-code device-manifest path (device-control-modules.md's "assembled
+  declaratively" goal); today a profile with a `ManifestName` only makes the `UiDefinition` available,
+  not a working control panel.
 - Once device manifest support is further along, build an editor for it — at least a default
   render for request/response messages, ideally a presentation editor. New field types this implies
   beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart
