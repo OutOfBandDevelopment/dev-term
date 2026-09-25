@@ -17,6 +17,14 @@ public sealed class UsbtmcTransportOptions
     public string? SerialNumber { get; set; }
 
     /// <summary>
+    /// The device's physical USB location (<see cref="UsbtmcDeviceLocation"/>, e.g. <c>usb:1-4.2</c>)
+    /// - disambiguates identical devices that have no serial number. Optional, and only consulted
+    /// when <see cref="SerialNumber"/> is blank: a serial number stays valid when the device moves
+    /// to another port, a location doesn't.
+    /// </summary>
+    public string? DevicePath { get; set; }
+
+    /// <summary>
     /// Milliseconds a bulk-IN read blocks before timing out. A query whose reply takes longer
     /// than this (a slow DMM integration, <c>*TST?</c>) is aborted and reported as a timeout.
     /// </summary>

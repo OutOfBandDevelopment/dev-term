@@ -21,15 +21,32 @@ public sealed class SystemSerialPortDiscovery : ISerialPortDiscovery
     public IReadOnlyList<string> GetPortNames() => System.IO.Ports.SerialPort.GetPortNames();
 
     /// <summary>
-    /// Windows only for now: the Plug-and-Play registry keeps a friendly name per device, and reading
-    /// it needs neither WMI nor a new package (see <see cref="WindowsSerialPortDescriptions"/>).
-    /// Linux/macOS have no equivalent wired up yet, so they report no descriptions and the picker
-    /// shows short names, exactly as before.
+    /// Per OS: Windows reads the Plug-and-Play registry's friendly names
+    /// (<see cref="WindowsSerialPortDescriptions"/>), Linux the USB string descriptors sysfs exposes
+    /// (<see cref="LinuxSerialPortDescriptions"/>), macOS the IOKit registry via <c>ioreg</c>
+    /// (<see cref="MacSerialPortDescriptions"/>). Anything else reports no descriptions, so the
+    /// picker shows short names. Keys match what <see cref="GetPortNames"/> reports on that OS
+    /// (<c>"COM3"</c>, <c>"/dev/ttyUSB0"</c>, <c>"/dev/cu.usbserial-A50285BI"</c>).
     /// </summary>
-    public IReadOnlyDictionary<string, string> GetPortDescriptions() =>
-        OperatingSystem.IsWindows()
-            ? WindowsSerialPortDescriptions.Read()
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, string> GetPortDescriptions()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return WindowsSerialPortDescriptions.Read();
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return LinuxSerialPortDescriptions.Read();
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return MacSerialPortDescriptions.Read();
+        }
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Windows' friendly names embed the port — <c>"USB Serial Device (COM3)"</c> — which a picker

@@ -202,4 +202,130 @@ public sealed class SessionTests
     }
 
     public required TestContext TestContext { get; set; }
+
+    private static Task<SessionDisconnectedEventArgs> WaitForDisconnected(Session session)
+    {
+        var tcs = new TaskCompletionSource<SessionDisconnectedEventArgs>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Disconnected += (_, e) => tcs.TrySetResult(e);
+        return tcs.Task;
+    }
+
+    [TestMethod]
+    public async Task ReadFailure_ClosesTheTransportAndRaisesDisconnectedWithTheError()
+    {
+        var (transport, pipe) = CreateOpenableTransport();
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        var disconnected = WaitForDisconnected(session);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        // What StreamToPipePump does when the underlying stream throws (an unplugged cable, a reset socket).
+        await pipe.Writer.CompleteAsync(new IOException("cable unplugged"));
+
+        var e = await disconnected.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsInstanceOfType<IOException>(e.Error);
+        StringAssert.Contains(e.Message, "cable unplugged");
+        transport.Verify(t => t.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task PeerClosesTheConnection_RaisesDisconnectedWithNoError()
+    {
+        var (transport, pipe) = CreateOpenableTransport();
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        var disconnected = WaitForDisconnected(session);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        await pipe.Writer.CompleteAsync();
+
+        var e = await disconnected.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsNull(e.Error);
+        transport.Verify(t => t.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task PresenterThrows_TreatedAsAFaultNotAnUnobservedCrash()
+    {
+        var (transport, pipe) = CreateOpenableTransport();
+        var broken = new Mock<IPresenter>();
+        broken.SetupGet(p => p.Name).Returns("broken");
+        broken.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Throws(new FormatException("bad frame"));
+        await using var session = new Session(transport.Object, new Pipeline([broken.Object]));
+        var disconnected = WaitForDisconnected(session);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        await pipe.Writer.WriteAsync("x"u8.ToArray(), TestContext.CancellationToken);
+
+        var e = await disconnected.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsInstanceOfType<FormatException>(e.Error);
+    }
+
+    [TestMethod]
+    public async Task SendFailure_ClosesRaisesDisconnectedAndRethrows()
+    {
+        var (transport, _) = CreateOpenableTransport();
+        transport.SetupGet(t => t.State).Returns(ConnectionState.Open);
+        transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TimeoutException("device did not answer"));
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        var disconnected = WaitForDisconnected(session);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => session.SendAsync(new byte[] { 1 }, TestContext.CancellationToken));
+
+        var e = await disconnected.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsInstanceOfType<TimeoutException>(e.Error);
+        transport.Verify(t => t.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task CallerClose_NeverRaisesDisconnected()
+    {
+        var (transport, _) = CreateOpenableTransport();
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        var raised = false;
+        session.Disconnected += (_, _) => raised = true;
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        await session.CloseAsync(TestContext.CancellationToken);
+        await Task.Delay(100, TestContext.CancellationToken);
+
+        Assert.IsFalse(raised);
+    }
+
+    [TestMethod]
+    public async Task CloseAsync_TransportCloseThrows_DoesNotThrow()
+    {
+        var (transport, _) = CreateOpenableTransport();
+        transport.Setup(t => t.CloseAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("already gone"));
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        await session.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task AfterAFault_OpenAsyncReconnectsAndReadsAgain()
+    {
+        var firstPipe = new Pipe();
+        var secondPipe = new Pipe();
+        var transport = new Mock<ITransport>();
+        transport.SetupSequence(t => t.Input).Returns(firstPipe.Reader).Returns(secondPipe.Reader);
+
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("p");
+        presenter.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["got it"]);
+
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+        var disconnected = WaitForDisconnected(session);
+        await session.OpenAsync(TestContext.CancellationToken);
+        await firstPipe.Writer.CompleteAsync(new IOException("dropped"));
+        await disconnected.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+
+        var output = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Output += (_, o) => output.TrySetResult(o.Text);
+        await session.OpenAsync(TestContext.CancellationToken);
+        await secondPipe.Writer.WriteAsync("x"u8.ToArray(), TestContext.CancellationToken);
+
+        Assert.AreEqual("got it", await output.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken));
+    }
 }

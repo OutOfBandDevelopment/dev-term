@@ -20,6 +20,10 @@ in the same change; a rule that's only written down here but not enforced anywhe
   compiler-option-level filter, is the only thing that actually suppresses it (verified empirically:
   a `.editorconfig` severity override left the warnings byte-for-byte unchanged across a clean
   rebuild with the build server shut down, ruling out staleness before concluding it doesn't work).
+- **Spelling** — Visual Studio's built-in spell checker is set to report misspellings as warnings
+  (`spelling_error_severity = warning` under `.editorconfig`'s `[*]`). It's IDE-only and never runs
+  in `dotnet build`, so `TreatWarningsAsErrors` doesn't promote those warnings to errors, and a typo
+  never breaks the build.
 - **`tests/DevTerm.CodingStandards.Tests`** — a small MSTest project that reflects over every other
   test assembly (via `ProjectReference`, not a Roslyn analyzer) to check standards `.editorconfig`
   has no way to express, like "every `[TestClass]`/`[TestMethod]` has a real `[TestCategory]`" (see

@@ -345,4 +345,78 @@ public sealed class ControlPanelModeTests
             return false;
         }
     }
+
+    /// <summary>
+    /// Re-test of the 2026-09-23 report "pressing Enter in the SCPI panel's Custom Command field
+    /// throws, and so does clicking Send": Enter (Accept) on the field must not error or send, and
+    /// Send must put exactly the typed command on the wire - through a real ScpiControlSurface and
+    /// Session, not a fake surface.
+    /// </summary>
+    [TestMethod]
+    public void ScpiCustomCommand_EnterInTheFieldThenSend_SendsTheCommandWithNoError()
+    {
+        var transport = new FakeTransport();
+        var presenter = new DevTerm.Devices.Scpi.ScpiReplyPresenter();
+        var session = new DevTerm.Core.Sessions.Session(transport, new Pipeline([presenter]));
+        session.OpenAsync().GetAwaiter().GetResult();
+        var profile = DevTerm.Devices.Scpi.ScpiProfileCatalog.Generic;
+        var surface = new DevTerm.Devices.Scpi.ScpiControlSurface(session, profile, presenter);
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, DevTerm.Devices.Scpi.ScpiUiDefinitionBuilder.Build(profile), surface, presenter, "SCPI");
+
+            var field = (TextField)parts.ControlViews[DevTerm.Devices.Scpi.ScpiUiDefinitionBuilder.CustomCommandFieldId];
+            field.Text = "*IDN?";
+            Accept(field);
+            Assert.IsEmpty(transport.WrittenPayloads, "Enter in the field alone sends nothing.");
+
+            Accept(parts.ControlViews[DevTerm.Devices.Scpi.ScpiControlSurface.SendCustomCommandId]);
+
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+            while (transport.WrittenPayloads.Count == 0 && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(10);
+            }
+
+            Assert.HasCount(1, transport.WrittenPayloads);
+            Assert.AreEqual("*IDN?\n", System.Text.Encoding.ASCII.GetString(transport.WrittenPayloads[0]));
+        });
+    }
+
+    [TestMethod]
+    public void CustomColorSwatch_HiddenUntilSet_ThenShowsTheHexOnThatColor()
+    {
+        var unset = $"custom-{Guid.NewGuid():N}";
+        var set = $"custom-{Guid.NewGuid():N}";
+        DevTerm.Configuration.LastPickedColors.Set(set, (0x10, 0x20, 0x30));
+        var definition = new UiDefinition
+        {
+            Name = "Color Device",
+            Sections =
+            [
+                new UiSection
+                {
+                    Label = "Color",
+                    Controls =
+                    [
+                        new ButtonControl { Id = unset, Label = "Custom A...", ColorPickerTargetCommandId = "color" },
+                        new ButtonControl { Id = set, Label = "Custom B...", ColorPickerTargetCommandId = "color" },
+                    ],
+                },
+            ],
+        };
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, new FakeControlSurface(), null, "Colors");
+
+            Assert.IsFalse(parts.ControlViews[$"{unset}.swatch"].Visible);
+
+            var swatch = (Label)parts.ControlViews[$"{set}.swatch"];
+            Assert.IsTrue(swatch.Visible);
+            Assert.AreEqual(" #102030 ", swatch.Text);
+            Assert.AreEqual(new Terminal.Gui.Drawing.Color(0x10, 0x20, 0x30, 255), swatch.GetScheme().Normal.Background);
+        });
+    }
 }

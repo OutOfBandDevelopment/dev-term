@@ -210,11 +210,36 @@ file only points there, it doesn't restate them.**
   instead of being a no-op (verified against real hardware: an empty typed line crashed the whole
   app before this was fixed). `HidTransport.WriteAsync` no-ops on empty data; a wrong *non-zero*
   length is a real, expected device-specific framing failure and still throws — see the next point.
-- **`CliMode`/`TuiMode`'s send path catches any device I/O failure, not just `TimeoutException`** —
-  a generic text presenter's typed input has no way to guarantee it matches a specific device's
-  framing requirements (a HID report's exact length, for one), so a send can legitimately fail for
-  reasons that aren't a timeout; catch broadly (`ConnectionErrorMessages.IsConnectionFailure`) and
-  report it instead of letting it crash the process, the same way `OpenAsync` failures already are.
+- **Front ends never crash, exit or close over an error once running, and all report a lost
+  connection the same way (2026-09-25):**
+  - A send can legitimately fail for reasons that aren't a timeout. A generic text presenter's typed
+    input can't guarantee a device's framing (a HID report's exact length, for one).
+  - `Session` itself closes on any read failure, peer hang-up, or failed send, and raises
+    `Session.Disconnected` *before* a failed `SendAsync` rethrows. Report lost connections from that
+    one handler (`ConnectionErrorMessages.ForDisconnect`), not from a send's catch block, or they
+    get reported twice. A send's catch only reports when `session.State` is still `Open`.
+  - Input a parser can't encode is validation, not a disconnect: encode through `TypedInput.TryEncode`,
+    never a bare `IPresenterInput.Parse`. That bare call is what crashed the CLI on non-hex text under
+    `--parser hex`.
+  - Catch `Exception` (not just `IsConnectionFailure`) at every UI boundary, and never leave a
+    `_ = SomethingAsync()` unobserved. `TuiMode.Observe`/`MainWindow.Observe` route a faulted
+    fire-and-forget task to the output pane.
+  - A failed *startup* connect opens the TUI/WPF disconnected rather than exiting. Only the CLI still
+    exits (code 1), so scripts see it.
+- **`Session`'s read loop must never await the session's own close.** `CloseAsync`/`StopAsync` awaits
+  the read-loop task, so a fault detected inside `PumpAsync` hands off to `FaultAsync` via a
+  non-awaited `Task.Run` — awaiting it inline deadlocks on itself. Faults also carry a *generation*
+  number, so a late fault from an already-closed or reopened connection can't tear down or be reported
+  against the new one.
+- **Presenters and `PresenterCatalog` are transient DI registrations; resolve the catalog once per
+  session.** Presenters are stateful (line buffers, the SCPI pending-query queue), and each resolved
+  catalog builds its own set. Anything that needs "this session's scpi presenter" (a control panel)
+  must use the catalog that session was built from, not a fresh `GetRequiredService<PresenterCatalog>()`,
+  which is a different, unconnected set.
+- **Terminal.Gui.Editor's `Text` throws `InvalidOperationException` ("Call from invalid thread") if
+  read off the UI thread.** This is unlike `TextField`/`MenuItem` properties, which a test thread could
+  read under `TuiTestRunner.RunWithLoop` without complaint. Found writing
+  `TuiModeErrorHandlingTests.ReadFailure_…`: marshal the read through `app.Invoke` and wait on it.
 - **`System.Xml.Serialization.XmlSerializer` cannot serialize `Dictionary<TKey,TValue>`** — it
   throws `NotSupportedException` ("implements IDictionary") at first-use reflection time, not at
   compile time. Any type meant to round-trip through both `System.Text.Json` and `XmlSerializer`

@@ -49,16 +49,6 @@ the rest.
   and captures/exports them, phased so a graphics-free capture-and-auto-save capability (TUI: save
   as `{device}_{timestamp}.{ext}`; WPF: same, plus a free live preview for image formats WPF can
   already decode natively) ships ahead of the harder HPGL/PostScript/PCL rendering work above.
-- Resolve the stateful-presenter-vs-DI-singleton lifetime issue noted in
-  `docs/design/presenters.md` before TUI/WPF support more than one concurrent session — today's
-  single-session-per-process CLI usage doesn't hit it, but a multi-session front end would.
-- **Typing non-hex text with the hex parser crashes the CLI** — with `--presenter hex` and no
-  `--parser`, the hex parser encodes typed lines, which is intended. But a line that isn't valid hex
-  (e.g. `OUTPut?`) throws an unhandled `FormatException` ("not a multiple of 2") out of
-  `Program.<Main>$`, killing the process. `CliMode`'s send path only catches
-  `ConnectionErrorMessages.IsConnectionFailure`. A parse failure should be reported for that
-  line (the TUI/WPF send paths are worth checking too), not end the session. Found 2026-09-25 while bench-testing the DG1022
-  (`docs/test/2026-09-25-18-03-06.md`).
 
 ### Device control modules & hardware profiles
 
@@ -109,16 +99,8 @@ a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resoluti
 (`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
 `docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
 all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
-detected serial ports.
-
-- **Detected serial port descriptions on Linux/macOS** — the Windows description landed
-  2026-09-18 (`ISerialPortDiscovery.GetPortDescriptions()`, read from the Plug-and-Play registry);
-  Linux (udev/sysfs) and macOS (IOKit) still list short names only. Low priority.
-- **WPF "not found" hint for a disconnected saved device** — the TUI's `ConfigureMode` shows a
-  "(not found)" label next to the Serial port row and the shared HID/USBTMC vendor/product/serial
-  row when `ConnectionEditorViewModel.ConnectedDeviceNotFound` is true (see
-  `docs/changes/2026-09-24.md`'s DevicePath/SerialNumber fix); `DeviceProfilesWindow.xaml` (WPF)
-  has no equivalent yet.
+detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
+(`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
 
 ### Device manifests & shared UI framework
 
@@ -169,10 +151,13 @@ detected serial ports.
     renders it (slider vs. plain numeric field vs. text), rather than the current tight
     `Kind: Numeric|Choice|Text` → fixed-widget coupling. Overlaps with the "consolidate hand-coded
     settings forms" item above — likely the same underlying model extension.
-- **Busylight custom-color dialog UX** (Architect notes, 2026-09-23): a "Custom" radio option
-  alongside the named presets, with a swatch previewing the currently-configured custom color before
-  entering the picker; the picker's last-used values should persist across re-opening it (currently
-  reset each time — filed as a bug in `TODO.md`); Enter in the picker should act like clicking Apply.
+- **Busylight custom-color dialog UX** (Architect notes, 2026-09-23). Still open: a "Custom" radio option
+  alongside the named presets, and Enter in the picker acting like clicking Apply. Landed 2026-09-25:
+  - The picker's last-used values persist across reopening it.
+  - A swatch next to Custom... shows the current custom color and its hex value.
+  - The WPF picker is resizable and scrolls, so OK/Cancel can't be cut off.
+
+  See `docs/changes/2026-09-25.md`.
 - **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
   front ends.** Neither has any theme support today; both currently just take whatever colors their
   framework defaults to. Two separate investigations before designing anything, per this project's

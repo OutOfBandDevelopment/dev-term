@@ -85,7 +85,8 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
 
         var serial = device.SerialNumber is null ? string.Empty : $"  SN:{device.SerialNumber}";
         var manufacturer = device.Manufacturer is null ? string.Empty : $"{device.Manufacturer} ";
-        Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}");
+        var location = device.DevicePath is null ? string.Empty : $"  at {device.DevicePath}";
+        Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}{location}");
     }
 
     return 0;
