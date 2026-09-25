@@ -67,6 +67,16 @@ the rest.
   - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
   already-built adapter cable, no new transport needed) remains buildable today, like SCPI was.
 
+### USBTMC
+
+- **Rigol DG1062Z's `*IDN?` bulk-IN reply fails USBTMC header decoding** — real-hardware confirmed
+  2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): the first bulk-IN transfer back from the
+  device after sending `*IDN?` is only 2 bytes, short of the mandatory 12-byte USBTMC header, so
+  `UsbtmcCodec.DecodeHeader` throws. Same category of problem as the (since-resolved) DM3058E
+  bulk-IN stall — likely needs a packet capture of a known-working NI-VISA/Ultra Sigma `*IDN?`
+  exchange against this specific unit to compare framing against what `LibUsbDotNet` actually sent.
+  Not investigated further yet.
+
 ### Connection Editor
 
 **Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
@@ -163,6 +173,17 @@ detected serial ports.
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
+
+- **`RealHardwareSerialTests`/`RealHardwareUsbtmcTests`'s shared `RunAsync` reads exactly one item
+  off `Session.Output` per sent command, using the terminatorless `RawPresenter`** — real-hardware
+  confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): against the HP 34401A (whose
+  profile IS line-terminated, unlike the Korads/DS1102E this pattern was designed around), a reply
+  can arrive over serial in multiple chunks, each firing `Session.Output` separately — the test only
+  consumes the first chunk, so it logs `Received: H`/`Received: ?` instead of the real replies, while
+  still passing (non-empty, no fault/timeout, which is all it currently asserts). Needs a fix (e.g.
+  drain the channel until a short quiet gap before treating a reply as complete, or use
+  `AsciiPresenter` with the profile's own terminator for devices that have one) before this test's
+  pass/fail is trustworthy for a terminated-reply device.
 
 ### Logging
 

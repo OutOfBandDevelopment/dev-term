@@ -35,12 +35,13 @@ Completed work is logged by date under `docs/changes/`.
     multi-parameter command's own field, and no-ops instead of throwing "Unknown SCPI command" — see
     `docs/changes/2026-09-23.md`), but this specific repro hasn't been re-run to confirm.
   - **Remaining real-hardware verification opportunity**: Korad KA3005P/KA6003P, the HP/Agilent/
-    Keysight 34401A, and now the Rigol DS1102E are confirmed (see the SCPI module entry above); the
-    Rigol DM3058E/DG1022 profiles are still unconfirmed. The newly-available Rigol bench units
-    (DG1000Z, DG3000, DM3000, DS1000) are different specific models than these bundled profiles, so
-    verifying likely means adding sibling profiles rather than confirming the existing ones
-    unmodified — and, for any of them reachable only over USB rather than RS-232/LAN, is blocked on
-    the USBTMC transport's own parked bulk-IN stall issue (see `BACKLOG.md`).
+    Keysight 34401A, the Rigol DS1102E, and now the Rigol DM3058E are all confirmed via the automated
+    `RealHardware*Tests` suite (`docs/test/2026-09-25-15-02-44.md`) — the DM3058E's previously-parked
+    USBTMC bulk-IN stall did not reproduce. The Rigol DG1062Z has a test now too, but it surfaced a
+    new, real USBTMC framing bug (2-byte bulk-IN reply, 12 bytes required) rather than confirming the
+    device — see `BACKLOG.md`'s USBTMC entry. The DG1022 remains untested (still stuck at the
+    device/USB level per `docs/changes/2026-09-24.md`, and shares its exact USBTMC VID:PID with the
+    DS1102E).
 
 ## Backlog / research
 

@@ -14,6 +14,8 @@ namespace DevTerm.Devices.Scpi.Tests;
 [TestClass]
 public sealed class ScpiProfileCatalogTests
 {
+    public TestContext TestContext { get; set; } = null!;
+
     private const string _minimalProfileJson = """
         {
             "Name": "Synthetic Instrument",
@@ -137,7 +139,11 @@ public sealed class ScpiProfileCatalogTests
     [TestCategory(TestCategories.Hardware)]
     public void TryMatchByIdn_MatchingReply_ReturnsThatBundledProfile()
     {
-        var matched = ScpiProfileCatalog.TryMatchByIdn("RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01");
+        const string idnReply = "RIGOL TECHNOLOGIES,DG1022,DG1ZA123456,1.01";
+        TestContext.WriteLine($"IDN reply: {idnReply}");
+
+        var matched = ScpiProfileCatalog.TryMatchByIdn(idnReply);
+        TestContext.WriteLine($"Matched profile: {matched?.Name}");
 
         Assert.IsNotNull(matched);
         Assert.IsTrue(matched!.Name.Contains("DG1022", StringComparison.OrdinalIgnoreCase));
