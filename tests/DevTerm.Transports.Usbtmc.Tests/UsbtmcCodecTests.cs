@@ -69,4 +69,28 @@ public sealed class UsbtmcCodecTests
 
         Assert.ThrowsExactly<InvalidOperationException>(() => UsbtmcCodec.DecodeHeader(tooShort, expectedTag: 1));
     }
+
+    [TestMethod]
+    public void DecodeHeader_TransferSizeAboveIntMaxValue_ThrowsInsteadOfWrappingNegative()
+    {
+        var header = BuildHeader(UsbtmcCodec.DevDepMsgIn, bTag: 5, bTagInverse: unchecked((byte)~5), transferSize: 0, eom: true);
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(4, 4), 0x80000000u);
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => UsbtmcCodec.DecodeHeader(header, expectedTag: 5));
+    }
+
+    [TestMethod]
+    [DataRow(65536, 512, 66048)]
+    [DataRow(65536, 64, 65600)]
+    [DataRow(4, 4, 16)]
+    [DataRow(52, 64, 64)]
+    public void BulkInBufferSize_RoundsHeaderPlusPayloadUpToWholePackets(int maxTransferSize, int maxPacketSize, int expected)
+    {
+        // 12 + 65536 = 65548 isn't a multiple of 64 or 512 - the old buffer size, whose last
+        // 12 bytes couldn't hold a full packet, so libusb overflowed on any reply that long.
+        var size = UsbtmcCodec.BulkInBufferSize(maxTransferSize, maxPacketSize);
+
+        Assert.AreEqual(expected, size);
+        Assert.AreEqual(0, size % maxPacketSize);
+    }
 }

@@ -16,25 +16,56 @@ public sealed class UsbtmcTransportOptions
     /// <summary>Disambiguates when more than one connected device matches VendorId/ProductId. Optional.</summary>
     public string? SerialNumber { get; set; }
 
-    /// <summary>Milliseconds a bulk-IN read blocks before timing out.</summary>
+    /// <summary>
+    /// Milliseconds a bulk-IN read blocks before timing out. A query whose reply takes longer
+    /// than this (a slow DMM integration, <c>*TST?</c>) is aborted and reported as a timeout.
+    /// </summary>
+    [Range(1, int.MaxValue)]
     public int ReadTimeoutMs { get; set; } = 1000;
 
     /// <summary>Milliseconds a bulk-OUT write blocks before timing out.</summary>
+    [Range(1, int.MaxValue)]
     public int WriteTimeoutMs { get; set; } = 5000;
 
     /// <summary>
-    /// The largest single bulk transfer requested/accepted at a time. Also sizes the read buffer
-    /// used to reassemble a reply that spans multiple bulk-IN transfers - see
-    /// docs/design/usbtmc-transport.md's <c>ITransport</c> mapping section.
+    /// Payload bytes one bulk-IN read has room for (the read buffer is this plus the 12-byte
+    /// header, rounded up to a whole number of the endpoint's packets). A transfer longer than
+    /// this is still read, just across several reads - see docs/design/usbtmc-transport.md's
+    /// <c>ITransport</c> mapping section.
     /// </summary>
+    [Range(1, 16 * 1024 * 1024)]
     public int MaxTransferSize { get; set; } = 65536;
 
     /// <summary>
-    /// Upper bound on a single logical response's declared TransferSize. A well-formed but
-    /// implausible value here (firmware bug, not framing corruption) is otherwise
-    /// indistinguishable from a legitimately large reply, and the continuation-read loop
-    /// has no other way to bail out.
+    /// Upper bound on a single logical response's total size. A well-formed but implausible
+    /// declared TransferSize (firmware bug, not framing corruption) is otherwise
+    /// indistinguishable from a legitimately large reply.
     /// </summary>
     [Range(1, int.MaxValue)]
     public int MaxResponseSize { get; set; } = 16 * 1024 * 1024;
+
+    /// <summary>
+    /// Send INITIATE_CLEAR (USBTMC 1.0 section 4.2.1.6) right after opening, discarding any reply
+    /// a previous session left queued in the device. Best-effort - a device that rejects it still
+    /// opens. Off by default: it's reported to hang some Rigol firmware (DS1000Z, python-usbtmc
+    /// PR #62), and neither the Linux usbtmc driver nor pyvisa-py sends it on open. The transport
+    /// still sends it as a fallback when an abort fails.
+    /// </summary>
+    public bool ClearOnOpen { get; set; }
+
+    /// <summary>
+    /// Assert USB488 REN (REN_CONTROL) on open and return the device to local (GO_TO_LOCAL,
+    /// then de-assert REN) on close. Only sent if the device advertises REN_CONTROL support and
+    /// isn't known to mishandle it (<see cref="UsbtmcDeviceQuirks.SupportsRemoteControl"/>).
+    /// </summary>
+    public bool RemoteOnOpen { get; set; } = true;
+
+    /// <summary>
+    /// Milliseconds to wait between sending a query and sending the REQUEST_DEV_DEP_MSG_IN that
+    /// reads its reply. Null (the default) uses the device's known quirk, if any
+    /// (<see cref="UsbtmcDeviceQuirks.RequestDelayMs"/> - a Rigol DG1022 never answers without
+    /// one), otherwise 0.
+    /// </summary>
+    [Range(0, 10_000)]
+    public int? RequestDelayMs { get; set; }
 }

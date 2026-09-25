@@ -46,8 +46,8 @@
   (0x1AB1:0x0588 = 6833:1416), so VendorId/ProductId alone can't tell them apart -
   RealUsbtmcDs1102eSerialNumber is the DS1102E's own real, confirmed serial number
   ("DS1ET180300759", see rigol-ds1102e.json's Notes) and RealHardwareUsbtmcTests only matches a
-  device whose serial number equals it exactly; RealUsbtmcDg1022SerialNumber is left blank until the
-  DG1022's own serial number is confirmed against real hardware (see below). The DG1062Z/DM3058E
+  device whose serial number equals it exactly; RealUsbtmcDg1022SerialNumber is likewise the
+  DG1022's own real, confirmed serial number (see below). The DG1062Z/DM3058E
   don't have a similar collision on this bench (nothing else shares their PID), so their
   SerialNumber parameters are left blank.
 
@@ -151,14 +151,14 @@
              VID:PID with the DS1102E above, so SerialNumber is required to target the DG1022
              specifically (see the comment block above and RealHardwareUsbtmcTests's class doc
              comment). SerialNumber ("DG1D125306284") is real-hardware confirmed via
-             `- -listusbtmcdevices true` (docs/test/2026-09-24-17-39-35.md). ExpectedIdnReply is left
-             blank: per that same session, *IDN? against this unit reproduced the already-tracked
-             zero-byte USBTMC stall (BACKLOG.md's USBTMC entry) rather than returning a reply, so no
-             real IDN string has ever been confirmed to assert against. -->
+             `- -listusbtmcdevices true` (docs/test/2026-09-24-17-39-35.md, re-confirmed in
+             docs/test/2026-09-25-18-03-06.md). ExpectedIdnReply ("DG1022") is real-hardware
+             confirmed too, now that its USBTMC "no reply" failures are fixed (same 2026-09-25 report):
+             *IDN? -> "RIGOL TECHNOLOGIES,DG1022 ,DG1D125306284,,00.02.00.06.00.02.07". -->
         <Parameter name="RealUsbtmcDg1022VendorId" value="6833" />
         <Parameter name="RealUsbtmcDg1022ProductId" value="1416" />
-        <Parameter name="RealUsbtmcDg1022SerialNumber" value="" />
-        <Parameter name="RealUsbtmcDg1022ExpectedIdnReply" value="" />
+        <Parameter name="RealUsbtmcDg1022SerialNumber" value="DG1D125306284" />
+        <Parameter name="RealUsbtmcDg1022ExpectedIdnReply" value="DG1022" />
     </TestRunParameters>
 
     <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->

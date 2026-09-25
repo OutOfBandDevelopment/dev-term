@@ -304,9 +304,11 @@ own repeated practice of not trusting a fix until checked against real hardware:
     `(e.Attributes & 0x03) == 0x02` (Bulk) on both lookups, and raising an explicit `IOException`
     instead of relying on `First()`'s generic `InvalidOperationException` if either lookup comes up
     empty.
-  - **Spec nit, fixed**: `REN_CONTROL`/`GO_TO_LOCAL`'s `wValue` is now always `0` per the USB488
-    subclass spec — enable/disable is encoded in which `bRequest` is sent, not in `wValue`. It
-    previously sent `remote ? 1 : 0`; no real device this was tested against relied on that value.
+  - ~~**Spec nit, fixed**: `REN_CONTROL`/`GO_TO_LOCAL`'s `wValue` is now always `0`~~ —
+    **this "fix" was wrong and has been reverted (2026-09-25)**: USB488 Table 15 defines
+    `REN_CONTROL`'s `wValue` as the REN state itself (1 = assert, 0 = de-assert); only
+    `GO_TO_LOCAL`/`LOCAL_LOCKOUT` use 0. Sending 0 on open actively de-asserted REN. See
+    [`features/usbtmc-protocol-conformance.md`](features/usbtmc-protocol-conformance.md).
   - **Minor, fixed**: `TryGetSerialNumber`'s catch now logs the swallowed exception via
     `Debug.WriteLine` before returning `null`, so an unexpected "every candidate rejected" is
     traceable instead of silent.
