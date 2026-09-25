@@ -424,6 +424,18 @@ public sealed class UsbtmcTransportTests
     }
 
     [TestMethod]
+    public void Options_Defaults_NeverClearOrClearHaltOnOpen()
+    {
+        // Both were confirmed harmful on real Rigol hardware or reported so (see the options' doc
+        // comments) - pinned so a "harmless-looking" default flip gets a failing test first.
+        var options = new UsbtmcTransportOptions();
+
+        Assert.IsFalse(options.ClearOnOpen);
+        Assert.IsFalse(options.ClearHaltOnOpen);
+        Assert.IsNull(options.RequestDelayMs);
+    }
+
+    [TestMethod]
     public void Quirks_RigolDs1000DgVidPid_DelaysTheReadRequestAndSkipsRemoteControl()
     {
         var quirks = UsbtmcDeviceQuirks.For(0x1AB1, 0x0588);

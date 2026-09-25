@@ -68,4 +68,18 @@ public sealed class UsbtmcTransportOptions
     /// </summary>
     [Range(0, 10_000)]
     public int? RequestDelayMs { get; set; }
+
+    /// <summary>
+    /// Send CLEAR_FEATURE(ENDPOINT_HALT) on both bulk endpoints right after opening, whether or
+    /// not they're halted. USB 2.0 section 9.4.5 says this always resets the data toggle to DATA0;
+    /// firmware that doesn't reset its own toggle in step then has its next packet silently
+    /// discarded by the host. Off by default - confirmed against a real Rigol DG1062Z
+    /// (docs/test/2026-09-25-18-03-06.md): with this on, the first reply after every open lost its
+    /// first 64-byte packet (12 of 12 opens; `*IDN?` came back as just its last 2 bytes, "\n+"),
+    /// with it off 12 of 12 were intact. libsigrok dropped the same call for Rigol 0x1AB1:0x0588
+    /// to fix a hang, and neither the Linux usbtmc driver nor pyvisa-py does it. It was originally
+    /// added for a DM3000 whose first bulk-OUT write STALLed - that case is still handled, by
+    /// WriteBulkOut's clear-halt-and-retry on an actual STALL.
+    /// </summary>
+    public bool ClearHaltOnOpen { get; set; }
 }

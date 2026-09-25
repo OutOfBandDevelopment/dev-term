@@ -150,12 +150,15 @@ public sealed class SystemUsbtmcDevice : IUsbtmcDevice
             _reader = matched.OpenEndpointReader((ReadEndpointID)bulkIn.EndpointAddress, _options.MaxTransferSize, EndpointType.Bulk);
             _writer = matched.OpenEndpointWriter((WriteEndpointID)bulkOut.EndpointAddress, EndpointType.Bulk);
 
-            // A prior run (or the device itself, on power-up) can leave a bulk endpoint halted -
-            // confirmed against a real Rigol DM3000: the very first bulk-OUT write failed with
-            // Error.Pipe (a STALL) until this was added. Best-effort since not every backend/device
-            // supports CLEAR_FEATURE on an endpoint that isn't actually halted.
-            try { _writer.ClearHalt(); } catch { }
-            try { _reader.ClearHalt(); } catch { }
+            // See UsbtmcTransportOptions.ClearHaltOnOpen for why this is off by default: CLEAR_FEATURE
+            // resets the host's data toggle, and a device that doesn't reset its own in step silently
+            // loses its next packet. A genuinely halted endpoint is still recovered - WriteBulkOut/
+            // ReadBulkIn clear the halt and retry on an actual STALL (Error.Pipe).
+            if (_options.ClearHaltOnOpen)
+            {
+                try { _writer.ClearHalt(); } catch { }
+                try { _reader.ClearHalt(); } catch { }
+            }
 
             _context = context;
             _device = matched;
