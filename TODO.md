@@ -39,9 +39,11 @@ Completed work is logged by date under `docs/changes/`.
     `RealHardware*Tests` suite (`docs/test/2026-09-25-15-02-44.md`) — the DM3058E's previously-parked
     USBTMC bulk-IN stall did not reproduce. The Rigol DG1062Z has a test now too, but it surfaced a
     new, real USBTMC framing bug (2-byte bulk-IN reply, 12 bytes required) rather than confirming the
-    device — see `BACKLOG.md`'s USBTMC entry. The DG1022 remains untested (still stuck at the
-    device/USB level per `docs/changes/2026-09-24.md`, and shares its exact USBTMC VID:PID with the
-    DS1102E).
+    device — see `BACKLOG.md`'s USBTMC entry. The DG1022 now has a test too (with its real, confirmed
+    serial number set in `devterm.runsettings` to disambiguate it from the DS1102E); running it found
+    its previously-documented "stuck at the device/USB level" behavior is intermittent, not
+    permanent (`*IDN?` succeeded twice in a row, then the next query hit the empty-reply stall) — see
+    `docs/test/2026-09-25-15-02-44.md`'s follow-up section and `BACKLOG.md`'s USBTMC entry.
 
 ## Backlog / research
 

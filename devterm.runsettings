@@ -35,19 +35,21 @@
   confirmed against real hardware so far (see docs/changes/2026-09-23.md); the others are left
   blank rather than asserting an unverified guess.
 
-  Real USBTMC devices (RealHardwareUsbtmcTests, in DevTerm.Console.Tests) - three Rigol bench
+  Real USBTMC devices (RealHardwareUsbtmcTests, in DevTerm.Console.Tests) - four Rigol bench
   instruments. VendorId/ProductId are decimal (Windows/libusb report hex; convert before setting
   these, same convention as UsbtmcTransportOptions itself) and come from a real bench
   `- -listusbtmcdevices true` enumeration, not guesses - see docs/test/2026-09-24-07-16-34.md.
   0x1AB1 (Rigol Technologies) = 6833 decimal in every row below.
 
-  RealUsbtmcDs1102eSerialNumber matters here in a way none of the other real-hardware parameters do:
-  a Rigol DG1022 function generator also on that bench enumerates under the exact same VID:PID as
-  the DS1102E (0x1AB1:0x0588 = 6833:1416), so VendorId/ProductId alone can't tell them apart -
+  RealUsbtmcDs1102eSerialNumber/RealUsbtmcDg1022SerialNumber matter here in a way none of the other
+  real-hardware parameters do: the DS1102E and DG1022 enumerate under the exact same VID:PID
+  (0x1AB1:0x0588 = 6833:1416), so VendorId/ProductId alone can't tell them apart -
   RealUsbtmcDs1102eSerialNumber is the DS1102E's own real, confirmed serial number
   ("DS1ET180300759", see rigol-ds1102e.json's Notes) and RealHardwareUsbtmcTests only matches a
-  device whose serial number equals it exactly. The DG1062Z/DM3058E don't have a similar collision
-  on this bench (nothing else shares their PID), so their SerialNumber parameters are left blank.
+  device whose serial number equals it exactly; RealUsbtmcDg1022SerialNumber is left blank until the
+  DG1022's own serial number is confirmed against real hardware (see below). The DG1062Z/DM3058E
+  don't have a similar collision on this bench (nothing else shares their PID), so their
+  SerialNumber parameters are left blank.
 
   RealUsbtmcDs1102eExpectedIdnReply is filled in because the DS1102E's *IDN? reply is real-hardware
   confirmed (docs/changes/2026-09-24.md: "RIGOL TECHNOLOGIES,DS1102E,DS1ET180300759,00.04.02.01.00").
@@ -137,6 +139,19 @@
         <Parameter name="RealUsbtmcDg1062zProductId" value="1602" />
         <Parameter name="RealUsbtmcDg1062zSerialNumber" value="" />
         <Parameter name="RealUsbtmcDg1062zExpectedIdnReply" value="" />
+
+        <!-- Rigol DG1022 function generator: USBTMC, VID 0x1AB1 PID 0x0588 - shares this exact
+             VID:PID with the DS1102E above, so SerialNumber is required to target the DG1022
+             specifically (see the comment block above and RealHardwareUsbtmcTests's class doc
+             comment). SerialNumber ("DG1D125306284") is real-hardware confirmed via
+             `- -listusbtmcdevices true` (docs/test/2026-09-24-17-39-35.md). ExpectedIdnReply is left
+             blank: per that same session, *IDN? against this unit reproduced the already-tracked
+             zero-byte USBTMC stall (BACKLOG.md's USBTMC entry) rather than returning a reply, so no
+             real IDN string has ever been confirmed to assert against. -->
+        <Parameter name="RealUsbtmcDg1022VendorId" value="6833" />
+        <Parameter name="RealUsbtmcDg1022ProductId" value="1416" />
+        <Parameter name="RealUsbtmcDg1022SerialNumber" value="DG1D125306284" />
+        <Parameter name="RealUsbtmcDg1022ExpectedIdnReply" value="" />
     </TestRunParameters>
 
     <!-- Controls parallelism at the vstest.console.exe level (across test containers/assemblies) -->

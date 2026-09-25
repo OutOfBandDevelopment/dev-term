@@ -76,6 +76,19 @@ the rest.
   bulk-IN stall — likely needs a packet capture of a known-working NI-VISA/Ultra Sigma `*IDN?`
   exchange against this specific unit to compare framing against what `LibUsbDotNet` actually sent.
   Not investigated further yet.
+- **Rigol DG1022's zero-byte-reply stall (`docs/changes/2026-09-24.md`) is intermittent, not
+  permanent** — real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`'s
+  follow-up section) via a new `RealHardwareUsbtmcTests.CliMode_AgainstRigolDg1022...` test
+  (`RealUsbtmcDg1022SerialNumber` now set to the real, confirmed `DG1D125306284`, per
+  `docs/test/2026-09-24-17-39-35.md`). Two consecutive automated runs both got a real, correct
+  `*IDN?` reply (`RIGOL TECHNOLOGIES,DG1022 ,DG1D125306284,,00.02.00.06.00.02.07`) but then hit
+  the already-fixed empty-reply retry's terminal case (`IOException: "USBTMC device returned no
+  data for the query."`, from `UsbtmcTransport.ReadReply`) on the very next query (`OUTPut?`) both
+  times. A separate rapid-fire manual CLI probe (three queries piped to stdin with no wait between
+  sends) failed on all three queries including `*IDN?`, suggesting timing/pacing between commands
+  may matter for this unit specifically. Not investigated further — same "needs a packet capture,
+  not more blind retries" conclusion as the DG1062Z item above and the original 2026-09-24 finding;
+  this narrows it (the device isn't unconditionally stuck) without root-causing it.
 
 ### Connection Editor
 

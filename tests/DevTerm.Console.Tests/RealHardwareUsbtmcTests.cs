@@ -19,13 +19,11 @@ namespace DevTerm.Console.Tests;
 /// VendorId/ProductId/SerialNumber defaults in <c>devterm.runsettings</c> come from a real bench
 /// <c>--listusbtmcdevices true</c> enumeration (see docs/test/2026-09-24-07-16-34.md), not guesses.
 /// A Rigol DG1022 function generator also on that bench enumerates under the exact same VID:PID as
-/// the DS1102E (0x1AB1:0x0588) — RealUsbtmcDs1102eSerialNumber disambiguates it (see
-/// rigol-ds1102e.json's Notes and BACKLOG.md's USBTMC entry). The DG1022 itself isn't covered here:
-/// it's not one of the profiles the user asked for, and per docs/changes/2026-09-24.md it's
-/// currently stuck at the device/USB level on this bench regardless (a real, tracked issue, not
-/// something a test should paper over). The DM3058E has its own previously-parked USBTMC bulk-IN
-/// stall (docs/changes/2026-09-23.md/BACKLOG.md) — if that regresses, this test times out rather
-/// than silently passing, which is the desired behavior for a regression check.
+/// the DS1102E (0x1AB1:0x0588) — RealUsbtmcDs1102eSerialNumber/RealUsbtmcDg1022SerialNumber
+/// disambiguate them (see rigol-ds1102e.json's Notes and BACKLOG.md's USBTMC entry). The DM3058E has
+/// its own previously-parked USBTMC bulk-IN stall (docs/changes/2026-09-23.md/BACKLOG.md) — if that
+/// regresses, this test times out rather than silently passing, which is the desired behavior for a
+/// regression check.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.Usbtmc)]
@@ -88,6 +86,24 @@ public sealed class RealHardwareUsbtmcTests
                 ("*IDN?", true),
                 ("SOURce1:APPLy?", true),
                 ("SOURce1:FREQuency?", true),
+            ]);
+
+    /// <summary>
+    /// Rigol DG1022: identity plus read-only CH1 output-status and frequency queries — neither
+    /// mutates output state. Shares its exact VID:PID with the DS1102E (see the class doc comment
+    /// above), so RealUsbtmcDg1022SerialNumber must disambiguate it.
+    /// </summary>
+    [TestMethod]
+    [TestCategory(TestCategories.Rigol_Dg1022)]
+    [TestCategory(TestCategories.Hardware)]
+    public Task CliMode_AgainstRigolDg1022_AnswersIdentityAndQueriesChannel1() =>
+        RunAsync(
+            "RealUsbtmcDg1022",
+            "\n",
+            [
+                ("*IDN?", true),
+                ("OUTPut?", true),
+                ("FREQuency?", true),
             ]);
 
     private async Task RunAsync(string parameterPrefix, string commandTerminator, (string Command, bool ExpectsReply)[] steps)
