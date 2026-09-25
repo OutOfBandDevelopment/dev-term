@@ -15,7 +15,6 @@ Completed work is logged by date under `docs/changes/`.
 - **Re-run the real-hardware suites once devices are attached.** `ReplyCollector` (multi-chunk replies) and the
   USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
   - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
-  - Confirm the HP 34401A test now logs its full `*IDN?` reply.
   - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
 
 ## Backlog / research

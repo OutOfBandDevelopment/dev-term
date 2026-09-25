@@ -64,6 +64,20 @@ the rest.
   - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
   already-built adapter cable, no new transport needed) remains buildable today, like SCPI was.
 
+### Tektronix TDS2024
+
+- **Every `TRIGger:...?` query hangs (never replies) against this specific real TDS2024 unit** —
+  real-hardware confirmed 2026-09-25 (`docs/test/2026-09-25-18-57-22.md`): `TRIGger:MAIn:FREQuency?`
+  and `TRIGger:STATE?` (a much cheaper status query, ruling out "expensive measurement" as the
+  cause) both hung the full step timeout, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`,
+  `CH2?`) answered normally, including as the 3rd command in a sequence (ruling out a simple
+  "3rd command" positional issue). `tektronix-tds2024.json`'s own `Name` field notes this unit is
+  specifically "NOT the TDS2024B" — unconfirmed hypothesis that the `TRIGger` query family needs
+  that variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family
+  for now (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a
+  known-working `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare
+  framing, similar to the USBTMC framing bugs below.
+
 ### USBTMC
 
 - **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
@@ -164,7 +178,6 @@ detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
-
 
 ### Logging
 
