@@ -69,13 +69,18 @@ the rest.
 
 ### USBTMC
 
-- **Rigol DG1062Z's `*IDN?` bulk-IN reply fails USBTMC header decoding** — real-hardware confirmed
-  2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): the first bulk-IN transfer back from the
-  device after sending `*IDN?` is only 2 bytes, short of the mandatory 12-byte USBTMC header, so
-  `UsbtmcCodec.DecodeHeader` throws. Same category of problem as the (since-resolved) DM3058E
-  bulk-IN stall — likely needs a packet capture of a known-working NI-VISA/Ultra Sigma `*IDN?`
-  exchange against this specific unit to compare framing against what `LibUsbDotNet` actually sent.
-  Not investigated further yet.
+- **Rigol DG1062Z's `*IDN?` bulk-IN reply intermittently fails USBTMC header decoding** —
+  real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`): on the first attempt,
+  the first bulk-IN transfer back from the device after sending `*IDN?` was only 2 bytes, short of
+  the mandatory 12-byte USBTMC header, so `UsbtmcCodec.DecodeHeader` threw. A later re-run the same
+  day (`CliMode_AgainstRigolDg1062z_AnswersIdentityAndQueriesChannel1`, same test, same bench) passed
+  cleanly against real hardware — `*IDN?` → `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`,
+  plus real replies from `SOURce1:APPLy?`/`SOURce1:FREQuency?` — so this is intermittent, not
+  permanent, matching the pattern already seen on the DG1022 below and the (since-resolved) DM3058E
+  bulk-IN stall. Not investigated further — same "needs a packet capture, not more blind retries"
+  conclusion; worth noting both intermittent USBTMC failures seen this session were on the *first*
+  query after opening the connection, which may be a clue about connection warm-up timing rather than
+  a per-device issue, but that's speculation, not confirmed.
 - **Rigol DG1022's zero-byte-reply stall (`docs/changes/2026-09-24.md`) is intermittent, not
   permanent** — real-hardware confirmed 2026-09-25 (see `docs/test/2026-09-25-15-02-44.md`'s
   follow-up section) via a new `RealHardwareUsbtmcTests.CliMode_AgainstRigolDg1022...` test

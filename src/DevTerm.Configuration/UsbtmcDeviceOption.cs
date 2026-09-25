@@ -11,12 +11,12 @@ namespace DevTerm.Configuration;
 /// <see cref="ConnectionEditorViewModel.VendorId"/>/<see cref="ConnectionEditorViewModel.ProductId"/>
 /// (shared with the HID transport's own picker) when picked.
 /// </summary>
-public sealed record UsbtmcDeviceOption(string Display, int VendorId, int ProductId, string? SerialNumber)
+public sealed record UsbtmcDeviceOption(string Display, int VendorId, int ProductId, string? SerialNumber, string? DevicePath) : IUsbDeviceOption
 {
     public static UsbtmcDeviceOption FromDescriptor(UsbtmcDeviceDescriptor descriptor)
     {
         var id = string.Format(CultureInfo.InvariantCulture, "{0:X4}:{1:X4}", descriptor.VendorId, descriptor.ProductId);
         var display = string.IsNullOrEmpty(descriptor.Product) ? id : $"{id}  {descriptor.Product}";
-        return new UsbtmcDeviceOption(display, descriptor.VendorId, descriptor.ProductId, descriptor.SerialNumber);
+        return new UsbtmcDeviceOption(display, descriptor.VendorId, descriptor.ProductId, descriptor.SerialNumber, descriptor.DevicePath);
     }
 }

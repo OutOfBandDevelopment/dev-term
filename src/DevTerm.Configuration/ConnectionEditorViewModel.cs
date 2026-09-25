@@ -1241,60 +1241,48 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     // anything not a number yet, mid-typing) means "any". Edits the ObservableCollection in place
     // (remove what no longer matches, then insert what now does, in detection order) instead of
     // replacing it, so a bound combobox keeps a still-matching selection rather than being reset.
-    private void RefreshHidDeviceOptions()
-    {
-        var vendorId = ParseFilterId(_vendorId);
-        var productId = ParseFilterId(_productId);
-        var wanted = _detectedHidDevices
-            .Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId == productId))
-            .ToList();
-
-        for (var i = _hidDeviceOptions.Count - 1; i >= 0; i--)
-        {
-            if (!wanted.Contains(_hidDeviceOptions[i]))
-            {
-                _hidDeviceOptions.RemoveAt(i);
-            }
-        }
-
-        for (var i = 0; i < wanted.Count; i++)
-        {
-            if (i >= _hidDeviceOptions.Count || _hidDeviceOptions[i] != wanted[i])
-            {
-                _hidDeviceOptions.Insert(i, wanted[i]);
-            }
-        }
-    }
+    private void RefreshHidDeviceOptions() =>
+        RefreshList(_vendorId, _productId, _detectedHidDevices, _hidDeviceOptions);
 
     // Same filtering as RefreshHidDeviceOptions, over the USBTMC discovery list instead — see
     // UsbtmcDeviceOptions' doc comment.
-    private void RefreshUsbtmcDeviceOptions()
+    private void RefreshUsbtmcDeviceOptions() =>
+        RefreshList(_vendorId, _productId, _detectedUsbtmcDevices, _usbtmcDeviceOptions);
+    private static int ParseFilterId(string decimalText) =>
+        int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
+
+    private static void RefreshList<T>(string vendorValue, string productValue, IReadOnlyList<T> detected, ObservableCollection<T> set)
+        where T : IUsbDeviceOption
     {
-        var vendorId = ParseFilterId(_vendorId);
-        var productId = ParseFilterId(_productId);
-        var wanted = _detectedUsbtmcDevices
+        var vendorId = ParseFilterId(vendorValue);
+        var productId = ParseFilterId(productValue);
+
+        var wanted = detected
             .Where(d => (vendorId == 0 || d.VendorId == vendorId) && (productId == 0 || d.ProductId == productId))
             .ToList();
 
-        for (var i = _usbtmcDeviceOptions.Count - 1; i >= 0; i--)
+        var existing = set.ToList();
+
+        var equality = UsbDeviceOptionEqualityComparer<T>.Default;
+        var remove = existing.Except(wanted, equality).ToList();
+        var add = wanted.Except(existing, equality).ToList();
+
+        foreach (var item in remove)
         {
-            if (!wanted.Contains(_usbtmcDeviceOptions[i]))
-            {
-                _usbtmcDeviceOptions.RemoveAt(i);
-            }
+            set.Remove(item);
         }
 
-        for (var i = 0; i < wanted.Count; i++)
+        var comparer = UsbDeviceOptionComparer.Default;
+        foreach (var item in add)
         {
-            if (i >= _usbtmcDeviceOptions.Count || _usbtmcDeviceOptions[i] != wanted[i])
+            var index = 0;
+            while (index < set.Count && comparer.Compare(set[index], item) < 0)
             {
-                _usbtmcDeviceOptions.Insert(i, wanted[i]);
+                index++;
             }
+            set.Insert(index, item);
         }
     }
-
-    private static int ParseFilterId(string decimalText) =>
-        int.TryParse(decimalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
 
     private void OnPropertyChanged(string? propertyName)
     {

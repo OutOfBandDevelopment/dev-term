@@ -11,7 +11,8 @@ public sealed record UsbtmcDeviceDescriptor(
     int ProductId,
     string? Manufacturer,
     string? Product,
-    string? SerialNumber);
+    string? SerialNumber,
+    string? DevicePath);
 
 /// <summary>
 /// Enumerates USBTMC-class devices currently attached to the system.

@@ -50,9 +50,8 @@ csharp_style_expression_bodied_methods = when_on_single_line:suggestion
 csharp_style_expression_bodied_constructors = false:suggestion
 csharp_style_expression_bodied_operators = when_on_single_line:suggestion
 
-# Braces always required, even for a single-statement if/for/while body — matches Session.cs and
-# every other file's existing usage; never the single-line `if (x) return;` style.
-csharp_prefer_braces = true:warning
+# IDE0011 (add braces) is not enforced — left to the author's judgment per call site.
+csharp_prefer_braces = true:silent
 
 # Allman brace placement (opening brace on its own line) — the style used throughout already.
 csharp_new_line_before_open_brace = all
