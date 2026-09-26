@@ -48,6 +48,17 @@ Completed work is logged by date under `docs/changes/`.
   Once the adapter is paired: fill in `devterm.runsettings`' blank `RealBleDe5000DeviceId` (and the
   `RealBleDe5000*CharacteristicUuid` overrides if it turns out not to speak NUS), then run
   `RealHardwareDe5000Tests` (`TestCategory=Hardware`).
+- **NMEA 0183 GPS decoder (`DevTerm.Devices.Nmea`) needs real-hardware verification.** Built and
+  unit-tested 2026-09-26 (see `docs/changes/2026-09-26.md` and
+  `docs/design/proposals/nmea-gps-protocol.md`): a generic NMEA 0183 sentence decoder
+  (GGA/RMC/GSA/GSV/VTG), a deliberately no-op `NmeaGpsControlSurface` (a GPS receiver has no
+  writable commands), `NmeaGpsUiDefinition`, and menu wiring in both front ends as "NMEA 0183...",
+  gated on the one confirmed-compatible unit's VID/PID (DeLorme Earthmate GPS BT-20,
+  `DevicePanels.Nmea0183`). No unit was on the bench this session — the exact HID report framing
+  (report length, report-ID byte) is a reasoned assumption (strip every `0x00` byte before
+  line-buffering), not a confirmed fact. Once the device is attached: fill in
+  `devterm.runsettings`' `RealHidEarthmateBt20-VendorId`/`-ProductId`/`-DevicePath`, then run
+  `RealHardwareEarthmateBt20Tests` (`TestCategory=Hardware`).
 
 ### UI batch (started 2026-09-25)
 

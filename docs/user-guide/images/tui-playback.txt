@@ -2,7 +2,7 @@
 │tek2230 (tcp://192.168.0.107:23), 2026-09-25 08:00:00, 8 records              │
 │Presenters: ascii, hex                                                        │
 │  (Enter applies) ascii utf8 hex decimal octal binary k8055 busylight scpi    │
-│radexone zoomh4n de5000                                                       │
+│radexone zoomh4n de5000 nmea                                                  │
 │00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23), connection     │
 │closed.                                                                       │
 │00:00.040 [dev-term] Connected.                                               │

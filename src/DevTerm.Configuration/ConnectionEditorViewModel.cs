@@ -9,8 +9,10 @@ using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Usbtmc;
+using DevTerm.Core.Presenters;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
@@ -404,19 +406,33 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "loopback"];
 
     /// <summary>
-    /// This list is hardcoded rather than resolved from the live <see cref="Core.Presenters.PresenterCatalog"/>
-    /// because this view model is constructed before any transport/session exists (it's what builds
-    /// the <see cref="CliOptions"/> a session gets built from) — so it must include every
-    /// device-specific display presenter (<c>k8055</c>, <c>busylight</c>, ...) by name in addition to
-    /// the built-in text ones, or a device's control panel can never receive live input: switching to
-    /// that device here without also checking its presenter here leaves <see cref="CliOptions.EffectivePresenters"/>
-    /// on the default, so the device's decoder is registered but never wired into the session's
-    /// <c>Pipeline</c> and its indicators never update, even though outbound control-panel commands
-    /// (which write to the session directly, not through a presenter) work fine — confirmed live
-    /// against the K8055 GUI panel 2026-09-22.
+    /// Every presenter name a saved profile can check, in registration order (built-ins first, then
+    /// each device module) — resolved once from a presenters-only DI container
+    /// (<see cref="ServiceCollectionExtensions.AddDevTermPresenters"/>) rather than the live session's
+    /// <see cref="PresenterCatalog"/>, because this view model is constructed before any transport/
+    /// session exists (it's what builds the <see cref="CliOptions"/> a session gets built from).
+    /// Deriving this from the same registration a real session uses (instead of a hand-maintained
+    /// list) means a new device module's presenter shows up here automatically as soon as it's added
+    /// to <see cref="ServiceCollectionExtensions.AddDevTermPresenters"/> — forgetting that step here
+    /// specifically (while still registering the presenter itself) was exactly the failure mode this
+    /// replaced: a device's control panel could never receive live input, since switching to that
+    /// device without also checking its presenter left <see cref="CliOptions.EffectivePresenters"/> on
+    /// the default, so the decoder was registered but never wired into the session's <c>Pipeline</c>
+    /// and its indicators never updated, even though outbound control-panel commands (which write to
+    /// the session directly, not through a presenter) worked fine — confirmed live against the K8055
+    /// GUI panel 2026-09-22.
     /// </summary>
-    public IReadOnlyList<string> PresenterOptions { get; } =
-        ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi", "radexone", "zoomh4n", "de5000"];
+    private static readonly IReadOnlyList<string> _presenterOptions = BuildPresenterOptions();
+
+    public IReadOnlyList<string> PresenterOptions { get; } = _presenterOptions;
+
+    private static IReadOnlyList<string> BuildPresenterOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddDevTermPresenters(new CliOptions());
+        using var provider = services.BuildServiceProvider();
+        return [.. provider.GetServices<IPresenter>().Select(p => p.Name)];
+    }
 
     public IReadOnlyList<string> LineEndingOptions { get; } = Enum.GetNames<LineEnding>();
 
