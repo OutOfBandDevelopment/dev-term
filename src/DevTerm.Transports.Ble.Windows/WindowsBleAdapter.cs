@@ -101,14 +101,19 @@ public sealed class WindowsBleAdapter : IBleAdapter
             ? GattWriteOption.WriteWithoutResponse
             : GattWriteOption.WriteWithResponse;
 
-        var status = await _writeCharacteristic
-            .WriteValueAsync(data.ToArray().AsBuffer(), writeOption)
-            .AsTask(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (status != GattCommunicationStatus.Success)
+        // A without-response write is limited to one ATT packet - split anything larger instead of
+        // letting the stack fail or silently truncate it. See docs/bugs/fixed/026-ble-writes-not-mtu-chunked.md.
+        foreach (var chunk in BleWriteChunker.Chunk(data, _options.MaxWriteChunkSize))
         {
-            throw new IOException($"BLE write failed: {status}.");
+            var status = await _writeCharacteristic
+                .WriteValueAsync(chunk.ToArray().AsBuffer(), writeOption)
+                .AsTask(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (status != GattCommunicationStatus.Success)
+            {
+                throw new IOException($"BLE write failed: {status}.");
+            }
         }
     }
 

@@ -26,4 +26,12 @@ public sealed class BleTransportOptions
 
     /// <summary>Bounds a blocked write so it fails with a <see cref="TimeoutException"/> instead of hanging forever.</summary>
     public int WriteTimeoutMs { get; set; } = 5000;
+
+    /// <summary>
+    /// The largest single GATT write a <see cref="IBleAdapter"/> will send without splitting — see
+    /// <see cref="BleWriteChunker"/>. Defaults to 20: the usable payload of one ATT packet
+    /// (the default, unnegotiated 23-byte MTU minus its 3-byte header), safe for a peripheral this
+    /// hasn't negotiated a larger MTU with. Raise it for a device/profile known to support a larger MTU.
+    /// </summary>
+    public int MaxWriteChunkSize { get; set; } = 20;
 }
