@@ -25,3 +25,6 @@ appsettings.*.Local.json
 
 # Untracked review output (TUI/WPF layout-review screenshots, see tests/DevTerm.Console.Tests/TuiReview.cs)
 artifacts/
+
+# Claude Code agent worktrees (temporary git worktrees) - never committed.
+.claude/worktrees/
