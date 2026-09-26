@@ -3,6 +3,7 @@ using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
+using DevTerm.Devices.ZoomH4n;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
@@ -29,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddBusylightPresenter();
         services.AddScpiPresenter();
         services.AddRadexOnePresenter();
+        services.AddZoomH4nPresenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))

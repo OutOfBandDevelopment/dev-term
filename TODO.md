@@ -24,6 +24,13 @@ Completed work is logged by date under `docs/changes/`.
   `devterm.runsettings`' blank `RealHidRadexOne*` parameters, then run
   `RealHardwareRadexOneTests` (`TestCategory=Hardware`). Tighten `DevicePanels.IsAvailable`'s
   `DevicePanel.RadexOne` gate (currently "any HID connection") to the confirmed id pair once known.
+- **Zoom H4n remote (`DevTerm.Devices.ZoomH4n`) needs real-hardware verification.** Built and
+  unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): decoder, control surface (including
+  the init handshake's wake-byte watcher), `UiDefinition`, and menu wiring in both front ends. No
+  `h4n2rs485` adapter/Zoom H4n was attached this session, so the handshake timing and status-bitmask
+  semantics are unconfirmed against a live unit. Once the adapter is attached: fill in
+  `devterm.runsettings`' blank `RealSerialZoomH4nPort`, then run `RealHardwareZoomH4nTests`
+  (`TestCategory=Hardware`).
 
 ## Backlog / research
 

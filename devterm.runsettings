@@ -105,6 +105,13 @@
         <Parameter name="RealSerialKa6003pHandshake" value="None" />
         <Parameter name="RealSerialKa6003pExpectedIdnReply" value="KORAD KA6003P" />
 
+        <!-- Zoom H4n remote port (RealHardwareZoomH4nTests, in DevTerm.Devices.ZoomH4n.Tests): 2400
+             8-N-1, no handshake, via the h4n2rs485 adapter (see
+             docs/design/proposals/zoom-h4n-remote-protocol.md). Left blank - no real unit has been
+             wired up to confirm a port yet; the test reports Assert.Inconclusive until this is
+             filled in. -->
+        <Parameter name="RealSerialZoomH4nPort" value="" />
+
         <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
              DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback
              match when DevicePath is blank, mirroring SystemHidDevice.Open's own match order. -->
