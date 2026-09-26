@@ -14,13 +14,16 @@ internal static class RadexOneExtensionCodec
 {
     /// <summary>
     /// Read Data / Read Serial+Version / Read Settings requests share this 6-byte shape:
-    /// CommandCode(2) + Reserved(2, always 0x000C) + Checksum(2, covering the first 4 bytes).
+    /// CommandCode(2) + Reserved(2, 0x000C for those three) + Checksum(2, covering the first 4
+    /// bytes). Reset Accumulated (see <see cref="RadexOneCommand.ResetAccumulated"/>) shares the
+    /// same shape but with <paramref name="word"/> = 0x0001 instead — per a user-captured trace,
+    /// not the original reverse-engineering doc.
     /// </summary>
-    public static byte[] BuildQuery(ushort commandCode)
+    public static byte[] BuildQuery(ushort commandCode, ushort word = 0x000C)
     {
         var extension = new byte[6];
         BinaryPrimitives.WriteUInt16LittleEndian(extension, commandCode);
-        BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(2), 0x000C);
+        BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(2), word);
         BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(4), RadexOneFramer.ComputeChecksum(extension.AsSpan(0, 4)));
         return extension;
     }

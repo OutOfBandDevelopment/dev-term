@@ -8,6 +8,7 @@ using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
@@ -137,6 +138,7 @@ public static class TuiMode
         MenuItem? radexOneMenuItem = null;
         MenuItem? zoomH4nMenuItem = null;
         MenuItem? de5000MenuItem = null;
+        MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
 
@@ -463,6 +465,17 @@ public static class TuiMode
                         panelParts.Window.Dispose();
                     }
                 })),
+                nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
+                {
+                    var structuredSource = catalog.TryGet("nmea", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        app,
+                        NmeaGpsUiDefinition.Build(),
+                        new NmeaGpsControlSurface(),
+                        structuredSource,
+                        "dev-term — NMEA 0183");
+                    app.Run(panelParts.Window);
+                })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
@@ -558,6 +571,7 @@ public static class TuiMode
             radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, cliOptions, connected);
             zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, cliOptions, connected);
             de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, cliOptions, connected);
+            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, cliOptions, connected);
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
         }
 

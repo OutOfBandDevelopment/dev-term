@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Moq" Version="4.21.0" />
+    <PackageReference Include="MSTest" Version="4.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DevTerm.Devices.Nmea\DevTerm.Devices.Nmea.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <!-- Real-hardware Integration tests (RealHardwareEarthmateBt20Tests) construct a real HidTransport
+         directly - same reasoning as DevTerm.Devices.K8055.Tests. -->
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
+  </ItemGroup>
+
+</Project>

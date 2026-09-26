@@ -18,6 +18,7 @@
     <Project Path="src/DevTerm.Devices.Busylight/DevTerm.Devices.Busylight.csproj" />
     <Project Path="src/DevTerm.Devices.De5000/DevTerm.Devices.De5000.csproj" />
     <Project Path="src/DevTerm.Devices.K8055/DevTerm.Devices.K8055.csproj" />
+    <Project Path="src/DevTerm.Devices.Nmea/DevTerm.Devices.Nmea.csproj" />
     <Project Path="src/DevTerm.Devices.RadexOne/DevTerm.Devices.RadexOne.csproj" />
     <Project Path="src/DevTerm.Devices.Scpi/DevTerm.Devices.Scpi.csproj" />
     <Project Path="src/DevTerm.Devices.ZoomH4n/DevTerm.Devices.ZoomH4n.csproj" />
@@ -42,6 +43,7 @@
     <Project Path="tests/DevTerm.Devices.Busylight.Tests/DevTerm.Devices.Busylight.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.De5000.Tests/DevTerm.Devices.De5000.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.K8055.Tests/DevTerm.Devices.K8055.Tests.csproj" />
+    <Project Path="tests/DevTerm.Devices.Nmea.Tests/DevTerm.Devices.Nmea.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.RadexOne.Tests/DevTerm.Devices.RadexOne.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.Scpi.Tests/DevTerm.Devices.Scpi.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.ZoomH4n.Tests/DevTerm.Devices.ZoomH4n.Tests.csproj" />

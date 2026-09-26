@@ -25,6 +25,7 @@
                 <MenuItem x:Name="RadexOneMenuItem" Header="_Radex One Control Panel..." Click="RadexOneControlPanel_Click" />
                 <MenuItem x:Name="ZoomH4nMenuItem" Header="_Zoom H4n Remote..." Click="ZoomH4nControlPanel_Click" />
                 <MenuItem x:Name="De5000MenuItem" Header="_DE-5000 LCR Meter..." Click="De5000ControlPanel_Click" />
+                <MenuItem x:Name="Nmea0183MenuItem" Header="_NMEA 0183..." Click="Nmea0183ControlPanel_Click" />
                 <MenuItem x:Name="ManifestMenuItem" Header="Device _Manifest..." Click="DeviceManifest_Click" />
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />

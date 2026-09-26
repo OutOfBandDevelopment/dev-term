@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\0czq0hld.fer\loopback-sensor-demo.                                        │
+│~\…\4g5mqzih.dr0\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Stream Samples├──────────────────────────────╮│
 ││Identity                    ││  Name:     Stream Samples                    ││
 ││Commands (3)                ││  Id:       samples                           ││

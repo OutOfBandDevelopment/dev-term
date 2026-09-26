@@ -10,7 +10,8 @@ as prior art:
 - [`shared/projects/radex-one-protocol-reverse-engineering/README.md`](https://github.com/mwwhited-notes/shared/tree/main/projects/radex-one-protocol-reverse-engineering) — complete, finished protocol reverse-engineering writeup (status: **Completed**)
 
 This source project is a finished reverse-engineering effort with a fully documented binary
-framing, checksum, and four command types. **2026-09-25: confirmed against a real device on
+framing, checksum, and five command types (a fifth, Reset Accumulated, turned up later in a
+separate user-captured trace — see "Trace Examples" below). **2026-09-25: confirmed against a real device on
 COM8 that the source doc's original transport claim (a plain virtual COM port) was right all
 along** — see "Device" below for how an earlier draft of this doc got that backwards. The same
 2026-09-25 pass also guessed the wrong baud rate (2400); **2026-09-26: corrected to 9600, the
@@ -53,7 +54,7 @@ What's still true and still worth keeping about this protocol:
   Read Serial/Version) *and* a control surface (Write Settings — alarm mode + threshold), so this
   doubles as a worked example for [device-control-modules.md](../device-control-modules.md) for a
   genuinely binary, non-textual protocol.
-- **Small and self-contained** — four command types, no chaining, no composite/multi-channel
+- **Small and self-contained** — five command types, no chaining, no composite/multi-channel
   demuxing needed.
 
 ## Protocol summary
@@ -98,6 +99,7 @@ examples byte-for-byte rather than trusting the prose field list:
 | `0x0001` | Read Serial/Version | Query → reply | Variable-length reply, e.g. `SN: 180620-0840-008344 v1.8` |
 | `0x0802` | Write Settings | Command → ack | Sets alarm mode (vibration/audio) + threshold; **must be sent 3× for the device to accept it** |
 | `0x0801` | Read Settings | Query → reply | Reads back current alarm mode + threshold |
+| `0x0803` | Reset Accumulated | Command → ack | Clears the accumulated-dose counter; found in a later user-captured trace, not the original source doc |
 
 The 3×-repeat-to-confirm quirk on Write Settings is the kind of real-device gotcha worth carrying
 into the control-surface implementation directly (a naive one-shot "Set Threshold" command would
@@ -107,7 +109,9 @@ silently not take effect).
 trace except where noted:
 
 - **Query request** (Read Data / Read Serial+Version / Read Settings), 6 bytes:
-  `CommandCode(2) + Reserved(2, 0x000C) + Checksum(2)`.
+  `CommandCode(2) + Reserved(2, 0x000C) + Checksum(2)`. **Reset Accumulated** shares this exact
+  6-byte shape but with the second word `0x0001` instead of `0x000C` — verified byte-for-byte
+  against the "reset accumulated" trace below.
 - **Write Settings request**, 16 bytes:
   `CommandCode(2) + Reserved(2, 0x000E) + TargetValue(2, 0x0005) + ZeroReserved(2) +
   AlarmSetting(1) + Threshold(2, LE, byte-unaligned) + ZeroReserved(3) + Checksum(2)`.
@@ -115,6 +119,7 @@ trace except where noted:
   `CommandCode(2) + Reserved(2) + Reserved(2, 0x000C) + Reserved(2) + Ambient(2) + Reserved(2) +
   Accumulated(2) + Reserved(2) + CPM(2) + Reserved(2) + Checksum(2)`.
 - **Write Settings ack**, 6 bytes: `CommandCode(2) echo + ZeroReserved(2) + Checksum(2)`.
+- **Reset Accumulated ack**, 6 bytes — identical shape to the Write Settings ack above.
 - **Read Settings response**, 16 bytes — same shape as the Write Settings request, minus the
   leading `0x000E` field (replaced by a zero word).
 - **Read Serial/Version response** — partially unresolved: the source doc's own reserved-byte
@@ -162,7 +167,7 @@ decoder --> user : Human-readable text baseline\n(e.g. "CPM=15 Ambient=18 Accum=
 
 - **Framer is shared, not duplicated per command** — request/response packets share one
   prefix+type+length+packetnum+reserved+checksum shape; a single internal framer parses/builds
-  that envelope, with each of the four command types supplying just its own extension
+  that envelope, with each of the five command types supplying just its own extension
   layout — this is the same "shared envelope, per-message extension" shape a lot of binary device
   protocols have, so it's a reasonable candidate for whatever generic binary-framing helper
   emerges in `DevTerm.Core` as more decoders are added (currently none exists — decoders haven't
@@ -215,6 +220,14 @@ verify each extension's own trailing checksum, not just the framer's outer heade
 rejected (falls back to the generic "reply command 0x..." line) rather than shown as a valid reading.
 Read Serial/Version deliberately still doesn't re-validate its own inner checksum; see "Open
 questions" below.
+
+**2026-09-26: added the fifth command, Reset Accumulated (`0x0803`)**, from a user-captured trace
+(see "Trace Examples" below) that wasn't in the original source doc — `RadexOneCommand.ResetAccumulated`,
+a `word` parameter on `RadexOneExtensionCodec.BuildQuery` (defaults to `0x000C`, `0x0001` for this
+command), a decoder ack branch, a `"resetAccumulated"` control-surface action/preview, and a
+"Maintenance" UI section with a "Reset Accumulated" button. Checksum-verified byte-for-byte against
+the new trace (both directions); five more unit tests added (27 total). Not yet run against real
+hardware.
 
 ## Open questions
 

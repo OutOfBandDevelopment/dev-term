@@ -78,6 +78,19 @@ public sealed class RadexOneDecoderTests
     }
 
     [TestMethod]
+    public void Render_WithResetAccumulatedReply_RendersAcknowledgement()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildResetAccumulatedAckExtension();
+        var report = RadexOneFramer.BuildReply(1, extension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>(report));
+
+        Assert.HasCount(1, lines);
+        Assert.AreEqual("RADEX-ONE: reset accumulated acknowledged", lines[0]);
+    }
+
+    [TestMethod]
     public void Render_WithBadChecksum_ProducesADiagnosticLineInsteadOfThrowing()
     {
         var decoder = new RadexOneDecoder();
@@ -210,6 +223,14 @@ public sealed class RadexOneDecoderTests
     {
         var extension = new byte[6];
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.WriteSettings);
+        WriteChecksum(extension, coveredLength: 4);
+        return extension;
+    }
+
+    private static byte[] BuildResetAccumulatedAckExtension()
+    {
+        var extension = new byte[6];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.ResetAccumulated);
         WriteChecksum(extension, coveredLength: 4);
         return extension;
     }

@@ -105,6 +105,8 @@ public sealed class RadexOneDecoder : IPresenter
                 FormatSettings(alarmMode, threshold),
             RadexOneCommand.WriteSettings when RadexOneExtensionCodec.TryVerifyWriteSettingsAck(extension) =>
                 "RADEX-ONE: write settings acknowledged",
+            RadexOneCommand.ResetAccumulated when RadexOneExtensionCodec.TryVerifyWriteSettingsAck(extension) =>
+                "RADEX-ONE: reset accumulated acknowledged",
             _ => $"RADEX-ONE: reply command 0x{commandCode:X4}, {extension.Length} byte(s)",
         };
     }

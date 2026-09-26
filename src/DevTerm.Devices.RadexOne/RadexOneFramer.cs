@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace DevTerm.Devices.RadexOne;
 
 /// <summary>
-/// The four Radex One command codes, per docs/design/proposals/radex-one-protocol.md. These live
+/// The five Radex One command codes, per docs/design/proposals/radex-one-protocol.md. These live
 /// inside the framer's Extension field (see <see cref="RadexOneFramer"/>'s remarks) — not, as an
 /// earlier draft of this module assumed, in the outer header's Type field, which is actually a
 /// constant marker shared by every command. A reply echoes the same code as the request that
@@ -15,6 +15,14 @@ public static class RadexOneCommand
     public const ushort ReadSerialVersion = 0x0001;
     public const ushort WriteSettings = 0x0802;
     public const ushort ReadSettings = 0x0801;
+
+    /// <summary>
+    /// Clears the device's accumulated-dose counter. Discovered from a user-captured trace (see
+    /// docs/design/proposals/radex-one-protocol.md's "Trace Examples"), not the original
+    /// reverse-engineering doc — request extension shares <see cref="RadexOneExtensionCodec.BuildQuery"/>'s
+    /// 6-byte query shape but with its second word 0x0001, not the other three queries' 0x000C.
+    /// </summary>
+    public const ushort ResetAccumulated = 0x0803;
 }
 
 /// <summary>

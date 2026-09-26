@@ -11,8 +11,8 @@ namespace DevTerm.Devices.RadexOne;
 /// 2026-09-26 on COM8, correcting an earlier, unverified "2400 baud" claim — see
 /// docs/bugs/fixed/061-radexone-wrong-baud-rate.md), per docs/design/proposals/radex-one-protocol.md. The device is a plain
 /// virtual COM port; there is no HID report wrapping (an earlier "confirmed directly" HID assumption
-/// in that doc was wrong). "readData"/"readSerialVersion"/"readSettings" are one-shot queries built
-/// via <see cref="RadexOneExtensionCodec.BuildQuery"/>; their replies arrive asynchronously through
+/// in that doc was wrong). "readData"/"readSerialVersion"/"readSettings"/"resetAccumulated" are
+/// one-shot queries built via <see cref="RadexOneExtensionCodec.BuildQuery"/>; their replies arrive asynchronously through
 /// <see cref="RadexOneDecoder"/> on the session's normal output path, not through this surface.
 /// "alarmMode"/"threshold" only mutate local state; "writeSettings" is the only command that sends a
 /// Write Settings request, and sends it three times in a row per the proposal's documented "must be
@@ -62,6 +62,8 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
                 return SendQueryAsync(RadexOneCommand.ReadSerialVersion, cancellationToken);
             case "readSettings":
                 return SendQueryAsync(RadexOneCommand.ReadSettings, cancellationToken);
+            case "resetAccumulated":
+                return SendQueryAsync(RadexOneCommand.ResetAccumulated, cancellationToken, word: 0x0001);
             case "writeSettings":
                 return SendWriteSettingsAsync(cancellationToken);
             default:
@@ -79,14 +81,15 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
             "readData" => PreviewQuery(RadexOneCommand.ReadData),
             "readSerialVersion" => PreviewQuery(RadexOneCommand.ReadSerialVersion),
             "readSettings" => PreviewQuery(RadexOneCommand.ReadSettings),
+            "resetAccumulated" => PreviewQuery(RadexOneCommand.ResetAccumulated, word: 0x0001),
             "writeSettings" => PreviewWriteSettings(),
             _ => null,
         };
     }
 
-    private async Task SendQueryAsync(ushort commandType, CancellationToken cancellationToken)
+    private async Task SendQueryAsync(ushort commandType, CancellationToken cancellationToken, ushort word = 0x000C)
     {
-        var report = BuildQueryReport(commandType, TakePacketNumber());
+        var report = BuildQueryReport(commandType, TakePacketNumber(), word);
         await _session.SendAsync(report, cancellationToken).ConfigureAwait(false);
     }
 
@@ -106,11 +109,11 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
         }
     }
 
-    private string PreviewQuery(ushort commandType)
+    private string PreviewQuery(ushort commandType, ushort word = 0x000C)
     {
         lock (_stateLock)
         {
-            return CommandPreviewFormat.ToHex(BuildQueryReport(commandType, _nextPacketNumber));
+            return CommandPreviewFormat.ToHex(BuildQueryReport(commandType, _nextPacketNumber, word));
         }
     }
 
@@ -123,8 +126,8 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
         }
     }
 
-    private static byte[] BuildQueryReport(ushort commandType, int packetNumber) =>
-        RadexOneFramer.BuildRequest((ushort)packetNumber, RadexOneExtensionCodec.BuildQuery(commandType));
+    private static byte[] BuildQueryReport(ushort commandType, int packetNumber, ushort word = 0x000C) =>
+        RadexOneFramer.BuildRequest((ushort)packetNumber, RadexOneExtensionCodec.BuildQuery(commandType, word));
 
     private int TakePacketNumber()
     {

@@ -12,6 +12,7 @@
     <ProjectReference Include="..\DevTerm.Devices.RadexOne\DevTerm.Devices.RadexOne.csproj" />
     <ProjectReference Include="..\DevTerm.Devices.ZoomH4n\DevTerm.Devices.ZoomH4n.csproj" />
     <ProjectReference Include="..\DevTerm.Devices.De5000\DevTerm.Devices.De5000.csproj" />
+    <ProjectReference Include="..\DevTerm.Devices.Nmea\DevTerm.Devices.Nmea.csproj" />
     <ProjectReference Include="..\DevTerm.DeviceManifests\DevTerm.DeviceManifests.csproj" />
     <ProjectReference Include="..\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
