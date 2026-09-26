@@ -98,10 +98,15 @@ Optional sections, when they apply: `## Evidence` (captured output, a trace), `#
      ## Resolution
      Fixed in `<commit or PR>` on YYYY-MM-DD: <one line on the fix>. Regression test: `<TestClass.TestMethod>`.
      ```
-   - Update the report's row in `docs/bugs/README.md` (Status column).
+   - Move the file into `docs/bugs/fixed/` (`git mv docs/bugs/NNN-slug.md docs/bugs/fixed/NNN-slug.md`) — same
+     file name, just relocated, so `docs/bugs/` holds only what's still open. Update every link to it
+     accordingly: its row in `docs/bugs/README.md` (`fixed/NNN-slug.md`), the `docs/changes/` entry
+     (`../bugs/fixed/NNN-slug.md`), and any plain-text `docs/bugs/NNN-slug.md` mentions left in code
+     comments or other reports' `## Related` sections.
+   - Update the report's row in `docs/bugs/README.md` (Status column and link path).
    - Log the fix's detail in today's `docs/changes/` file, citing the report number.
    - If the bug revealed a non-obvious constraint, add it to CLAUDE.md's constraints list (see `docs-sync`).
-4. Keep the file. Don't delete fixed reports.
+4. Keep the file (under `docs/bugs/fixed/` now). Don't delete fixed reports.
 
 Other statuses: `In progress` (someone is on it; say who or which branch), `Won't fix` (add a `## Resolution`
 saying why), `Duplicate of [NNN](NNN-slug.md)`.

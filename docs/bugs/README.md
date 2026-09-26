@@ -8,8 +8,9 @@ fix, and the tests that should come with the fix.
 
 **Keeping them current:**
 - **Status** is `Open`, `In progress`, `Fixed` or `Won't fix`. When a fix lands, set `Fixed`, add a `## Resolution`
-  section naming the commit and the regression test, and log the detail in `docs/changes/YYYY-MM-DD.md` as usual.
-  Keep the file (so the number isn't reused); update its row below.
+  section naming the commit and the regression test, log the detail in `docs/changes/YYYY-MM-DD.md` as usual, and
+  move the file into `docs/bugs/fixed/` (same file name, number kept, never reused) — update its row below and
+  every other link to it accordingly.
 - **Confidence** says whether a finding was confirmed by reading the code, reproduced, or only plausible. Reproduce
   a `Plausible` one (ideally as a failing test) before fixing it.
 - Line numbers go stale as code moves; they refer to the report's **Found at commit**, and the symbol names are the
@@ -23,10 +24,10 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
-| 001 | [Opening an already-open session starts a second read loop](001-session-double-open.md) | DevTerm.Core (Session), TUI, WPF | Fixed |
-| 002 | [USBTMC Close hangs forever while a reply over 64 KB is being read](002-usbtmc-close-hang-large-reply.md) | DevTerm.Transports.Usbtmc | Fixed |
-| 003 | [Loopback transport can't reconnect after Disconnect](003-loopback-cannot-reconnect.md) | DevTerm.Transports.Loopback | Fixed |
-| 004 | [One saved profile with a bad value crashes TUI startup and blocks the WPF connect](004-bad-profile-value-crashes-title.md) | DevTerm.Configuration (ConnectionProfileStore), TUI, WPF | Fixed |
+| 001 | [Opening an already-open session starts a second read loop](fixed/001-session-double-open.md) | DevTerm.Core (Session), TUI, WPF | Fixed |
+| 002 | [USBTMC Close hangs forever while a reply over 64 KB is being read](fixed/002-usbtmc-close-hang-large-reply.md) | DevTerm.Transports.Usbtmc | Fixed |
+| 003 | [Loopback transport can't reconnect after Disconnect](fixed/003-loopback-cannot-reconnect.md) | DevTerm.Transports.Loopback | Fixed |
+| 004 | [One saved profile with a bad value crashes TUI startup and blocks the WPF connect](fixed/004-bad-profile-value-crashes-title.md) | DevTerm.Configuration (ConnectionProfileStore), TUI, WPF | Fixed |
 | 005 | [DE-5000 negative phase angle and D readings decode as huge positives](005-de5000-negative-secondary.md) | DevTerm.Devices.De5000 | Open |
 | 006 | [One missing SCPI or manifest reply shifts every later reply onto the wrong field](006-reply-queue-desync.md) | DevTerm.Core (LineReplyPresenter), DevTerm.Devices.Scpi, DevTerm.DeviceManifests | Open |
 | 007 | [Closed TUI windows are never disposed: Page Up/Down stop working and handlers leak](007-tui-modal-windows-not-disposed.md) | TUI (DevTerm.Console) | Open |

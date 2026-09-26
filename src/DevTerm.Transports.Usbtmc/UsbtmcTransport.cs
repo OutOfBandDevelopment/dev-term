@@ -141,7 +141,7 @@ public sealed class UsbtmcTransport : ITransport
         // Unblock a WriteAsync that's stuck flushing a reply over the pipe's default 64 KB pause
         // threshold into a pipe nobody is reading any more (Session stops its read loop before
         // calling CloseAsync) - otherwise this wait for _ioLock never returns, hanging every later
-        // Open/Close/Dispose. See docs/bugs/002-usbtmc-close-hang-large-reply.md.
+        // Open/Close/Dispose. See docs/bugs/fixed/002-usbtmc-close-hang-large-reply.md.
         _pipe?.Writer.CancelPendingFlush();
 
         await _ioLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);

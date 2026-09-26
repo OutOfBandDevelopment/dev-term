@@ -52,7 +52,7 @@ public sealed class LoopbackTransport : ITransport
     {
         // A previous CloseAsync completes the old pipe's writer permanently, so a reopen needs a
         // fresh Pipe rather than reusing one that can never accept writes again. See
-        // docs/bugs/003-loopback-cannot-reconnect.md.
+        // docs/bugs/fixed/003-loopback-cannot-reconnect.md.
         _pipe = new Pipe();
         State = ConnectionState.Open;
         return Task.CompletedTask;

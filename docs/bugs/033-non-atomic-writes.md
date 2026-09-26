@@ -15,7 +15,7 @@
 (`DevTermConfiguration.cs:68`) and the preferences store.
 
 ## Failure scenario
-A crash or power loss mid-write leaves a truncated file, which then feeds [004](004-bad-profile-value-crashes-title.md)
+A crash or power loss mid-write leaves a truncated file, which then feeds [004](fixed/004-bad-profile-value-crashes-title.md)
 and [032](032-startup-bind-failure-crash.md). (`AppPreferencesStore.Load` does tolerate a corrupt file.)
 
 ## Suggested fix

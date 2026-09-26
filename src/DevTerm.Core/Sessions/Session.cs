@@ -120,7 +120,7 @@ public sealed class Session : IAsyncDisposable
             {
                 // Already open (or opening) under this same lock - a second call (e.g. a slow
                 // connect racing a second Connect click) must not start a second read loop on the
-                // same PipeReader. See docs/bugs/001-session-double-open.md.
+                // same PipeReader. See docs/bugs/fixed/001-session-double-open.md.
                 return;
             }
 

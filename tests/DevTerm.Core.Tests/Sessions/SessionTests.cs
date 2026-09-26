@@ -311,7 +311,7 @@ public sealed class SessionTests
         // second call (e.g. a slow connect racing a second Connect click) started a second
         // PumpAsync on the same PipeReader. Two concurrent reads on one PipeReader throw
         // "Reading is already in progress", which faults the healthy connection and reports a
-        // bogus disconnect - see docs/bugs/001-session-double-open.md.
+        // bogus disconnect - see docs/bugs/fixed/001-session-double-open.md.
         var (transport, pipe) = CreateOpenableTransport();
         var presenter = new Mock<IPresenter>();
         presenter.SetupGet(p => p.Name).Returns("p");

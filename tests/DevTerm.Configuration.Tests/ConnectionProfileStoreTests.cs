@@ -427,7 +427,7 @@ public sealed class ConnectionProfileStoreTests
         // Regression test for bug 004: a profile value that fails ConfigurationBinder.Bind (e.g. a
         // non-numeric Baud) throws InvalidOperationException, which FindName's catch filter didn't
         // list - the exception used to propagate out and crash the TUI/WPF title lookup instead of
-        // being skipped like other unreadable profiles. See docs/bugs/004-bad-profile-value-crashes-title.md.
+        // being skipped like other unreadable profiles. See docs/bugs/fixed/004-bad-profile-value-crashes-title.md.
         var directory = CreateTempDirectory();
         try
         {

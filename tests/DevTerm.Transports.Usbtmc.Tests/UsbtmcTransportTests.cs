@@ -381,7 +381,7 @@ public sealed class UsbtmcTransportTests
     [TestCategory(TestCategories.BugRegression)]
     public async Task CloseAsync_DuringAWriteFlushingAReplyOverThePauseThreshold_CompletesWithoutHanging()
     {
-        // Regression test for bug 002 (docs/bugs/002-usbtmc-close-hang-large-reply.md): WriteAsync
+        // Regression test for bug 002 (docs/bugs/fixed/002-usbtmc-close-hang-large-reply.md): WriteAsync
         // holds _ioLock while it flushes the reply into the pipe. A reply over the pipe's default
         // 64 KB pause threshold blocks that flush until a reader drains it - but Session stops its
         // read loop before calling CloseAsync, so nobody ever will. CloseAsync then waits on
