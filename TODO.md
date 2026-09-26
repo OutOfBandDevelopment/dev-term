@@ -38,6 +38,7 @@ has landed in `docs/changes/`.
     under the render engine or is subsumed by it.
 - **Device manifest editor:** at least a default render for request/response messages, ideally a
   presentation editor. It builds on the forms engine above.
+
 **Phase 3 — queued (last; it restructures both main windows):**
 
 - **Multiple sessions per window** (from the TUI/WPF main-window specs' Open items). Presenters stopped
