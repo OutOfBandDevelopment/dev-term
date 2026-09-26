@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Configuration (ConnectionProfileStore), TUI, WPF |
 | **Created** | 2026-09-26 |
@@ -38,3 +38,13 @@ Add `InvalidOperationException or FormatException` to the filter, or catch `Exce
 
 ## Tests to add
 `FindName` with a profile containing `"Baud": "fast"`, and one with a duplicate key.
+
+## Resolution
+Fixed on 2026-09-26 (branch `dev/fix-bugs`): `FindName`'s catch filter now also lists
+`InvalidOperationException`, which is what `ConfigurationBinder.Bind` actually throws for a value
+that fails to convert (confirmed with `"Baud": "fast"`). The duplicate-key case in the report doesn't
+reproduce as described: a duplicate key (verified with `{ "Port": 1, "port": 2 }`) makes
+`JsonConfigurationFileParser` throw `InvalidDataException`, not `FormatException`, on this .NET
+version — and `InvalidDataException` was already in the filter, so that path was never actually
+broken. Regression test:
+`DevTerm.Configuration.Tests.ConnectionProfileStoreTests.FindName_SkipsAProfileWithAValueThatFailsToConvert_AndKeepsLooking`.

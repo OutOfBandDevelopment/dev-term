@@ -73,7 +73,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
                     return name;
                 }
             }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException or InvalidOperationException)
             {
             }
         }

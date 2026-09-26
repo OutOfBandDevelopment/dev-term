@@ -421,6 +421,31 @@ public sealed class ConnectionProfileStoreTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void FindName_SkipsAProfileWithAValueThatFailsToConvert_AndKeepsLooking()
+    {
+        // Regression test for bug 004: a profile value that fails ConfigurationBinder.Bind (e.g. a
+        // non-numeric Baud) throws InvalidOperationException, which FindName's catch filter didn't
+        // list - the exception used to propagate out and crash the TUI/WPF title lookup instead of
+        // being skipped like other unreadable profiles. See docs/bugs/004-bad-profile-value-crashes-title.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "serial", Port = "COM3", Baud = 4800 };
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "a-bad-baud.json"), "{ \"Transport\": \"serial\", \"Port\": \"COM3\", \"Baud\": \"fast\" }");
+            store.Save("b-good", options);
+
+            Assert.AreEqual("b-good", store.FindName(options));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void FindName_WithTwoIdenticalProfiles_ReturnsTheFirstAlphabetically()
     {
         var directory = CreateTempDirectory();
