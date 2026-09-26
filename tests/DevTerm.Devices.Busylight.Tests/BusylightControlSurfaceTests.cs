@@ -144,5 +144,32 @@ public sealed class BusylightControlSurfaceTests
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
 
+    [TestMethod]
+    public async Task PreviewCommand_Apply_ShowsTheFrameApplyWouldSendAsHex()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new BusylightControlSurface(session);
+        await surface.InvokeAsync("color", "Red", TestContext.CancellationToken);
+
+        var preview = surface.PreviewCommand("apply", null);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
+
+        Assert.AreEqual("00 00 00 FF 00 00 01 00 80", preview);
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x01, 0x00, 0x80 })),
+            It.IsAny<CancellationToken>()));
+    }
+
+    [TestMethod]
+    public void PreviewCommand_StateOnlySetters_AreNull()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var surface = new BusylightControlSurface(session);
+
+        Assert.IsNull(surface.PreviewCommand("color", "Red"));
+        Assert.IsNull(surface.PreviewCommand("volume", "3"));
+        Assert.IsNull(surface.PreviewCommand("customColor", null));
+    }
+
     public required TestContext TestContext { get; set; }
 }

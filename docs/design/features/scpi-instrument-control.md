@@ -15,7 +15,13 @@ docs/test/2026-09-24-09-54-39.md), Korad KA3005P, Korad KA6003P. See:
   the executable, so adding an instrument later needs a new JSON file, not a rebuild.
 - `ScpiControlSurface` — template substitution (`{Name}` tokens), numeric clamping, per-profile
   terminator, and a `sendCustom` passthrough escape hatch for anything not in a given profile's
-  curated command list.
+  curated command list. Also an `ICommandPreview` (2026-09-25): `PreviewCommand` returns the exact
+  wire text, terminator escaped (`MEAS:VOLT:DC? DEF\n`), from the same resolve path `InvokeAsync`
+  sends through, which both control panels show next to each command button.
+- `ScpiParameterDefinition.Control` (2026-09-25) — an optional widget hint (`Numeric`, `Slider`,
+  `Text`, `Choice`) independent of the parameter's `Kind`; e.g. `"Kind": "Numeric", "Control":
+  "Text"` is a text field validated as a number within `Minimum`/`Maximum`. See
+  [ui-definitions.md](../ui-definitions.md)'s "Values and widgets". No bundled profile uses it yet.
 - `ScpiReplyPresenter` — line-buffered ASCII decoding plus FIFO query/reply correlation
   (`IScpiReplyTracker.QuerySent`), resolving the "can a command declare an expected reply pattern"
   open question below for the common synchronous case.

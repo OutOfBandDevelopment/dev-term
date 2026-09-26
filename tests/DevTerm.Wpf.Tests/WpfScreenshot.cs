@@ -29,13 +29,12 @@ internal static class WpfScreenshot
     /// directly — see <c>CLAUDE.md</c>'s "Don't both call <c>Show()</c> and <c>ConnectAsync()</c>"
     /// constraint.
     ///
-    /// Deliberately never closes the window afterward (same as <c>MainWindowTests</c>, which never
-    /// calls <c>Close()</c> either): <see cref="MainWindow.OnClosing"/>'s cancel-then-async-cleanup-
-    /// then-reclose pattern raced against this harness's single manually-pumped
-    /// <see cref="System.Windows.Threading.DispatcherFrame"/> and threw
-    /// "Cannot ... Close ... while a Window is closing" — a real reentrancy edge case worth its own
-    /// investigation, but not one screenshot capture needs to resolve; the process exits shortly
-    /// after these tests run regardless.
+    /// Screenshot tests don't close the window afterward, only because nothing needs them to: the
+    /// process exits shortly after. Closing a window shown this way is safe.
+    /// <see cref="MainWindow.OnClosing"/>'s old "Cannot ... Close ... while a Window is closing" was
+    /// the app's own reentrancy bug, since fixed with <c>Dispatcher.Yield</c>, and
+    /// <c>MainWindowConnectionStateTests.AReallyShownWindow_ClosesCleanly</c> closes a window shown by
+    /// this method.
     /// </summary>
     public static void ShowOffScreen(Window window, double width = 900, double height = 650)
     {

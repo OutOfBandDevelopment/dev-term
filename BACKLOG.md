@@ -143,30 +143,6 @@ detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 
 
 ### Device control panel UX & theming
 
-- **Device control panel UX polish, from real-hardware use of the SCPI/K8055/Busylight panels
-  (Architect notes, 2026-09-23)** — applies to `ControlPanelMode`/`ControlPanelWindow` generically,
-  not one device:
-  - Collapsible sections with a visual expand/collapse affordance, for every device profile's panel
-    (SCPI profiles in particular tend to have many sections/commands).
-  - Labels should show at full width without wrapping, aligned within their section/grouping.
-  - An info icon (hover/select) on any field that sends a command, showing the exact command text
-    that will be sent — useful for verifying a SCPI template's substituted value before sending it
-    to real hardware.
-  - `ScpiInstrumentProfile.Notes` (rendered via `UiDefinition.Description`) should be its own group,
-    moved to the bottom of the panel rather than wherever it currently renders.
-  - Extend `DevTerm.UiDefinitions`' parameter metadata to decouple a value's **data type** from its
-    **control type** — e.g. a numeric value should be able to declare validation (an input range,
-    reusing `ScpiParameterDefinition`'s existing `Minimum`/`Maximum`) independently of *which* widget
-    renders it (slider vs. plain numeric field vs. text), rather than the current tight
-    `Kind: Numeric|Choice|Text` → fixed-widget coupling. Overlaps with the "consolidate hand-coded
-    settings forms" item above — likely the same underlying model extension.
-- **Busylight custom-color dialog UX** (Architect notes, 2026-09-23). Still open: a "Custom" radio option
-  alongside the named presets, and Enter in the picker acting like clicking Apply. Landed 2026-09-25:
-  - The picker's last-used values persist across reopening it.
-  - A swatch next to Custom... shows the current custom color and its hex value.
-  - The WPF picker is resizable and scrolls, so OK/Cancel can't be cut off.
-
-  See `docs/changes/2026-09-25.md`.
 - **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
   front ends.** Neither has any theme support today; both currently just take whatever colors their
   framework defaults to. Two separate investigations before designing anything, per this project's

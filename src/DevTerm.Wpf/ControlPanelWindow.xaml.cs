@@ -20,22 +20,42 @@ namespace DevTerm.Wpf;
 /// or <see cref="ComboBox"/> per its own <see cref="ChoiceStyle"/>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Builds controls directly in code-behind rather than via XAML data binding (unlike
 /// <see cref="DeviceProfilesWindow"/>'s view-model-bound form) because the control set is generated
 /// from a runtime <see cref="UiDefinition"/>, not a fixed compile-time set of named fields.
+/// </para>
+/// <para>
+/// Each labeled section is an <see cref="Expander"/> (expanded by default) holding a two-column
+/// <see cref="Grid"/>: an auto-sized, never-wrapping label column, so every control in a section
+/// starts at the same x, and the control column. The definition's <see cref="UiDefinition.Description"/>
+/// renders as a final collapsible "Notes" section. A control that sends a command the surface can
+/// preview (<see cref="ICommandPreview"/>) gets an "ⓘ" icon whose tooltip is recomputed from the
+/// control's current value every time it opens.
+/// </para>
 /// </remarks>
 public partial class ControlPanelWindow : Window
 {
+    internal const string NotesSectionLabel = "Notes";
+    internal const string InfoGlyph = "ⓘ";
+
     private readonly IControlSurface _surface;
+    private readonly ICommandPreview? _preview;
+    private readonly string _baseStatus;
+    private readonly Dictionary<string, UiControl> _controlsById = [];
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
     private readonly Dictionary<string, Border> _colorSwatches = [];
     private readonly Dictionary<string, TextBlock> _controlLabels = [];
+    private readonly Dictionary<string, TextBlock> _infoIcons = [];
+    private readonly Dictionary<string, Func<string?>> _previewSources = [];
+    private readonly Dictionary<string, Expander> _sectionExpanders = [];
+    private bool _showingValidationError;
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
 
-    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting the label wraps instead of overlapping its row content when a profile's label text is long (see <see cref="BuildControlRow"/>).</summary>
+    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting labels stay on one line in an aligned column (see <see cref="BuildSectionGrid"/>).</summary>
     internal IReadOnlyDictionary<string, TextBlock> ControlLabels => _controlLabels;
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
@@ -44,34 +64,50 @@ public partial class ControlPanelWindow : Window
     /// <summary>Each color-picker button's swatch (keyed by the button's id) - see <see cref="BuildWidget"/>.</summary>
     internal IReadOnlyDictionary<string, Border> ColorSwatches => _colorSwatches;
 
+    /// <summary>The "ⓘ" icon next to each control that sends a previewable command, keyed by <c>UiControl.Id</c>.</summary>
+    internal IReadOnlyDictionary<string, TextBlock> InfoIcons => _infoIcons;
+
+    /// <summary>Each labeled section's <see cref="Expander"/>, keyed by section label (<see cref="NotesSectionLabel"/> for the notes).</summary>
+    internal IReadOnlyDictionary<string, Expander> SectionExpanders => _sectionExpanders;
+
     public ControlPanelWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource)
     {
         InitializeComponent();
         Title = $"dev-term — {definition.Name}";
         _surface = surface;
+        _preview = surface as ICommandPreview;
 
-        if (!string.IsNullOrWhiteSpace(definition.Description))
+        foreach (var control in definition.Sections.SelectMany(s => s.Controls))
         {
-            DescriptionText.Text = definition.Description;
-            DescriptionText.Visibility = Visibility.Visible;
+            _controlsById.TryAdd(control.Id, control);
         }
 
         foreach (var section in definition.Sections)
         {
-            var group = new GroupBox { Header = section.Label ?? string.Empty, Margin = new Thickness(0, 0, 0, 8) };
-            var stack = new StackPanel();
-            foreach (var control in section.Controls)
+            var grid = BuildSectionGrid(section);
+            if (string.IsNullOrWhiteSpace(section.Label))
             {
-                stack.Children.Add(BuildControlRow(control));
+                // Nothing to name a header with (e.g. Busylight's lone Apply button) — always shown,
+                // indented to line up with the expanded sections' own rows.
+                grid.Margin = new Thickness(18, 0, 0, 8);
+                SectionsPanel.Children.Add(grid);
             }
-
-            group.Content = stack;
-            SectionsPanel.Children.Add(group);
+            else
+            {
+                SectionsPanel.Children.Add(BuildExpander(section.Label, grid));
+            }
         }
 
-        StatusText.Text = structuredSource is IStructuredPresenter
+        if (!string.IsNullOrWhiteSpace(definition.Description))
+        {
+            var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.DimGray, Margin = new Thickness(4, 2, 4, 2) };
+            SectionsPanel.Children.Add(BuildExpander(NotesSectionLabel, notes));
+        }
+
+        _baseStatus = structuredSource is IStructuredPresenter
             ? string.Empty
             : "Not decoding — connect with the matching --presenter to see live values.";
+        StatusText.Text = _baseStatus;
 
         if (structuredSource is IStructuredPresenter structuredPresenter)
         {
@@ -79,6 +115,120 @@ public partial class ControlPanelWindow : Window
             Closed += (_, _) => structuredPresenter.ValuesChanged -= OnValuesChanged;
         }
     }
+
+    /// <summary>
+    /// What the control <paramref name="controlId"/> would send right now (e.g. <c>Sends: *IDN?\n</c>),
+    /// recomputed from its current value — the text its "ⓘ" tooltip shows each time it opens. Null
+    /// when the control sends nothing previewable.
+    /// </summary>
+    internal string? PreviewFor(string controlId) =>
+        _previewSources.TryGetValue(controlId, out var source) ? source() : null;
+
+    private Expander BuildExpander(string label, UIElement content)
+    {
+        var expander = new Expander
+        {
+            Header = new TextBlock { Text = label, FontWeight = FontWeights.SemiBold },
+            IsExpanded = true,
+            Margin = new Thickness(0, 0, 0, 8),
+            Content = new Border
+            {
+                BorderBrush = System.Windows.Media.Brushes.LightGray,
+                BorderThickness = new Thickness(1, 0, 0, 0),
+                Margin = new Thickness(8, 4, 0, 0),
+                Padding = new Thickness(8, 0, 0, 0),
+                Child = content,
+            },
+        };
+        _sectionExpanders.TryAdd(label, expander);
+        return expander;
+    }
+
+    private Grid BuildSectionGrid(UiSection section)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        for (var row = 0; row < section.Controls.Count; row++)
+        {
+            var control = section.Controls[row];
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // No wrapping: the Auto column grows to the section's longest label, so every control
+            // in the section starts at the same x instead of a long label wrapping onto two lines.
+            var label = new TextBlock
+            {
+                Text = control.Label + ":",
+                TextWrapping = TextWrapping.NoWrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 4),
+            };
+            Grid.SetRow(label, row);
+            Grid.SetColumn(label, 0);
+            grid.Children.Add(label);
+            _controlLabels[control.Id] = label;
+
+            var content = BuildRowContent(control);
+            content.Margin = new Thickness(0, 0, 0, 4);
+
+            // Left-aligned in the star column, or a fixed-width widget (e.g. a ComboBox) centers.
+            content.HorizontalAlignment = HorizontalAlignment.Left;
+            Grid.SetRow(content, row);
+            Grid.SetColumn(content, 1);
+            grid.Children.Add(content);
+        }
+
+        return grid;
+    }
+
+    private FrameworkElement BuildRowContent(UiControl control)
+    {
+        var (rowContent, tracked, preview, probe) = BuildWidget(control);
+        _controlViews[control.Id] = tracked;
+
+        if (preview is null || probe is not { } p || _preview?.PreviewCommand(p.CommandId, p.Value) is null || IsValueHolderOnly(control))
+        {
+            return rowContent;
+        }
+
+        _previewSources[control.Id] = preview;
+        var icon = new TextBlock
+        {
+            Text = InfoGlyph,
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 15,
+            Foreground = System.Windows.Media.Brushes.SteelBlue,
+            Cursor = Cursors.Help,
+            ToolTip = preview() ?? string.Empty,
+        };
+
+        // Recomputed on every open, so the tooltip reflects the slider position/typed text/selection
+        // at hover time rather than whatever it was when the panel was built.
+        icon.ToolTipOpening += (_, _) => icon.ToolTip = preview() ?? string.Empty;
+        ToolTipService.SetShowDuration(icon, 30000);
+        _infoIcons[control.Id] = icon;
+
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(rowContent);
+        panel.Children.Add(icon);
+        return panel;
+    }
+
+    /// <summary>True for a field only ever read by a parameter button — committing it on its own sends nothing worth previewing (the button has the icon).</summary>
+    private bool IsValueHolderOnly(UiControl control) =>
+        control is not ButtonControl
+        && _controlsById.Values.Any(c => c is ButtonControl { ParameterFieldIds: { } ids } && ids.Contains(control.Id));
+
+    private string? SendsText(string commandId, string? value) =>
+        _preview?.PreviewCommand(commandId, value) is { } preview ? $"Sends: {preview}" : null;
+
+    private Func<string?> ValuePreview(UiControl control, Func<string> currentText) => () =>
+    {
+        var result = ValueValidator.Validate(ValueValidator.ConstraintFor(control), currentText());
+        return result.IsValid ? SendsText(control.Id, result.Value) : $"Won't send: {result.Error}";
+    };
 
     private void OnValuesChanged(object? sender, IReadOnlyDictionary<string, string> values)
     {
@@ -94,21 +244,7 @@ public partial class ControlPanelWindow : Window
         });
     }
 
-    private FrameworkElement BuildControlRow(UiControl control)
-    {
-        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        var label = new TextBlock { Text = control.Label + ":", Width = 120, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(label, Dock.Left);
-        row.Children.Add(label);
-        _controlLabels[control.Id] = label;
-
-        var (rowContent, tracked) = BuildWidget(control);
-        row.Children.Add(rowContent);
-        _controlViews[control.Id] = tracked;
-        return row;
-    }
-
-    private (FrameworkElement RowContent, FrameworkElement Tracked) BuildWidget(UiControl control)
+    private (FrameworkElement RowContent, FrameworkElement Tracked, Func<string?>? Preview, (string CommandId, string? Value)? Probe) BuildWidget(UiControl control)
     {
         switch (control)
         {
@@ -140,25 +276,45 @@ public partial class ControlPanelWindow : Window
                     var row = new StackPanel { Orientation = Orientation.Horizontal };
                     row.Children.Add(view);
                     row.Children.Add(swatch);
-                    return (row, view);
+
+                    string LastColor()
+                    {
+                        var (r, g, b) = LastPickedColors.Get(button.Id);
+                        return string.Create(CultureInfo.InvariantCulture, $"{r},{g},{b}");
+                    }
+
+                    return (row, view, () => SendsText(colorTargetId, LastColor()), (colorTargetId, LastColor()));
                 }
 
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
                 {
                     var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
+                    var commandId = button.CommandId ?? button.Id;
                     view.Click += (_, _) =>
                     {
-                        var joined = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                        Invoke(button.CommandId ?? button.Id, joined);
+                        if (TryReadParameters(parameterFieldIds, out var joined, out var error))
+                        {
+                            ClearValidationError();
+                            Invoke(commandId, joined);
+                        }
+                        else
+                        {
+                            ShowValidationError(error!);
+                        }
                     };
-                    return (view, view);
+                    var raw = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
+                    Func<string?> preview = () => TryReadParameters(parameterFieldIds, out var joined, out var error)
+                        ? SendsText(commandId, joined)
+                        : $"Won't send: {error}";
+                    return (view, view, preview, (commandId, raw));
                 }
 
             case ButtonControl button:
                 {
                     var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                    view.Click += (_, _) => Invoke(button.CommandId ?? button.Id, null);
-                    return (view, view);
+                    var commandId = button.CommandId ?? button.Id;
+                    view.Click += (_, _) => Invoke(commandId, null);
+                    return (view, view, () => SendsText(commandId, null), (commandId, null));
                 }
 
             case ToggleControl toggle:
@@ -166,7 +322,9 @@ public partial class ControlPanelWindow : Window
                     var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
                     view.Checked += (_, _) => Invoke(toggle.Id, "1");
                     view.Unchecked += (_, _) => Invoke(toggle.Id, "0");
-                    return (view, view);
+
+                    // What toggling it would send — the next state, not the current one.
+                    return (view, view, () => SendsText(toggle.Id, view.IsChecked == true ? "0" : "1"), (toggle.Id, toggle.DefaultValue ? "0" : "1"));
                 }
 
             case SliderControl slider:
@@ -190,13 +348,14 @@ public partial class ControlPanelWindow : Window
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     panel.Children.Add(view);
                     panel.Children.Add(valueLabel);
-                    return (panel, view);
+                    var current = () => view.Value.ToString(CultureInfo.InvariantCulture);
+                    return (panel, view, ValuePreview(slider, current), (slider.Id, current()));
                 }
 
             case NumericControl numeric:
                 {
                     var view = new TextBox { Width = 80, Text = numeric.DefaultValue.ToString(CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Center };
-                    void Commit() => CommitNumeric(view, numeric.Id, numeric.Minimum, numeric.Maximum, numeric.DefaultValue);
+                    void Commit() => CommitValue(view, numeric);
                     view.LostFocus += (_, _) => Commit();
                     view.KeyDown += (_, e) =>
                     {
@@ -209,7 +368,7 @@ public partial class ControlPanelWindow : Window
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     panel.Children.Add(view);
                     panel.Children.Add(hint);
-                    return (panel, view);
+                    return (panel, view, ValuePreview(numeric, () => view.Text), (numeric.Id, view.Text));
                 }
 
             case ChoiceControl { Style: ChoiceStyle.RadioGroup } choice:
@@ -223,7 +382,7 @@ public partial class ControlPanelWindow : Window
                         panel.Children.Add(radio);
                     }
 
-                    return (panel, panel);
+                    return (panel, panel, () => SendsText(choice.Id, GetCurrentValue(panel)), (choice.Id, GetCurrentValue(panel)));
                 }
 
             case ChoiceControl choice:
@@ -236,7 +395,7 @@ public partial class ControlPanelWindow : Window
                             Invoke(choice.Id, selected);
                         }
                     };
-                    return (view, view);
+                    return (view, view, () => SendsText(choice.Id, GetCurrentValue(view)), (choice.Id, GetCurrentValue(view)));
                 }
 
             case TextFieldControl textField:
@@ -247,7 +406,7 @@ public partial class ControlPanelWindow : Window
                         view.MaxLength = max;
                     }
 
-                    void Commit() => Invoke(textField.Id, view.Text);
+                    void Commit() => CommitValue(view, textField);
                     view.LostFocus += (_, _) => Commit();
                     view.KeyDown += (_, e) =>
                     {
@@ -256,19 +415,19 @@ public partial class ControlPanelWindow : Window
                             Commit();
                         }
                     };
-                    return (view, view);
+                    return (view, view, ValuePreview(textField, () => view.Text), (textField.Id, view.Text));
                 }
 
             case IndicatorControl indicator:
                 {
                     var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
                     _indicatorLabels[control.Id] = view;
-                    return (view, view);
+                    return (view, view, null, null);
                 }
 
             default:
                 var fallback = new TextBlock { Text = "(unsupported control)" };
-                return (fallback, fallback);
+                return (fallback, fallback, null, null);
         }
     }
 
@@ -326,12 +485,62 @@ public partial class ControlPanelWindow : Window
         _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
-    private void CommitNumeric(TextBox field, string id, double minimum, double maximum, double fallback)
+    /// <summary>
+    /// Commits a typed value through the shared <see cref="ValueValidator"/>: an invalid value is
+    /// reported in the status line (never a modal) and not sent; a valid one is normalized back into
+    /// the box (e.g. clamped for a <see cref="NumericControl"/>) and sent.
+    /// </summary>
+    private void CommitValue(TextBox field, UiControl control)
     {
-        var parsed = double.TryParse(field.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
-        var clamped = Math.Clamp(parsed, minimum, maximum);
-        field.Text = clamped.ToString(CultureInfo.InvariantCulture);
-        Invoke(id, clamped.ToString(CultureInfo.InvariantCulture));
+        var result = ValueValidator.Validate(ValueValidator.ConstraintFor(control), field.Text);
+        if (!result.IsValid)
+        {
+            ShowValidationError($"{control.Label}: {result.Error}");
+            return;
+        }
+
+        ClearValidationError();
+        field.Text = result.Value;
+        Invoke(control.Id, result.Value);
+    }
+
+    /// <summary>Reads and validates every named parameter field's current value, comma-joined; fails on the first invalid one.</summary>
+    private bool TryReadParameters(IReadOnlyList<string> fieldIds, out string joined, out string? error)
+    {
+        var values = new List<string>(fieldIds.Count);
+        foreach (var fieldId in fieldIds)
+        {
+            var raw = _controlViews.TryGetValue(fieldId, out var view) ? GetCurrentValue(view) : string.Empty;
+            var constraint = _controlsById.TryGetValue(fieldId, out var fieldControl) ? ValueValidator.ConstraintFor(fieldControl) : null;
+            var result = ValueValidator.Validate(constraint, raw);
+            if (!result.IsValid)
+            {
+                joined = string.Empty;
+                error = $"{fieldControl?.Label ?? fieldId}: {result.Error}";
+                return false;
+            }
+
+            values.Add(result.Value);
+        }
+
+        joined = string.Join(',', values);
+        error = null;
+        return true;
+    }
+
+    private void ShowValidationError(string error)
+    {
+        StatusText.Text = $"{error} Not sent.";
+        _showingValidationError = true;
+    }
+
+    private void ClearValidationError()
+    {
+        if (_showingValidationError)
+        {
+            StatusText.Text = _baseStatus;
+            _showingValidationError = false;
+        }
     }
 
     private static string FormatUnit(double value, string? unit) => $"{value:0.#}{unit}";
@@ -342,6 +551,8 @@ public partial class ControlPanelWindow : Window
         TextBox textBox => textBox.Text,
         ComboBox { SelectedItem: string selected } => selected,
         CheckBox checkBox => checkBox.IsChecked == true ? "1" : "0",
+        Slider slider => slider.Value.ToString(CultureInfo.InvariantCulture),
+        StackPanel radios => radios.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true)?.Content as string ?? string.Empty,
         TextBlock textBlock => textBlock.Text,
         _ => string.Empty,
     };

@@ -140,5 +140,45 @@ public sealed class K8055ControlSurfaceTests
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => surface.InvokeAsync("notARealCommand", null, TestContext.CancellationToken));
     }
 
+    [TestMethod]
+    public void PreviewCommand_DigitalOut_ShowsTheReportAsHex()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var surface = new K8055ControlSurface(session);
+
+        Assert.AreEqual("00 05 01 00 00 00 00 00 00", surface.PreviewCommand("digitalOut1", "1"));
+        Assert.AreEqual("00 05 00 FF 00 00 00 00 00", surface.PreviewCommand("analogOut1", "255"));
+        Assert.AreEqual("00 03 00 00 00 00 00 00 00", surface.PreviewCommand("resetCounter1", null));
+    }
+
+    [TestMethod]
+    public async Task PreviewCommand_NeitherSendsNorChangesState_AndMatchesTheNextInvoke()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new K8055ControlSurface(session);
+        await surface.InvokeAsync("digitalOut3", "1", TestContext.CancellationToken);
+
+        // Previewing channel 1 on must not latch it: the next real send only has channel 2 added.
+        _ = surface.PreviewCommand("digitalOut1", "1");
+        var preview = surface.PreviewCommand("digitalOut2", "1");
+        await surface.InvokeAsync("digitalOut2", "1", TestContext.CancellationToken);
+
+        Assert.AreEqual("00 05 06 00 00 00 00 00 00", preview);
+        Assert.AreEqual(2, transport.Invocations.Count(i => i.Method.Name == nameof(ITransport.WriteAsync)));
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.IsAny<CancellationToken>()));
+    }
+
+    [TestMethod]
+    public void PreviewCommand_UnknownCommandOrBadValue_IsNull()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var surface = new K8055ControlSurface(session);
+
+        Assert.IsNull(surface.PreviewCommand("notARealCommand", null));
+        Assert.IsNull(surface.PreviewCommand("analogOut1", "abc"));
+    }
+
     public required TestContext TestContext { get; set; }
 }

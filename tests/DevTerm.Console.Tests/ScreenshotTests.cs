@@ -316,9 +316,10 @@ public sealed class ScreenshotTests
 
         TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
         {
-            TuiMode.ToggleConnectionAsync(TuiTestRunner.CurrentApp, session, cliOptions, parts.ConnectMenuItem, parts.SendField, _ => { }).GetAwaiter().GetResult();
+            // The menu action itself (not the bare static), so the status line and title refresh too.
+            parts.ToggleConnectionAsync().GetAwaiter().GetResult();
 
-            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect", _waitTimeout);
+            var disconnected = TuiTestRunner.WaitUntilOnLoop(() => parts.ConnectMenuItem.Title == "_Connect" && parts.StatusLabel.Text.Contains("Disconnected", StringComparison.Ordinal), _waitTimeout);
             Assert.IsTrue(disconnected, "Expected the menu item's title to flip to _Connect after disconnecting.");
 
             TuiTestRunner.InvokeOnLoop(() =>

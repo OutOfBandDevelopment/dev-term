@@ -173,6 +173,46 @@ public sealed class ControlPanelScreenshotTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
+    public void ControlPanelMode_Scpi34401a_CollapsedSectionsAndSendsPreview_IsCaptured()
+    {
+        var profile = ScpiProfileCatalog.All.Single(p => p.Name.Contains("34401A", StringComparison.OrdinalIgnoreCase));
+        var session = new Session(new FakeTransport(), new Pipeline([]));
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+        var definition = ScpiUiDefinitionBuilder.Build(profile);
+
+        var dump = string.Empty;
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, surface, structuredSource: null, $"dev-term — {profile.Name}");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+
+            try
+            {
+                // Collapse the two long sections so Configure moves up, then focus one of its
+                // parameter buttons: the footer shows exactly what pressing it would send.
+                parts.SectionHeaders["Common"].InvokeCommand(Terminal.Gui.Input.Command.Accept);
+                parts.SectionHeaders["Measure"].InvokeCommand(Terminal.Gui.Input.Command.Accept);
+                parts.ControlViews["confVoltDc.send"].SetFocus();
+                app.LayoutAndDraw(true);
+
+                dump = TuiTestRunner.DumpBuffer();
+                Directory.CreateDirectory(_imagesDirectory);
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-control-panel-scpi-preview.png"));
+            }
+            finally
+            {
+                app.End(token);
+            }
+        });
+
+        SaveDump("tui-control-panel-scpi-preview", dump);
+        Assert.Contains("[+] Common", dump);
+        Assert.Contains("[+] Measure", dump);
+        Assert.Contains("Sends: CONF:VOLT:DC DEF\\n", dump);
+    }
+
+    [TestMethod]
     public void ControlPanelMode_Busylight_WithACustomColorSet_IsCaptured()
     {
         DevTerm.Configuration.LastPickedColors.Set("customColor", (0xFF, 0x66, 0x00));

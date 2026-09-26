@@ -80,23 +80,58 @@ public static class ScpiUiDefinitionBuilder
 
     private static string ParameterFieldId(ScpiCommandDefinition command, ScpiParameterDefinition parameter) => $"{command.Id}.{parameter.Name}";
 
+    /// <summary>
+    /// The widget a parameter is collected with: <see cref="ScpiParameterDefinition.Control"/> when
+    /// it fits the parameter's <see cref="ScpiParameterDefinition.Kind"/>, otherwise the kind's own
+    /// default (numeric field / choice / text field).
+    /// </summary>
+    internal static ScpiParameterControl EffectiveControl(ScpiParameterDefinition parameter)
+    {
+        var kindDefault = parameter.Kind switch
+        {
+            ScpiParameterKind.Numeric => ScpiParameterControl.Numeric,
+            ScpiParameterKind.Choice => ScpiParameterControl.Choice,
+            _ => ScpiParameterControl.Text,
+        };
+
+        return parameter.Control switch
+        {
+            null => kindDefault,
+            ScpiParameterControl.Numeric or ScpiParameterControl.Slider when parameter.Kind != ScpiParameterKind.Numeric => kindDefault,
+            ScpiParameterControl.Choice when parameter.Options.Count == 0 => kindDefault,
+            { } hint => hint,
+        };
+    }
+
     private static UiControl BuildParameterControl(ScpiCommandDefinition command, ScpiParameterDefinition parameter)
     {
         var id = ParameterFieldId(command, parameter);
-        return parameter.Kind switch
+        var defaultNumber = double.TryParse(parameter.DefaultValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedDefault)
+            ? parsedDefault
+            : parameter.Minimum;
+
+        return EffectiveControl(parameter) switch
         {
-            ScpiParameterKind.Numeric => new NumericControl
+            ScpiParameterControl.Numeric => new NumericControl
             {
                 Id = id,
                 Label = parameter.Name,
                 Minimum = parameter.Minimum,
                 Maximum = parameter.Maximum,
-                DefaultValue = double.TryParse(parameter.DefaultValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var defaultNumber)
-                    ? defaultNumber
-                    : parameter.Minimum,
+                DefaultValue = defaultNumber,
                 Unit = parameter.Unit,
             },
-            ScpiParameterKind.Choice => new ChoiceControl
+            ScpiParameterControl.Slider => new SliderControl
+            {
+                Id = id,
+                Label = parameter.Name,
+                Minimum = parameter.Minimum,
+                Maximum = parameter.Maximum,
+                Step = parameter.DecimalPlaces is { } decimalPlaces ? Math.Pow(10, -decimalPlaces) : 1,
+                DefaultValue = defaultNumber,
+                Unit = parameter.Unit,
+            },
+            ScpiParameterControl.Choice => new ChoiceControl
             {
                 Id = id,
                 Label = parameter.Name,
@@ -106,8 +141,16 @@ public static class ScpiUiDefinitionBuilder
             _ => new TextFieldControl
             {
                 Id = id,
-                Label = parameter.Name,
+                Label = parameter.Unit is { Length: > 0 } unit && parameter.Kind == ScpiParameterKind.Numeric ? $"{parameter.Name} ({unit})" : parameter.Name,
                 DefaultValue = parameter.DefaultValue,
+                Constraint = parameter.Kind == ScpiParameterKind.Numeric
+                    ? new ValueConstraint
+                    {
+                        Kind = parameter.DecimalPlaces == 0 ? ValueKind.Integer : ValueKind.Number,
+                        Minimum = parameter.Minimum,
+                        Maximum = parameter.Maximum,
+                    }
+                    : null,
             },
         };
     }

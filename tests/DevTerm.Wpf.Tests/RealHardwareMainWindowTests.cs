@@ -72,7 +72,7 @@ public sealed class RealHardwareMainWindowTests
 
             Assert.IsTrue(appeared, $"Expected a decoded reply from the real device at {host}:{port}.");
             TestContext.WriteLine($"Received: {window.OutputList.Items[0]}");
-            Assert.Contains("TEK/2230", (string)window.OutputList.Items[0]!);
+            Assert.Contains("TEK/2230", window.OutputList.Items[0]!.ToString()!);
 
             await session.CloseAsync(TestContext.CancellationToken);
             await session.DisposeAsync();

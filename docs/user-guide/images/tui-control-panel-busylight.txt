@@ -1,25 +1,25 @@
 ┌┤dev-term — Busylight Control Panel├──────────────────────────────────────────┐
-│USB HID status light — color, blink timing, and sound, sent as a single-comma▲│
-│                                                                             █│
-│╭┤Color├─────────────────────────────────────────────────────────────────────█│
-││Color: ○ Red  ○ Green  ○ Blue  ○ Yellow  ◉ Off                              █│
-││Custom...: ⟦ Custom... ⟧▖                                                   █│
-│╰────────────────────────────────────────────────────────────────────────────█│
-│                                                                             █│
-│╭┤Blink├─────────────────────────────────────────────────────────────────────█│
-││Blink: ◉ Solid  ○ Slow  ○ Fast                                              █│
-││On (unit unconfirmed): 1          [0-255]                                   █│
-││Off (unit unconfirmed): 0          [0-255]                                  █│
-│╰────────────────────────────────────────────────────────────────────────────█│
-│                                                                             █│
-│╭┤Sound├─────────────────────────────────────────────────────────────────────█│
-││Mute: ☐                                                                     █│
-││Track: ◉ Funky  ○ Nordic  ○ Quiet  ○ Open Office  ○ Kuando                  █│
-││Volume: 0          [0-7]                                                    █│
-│╰────────────────────────────────────────────────────────────────────────────█│
-│                                                                             █│
-│╭────────────────────────────────────────────────────────────────────────────█│
-││Apply: ⟦ Apply ⟧▖                                                           █│
-│╰────────────────────────────────────────────────────────────────────────────░│
-│                                                                             ▼│
+│[-] Color                                                                     │
+│  Color:     ○ Red  ○ Green  ○ Blue  ○ Yellow  ◉ Off                          │
+│  Custom...: ⟦ Custom... ⟧▖                                                   │
+│                                                                              │
+│[-] Blink                                                                     │
+│  Blink:                  ◉ Solid  ○ Slow  ○ Fast                             │
+│  On (unit unconfirmed):  1          [0-255]                                  │
+│  Off (unit unconfirmed): 0          [0-255]                                  │
+│                                                                              │
+│[-] Sound                                                                     │
+│  Mute:   ☐                                                                   │
+│  Track:  ◉ Funky  ○ Nordic  ○ Quiet  ○ Open Office  ○ Kuando                 │
+│  Volume: 0          [0-7]                                                    │
+│                                                                              │
+│  Apply: ⟦ Apply ⟧▖ (i)                                                       │
+│                                                                              │
+│[-] Notes                                                                     │
+│  USB HID status light — color, blink timing, and sound, sent as a            │
+│  single-command frame on Apply.                                              │
+│                                                                              │
+│Not decoding — connect with the matching --presenter to see live values.      │
+│                                                                              │
+│                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

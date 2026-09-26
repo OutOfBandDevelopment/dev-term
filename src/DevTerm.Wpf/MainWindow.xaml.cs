@@ -51,13 +51,14 @@ public partial class MainWindow : Window
 
         if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
         {
-            AppendOutput(manifestWarning);
+            AppendOutput(manifestWarning, OutputKind.Status);
         }
 
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
         Loaded += OnLoaded;
         Closing += OnClosing;
+        RefreshConnectionUi();
 
         // MenuItem.InputGestureText only labels the shortcut in the menu - it doesn't register a
         // live accelerator by itself (same gotcha found for Terminal.Gui's MenuItem.Key building
@@ -75,17 +76,9 @@ public partial class MainWindow : Window
     /// <summary>The send format (parser) currently encoding typed lines — the "Send as" box's selection, starting as the profile's.</summary>
     internal string CurrentParser => ParserBox.SelectedItem as string ?? _cliOptions.EffectiveParser;
 
-    private string TitleText => ConnectionDescription.WindowTitle(_cliOptions, CurrentParser, _profileStore);
+    private string TitleText => ConnectionDescription.WindowTitle(_cliOptions, CurrentParser, _profileStore, _session.State == ConnectionState.Open);
 
-    // Only refreshes a title that's already been set for a connection; before ConnectAsync runs the
-    // title is still the XAML's plain "dev-term".
-    private void ParserBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if (_session.State == ConnectionState.Open)
-        {
-            Title = TitleText;
-        }
-    }
+    private void ParserBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => Title = TitleText;
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
 
@@ -101,26 +94,47 @@ public partial class MainWindow : Window
     /// </remarks>
     internal async Task ConnectAsync()
     {
-        Title = TitleText;
+        RefreshConnectionUi(ConnectionState.Opening);
         try
         {
             await _session.OpenAsync();
         }
         catch (Exception ex)
         {
-            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.");
-            SetConnectedUi(false);
+            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
+            RefreshConnectionUi();
             return;
         }
 
-        SetConnectedUi(true);
+        RefreshConnectionUi();
         SendBox.Focus();
     }
 
-    private void SetConnectedUi(bool connected)
+    /// <summary>
+    /// Everything that depends on the connection state, derived from <see cref="Session.State"/> in
+    /// one place: the File menu header, <see cref="SendBox"/>, the title (" — disconnected" when
+    /// closed), the status bar, and which Device panels make sense (<see cref="DevicePanels"/>).
+    /// Called after every connect, disconnect, fault and profile switch - the WPF equivalent of
+    /// <c>TuiMode</c>'s <c>RefreshConnectionUi</c>.
+    /// </summary>
+    /// <param name="showState">Overrides the displayed state - <see cref="ConnectionState.Opening"/> while a connect is in flight, which the transport never announces to this window.</param>
+    private void RefreshConnectionUi(ConnectionState? showState = null)
     {
+        var state = showState ?? _session.State;
+        var connected = state == ConnectionState.Open;
+
         ConnectMenuItem.Header = connected ? "_Disconnect" : "_Connect";
         SendBox.IsEnabled = connected;
+        Title = TitleText;
+
+        ConnectionStatusText.Text = ConnectionDescription.StatusText(_cliOptions, state);
+        ConnectionStatusDot.Fill = connected
+            ? System.Windows.Media.Brushes.ForestGreen
+            : state == ConnectionState.Opening ? System.Windows.Media.Brushes.Goldenrod : System.Windows.Media.Brushes.Firebrick;
+
+        K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
+        BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
+        ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -128,8 +142,8 @@ public partial class MainWindow : Window
     private void OnSessionDisconnected(object? sender, SessionDisconnectedEventArgs e) =>
         Dispatcher.BeginInvoke(() =>
         {
-            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(_cliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
-            SetConnectedUi(false);
+            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(_cliOptions.Transport, e.Error)} Use File > Connect to reconnect.", OutputKind.Error);
+            RefreshConnectionUi();
         });
 
     /// <summary>
@@ -138,7 +152,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void Observe(Task task) =>
         _ = task.ContinueWith(
-            t => Dispatcher.BeginInvoke(() => AppendOutput($"Unexpected error: {t.Exception!.GetBaseException().Message}")),
+            t => Dispatcher.BeginInvoke(() => AppendOutput($"Unexpected error: {t.Exception!.GetBaseException().Message}", OutputKind.Error)),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
@@ -153,37 +167,38 @@ public partial class MainWindow : Window
         if (_session.State == ConnectionState.Open)
         {
             await _session.CloseAsync();
-            SetConnectedUi(false);
-            AppendOutput("Disconnected.");
+            RefreshConnectionUi();
+            AppendOutput("Disconnected.", OutputKind.Status);
             return;
         }
 
+        RefreshConnectionUi(ConnectionState.Opening);
         try
         {
             await _session.OpenAsync();
         }
         catch (Exception ex)
         {
-            AppendOutput(ConnectionErrorMessages.For(_cliOptions.Transport, ex));
+            AppendOutput(ConnectionErrorMessages.For(_cliOptions.Transport, ex), OutputKind.Error);
 
             // This reuses the same session/transport across retries - the menu label/send box
             // still need to reflect "not connected" on a failed *retry*. Same asymmetry found and
             // fixed in TuiMode.ToggleConnectionAsync.
-            SetConnectedUi(false);
+            RefreshConnectionUi();
             return;
         }
 
-        SetConnectedUi(true);
-        AppendOutput($"Connected to {ConnectionDescription.For(_cliOptions)}.");
+        RefreshConnectionUi();
+        AppendOutput($"Connected to {ConnectionDescription.For(_cliOptions)}.", OutputKind.Status);
     }
 
     private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => Observe(ToggleConnectionAsync());
 
     private void OnSessionOutput(object? sender, PresenterOutput output) => Dispatcher.Invoke(() => AppendOutput($"[{output.PresenterName}] {output.Text}"));
 
-    private void AppendOutput(string line)
+    private void AppendOutput(string line, OutputKind kind = OutputKind.Device)
     {
-        OutputList.Items.Add(line);
+        OutputList.Items.Add(new OutputLine(line, kind));
         while (OutputList.Items.Count > _maxOutputLines)
         {
             OutputList.Items.RemoveAt(0);
@@ -265,7 +280,7 @@ public partial class MainWindow : Window
 
         if (!TypedInput.TryEncode(input, CurrentParser, line, _cliOptions.LineEnding, out var payload, out var error))
         {
-            AppendOutput(error!);
+            AppendOutput(error!, OutputKind.Error);
             return;
         }
 
@@ -276,7 +291,7 @@ public partial class MainWindow : Window
 
         if (_session.State != ConnectionState.Open)
         {
-            AppendOutput("Not connected — use File > Connect.");
+            AppendOutput("Not connected — use File > Connect.", OutputKind.Error);
             return;
         }
 
@@ -288,7 +303,7 @@ public partial class MainWindow : Window
         {
             if (_session.State == ConnectionState.Open)
             {
-                AppendOutput($"Send failed: {ex.Message}");
+                AppendOutput($"Send failed: {ex.Message}", OutputKind.Error);
             }
         }
     }
@@ -415,62 +430,35 @@ public partial class MainWindow : Window
     }
 
     // *IDN? is a real send/await over the live transport, so unlike the synchronous picker above
-    // this can't finish before the click handler returns - fire-and-forget, matching
-    // ToggleConnectionAsync/SwitchProfileAsync's own async-void-adjacent pattern for the same reason.
+    // this can't finish before the click handler returns - fire-and-forget (observed). Shares its
+    // detect logic with the TUI (ScpiAutoDetect); reports progress while it waits (a wait cursor and
+    // a status line) and what it found afterward, using the connection's configured timeout.
     private async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
-        ScpiInstrumentProfile? detected;
+        var timeout = TimeSpan.FromMilliseconds(_cliOptions.ScpiAutoDetectTimeoutMs);
+        AppendOutput(ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);
+
+        ScpiAutoDetectResult result;
+        var previousCursor = Cursor;
+        Cursor = System.Windows.Input.Cursors.Wait;
         try
         {
-            detected = await DetectScpiProfileAsync(structuredSource);
+            result = await ScpiAutoDetect.DetectAsync(_session, structuredSource, timeout);
         }
         catch (Exception ex)
         {
             // The *IDN? send failed - the session has disconnected itself and reported why, so
             // there's no connection to open a panel against.
-            AppendOutput($"SCPI auto-detect failed: {ex.Message}");
+            AppendOutput($"SCPI auto-detect failed: {ex.Message}", OutputKind.Error);
             return;
-        }
-
-        OpenScpiInstrumentWindow(structuredSource, detected ?? ScpiProfileCatalog.Generic);
-    }
-
-    /// <summary>
-    /// Honestly-scoped auto-detect: there's no universal "list supported commands" SCPI query, so
-    /// this sends <c>*IDN?</c> and regex-matches the reply against each loaded profile's
-    /// <c>IdnPattern</c> — see <see cref="ScpiProfileCatalog.TryMatchByIdn"/>. Mirrors
-    /// <c>TuiMode.DetectProfileAsync</c>.
-    /// </summary>
-    private async Task<ScpiInstrumentProfile?> DetectScpiProfileAsync(IPresenter? presenter)
-    {
-        if (presenter is not IScpiReplyTracker tracker || presenter is not IStructuredPresenter structured)
-        {
-            return null;
-        }
-
-        const string detectReplyId = "scpiAutoDetect.reply";
-        var replyReceived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        void OnValuesChanged(object? _, IReadOnlyDictionary<string, string> values)
-        {
-            if (values.TryGetValue(detectReplyId, out var reply))
-            {
-                replyReceived.TrySetResult(reply);
-            }
-        }
-
-        structured.ValuesChanged += OnValuesChanged;
-        try
-        {
-            tracker.QuerySent(detectReplyId);
-            await _session.SendAsync(Encoding.ASCII.GetBytes("*IDN?\n"));
-
-            var winner = await Task.WhenAny(replyReceived.Task, Task.Delay(TimeSpan.FromSeconds(3)));
-            return winner == replyReceived.Task ? ScpiProfileCatalog.TryMatchByIdn(await replyReceived.Task) : null;
         }
         finally
         {
-            structured.ValuesChanged -= OnValuesChanged;
+            Cursor = previousCursor;
         }
+
+        AppendOutput(result.Describe(timeout), OutputKind.Status);
+        OpenScpiInstrumentWindow(structuredSource, result.Profile ?? ScpiProfileCatalog.Generic);
     }
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
@@ -511,7 +499,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            AppendOutput($"Could not switch profile: {ex.Message}");
+            AppendOutput($"Could not switch profile: {ex.Message}", OutputKind.Error);
             return false;
         }
 
@@ -532,24 +520,23 @@ public partial class MainWindow : Window
         OutputList.Items.Clear();
         if (ManifestNameWarning.For(newOptions) is { } manifestWarning)
         {
-            AppendOutput(manifestWarning);
+            AppendOutput(manifestWarning, OutputKind.Status);
         }
 
+        RefreshConnectionUi(ConnectionState.Opening);
         try
         {
             await _session.OpenAsync();
         }
         catch (Exception ex)
         {
-            Title = TitleText;
-            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.");
-            SetConnectedUi(false);
+            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
+            RefreshConnectionUi();
             return false;
         }
 
-        Title = TitleText;
-        SetConnectedUi(true);
-        AppendOutput($"Switched to {ConnectionDescription.For(_cliOptions)}.");
+        RefreshConnectionUi();
+        AppendOutput($"Switched to {ConnectionDescription.For(_cliOptions)}.", OutputKind.Status);
         return true;
     }
 
