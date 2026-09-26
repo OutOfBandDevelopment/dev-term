@@ -119,7 +119,7 @@ the doc tree and how to keep it in sync.
 
 ## Documentation
 
-Six kinds of doc, each with a distinct job — don't blend them:
+Seven kinds of doc, each with a distinct job — don't blend them:
 
 - **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
   left stale) as work completes. A finished entry is **deleted outright, not replaced with a "done,
@@ -153,6 +153,11 @@ Six kinds of doc, each with a distinct job — don't blend them:
   this file. The full detail lives here, not in `docs/changes/`; only add a `docs/changes/` entry if
   the session led to an actual code/doc change, cross-referencing the `docs/test/` file rather than
   repeating its content.
+
+- **[`docs/bugs/`](docs/bugs/README.md)** — one file per known bug (`NNN-short-slug.md`): severity, status,
+  confidence, location, failure scenario, suggested fix, tests to add. When a fix lands, set its Status to `Fixed`
+  with a `## Resolution` section (commit + regression test) and update its row in `docs/bugs/README.md` in the same
+  change; the fix's detail still goes in `docs/changes/`. Keep fixed reports (numbers aren't reused).
 
 **Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
 a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has
