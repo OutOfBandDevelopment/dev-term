@@ -88,6 +88,22 @@ the rest.
   fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
   just annotating the view-model properties (and adding the view-model properties where missing).
 
+### WPF layout review follow-ups (from 2026-09-25)
+
+- **Light theme Accent/Warning are below 4.5:1 as text colors** (4.1:1 and 3.3:1; Playback's `[tx]` and
+  `[note]` lines). Needs a palette decision covering both front ends and `docs/design/theming.md`; allow-listed
+  in `UiLayoutReviewTests` until then.
+- **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
+  charts shrink to the column would fix it.
+- **Cap field widths on wide windows.** At 1600px, text boxes and combos in Device Profiles and the
+  manifest editor stretch across the whole window.
+- **The Manifest picker's empty error area leaves ~24px of blank space** above the buttons.
+- **Busylight's unlabeled Apply row isn't aligned** with the section label columns above it.
+- **The Manifest Editor's pane title repeats its first section header** ("Identity" / "Identity").
+- **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
+- **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
+  Generic, most manifest-editor node kinds, and the menus in the second theme.
+
 ### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
 - **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a

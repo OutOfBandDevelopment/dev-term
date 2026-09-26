@@ -499,6 +499,19 @@ file only points there, it doesn't restate them.**
   IDE1006.
 - **A `JsonStringEnumConverter<T>` on the enum type writes names but still reads numbers**, so adding one to an
   existing enum stays backward-compatible (`FormDefinitionGeneratorTests.ChoiceStyle_IsWrittenByName_AndStillReadsAsANumber`).
+- **A window-local `ItemContainerStyle` without `BasedOn` replaces the implicit theme `ListBoxItem` style.**
+  The Device Profiles list kept the stock light selection frame under Dark because of its EventSetter style.
+  `BasedOn` a type key doesn't help, since `DarkControls` is merged after `InitializeComponent`. Use
+  `ListBox.MouseDoubleClick` plus `ItemsControl.ContainerFromElement` instead.
+- **Closing a dirty `DeviceProfilesWindow` in a test pops a real modal `MessageBox` and hangs the run.** Set
+  `ViewModel.ConfirmDiscardChanges = () => true` first. If a run does hang, use `--blame-hang-timeout`
+  rather than killing every `testhost` (that kills other runs on the machine too).
+- **A WPF menu popup's content has an animated opacity right after `IsSubmenuOpen = true`.** Reading it then
+  made contrast look like 1.16:1 though the capture was fine. Don't fold the popup root's opacity into color
+  checks.
+- **The stock Aero2 GroupBox draws a hard-coded white inner border, and the stock ListBoxItem draws a
+  `#DADADA` frame round an unfocused selected row.** Neither follows `SystemColors` overrides; both need
+  dark templates (`DarkControls.xaml`).
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.
