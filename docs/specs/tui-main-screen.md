@@ -28,6 +28,7 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 | **File > Open Log for Playback...** | Prompts for a log path (default: the newest log in `~/.dev-term/logs`) and opens the [Playback window](playback-window.md) as a nested modal. Never touches this window's connection | None | An error dialog for a file that isn't a session log |
 | **File > Quit** / **Ctrl+Q** | Stops the application loop | None | n/a |
 | **Device > K8055/Busylight/SCPI Instrument/Device Manifest...** | Opens a generic control-panel screen for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with WPF and data-driven rather than a fixed set of fields | None checked | n/a |
+| **Device > Edit Device Manifest...** | Opens the manifest editor (a nested screen) to create, open, edit and save a device manifest with a live panel preview — see [`docs/specs/manifest-editor.md`](manifest-editor.md). Always enabled: it needs no connection | None | n/a |
 | **Device > Stream Monitor...** | Starts watching the current session for images/HP-GL/PostScript/PCL (auto-saving each capture) and opens its modal window; monitoring continues after the window closes, each capture adding a `[dev-term] Captured …` status line here, and follows a profile switch — see [`docs/specs/stream-monitor.md`](stream-monitor.md) | None (always enabled) | A failed save is reported on the capture/status line, never thrown |
 
 ## States

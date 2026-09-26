@@ -15,10 +15,11 @@ namespace DevTerm.Configuration;
 /// Properties carry <see cref="CategoryAttribute"/>/<see cref="DisplayNameAttribute"/> from
 /// <c>System.ComponentModel</c> — plain metadata, not tied to any particular UI framework — so a
 /// property's group ("Serial"/"TCP"/"USB HID"/"Presentation"/"Mode") is declared once, here, rather
-/// than re-decided independently by each front end's editor. <see cref="ConnectionEditorViewModel"/>
-/// doesn't read these back via reflection today (its own <c>IsSerialTransport</c>/etc. properties
-/// group fields for show/hide instead) — this is the metadata layer such a reflection-driven
-/// approach would consume if the editor grows one later, and documents the grouping either way.
+/// than re-decided independently by each front end's editor. They're exactly what
+/// <c>DevTerm.UiDefinitions.Forms.FormDefinitionGenerator</c> reads: <c>Generate&lt;CliOptions&gt;()</c>
+/// yields a form section per category. The Connection Editor's own form is generated from
+/// <see cref="ConnectionEditorViewModel"/> instead (its editable, string-typed properties carry the
+/// same categories and labels), since that's the model its fields bind to.
 /// </remarks>
 public sealed class CliOptions
 {

@@ -164,10 +164,8 @@ public sealed class ScreenshotTests
     [TestMethod]
     public void ConfigureMode_LoopbackTransport_IsCaptured()
     {
-        // The info label sits where the HID field group would be, below the fold on an 80x24
-        // window - same reason ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold needs to
-        // scroll to reach the Presenters section just past it. A plain unscrolled capture (like the
-        // other three transports use) would miss it entirely.
+        // Scrolled one page so the Loopback section and the Presentation fields under it are in
+        // frame together, as ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold does.
         var directory = CreateTempProfilesDirectory();
         try
         {
