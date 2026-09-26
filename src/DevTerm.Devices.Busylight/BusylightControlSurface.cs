@@ -19,9 +19,12 @@ namespace DevTerm.Devices.Busylight;
 /// batch/program mode, checksum-correct per the proposal doc but confirmed to have no visible effect
 /// on the real device) is still accepted here as a no-op for backward compatibility, but the
 /// "Program Sequence..." button was removed from <see cref="BusylightUiDefinition"/> since a button
-/// that does nothing on real hardware is worse than no button.
+/// that does nothing on real hardware is worse than no button. Also an <see cref="ICommandPreview"/>:
+/// only "apply" ever sends anything, so it's the only command with a preview — the hex bytes of the
+/// frame <see cref="BuildFrame"/> would send right now (the same method "apply" itself sends through);
+/// every state-only setter previews as null.
 /// </summary>
-public sealed class BusylightControlSurface : IControlSurface
+public sealed class BusylightControlSurface : IControlSurface, ICommandPreview
 {
     private static readonly Dictionary<string, (byte R, byte G, byte B)> _colors = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -102,6 +105,22 @@ public sealed class BusylightControlSurface : IControlSurface
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>The frame "apply" would send right now, as hex bytes (report-ID byte included); null for every other command, since none of them send anything themselves.</summary>
+    public string? PreviewCommand(string commandId, string? value)
+    {
+        ArgumentNullException.ThrowIfNull(commandId);
+
+        if (commandId != "apply")
+        {
+            return null;
+        }
+
+        lock (_stateLock)
+        {
+            return CommandPreviewFormat.ToHex(BuildFrame());
+        }
     }
 
     private void SetColor(string? value)

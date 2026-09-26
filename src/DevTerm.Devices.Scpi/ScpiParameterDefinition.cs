@@ -8,7 +8,15 @@ public sealed class ScpiParameterDefinition
 {
     public required string Name { get; set; }
 
+    /// <summary>The value's data type — what it's validated and formatted as. See <see cref="Control"/> for the widget.</summary>
     public ScpiParameterKind Kind { get; set; } = ScpiParameterKind.Text;
+
+    /// <summary>
+    /// Optional widget hint, independent of <see cref="Kind"/> (e.g. a numeric value typed into a
+    /// plain text field, or dragged on a slider). Null (the default) keeps the widget
+    /// <see cref="Kind"/> implies — see <see cref="ScpiParameterControl"/>.
+    /// </summary>
+    public ScpiParameterControl? Control { get; set; }
 
     /// <summary><see cref="ScpiParameterKind.Numeric"/> only.</summary>
     public double Minimum { get; set; }
