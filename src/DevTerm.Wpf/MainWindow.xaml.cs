@@ -38,6 +38,13 @@ public partial class MainWindow : Window
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
 
+    // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on the OS
+    // connect timeout) can still be pending when the user switches to a *different* profile; without
+    // this, the earlier attempt's failure handler ran anyway once it finally resolved - using the
+    // by-then-stale _cliOptions - and stomped the UI back over whatever the newer attempt had already
+    // set. Ports the TUI's switchCts (see docs/bugs/017-wpf-profile-switch-no-supersede.md).
+    private CancellationTokenSource? _switchCts;
+
     // Device > Stream Monitor...: created on first use, then kept (and moved along on every profile
     // switch) for this window's lifetime - see EnsureStreamMonitor.
     private StreamMonitor? _streamMonitor;
@@ -663,6 +670,10 @@ public partial class MainWindow : Window
     /// <returns><see langword="true"/> if the new connection opened successfully.</returns>
     internal async Task<bool> SwitchProfileAsync(CliOptions newOptions)
     {
+        _switchCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _switchCts = cts;
+
         DevTermSessionBuilder.Result built;
         try
         {
@@ -674,6 +685,16 @@ public partial class MainWindow : Window
             return false;
         }
 
+        var mySession = built.Session;
+
+        // Captured now, before any await: a second, overlapping switch reassigns the _session
+        // field below (once its own build/close/dispose completes) while this call is still
+        // suspended closing/disposing its OWN old session. Reading _session again after that
+        // await - instead of this local - would tear down whatever the OTHER call had already
+        // installed there (possibly its brand-new, just-opened session) rather than the session
+        // this call actually meant to replace.
+        var oldSession = _session;
+
         // Every open control panel's IControlSurface (and, for most, its structured presenter) is
         // bound to the session/catalog being replaced below - closing them here, rather than leaving
         // them open against a disposed session, is what fixes bug 016. ToArray: Closed removes each
@@ -683,18 +704,28 @@ public partial class MainWindow : Window
             panel.Close();
         }
 
-        _session.Output -= OnSessionOutput;
-        _session.Disconnected -= OnSessionDisconnected;
-        await _session.CloseAsync();
-        await _session.DisposeAsync();
+        oldSession.Output -= OnSessionOutput;
+        oldSession.Disconnected -= OnSessionDisconnected;
+        await oldSession.CloseAsync();
+        await oldSession.DisposeAsync();
 
-        _session = built.Session;
+        if (!ReferenceEquals(_switchCts, cts))
+        {
+            // Superseded while closing the old session, before ever adopting mySession as current -
+            // a newer switch has already moved _session on (possibly to its own, by-now-open
+            // session). Never having been subscribed or assigned to _session, mySession just needs
+            // disposing.
+            await mySession.DisposeAsync();
+            return false;
+        }
+
+        _session = mySession;
         _catalog = built.Catalog;
         _cliOptions = newOptions;
-        _streamMonitor?.SetSession(_session, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
+        _streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
         ParserBox.SelectedItem = newOptions.EffectiveParser;
-        _session.Output += OnSessionOutput;
-        _session.Disconnected += OnSessionDisconnected;
+        mySession.Output += OnSessionOutput;
+        mySession.Disconnected += OnSessionDisconnected;
         FollowLogging();
 
         // A different profile means a different device/connection - clearing prior output avoids
@@ -708,12 +739,36 @@ public partial class MainWindow : Window
         RefreshConnectionUi(ConnectionState.Opening);
         try
         {
-            await _session.OpenAsync();
+            await mySession.OpenAsync(cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // Superseded by a newer switch before this one finished connecting - that newer attempt
+            // owns the UI now, so this stale one reports nothing.
+            return false;
         }
         catch (Exception ex)
         {
+            if (!ReferenceEquals(_switchCts, cts))
+            {
+                // Superseded between the failure and this catch running - don't stomp the newer
+                // attempt's state with a stale one.
+                return false;
+            }
+
             AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
             RefreshConnectionUi();
+            return false;
+        }
+
+        if (!ReferenceEquals(_switchCts, cts))
+        {
+            // Connected, but superseded in the meantime - close it rather than adopting a stray
+            // connection as current.
+            mySession.Output -= OnSessionOutput;
+            mySession.Disconnected -= OnSessionDisconnected;
+            await mySession.CloseAsync();
+            await mySession.DisposeAsync();
             return false;
         }
 

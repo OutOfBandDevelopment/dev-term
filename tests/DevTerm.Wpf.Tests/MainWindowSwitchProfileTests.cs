@@ -156,6 +156,60 @@ public sealed class MainWindowSwitchProfileTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SwitchProfileAsync_SupersededByAnotherSwitchBeforeItResolves_DoesNotStompTheNewerOne()
+    {
+        // Regression test for bug 017: reproduces "I tried connecting to 192.168.0.108 and it failed,
+        // so I tried 192.168.0.107 and it won't even try to connect now" — a first attempt that's
+        // still pending (here, a TCP listener mode that never gets a client, standing in for a host
+        // that never actively refuses) must not have its eventual failure/cancellation reset the
+        // connect menu/send box/output after a second, newer switch has already established its own,
+        // real connection. See docs/bugs/017-wpf-profile-switch-no-supersede.md.
+        StaTestRunner.Run(async () =>
+        {
+            var initialTransport = new FakeTransport();
+            var initialPresenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+            var initialSession = new Session(initialTransport, new Pipeline([initialPresenter]));
+            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Parser = "ascii" },
+                IsolatedProfiles.Empty())
+            {
+                ShowInTaskbar = false,
+            };
+            await window.ConnectAsync();
+
+            using var neverConnectedTo = new TcpListener(IPAddress.Loopback, 0);
+            neverConnectedTo.Start();
+            var pendingPort = ((IPEndPoint)neverConnectedTo.LocalEndpoint).Port;
+
+            // TcpTransportMode.Listener: AcceptAsync blocks until a client connects - nobody ever
+            // does, so this stays "Opening" indefinitely until cancelled, a deterministic stand-in
+            // for a slow-to-fail connect.
+            var staleTask = window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Listen = true, Port = pendingPort.ToString(), Presenter = ["ascii"] });
+
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
+
+            var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] });
+            using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
+
+            Assert.IsTrue(switched, "The second (newer) switch should have connected for real.");
+            Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
+            Assert.IsTrue(window.SendBox.IsEnabled);
+            Assert.Contains($"tcp://127.0.0.1:{port}", window.Title);
+
+            // The stale (superseded) attempt should resolve false - cancelled, not left hanging -
+            // without ever having touched the UI state the newer attempt already set.
+            var staleResult = await staleTask.WaitAsync(_timeout, TestContext.CancellationToken);
+            Assert.IsFalse(staleResult);
+            Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header, "The stale attempt's resolution must not have reverted the menu title.");
+            Assert.IsTrue(window.SendBox.IsEnabled, "The stale attempt's resolution must not have disabled the send field.");
+            Assert.Contains($"tcp://127.0.0.1:{port}", window.Title);
+        });
+    }
+
+    [TestMethod]
     public void SwitchProfileAsync_ToASavedProfile_RetitlesTheWindowWithItsName()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
