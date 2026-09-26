@@ -66,6 +66,18 @@ public sealed class RadexOneDecoderTests
     }
 
     [TestMethod]
+    public void Render_WithWriteSettingsAckReply_FormatsAcknowledgement()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildWriteSettingsAckExtension();
+        var report = RadexOneFramer.BuildReply(1, extension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>(report));
+
+        Assert.AreEqual("RADEX-ONE: write settings acknowledged", lines[0]);
+    }
+
+    [TestMethod]
     public void Render_WithBadChecksum_ProducesADiagnosticLineInsteadOfThrowing()
     {
         var decoder = new RadexOneDecoder();
@@ -77,6 +89,55 @@ public sealed class RadexOneDecoderTests
 
         Assert.HasCount(1, lines);
         StringAssert.Contains(lines[0], "unrecognized reply");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_WithReadDataReply_AndCorruptedExtensionChecksum_IsNotShownAsAValidReading()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildReadDataExtension(ambient: 10, accumulated: 20, cpm: 30);
+        extension[10] ^= 0xFF; // corrupt a reserved byte (not ambient/accumulated/cpm themselves)
+        var report = RadexOneFramer.BuildReply(1, extension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>(report));
+
+        Assert.HasCount(1, lines);
+        // Without checksum verification, the corrupted reserved byte doesn't change any decoded
+        // field, so the bug shows this exact string as a valid reading despite the corruption.
+        Assert.AreNotEqual("RADEX-ONE: CPM=30 Ambient=10 Accum=20", lines[0]);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_WithSettingsReply_AndCorruptedExtensionChecksum_IsNotShownAsAValidReading()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildReadSettingsExtension(alarmMode: 2, threshold: 300);
+        extension[11] ^= 0xFF; // corrupt a reserved byte (not alarmMode/threshold themselves)
+        var report = RadexOneFramer.BuildReply(1, extension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>(report));
+
+        Assert.HasCount(1, lines);
+        // Without checksum verification, the corrupted reserved byte doesn't change any decoded
+        // field, so the bug shows this exact string as valid settings despite the corruption.
+        Assert.AreNotEqual("RADEX-ONE: alarm=Audio threshold=300", lines[0]);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_WithWriteSettingsAckReply_AndCorruptedExtensionChecksum_IsNotShownAsAcknowledged()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildWriteSettingsAckExtension();
+        extension[2] ^= 0xFF; // corrupt the reserved word, leaving the outer header checksum intact
+        var report = RadexOneFramer.BuildReply(1, extension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>(report));
+
+        Assert.HasCount(1, lines);
+        Assert.AreNotEqual("RADEX-ONE: write settings acknowledged", lines[0]);
     }
 
     [TestMethod]
@@ -104,6 +165,7 @@ public sealed class RadexOneDecoderTests
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(8), ambient);
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(12), accumulated);
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(16), cpm);
+        WriteChecksum(extension, coveredLength: 20);
         return extension;
     }
 
@@ -114,6 +176,20 @@ public sealed class RadexOneDecoderTests
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(4), 0x0005);
         extension[8] = alarmMode;
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(9), threshold);
+        WriteChecksum(extension, coveredLength: 14);
         return extension;
     }
+
+    private static byte[] BuildWriteSettingsAckExtension()
+    {
+        var extension = new byte[6];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.WriteSettings);
+        WriteChecksum(extension, coveredLength: 4);
+        return extension;
+    }
+
+    private static void WriteChecksum(byte[] extension, int coveredLength) =>
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(
+            extension.AsSpan(coveredLength),
+            RadexOneFramer.ComputeChecksum(extension.AsSpan(0, coveredLength)));
 }

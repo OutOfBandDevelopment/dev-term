@@ -96,7 +96,8 @@ public sealed class RadexOneDecoder : IPresenter
             RadexOneCommand.ReadSerialVersion => $"RADEX-ONE: {DecodeAscii(RadexOneExtensionCodec.ReadSerialVersionPayload(extension))}",
             RadexOneCommand.ReadSettings when RadexOneExtensionCodec.TryParseReadSettings(extension, out var alarmMode, out var threshold) =>
                 FormatSettings(alarmMode, threshold),
-            RadexOneCommand.WriteSettings => "RADEX-ONE: write settings acknowledged",
+            RadexOneCommand.WriteSettings when RadexOneExtensionCodec.TryVerifyWriteSettingsAck(extension) =>
+                "RADEX-ONE: write settings acknowledged",
             _ => $"RADEX-ONE: reply command 0x{commandCode:X4}, {extension.Length} byte(s)",
         };
     }

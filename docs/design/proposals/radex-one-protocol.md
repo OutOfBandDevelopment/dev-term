@@ -119,8 +119,10 @@ trace except where noted:
   `[0x7a, 0x00]`" instead of `0xFF`, and "`_C00`" instead of "`0C00`"). Rather than guess at the
   exact reserved-byte layout, `RadexOneExtensionCodec.ReadSerialVersionPayload` extracts the
   payload leniently (skip the first 4 bytes, drop the trailing 2-byte checksum) without
-  re-validating this one extension's own inner checksum — the outer framer's checksum already
-  guarantees the packet arrived intact.
+  re-validating this one extension's own inner checksum — unlike Read Data, Read Settings and the
+  Write Settings ack, which now do
+  (`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`); the outer framer's checksum
+  only guarantees the outer header arrived intact, not this extension's own payload.
 
 ## Proposed shape
 
@@ -195,6 +197,13 @@ whole `TestCategory=Unit` suite passes. **Still pending: a fresh `RealHardwareRa
 against the actual device on COM8** to confirm it now replies, now that both the transport and the
 packet-layout bugs are fixed.
 
+`RadexOneExtensionCodec.TryParseReadData`/`TryParseReadSettings`/`TryVerifyWriteSettingsAck` now also
+verify each extension's own trailing checksum, not just the framer's outer header checksum
+(`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`) — a corrupted extension payload is
+rejected (falls back to the generic "reply command 0x..." line) rather than shown as a valid reading.
+Read Serial/Version deliberately still doesn't re-validate its own inner checksum; see "Open
+questions" below.
+
 ## Open questions
 
 - Whether the 3×-repeat-on-write behavior should be handled generically (an `IControlSurface`
@@ -205,8 +214,9 @@ packet-layout bugs are fixed.
   an interval to behave like a live telemetry stream for a future rendering presenter/plot — the
   device itself doesn't push data unsolicited, so any "live" view means dev-term driving the polling.
 - The Read Serial/Version reply's exact reserved-byte layout past its first 4 bytes — see the
-  "Command extensions" section above; deliberately not re-validated against its own inner checksum,
-  relying on the outer framer's checksum for transport integrity instead.
+  "Command extensions" section above; deliberately not re-validated against its own inner checksum
+  (unlike Read Data/Read Settings/the Write Settings ack, which now are), since the source trace's
+  reserved-byte content doesn't fully reconcile against the doc's own prose field list.
 
 ## Trace Examples
 

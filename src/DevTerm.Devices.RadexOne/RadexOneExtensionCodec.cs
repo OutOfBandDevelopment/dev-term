@@ -65,7 +65,10 @@ internal static class RadexOneExtensionCodec
     /// Read Data reply: CommandCode(2) + Reserved(2) + Reserved(2, 0x000C) + Reserved(2) +
     /// Ambient(2) + Reserved(2) + Accumulated(2) + Reserved(2) + CPM(2) + Reserved(2) + Checksum(2)
     /// = 22 bytes. Each real value is followed by a reserved zero word — verified against the source
-    /// trace's own worked example (Ambient=Accumulated=0x12, CPM=0x15).
+    /// trace's own worked example (Ambient=Accumulated=0x12, CPM=0x15). The trailing checksum covers
+    /// the first 20 bytes and is verified here — the outer framer's checksum only guarantees the
+    /// outer header arrived intact, not this extension's own payload (see
+    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
     /// </summary>
     public static bool TryParseReadData(ReadOnlySpan<byte> extension, out ushort ambient, out ushort accumulated, out ushort cpm)
     {
@@ -73,7 +76,7 @@ internal static class RadexOneExtensionCodec
         accumulated = 0;
         cpm = 0;
 
-        if (extension.Length < 22)
+        if (extension.Length < 22 || !HasValidChecksum(extension, coveredLength: 20))
         {
             return false;
         }
@@ -88,14 +91,16 @@ internal static class RadexOneExtensionCodec
     /// Read Settings reply: CommandCode(2) + ZeroReserved(2) + TargetValue(2, 0x0005) +
     /// ZeroReserved(2) + AlarmSetting(1) + Threshold(2, LE) + ZeroReserved(3) + Checksum(2) = 16
     /// bytes — the same shape as <see cref="BuildWriteSettings"/>'s request, minus the leading
-    /// Reserved(0x000E) field (replaced here by a zero word).
+    /// Reserved(0x000E) field (replaced here by a zero word). The trailing checksum covers the first
+    /// 14 bytes and is verified here (see
+    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
     /// </summary>
     public static bool TryParseReadSettings(ReadOnlySpan<byte> extension, out byte alarmMode, out ushort threshold)
     {
         alarmMode = 0;
         threshold = 0;
 
-        if (extension.Length < 11)
+        if (extension.Length < 16 || !HasValidChecksum(extension, coveredLength: 14))
         {
             return false;
         }
@@ -106,14 +111,28 @@ internal static class RadexOneExtensionCodec
     }
 
     /// <summary>
+    /// Write Settings ack: CommandCode(2) echo + ZeroReserved(2) + Checksum(2) = 6 bytes. The
+    /// trailing checksum covers the first 4 bytes and is verified here (see
+    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
+    /// </summary>
+    public static bool TryVerifyWriteSettingsAck(ReadOnlySpan<byte> extension) =>
+        extension.Length >= 6 && HasValidChecksum(extension, coveredLength: 4);
+
+    /// <summary>
     /// Read Serial/Version reply's variable-length payload, per the doc's own field list:
     /// CommandCode(2) + Reserved(2, 0x000C) + payload(variable) + Checksum(2). The source trace's own
     /// exact reserved-byte content past the first 4 bytes doesn't fully reconcile against the doc's
     /// prose field list (one reserved word differs from a plain zero in a way the doc doesn't
-    /// document), so this deliberately doesn't re-validate this extension's own inner checksum — the
-    /// framer's outer checksum already guarantees the packet arrived intact; this just slices out
-    /// the middle for display.
+    /// document), so this deliberately doesn't re-validate this extension's own inner checksum —
+    /// unlike <see cref="TryParseReadData"/>/<see cref="TryParseReadSettings"/>/
+    /// <see cref="TryVerifyWriteSettingsAck"/>, which do (see
+    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md); this just slices out the
+    /// middle for display.
     /// </summary>
     public static ReadOnlySpan<byte> ReadSerialVersionPayload(ReadOnlySpan<byte> extension) =>
         extension.Length < 6 ? [] : extension[4..^2];
+
+    private static bool HasValidChecksum(ReadOnlySpan<byte> extension, int coveredLength) =>
+        BinaryPrimitives.ReadUInt16LittleEndian(extension.Slice(coveredLength, 2)) ==
+            RadexOneFramer.ComputeChecksum(extension[..coveredLength]);
 }
