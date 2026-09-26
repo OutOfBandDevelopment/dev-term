@@ -52,6 +52,9 @@ public sealed class Session : IAsyncDisposable
     /// </summary>
     public void AddPresenter(IPresenter presenter) => _pipeline.AddPresenter(presenter);
 
+    /// <summary>Unbinds a presenter previously bound with <see cref="AddPresenter"/> (see <see cref="Pipeline.RemovePresenter"/>).</summary>
+    public void RemovePresenter(IPresenter presenter) => _pipeline.RemovePresenter(presenter);
+
     public event EventHandler<PresenterOutput>? Output;
 
     /// <summary>

@@ -120,4 +120,22 @@ public sealed class PipelineTests
 
         Assert.AreSequenceEqual([new PresenterOutput("added", "hi")], [.. outputs]);
     }
+
+    [TestMethod]
+    public void RemovePresenter_StopsItBeingRendered_AndIsANoOpWhenAbsent()
+    {
+        var kept = new Mock<IPresenter>();
+        kept.SetupGet(p => p.Name).Returns("kept");
+        kept.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["k"]);
+        var removed = new Mock<IPresenter>();
+        removed.SetupGet(p => p.Name).Returns("removed");
+        removed.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["r"]);
+        var pipeline = new Pipeline([kept.Object, removed.Object]);
+
+        pipeline.RemovePresenter(removed.Object);
+        pipeline.RemovePresenter(removed.Object);
+
+        Assert.AreSequenceEqual([new PresenterOutput("kept", "k")], [.. pipeline.Render(new ReadOnlySequence<byte>([0x48]))]);
+        Assert.HasCount(1, pipeline.Presenters);
+    }
 }

@@ -35,6 +35,11 @@ public partial class MainWindow : Window
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
 
+    // Device > Stream Monitor...: created on first use, then kept (and moved along on every profile
+    // switch) for this window's lifetime - see EnsureStreamMonitor.
+    private StreamMonitor? _streamMonitor;
+    private StreamMonitorWindow? _streamMonitorWindow;
+
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
@@ -482,6 +487,44 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Device > Stream Monitor...'s monitor, pointed at the current session and started — opening
+    /// the window is asking to watch. Created on first use and kept for this window's lifetime, so
+    /// monitoring (and a status line per capture here) carries on after its window closes;
+    /// <see cref="SwitchProfileAsync"/> moves it to the new session. Split from the click handler
+    /// so tests can drive it without showing a window.
+    /// </summary>
+    internal StreamMonitor EnsureStreamMonitor()
+    {
+        if (_streamMonitor is null)
+        {
+            _streamMonitor = new StreamMonitor();
+            _streamMonitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(capture.Describe(), OutputKind.Status));
+        }
+
+        _streamMonitor.SetSession(_session, StreamMonitor.DeviceNameFor(_cliOptions, _profileStore), _cliOptions.EffectiveExportDirectory);
+        _streamMonitor.Start();
+        return _streamMonitor;
+    }
+
+    // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
+    // alongside this window. A second click brings the already-open one forward.
+    private void StreamMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        var monitor = EnsureStreamMonitor();
+        if (_streamMonitorWindow is { } open)
+        {
+            open.RefreshState();
+            open.Activate();
+            return;
+        }
+
+        var window = new StreamMonitorWindow(monitor) { Owner = this };
+        window.Closed += (_, _) => _streamMonitorWindow = null;
+        _streamMonitorWindow = window;
+        window.Show();
+    }
+
+    /// <summary>
     /// Tears down the current session/transport and opens a new one composed from
     /// <paramref name="newOptions"/> — live, without restarting the app, unlike the
     /// save-as-default-and-ask-for-a-restart this replaced. Exposed as an awaitable method (rather
@@ -511,6 +554,7 @@ public partial class MainWindow : Window
         _session = built.Session;
         _catalog = built.Catalog;
         _cliOptions = newOptions;
+        _streamMonitor?.SetSession(_session, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
         ParserBox.SelectedItem = newOptions.EffectiveParser;
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
@@ -552,6 +596,7 @@ public partial class MainWindow : Window
         // Session.CloseAsync/DisposeAsync must be awaited before the window actually closes, so
         // cancel the first close request, do the async cleanup, then close for real.
         e.Cancel = true;
+        _streamMonitor?.Dispose();
         _session.Output -= OnSessionOutput;
         _session.Disconnected -= OnSessionDisconnected;
         try

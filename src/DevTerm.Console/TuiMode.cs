@@ -113,6 +113,10 @@ public static class TuiMode
         MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
 
+        // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
+        // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
+        StreamMonitor? streamMonitor = null;
+
         string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore, session.State == ConnectionState.Open);
 
         var window = new Window
@@ -318,6 +322,7 @@ public static class TuiMode
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
                     OpenScpiInstrumentWindow(app, session, structuredSource, profile);
                 })),
+                new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
         ]);
 
@@ -425,6 +430,7 @@ public static class TuiMode
             catalog = built.Catalog;
             cliOptions = newOptions;
             parser = newOptions.EffectiveParser;
+            streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
             mySession.Output += OnSessionOutput;
             mySession.Disconnected += OnSessionDisconnected;
 
@@ -481,6 +487,28 @@ public static class TuiMode
             app.Invoke(RefreshConnectionUi);
             AppendStatus($"Switched to {ConnectionDescription.For(cliOptions)}.");
             return true;
+        }
+
+        // Device > Stream Monitor...: opening it starts monitoring the current session (that's what
+        // opening it is for); its Stop button stops it. The monitor outlives the modal window so
+        // captures keep being auto-saved - each reported as a status line here - while the user is
+        // back in this window sending commands. SwitchProfileAsync moves it to the new session.
+        void OpenStreamMonitor()
+        {
+            if (streamMonitor is null)
+            {
+                var monitor = new StreamMonitor();
+                monitor.CaptureAdded += (_, capture) => AppendStatus(capture.Describe());
+                window.Disposing += (_, _) => monitor.Dispose();
+                streamMonitor = monitor;
+            }
+
+            streamMonitor.SetSession(session, StreamMonitor.DeviceNameFor(cliOptions, profileStore), cliOptions.EffectiveExportDirectory);
+            streamMonitor.Start();
+
+            var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor);
+            app.Run(monitorParts.Window);
+            monitorParts.Window.Dispose();
         }
 
         sendField.KeyDown += (_, key) =>
