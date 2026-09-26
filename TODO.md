@@ -19,20 +19,18 @@ Completed work is logged by date under `docs/changes/`.
 
 ### UI batch (started 2026-09-25)
 
-Being built in three phases on `dev/error-handling-and-todo`. Parallel work happens in separate git
-worktrees, merged and verified before the next phase starts. Items moved here from `BACKLOG.md`
-(and from the specs' Open items) when work started. Each is deleted from this file once its detail
-has landed in `docs/changes/`.
+Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
+verified one at a time. Each item is deleted from this file once its detail has landed in `docs/changes/`.
 
-**Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
-
-**Phase 2 — done** (2026-09-25): theming, the forms engine (generated Connection Editor fields) and the
-device manifest editor all landed; see `docs/changes/2026-09-25.md`.
-
-**Phase 3 — queued (last; it restructures both main windows):**
-
-- **Multiple sessions per window** (from the TUI/WPF main-window specs' Open items). Presenters stopped
-  being the blocker on 2026-09-25, since they're per-session now; nothing builds the UI for it yet.
+- **UI layout review with layout-checking screenshot tests (in progress, 2026-09-25).** Two parallel
+  branches, one per front end. Each adds a test-side layout checker (bounds inside the window or a
+  scrollable area, no overlapping siblings, no clipped text, reachable controls). They run it on every
+  screen at several sizes in Light and Dark, and save review PNGs to the untracked `artifacts/ui-review/`.
+  Real layout bugs they find get fixed. The TUI branch also covers Enter-to-Connect and Ctrl+Q in the
+  Connection Editor.
+- **Multiple sessions per window** (queued last, since it restructures both main windows; from the TUI/WPF
+  main-window specs' Open items). Presenters stopped being the blocker on 2026-09-25, since they're
+  per-session now. Nothing builds the UI for it yet.
 
 ## Backlog / research
 

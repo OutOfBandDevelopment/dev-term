@@ -42,10 +42,8 @@ the rest.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
-  drawing/rendering half. The first consumer's capture-and-save / WPF-native-image-preview phase (the
-  "Stream Monitor..." window from
-  [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md))
-  landed 2026-09-25 (`docs/specs/stream-monitor.md`); the real HPGL/PostScript/PCL rendering it defers stays here.
+  drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
+  already captures and saves but doesn't draw yet.
 
 ### Device control modules & hardware profiles
 
@@ -85,19 +83,6 @@ the rest.
   the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report).
 
 ### Connection Editor
-
-**Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
-for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
-detail on each increment). Still open — prioritized per direction given 2026-09-16, with the
-serial-port naming item moved to lower priority. ~~Export-selected/export-all as a zip~~ landed
-2026-09-16: multi-select in the profiles list (WPF `ListBox.SelectionMode="Extended"`, TUI
-`ListView.MarkMultiple`/`ShowMarks`), Export Selected/Export All (one `{name}.json` per profile in
-a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resolution
-(`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
-`docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
-all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
-detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
-(`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
 
 - **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
   fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
