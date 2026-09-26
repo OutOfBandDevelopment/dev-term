@@ -89,3 +89,9 @@ and handle it as separate follow-up work (use the `docs-sync` skill's guidance f
 don't fold it silently into the `docs/test/` report itself. If the pass is routine and uneventful,
 a one-line pointer from today's `docs/changes/YYYY-MM-DD.md` to the new `docs/test/` file is enough;
 never duplicate the full transcript into `docs/changes/`.
+
+**Exception:** if this session started from a live user-reported symptom ("it doesn't work") rather
+than a routine pass, and the bench check finds a real, fixable root cause, follow the `bug-report`
+skill's "Investigating a live-reported symptom before it's a filed bug" section instead — that
+usually means filing *and* fixing the bug in this same session (the failing real-hardware test already
+serves as the regression test), not deferring it as separate follow-up work.

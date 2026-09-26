@@ -21,6 +21,44 @@ durable record of *what is wrong and how we know*; the fix's own detail still go
    The line numbers in the report refer to that commit, so they stay checkable after the code moves:
    `git show <hash>:<path>`. If you found it on uncommitted work, say so and give the base commit.
 
+## Investigating a live-reported symptom before it's a filed bug
+
+Sometimes the starting point isn't a pre-filed report but a live "X doesn't work" / "X isn't
+returning anything" from the user, and answering it means actually driving real hardware right now
+(see the `hardware-test` skill for the bench-session mechanics this leans on). This differs from the
+normal file-now/fix-later split above: here, filing and fixing usually happen in the same session,
+because the diagnostic work needed to find the root cause already doubles as the regression test.
+
+1. **Get the connection detail from the user, don't guess.** A port/address/model named in the
+   request is what makes a live check possible instead of a documentation review.
+2. **Reproduce first with the narrowest existing test.** If a `RealHardwareXTests` already exists for
+   this device, run it unmodified before changing anything — its outcome is the first real data
+   point and confirms the symptom is happening right now, not just historically.
+3. **If the existing test doesn't explain *why*, drop below the abstraction that's failing.** Bypass
+   `Session`/the decoder and talk to the transport directly. A temporary, uncommitted diagnostic test
+   class is fine for this — tag it `[TestCategory(TestCategories.Integration)]`, and add
+   `[DoNotParallelize]` if it shares an exclusive resource (a COM port, a USB device) with other tests
+   in the same run, or MSTest's default parallel workers will fight over it
+   (`UnauthorizedAccessException`, not a real finding). **Delete this class once it's answered the
+   question** — it's scaffolding for the investigation, not a permanent test; it doesn't follow the
+   repo's real-hardware test conventions (parameterized via `devterm.runsettings`, `Assert.Inconclusive`
+   when hardware is absent, proper category tagging) and was never meant to.
+4. **Once you have a root cause, file it like any other bug** (Confidence: Reproduced; Found by: the
+   user report plus this session's bench check), **then fix it in the same session** rather than
+   deferring — the failing real-hardware test from step 2 (or a corrected version of it) already is
+   the "write the test first" step, so there's no separate reproduction phase to redo later. Rerun
+   that same test after the fix and cite the before/after transcript in the Resolution section.
+5. **Sweep every copy of the wrong assumption, not just the one that broke.** A root cause that was
+   previously written down as settled fact (a "confirmed" doc comment, a `devterm.runsettings` note, a
+   design-doc claim) tends to get copy-pasted into several places once it's believed. Grep for the
+   wrong value/claim across `src/`, `tests/`, `devterm.runsettings`, and `docs/design/` before calling
+   the fix done — correcting one copy and leaving others stale and now contradictory is worse than
+   fixing none of them, since it hides which claim is actually current.
+6. **Write the `docs/test/{yyyy-MM-dd-HH-mm-ss}.md` report per the `hardware-test` skill**, with the
+   root-cause narrative in its Findings section, and **cross-link it with the bug report**: the bug's
+   `## Resolution` cites the `docs/test/` file for the full transcript, and the `docs/test/` report's
+   closing summary cites the bug number.
+
 ## Numbering and file name
 
 - The next number is one more than the highest existing `NNN` in `docs/bugs/` (three digits, zero-padded). Numbers
