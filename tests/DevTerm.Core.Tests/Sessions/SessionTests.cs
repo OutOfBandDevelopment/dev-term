@@ -316,6 +316,49 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task SendAsync_CalledSynchronouslyFromTheReadLoopsOutputHandler_FailsFastInsteadOfDeadlockingWhenTheSendFails()
+    {
+        // Regression test for bug 039: a synchronous auto-reply from an Output handler - which runs
+        // on the read-loop thread - that calls SendAsync and hits a failing write used to deadlock:
+        // SendAsync awaited FaultAsync inline, whose StopAsync then awaited the very read-loop task
+        // that's still on the stack calling it, so it could never complete. This caller pattern is a
+        // real misuse (reply synchronously from the read loop instead of scheduling the reply), so
+        // the fix makes it fail fast with a clear exception instead of hanging forever - it
+        // deliberately does not try to preserve the normal (awaited, non-reentrant) fault-handling
+        // behavior for this case, only for every other caller. See
+        // docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+        var (transport, pipe) = CreateOpenableTransport();
+        transport.SetupGet(t => t.State).Returns(ConnectionState.Open);
+        transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TimeoutException("device did not answer"));
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("p");
+        presenter.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["reply"]);
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+
+        var caught = new TaskCompletionSource<Exception?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.Output += (_, _) =>
+        {
+            try
+            {
+                session.SendAsync(new byte[] { 1 }, TestContext.CancellationToken).GetAwaiter().GetResult();
+                caught.TrySetResult(null);
+            }
+            catch (Exception ex)
+            {
+                caught.TrySetResult(ex);
+            }
+        };
+
+        await session.OpenAsync(TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
+
+        var ex = await caught.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.CancellationToken);
+        Assert.IsInstanceOfType<InvalidOperationException>(ex);
+    }
+
+    [TestMethod]
     public async Task CallerClose_NeverRaisesDisconnected()
     {
         var (transport, _) = CreateOpenableTransport();
