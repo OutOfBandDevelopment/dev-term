@@ -6,11 +6,11 @@
 │  Stream: N, ascii", "Send Events: N", or "help"/"?".                        ░│
 │                                                                             ░│
 │── Presentation ──                                                           ░│
-│  Presenters:   ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055      ░│
-│                ☐ busylight ☐ scpi                                           █│
-│  Send as:      ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary         █│
-│                ○ k8055  ○ busylight  ○ scpi                                 █│
-│  Line ending:  ◉ None  ○ Cr  ○ Lf  ○ CrLf                                   █│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi                                            █│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          █│
+│               ○ k8055  ○ busylight  ○ scpi                                  █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│

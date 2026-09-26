@@ -18,9 +18,16 @@ namespace DevTerm.UiDefinitions.Forms;
 /// </summary>
 public static class FormDefinitionGenerator
 {
-    /// <summary>Generates the form for <typeparamref name="T"/>; see <see cref="Generate(Type, object?, string?)"/>.</summary>
-    public static UiDefinition Generate<T>(T? instance = null, string? name = null)
-        where T : class => Generate(typeof(T), instance, name);
+    /// <summary>Generates the form for <typeparamref name="T"/>, defaults from a new instance; see <see cref="Generate(Type, object?, string?)"/>.</summary>
+    public static UiDefinition Generate<T>()
+        where T : class => Generate(typeof(T));
+
+    /// <summary>Generates the form for <paramref name="instance"/>'s type, its defaults and choice lists read from <paramref name="instance"/>; see <see cref="Generate(Type, object?, string?)"/>.</summary>
+    public static UiDefinition Generate(object instance, string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+        return Generate(instance.GetType(), instance, name);
+    }
 
     /// <summary>
     /// Generates the form for <paramref name="modelType"/>. <paramref name="instance"/>, when given,

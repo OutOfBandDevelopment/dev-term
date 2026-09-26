@@ -15,8 +15,13 @@ namespace DevTerm.Wpf;
 /// </summary>
 public partial class ManifestPickerWindow : Window
 {
-    public ManifestPickerWindow(IReadOnlyList<ManifestEntry> entries)
+    private readonly bool _pathOnly;
+
+    /// <param name="entries">The discovered manifests to list.</param>
+    /// <param name="pathOnly">True to only choose a path (<see cref="ChosenPath"/>) without loading it — the manifest editor's Open, which opens a broken manifest too, so it can be fixed.</param>
+    public ManifestPickerWindow(IReadOnlyList<ManifestEntry> entries, bool pathOnly = false)
     {
+        _pathOnly = pathOnly;
         InitializeComponent();
         ManifestList.ItemsSource = entries;
         if (entries.Count > 0)
@@ -27,6 +32,9 @@ public partial class ManifestPickerWindow : Window
 
     /// <summary>The loaded manifest, once one was picked and loaded successfully.</summary>
     public DeviceManifest? Chosen { get; private set; }
+
+    /// <summary>The picked path (a typed one, or the selected entry's), once one was picked.</summary>
+    public string? ChosenPath { get; private set; }
 
     /// <summary>
     /// Opens <paramref name="manifest"/>'s panel on <paramref name="session"/> as an ordinary
@@ -52,6 +60,12 @@ public partial class ManifestPickerWindow : Window
         {
             ErrorText.Text = "Pick a manifest, or enter a path to one.";
             return false;
+        }
+
+        ChosenPath = path;
+        if (_pathOnly)
+        {
+            return true;
         }
 
         try

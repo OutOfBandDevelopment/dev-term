@@ -466,7 +466,9 @@ public partial class ControlPanelWindow : Window
         // Shared across panel openings (see LastPickedColors), not per window instance - a
         // per-window dictionary here lost the color every time the panel was closed and reopened.
         var (r, g, b) = LastPickedColors.Get(buttonId);
-        var picker = new ColorPickerWindow(r, g, b) { Owner = this };
+        // The window showing this panel's content: this one, or the manifest editor hosting it as a
+        // preview (a never-shown window can't own a dialog).
+        var picker = new ColorPickerWindow(r, g, b) { Owner = GetWindow(SectionsPanel) ?? this };
         if (picker.ShowDialog() == true)
         {
             var picked = (picker.SelectedR, picker.SelectedG, picker.SelectedB);

@@ -19,7 +19,7 @@ namespace DevTerm.DeviceManifests;
 /// </summary>
 public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
 {
-    private readonly Session _session;
+    private readonly Session? _session;
     private readonly DeviceManifest _manifest;
     private readonly IReplyTracker? _tracker;
     private readonly Dictionary<string, OutboundCommand> _commandsById = new(StringComparer.Ordinal);
@@ -30,11 +30,16 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
     /// <param name="tracker">Correlates a query's reply line with its indicator (the manifest's reply presenter); null for none.</param>
     /// <param name="definition">The panel the surface serves (its parameter fields and display controls are no-op ids); the manifest's own <see cref="DeviceManifest.Ui"/> when null.</param>
     public ManifestControlSurface(Session session, DeviceManifest manifest, IReplyTracker? tracker, UiDefinition? definition = null)
+        : this(manifest, definition, tracker)
     {
         ArgumentNullException.ThrowIfNull(session);
+        _session = session;
+    }
+
+    private ManifestControlSurface(DeviceManifest manifest, UiDefinition? definition, IReplyTracker? tracker)
+    {
         ArgumentNullException.ThrowIfNull(manifest);
 
-        _session = session;
         _manifest = manifest;
         _tracker = tracker;
         foreach (var command in manifest.OutboundCommands)
@@ -59,12 +64,28 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
         }
     }
 
+    /// <summary>
+    /// A surface for a manifest that isn't connected to anything — the manifest editor's live panel
+    /// preview: <see cref="PreviewCommand"/> works exactly as on a live panel, and invoking a command
+    /// sends nothing, raising <see cref="PreviewInvoked"/> with what would have gone out instead.
+    /// </summary>
+    public static ManifestControlSurface ForPreview(DeviceManifest manifest, UiDefinition? definition = null) => new(manifest, definition, tracker: null);
+
+    /// <summary>Raised (preview surfaces only, see <see cref="ForPreview"/>) with the escaped wire text an invoked command would have sent.</summary>
+    public event EventHandler<string>? PreviewInvoked;
+
     public Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(commandId);
 
         if (Resolve(commandId, value) is not { } resolved)
         {
+            return Task.CompletedTask;
+        }
+
+        if (_session is null)
+        {
+            PreviewInvoked?.Invoke(this, CommandPreviewFormat.EscapeControlCharacters(resolved.WireText));
             return Task.CompletedTask;
         }
 

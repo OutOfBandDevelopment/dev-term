@@ -18,8 +18,8 @@
 │        ☐ Listen (server mode)                                               ░│
 │                                                                             ░│
 │── Presentation ──                                                           ░│
-│  Presenters:   ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055      ░│
-│                ☐ busylight ☐ scpi                                           ░│
-│  Send as:      ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary         ░│
-│                ○ k8055  ○ busylight  ○ scpi                                 ▼│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi                                            ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
+│               ○ k8055  ○ busylight  ○ scpi                                  ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

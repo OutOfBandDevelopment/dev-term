@@ -1,20 +1,20 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │── USB Device ──                                                             ▲│
-│  Vendor ID:               4216                                              ░│
-│  Product ID:              63560                                             ░│
+│  Vendor ID:            4216                                                 ░│
+│  Product ID:           63560                                                ░│
 │  Serial number:                                                             ░│
-│                           ☐ Show as hex                                     ░│
-│  Detected HID devices:    ⟦ Detect HID... ⟧▖                                ░│
-│                           ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                ░│
-│                           (not found — no connected device matches this     ░│
-│                           vendor/product/serial)                            █│
+│                        ☐ Show as hex                                        ░│
+│  Detected HID devices: ⟦ Detect HID... ⟧▖                                   ░│
+│                        ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   ░│
+│                        (not found — no connected device matches this        ░│
+│                        vendor/product/serial)                               █│
 │                                                                             █│
 │── Presentation ──                                                           █│
-│  Presenters:   ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055      █│
-│                ☐ busylight ☐ scpi                                           █│
-│  Send as:      ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal  ○ binary         █│
-│                ○ k8055  ○ busylight  ○ scpi                                 █│
-│  Line ending:  ◉ None  ○ Cr  ○ Lf  ○ CrLf                                   █│
+│  Presenters:  ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       █│
+│               ☐ busylight ☐ scpi                                            █│
+│  Send as:     ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal  ○ binary          █│
+│               ○ k8055  ○ busylight  ○ scpi                                  █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│

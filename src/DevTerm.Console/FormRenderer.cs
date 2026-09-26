@@ -41,6 +41,9 @@ internal static class FormRenderer
 {
     internal const int MaxWrappedChoiceRows = 3;
 
+    /// <summary>How far a section's rows sit in from its header.</summary>
+    internal const int Indent = 2;
+
     public static TuiFormParts Build(IApplication app, UiDefinition definition, FormBinding binding, TuiFormOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -53,7 +56,6 @@ internal static class FormRenderer
             Root = new View { X = 0, Y = 0, Width = Dim.Fill(), Height = 1, CanFocus = true },
         };
 
-        const int Indent = 2;
         foreach (var section in definition.Sections)
         {
             // Every widget in a section starts in the same column: its longest "Label:" plus a
@@ -73,6 +75,8 @@ internal static class FormRenderer
             foreach (var control in section.Controls)
             {
                 var row = BuildRow(app, parts, control, Indent, column, available, options);
+                row.Label = parts.RowLabels.GetValueOrDefault(control.Id);
+                row.CaptureColumnOffsets(column);
                 foreach (var item in row.Items)
                 {
                     parts.Root.Add(item.View);
@@ -636,6 +640,10 @@ internal sealed class TuiFormParts
                 y++;
             }
 
+            // The widget column follows the longest label among the rows actually shown, so a hidden
+            // row's long label (e.g. "Detected USBTMC devices" while HID is selected) doesn't push the rest right.
+            var labelWidth = shownRows.Where(r => r.Label is not null).Select(r => r.Control.Label.Length + 1).DefaultIfEmpty(0).Max();
+            var column = FormRenderer.Indent + (labelWidth > 0 ? labelWidth + 1 : 0);
             foreach (var row in section.Rows)
             {
                 var visible = shownRows.Contains(row);
@@ -644,6 +652,7 @@ internal sealed class TuiFormParts
                 {
                     row.Top = y;
                     row.Place(y);
+                    row.MoveToColumn(column);
                     y += row.Height;
                 }
             }
@@ -688,9 +697,35 @@ internal sealed class SectionRows(UiSection section)
 /// <summary>One control's views (each at a line offset within the row), its height, and how to re-read it from the model.</summary>
 internal sealed class FormRow(UiControl control)
 {
+    private readonly Dictionary<View, int> _columnOffsets = [];
+
     public UiControl Control { get; } = control;
 
     public List<(View View, int Line, Func<bool>? ShowWhen)> Items { get; } = [];
+
+    /// <summary>The row's "Label:" (null for a toggle, a button, or an empty label) — it stays at the indent; everything else follows the section's widget column.</summary>
+    public Label? Label { get; set; }
+
+    /// <summary>Remembers where each widget sits relative to <paramref name="column"/>, the column it was built at, so <see cref="MoveToColumn"/> can move it.</summary>
+    public void CaptureColumnOffsets(int column)
+    {
+        foreach (var (view, _, _) in Items)
+        {
+            if (view != Label && view.X is PosAbsolute absolute)
+            {
+                _columnOffsets[view] = absolute.Position - column;
+            }
+        }
+    }
+
+    /// <summary>Puts the row's widgets at <paramref name="column"/> (views positioned relative to another view follow it).</summary>
+    public void MoveToColumn(int column)
+    {
+        foreach (var (view, offset) in _columnOffsets)
+        {
+            view.X = column + offset;
+        }
+    }
 
     public int Height { get; set; } = 1;
 
