@@ -16,6 +16,14 @@ Completed work is logged by date under `docs/changes/`.
   USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
   - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
   - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
+- **Radex One (`DevTerm.Devices.RadexOne`) needs real-hardware verification.** Built and unit-tested
+  2026-09-25 (see `docs/changes/2026-09-25.md`), but a live HID enumeration pass that same session
+  found no Radex One device attached (only an unrelated MSI "MYSTIC LIGHT" RGB controller) — the
+  HID report-framing assumptions in `RadexOneHidFraming`/`RadexOneFramer` are unconfirmed. Once the
+  device is attached: run `--listhiddevices true` to get its real VendorId/ProductId, fill those into
+  `devterm.runsettings`' blank `RealHidRadexOne*` parameters, then run
+  `RealHardwareRadexOneTests` (`TestCategory=Hardware`). Tighten `DevicePanels.IsAvailable`'s
+  `DevicePanel.RadexOne` gate (currently "any HID connection") to the confirmed id pair once known.
 
 ## Backlog / research
 

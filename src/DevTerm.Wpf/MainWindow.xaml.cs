@@ -8,6 +8,7 @@ using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 
 namespace DevTerm.Wpf;
@@ -135,6 +136,7 @@ public partial class MainWindow : Window
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
+        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _cliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -345,6 +347,22 @@ public partial class MainWindow : Window
         var window = new ControlPanelWindow(
             BusylightUiDefinition.Build(),
             new BusylightControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    private void RadexOneControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("radexone", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            RadexOneUiDefinition.Build(),
+            new RadexOneControlSurface(_session),
             structuredSource)
         {
             Owner = this,

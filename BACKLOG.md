@@ -58,11 +58,13 @@ the rest.
   `docs/design/device-control-modules.md`.
   **Still open:**
   - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) is gated on the BLE
-  transport above (adapter hardware already built). [Radex One](docs/design/proposals/radex-one-protocol.md)'s
-  transport dependency (USB HID) is now built, but it still needs its HID report-framing question
-  resolved (see that proposal's open questions) before implementing the decoder.
+  transport above (adapter hardware already built).
   - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) (plain serial via an
   already-built adapter cable, no new transport needed) remains buildable today, like SCPI was.
+  - [Radex One](docs/design/proposals/radex-one-protocol.md) landed 2026-09-25 (`DevTerm.Devices.RadexOne`,
+  see `docs/changes/2026-09-25.md`) but is unverified against real hardware — no device was found
+  attached during a live enumeration pass. Re-run `RealHardwareRadexOneTests` once the device is
+  available and `devterm.runsettings` has its VendorId/ProductId filled in (see `TODO.md`).
 
 ### Tektronix TDS2024
 

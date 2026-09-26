@@ -18,6 +18,7 @@
                 <MenuItem x:Name="K8055MenuItem" Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
                 <MenuItem x:Name="BusylightMenuItem" Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
                 <MenuItem x:Name="ScpiMenuItem" Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
+                <MenuItem x:Name="RadexOneMenuItem" Header="_Radex One Control Panel..." Click="RadexOneControlPanel_Click" />
             </MenuItem>
         </Menu>
         <!-- Connection-state indicator (MainWindow.RefreshConnectionUi): a colored dot plus

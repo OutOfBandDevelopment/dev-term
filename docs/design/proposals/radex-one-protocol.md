@@ -126,6 +126,21 @@ decoder --> user : Human-readable text baseline\n(e.g. "CPM=15 Ambient=18 Accum=
   format is simple and fully known, so it's a low-risk place to try a `.ksy` definition against a
   real device before committing to that tooling more broadly.
 
+## Status
+
+**Implemented, 2026-09-25** (`DevTerm.Devices.RadexOne`): framer (`RadexOneFramer`, checksum + both
+directions), decoder (`RadexOneDecoder`, all four reply types), control surface
+(`RadexOneControlSurface`, including the 3×-repeat-on-write quirk), `UiDefinition`
+(`RadexOneUiDefinition`), and menu wiring in both the TUI and WPF Device menus, following the same
+shape as `DevTerm.Devices.K8055`/`DevTerm.Devices.Busylight`. Unit-tested
+(`tests/DevTerm.Devices.RadexOne.Tests`) against synthetic packets only — **not yet verified against
+real hardware**: a live HID-device enumeration pass this session found no Radex One attached (only
+an unrelated MSI "MYSTIC LIGHT" RGB controller), so the two biggest open questions below (HID report
+framing, reply type-code reuse) remain unconfirmed assumptions, flagged inline in
+`RadexOneHidFraming`'s and `RadexOneFramer`'s own doc comments. `RealHardwareRadexOneTests` exists
+and will exercise this for real once the device is available and `devterm.runsettings` gets its
+VendorId/ProductId filled in.
+
 ## Open questions
 
 - **How the packet format below is actually wrapped in HID reports** — report ID(s) used, fixed
