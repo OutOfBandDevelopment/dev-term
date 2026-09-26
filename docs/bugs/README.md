@@ -48,7 +48,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 017 | [A WPF profile switch can't be superseded by a second switch](fixed/017-wpf-profile-switch-no-supersede.md) | WPF (MainWindow) | Fixed |
 | 018 | [Quitting the TUI after a profile switch never closes the live session](fixed/018-tui-exit-leaves-switched-session-open.md) | TUI (TuiMode) | Fixed |
 | 019 | [A Stream Monitor capture in progress is lost when the TUI quits](fixed/019-tui-stream-monitor-capture-lost-on-quit.md) | TUI (TuiMode, Stream Monitor) | Fixed |
-| 020 | [Each Zoom H4n panel open adds a pipeline presenter that is never removed](020-zoomh4n-wake-watcher-leak.md) | DevTerm.Devices.ZoomH4n, TUI, WPF | Open |
+| 020 | [Each Zoom H4n panel open adds a pipeline presenter that is never removed](fixed/020-zoomh4n-wake-watcher-leak.md) | DevTerm.Devices.ZoomH4n, TUI, WPF | Fixed |
 | 021 | [Radex One readings aren't checksum-verified, although the comments say they are](021-radexone-extension-checksum-unverified.md) | DevTerm.Devices.RadexOne | Open |
 | 022 | [One false Radex One header can stall decoding for minutes](022-radexone-false-header-stall.md) | DevTerm.Devices.RadexOne | Open |
 | 023 | [One malformed SCPI profile file breaks all SCPI features for the rest of the run](023-scpi-profile-catalog-bad-file.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Open |

@@ -143,6 +143,14 @@ public partial class ControlPanelWindow : Window
             structuredPresenter.ValuesChanged += OnValuesChanged;
             Closed += (_, _) => structuredPresenter.ValuesChanged -= OnValuesChanged;
         }
+
+        // A surface that binds something into the session's live pipeline for the panel's lifetime
+        // (e.g. ZoomH4nControlSurface's wake watcher) unbinds it here, the same way the ValuesChanged
+        // subscription above is torn down (see docs/bugs/020-zoomh4n-wake-watcher-leak.md).
+        if (surface is IDisposable disposableSurface)
+        {
+            Closed += (_, _) => disposableSurface.Dispose();
+        }
     }
 
     /// <summary>

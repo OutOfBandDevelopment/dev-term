@@ -28,8 +28,14 @@ namespace DevTerm.Devices.ZoomH4n;
 /// Also an <see cref="ICommandPreview"/>: <see cref="PreviewCommand"/> returns the exact press+release
 /// bytes a button would send, computed directly from the static frame table with no I/O and no
 /// handshake side effect (an unknown command id returns null).
+///
+/// <see cref="Dispose"/> unbinds the wake watcher again (mirroring
+/// <see cref="DevTerm.DeviceManifests.ManifestPanel"/>'s own Attach/Dispose pattern for its reply
+/// presenter) so a front end's panel-closing code can remove it from the session's live pipeline —
+/// without this, reopening the panel stacks up another watcher scanning every received byte for the
+/// rest of the session (see docs/bugs/020-zoomh4n-wake-watcher-leak.md).
 /// </summary>
-public sealed class ZoomH4nControlSurface : IControlSurface, ICommandPreview
+public sealed class ZoomH4nControlSurface : IControlSurface, ICommandPreview, IDisposable
 {
     private static readonly byte[] _releaseCode = [0x80, 0x00];
 
@@ -56,12 +62,26 @@ public sealed class ZoomH4nControlSurface : IControlSurface, ICommandPreview
     private readonly ZoomH4nWakeWatcher _wakeWatcher = new();
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private bool _initialized;
+    private bool _disposed;
 
     public ZoomH4nControlSurface(Session session)
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
         _session.AddPresenter(_wakeWatcher);
+    }
+
+    /// <summary>Unbinds the wake watcher from the session (the panel has closed).</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _session.RemovePresenter(_wakeWatcher);
+        _initLock.Dispose();
     }
 
     public async Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default)

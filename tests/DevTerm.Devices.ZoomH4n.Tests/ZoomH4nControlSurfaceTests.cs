@@ -117,4 +117,42 @@ public sealed class ZoomH4nControlSurfaceTests
 
         Assert.IsNull(surface.PreviewCommand("notARealCommand", null));
     }
+
+    // Regression tests for bug 020: the surface binds its wake watcher into the session's live
+    // pipeline (see the class doc comment) but had no way to unbind it again, so every panel open
+    // left another watcher scanning every received byte for the rest of the session. See
+    // docs/bugs/020-zoomh4n-wake-watcher-leak.md.
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Dispose_RemovesTheWakeWatcherFromTheSessionPipeline()
+    {
+        var transport = new Mock<ITransport>();
+        var session = new Session(transport.Object, new Pipeline([]));
+        var surface = new ZoomH4nControlSurface(session);
+
+        Assert.HasCount(1, session.Presenters);
+
+        surface.Dispose();
+
+        Assert.IsEmpty(session.Presenters);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void OpeningAndClosingThePanelTwice_LeavesNoWatcherInThePipeline()
+    {
+        var transport = new Mock<ITransport>();
+        var session = new Session(transport.Object, new Pipeline([]));
+
+        using (new ZoomH4nControlSurface(session))
+        {
+        }
+
+        using (new ZoomH4nControlSurface(session))
+        {
+        }
+
+        Assert.IsEmpty(session.Presenters);
+    }
 }

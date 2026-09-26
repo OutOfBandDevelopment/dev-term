@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed (found by two reviewers) |
 | **Area** | DevTerm.Devices.ZoomH4n, TUI, WPF |
 | **Created** | 2026-09-26 |
@@ -27,3 +27,16 @@ of the handshake.
 
 ## Tests to add
 Opening and closing the panel twice leaves no watcher in the pipeline.
+
+## Resolution
+Fixed on 2026-09-26: `ZoomH4nControlSurface` is now `IDisposable` — `Dispose()` calls
+`_session.RemovePresenter(_wakeWatcher)` (mirroring `ManifestPanel`'s own Attach/Dispose pattern) and disposes its
+`SemaphoreSlim`. Rather than fixing each front-end call site individually, the shared generic renderers now check
+for it once: `ControlPanelMode.BuildWindow` (`src/DevTerm.Console/ControlPanelMode.cs`) hooks
+`window.Disposing += (_, _) => disposableSurface.Dispose();` when `surface is IDisposable`, and
+`ControlPanelWindow`'s constructor (`src/DevTerm.Wpf/ControlPanelWindow.xaml.cs`) hooks the equivalent on
+`Closed`, so this also covers any future disposable control surface without further wiring. Regression tests:
+`ZoomH4nControlSurfaceTests.Dispose_RemovesTheWakeWatcherFromTheSessionPipeline`,
+`ZoomH4nControlSurfaceTests.OpeningAndClosingThePanelTwice_LeavesNoWatcherInThePipeline`,
+`ControlPanelModeTests.WindowDispose_DisposesADisposableSurface`,
+`ControlPanelWindowTests.Closed_DisposesADisposableSurface`.
