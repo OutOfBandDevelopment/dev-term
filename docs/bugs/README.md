@@ -41,7 +41,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 010 | [A manifest's UiFile/KaitaiFile path can make Save write, and Load read, anywhere on disk](fixed/010-manifest-path-traversal.md) | DevTerm.DeviceManifests (loader, writer, validator) | Fixed |
 | 011 | [Manifest zips extract with no size limit and leave a temp folder behind on every open](fixed/011-manifest-zip-unbounded-temp-leak.md) | DevTerm.DeviceManifests (loader) | Fixed |
 | 012 | [Profile names are never validated](fixed/012-profile-names-not-validated.md) | DevTerm.Configuration (ConnectionProfileStore, DevTermUserDataPaths) | Fixed |
-| 013 | [Save Profile and Export crash on a bad name or path](013-save-export-no-error-handling.md) | DevTerm.Configuration (ConnectionEditorViewModel), TUI, WPF | Open |
+| 013 | [Save Profile and Export crash on a bad name or path](fixed/013-save-export-no-error-handling.md) | DevTerm.Configuration (ConnectionEditorViewModel), TUI, WPF | Fixed |
 | 014 | [Saving "bench" silently overwrites "Bench"](014-save-overwrites-different-case.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Open |
 | 015 | [A mistyped baud rate or data bits silently connects with defaults](015-mistyped-numbers-silently-default.md) | DevTerm.Configuration (ConnectionEditorViewModel, CliOptionsValidator) | Open |
 | 016 | [WPF control panels stay bound to the old session after a profile switch](016-wpf-panels-bound-to-old-session.md) | WPF (MainWindow, control panels) | Open |

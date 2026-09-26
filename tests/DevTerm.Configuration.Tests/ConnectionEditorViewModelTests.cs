@@ -168,6 +168,37 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SaveCommand_WithAnInvalidName_SetsStatusMessageInsteadOfThrowing()
+    {
+        // Regression test for bug 013: SaveAsProfile() called _store.Save(name, options) with no
+        // try/catch, so a name invalid on this system (e.g. an NTFS-reserved character) threw
+        // straight out of the command - crashing the TUI editor's app.Run loop, or surfacing as an
+        // unhandled stack-trace dialog in WPF, instead of a StatusMessage like every other command
+        // here. See docs/bugs/013-save-export-no-error-handling.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.1",
+                TcpPort = "23",
+                SaveName = "a:b",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            Assert.Contains("a:b", vm.StatusMessage);
+            Assert.IsEmpty(vm.Profiles);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void LoadCommand_WithNoSelection_SetsStatusMessage()
     {
         var directory = CreateTempDirectory();
@@ -216,6 +247,37 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual("4216", fresh.VendorId);
             Assert.AreEqual("63560", fresh.ProductId);
             Assert.Contains("Imported", fresh.StatusMessage);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ExportCommand_ToAPathInAMissingFolder_SetsStatusMessageInsteadOfThrowing()
+    {
+        // Regression test for bug 013: Export() called ConnectionProfileStore.ExportToFile(path,
+        // options) with no try/catch, so a path in a folder that doesn't exist threw
+        // DirectoryNotFoundException straight out of the command instead of a StatusMessage.
+        // See docs/bugs/013-save-export-no-error-handling.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var path = Path.Combine(directory, "does-not-exist", "exported.json");
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.1",
+                TcpPort = "23",
+                ImportExportPath = path,
+            };
+
+            vm.ExportCommand.Execute(null);
+
+            Assert.Contains("Could not export", vm.StatusMessage);
+            Assert.IsFalse(File.Exists(path));
         }
         finally
         {

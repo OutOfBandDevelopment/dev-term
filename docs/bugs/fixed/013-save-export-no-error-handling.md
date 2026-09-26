@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Configuration (ConnectionEditorViewModel), TUI, WPF |
 | **Created** | 2026-09-26 |
@@ -26,3 +26,12 @@ Wrap both calls like `ExportProfilesZip`: `catch (Exception ex) { StatusMessage 
 
 ## Tests to add
 Save with an invalid name and Export to a missing folder set `StatusMessage` and don't throw.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `ConnectionEditorViewModel.SaveAsProfile`/`Export`
+(`src/DevTerm.Configuration/ConnectionEditorViewModel.cs`) now wrap `_store.Save`/`ConnectionProfileStore.ExportToFile`
+in `try/catch (Exception ex)`, same as every other command here, setting `StatusMessage` on failure instead of
+letting the exception escape the command (crashing the TUI's `app.Run` loop, or surfacing as an unhandled
+stack-trace dialog in WPF). Regression tests:
+`ConnectionEditorViewModelTests.SaveCommand_WithAnInvalidName_SetsStatusMessageInsteadOfThrowing`,
+`ConnectionEditorViewModelTests.ExportCommand_ToAPathInAMissingFolder_SetsStatusMessageInsteadOfThrowing`.

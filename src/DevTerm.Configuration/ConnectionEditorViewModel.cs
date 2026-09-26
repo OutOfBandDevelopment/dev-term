@@ -1271,7 +1271,16 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             return;
         }
 
-        _store.Save(name, options);
+        try
+        {
+            _store.Save(name, options);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not save profile '{name}': {ex.Message}";
+            return;
+        }
+
         RefreshProfiles();
         IsDirty = false;
         StatusMessage = $"Saved profile '{name}'.";
@@ -1396,7 +1405,16 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             return;
         }
 
-        ConnectionProfileStore.ExportToFile(path, options);
+        try
+        {
+            ConnectionProfileStore.ExportToFile(path, options);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not export to '{path}': {ex.Message}";
+            return;
+        }
+
         StatusMessage = $"Exported to '{path}'.";
     }
 
