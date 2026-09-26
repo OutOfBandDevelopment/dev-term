@@ -9,11 +9,11 @@
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
 │                                                                             █│
-│  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ loopback                  █│
+│  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ ble  ○ loopback           █│
 │  Description: Tektronix 2230 bench scope                                    █│
 │                                                                             ░│
 │── Serial ──                                                                 ░│
-│  Port:           COM3                                                       ░│
+│  Port:           COM99                                                      ░│
 │  Detected ports: ⟦ Detect... ⟧▖                                             ░│
 │                  ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                             ░│
 │                  (not found — this port isn't connected right now)          ░│

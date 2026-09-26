@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Moq" Version="4.21.0" />
+    <PackageReference Include="MSTest" Version="4.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DevTerm.Devices.De5000\DevTerm.Devices.De5000.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
+    <!-- Real-hardware Integration tests (RealHardwareDe5000Tests) construct a real BleTransport
+         directly, via the Windows platform adapter - same reasoning as ZoomH4n.Tests' use of
+         DevTerm.Transports.Serial. -->
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Ble.Windows\DevTerm.Transports.Ble.Windows.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -289,6 +289,17 @@ own repeated practice of not trusting a fix until checked against real hardware:
   device's own Status Byte never sets MAV after receiving `*IDN?`, reproduced identically from a
   second, independent USB stack (Python/pyusb). See `docs/changes/2026-09-23.md` for the full
   investigation and this correction.
+- **Resolved (real-hardware, 2026-09-25)**: the "unverified end-to-end" status and the deprioritized
+  packet-capture plan above are both now out of date. The USBTMC protocol-conformance rework (see
+  [`docs/design/features/usbtmc-protocol-conformance.md`](features/usbtmc-protocol-conformance.md))
+  fixed the real bugs actually causing the DM3000/DM3058E-family symptoms — a naive libusb sequence
+  never needed to replicate NI-VISA's handshake after all. DM3058E's stall was the bulk-IN
+  header-re-decode bug (`usbtmc-bulk-in-reassembly-fix.md`); the DG1062Z's "2-byte first read" was a
+  data-toggle desync from an unconditional open-time `ClearHalt` (fixed via a new `ClearHaltOnOpen`
+  option, default off); the DG1022's failures were a per-device inter-request timing requirement
+  (`UsbtmcDeviceQuirks`, see the DG1022 entry above). All four bench Rigols (DM3058E, DS1102E,
+  DG1062Z, DG1022) now pass real-hardware query/reply round-trips reliably across repeated runs — see
+  `docs/test/2026-09-25-18-03-06.md` and `docs/changes/2026-09-25.md`. No packet capture was needed.
 - **New, resolved (real-hardware, 2026-09-23)**: `LibUsbDotNet.Device` (behind `IUsbDevice`) is a
   `SafeHandle`-backed `IDisposable` — every device object `UsbContext.List()` returns must be
   disposed once it's no longer needed, not just `Close()`d if it was opened, or its finalizer can run
@@ -335,6 +346,13 @@ own repeated practice of not trusting a fix until checked against real hardware:
   DM3058E and DS1102E both now complete a full query/reply round-trip correctly end-to-end. DG1022
   remains genuinely stuck at the device/USB level in the current bench state — possibly the same
   family of issue as the parked DM3000/DM3058E MAV mystery above, possibly something else entirely —
-  but now surfaces as a clean, reported error instead of a silent hang; see `BACKLOG.md`'s USBTMC
-  entry for the `INITIATE_CLEAR`/`CHECK_CLEAR_STATUS` recovery mechanism this suggests as the next
-  concrete step, still not attempted.
+  but now surfaces as a clean, reported error instead of a silent hang.
+- **Resolved (real-hardware, 2026-09-25)**: the DG1022 "stuck at device/USB level" issue above was
+  root-caused during the USBTMC protocol-conformance rework, not via `INITIATE_CLEAR`/
+  `CHECK_CLEAR_STATUS` — a raw probe showed the device never answers a `REQUEST_DEV_DEP_MSG_IN` sent
+  back-to-back with the query (reproducible across 3 runs); any gap of about 1 ms or more fixes it.
+  `UsbtmcDeviceQuirks` now gives this VID:PID a 20 ms delay and also skips REN (the device times out
+  `GO_TO_LOCAL`, and libsigrok blacklists remote/local for this PID too). After both fixes,
+  `RealHardwareUsbtmcTests`'s DG1022 test passed 3 of 3 runs. See
+  [`docs/design/features/usbtmc-protocol-conformance.md`](features/usbtmc-protocol-conformance.md)
+  and `docs/test/2026-09-25-18-03-06.md`.

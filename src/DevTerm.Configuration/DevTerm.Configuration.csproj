@@ -9,10 +9,14 @@
     <ProjectReference Include="..\DevTerm.Devices.K8055\DevTerm.Devices.K8055.csproj" />
     <ProjectReference Include="..\DevTerm.Devices.Busylight\DevTerm.Devices.Busylight.csproj" />
     <ProjectReference Include="..\DevTerm.Devices.Scpi\DevTerm.Devices.Scpi.csproj" />
+    <ProjectReference Include="..\DevTerm.Devices.RadexOne\DevTerm.Devices.RadexOne.csproj" />
+    <ProjectReference Include="..\DevTerm.Devices.ZoomH4n\DevTerm.Devices.ZoomH4n.csproj" />
+    <ProjectReference Include="..\DevTerm.Devices.De5000\DevTerm.Devices.De5000.csproj" />
     <ProjectReference Include="..\DevTerm.DeviceManifests\DevTerm.DeviceManifests.csproj" />
     <ProjectReference Include="..\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Usbtmc\DevTerm.Transports.Usbtmc.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
   </ItemGroup>
 

@@ -3,6 +3,7 @@ using DevTerm.Console;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Usbtmc;
@@ -28,10 +29,12 @@ const string Usage =
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
     + "\n   or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]"
+    + "\n   or: dev-term --listbledevices true"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nAdd --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any"
@@ -92,6 +95,23 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
         var manufacturer = device.Manufacturer is null ? string.Empty : $"{device.Manufacturer} ";
         var location = device.DevicePath is null ? string.Empty : $"  at {device.DevicePath}";
         Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}{location}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
+{
+    // Same reflection-based platform-adapter loading AddDevTermFrontEnd uses for a real connection
+    // (see BlePlatformAdapterLoader's doc comment) - the real, Windows-backed discovery only exists
+    // in a Windows-versioned TFM this plain net10.0 project can't reference directly.
+    var bleServices = new ServiceCollection();
+    bleServices.AddBleTransport();
+    BlePlatformAdapterLoader.TryRegisterPlatformAdapter(bleServices);
+    using var bleProvider = bleServices.BuildServiceProvider();
+    foreach (var device in bleProvider.GetRequiredService<IBleDeviceDiscovery>().GetDevices())
+    {
+        Console.WriteLine($"{device.DeviceId}  {device.Name ?? "(unknown)"}");
     }
 
     return 0;

@@ -133,9 +133,9 @@ public sealed class ConfigureModeTests
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 Assert.AreSequenceEqual(
-                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi", "radexone", "zoomh4n", "de5000"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
                 Assert.AreSequenceEqual(
-                    [true, false, false, false, false, true, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
+                    [true, false, false, false, false, true, false, false, false, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
                 Assert.AreEqual("hex", parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 
                 parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8
@@ -522,11 +522,20 @@ public sealed class ConfigureModeTests
                 Assert.IsTrue(parts.DetectUsbtmcButton.Visible);
                 Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
 
+                parts.TransportSelector.Value = "ble";
+
+                Assert.IsFalse(parts.PortField.Visible);
+                Assert.IsFalse(parts.HostField.Visible);
+                Assert.IsFalse(parts.VendorField.Visible);
+                Assert.IsTrue(parts.BleDeviceIdField.Visible);
+                Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
+
                 parts.TransportSelector.Value = "loopback";
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
                 Assert.IsFalse(parts.VendorField.Visible);
+                Assert.IsFalse(parts.BleDeviceIdField.Visible);
                 Assert.IsTrue(parts.LoopbackInfoLabel.Visible);
             });
         }
@@ -581,6 +590,37 @@ public sealed class ConfigureModeTests
 
                 Assert.IsNotNull(parts.Result);
                 Assert.AreEqual("loopback", parts.Result.Transport);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Connect_WithBleTransport_RoundTripsFieldsIntoCliOptions()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "serial" }; // invalid: no Port
+            RunHeadless(initial, "Missing required '--port' for the serial transport.", new ConnectionProfileStore(directory), parts =>
+            {
+                parts.TransportSelector.Value = "ble";
+                parts.BleDeviceIdField.Text = "AA:BB:CC:DD:EE:FF";
+                parts.BleServiceUuidField.Text = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+                parts.BleWriteUuidField.Text = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+                parts.BleNotifyUuidField.Text = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+                Click(parts.ConnectButton);
+
+                Assert.IsNotNull(parts.Result);
+                Assert.AreEqual("ble", parts.Result.Transport);
+                Assert.AreEqual("AA:BB:CC:DD:EE:FF", parts.Result.BleDeviceId);
+                Assert.AreEqual("6e400001-b5a3-f393-e0a9-e50e24dcca9e", parts.Result.BleServiceUuid);
+                Assert.AreEqual("6e400002-b5a3-f393-e0a9-e50e24dcca9e", parts.Result.BleWriteCharacteristicUuid);
+                Assert.AreEqual("6e400003-b5a3-f393-e0a9-e50e24dcca9e", parts.Result.BleNotifyCharacteristicUuid);
             });
         }
         finally
@@ -665,7 +705,10 @@ public sealed class ConfigureModeTests
                 //
                 // Focus is moved off the saved-profiles list first: now that focus really lands
                 // there at startup, PageDown is (deliberately) the list's own - see scrollOnKey.
+                // Two presses, not one: the form grew by the BLE field group (4 rows), so a single
+                // viewport-height PageDown no longer reaches all the way to "Line ending:".
                 parts.DescriptionField.SetFocus();
+                TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Key.PageDown);
                 TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Key.PageDown);
                 TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 

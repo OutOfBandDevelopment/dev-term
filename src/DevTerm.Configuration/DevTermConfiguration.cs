@@ -111,6 +111,24 @@ public static class DevTermConfiguration
                 profile[nameof(CliOptions.DevicePath)] = options.DevicePath;
             }
         }
+        else if (string.Equals(options.Transport, "ble", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.BleDeviceId)] = options.BleDeviceId;
+            if (options.BleServiceUuid is not null)
+            {
+                profile[nameof(CliOptions.BleServiceUuid)] = options.BleServiceUuid;
+            }
+
+            if (options.BleWriteCharacteristicUuid is not null)
+            {
+                profile[nameof(CliOptions.BleWriteCharacteristicUuid)] = options.BleWriteCharacteristicUuid;
+            }
+
+            if (options.BleNotifyCharacteristicUuid is not null)
+            {
+                profile[nameof(CliOptions.BleNotifyCharacteristicUuid)] = options.BleNotifyCharacteristicUuid;
+            }
+        }
         else
         {
             profile[nameof(CliOptions.Port)] = options.Port;

@@ -184,6 +184,7 @@ public sealed class MacSerialPortDescriptionsTests
         </array>
         </plist>
         """;
+    private static readonly string[] _expected = ["-a", "-l", "-r", "-c", "IOUSBHostDevice"];
 
     [TestMethod]
     public void Parse_DescribesBothBsdPathsOfAnFtdiAdapter_FromItsUsbDevice_NotItsInterface()
@@ -256,7 +257,7 @@ public sealed class MacSerialPortDescriptionsTests
 
     [TestMethod]
     public void IoregInvocation_IsTheArchiveOfEveryUsbDeviceSubtree() =>
-        CollectionAssert.AreEqual(new[] { "-a", "-l", "-r", "-c", "IOUSBHostDevice" }, MacSerialPortDescriptions.IoregArguments.ToArray());
+        CollectionAssert.AreEqual(_expected, MacSerialPortDescriptions.IoregArguments.ToArray());
 
     private static string Plist(string rootDict) =>
         $"""

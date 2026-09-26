@@ -7,8 +7,11 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
+using DevTerm.Devices.ZoomH4n;
 
 namespace DevTerm.Wpf;
 
@@ -145,6 +148,9 @@ public partial class MainWindow : Window
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
+        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _cliOptions, connected);
+        ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, _cliOptions, connected);
+        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, _cliOptions, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _cliOptions, connected);
     }
 
@@ -356,6 +362,56 @@ public partial class MainWindow : Window
         var window = new ControlPanelWindow(
             BusylightUiDefinition.Build(),
             new BusylightControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    private void RadexOneControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("radexone", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            RadexOneUiDefinition.Build(),
+            new RadexOneControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    private void ZoomH4nControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            ZoomH4nUiDefinition.Build(),
+            new ZoomH4nControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    // Passes no session to the control surface itself (De5000ControlSurface takes none) - the DE-5000
+    // has no writable commands, only live indicators driven by the structured presenter below.
+    private void De5000ControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("de5000", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            De5000UiDefinition.Build(),
+            new De5000ControlSurface(),
             structuredSource)
         {
             Owner = this,

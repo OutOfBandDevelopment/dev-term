@@ -79,14 +79,19 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "serial", Port = "COM3", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
+            // A port name real hardware is vanishingly unlikely to occupy - this is a Unit test, and
+            // SerialPortOptions reads real OS port enumeration (no fake to inject through
+            // ConfigureMode.BuildWindow), so a real "COM3" here would make the "not found" hint below
+            // depend on whatever happens to be plugged into the machine running the test.
+            var initial = new CliOptions { Transport = "serial", Port = "COM99", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
             Assert.Contains("Transport:", dump);
             Assert.Contains("── Serial ──", dump);
             Assert.Contains("Port:", dump);
-            Assert.Contains("COM3", dump);
+            Assert.Contains("COM99", dump);
             Assert.Contains("Baud:", dump);
+            Assert.Contains("not found", dump);
         }
         finally
         {
@@ -154,6 +159,54 @@ public sealed class ScreenshotTests
             Assert.Contains("Vendor ID:", dump);
             Assert.Contains("4216", dump);
             Assert.Contains("Product ID:", dump);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConfigureMode_BleTransport_IsCaptured()
+    {
+        // Same below-the-fold reasoning as ConfigureMode_HidTransport_IsCaptured - the BLE field
+        // group sits even further down, after Serial/TCP/USB, so a plain unscrolled capture would
+        // miss it entirely.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "ble", BleDeviceId = "AB12CD34-1234-5678-9abc-def012345678", Presenter = ["ascii"] };
+
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+
+                try
+                {
+                    parts.DescriptionField.SetFocus();
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-ble.png"));
+                }
+                finally
+                {
+                    app.End(token);
+                }
+            });
+
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-ble.txt"), dump);
+
+            Assert.Contains("Device ID:", dump);
+
+            // The field is narrower than the full UUID, so it scrolls to show the cursor (the end
+            // of the typed value) rather than the start - assert on the visible tail, not the whole string.
+            Assert.Contains("def012345678", dump);
         }
         finally
         {

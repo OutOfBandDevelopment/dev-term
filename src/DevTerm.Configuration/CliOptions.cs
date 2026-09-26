@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -195,6 +195,36 @@ public sealed class CliOptions
     /// <summary>List attached USBTMC-class USB devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListUsbtmcDevices { get; set; }
+
+    // BLE transport.
+
+    /// <summary>
+    /// The peripheral to connect to, in whatever opaque form the active platform BLE backend's own
+    /// discovery produced (see <c>DevTerm.Transports.Ble.BleDeviceDescriptor.DeviceId</c>) — a WinRT
+    /// device id on Windows, for example. Not a Bluetooth address a user would type by hand.
+    /// </summary>
+    [Category("BLE")]
+    [DisplayName("Device")]
+    public string? BleDeviceId { get; set; }
+
+    /// <summary>GATT service UUID. Blank means the Nordic UART Service default — see <c>DevTerm.Transports.Ble.NordicUartService</c>.</summary>
+    [Category("BLE")]
+    [DisplayName("Service UUID")]
+    public string? BleServiceUuid { get; set; }
+
+    /// <summary>Characteristic written to for host-to-device bytes. Blank means the NUS RX characteristic default.</summary>
+    [Category("BLE")]
+    [DisplayName("Write characteristic UUID")]
+    public string? BleWriteCharacteristicUuid { get; set; }
+
+    /// <summary>Characteristic subscribed to for device-to-host bytes. Blank means the NUS TX characteristic default.</summary>
+    [Category("BLE")]
+    [DisplayName("Notify characteristic UUID")]
+    public string? BleNotifyCharacteristicUuid { get; set; }
+
+    /// <summary>List paired BLE devices and exit, skipping normal validation/connection entirely.</summary>
+    [Category("Mode")]
+    public bool ListBleDevices { get; set; }
 
     /// <summary>
     /// Names a device manifest to load alongside this connection — <b>a name, not a path</b>;

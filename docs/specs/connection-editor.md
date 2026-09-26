@@ -42,7 +42,7 @@ Shown in two situations:
 
 | Field | Type | Default | Validation | Notes |
 |---|---|---|---|---|
-| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
+| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`loopback` | `serial` | Must be one of the six | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Declared `Integer`, at least 1: a value that isn't shows an inline message under/next to the field (`'96x' is not a whole number.`) while typing. The text is still kept as typed; on Connect/Save, `int.TryParse` ignores an unparseable value (keeps the previous one), as before | |
@@ -54,8 +54,12 @@ Shown in two situations:
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
 | Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
+| BLE device ID (ble) | free text | empty | Required when Transport is `ble` | Platform-specific peripheral identifier (Windows: a `BluetoothLEDevice` id string, not a MAC address) — typed by hand, copied from a `--listbledevices true` run; no live "Detect..." picker yet (see BACKLOG.md) |
+| Service UUID (ble) | free text | empty (Nordic UART Service default applied by the transport) | none | Blank means the transport's own Nordic UART Service default; set explicitly for a device with a custom GATT profile |
+| Write characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
+| Notify characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
 | Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
-| Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary`/`k8055`/`busylight`/`scpi` (a row of checkboxes, a `ChoiceStyle.CheckList` bound to `PresentersText`, the checked names comma-joined) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
+| Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary`/`k8055`/`busylight`/`scpi`/`radexone`/`zoomh4n`/`de5000` (a row of checkboxes, a `ChoiceStyle.CheckList` bound to `PresentersText`, the checked names comma-joined) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set — the six generic text presenters `AddTextPresenters` registers, plus one per device module that registers its own `IPresenter`) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as. `ConnectionEditorViewModel.PresenterOptions` is a hardcoded list, not resolved from the live `PresenterCatalog` (see that property's doc comment) — a new device module's presenter must be added there by hand or it silently won't appear in this picker, as happened with `radexone`/`zoomh4n`/`de5000` until 2026-09-25 |
 | SCPI profile | one of the SCPI profile choices (Auto-detect, Generic, every bundled instrument), or empty | empty (always ask) | n/a | Shown only while the `scpi` presenter is checked (`IsScpiPresenterSelected`). Preselects the Device > SCPI Instrument... choice |
 | Send as | one of the presenters above | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
@@ -93,7 +97,9 @@ Shown in two situations:
   notes). Presentation/Description/Save/Import-export are always visible regardless of Transport.
   **A hidden group leaves no gap in either front end**: the TUI form re-lays out its rows on every
   change (test `ConfigureModeTests.SwitchingTransport_ReflowsTheForm_SoAHiddenGroupLeavesNoGap`), and
-  within a section the widget column follows the longest *shown* label.
+  within a section the widget column follows the longest *shown* label. **BLE's field group is still
+  hand-built** (`IsBleTransport`, toggled by hand in `ConfigureMode`/`DeviceProfilesWindow` — see the
+  "Generated or hand-built" table above), not yet converted to a `[FormSection]` like the other four.
 - **"Not found" hint** (`ConnectedDeviceNotFound`): when the loaded Port, or the USB identity (Vendor/Product
   ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
   ends show `(not found — this port isn't connected right now)` / `(not found — no connected device matches this
@@ -353,7 +359,8 @@ Shown in two situations:
   change), not of hand-building two more field groups.
 
 Everything requested 2026-09-16 has landed: the presenter picker and per-input-line parser on
-2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, and the generated form (which
-also fixed the TUI's gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor
+2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, BLE's field group (also
+2026-09-25 — no live "Detect..." picker yet, see BACKLOG.md), and the generated form (which also
+fixed the TUI's gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor
 follow-ups live in `BACKLOG.md`.
 

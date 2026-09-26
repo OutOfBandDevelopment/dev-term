@@ -125,6 +125,23 @@ indicator lamps rather than a scrolling text log:
 @endsalt
 ```
 
+## Status
+
+**Implemented, 2026-09-25** (`DevTerm.Devices.ZoomH4n`): decoder (`ZoomH4nDecoder`, the 5-flag
+status bitmask, `IStructuredPresenter`-driven live indicators), control surface
+(`ZoomH4nControlSurface`, including the init handshake — a private, non-DI-registered
+`ZoomH4nWakeWatcher` presenter added directly into the session's live pipeline so the handshake
+sees the wake reply regardless of the user's own `--presenter` selection), `UiDefinition`
+(`ZoomH4nUiDefinition`), and menu wiring in both the TUI and WPF Device menus, gated on
+`DevicePanel.ZoomH4n` (any serial connection — no VID/PID to match on, unlike the HID devices).
+Unit-tested (`tests/DevTerm.Devices.ZoomH4n.Tests`) against a mocked `ITransport` (a real `Pipe`
+backs its `Input`, so the handshake's wake-byte reply is written back deterministically from
+inside the mocked `WriteAsync` — see `ScpiAutoDetectTests`' pattern, reused here) — **not yet
+verified against real hardware**: no Zoom H4n / `h4n2rs485` adapter was attached this session, so
+the handshake timing (1024 attempts, ~30ms apart) and the exact status-bitmask semantics remain
+unconfirmed against a live unit. `RealHardwareZoomH4nTests` exists and will exercise this for real
+once the adapter is available and `devterm.runsettings`' blank `RealSerialZoomH4nPort` is filled in.
+
 ## Open questions
 
 - Whether the fuller per-recording-mode LED blink-timing detail (from the two public sources) is

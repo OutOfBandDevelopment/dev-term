@@ -1,8 +1,12 @@
 using DevTerm.Core.Hosting;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
+using DevTerm.Devices.ZoomH4n;
 using DevTerm.Presenters.Text;
+using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Serial;
@@ -58,6 +62,32 @@ public static class ServiceCollectionExtensions
                 o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
             });
         }
+        else if (string.Equals(cliOptions.Transport, "ble", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddBleTransport();
+            services.Configure<BleTransportOptions>(o =>
+            {
+                o.DeviceId = cliOptions.BleDeviceId ?? string.Empty;
+                if (cliOptions.BleServiceUuid is { Length: > 0 } serviceUuid)
+                {
+                    o.ServiceUuid = serviceUuid;
+                }
+
+                if (cliOptions.BleWriteCharacteristicUuid is { Length: > 0 } writeUuid)
+                {
+                    o.WriteCharacteristicUuid = writeUuid;
+                }
+
+                if (cliOptions.BleNotifyCharacteristicUuid is { Length: > 0 } notifyUuid)
+                {
+                    o.NotifyCharacteristicUuid = notifyUuid;
+                }
+            });
+
+            // Must come after AddBleTransport() - see BlePlatformAdapterLoader's doc comment for why
+            // its registrations (added via plain AddSingleton) need to be the last ones added.
+            BlePlatformAdapterLoader.TryRegisterPlatformAdapter(services);
+        }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             services.AddLoopbackTransport();
@@ -96,6 +126,9 @@ public static class ServiceCollectionExtensions
         services.AddK8055Presenter();
         services.AddBusylightPresenter();
         services.AddScpiPresenter();
+        services.AddRadexOnePresenter();
+        services.AddZoomH4nPresenter();
+        services.AddDe5000Presenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
         return services;
     }

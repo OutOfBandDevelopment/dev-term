@@ -23,8 +23,10 @@ Commands section for the full flag list per transport.
 ### Discovering hardware first
 
 `--listports true` lists serial ports; `--listhiddevices true` lists USB HID devices;
-`--listusbtmcdevices true` lists USBTMC instruments. All three exit immediately, no connection
-made — real output from a development machine:
+`--listusbtmcdevices true` lists USBTMC instruments; `--listbledevices true` lists already-*paired*
+BLE peripherals (Windows only today — see [`docs/design/transports.md`](../design/transports.md)'s
+BLE section for why paired-only, not a live scan). All four exit immediately, no connection made —
+real output from a development machine:
 
 ```
 $ dotnet DevTerm.Console.dll --listports true
@@ -37,6 +39,9 @@ $ dotnet DevTerm.Console.dll --listhiddevices true
 046D:C08B  HID VHF Driver  SN:1.0
 1462:7D25  MYSTIC LIGHT   SN:A02021081203
 04D8:F848  BLL Lamp
+
+$ dotnet DevTerm.Console.dll --listbledevices true
+(no output — no BLE peripherals currently paired)
 ```
 
 Each `--listusbtmcdevices` line also ends with the instrument's physical USB location, e.g.
@@ -69,15 +74,17 @@ rather than hanging:
 
 ```
 $ dotnet DevTerm.Console.dll --transport carrier-pigeon --cli true
-Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', or 'loopback'.
+Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', or 'loopback'.
 Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]
    or: dev-term --listports true
    or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]
    or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]
+   or: dev-term --listbledevices true
 The full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead
 (e.g. for automation/CI), or --tui false, equivalently.
 Add --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any
@@ -108,7 +115,7 @@ you type.
 
 ![WPF connection editor, serial transport](images/wpf-device-profiles-serial.png)
 
-These captures come from a machine with no COM3 attached. The "(not found — …)" line (red in WPF)
+These captures use a saved port (COM99) that isn't attached. The "(not found — …)" line (red in WPF)
 is how both front ends flag a saved port or USB device that isn't connected right now. It's only a
 hint: Connect still tries, and reports the error if the connection fails.
 
@@ -131,6 +138,17 @@ in, just Connect:
 ![TUI connection editor, Loopback transport](images/tui-configure-loopback.png)
 
 ![WPF connection editor, Loopback transport](images/wpf-device-profiles-loopback.png)
+
+**BLE** (Windows only today — see [`docs/design/transports.md`](../design/transports.md)'s BLE
+section): device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART
+Service defaults). No live "Detect..." picker yet, unlike Serial/HID/USBTMC — copy the device id from
+a `--listbledevices true` run:
+
+![TUI connection editor, BLE transport](images/tui-configure-ble.png)
+
+Filling in the fields and pressing **Connect** validates them and connects immediately — no need to
+save a profile first (Save is for reusing the setup later; see
+[Managing connection profiles](managing-profiles.md)).
 
 ### Accepting your changes: Connect
 

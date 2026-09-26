@@ -65,11 +65,19 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
+            case "ble":
+                if (string.IsNullOrWhiteSpace(options.BleDeviceId))
+                {
+                    return ValidateOptionsResult.Fail("Missing required '--bledeviceid' for the BLE transport.");
+                }
+
+                break;
+
             case "loopback":
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

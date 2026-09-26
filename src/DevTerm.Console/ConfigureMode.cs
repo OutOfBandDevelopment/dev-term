@@ -210,6 +210,10 @@ public static class ConfigureMode
             SerialNumberField = Field(nameof(ConnectionEditorViewModel.SerialNumber)),
             UsbNotFoundLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.UsbDeviceNotFoundHint)],
             IdsShowHexCheckBox = (CheckBox)form.ControlViews[nameof(ConnectionEditorViewModel.IdsShowHex)],
+            BleDeviceIdField = Field(nameof(ConnectionEditorViewModel.BleDeviceId)),
+            BleServiceUuidField = Field(nameof(ConnectionEditorViewModel.BleServiceUuid)),
+            BleWriteUuidField = Field(nameof(ConnectionEditorViewModel.BleWriteCharacteristicUuid)),
+            BleNotifyUuidField = Field(nameof(ConnectionEditorViewModel.BleNotifyCharacteristicUuid)),
             LoopbackInfoLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.LoopbackInfo)],
             PresenterCheckBoxes = form.CheckLists[nameof(ConnectionEditorViewModel.PresentersText)],
             ScpiProfileSelector = form.Choices[nameof(ConnectionEditorViewModel.ScpiProfile)],
@@ -711,6 +715,16 @@ internal sealed class ConfigureWindowParts
     public required Label UsbNotFoundLabel { get; init; }
 
     public required CheckBox IdsShowHexCheckBox { get; init; }
+
+    /// <summary>Platform-specific BLE peripheral identifier — see <see cref="ConnectionEditorViewModel.BleDeviceId"/>.</summary>
+    public required TextField BleDeviceIdField { get; init; }
+
+    /// <summary>Blank uses the transport's own default — see <see cref="ConnectionEditorViewModel.BleServiceUuid"/>.</summary>
+    public required TextField BleServiceUuidField { get; init; }
+
+    public required TextField BleWriteUuidField { get; init; }
+
+    public required TextField BleNotifyUuidField { get; init; }
 
     /// <summary>Shown only when the loopback transport is selected — it takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

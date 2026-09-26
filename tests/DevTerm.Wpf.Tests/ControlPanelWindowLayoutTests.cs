@@ -103,6 +103,8 @@ public sealed class ControlPanelWindowLayoutTests
         });
     }
 
+    private static readonly string[] _asyncAction = ["reset", "toggle1", "slider1", "numeric1", "send", "apply"];
+
     [TestMethod]
     public void InfoIcons_OnlyOnControlsThatSendSomething()
     {
@@ -110,7 +112,7 @@ public sealed class ControlPanelWindowLayoutTests
         {
             var window = Create(new PreviewingSurface());
 
-            foreach (var id in new[] { "reset", "toggle1", "slider1", "numeric1", "send", "apply" })
+            foreach (var id in _asyncAction)
             {
                 Assert.IsTrue(window.InfoIcons.ContainsKey(id), $"Expected an info icon on '{id}'.");
             }

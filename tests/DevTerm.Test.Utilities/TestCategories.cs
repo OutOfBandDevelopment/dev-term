@@ -23,6 +23,7 @@ public static class TestCategories
     public const string Tcp = nameof(Tcp);
     public const string Hid = nameof(Hid);
     public const string Usbtmc = nameof(Usbtmc);
+    public const string Ble = nameof(Ble);
     public const string Loopback = nameof(Loopback);
 
     // Device profile types.
@@ -45,4 +46,7 @@ public static class TestCategories
     public const string Rigol_Dg1062z = nameof(Rigol_Dg1062z);
     public const string Velleman_K8055 = nameof(Velleman_K8055);
     public const string Kuando_Busylight = nameof(Kuando_Busylight);
+    public const string Radex_One = nameof(Radex_One);
+    public const string Zoom_H4n = nameof(Zoom_H4n);
+    public const string DerEe_De5000 = nameof(DerEe_De5000);
 }

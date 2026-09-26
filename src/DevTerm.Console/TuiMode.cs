@@ -6,8 +6,11 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
+using DevTerm.Devices.ZoomH4n;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
@@ -114,6 +117,9 @@ public static class TuiMode
         MenuItem? k8055MenuItem = null;
         MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
+        MenuItem? radexOneMenuItem = null;
+        MenuItem? zoomH4nMenuItem = null;
+        MenuItem? de5000MenuItem = null;
         MenuItem? manifestMenuItem = null;
 
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
@@ -219,11 +225,13 @@ public static class TuiMode
         void AppendStatus(string text) => AppendOutput(StatusLine(text));
         void AppendError(string text) => AppendOutput(ErrorLine(text));
 
+#pragma warning disable IDE0017 // Simplify object initialization
         var connectMenuItem = new MenuItem(
             session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
         connectMenuItem.Action = () => Observe(ToggleAndRefreshAsync(), AppendOutput);
+#pragma warning restore IDE0017 // Simplify object initialization
 
         async Task ToggleAndRefreshAsync()
         {
@@ -357,6 +365,39 @@ public static class TuiMode
                         "dev-term — Busylight Control Panel");
                     app.Run(panelParts.Window);
                 })),
+                radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
+                {
+                    var structuredSource = catalog.TryGet("radexone", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        app,
+                        RadexOneUiDefinition.Build(),
+                        new RadexOneControlSurface(session),
+                        structuredSource,
+                        "dev-term — Radex One Control Panel");
+                    app.Run(panelParts.Window);
+                })),
+                zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
+                {
+                    var structuredSource = catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        app,
+                        ZoomH4nUiDefinition.Build(),
+                        new ZoomH4nControlSurface(session),
+                        structuredSource,
+                        "dev-term — Zoom H4n Remote");
+                    app.Run(panelParts.Window);
+                })),
+                de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
+                {
+                    var structuredSource = catalog.TryGet("de5000", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        app,
+                        De5000UiDefinition.Build(),
+                        new De5000ControlSurface(),
+                        structuredSource,
+                        "dev-term — DE-5000 LCR Meter");
+                    app.Run(panelParts.Window);
+                })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
@@ -449,6 +490,9 @@ public static class TuiMode
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, cliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, cliOptions, connected);
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, cliOptions, connected);
+            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, cliOptions, connected);
+            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, cliOptions, connected);
+            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, cliOptions, connected);
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
         }
 

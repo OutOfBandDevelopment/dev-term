@@ -1,0 +1,25 @@
+┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
+│  Device ID:                  4-1234-5678-9abc-def012345678                  ▲│
+│  Service UUID:                                                              ░│
+│  Write characteristic UUID:                                                 ░│
+│  Notify characteristic UUID:                                                ░│
+│                                                                             ░│
+│── Presentation ──                                                           ░│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000              ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
+│               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           █│
+│               ○ de5000                                                      █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
+│                                                                             █│
+│Save as profile named:                      ⟦ Save Profile ⟧▖                █│
+│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
+│Import/export file path:                                                     █│
+│                                                                             █│
+│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      █│
+│                                                                             █│
+│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▘                                                    █│
+│                                                                             ▼│
+└──────────────────────────────────────────────────────────────────────────────┘

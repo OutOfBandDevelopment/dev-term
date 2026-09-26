@@ -192,10 +192,13 @@ public sealed class ScreenshotTests
         {
             StaTestRunner.Run(async () =>
             {
+                // A port name real hardware is vanishingly unlikely to occupy - see the TUI equivalent
+                // (DevTerm.Console.Tests.ScreenshotTests.ConfigureMode_SerialTransport_IsCaptured) for why
+                // a real "COM3" here would make the capture depend on whatever the test machine has attached.
                 var initial = new CliOptions
                 {
                     Transport = "serial",
-                    Port = "COM3",
+                    Port = "COM99",
                     Baud = 9600,
                     DataBits = 8,
                     Presenter = ["ascii"],

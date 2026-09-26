@@ -105,6 +105,12 @@
         <Parameter name="RealSerialKa6003pHandshake" value="None" />
         <Parameter name="RealSerialKa6003pExpectedIdnReply" value="KORAD KA6003P" />
 
+        <!-- Zoom H4n remote port (RealHardwareZoomH4nTests, in DevTerm.Devices.ZoomH4n.Tests): 2400
+             8-N-1, no handshake, via the h4n2rs485 adapter (see
+             docs/design/proposals/zoom-h4n-remote-protocol.md). Reported attached on COM3
+             (2026-09-25) - not yet run against the real unit to confirm this port answers. -->
+        <Parameter name="RealSerialZoomH4nPort" value="COM3" />
+
         <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
              DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback
              match when DevicePath is blank, mirroring SystemHidDevice.Open's own match order. -->
@@ -123,6 +129,28 @@
         <Parameter name="RealHidBusylightVendorId" value="1240" />
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
+
+        <!-- Radex One (RealHardwareRadexOneTests, in DevTerm.Devices.RadexOne.Tests): 2400 8-N-1, no
+             handshake - real-hardware confirmed 2026-09-25 as a plain virtual COM port at COM8, not
+             the USB HID device an earlier draft of this module wrongly assumed (a live `listhiddevices
+             true` enumeration that day found no matching device at all; `listports true` (CLAUDE.md's
+             Commands section) showed COM8 present). The underlying USB-serial bridge reports
+             VID 0xABBA / PID 0xA011 (Windows Device Manager, 2026-09-25) - not usable for HID
+             matching since the device isn't HID, but useful if COM8 needs auto-detecting later.
+             See docs/changes/2026-09-25.md and TODO.md. -->
+        <Parameter name="RealSerialRadexOnePort" value="COM8" />
+
+        <!-- DE-5000 LCR meter's custom IR-to-BLE adapter (RealHardwareDe5000Tests, in
+             DevTerm.Devices.De5000.Tests) - GATT profile is still unconfirmed (see BACKLOG.md/
+             TODO.md), so the *CharacteristicUuid overrides are blank too, meaning "assume NUS"
+             (BleTransportOptions' own defaults) until proven otherwise. Left blank - no adapter has
+             been paired to confirm a device id yet; the test reports Assert.Inconclusive until this
+             is filled in with a real value from a `listbledevices true` run (CLAUDE.md's Commands
+             section). -->
+        <Parameter name="RealBleDe5000DeviceId" value="" />
+        <Parameter name="RealBleDe5000ServiceUuid" value="" />
+        <Parameter name="RealBleDe5000WriteCharacteristicUuid" value="" />
+        <Parameter name="RealBleDe5000NotifyCharacteristicUuid" value="" />
 
         <!-- Rigol DM3058E multimeter: USBTMC, VID 0x1AB1 PID 0x09C4. SerialNumber/ExpectedIdnReply are
              real-hardware confirmed (docs/test/2026-09-25-18-03-06.md). -->

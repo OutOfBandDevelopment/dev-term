@@ -9,7 +9,7 @@
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
 │                                                                             █│
-│  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ loopback                  █│
+│  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ loopback           █│
 │  Description: Tektronix 2230 bench scope                                    █│
 │                                                                             █│
 │── TCP ──                                                                    █│
@@ -19,7 +19,7 @@
 │                                                                             ░│
 │── Presentation ──                                                           ░│
 │  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
-│               ☐ busylight ☐ scpi                                            ░│
+│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000              ░│
 │  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
-│               ○ k8055  ○ busylight  ○ scpi                                  ▼│
+│               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
