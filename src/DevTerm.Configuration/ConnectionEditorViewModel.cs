@@ -110,6 +110,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(VendorIdDisplay),
         nameof(ProductIdDisplay),
         nameof(ConnectedDeviceNotFound),
+        nameof(SaveName),
+        nameof(ImportExportPath),
     };
 
     /// <summary>

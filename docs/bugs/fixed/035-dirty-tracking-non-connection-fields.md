@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Configuration (ConnectionEditorViewModel) |
 | **Created** | 2026-09-26 |
@@ -22,3 +22,12 @@ would be lost.
 
 ## Suggested fix
 Add both to `_nonDirtyProperties`.
+
+## Tests to add
+A test that sets `SaveName` and `ImportExportPath` on a freshly constructed view model and asserts
+`IsDirty` stays `false`.
+
+## Resolution
+Fixed on 2026-09-26 on `dev/fix-bugs`: added `nameof(SaveName)` and `nameof(ImportExportPath)` to
+`_nonDirtyProperties`. Regression test:
+`ConnectionEditorViewModelTests.SettingSaveNameOrImportExportPath_DoesNotMarkTheEditorDirty`.

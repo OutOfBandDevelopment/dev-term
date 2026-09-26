@@ -1851,6 +1851,27 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SettingSaveNameOrImportExportPath_DoesNotMarkTheEditorDirty()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                SaveName = "bench",
+                ImportExportPath = Path.Combine(directory, "export.zip"),
+            };
+
+            Assert.IsFalse(vm.IsDirty, "Typing a save/export name or path isn't a connection-field edit that could be lost by closing the editor.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void SettingVendorIdDisplay_MarksTheEditorDirtyViaTheCanonicalValue()
     {
         var directory = CreateTempDirectory();
