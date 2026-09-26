@@ -304,6 +304,36 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task OpenAsync_CalledAgainWhileAlreadyOpen_DoesNotStartASecondReadLoop()
+    {
+        // Regression test for bug 001: OpenAsync had no guard for an already-open session, so a
+        // second call (e.g. a slow connect racing a second Connect click) started a second
+        // PumpAsync on the same PipeReader. Two concurrent reads on one PipeReader throw
+        // "Reading is already in progress", which faults the healthy connection and reports a
+        // bogus disconnect - see docs/bugs/001-session-double-open.md.
+        var (transport, pipe) = CreateOpenableTransport();
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("p");
+        presenter.Setup(p => p.Render(It.IsAny<ReadOnlySequence<byte>>())).Returns(["got it"]);
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+        var disconnected = WaitForDisconnected(session);
+
+        await session.OpenAsync(TestContext.CancellationToken);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        var received = new TaskCompletionSource();
+        session.Output += (_, _) => received.TrySetResult();
+        await pipe.Writer.WriteAsync("*"u8.ToArray(), TestContext.CancellationToken);
+
+        var faultedEarly = await Task.WhenAny(disconnected, received.Task)
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken) == disconnected;
+
+        Assert.IsFalse(faultedEarly, "the second OpenAsync call should not fault the connection");
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task AfterAFault_OpenAsyncReconnectsAndReadsAgain()
     {
         var firstPipe = new Pipe();

@@ -116,6 +116,14 @@ public sealed class Session : IAsyncDisposable
         await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (_readLoopTask is not null)
+            {
+                // Already open (or opening) under this same lock - a second call (e.g. a slow
+                // connect racing a second Connect click) must not start a second read loop on the
+                // same PipeReader. See docs/bugs/001-session-double-open.md.
+                return;
+            }
+
             await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             // Before the read loop starts, so an observer always sees "opened" ahead of the first

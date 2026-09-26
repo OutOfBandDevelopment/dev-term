@@ -34,6 +34,13 @@ public static class TestCategories
     /// <summary>Session logging (logger mode) and log playback — the format, recorder, engine, and each front end's controls/window.</summary>
     public const string Logging = nameof(Logging);
 
+    /// <summary>
+    /// A regression test written from a docs/bugs/NNN-*.md report — applied at the method level
+    /// (alongside the class's own Unit/Integration category) so <c>dotnet test --filter
+    /// TestCategory=BugRegression</c> runs just the tests added while working through docs/bugs.
+    /// </summary>
+    public const string BugRegression = nameof(BugRegression);
+
     // Device make/model — one real physical unit each.
     public const string Tektronix_2230 = nameof(Tektronix_2230);
     public const string Tektronix_Tds2024 = nameof(Tektronix_Tds2024);

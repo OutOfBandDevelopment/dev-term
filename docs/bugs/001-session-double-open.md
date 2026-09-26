@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed (found by two reviewers) |
 | **Area** | DevTerm.Core (Session), TUI, WPF |
 | **Created** | 2026-09-26 |
@@ -38,3 +38,12 @@ fixed at the caller rather than in `Session`.
 ## Tests to add
 - `Session.OpenAsync` twice: data still arrives and no `Disconnected` is raised.
 - Each front end: Connect invoked twice during `Opening`.
+
+## Resolution
+Fixed on 2026-09-26 (branch `dev/fix-bugs`): `Session.OpenAsync` now returns early, inside
+`_lifecycleLock`, when `_readLoopTask is not null` — a second call while already open (or still
+opening) is a no-op instead of starting a second `PumpAsync` on the same `PipeReader`. This closes
+the defect at its source regardless of front-end state, so the front-end hardening (disabling
+Connect while `Opening`) from the suggested fix's second bullet is no longer required for
+correctness and was left as-is. Regression test:
+`DevTerm.Core.Tests.Sessions.SessionTests.OpenAsync_CalledAgainWhileAlreadyOpen_DoesNotStartASecondReadLoop`.

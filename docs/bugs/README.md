@@ -23,7 +23,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
-| 001 | [Opening an already-open session starts a second read loop](001-session-double-open.md) | DevTerm.Core (Session), TUI, WPF | Open |
+| 001 | [Opening an already-open session starts a second read loop](001-session-double-open.md) | DevTerm.Core (Session), TUI, WPF | Fixed |
 | 002 | [USBTMC Close hangs forever while a reply over 64 KB is being read](002-usbtmc-close-hang-large-reply.md) | DevTerm.Transports.Usbtmc | Open |
 | 003 | [Loopback transport can't reconnect after Disconnect](003-loopback-cannot-reconnect.md) | DevTerm.Transports.Loopback | Open |
 | 004 | [One saved profile with a bad value crashes TUI startup and blocks the WPF connect](004-bad-profile-value-crashes-title.md) | DevTerm.Configuration (ConnectionProfileStore), TUI, WPF | Open |
