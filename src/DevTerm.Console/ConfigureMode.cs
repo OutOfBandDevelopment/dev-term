@@ -40,6 +40,7 @@ public static class ConfigureMode
         Tcp,
         Hid,
         Usbtmc,
+        Ble,
         Loopback,
     }
 
@@ -100,7 +101,7 @@ public static class ConfigureMode
         // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
         // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
         // below).
-        const int ContentHeight = 48;
+        const int ContentHeight = 56;
         var formContent = new View
         {
             X = 0,
@@ -222,10 +223,21 @@ public static class ConfigureMode
         var usbNotFoundLabel = new Label { X = Pos.Right(serialNumberField) + 3, Y = Pos.Top(serialNumberLabel), Text = "(not found)" };
         var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(serialNumberLabel) + 1, Text = "Show as hex" };
 
+        // No live "Detect..." picker yet — see ConnectionEditorViewModel.BleDeviceId's doc comment
+        // for why (no cross-platform default discovery instance this shared view model can build).
+        var bleDeviceIdLabel = new Label { X = 0, Y = Pos.Bottom(idsShowHexCheckBox) + 1, Text = "BLE device ID:" };
+        var bleDeviceIdField = new TextField { X = Pos.Right(bleDeviceIdLabel) + 1, Y = Pos.Top(bleDeviceIdLabel), Width = 40 };
+        var bleServiceUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleDeviceIdLabel) + 1, Text = "Service UUID:" };
+        var bleServiceUuidField = new TextField { X = Pos.Right(bleServiceUuidLabel) + 1, Y = Pos.Top(bleServiceUuidLabel), Width = 40 };
+        var bleWriteUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleServiceUuidLabel) + 1, Text = "Write characteristic UUID:" };
+        var bleWriteUuidField = new TextField { X = Pos.Right(bleWriteUuidLabel) + 1, Y = Pos.Top(bleWriteUuidLabel), Width = 40 };
+        var bleNotifyUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleWriteUuidLabel) + 1, Text = "Notify characteristic UUID:" };
+        var bleNotifyUuidField = new TextField { X = Pos.Right(bleNotifyUuidLabel) + 1, Y = Pos.Top(bleNotifyUuidLabel), Width = 40 };
+
         var loopbackInfoLabel = new Label
         {
             X = 0,
-            Y = Pos.Bottom(idsShowHexCheckBox) + 1,
+            Y = Pos.Bottom(bleNotifyUuidLabel) + 1,
             Text = "No configuration needed — a scripted fake device. Try \"hello\", \"Send Stream: N, ascii\", \"Send Events: N\", or \"help\"/\"?\".",
         };
 
@@ -338,6 +350,10 @@ public static class ConfigureMode
             SerialNumberField = serialNumberField,
             UsbNotFoundLabel = usbNotFoundLabel,
             IdsShowHexCheckBox = idsShowHexCheckBox,
+            BleDeviceIdField = bleDeviceIdField,
+            BleServiceUuidField = bleServiceUuidField,
+            BleWriteUuidField = bleWriteUuidField,
+            BleNotifyUuidField = bleNotifyUuidField,
             LoopbackInfoLabel = loopbackInfoLabel,
             PresenterCheckBoxes = presenterCheckBoxes,
             ScpiProfileField = scpiProfileField,
@@ -370,6 +386,11 @@ public static class ConfigureMode
             serialNumberLabel.Visible = serialNumberField.Visible = isUsbDevice;
             detectHidButton.Visible = selected == TransportChoice.Hid;
             detectUsbtmcButton.Visible = selected == TransportChoice.Usbtmc;
+            var isBle = selected == TransportChoice.Ble;
+            bleDeviceIdLabel.Visible = bleDeviceIdField.Visible = isBle;
+            bleServiceUuidLabel.Visible = bleServiceUuidField.Visible = isBle;
+            bleWriteUuidLabel.Visible = bleWriteUuidField.Visible = isBle;
+            bleNotifyUuidLabel.Visible = bleNotifyUuidField.Visible = isBle;
             loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
         }
 
@@ -403,6 +424,10 @@ public static class ConfigureMode
             viewModel.VendorIdDisplay = vendorField.Text;
             viewModel.ProductIdDisplay = productField.Text;
             viewModel.SerialNumber = serialNumberField.Text;
+            viewModel.BleDeviceId = bleDeviceIdField.Text;
+            viewModel.BleServiceUuid = bleServiceUuidField.Text;
+            viewModel.BleWriteCharacteristicUuid = bleWriteUuidField.Text;
+            viewModel.BleNotifyCharacteristicUuid = bleNotifyUuidField.Text;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
@@ -433,6 +458,10 @@ public static class ConfigureMode
             vendorField.Text = viewModel.VendorIdDisplay;
             productField.Text = viewModel.ProductIdDisplay;
             serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
+            bleDeviceIdField.Text = viewModel.BleDeviceId ?? string.Empty;
+            bleServiceUuidField.Text = viewModel.BleServiceUuid ?? string.Empty;
+            bleWriteUuidField.Text = viewModel.BleWriteCharacteristicUuid ?? string.Empty;
+            bleNotifyUuidField.Text = viewModel.BleNotifyCharacteristicUuid ?? string.Empty;
             for (var i = 0; i < presenterCheckBoxes.Count; i++)
             {
                 presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
@@ -868,6 +897,7 @@ public static class ConfigureMode
             handshakeLabel, handshakeSelector,
             hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
             vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, serialNumberLabel, serialNumberField, usbNotFoundLabel, idsShowHexCheckBox,
+            bleDeviceIdLabel, bleDeviceIdField, bleServiceUuidLabel, bleServiceUuidField, bleWriteUuidLabel, bleWriteUuidField, bleNotifyUuidLabel, bleNotifyUuidField,
             loopbackInfoLabel,
             presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
             parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
@@ -1035,6 +1065,16 @@ internal sealed class ConfigureWindowParts
     public required Label UsbNotFoundLabel { get; init; }
 
     public required CheckBox IdsShowHexCheckBox { get; init; }
+
+    /// <summary>Platform-specific BLE peripheral identifier — see <see cref="ConnectionEditorViewModel.BleDeviceId"/>.</summary>
+    public required TextField BleDeviceIdField { get; init; }
+
+    /// <summary>Blank uses the transport's own default — see <see cref="ConnectionEditorViewModel.BleServiceUuid"/>.</summary>
+    public required TextField BleServiceUuidField { get; init; }
+
+    public required TextField BleWriteUuidField { get; init; }
+
+    public required TextField BleNotifyUuidField { get; init; }
 
     /// <summary>Shown only when <see cref="ConfigureMode.TransportChoice.Loopback"/> is selected — the loopback transport takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

@@ -55,9 +55,32 @@ Connect to a peripheral by address/name, then read/write/subscribe to specific G
 - **Linux** — BlueZ over D-Bus.
 - **macOS** — CoreBluetooth.
 
-None of these ship day one; the adapter seam exists so each can land independently (including as a community/self-contributed adapter) without touching the transport's public shape or forcing every front end onto one platform's API. This is a real, non-trivial commitment — BLE stack differences are still likely the hardest part of this transport to get uniform — but it's a deliberate choice over the easier Windows-only path, given for the console app (unlike WPF) cross-platform reach already matters.
+Windows is the first backend built (2026-09-25): `DevTerm.Transports.Ble.Windows`, a
+`Windows.Devices.Bluetooth`-backed `IBleAdapter`/`IBleAdapterFactory`/`IBleDeviceDiscovery`, loaded
+into DI at runtime by `DevTerm.Configuration.BlePlatformAdapterLoader` (reflection, not a
+project reference — see that class's own doc comment for why: a per-OS backend needs a
+Windows-versioned TFM, which a plain `net10.0` front end can't take a compile-time
+`ProjectReference` on). `DevTerm.Transports.Ble` itself (the contract + cross-platform transport)
+stays a plain `net10.0` library with a default "unsupported platform" registration, so selecting
+`ble` on Linux/macOS today fails clearly at connect time rather than crashing at startup. Linux/
+macOS backends remain not-yet-built (see below).
 
-**BLE Serial** is the common special case worth naming explicitly: many hobbyist/embedded BLE devices don't expose a bespoke GATT profile at all — they emulate a UART over two characteristics (one for host→device writes, one for device→host notifications), most commonly following the de facto [Nordic UART Service](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrfxlib/nrf_ble/doc/service.html) UUIDs (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E` service, `...002` RX/write, `...003` TX/notify). A BLE Serial transport mode defaults to those UUIDs but stays configurable per device, since not every device that "acts like serial over BLE" actually uses NUS — worth confirming per device (e.g., via a BLE scanner app) before assuming the default applies, same caution as every other vendor-protocol-claim in this project.
+Every front end can select `ble` as a transport (`--transport ble --bledeviceid <id>` on the CLI,
+the TUI Configure screen's transport selector, and WPF's Device Profiles window), configuring the
+device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART Service
+defaults below), and `--listbledevices true` lists already-*paired* peripherals (see
+`WindowsBleDeviceDiscovery`'s own doc comment for why paired-only, not a live advertisement scan).
+There's no live "Detect..." device picker yet in either front end (unlike HID/USBTMC) — the device
+id is typed by hand, copied from a `--listbledevices` run; see BACKLOG.md.
+
+None of the non-Windows backends ship yet; the adapter seam exists so each can land independently
+(including as a community/self-contributed adapter) without touching the transport's public shape
+or forcing every front end onto one platform's API. This is a real, non-trivial commitment — BLE
+stack differences are still likely the hardest part of this transport to get uniform — but it's a
+deliberate choice over the easier Windows-only path, given for the console app (unlike WPF)
+cross-platform reach already matters.
+
+**BLE Serial** is the common special case worth naming explicitly: many hobbyist/embedded BLE devices don't expose a bespoke GATT profile at all — they emulate a UART over two characteristics (one for host→device writes, one for device→host notifications), most commonly following the de facto [Nordic UART Service](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrfxlib/nrf_ble/doc/service.html) UUIDs (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E` service, `...002` RX/write, `...003` TX/notify). `BleTransportOptions` defaults its three UUIDs to these — a BLE Serial transport mode stays configurable per device, since not every device that "acts like serial over BLE" actually uses NUS — worth confirming per device (e.g., via a BLE scanner app) before assuming the default applies, same caution as every other vendor-protocol-claim in this project.
 
 ### Loopback
 

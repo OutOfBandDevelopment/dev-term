@@ -12,6 +12,7 @@
     <ProjectReference Include="..\DevTerm.Devices.ZoomH4n\DevTerm.Devices.ZoomH4n.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Usbtmc\DevTerm.Transports.Usbtmc.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
   </ItemGroup>
 

@@ -159,6 +159,51 @@ public sealed class ScreenshotTests
     }
 
     [TestMethod]
+    public void ConfigureMode_BleTransport_IsCaptured()
+    {
+        // Same below-the-fold reasoning as ConfigureMode_HidTransport_IsCaptured - the BLE field
+        // group sits even further down, after Serial/TCP/USB, so a plain unscrolled capture would
+        // miss it entirely.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var initial = new CliOptions { Transport = "ble", BleDeviceId = "AB12CD34-1234-5678-9abc-def012345678", Presenter = ["ascii"] };
+
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var parts = ConfigureMode.BuildWindow(app, initial, validationError: null, new ConnectionProfileStore(directory));
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+
+                try
+                {
+                    parts.DescriptionField.SetFocus();
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    app.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-ble.png"));
+                }
+                finally
+                {
+                    app.End(token);
+                }
+            });
+
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-ble.txt"), dump);
+
+            Assert.Contains("BLE device ID:", dump);
+            Assert.Contains("AB12CD34-1234-5678-9abc-def012345678", dump);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ConfigureMode_LoopbackTransport_IsCaptured()
     {
         // The info label sits where the HID field group would be, below the fold on an 80x24

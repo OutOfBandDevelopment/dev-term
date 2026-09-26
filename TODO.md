@@ -31,6 +31,16 @@ Completed work is logged by date under `docs/changes/`.
   semantics are unconfirmed against a live unit. Once the adapter is attached: fill in
   `devterm.runsettings`' blank `RealSerialZoomH4nPort`, then run `RealHardwareZoomH4nTests`
   (`TestCategory=Hardware`).
+- **BLE transport (`DevTerm.Transports.Ble` + Windows backend) needs real-hardware verification.**
+  Built and wired end-to-end 2026-09-25 (see `docs/changes/2026-09-25.md`): `IBleAdapter`/
+  `IBleAdapterFactory`/`IBleDeviceDiscovery` contract, a `Windows.Devices.Bluetooth`-backed
+  implementation loaded at runtime via `BlePlatformAdapterLoader`, and full field wiring through
+  `CliOptions`/CLI validation, the TUI Configure screen, and WPF's Device Profiles window, plus a
+  `--listbledevices` CLI action. No BLE peripheral was paired/exercised this session — everything
+  was verified by build + unit test only. Once a BLE peripheral (the DE-5000's custom IR-to-BLE
+  adapter, or any NUS-speaking device) is paired: run `--listbledevices true` to confirm it lists,
+  then connect with `--transport ble --bledeviceid <id>` and confirm read/write/notify actually
+  round-trip real bytes.
 
 ## Backlog / research
 

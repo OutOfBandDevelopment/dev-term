@@ -44,6 +44,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _productId = "0";
     private string _serialNumber = string.Empty;
     private string _devicePath = string.Empty;
+    private string _bleDeviceId = string.Empty;
+    private string _bleServiceUuid = string.Empty;
+    private string _bleWriteCharacteristicUuid = string.Empty;
+    private string _bleNotifyCharacteristicUuid = string.Empty;
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -78,6 +82,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsHidTransport),
         nameof(IsUsbtmcTransport),
         nameof(IsUsbDeviceTransport),
+        nameof(IsBleTransport),
         nameof(IsLoopbackTransport),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
@@ -376,7 +381,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "loopback"];
 
     /// <summary>
     /// This list is hardcoded rather than resolved from the live <see cref="Core.Presenters.PresenterCatalog"/>
@@ -466,6 +471,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsHidTransport));
             OnPropertyChanged(nameof(IsUsbtmcTransport));
             OnPropertyChanged(nameof(IsUsbDeviceTransport));
+            OnPropertyChanged(nameof(IsBleTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
             OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
@@ -478,6 +484,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool IsHidTransport => string.Equals(Transport, "hid", StringComparison.OrdinalIgnoreCase);
 
     public bool IsUsbtmcTransport => string.Equals(Transport, "usbtmc", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsBleTransport => string.Equals(Transport, "ble", StringComparison.OrdinalIgnoreCase);
 
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
 
@@ -694,6 +702,25 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public string DevicePath { get => _devicePath; set => SetField(ref _devicePath, value); }
 
+    /// <summary>
+    /// The BLE peripheral to connect to — a platform-specific device identifier (on Windows, the
+    /// WinRT <c>DeviceInformation.Id</c> a <c>--listbledevices</c> run reports), typed by hand since
+    /// there's no cross-platform default <c>DevTerm.Transports.Ble.IBleDeviceDiscovery</c> instance
+    /// this shared, front-end-agnostic view model could construct itself (the real one only exists
+    /// in the Windows-only backend, loaded at runtime — see <see cref="BlePlatformAdapterLoader"/>).
+    /// A live "Detect..." picker is deferred; see BACKLOG.md.
+    /// </summary>
+    public string BleDeviceId { get => _bleDeviceId; set => SetField(ref _bleDeviceId, value); }
+
+    /// <summary>Blank uses <c>DevTerm.Transports.Ble.BleTransportOptions</c>'s own Nordic UART Service default.</summary>
+    public string BleServiceUuid { get => _bleServiceUuid; set => SetField(ref _bleServiceUuid, value); }
+
+    /// <summary>Same idea as <see cref="BleServiceUuid"/>.</summary>
+    public string BleWriteCharacteristicUuid { get => _bleWriteCharacteristicUuid; set => SetField(ref _bleWriteCharacteristicUuid, value); }
+
+    /// <summary>Same idea as <see cref="BleServiceUuid"/>.</summary>
+    public string BleNotifyCharacteristicUuid { get => _bleNotifyCharacteristicUuid; set => SetField(ref _bleNotifyCharacteristicUuid, value); }
+
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
     // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
@@ -858,6 +885,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         ProductId = options.ProductId.ToString();
         SerialNumber = options.SerialNumber ?? string.Empty;
         DevicePath = options.DevicePath ?? string.Empty;
+        BleDeviceId = options.BleDeviceId ?? string.Empty;
+        BleServiceUuid = options.BleServiceUuid ?? string.Empty;
+        BleWriteCharacteristicUuid = options.BleWriteCharacteristicUuid ?? string.Empty;
+        BleNotifyCharacteristicUuid = options.BleNotifyCharacteristicUuid ?? string.Empty;
 
         // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
         // those setters push VendorId/ProductId/SerialNumber/DevicePath from whichever device gets
@@ -915,6 +946,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
             SerialNumber = SerialNumber.Trim() is { Length: > 0 } sn ? sn : null,
             DevicePath = DevicePath.Trim() is { Length: > 0 } dp ? dp : null,
+            BleDeviceId = BleDeviceId.Trim() is { Length: > 0 } bdi ? bdi : null,
+            BleServiceUuid = BleServiceUuid.Trim() is { Length: > 0 } bsu ? bsu : null,
+            BleWriteCharacteristicUuid = BleWriteCharacteristicUuid.Trim() is { Length: > 0 } bwu ? bwu : null,
+            BleNotifyCharacteristicUuid = BleNotifyCharacteristicUuid.Trim() is { Length: > 0 } bnu ? bnu : null,
         };
 
         if (int.TryParse(Baud, out var baud))

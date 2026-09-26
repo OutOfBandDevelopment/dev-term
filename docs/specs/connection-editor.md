@@ -26,7 +26,7 @@ Shown in two situations:
 
 | Field | Type | Default | Validation | Notes |
 |---|---|---|---|---|
-| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
+| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`loopback` | `serial` | Must be one of the six | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
@@ -38,6 +38,10 @@ Shown in two situations:
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
 | Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
+| BLE device ID (ble) | free text | empty | Required when Transport is `ble` | Platform-specific peripheral identifier (Windows: a `BluetoothLEDevice` id string, not a MAC address) — typed by hand, copied from a `--listbledevices true` run; no live "Detect..." picker yet (see BACKLOG.md) |
+| Service UUID (ble) | free text | empty (Nordic UART Service default applied by the transport) | none | Blank means the transport's own Nordic UART Service default; set explicitly for a device with a custom GATT profile |
+| Write characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
+| Notify characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
 | Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` (a row of checkboxes) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
 | Send as | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
@@ -66,13 +70,13 @@ Shown in two situations:
 ## States
 
 - **Transport-based field-group visibility**: only the field group matching the selected Transport
-  is shown (Serial / TCP / USB device / Loopback) —
-  `IsSerialTransport`/`IsTcpTransport`/`IsHidTransport`/`IsUsbtmcTransport` on the view model,
-  recomputed whenever `Transport` changes. The shared Vendor/Product ID/Show-as-hex group is shown
-  for either USB transport via `IsUsbDeviceTransport` (= `IsHidTransport || IsUsbtmcTransport`);
-  within that group, only the Detected-devices picker for the *selected* one of `hid`/`usbtmc` is
-  shown, since they're separate discovery sources (see Per-front-end notes). Presenter/Line ending/
-  Description/Save/Import-export are always visible regardless of Transport.
+  is shown (Serial / TCP / USB device / BLE / Loopback) —
+  `IsSerialTransport`/`IsTcpTransport`/`IsHidTransport`/`IsUsbtmcTransport`/`IsBleTransport` on the
+  view model, recomputed whenever `Transport` changes. The shared Vendor/Product ID/Show-as-hex
+  group is shown for either USB transport via `IsUsbDeviceTransport` (= `IsHidTransport ||
+  IsUsbtmcTransport`); within that group, only the Detected-devices picker for the *selected* one of
+  `hid`/`usbtmc` is shown, since they're separate discovery sources (see Per-front-end notes).
+  Presenter/Line ending/Description/Save/Import-export are always visible regardless of Transport.
 - **"Not found" hint** (`ConnectedDeviceNotFound`): when the loaded Port, or the USB identity (Vendor/Product
   ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
   ends show a hint next to it. The TUI shows `(not found)`. WPF shows `(not found — this port isn't connected right
@@ -311,6 +315,7 @@ Shown in two situations:
 ## Open items
 
 None right now. Everything requested 2026-09-16 has landed: the presenter picker and per-input-line
-parser on 2026-09-18, and the last item, serial-port descriptions on Linux/macOS, on 2026-09-25 (see
-Fields and Per-front-end notes). Remaining Connection Editor follow-ups live in `BACKLOG.md`.
+parser on 2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, and BLE's field group
+(also 2026-09-25 — no live "Detect..." picker yet, see BACKLOG.md). Remaining Connection Editor
+follow-ups live in `BACKLOG.md`.
 

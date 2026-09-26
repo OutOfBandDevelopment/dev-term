@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!--
+      Windows.Devices.Bluetooth (the WinRT GATT client) is only projectable from a
+      Windows-versioned TFM - a plain net10.0 project can't compile against it at all. This is
+      genuinely different from every other transport in the solution (see DevTerm.Transports.Hid/
+      Usbtmc, both plain net10.0 despite depending on OS-specific native components - HidSharp is a
+      cross-platform managed library, and USBTMC's libusb dependency only needs a conditional
+      native-asset copy, not different compiled code). DevTerm.Console itself stays net10.0 (it
+      wants to remain cross-platform, and can't reference this project directly for the same
+      TFM-compatibility reason), so this assembly is loaded at runtime via reflection instead of a
+      ProjectReference - see DevTerm.Configuration.BlePlatformAdapterLoader.
+    -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

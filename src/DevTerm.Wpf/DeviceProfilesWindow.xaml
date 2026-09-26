@@ -208,6 +208,42 @@
                                    Visibility="{Binding ConnectedDeviceNotFound, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
 
+                    <StackPanel x:Name="BlePanel" Visibility="{Binding IsBleTransport, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="BLE" FontWeight="Bold" Margin="0,8,0,2" />
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="BLE device ID:" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding BleDeviceId, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Service UUID:" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding BleServiceUuid, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Write characteristic UUID:" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding BleWriteCharacteristicUuid, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Notify characteristic UUID:" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding BleNotifyCharacteristicUuid, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </StackPanel>
+
                     <StackPanel x:Name="LoopbackPanel" Visibility="{Binding IsLoopbackTransport, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Loopback" FontWeight="Bold" Margin="0,8,0,2" />
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,4"

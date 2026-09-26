@@ -8,18 +8,18 @@
 │                                                                             ░│
 │                                                                             ░│
 │                                                                             ░│
-│Presenters: ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig░│
 │                                                                             ░│
 │                                                                             █│
 │                                                                             █│
-│Send as: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary                █│
 │                                                                             █│
-│Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
 │                                                                             █│
-│Save as profile named:                      ⟦ Save Profile ⟧▖                █│
-│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
-│Import/export file path:                                                     █│
 │                                                                             █│
-│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      ░│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      ▼│
+│                                                                             █│
+│                                                                             █│
+│Presenters: ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig█│
+│                                                                             ░│
+│                                                                             ░│
+│                                                                             ░│
+│Send as: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
+│                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

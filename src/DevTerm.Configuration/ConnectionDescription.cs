@@ -29,6 +29,11 @@ public static class ConnectionDescription
             return $"USBTMC VID 0x{cliOptions.VendorId:X4} PID 0x{cliOptions.ProductId:X4}{serial}";
         }
 
+        if (string.Equals(cliOptions.Transport, "ble", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"BLE {cliOptions.BleDeviceId}";
+        }
+
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             return "Loopback";
@@ -72,6 +77,11 @@ public static class ConnectionDescription
         {
             var instance = string.IsNullOrEmpty(cliOptions.SerialNumber) ? string.Empty : $".{cliOptions.SerialNumber}";
             return $"usbtmc://{cliOptions.VendorId:X4}.{cliOptions.ProductId:X4}{instance}";
+        }
+
+        if (string.Equals(cliOptions.Transport, "ble", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"ble://{cliOptions.BleDeviceId}";
         }
 
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))

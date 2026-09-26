@@ -14,6 +14,8 @@
     <Project Path="src/DevTerm.Devices.Scpi/DevTerm.Devices.Scpi.csproj" />
     <Project Path="src/DevTerm.Devices.ZoomH4n/DevTerm.Devices.ZoomH4n.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
+    <Project Path="src/DevTerm.Transports.Ble/DevTerm.Transports.Ble.csproj" />
+    <Project Path="src/DevTerm.Transports.Ble.Windows/DevTerm.Transports.Ble.Windows.csproj" />
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
     <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
@@ -34,6 +36,7 @@
     <Project Path="tests/DevTerm.Devices.Scpi.Tests/DevTerm.Devices.Scpi.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.ZoomH4n.Tests/DevTerm.Devices.ZoomH4n.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
+    <Project Path="tests/DevTerm.Transports.Ble.Tests/DevTerm.Transports.Ble.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />

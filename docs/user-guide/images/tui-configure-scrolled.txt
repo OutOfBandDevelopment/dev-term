@@ -11,8 +11,8 @@
 │                                                                             ░│
 │                                                                             ░│
 │Send as: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
-│                                                                             █│
-│Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
+│                                                                             ░│
+│Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      ░│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│

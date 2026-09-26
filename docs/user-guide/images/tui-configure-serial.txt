@@ -8,8 +8,8 @@
 │                                                                             █│
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
-│                                                                             █│
-│Transport: ◉ Serial  ○ Tcp  ○ Hid  ○ Usbtmc  ○ Loopback                      █│
+│                                                                             ░│
+│Transport: ◉ Serial  ○ Tcp  ○ Hid  ○ Usbtmc  ○ Ble  ○ Loopback               ░│
 │                                                                             ░│
 │Description: Tektronix 2230 bench scope                                      ░│
 │                                                                             ░│

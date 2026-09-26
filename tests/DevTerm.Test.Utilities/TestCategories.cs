@@ -23,6 +23,7 @@ public static class TestCategories
     public const string Tcp = nameof(Tcp);
     public const string Hid = nameof(Hid);
     public const string Usbtmc = nameof(Usbtmc);
+    public const string Ble = nameof(Ble);
     public const string Loopback = nameof(Loopback);
 
     // Device profile types.
