@@ -25,7 +25,7 @@ menu — the WPF equivalent of the TUI's main screen.
 | **File > Connect/Disconnect** | A single menu item whose header flips (`_Connect`/`_Disconnect`); toggles the same `Session`/transport without touching the loaded profile | None | `ConnectionErrorMessages.For` text appended to `OutputList` (no modal); session stays closed, ready to retry |
 | **File > Device Profiles...** | Opens `DeviceProfilesWindow` as a modal (`ShowDialog`) | None | n/a |
 | **File > Exit** / **Ctrl+Q** | Closes the window | None | n/a |
-| **Device > K8055/Busylight/SCPI Instrument...** | Opens a generic, non-modal control-panel window for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with the TUI and data-driven rather than a fixed set of fields | None checked | n/a |
+| **Device > K8055/Busylight/SCPI Instrument/Device Manifest...** | Opens a generic, non-modal control-panel window for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with the TUI and data-driven rather than a fixed set of fields | None checked | n/a |
 | **Closing** (any way — Exit, Ctrl+Q, the window's own X button) | Cancels the first close request, awaits `Session.CloseAsync`/`DisposeAsync`, then closes for real | None | n/a — but see Open items about test automation and this specific handler |
 
 ## States

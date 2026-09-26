@@ -34,7 +34,8 @@ test class's own doc comment.
 - [Connecting and disconnecting without restarting](connect-disconnect.md) — the **File >
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
 - [Controlling a device from a panel](device-control-panels.md) — the **Device** menu's K8055,
-  Busylight, and SCPI Instrument control panels, in TUI/WPF.
+  Busylight, SCPI Instrument, and Device Manifest control panels (including the bar graph, strip
+  chart, and vector displays), in TUI/WPF.
 
 For the precise field-by-field/action-by-action reference behind these screens, see
 [`docs/specs/`](../specs/README.md).
