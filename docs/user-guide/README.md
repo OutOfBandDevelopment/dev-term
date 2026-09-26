@@ -35,6 +35,9 @@ test class's own doc comment.
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
 - [Controlling a device from a panel](device-control-panels.md) — the **Device** menu's K8055,
   Busylight, and SCPI Instrument control panels, in TUI/WPF.
+- [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
+  Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
+  preview in WPF.
 
 For the precise field-by-field/action-by-action reference behind these screens, see
 [`docs/specs/`](../specs/README.md).

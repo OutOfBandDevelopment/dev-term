@@ -1,0 +1,60 @@
+<Window x:Class="DevTerm.Wpf.StreamMonitorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DevTerm.Wpf"
+        Title="dev-term — Stream Monitor" Height="520" Width="860">
+    <DockPanel Margin="8">
+        <!-- Monitor state, where captures go, and the Start/Stop toggle (StreamMonitorWindow.RefreshState). -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="OpenFolderButton" Content="Open Folder" Padding="12,2" Margin="8,0,0,0" Click="OpenFolder_Click" />
+                <Button x:Name="ToggleButton" Content="Stop Monitoring" Padding="12,2" Margin="8,0,0,0" Click="Toggle_Click" />
+            </StackPanel>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="StateDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="ForestGreen" />
+                    <TextBlock x:Name="StateText" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock x:Name="FolderText" Foreground="DimGray" Margin="16,2,0,0" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </DockPanel>
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
+                   Text="Watches the connection's incoming data for images (PNG, JPEG, GIF, BMP, TIFF), HP-GL plots, PostScript and PCL print jobs. Each one is saved automatically; images are previewed here." />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Captures" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <ListBox x:Name="CaptureList" SelectionChanged="CaptureList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:StreamMonitorCaptureItem}">
+                            <StackPanel Margin="0,2">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Subtitle}" Foreground="DimGray" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Subtitle}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+            <DockPanel Grid.Column="2">
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button x:Name="ExportAsButton" DockPanel.Dock="Right" Content="Export As..." Padding="12,2" IsEnabled="False" Click="ExportAs_Click" />
+                    <StackPanel>
+                        <TextBlock x:Name="DetailText" TextWrapping="Wrap" />
+                        <TextBlock x:Name="SavedPathText" TextWrapping="Wrap" Foreground="DimGray" />
+                    </StackPanel>
+                </DockPanel>
+                <Border BorderBrush="LightGray" BorderThickness="1" Background="WhiteSmoke">
+                    <Grid>
+                        <Image x:Name="PreviewImage" Stretch="Uniform" StretchDirection="DownOnly" Margin="8" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock x:Name="PreviewMessage" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" TextAlignment="Center" Margin="16" Foreground="DimGray" />
+                    </Grid>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

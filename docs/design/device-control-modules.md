@@ -116,9 +116,10 @@ For simple query/response devices (most bench gear — a command string in, a fo
   whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
   that case is still open. A related but distinct question — whether a command can also declare
   its reply's *content type* (plain text vs. HPGL/PostScript/PCL/a binary image), so a front end
-  can render or export it properly instead of just showing text/hex — is proposed but not yet
-  built; see [stream content detection](proposals/stream-content-detection.md)'s
-  `ExpectedResponseFormat`.
+  can render or export it properly instead of just showing text/hex — is **built for SCPI commands
+  (2026-09-25)** as `ScpiCommandDefinition.ExpectedResponseFormat`, consumed by the Stream Monitor;
+  a device manifest's own command schema can't declare one yet. See
+  [stream content detection](proposals/stream-content-detection.md).
 - ~~Whether device control modules can be assembled declaratively...~~ **Answered 2026-09-23** by
   the same module: `ScpiInstrumentProfile`'s JSON schema (command id/label/category/template/
   parameters) plus `ScpiProfileCatalog`'s bundled-plus-drop-in-folder loading is exactly the
