@@ -9,6 +9,7 @@ using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
 using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
+using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
@@ -151,6 +152,7 @@ public partial class MainWindow : Window
         RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _cliOptions, connected);
         ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, _cliOptions, connected);
         De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, _cliOptions, connected);
+        Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, _cliOptions, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _cliOptions, connected);
     }
 
@@ -412,6 +414,24 @@ public partial class MainWindow : Window
         var window = new ControlPanelWindow(
             De5000UiDefinition.Build(),
             new De5000ControlSurface(),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): same reasoning as De5000ControlPanel_Click above. Passes no session
+    // to the control surface (NmeaGpsControlSurface takes none) - a GPS receiver has no writable
+    // commands, only live indicators driven by the structured presenter below. The decoder/UI/
+    // control surface are a generic NMEA 0183 GPS panel, not specific to the Earthmate BT-20 - only
+    // this menu item's gate (DevicePanels.Nmea0183) is tied to that device's VID/PID.
+    private void Nmea0183ControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("nmea", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            NmeaGpsUiDefinition.Build(),
+            new NmeaGpsControlSurface(),
             structuredSource)
         {
             Owner = this,

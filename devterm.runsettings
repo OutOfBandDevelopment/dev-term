@@ -129,6 +129,9 @@
         <Parameter name="RealHidBusylightVendorId" value="1240" />
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
+        <Parameter name="RealHidEarthmateBt20-VendorId" value="4451" />
+        <Parameter name="RealHidEarthmateBt20-ProductId" value="512" />
+        <Parameter name="RealHidEarthmateBt20-DevicePath" value="" />
 
         <!-- Radex One (RealHardwareRadexOneTests, in DevTerm.Devices.RadexOne.Tests): 2400 8-N-1, no
              handshake - real-hardware confirmed 2026-09-25 as a plain virtual COM port at COM8, not

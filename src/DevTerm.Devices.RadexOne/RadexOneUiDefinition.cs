@@ -4,7 +4,8 @@ namespace DevTerm.Devices.RadexOne;
 
 /// <summary>
 /// The Radex One geiger counter's control panel: one-shot query buttons (data reading,
-/// serial/version, current settings) plus an alarm-settings section that only mutates local state
+/// serial/version, current settings), a reset-accumulated action, plus an alarm-settings section
+/// that only mutates local state
 /// until Write Settings is pressed (see <see cref="RadexOneControlSurface"/> for the write-3x quirk).
 /// Alarm mode options and threshold range are best-effort guesses — see
 /// docs/design/proposals/radex-one-protocol.md's Status section.
@@ -25,6 +26,14 @@ public static class RadexOneUiDefinition
                     new ButtonControl { Id = "readData", Label = "Read Data" },
                     new ButtonControl { Id = "readSerialVersion", Label = "Read Serial/Version" },
                     new ButtonControl { Id = "readSettings", Label = "Read Settings" },
+                ],
+            },
+            new UiSection
+            {
+                Label = "Maintenance",
+                Controls =
+                [
+                    new ButtonControl { Id = "resetAccumulated", Label = "Reset Accumulated" },
                 ],
             },
             new UiSection

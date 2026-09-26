@@ -9,6 +9,7 @@ public enum DevicePanel
     RadexOne,
     ZoomH4n,
     De5000,
+    Nmea0183,
 
     /// <summary>A panel built from a loaded device manifest (Device > Device Manifest...) — any connection.</summary>
     Manifest,
@@ -32,6 +33,14 @@ public static class DevicePanels
     private const int _busylightMicrochipVendorId = 0x04D8;
     private const int _busylightMicrochipProductId = 0xF848;
     private const int _plenomVendorId = 0x27BB;
+
+    // The NMEA 0183 panel (NmeaGpsDecoder/NmeaGpsUiDefinition/NmeaGpsControlSurface) is generic
+    // protocol logic with nothing device-specific in it - this VID/PID gate is the one confirmed-
+    // compatible physical unit, the DeLorme Earthmate GPS BT-20 (a fixed VID/PID USB HID device;
+    // real-world facts confirmed via web search - the exact HID report framing was not, see
+    // NmeaGpsDecoder's remarks).
+    private const int _nmea0183VendorId = 0x1163;
+    private const int _nmea0183ProductId = 0x0200;
 
     public static bool IsAvailable(DevicePanel panel, CliOptions options, bool connected)
     {
@@ -69,6 +78,12 @@ public static class DevicePanels
             // The DE-5000's optical-to-BLE adapter has no VID/PID (it's a GATT peripheral, not a
             // USB device) - gated on "any BLE connection", like ZoomH4n's "any serial connection".
             DevicePanel.De5000 => string.Equals(options.Transport, "ble", StringComparison.OrdinalIgnoreCase),
+
+            // The confirmed unit (DeLorme Earthmate GPS BT-20) is a fixed VID/PID USB HID device,
+            // like K8055/Busylight.
+            DevicePanel.Nmea0183 => isHid
+                && options.VendorId == _nmea0183VendorId
+                && options.ProductId == _nmea0183ProductId,
 
             // A manifest names its own transport and commands, so which manifests make sense is the
             // user's call (the picker) - the item is enabled whenever connected.

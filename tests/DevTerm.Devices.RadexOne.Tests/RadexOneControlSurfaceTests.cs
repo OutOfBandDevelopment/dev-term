@@ -64,6 +64,19 @@ public sealed class RadexOneControlSurfaceTests
     }
 
     [TestMethod]
+    public async Task InvokeAsync_ResetAccumulated_SendsAWrappedQueryWithSecondWordOne()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new RadexOneControlSurface(session);
+
+        await surface.InvokeAsync("resetAccumulated", null, TestContext.CancellationToken);
+
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => IsWellFormedQueryWithWord(b.ToArray(), RadexOneCommand.ResetAccumulated, 0x0001)),
+            It.IsAny<CancellationToken>()));
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_WriteSettings_SendsTheSameFrameThreeTimes()
     {
         var (session, transport) = CreateSurfaceSession();
@@ -102,6 +115,18 @@ public sealed class RadexOneControlSurfaceTests
     }
 
     [TestMethod]
+    public void PreviewCommand_ResetAccumulated_ShowsTheReportAsHex()
+    {
+        var (session, _) = CreateSurfaceSession();
+        var surface = new RadexOneControlSurface(session);
+
+        var preview = surface.PreviewCommand("resetAccumulated", null);
+
+        Assert.IsNotNull(preview);
+        StringAssert.StartsWith(preview, "7B FF");
+    }
+
+    [TestMethod]
     public void PreviewCommand_StateOnlySetters_AreNull()
     {
         var (session, _) = CreateSurfaceSession();
@@ -116,6 +141,11 @@ public sealed class RadexOneControlSurfaceTests
         && report[0] == 0x7B && report[1] == 0xFF // outbound framer prefix
         && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(2, 2)) == 0x0020 // constant outbound type marker
         && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(RadexOneFramer.HeaderLength, 2)) == expectedCommandCode;
+
+    private static bool IsWellFormedQueryWithWord(byte[] report, ushort expectedCommandCode, ushort expectedWord) =>
+        IsWellFormedQuery(report, expectedCommandCode)
+        && report.Length >= RadexOneFramer.HeaderLength + 4
+        && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(RadexOneFramer.HeaderLength + 2, 2)) == expectedWord;
 
     public required TestContext TestContext { get; set; }
 }

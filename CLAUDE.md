@@ -436,9 +436,30 @@ file only points there, it doesn't restate them.**
 - **Terminal.Gui `Label.Text` treats `_` as a hotkey marker.** `Rigol_DG1062Z_…` rendered as
   `RigolDG1062Z_…`. Any label showing data (device names, file names) needs
   `HotKeySpecifier = (Rune)0xFFFF`.
+- **A WPF `ComboBox` using `DisplayMemberPath` auto-generates an untrimmed `TextBlock` per item,
+  which triggers a real hard layout clip (`LayoutInformation.GetLayoutClip`) once a real device's
+  description is long enough to overflow the field** — unlike `TextTrimming`, which only shrinks a
+  `TextBlock`'s own `DesiredSize` when set explicitly. Found via `UiLayoutReviewTests`'
+  `DeviceProfilesWindow_EachTransport` against a real attached Prolific USB-to-serial adapter at
+  COM3, whose real, long description overflowed `DeviceProfilesWindow`'s detected-ports picker.
+  Fixed by replacing `DisplayMemberPath` with an explicit `ItemTemplate` (built via
+  `FrameworkElementFactory`) giving the generated `TextBlock` `TextTrimming.CharacterEllipsis` plus
+  a `ToolTip` bound to the same text — matching the pattern already used by
+  `StreamMonitorWindow.xaml`'s `Subtitle` TextBlock. `DisplayMemberPath` and `ItemTemplate` can't
+  both be set on the same `ItemsControl` (WPF throws), so this is an either/or choice, not additive.
 - **A Terminal.Gui `Label` wraps a line longer than its width, and whatever falls past its `Height` is
   silently dropped.** A two-line label whose first line was too long lost its second line entirely. Keep
   each explicit line shorter than the label's width.
+- **A sibling view positioned at a fixed `Y` below a `Label` that can wrap breaks once the label's
+  content grows past one line.** `PlaybackMode`'s "available presenters" label (`Width = Dim.Fill()`,
+  no explicit `Height`, so it auto-sizes to however many wrapped lines its text needs) had the output
+  `Editor` below it pinned to a literal `Y = 3` — fine while the presenter list fit on one line, but
+  adding more device presenters (radexone/zoomh4n/de5000) made the label wrap to two lines, and the
+  Editor then overlapped its second line, both clipping the wrapped text and corrupting the Editor's
+  own top row (`TuiToolWindowLayoutTests.Playback_PartWayThroughWithANote (80,25)`, caught by the
+  `TuiReview`/`TuiLayoutAssert` overlap check). Fixed by positioning the Editor at
+  `Pos.Bottom(availableLabel)` instead of a literal offset — any view following a wrapping label needs
+  a relative `Pos`, not a number baked in for whatever line count happened to be true at the time.
 - **A headless Terminal.Gui resize works:** `app.Driver.SetScreenSize(w, h)` followed by
   `LayoutAndDraw(true)` on v2.5.0's "dotnet" driver acts as a real resize and fires `SubViewsLaidOut` with the
   new viewport width. Calling `SetContentSize` from a `SubViewsLaidOut` handler settles without looping, as

@@ -110,6 +110,41 @@ public sealed class RadexOneFramerTests
     }
 
     [TestMethod]
+    public void BuildRequest_ResetAccumulatedQuery_MatchesAUserCapturedRealHardwareTrace()
+    {
+        // docs/design/proposals/radex-one-protocol.md's "Trace Examples" appendix:
+        // >: 7bff 2000 0600 4e01 0000 0fff 0308 0100 fbf7
+        byte[] expected =
+        [
+            0x7B, 0xFF, 0x20, 0x00, 0x06, 0x00, 0x4E, 0x01, 0x00, 0x00, 0x0F, 0xFF,
+            0x03, 0x08, 0x01, 0x00, 0xFB, 0xF7,
+        ];
+
+        var packet = RadexOneFramer.BuildRequest(0x014E, RadexOneExtensionCodec.BuildQuery(RadexOneCommand.ResetAccumulated, word: 0x0001));
+
+        CollectionAssert.AreEqual(expected, packet);
+    }
+
+    [TestMethod]
+    public void TryParseReply_ResetAccumulatedResponse_MatchesAUserCapturedRealHardwareTrace()
+    {
+        // docs/design/proposals/radex-one-protocol.md's "Trace Examples" appendix:
+        // <: 7aff 2080 0600 4e01 0000 107f 0308 0000 fcf7
+        byte[] reply =
+        [
+            0x7A, 0xFF, 0x20, 0x80, 0x06, 0x00, 0x4E, 0x01, 0x00, 0x00, 0x10, 0x7F,
+            0x03, 0x08, 0x00, 0x00, 0xFC, 0xF7,
+        ];
+
+        var parsed = RadexOneFramer.TryParseReply(reply, out var packetNumber, out var extension);
+
+        Assert.IsTrue(parsed);
+        Assert.AreEqual((ushort)0x014E, packetNumber);
+        Assert.IsTrue(RadexOneExtensionCodec.TryReadCommandCode(extension, out var commandCode));
+        Assert.AreEqual(RadexOneCommand.ResetAccumulated, commandCode);
+    }
+
+    [TestMethod]
     public void TryParseReply_ReadDataResponse_MatchesTheSourceDocsRealHardwareTrace()
     {
         // docs/design/proposals/radex-one-protocol.md's source trace:

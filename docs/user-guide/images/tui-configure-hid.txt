@@ -11,10 +11,10 @@
 │                                                                             █│
 │── Presentation ──                                                           █│
 │  Presenters:  ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       █│
-│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000              █│
+│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000 ☐ nmea       █│
 │  Send as:     ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal  ○ binary          █│
 │               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           █│
-│               ○ de5000                                                      █│
+│               ○ de5000  ○ nmea                                              █│
 │  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│

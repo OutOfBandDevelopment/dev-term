@@ -91,14 +91,18 @@ public partial class DeviceProfilesWindow : Window
         // The detected-device pickers stay hand-built, real WPF bindings to the view model's rich
         // device lists (a port's description-bearing Display over its Name; a live-filtered HID/USBTMC
         // list whose selection survives filtering) - the generic form places, labels and shows/hides
-        // them with their transport like every other field.
-        DetectedPortsBox = new ComboBox { DisplayMemberPath = nameof(SerialPortOption.Display), SelectedValuePath = nameof(SerialPortOption.Name) };
+        // them with their transport like every other field. ItemTemplate (not DisplayMemberPath) so a
+        // real device's long description (e.g. "COM3 — Prolific USB-to-Serial Comm Port") ellipsizes
+        // with a tooltip instead of a hard WPF layout clip - confirmed live: a genuine attached USB-
+        // serial adapter's description overflowed the field column and failed UiLayoutReviewTests'
+        // clip check.
+        DetectedPortsBox = new ComboBox { SelectedValuePath = nameof(SerialPortOption.Name), ItemTemplate = TrimmedDisplayTemplate(nameof(SerialPortOption.Display)) };
         DetectedPortsBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.SerialPortOptions)));
         DetectedPortsBox.SetBinding(Selector.SelectedValueProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedSerialPort)));
-        DetectedHidDevicesBox = new ComboBox { DisplayMemberPath = nameof(HidDeviceOption.Display) };
+        DetectedHidDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(HidDeviceOption.Display)) };
         DetectedHidDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.HidDeviceOptions)));
         DetectedHidDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedHidDevice)));
-        DetectedUsbtmcDevicesBox = new ComboBox { DisplayMemberPath = nameof(UsbtmcDeviceOption.Display) };
+        DetectedUsbtmcDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(UsbtmcDeviceOption.Display)) };
         DetectedUsbtmcDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.UsbtmcDeviceOptions)));
         DetectedUsbtmcDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)));
 
@@ -235,5 +239,15 @@ public partial class DeviceProfilesWindow : Window
         {
             ViewModel.ImportExportPath = dialog.FileName;
         }
+    }
+
+    private static DataTemplate TrimmedDisplayTemplate(string displayPath)
+    {
+        var text = new FrameworkElementFactory(typeof(TextBlock));
+        var binding = new Binding(displayPath);
+        text.SetBinding(TextBlock.TextProperty, binding);
+        text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        text.SetBinding(TextBlock.ToolTipProperty, binding);
+        return new DataTemplate { VisualTree = text };
     }
 }
