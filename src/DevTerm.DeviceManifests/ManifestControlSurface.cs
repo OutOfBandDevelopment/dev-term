@@ -156,7 +156,7 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             return text.Replace("{value}", value ?? string.Empty, StringComparison.Ordinal);
         }
 
-        var values = command.Parameters.Count == 1 ? [value ?? string.Empty] : (value ?? string.Empty).Split(',');
+        var values = ParameterValueList.Split(value);
         for (var i = 0; i < command.Parameters.Count; i++)
         {
             var parameter = command.Parameters[i];

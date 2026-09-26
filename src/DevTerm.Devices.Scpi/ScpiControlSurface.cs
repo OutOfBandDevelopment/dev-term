@@ -162,11 +162,11 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
             return text;
         }
 
-        var values = (value ?? string.Empty).Split(',');
+        var values = ParameterValueList.Split(value);
         for (var i = 0; i < command.Parameters.Count; i++)
         {
             var parameter = command.Parameters[i];
-            var raw = i < values.Length ? values[i] : parameter.DefaultValue ?? string.Empty;
+            var raw = i < values.Length && values[i].Length > 0 ? values[i] : parameter.DefaultValue ?? string.Empty;
             var formatted = parameter.Kind == ScpiParameterKind.Numeric
                 ? FormatNumeric(raw, parameter)
                 : raw;

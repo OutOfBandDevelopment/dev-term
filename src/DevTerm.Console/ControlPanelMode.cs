@@ -1027,9 +1027,9 @@ internal static class ControlPanelMode
         /// <summary>Whether invoking <paramref name="commandId"/> would send anything at all — decides which controls get a preview and an (i) marker.</summary>
         public bool Sends(string commandId, string? value) => _preview?.PreviewCommand(commandId, value) is not null;
 
-        /// <summary>The named parameter fields' current values, comma-joined, unvalidated — only for probing <see cref="Sends"/>.</summary>
+        /// <summary>The named parameter fields' current values, comma-joined (escaped), unvalidated — only for probing <see cref="Sends"/>.</summary>
         public string RawParameters(IReadOnlyList<string> fieldIds) =>
-            string.Join(',', fieldIds.Select(id => ControlViews.TryGetValue(id, out var view) ? GetCurrentValue(view) : string.Empty));
+            ParameterValueList.Join(fieldIds.Select(id => ControlViews.TryGetValue(id, out var view) ? GetCurrentValue(view) : string.Empty));
 
         /// <summary>The footer text for invoking <paramref name="commandId"/> with <paramref name="value"/>, or null when the surface has no preview for it.</summary>
         public string? SendsText(string commandId, string? value) =>
@@ -1085,7 +1085,7 @@ internal static class ControlPanelMode
             return true;
         }
 
-        /// <summary>Reads and validates every named parameter field's current value, comma-joined; on the first invalid one, fails (reporting it in the footer when <paramref name="reportErrors"/>).</summary>
+        /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); on the first invalid one, fails (reporting it in the footer when <paramref name="reportErrors"/>).</summary>
         public bool TryReadParameters(IReadOnlyList<string> fieldIds, bool reportErrors, out string joined)
         {
             var values = new List<string>(fieldIds.Count);
@@ -1114,7 +1114,7 @@ internal static class ControlPanelMode
                 ShowMessage(null);
             }
 
-            joined = string.Join(',', values);
+            joined = ParameterValueList.Join(values);
             return true;
         }
     }

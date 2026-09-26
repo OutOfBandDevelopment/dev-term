@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Test.Utilities;
@@ -109,6 +110,25 @@ public sealed class ManifestControlSurfaceTests
         Assert.AreEqual("CH3:HIGH\n", Sent(transport, 4), "Comma-joined values fill the parameters in order; an integer rounds.");
         Assert.AreEqual("CH4:LOW\n", Sent(transport, 5), "A missing second value falls back to its default.");
         Assert.AreEqual("OUT1\n", Sent(transport, 6), "A parameterless template's {value} takes the control's value.");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact()
+    {
+        // Regression test for bug 024: a text parameter's literal comma used to be mistaken for the
+        // separator between parameter values, truncating that parameter and shifting every later one
+        // onto the wrong token. See docs/bugs/fixed/024-comma-in-text-parameter.md. The joined string
+        // here is exactly what ControlPanelMode/ControlPanelWindow's TryReadParameters now produce via
+        // ParameterValueList.Join.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        var joined = ParameterValueList.Join(["3", "HIGH,extra"]);
+        await panel.Surface.InvokeAsync("ch", joined, TestContext.CancellationToken);
+
+        Assert.AreEqual("CH3:HIGH,extra\n", Sent(transport, 0));
     }
 
     [TestMethod]

@@ -346,7 +346,7 @@ public partial class ControlPanelWindow : Window
                             ShowValidationError(error!);
                         }
                     };
-                    var raw = string.Join(',', parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
+                    var raw = ParameterValueList.Join(parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
                     Func<string?> preview = () => TryReadParameters(parameterFieldIds, out var joined, out var error)
                         ? SendsText(commandId, joined)
                         : $"Won't send: {error}";
@@ -638,7 +638,7 @@ public partial class ControlPanelWindow : Window
         Invoke(control.Id, result.Value);
     }
 
-    /// <summary>Reads and validates every named parameter field's current value, comma-joined; fails on the first invalid one.</summary>
+    /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); fails on the first invalid one.</summary>
     private bool TryReadParameters(IReadOnlyList<string> fieldIds, out string joined, out string? error)
     {
         var values = new List<string>(fieldIds.Count);
@@ -657,7 +657,7 @@ public partial class ControlPanelWindow : Window
             values.Add(result.Value);
         }
 
-        joined = string.Join(',', values);
+        joined = ParameterValueList.Join(values);
         error = null;
         return true;
     }

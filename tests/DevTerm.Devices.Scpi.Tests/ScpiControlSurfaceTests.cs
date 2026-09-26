@@ -1,4 +1,5 @@
 using System.Text;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.StreamContent;
@@ -94,6 +95,38 @@ public sealed class ScpiControlSurfaceTests
         await surface.InvokeAsync("conf", "VOLT:AC,10", TestContext.CancellationToken);
 
         VerifySent(transport, "CONF:VOLT:AC 10\n");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact()
+    {
+        // Regression test for bug 024: a text parameter's literal comma used to be mistaken for the
+        // separator between parameter values, truncating that parameter and shifting every later one
+        // onto the wrong token. See docs/bugs/fixed/024-comma-in-text-parameter.md. The joined string
+        // here is exactly what ControlPanelMode.TryReadParameters/ControlPanelWindow.TryReadParameters
+        // now produce via ParameterValueList.Join.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        var joined = ParameterValueList.Join(["VOLT:AC,extra", "10"]);
+        await surface.InvokeAsync("conf", joined, TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:VOLT:AC,extra 10\n");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EmptySecondValue_FallsBackToDefault()
+    {
+        // Secondary defect from bug 024: an empty (but present) split segment must fall back to the
+        // parameter's own DefaultValue, matching ManifestControlSurface.FormatTemplate's existing behavior.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("conf", "VOLT:AC,", TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:VOLT:AC AUTO\n");
     }
 
     [TestMethod]
