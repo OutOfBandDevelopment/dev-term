@@ -136,6 +136,19 @@ public sealed class DevTermConfigurationTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Bind_ANonNumericValueForANumericField_ThrowsInvalidOperationException()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddCommandLine(["--baud", "fast"])
+            .Build();
+
+        var options = new CliOptions();
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => DevTermConfiguration.Bind(configuration, options));
+    }
+
+    [TestMethod]
     public void EnvironmentVariables_WithoutThePrefix_AreIgnored()
     {
         const string unprefixed = "BAUD";

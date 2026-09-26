@@ -112,6 +112,21 @@ public sealed class ConsoleAppCliTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvalidNumericOption_PrintsErrorAndUsage_ExitsOne()
+    {
+        using var job = new ChildProcessJob();
+        using var process = Process.Start(BuildStartInfo("--transport serial --port COM3 --baud fast --cli true"))!;
+        job.Add(process);
+        var stderr = await process.StandardError.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+
+        Assert.AreEqual(1, process.ExitCode);
+        Assert.DoesNotContain("Unhandled exception", stderr);
+        Assert.Contains("Usage:", stderr);
+    }
+
+    [TestMethod]
     public async Task CliMode_OverTcp_SendsTypedLineAndPrintsDecodedReply()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
