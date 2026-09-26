@@ -39,6 +39,10 @@ public partial class ControlPanelWindow : Window
     internal const string NotesSectionLabel = "Notes";
     internal const string InfoGlyph = "ⓘ";
 
+    // How far the notes text sits in from the sections' left edge: the expander content border's
+    // margin, line and padding, the text's own margins, and a little slack.
+    private const double _notesIndent = 36;
+
     private readonly IControlSurface _surface;
     private readonly ICommandPreview? _preview;
     private readonly string _baseStatus;
@@ -116,6 +120,17 @@ public partial class ControlPanelWindow : Window
         {
             var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) }.Themed(TextBlock.ForegroundProperty, ThemeRole.MutedForeground);
             SectionsPanel.Children.Add(BuildExpander(NotesSectionLabel, notes));
+
+            // The sections scroll sideways when a row is wider than the window (a long label plus
+            // a long button used to be cut off at the right edge at the minimum width), so the
+            // notes wrap to the visible width instead of the scrolled content's.
+            SectionsScroller.ScrollChanged += (_, e) =>
+            {
+                if (e.ViewportWidthChange != 0 || notes.MaxWidth is double.PositiveInfinity)
+                {
+                    notes.MaxWidth = Math.Max(120, SectionsScroller.ViewportWidth - _notesIndent);
+                }
+            };
         }
 
         _baseStatus = structuredSource is IStructuredPresenter

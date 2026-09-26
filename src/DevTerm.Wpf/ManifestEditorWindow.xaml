@@ -17,12 +17,14 @@
         <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" />
 
         <Grid>
+            <!-- Proportional, not a fixed 280px outline: with a fixed first column the three minimums
+                 didn't fit at the window's own MinWidth, and the preview was pushed off the right edge. -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="280" MinWidth="160" />
+                <ColumnDefinition Width="5*" MinWidth="160" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" MinWidth="280" />
+                <ColumnDefinition Width="7*" MinWidth="290" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" MinWidth="260" />
+                <ColumnDefinition Width="8*" MinWidth="260" />
             </Grid.ColumnDefinitions>
 
             <!-- The outline: every part of the manifest; selecting one shows its generated form. -->

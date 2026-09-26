@@ -24,7 +24,7 @@ namespace DevTerm.Wpf;
 /// </para>
 /// <para>
 /// Layout matches the hand-built editor it replaced: each labeled section is a bold header over rows
-/// of a fixed-width label column (<see cref="WpfFormOptions.LabelColumnWidth"/>) and a stretching
+/// of a label column (at least <see cref="WpfFormOptions.LabelColumnWidth"/>, widened for the form's longest label) and a stretching
 /// widget column; a toggle's check box and an unlabeled row sit in the widget column. A hidden
 /// section or row is collapsed, so nothing leaves a gap.
 /// </para>
@@ -34,6 +34,8 @@ internal static class FormRenderer
     /// <summary>The theme resource key for warning text (an <see cref="IndicatorStyle.Warning"/> indicator, a field's validation message) — a dynamic reference, so a theme switch recolors it.</summary>
     internal const string WarningBrushKey = "DevTerm.Error";
 
+    private const string _labelSizeGroup = "FormLabel";
+
     public static WpfFormParts Build(UiDefinition definition, FormBinding binding, WpfFormOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -41,6 +43,7 @@ internal static class FormRenderer
         options ??= new WpfFormOptions();
 
         var parts = new WpfFormParts(binding) { Root = new StackPanel() };
+        Grid.SetIsSharedSizeScope(parts.Root, true);
         var first = true;
         foreach (var section in definition.Sections)
         {
@@ -72,7 +75,12 @@ internal static class FormRenderer
     private static WpfFormRow BuildRow(WpfFormParts parts, UiControl control, WpfFormOptions options)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = options.LabelColumnWidth is { } width ? new GridLength(width) : GridLength.Auto });
+        // At least LabelColumnWidth, growing to the longest label in the form (one size group across
+        // every row's grid, so the widgets still line up): a fixed width cut "Detected USBTMC
+        // devices:" short.
+        grid.ColumnDefinitions.Add(options.LabelColumnWidth is { } width
+            ? new ColumnDefinition { Width = GridLength.Auto, MinWidth = width, SharedSizeGroup = _labelSizeGroup }
+            : new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var row = new WpfFormRow(control, grid);
 
@@ -298,7 +306,7 @@ internal sealed class WpfFormOptions
     /// <summary>What a <see cref="ButtonControl"/> does, keyed by its id; without one, the bound model's command property of that name runs.</summary>
     public Dictionary<string, Action> Actions { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>The label column's width; null sizes it to the longest label.</summary>
+    /// <summary>The label column's minimum width - it grows, across the whole form, to fit the longest label; null sizes each row's own label column to its label.</summary>
     public double? LabelColumnWidth { get; set; } = 140;
 }
 

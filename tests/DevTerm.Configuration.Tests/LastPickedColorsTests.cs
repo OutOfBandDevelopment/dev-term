@@ -14,6 +14,9 @@ public sealed class LastPickedColorsTests
     [DataRow((byte)255, (byte)255, (byte)255, true)]
     [DataRow((byte)0, (byte)0, (byte)128, false)]
     [DataRow((byte)0, (byte)0, (byte)0, false)]
+    [DataRow((byte)0xFF, (byte)0x66, (byte)0x00, true)] // orange: black 7.2:1, white 2.9:1
+    [DataRow((byte)0xFF, (byte)0x00, (byte)0x00, true)] // red: black 5.3:1, white 4.0:1
+    [DataRow((byte)0x80, (byte)0x00, (byte)0x80, false)] // purple
     public void UseDarkText_PicksTheReadableTextColor(byte r, byte g, byte b, bool dark) =>
         Assert.AreEqual(dark, LastPickedColors.UseDarkText((r, g, b)));
 

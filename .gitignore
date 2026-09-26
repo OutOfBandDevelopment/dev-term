@@ -22,3 +22,6 @@ TestResults/
 # Personal/local machine profiles (device ports, addresses) — never committed.
 appsettings.Local.json
 appsettings.*.Local.json
+
+# Local review output (UI review screenshots from UiLayoutReviewTests etc.) - never committed.
+artifacts/

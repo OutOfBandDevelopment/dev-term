@@ -152,7 +152,13 @@ Shown in two situations:
   was visible or not — left the hidden group's whole height blank. WPF's `StackPanel` layout
   collapses a `Collapsed` section, as it always did.
 - **Saved-profiles list sizing**: WPF's list grows/shrinks proportionally with the window (a `Grid`
-  row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The TUI's list has a
+  row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The list row's minimum
+  (190px) is the height of its six-button column, so Refresh/Export Selected/Export All stay reachable
+  at the window's minimum size (420x520; the row minimum used to be 90px and the window's 480px, which
+  cut the bottom three buttons off). The WPF status line collapses while it's empty, and
+  Connect/Close are the same 80x32 buttons as the other dialogs' OK/Cancel. The generated form's label
+  column is at least 140px and grows to the longest label ("Detected USBTMC devices:" used to be cut
+  off). The TUI's list has a
   fixed height (4 rows) — Terminal.Gui's absolute-position layout doesn't have an equivalent to
   WPF's star-sized rows without a more involved container.
 - **Import/export path entry**: both front ends have a "Browse..." button next to the typed path
