@@ -176,6 +176,70 @@ public sealed class DeviceManifestTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_ZipWithTooManyEntries_ThrowsAndDoesNotExtract()
+    {
+        var directory = CreateTempDirectory();
+        var zipPath = directory + ".zip";
+        try
+        {
+            using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            {
+                for (var i = 0; i < 501; i++)
+                {
+                    archive.CreateEntry($"entry-{i}.txt");
+                }
+            }
+
+            Assert.ThrowsExactly<InvalidDataException>(() => DeviceManifestLoader.Load(zipPath));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            File.Delete(zipPath);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_SameZipTwice_ReusesOneExtractionFolderInsteadOfLeakingANewOneEachTime()
+    {
+        var directory = CreateTempDirectory();
+        var zipPath = directory + ".zip";
+        string? firstExtractDirectory = null;
+        string? secondExtractDirectory = null;
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, DeviceManifestLoader.ManifestFileName),
+                DeviceManifestSerializer.ToJson(BuildKoradManifest(inlineUi: BuildKoradUi())));
+            ZipFile.CreateFromDirectory(directory, zipPath);
+
+            DeviceManifestLoader.Load(zipPath, validate: true, out var firstManifestFile);
+            firstExtractDirectory = Path.GetDirectoryName(firstManifestFile);
+
+            DeviceManifestLoader.Load(zipPath, validate: true, out var secondManifestFile);
+            secondExtractDirectory = Path.GetDirectoryName(secondManifestFile);
+
+            Assert.AreEqual(firstExtractDirectory, secondExtractDirectory);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            File.Delete(zipPath);
+            if (firstExtractDirectory is not null && Directory.Exists(firstExtractDirectory))
+            {
+                Directory.Delete(firstExtractDirectory, recursive: true);
+            }
+
+            if (secondExtractDirectory is not null && secondExtractDirectory != firstExtractDirectory && Directory.Exists(secondExtractDirectory))
+            {
+                Directory.Delete(secondExtractDirectory, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public void Load_MissingReferencedKaitaiFile_Throws()
     {
         var directory = CreateTempDirectory();
