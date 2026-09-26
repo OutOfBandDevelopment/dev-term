@@ -51,7 +51,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 020 | [Each Zoom H4n panel open adds a pipeline presenter that is never removed](fixed/020-zoomh4n-wake-watcher-leak.md) | DevTerm.Devices.ZoomH4n, TUI, WPF | Fixed |
 | 021 | [Radex One readings aren't checksum-verified, although the comments say they are](fixed/021-radexone-extension-checksum-unverified.md) | DevTerm.Devices.RadexOne | Fixed |
 | 022 | [One false Radex One header can stall decoding for minutes](fixed/022-radexone-false-header-stall.md) | DevTerm.Devices.RadexOne | Fixed |
-| 023 | [One malformed SCPI profile file breaks all SCPI features for the rest of the run](023-scpi-profile-catalog-bad-file.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Open |
+| 023 | [One malformed SCPI profile file breaks all SCPI features for the rest of the run](fixed/023-scpi-profile-catalog-bad-file.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Fixed |
 | 024 | [A comma inside a text parameter shifts every later parameter](024-comma-in-text-parameter.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Open |
 | 025 | [BLE Disconnect doesn't actually drop the link](025-ble-service-not-disposed.md) | DevTerm.Transports.Ble.Windows | Open |
 | 026 | [BLE writes aren't split to the packet size](026-ble-writes-not-mtu-chunked.md) | DevTerm.Transports.Ble.Windows | Open |

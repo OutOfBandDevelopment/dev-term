@@ -126,6 +126,31 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_WithOneMalformedProfileFile_StillLoadsTheRestAndReportsTheBadOne()
+    {
+        var baseDirectory = CreateTempDirectory();
+        try
+        {
+            var profilesDir = Path.Combine(baseDirectory, "Profiles");
+            Directory.CreateDirectory(profilesDir);
+            File.WriteAllText(Path.Combine(profilesDir, "good.json"), _minimalProfileJson);
+            File.WriteAllText(Path.Combine(profilesDir, "bad.json"), "{ not valid json");
+
+            var profiles = ScpiProfileCatalog.Load(baseDirectory, out var errors);
+
+            Assert.HasCount(1, profiles);
+            Assert.AreEqual("Synthetic Instrument", profiles[0].Name);
+            Assert.HasCount(1, errors);
+            StringAssert.Contains(errors[0], "bad.json");
+        }
+        finally
+        {
+            Directory.Delete(baseDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Generic_HasNoIdnPatternAndBaselineCommonCommands()
     {
         var generic = ScpiProfileCatalog.Generic;

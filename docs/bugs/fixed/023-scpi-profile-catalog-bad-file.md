@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Devices.Scpi (ScpiProfileCatalog) |
 | **Created** | 2026-09-26 |
@@ -25,3 +25,15 @@ Catch `JsonException`/`IOException` per file, skip the file, and report it.
 
 ## Tests to add
 A catalog folder with one malformed file still loads the rest and reports the bad one.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `ScpiProfileCatalog.LoadFrom` now catches `JsonException`,
+`IOException`, and `UnauthorizedAccessException` per file (the same exception set
+`ManifestCatalog.NameOf` already uses for device manifests), skipping the bad file and appending a
+`"<filename>: <message>"` entry to a new `errors` list instead of letting the exception propagate out
+of `All`'s static field initializer. A new `Load(string baseDirectory, out List<string> errors)`
+overload exposes this to callers/tests; the existing single-argument `Load(string baseDirectory)` is
+now a thin wrapper (`=> Load(baseDirectory, out _)`) so its four existing callers are unaffected. The
+real, static-initializer-backed errors are exposed via a new `ScpiProfileCatalog.LoadErrors` property
+(nothing surfaces it in the UI yet). Regression test:
+`ScpiProfileCatalogTests.Load_WithOneMalformedProfileFile_StillLoadsTheRestAndReportsTheBadOne`.
