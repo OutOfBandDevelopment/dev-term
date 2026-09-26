@@ -21,7 +21,7 @@ public sealed class SystemTcpConnection : ITcpConnection
 
     public Stream Stream { get; }
 
-    public void Write(byte[] buffer, int offset, int count) => Stream.Write(buffer, offset, count);
+    public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken) => Stream.WriteAsync(data, cancellationToken).AsTask();
 
     public void Dispose()
     {

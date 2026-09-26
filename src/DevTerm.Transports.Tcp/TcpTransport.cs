@@ -129,16 +129,24 @@ public sealed class TcpTransport : ITransport
         }
     }
 
-    public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
+    public async Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (_connection is null || State != ConnectionState.Open)
         {
             throw new InvalidOperationException("The TCP transport is not open.");
         }
 
-        var buffer = data.ToArray();
-        _connection.Write(buffer, 0, buffer.Length);
-        return Task.CompletedTask;
+        using var timeoutCts = new CancellationTokenSource(_options.Value.WriteTimeoutMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Writing to the TCP connection timed out after {_options.Value.WriteTimeoutMs} ms.");
+        }
     }
 
     public async ValueTask DisposeAsync()
