@@ -51,6 +51,7 @@ public static class TuiMode
         }
 
         var app = Application.Create().Init();
+        TuiTheme.Apply(ActiveTheme.Current);
         try
         {
             var parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
@@ -140,6 +141,9 @@ public static class TuiMode
         {
             outputLines.Add(StatusLine(startupWarning));
         }
+
+        // Bad theme files, an unknown --theme, an unreadable preferences file - reported, never fatal.
+        outputLines.AddRange(ActiveTheme.StartupProblems.Select(StatusLine));
 
         if (initialMessage is not null)
         {
@@ -293,6 +297,9 @@ public static class TuiMode
             window.Title = TitleFor();
         }
 
+        // View > Theme: switching re-applies live through OnThemeChanged below.
+        var themeMenu = new TuiThemeMenu(AppendStatus);
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -376,7 +383,44 @@ public static class TuiMode
                 manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, session))),
                 new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
+            themeMenu.MenuBarItem,
         ]);
+
+        // A theme switch (View > Theme, from this window or any other) re-applies everything themed:
+        // Terminal.Gui's schemes, the output pane's highlighting (XSHD colors are fixed per
+        // definition, so it's swapped for the new theme's), and the status line. Raised on the thread
+        // that selected - the UI thread, from a menu action - so no app.Invoke (which would never
+        // flush under a headless test). Selected from any other thread, it's marshaled over instead;
+        // a window whose application has already shut down just unsubscribes.
+        var uiThreadId = Environment.CurrentManagedThreadId;
+        void OnThemeChanged(object? sender, EventArgs e)
+        {
+            if (app.Driver is null)
+            {
+                ActiveTheme.Changed -= OnThemeChanged;
+                return;
+            }
+
+            if (Environment.CurrentManagedThreadId != uiThreadId)
+            {
+                app.Invoke(ReapplyTheme);
+                return;
+            }
+
+            ReapplyTheme();
+        }
+
+        void ReapplyTheme()
+        {
+            TuiTheme.Apply(ActiveTheme.Current);
+            output.HighlightingDefinition = OutputHighlighting.Definition;
+            themeMenu.Refresh();
+            RefreshConnectionUi();
+            window.SetNeedsDraw();
+        }
+
+        ActiveTheme.Changed += OnThemeChanged;
+        window.Disposing += (_, _) => ActiveTheme.Changed -= OnThemeChanged;
 
         // Everything that depends on the connection state, derived from session.State in one
         // place: the File menu label, the send field, the title (" — disconnected" when closed), the
@@ -392,12 +436,7 @@ public static class TuiMode
             window.Title = TitleFor();
 
             statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}{logging.StatusSuffix}";
-            var (foreground, background) = connected
-                ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(120, 200, 120, 255))
-                : state == ConnectionState.Opening
-                    ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(230, 200, 90, 255))
-                    : (new Terminal.Gui.Drawing.Color(255, 255, 255, 255), new Terminal.Gui.Drawing.Color(170, 40, 40, 255));
-            statusLabel.SetScheme(new Terminal.Gui.Drawing.Scheme(new Terminal.Gui.Drawing.Attribute(foreground, background)));
+            statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
 
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, cliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, cliOptions, connected);
@@ -631,7 +670,7 @@ public static class TuiMode
             StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
         }
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger));
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu);
     }
 
     /// <summary>
@@ -892,4 +931,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu);

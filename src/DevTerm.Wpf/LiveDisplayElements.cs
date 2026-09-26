@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using DevTerm.Configuration;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.Wpf;
@@ -14,10 +15,16 @@ namespace DevTerm.Wpf;
 /// </summary>
 internal abstract class LiveDisplayElement : FrameworkElement
 {
-    protected static readonly Brush MutedBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x8A, 0x89, 0x84)));
-    protected static readonly Brush GridBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xE4, 0xE3, 0xDF)));
-    protected static readonly Brush TextBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x0B, 0x0B, 0x0B)));
-    protected static readonly Brush SurfaceBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xFC, 0xFC, 0xFB)));
+    // Chart ink comes from the theme's chart roles through resource references (WpfTheme), so a live
+    // theme switch re-renders the chart; the defaults (outside a themed window) are the Light theme's.
+    public static readonly DependencyProperty MutedBrushProperty = ThemedBrush(nameof(MutedBrush), ThemeRole.ChartMuted);
+    public static readonly DependencyProperty GridBrushProperty = ThemedBrush(nameof(GridBrush), ThemeRole.ChartGrid);
+    public static readonly DependencyProperty TextBrushProperty = ThemedBrush(nameof(TextBrush), ThemeRole.ChartText);
+    public static readonly DependencyProperty SurfaceBrushProperty = ThemedBrush(nameof(SurfaceBrush), ThemeRole.ChartSurface);
+
+    /// <summary>Whether to draw with <see cref="ChartPalette.DarkSlots"/> - the theme's <c>chartPalette</c> (<see cref="WpfTheme.ChartPaletteDarkKey"/>).</summary>
+    public static readonly DependencyProperty DarkPaletteProperty = DependencyProperty.Register(
+        nameof(DarkPalette), typeof(bool), typeof(LiveDisplayElement), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
     private static readonly Typeface _typeface = new("Segoe UI");
 
@@ -27,7 +34,22 @@ internal abstract class LiveDisplayElement : FrameworkElement
         Width = width;
         Height = height;
         SnapsToDevicePixels = true;
+        SetResourceReference(MutedBrushProperty, WpfTheme.Key(ThemeRole.ChartMuted));
+        SetResourceReference(GridBrushProperty, WpfTheme.Key(ThemeRole.ChartGrid));
+        SetResourceReference(TextBrushProperty, WpfTheme.Key(ThemeRole.ChartText));
+        SetResourceReference(SurfaceBrushProperty, WpfTheme.Key(ThemeRole.ChartSurface));
+        SetResourceReference(DarkPaletteProperty, WpfTheme.ChartPaletteDarkKey);
     }
+
+    protected Brush MutedBrush => (Brush)GetValue(MutedBrushProperty);
+
+    protected Brush GridBrush => (Brush)GetValue(GridBrushProperty);
+
+    protected Brush TextBrush => (Brush)GetValue(TextBrushProperty);
+
+    protected Brush SurfaceBrush => (Brush)GetValue(SurfaceBrushProperty);
+
+    protected bool DarkPalette => (bool)GetValue(DarkPaletteProperty);
 
     public LiveDisplayState State { get; }
 
@@ -40,8 +62,11 @@ internal abstract class LiveDisplayElement : FrameworkElement
         }
     }
 
-    protected static Brush BrushFor(string hex) =>
+    protected Brush BrushFor(string hex) =>
         ChartPalette.TryParseHex(hex, out var c) ? Freeze(new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B))) : MutedBrush;
+
+    private static DependencyProperty ThemedBrush(string name, ThemeRole role) =>
+        DependencyProperty.Register(name, typeof(Brush), typeof(LiveDisplayElement), new FrameworkPropertyMetadata(WpfTheme.Brush(role, BuiltInThemes.Light), FrameworkPropertyMetadataOptions.AffectsRender));
 
     protected FormattedText Text(string text, Brush brush, double size = 11) =>
         new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, _typeface, size, brush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
@@ -85,7 +110,7 @@ internal sealed class BarGraphElement : LiveDisplayElement
             var fill = Bars.FractionOf(channel.Id) * _barWidth;
             if (fill > 0)
             {
-                drawingContext.DrawRoundedRectangle(BrushFor(ChartPalette.ColorFor(channel, row)), null, new Rect(_labelWidth, top + 3, fill, _rowHeight - 6), 4, 4);
+                drawingContext.DrawRoundedRectangle(BrushFor(ChartPalette.ColorFor(channel, row, DarkPalette)), null, new Rect(_labelWidth, top + 3, fill, _rowHeight - 6), 4, 4);
             }
 
             var valueText = Bars.ValueOf(channel.Id) is { } value ? ChartValue.Format(value, Bars.Control.Unit) : "—";
@@ -137,7 +162,7 @@ internal sealed class StripChartElement : LiveDisplayElement
         for (var index = 0; index < Strip.Control.Channels.Count; index++)
         {
             var channel = Strip.Control.Channels[index];
-            var brush = BrushFor(ChartPalette.ColorFor(channel, index));
+            var brush = BrushFor(ChartPalette.ColorFor(channel, index, DarkPalette));
             var samples = Strip.SamplesOf(channel.Id);
             if (samples.Count > 0)
             {
@@ -240,7 +265,7 @@ internal sealed class VectorElement : LiveDisplayElement
             var point = Project(Vector.Point);
             Brush brush = Vector.Color is { } c
                 ? new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B))
-                : BrushFor(ChartPalette.Slots[0]);
+                : BrushFor(ChartPalette.SlotsFor(DarkPalette)[0]);
             if (control.Coordinates == CoordinateSystem.Polar)
             {
                 drawingContext.DrawLine(new Pen(brush, 2), center, point);

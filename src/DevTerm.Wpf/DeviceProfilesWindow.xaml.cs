@@ -29,6 +29,7 @@ public partial class DeviceProfilesWindow : Window
     public DeviceProfilesWindow(ConnectionProfileStore store, CliOptions initial, string? statusText = null)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         ViewModel = new ConnectionEditorViewModel(store, initial, statusText);
         DataContext = ViewModel;
         ViewModel.ConfirmOverwrite = name => MessageBox.Show(

@@ -36,6 +36,8 @@ const string Usage =
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nAdd --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any"
     + "\nconnection to record everything sent and received."
+    + "\nAdd --theme <light|dark|system|name> to pick the TUI's colors for this run (View > Theme saves a choice;"
+    + "\ncustom themes are JSON files under ~/.dev-term/themes)."
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
     + "\nCommand-line arguments always win, then environment variables, then the settings file.";
@@ -111,9 +113,20 @@ if (earlyConfig[nameof(CliOptions.Playback)] is { Length: > 0 })
 var earlyConfigBuilder = new ConfigurationBuilder();
 DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
 var cliOptions = new CliOptions();
-DevTermConfiguration.Bind(earlyConfigBuilder.Build(), cliOptions);
+var layeredConfig = earlyConfigBuilder.Build();
+DevTermConfiguration.Bind(layeredConfig, cliOptions);
 
 var useTui = cliOptions.Tui && !cliOptions.Cli;
+
+// The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this run,
+// else the saved View > Theme choice (~/.dev-term/preferences.json), else "system". Applied before
+// any TUI screen (including the startup Connection Editor below) - Terminal.Gui's scheme overrides
+// are process-wide and survive Application.Init. Problems are shown in the main window's output.
+if (useTui)
+{
+    ActiveTheme.Initialize(layeredConfig);
+    TuiTheme.Apply(ActiveTheme.Current);
+}
 var validation = new CliOptionsValidator().Validate(null, cliOptions);
 if (validation.Failed)
 {

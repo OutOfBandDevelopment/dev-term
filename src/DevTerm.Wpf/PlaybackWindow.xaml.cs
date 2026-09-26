@@ -29,6 +29,7 @@ public partial class PlaybackWindow : Window
     {
         ArgumentNullException.ThrowIfNull(controller);
         InitializeComponent();
+        WpfTheme.Attach(this);
         _controller = controller;
 
         Title = $"dev-term — Playback: {Path.GetFileName(controller.Path)}";

@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
 
         _session = session;
@@ -58,6 +59,9 @@ public partial class MainWindow : Window
         {
             AppendOutput(manifestWarning, OutputKind.Status);
         }
+
+        // View > Theme, and any problems loading themes/preferences at startup - MainWindow.Theme.cs.
+        BuildThemeMenu();
 
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
@@ -134,9 +138,9 @@ public partial class MainWindow : Window
         Title = TitleText;
 
         ConnectionStatusText.Text = ConnectionDescription.StatusText(_cliOptions, state);
-        ConnectionStatusDot.Fill = connected
-            ? System.Windows.Media.Brushes.ForestGreen
-            : state == ConnectionState.Opening ? System.Windows.Media.Brushes.Goldenrod : System.Windows.Media.Brushes.Firebrick;
+        ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(connected
+            ? ThemeRole.StatusConnected
+            : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);

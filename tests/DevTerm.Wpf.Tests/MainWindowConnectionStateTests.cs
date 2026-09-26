@@ -41,7 +41,7 @@ public sealed class MainWindowConnectionStateTests
             await window.ConnectAsync();
 
             Assert.AreEqual("Connected — tcp://127.0.0.1:23", window.ConnectionStatusText.Text);
-            Assert.AreEqual(Brushes.ForestGreen, window.ConnectionStatusDot.Fill);
+            Assert.AreEqual(WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.StatusConnected]), ((SolidColorBrush)window.ConnectionStatusDot.Fill).Color, "The dot is the theme's statusConnected.");
             Assert.DoesNotContain("disconnected", window.Title);
             Assert.IsTrue(window.ScpiMenuItem.IsEnabled, "SCPI makes sense over TCP.");
             Assert.IsFalse(window.K8055MenuItem.IsEnabled, "The K8055 is a HID device.");
@@ -60,7 +60,7 @@ public sealed class MainWindowConnectionStateTests
             await window.ToggleConnectionAsync();
 
             Assert.AreEqual("Disconnected — tcp://127.0.0.1:23", window.ConnectionStatusText.Text);
-            Assert.AreEqual(Brushes.Firebrick, window.ConnectionStatusDot.Fill);
+            Assert.AreEqual(WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.StatusDisconnected]), ((SolidColorBrush)window.ConnectionStatusDot.Fill).Color, "The dot is the theme's statusDisconnected.");
             Assert.EndsWith(" — disconnected", window.Title);
             Assert.IsFalse(window.ScpiMenuItem.IsEnabled, "No panel makes sense while disconnected.");
         });

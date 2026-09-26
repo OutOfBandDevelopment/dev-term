@@ -21,7 +21,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 
 | Field | TUI | WPF | Notes |
 |---|---|---|---|
-| State line | `● Monitoring {device}` (green) / `○ Stopped — {device}` (grey) | Colored dot + `Monitoring {device}` / `Stopped — {device}` | `{device}` is the saved profile's name when the connection is exactly one, otherwise its `tcp://…`/`serial://…`/`hid://…` definition (`StreamMonitor.DeviceNameFor`, the same subject the main window's title shows) |
+| State line | `● Monitoring {device}` (the theme's `statusConnected`) / `○ Stopped — {device}` (its menu colors) | Colored dot + `Monitoring {device}` / `Stopped — {device}` | `{device}` is the saved profile's name when the connection is exactly one, otherwise its `tcp://…`/`serial://…`/`hid://…` definition (`StreamMonitor.DeviceNameFor`, the same subject the main window's title shows) |
 | Export folder | `Saving to: {folder}` | `Saving to {folder}` (full path in the tooltip) | The connection's `ExportDirectory` (`CliOptions.EffectiveExportDirectory`), default `~/.dev-term/exports`. The user's home folder is shown as `~` (`StreamMonitor.DisplayPath`) |
 | Explanation | Two fixed lines | One wrapped line | What's detected, and (TUI) that there's no preview |
 | Capture list | `ListView`, one row per capture: `HH:mm:ss  TYPE  size  end  file` | `ListBox`, two lines per capture: `HH:mm:ss — {kind}` / `{size} bytes · {end} · {file}` | Oldest first; the newest is selected whenever one arrives. Keeps the last 100 (`StreamMonitor.MaxRetainedCaptures`) — saved files are never deleted |

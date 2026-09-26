@@ -26,19 +26,23 @@
                 <Separator />
                 <MenuItem Header="S_tream Monitor..." Click="StreamMonitor_Click" />
             </MenuItem>
+            <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
+            <MenuItem Header="_View">
+                <MenuItem x:Name="ThemeMenuItem" Header="_Theme" />
+            </MenuItem>
         </Menu>
         <!-- Connection-state indicator (MainWindow.RefreshConnectionUi): a colored dot plus
              "Connected — tcp://…" / "Connecting — …" / "Disconnected — …". -->
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
-                    <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="Firebrick" />
+                    <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource DevTerm.StatusDisconnected}" />
                     <TextBlock x:Name="ConnectionStatusText" VerticalAlignment="Center" />
                 </StackPanel>
             </StatusBarItem>
             <!-- "● REC capture.jsonl" while logging (MainWindow.Logging.cs). -->
             <StatusBarItem>
-                <TextBlock x:Name="LoggingStatusText" Foreground="Firebrick" FontWeight="SemiBold" Margin="12,0,0,0" />
+                <TextBlock x:Name="LoggingStatusText" Foreground="{DynamicResource DevTerm.Recording}" FontWeight="SemiBold" Margin="12,0,0,0" />
             </StatusBarItem>
         </StatusBar>
         <DockPanel Margin="8">
@@ -53,18 +57,18 @@
                           VerticalContentAlignment="Center" PreviewKeyDown="SendBox_PreviewKeyDown" />
             </DockPanel>
             <!-- Items are OutputLine records: device output in the normal color, app status lines
-                 dimmed and italic, errors dark red - so they can't be mistaken for each other. -->
+                 dimmed and italic, errors in the error color (theme roles OutputStatus/OutputError, WpfTheme) - so they can't be mistaken for each other. -->
             <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:OutputLine}">
                         <TextBlock x:Name="LineText" Text="{Binding Text}" />
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Status}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="DimGray" />
+                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputStatus}" />
                                 <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Error}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="DarkRed" />
+                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
                                 <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
                             </DataTrigger>
                         </DataTemplate.Triggers>

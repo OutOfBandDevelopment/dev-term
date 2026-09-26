@@ -25,6 +25,7 @@ public partial class ColorPickerWindow : Window
     public ColorPickerWindow(byte initialR, byte initialG, byte initialB)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         SelectedR = initialR;
         SelectedG = initialG;
         SelectedB = initialB;

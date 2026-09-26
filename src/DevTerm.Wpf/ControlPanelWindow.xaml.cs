@@ -78,6 +78,7 @@ public partial class ControlPanelWindow : Window
     public ControlPanelWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         Title = $"dev-term — {definition.Name}";
         _definitionName = definition.Name;
         _surface = surface;
@@ -106,7 +107,7 @@ public partial class ControlPanelWindow : Window
 
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
-            var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.DimGray, Margin = new Thickness(4, 2, 4, 2) };
+            var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) }.Themed(TextBlock.ForegroundProperty, ThemeRole.MutedForeground);
             SectionsPanel.Children.Add(BuildExpander(NotesSectionLabel, notes));
         }
 
@@ -140,12 +141,11 @@ public partial class ControlPanelWindow : Window
             Margin = new Thickness(0, 0, 0, 8),
             Content = new Border
             {
-                BorderBrush = System.Windows.Media.Brushes.LightGray,
                 BorderThickness = new Thickness(1, 0, 0, 0),
                 Margin = new Thickness(8, 4, 0, 0),
                 Padding = new Thickness(8, 0, 0, 0),
                 Child = content,
-            },
+            }.Themed(Border.BorderBrushProperty, ThemeRole.ControlBorder),
         };
         expander.Expanded += (_, _) => SectionExpansionState.Set(_definitionName, label, expanded: true);
         expander.Collapsed += (_, _) => SectionExpansionState.Set(_definitionName, label, expanded: false);
@@ -210,10 +210,9 @@ public partial class ControlPanelWindow : Window
             Margin = new Thickness(6, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 15,
-            Foreground = System.Windows.Media.Brushes.SteelBlue,
             Cursor = Cursors.Help,
             ToolTip = preview() ?? string.Empty,
-        };
+        }.Themed(TextBlock.ForegroundProperty, ThemeRole.Accent);
 
         // Recomputed on every open, so the tooltip reflects the slider position/typed text/selection
         // at hover time rather than whatever it was when the panel was built.
@@ -276,12 +275,11 @@ public partial class ControlPanelWindow : Window
                         Margin = new Thickness(6, 0, 0, 0),
                         Padding = new Thickness(8, 2, 8, 2),
                         MinWidth = 80,
-                        BorderBrush = System.Windows.Media.Brushes.Black,
                         BorderThickness = new Thickness(1),
                         VerticalAlignment = VerticalAlignment.Center,
                         Visibility = Visibility.Collapsed,
                         Child = new TextBlock { FontFamily = new System.Windows.Media.FontFamily("Consolas"), HorizontalAlignment = HorizontalAlignment.Center },
-                    };
+                    }.Themed(Border.BorderBrushProperty, ThemeRole.SwatchBorder);
                     _colorSwatches[button.Id] = swatch;
                     if (LastPickedColors.TryGet(button.Id, out var current))
                     {

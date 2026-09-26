@@ -1,4 +1,5 @@
 using System.Text;
+using DevTerm.Configuration;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.Console;
@@ -163,8 +164,11 @@ internal sealed class BrailleCanvas
 /// </summary>
 internal static class CellCharts
 {
-    /// <summary>Muted ink for axes, rings and trails.</summary>
-    internal const string Muted = "#8A8984";
+    /// <summary>Muted ink for axes, rings and trails: the theme's <c>chartMuted</c>.</summary>
+    internal static string Muted => ActiveTheme.Current[ThemeRole.ChartMuted].ToHex();
+
+    /// <summary>Whether the current theme uses <see cref="ChartPalette.DarkSlots"/> (same hues and order, stepped for a dark surface).</summary>
+    private static bool DarkPalette => ActiveTheme.Current.ChartPalette == ChartPaletteVariant.Dark;
 
     internal const int BarWidth = 30;
     internal const int StripPlotWidth = 40;
@@ -186,7 +190,7 @@ internal static class CellCharts
             var channel = channels[row];
             var x = grid.Write(0, row, (channel.Label ?? channel.Id).PadRight(labelWidth));
             x = grid.Write(x, row, " ▕", Muted);
-            var color = ChartPalette.ColorFor(channel, row);
+            var color = ChartPalette.ColorFor(channel, row, DarkPalette);
             var eighths = (int)Math.Round(state.FractionOf(channel.Id) * BarWidth * 8);
             for (var i = 0; i < BarWidth; i++)
             {
@@ -227,7 +231,7 @@ internal static class CellCharts
         for (var index = 0; index < state.Control.Channels.Count; index++)
         {
             var channel = state.Control.Channels[index];
-            var color = ChartPalette.ColorFor(channel, index);
+            var color = ChartPalette.ColorFor(channel, index, DarkPalette);
             var samples = state.SamplesOf(channel.Id);
             (int X, int Y)? previous = null;
             for (var i = 0; i < samples.Count; i++)
@@ -256,7 +260,7 @@ internal static class CellCharts
         {
             var channel = state.Control.Channels[index];
             var samples = state.SamplesOf(channel.Id);
-            legendX = grid.Write(legendX, StripPlotHeight, "■", ChartPalette.ColorFor(channel, index));
+            legendX = grid.Write(legendX, StripPlotHeight, "■", ChartPalette.ColorFor(channel, index, DarkPalette));
             var latest = samples.Count > 0 ? ChartValue.Format(samples[^1], state.Control.Unit) : "—";
             legendX = grid.Write(legendX, StripPlotHeight, $" {channel.Label ?? channel.Id} {latest}   ");
         }
@@ -328,7 +332,7 @@ internal static class CellCharts
 
         if (state.HasPoint)
         {
-            var color = state.Color is { } c ? ToHex(c) : ChartPalette.Slots[0];
+            var color = state.Color is { } c ? ToHex(c) : ChartPalette.SlotsFor(DarkPalette)[0];
             var (x, y) = Project(state.Point);
             if (control.Coordinates == CoordinateSystem.Polar)
             {

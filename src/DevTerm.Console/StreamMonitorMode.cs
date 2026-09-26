@@ -78,10 +78,10 @@ internal static class StreamMonitorMode
             statusLabel.Text = running
                 ? $" ● Monitoring {monitor.DeviceName}"
                 : $" ○ Stopped — {monitor.DeviceName}";
-            var (foreground, background) = running
-                ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(120, 200, 120, 255))
-                : (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(200, 200, 200, 255));
-            statusLabel.SetScheme(new Terminal.Gui.Drawing.Scheme(new Terminal.Gui.Drawing.Attribute(foreground, background)));
+            var theme = ActiveTheme.Current;
+            statusLabel.SetScheme(TuiTheme.Solid(running
+                ? TuiTheme.Attribute(theme, ThemeRole.StatusConnectedText, ThemeRole.StatusConnected)
+                : TuiTheme.Attribute(theme, ThemeRole.MenuForeground, ThemeRole.MenuBackground)));
             folderLabel.Text = $"Saving to: {StreamMonitor.DisplayPath(monitor.ExportDirectory)}";
             toggleButton.Text = running ? "Stop Monitoring" : "Start Monitoring";
 

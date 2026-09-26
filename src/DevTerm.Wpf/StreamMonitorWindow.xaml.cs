@@ -57,6 +57,7 @@ public partial class StreamMonitorWindow : Window
     {
         ArgumentNullException.ThrowIfNull(monitor);
         InitializeComponent();
+        WpfTheme.Attach(this);
         _monitor = monitor;
 
         CaptureList.ItemsSource = Items;
@@ -159,7 +160,7 @@ public partial class StreamMonitorWindow : Window
     {
         var running = _monitor.IsRunning;
         StateText.Text = running ? $"Monitoring {_monitor.DeviceName}" : $"Stopped — {_monitor.DeviceName}";
-        StateDot.Fill = running ? Brushes.ForestGreen : Brushes.Gray;
+        StateDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(running ? ThemeRole.StatusConnected : ThemeRole.MutedForeground));
         FolderText.Text = $"Saving to {StreamMonitor.DisplayPath(_monitor.ExportDirectory)}";
         FolderText.ToolTip = _monitor.ExportDirectory;
         ToggleButton.Content = running ? "Stop Monitoring" : "Start Monitoring";

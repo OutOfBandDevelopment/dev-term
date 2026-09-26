@@ -12,13 +12,13 @@
             </StackPanel>
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Ellipse x:Name="StateDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="ForestGreen" />
+                    <Ellipse x:Name="StateDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource DevTerm.StatusConnected}" />
                     <TextBlock x:Name="StateText" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
-                <TextBlock x:Name="FolderText" Foreground="DimGray" Margin="16,2,0,0" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="FolderText" Foreground="{DynamicResource DevTerm.MutedForeground}" Margin="16,2,0,0" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </DockPanel>
-        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="DimGray" Margin="0,0,0,8"
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.MutedForeground}" Margin="0,0,0,8"
                    Text="Watches the connection's incoming data for images (PNG, JPEG, GIF, BMP, TIFF), HP-GL plots, PostScript and PCL print jobs. Each one is saved automatically; images are previewed here." />
         <Grid>
             <Grid.ColumnDefinitions>
@@ -33,7 +33,7 @@
                         <DataTemplate DataType="{x:Type local:StreamMonitorCaptureItem}">
                             <StackPanel Margin="0,2">
                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Subtitle}" Foreground="DimGray" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Subtitle}" />
+                                <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource DevTerm.MutedForeground}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Subtitle}" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -44,14 +44,14 @@
                     <Button x:Name="ExportAsButton" DockPanel.Dock="Right" Content="Export As..." Padding="12,2" IsEnabled="False" Click="ExportAs_Click" />
                     <StackPanel>
                         <TextBlock x:Name="DetailText" TextWrapping="Wrap" />
-                        <TextBlock x:Name="SavedPathText" TextWrapping="Wrap" Foreground="DimGray" />
+                        <TextBlock x:Name="SavedPathText" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.MutedForeground}" />
                     </StackPanel>
                 </DockPanel>
-                <Border BorderBrush="LightGray" BorderThickness="1" Background="WhiteSmoke">
+                <Border BorderBrush="{DynamicResource DevTerm.ControlBorder}" BorderThickness="1" Background="{DynamicResource DevTerm.ControlBackground}">
                     <Grid>
                         <Image x:Name="PreviewImage" Stretch="Uniform" StretchDirection="DownOnly" Margin="8" RenderOptions.BitmapScalingMode="HighQuality" />
                         <TextBlock x:Name="PreviewMessage" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   TextWrapping="Wrap" TextAlignment="Center" Margin="16" Foreground="DimGray" />
+                                   TextWrapping="Wrap" TextAlignment="Center" Margin="16" Foreground="{DynamicResource DevTerm.MutedForeground}" />
                     </Grid>
                 </Border>
             </DockPanel>

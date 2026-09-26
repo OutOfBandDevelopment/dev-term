@@ -32,6 +32,19 @@ public static class DevTermUserDataPaths
     /// </summary>
     public static string LogsDirectory => Path.Combine(_userRootDirectory, "logs");
 
+    /// <summary>
+    /// <c>~/.dev-term/themes</c> — user-defined theme files (<c>*.json</c>, see <see cref="ThemeFile"/>),
+    /// listed in both front ends' View &gt; Theme menu after the built-ins. See docs/design/theming.md.
+    /// </summary>
+    public static string ThemesDirectory => Path.Combine(_userRootDirectory, "themes");
+
+    /// <summary>
+    /// <c>~/.dev-term/preferences.json</c> — app-wide preferences that aren't part of any connection
+    /// (the selected theme), shared by every front end. Deliberately separate from connection profiles:
+    /// switching profile never changes the theme. See <see cref="AppPreferencesStore"/>.
+    /// </summary>
+    public static string PreferencesFile => Path.Combine(_userRootDirectory, "preferences.json");
+
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");
 

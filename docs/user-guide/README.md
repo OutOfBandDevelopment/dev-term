@@ -42,6 +42,8 @@ test class's own doc comment.
 - [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
   Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
   preview in WPF.
+- [Choosing a theme](themes.md) — **View > Theme** (Light, Dark, System) in TUI/WPF, `--theme`, and
+  writing your own JSON theme in `~/.dev-term/themes`.
 
 For the precise field-by-field/action-by-action reference behind these screens, see
 [`docs/specs/`](../specs/README.md).

@@ -58,18 +58,18 @@
                     <TextBlock x:Name="LineText" Text="{Binding Text}" />
                     <DataTemplate.Triggers>
                         <DataTrigger Binding="{Binding Kind}" Value="{x:Static playback:PlaybackLineKind.Sent}">
-                            <Setter TargetName="LineText" Property="Foreground" Value="SteelBlue" />
+                            <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.Accent}" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Kind}" Value="{x:Static playback:PlaybackLineKind.Status}">
-                            <Setter TargetName="LineText" Property="Foreground" Value="DimGray" />
+                            <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputStatus}" />
                             <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Kind}" Value="{x:Static playback:PlaybackLineKind.Error}">
-                            <Setter TargetName="LineText" Property="Foreground" Value="DarkRed" />
+                            <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
                             <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Kind}" Value="{x:Static playback:PlaybackLineKind.Note}">
-                            <Setter TargetName="LineText" Property="Foreground" Value="DarkGoldenrod" />
+                            <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.Warning}" />
                             <Setter TargetName="LineText" Property="FontWeight" Value="Bold" />
                         </DataTrigger>
                     </DataTemplate.Triggers>

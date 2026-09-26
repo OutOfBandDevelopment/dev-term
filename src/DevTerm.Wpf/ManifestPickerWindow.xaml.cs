@@ -18,6 +18,7 @@ public partial class ManifestPickerWindow : Window
     public ManifestPickerWindow(IReadOnlyList<ManifestEntry> entries)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         ManifestList.ItemsSource = entries;
         if (entries.Count > 0)
         {
