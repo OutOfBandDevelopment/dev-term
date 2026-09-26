@@ -48,7 +48,7 @@ internal static class ManifestPanelMode
     /// A small modal picker: every discovered manifest, plus a path field for one anywhere else
     /// (a typed path wins over the list selection). Returns the chosen path, or null when cancelled.
     /// </summary>
-    private static string? Pick(IApplication app, IReadOnlyList<ManifestEntry> entries)
+    internal static string? Pick(IApplication app, IReadOnlyList<ManifestEntry> entries)
     {
         string? picked = null;
         var dialog = new Dialog { Title = "Open Device Manifest", Width = 72, Height = Math.Clamp(entries.Count + 8, 10, 22) };

@@ -485,6 +485,20 @@ file only points there, it doesn't restate them.**
 - **Windows PowerShell 5's `Get-Content`/`Set-Content` corrupt non-ASCII characters in UTF-8 source** ("●" came
   back as three garbage characters) and add a BOM and CRLF. Use `[IO.File]::ReadAllText`/`WriteAllText` with
   `UTF8Encoding($false)`, or the Edit tool.
+- **`XmlSerializer` turns a null list into an empty one on the round trip.** A null `List<T>` property (e.g.
+  `ButtonControl.ParameterFieldIds`) comes back as `[]`, so JSON→XML→JSON isn't byte-identical even though
+  JSON→JSON is. Compare field by field in XML round-trip tests.
+- **A Terminal.Gui `Window` embeds as an ordinary subview.** The manifest editor adds
+  `ControlPanelMode.BuildWindow`'s window to a `FrameView` for its live preview; it lays out and takes input.
+- **`app.End(token)` doesn't dispose a Terminal.Gui window, and `View.Dispose()` raises `Disposing` on every
+  call** (twice → twice, no exception). Cleanup hooked on `Disposing` needs an explicit `Dispose()` after a
+  nested `Run`, and must tolerate running twice.
+- **`ShadowStyle = ShadowStyles.None` still leaves the shadow's column,** so buttons placed at
+  `Pos.Right(prev) + 1` show a two-column gap. Drop the `+ 1` to pack shadowless buttons.
+- **Private constants need the `_` prefix** (`private const string _buttonKind`), or the build fails with
+  IDE1006.
+- **A `JsonStringEnumConverter<T>` on the enum type writes names but still reads numbers**, so adding one to an
+  existing enum stays backward-compatible (`FormDefinitionGeneratorTests.ChoiceStyle_IsWrittenByName_AndStillReadsAsANumber`).
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

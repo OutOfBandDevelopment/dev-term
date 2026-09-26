@@ -26,18 +26,8 @@ has landed in `docs/changes/`.
 
 **Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
 
-**Phase 2 — in progress** (theming landed 2026-09-25, see `docs/changes/2026-09-25.md`; the forms engine + manifest editor branch is still running):
-
-- **Forms from one definition** (was a low-priority `BACKLOG.md` item):
-  - Attributes on a model's properties plus a reflection-based generator that turns an annotated
-    model (starting with `CliOptions`) into the same `UiDefinition` a device manifest produces.
-  - The Connection Editor then renders through the one engine per front end, instead of being
-    hand-built twice (`ConfigureMode`, `DeviceProfilesWindow`).
-  - Open scope questions from the backlog note: whether `UiDefinition`'s one level of grouping covers
-    the editor's transport-conditional field groups, and whether `ConnectionEditorViewModel` sits
-    under the render engine or is subsumed by it.
-- **Device manifest editor:** at least a default render for request/response messages, ideally a
-  presentation editor. It builds on the forms engine above.
+**Phase 2 — done** (2026-09-25): theming, the forms engine (generated Connection Editor fields) and the
+device manifest editor all landed; see `docs/changes/2026-09-25.md`.
 
 **Phase 3 — queued (last; it restructures both main windows):**
 

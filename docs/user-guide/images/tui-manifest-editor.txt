@@ -1,0 +1,25 @@
+┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
+│⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
+│Opened                                                                        │
+│'C:\repos\github\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\mani  │
+│╭┤Outline├───────────────────╮╭┤Stream Samples├──────────────────────────────╮│
+││Identity                    ││  Name:     Stream Samples                    ││
+││Commands (3)                ││  Id:       samples                           ││
+││  Measure                   ││  Template: Samples: {count}                  ││
+││  Stream Samples            ││            ☐ Is a query                      ││
+││    count (integer)         ││  Reply id:                                   ││
+││  Hello                     ││  Sends:    Samples: 40\n                     ││
+││Response patterns (1)       ││                                              ││
+││  sample                    ││                                              ││
+││Panel                       ││                                              ││
+││  [Acquire]                 ││                                              ││
+││    button: Measure         ││                                              ││
+││    indicator: Last Sample  ││                                              ││
+││    textField: Sample Count ││                                              ││
+││    button: Stream Samples  ││                                              ││
+││    button: Hello           ││                                              ││
+││    indicator: Hello Reply  ││                                              ││
+││  [Levels]                  ││                                              ││
+│╰────────────────────────────╯╰──────────────────────────────────────────────╯│
+│⟦ Add parameter ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧                               │
+└──────────────────────────────────────────────────────────────────────────────┘

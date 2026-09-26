@@ -99,6 +99,18 @@ all, then import" option) both landed 2026-09-18, as did the Windows half of a l
 detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
 (`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
 
+- **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
+  fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
+  just annotating the view-model properties (and adding the view-model properties where missing).
+
+### Forms engine and manifest editor (follow-ups from 2026-09-25)
+
+- **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
+  dropdown); only the form renderers handle both.
+- **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
+- **The manifest editor's status line shows the full file path,** which reads long; a shortened path
+  (or just the folder name) would fit better.
+
 ### Tooling
 
 - **A custom `DevTerm.Analyzers` Roslyn project**, for coding standards that are specific to this

@@ -8,8 +8,24 @@ with the current fields. Shared logic (validation, `ConnectionProfileStore` I/O,
 both front ends:
 
 - **TUI**: `DevTerm.Console.ConfigureMode` — a Terminal.Gui `Window`.
-- **WPF**: `DevTerm.Wpf.DeviceProfilesWindow` — bound directly via XAML `{Binding ...}`/
-  `Command="{Binding ...}"`, no business logic in code-behind.
+- **WPF**: `DevTerm.Wpf.DeviceProfilesWindow` — the profile list and action rows bound via XAML
+  `{Binding ...}`/`Command="{Binding ...}"`, no business logic in code-behind.
+
+**The connection fields are generated, not hand-built** (since 2026-09-25): the view model's own
+properties carry `[Category]`/`[DisplayName]`/`[FormField]` annotations (plus `[FormSection]` on the
+class for each transport group's visibility), `FormDefinitionGenerator` turns them into
+`ConnectionEditorViewModel.FormDefinition` — an ordinary `UiDefinition` — and each front end's
+generic form renderer (`DevTerm.Console.FormRenderer`, `DevTerm.Wpf.FormRenderer`) draws it and
+binds every field back to the same view-model property through `FormBinding`. One declaration of
+the field list, labels, grouping, choice lists, value types and "which transport shows which
+group", instead of one per front end. See
+[ui-definitions.md](../design/ui-definitions.md#forms-from-one-definition) for the engine.
+
+| Part | Generated or hand-built | Why |
+|---|---|---|
+| Transport, Description, every Serial/TCP/USB Device/Loopback field, the "not found" hints, the loopback note, Presenters, SCPI profile, Send as, Line ending | **Generated** (`FormDefinition`) | Plain fields bound to view-model properties — exactly what the form vocabulary covers |
+| The "Detected ports" / "Detected HID devices" / "Detected USBTMC devices" rows | **Generated row, hand-built widget** (`TuiFormOptions`/`WpfFormOptions.CustomWidgets`) | The form places, labels and shows/hides the row with its transport; the widget needs the view model's rich device objects (a description-bearing `Display` over a short `Name`, a live-filtered list whose selection survives filtering), which a `ChoiceControl`'s plain option strings can't carry. WPF: the same bound `ComboBox`es as before; TUI: the same `Detect...` buttons and pick list |
+| Saved-profiles list and its buttons, Save as profile, the import/export path and its buttons, Connect/Close/Quit | **Hand-built** | Commands and list management (multi-select, double-click, native file dialogs), not fields of a model |
 
 Shown in two situations:
 
@@ -29,18 +45,19 @@ Shown in two situations:
 | Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`loopback` | `serial` | Must be one of the five | Selecting a value shows only that transport's field group (see States) |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
-| Baud (serial) | integer, typed as text | `9600` | Parsed with `int.TryParse`; unparseable input is silently ignored (keeps the previous value) | |
-| Data bits (serial) | integer, typed as text | `8` | Same parse behavior as Baud | |
+| Baud (serial) | integer, typed as text | `9600` | Declared `Integer`, at least 1: a value that isn't shows an inline message under/next to the field (`'96x' is not a whole number.`) while typing. The text is still kept as typed; on Connect/Save, `int.TryParse` ignores an unparseable value (keeps the previous one), as before | |
+| Data bits (serial) | integer, typed as text | `8` | Declared `Integer`, 5 to 8 (same inline message); same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
 | Stop bits (serial) | one of `None`/`One`/`Two`/`OnePointFive` | `One` | n/a (fixed set) | |
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
-| Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` | |
+| Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` (declared `Integer` 0–65535 for the inline message) | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
 | Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
 | Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
-| Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` (a row of checkboxes) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
-| Send as | one of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary` | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
+| Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary`/`k8055`/`busylight`/`scpi` (a row of checkboxes, a `ChoiceStyle.CheckList` bound to `PresentersText`, the checked names comma-joined) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set, every presenter `AddTextPresenters` registers) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as |
+| SCPI profile | one of the SCPI profile choices (Auto-detect, Generic, every bundled instrument), or empty | empty (always ask) | n/a | Shown only while the `scpi` presenter is checked (`IsScpiPresenterSelected`). Preselects the Device > SCPI Instrument... choice |
+| Send as | one of the presenters above | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
 | Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | A single-profile JSON path for Import/Export, or a `.zip` path (detected by extension) for Import/Export Selected/Export All — see Actions |
@@ -66,18 +83,23 @@ Shown in two situations:
 ## States
 
 - **Transport-based field-group visibility**: only the field group matching the selected Transport
-  is shown (Serial / TCP / USB device / Loopback) —
-  `IsSerialTransport`/`IsTcpTransport`/`IsHidTransport`/`IsUsbtmcTransport` on the view model,
-  recomputed whenever `Transport` changes. The shared Vendor/Product ID/Show-as-hex group is shown
-  for either USB transport via `IsUsbDeviceTransport` (= `IsHidTransport || IsUsbtmcTransport`);
-  within that group, only the Detected-devices picker for the *selected* one of `hid`/`usbtmc` is
-  shown, since they're separate discovery sources (see Per-front-end notes). Presenter/Line ending/
-  Description/Save/Import-export are always visible regardless of Transport.
+  is shown (Serial / TCP / USB Device / Loopback) — each group is a generated section whose
+  visibility condition names the view model's `IsSerialTransport`/`IsTcpTransport`/
+  `IsUsbDeviceTransport`/`IsLoopbackTransport` (`[FormSection(..., VisibleWhen = ...)]`), re-evaluated
+  on every change. The shared Vendor/Product ID/Show-as-hex group is shown for either USB transport
+  via `IsUsbDeviceTransport` (= `IsHidTransport || IsUsbtmcTransport`); within that group, only the
+  Detected-devices row for the *selected* one of `hid`/`usbtmc` is shown (row conditions on
+  `IsHidTransport`/`IsUsbtmcTransport`), since they're separate discovery sources (see Per-front-end
+  notes). Presentation/Description/Save/Import-export are always visible regardless of Transport.
+  **A hidden group leaves no gap in either front end**: the TUI form re-lays out its rows on every
+  change (test `ConfigureModeTests.SwitchingTransport_ReflowsTheForm_SoAHiddenGroupLeavesNoGap`), and
+  within a section the widget column follows the longest *shown* label.
 - **"Not found" hint** (`ConnectedDeviceNotFound`): when the loaded Port, or the USB identity (Vendor/Product
   ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
-  ends show a hint next to it. The TUI shows `(not found)`. WPF shows `(not found — this port isn't connected right
-  now)` / `(not found — no connected device matches this vendor/product/serial)` in red under the detected-devices
-  picker; it was TUI-only until 2026-09-25. It never blocks Connect.
+  ends show `(not found — this port isn't connected right now)` / `(not found — no connected device matches this
+  vendor/product/serial)` under the detected-devices row — a generated warning indicator
+  (`SerialPortNotFoundHint`/`UsbDeviceNotFoundHint`, shown while `ConnectedDeviceNotFound`), red in WPF. The TUI
+  showed a shorter `(not found)` beside the field before the form was generated. It never blocks Connect.
 - **USBTMC device location**: picking a detected USBTMC device also fills `DevicePath` with its physical USB
   location (`usb:{bus}-{port chain}`, e.g. `usb:1-4.2`, the same form `--listusbtmcdevices` prints as
   `at usb:…`). The transport consults it only when the serial number is blank, to tell identical serial-less
@@ -104,27 +126,31 @@ Shown in two situations:
 
 ## Per-front-end notes
 
-- **Widgets**: WPF uses a `ComboBox` for Transport/Send as/Line ending/Parity/Stop bits, bound via
-  `SelectedItem`, and an `ItemsControl` of `CheckBox`es (a `WrapPanel`) for Presenters, each bound to
-  its `PresenterSelection.IsSelected` in `ConnectionEditorViewModel.PresenterChoices`. The TUI uses
-  Terminal.Gui's `OptionSelector<TEnum>` (a radio-button-style selector) for Transport/Send as/Line
-  ending/Parity/Stop bits — it requires a real enum, so `ConfigureMode` declares two TUI-only enums
-  (`TransportChoice`, `PresenterChoice` — the latter drives Send as) purely to drive that widget,
-  converting to/from the view model's plain strings; `Parity`/`StopBits`/`LineEnding` are already
-  enums shared with `CliOptions` itself, no extra enum needed for those three. Presenters is
-  multi-select, which a radio selector can't do, so the TUI uses one `CheckBox` per presenter on a
-  single row instead, copied to/from `PresenterChoices` by push/pull like every other field.
-- **Binding vs. push/pull**: WPF's controls stay continuously in sync with the view model via real
-  `{Binding ...}` — editing a field updates the view model immediately, and vice versa. The TUI has
-  no data-binding system, so `ConfigureMode` copies every field into the view model right before
-  each command executes (`PushFieldsIntoViewModel`) and copies the view model's state back into the
-  controls right after (`PullFieldsFromViewModel`), including the saved-profiles list and the status
-  message.
-- **Field-group visibility doesn't reflow the TUI's layout**: hiding the Serial group when Transport
-  is `tcp`, for example, leaves the space it occupied blank rather than letting the TCP group move
-  up to fill it — Terminal.Gui's `Pos.Bottom(view)` positioning is computed from a view's frame
-  regardless of its `Visible` state. WPF's `Grid`/`StackPanel` layout collapses automatically when a
-  panel's `Visibility` is `Collapsed`, so this doesn't affect WPF.
+- **Widgets** (chosen by each form renderer from the same definition): WPF draws a dropdown choice
+  (Transport, Parity, Stop bits, Handshake, SCPI profile, Send as, Line ending) as a `ComboBox`, the
+  Presenters check list as a `WrapPanel` of `CheckBox`es, a text field as a `TextBox` with its inline
+  validation message under it, and a toggle as a `CheckBox` in the widget column — the same look as
+  the hand-built XAML it replaced (the regenerated screenshots are near pixel-identical). The TUI has
+  no combo box (Terminal.Gui v2.5.0), so a choice that fits on one line is a horizontal
+  `OptionSelector` (Transport, Parity, Stop bits, Handshake, Line ending); one too wide wraps onto up
+  to three lines as radio-style `CheckBox`es (Send as, whose nine options no longer fit one line); a
+  longer list is a text field plus a `Pick...` list (SCPI profile — the same "type it or pick it"
+  pattern this editor used before). Presenters is a wrapped row of `CheckBox`es. The two TUI-only
+  enums (`TransportChoice`, `PresenterChoice`) the hand-built editor needed to drive
+  `OptionSelector<TEnum>` are gone: the generic renderer uses the non-generic `OptionSelector` with
+  `Labels`. `ConfigureWindowParts` exposes each generated widget under its old name for tests
+  (`TransportSelector` et al. are now `TuiChoice`s — set `.Value = "tcp"` as a user would).
+- **Binding**: both front ends now bind live, both through `FormBinding` — editing a field writes the
+  view model immediately, and a view-model change (Load, Import, picking a detected device, the hex
+  toggle) re-reads the affected fields. The TUI's old push-before-each-command/pull-after scheme is
+  gone for the connection fields; only the hand-built Save-as name and import/export path are still
+  copied (on each keystroke), and the status line/profile list are re-read after each command.
+- **Field-group visibility reflows both layouts** (fixed 2026-09-25): the TUI's generated form
+  positions its rows absolutely and recomputes them on every change, so hiding the Serial group
+  moves TCP (and everything below, including the hand-built rows positioned under the form) up to
+  fill the space. Before, Terminal.Gui's `Pos.Bottom(view)` — computed from a view's frame whether it
+  was visible or not — left the hidden group's whole height blank. WPF's `StackPanel` layout
+  collapses a `Collapsed` section, as it always did.
 - **Saved-profiles list sizing**: WPF's list grows/shrinks proportionally with the window (a `Grid`
   row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The TUI's list has a
   fixed height (4 rows) — Terminal.Gui's absolute-position layout doesn't have an equivalent to
@@ -140,9 +166,11 @@ Shown in two situations:
   filename that doesn't exist yet, not just pick among existing ones. Browse still works for Export
   too (if the target file already exists); Save As isn't meant for Import (nothing stops picking a
   non-existent path there, but Import will just report the resulting "file not found").
-- **The TUI's form scrolls; WPF's doesn't need to** — the TUI form (~33 rows) routinely exceeds a
-  default terminal window, so its content sits in a `View` with a real Terminal.Gui viewport/scrollbar
-  (`SetContentSize` + `ViewportSettings |= AllowNegativeY | HasVerticalScrollBar`), scrollable via
+- **The TUI's form scrolls; WPF's doesn't need to** — the TUI form routinely exceeds a default
+  terminal window, so its content sits in a `View` with a real Terminal.Gui viewport/scrollbar
+  (`SetContentSize` + `ViewportSettings |= AllowNegativeY | HasVerticalScrollBar`; the content height
+  is re-measured after each layout pass — the Quit button's bottom — since the generated form grows
+  and shrinks with the transport), scrollable via
   PageUp/PageDown (bound on `Application.KeyDown`, skipped while the saved-profiles `ListView` has
   focus so it doesn't steal that list's own PageUp/PageDown/arrow-key navigation — confirmed via
   reflection that `ListView` already binds all of those itself) or the mouse wheel (bound on the
@@ -154,8 +182,9 @@ Shown in two situations:
   Two things the scrolling container needs that aren't obvious: **`CanFocus = true`** (a plain `View`
   defaults to false, and an unfocusable container blocks focus for every child — without it no field
   could be tabbed to or typed into; regression test `FormFields_CanTakeFocus_*`), and **scroll-into-
-  view on focus** (each direct child handles `HasFocusChanged` and adjusts the viewport so the
-  focused control is visible — Terminal.Gui doesn't do this itself; test
+  view on focus** (each hand-built direct child handles `HasFocusChanged`, and the generated form
+  reports its focused row through `TuiFormParts.RowFocused` — its own frame is the whole form — so the
+  viewport follows the focused control; Terminal.Gui doesn't do this itself; test
   `FocusingAControlBelowTheFold_ScrollsItIntoView`). Because focus now really starts on the profiles
   list, PageUp/PageDown page the list until focus moves off it.
 - **Overwrite/discard/bulk-delete confirmations are native per front end**: WPF uses
@@ -170,14 +199,14 @@ Shown in two situations:
   device). Deliberately not the same property, both to keep typing a custom value simple and because
   a WPF editable `ComboBox`'s `Text` and `SelectedItem` don't share one format cleanly once the
   display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the plain decimal the field
-  actually stores. WPF renders this as a second, non-editable `ComboBox` ("Detected ports:"/
-  "Detected HID devices:"/"Detected USBTMC devices:") next to the real field, only the row matching
-  the selected transport visible; the TUI renders it as a "Detect..." button (serial) or a
-  "Detect HID.../Detect USBTMC..." button (one per USB transport, always both present, next to each
-  other, since HID and USBTMC discovery are independent) that opens a small modal picker (a plain
+  actually stores. Each is its own generated row ("Detected ports:"/"Detected HID devices:"/
+  "Detected USBTMC devices:"), only the row matching the selected transport visible, with a
+  hand-built widget: WPF a non-editable `ComboBox`; the TUI a "Detect..." / "Detect HID..." /
+  "Detect USBTMC..." button that opens a small modal picker (`FormRenderer.PickFromList`, a plain
   `Dialog` + `ListView`, `Application.Run(dialog)` — Terminal.Gui has no built-in combobox widget,
-  confirmed via reflection against the installed v2.5.0 package). Both are empty (not an error) if
-  nothing's detected or discovery itself fails.
+  confirmed via reflection against the installed v2.5.0 package). Before the form was generated, the
+  TUI showed both USB Detect buttons side by side on the Vendor/Product row. Both are empty (not an
+  error) if nothing's detected or discovery itself fails.
 - **A detected serial port's description is a separate lookup, not part of the port list.**
   `ISerialPortDiscovery` keeps `GetPortNames()` as-is (the `--listports` and `SerialPort` contract)
   and gains a default-interface-method `GetPortDescriptions()` returning `port name → description`
@@ -232,8 +261,8 @@ Shown in two situations:
   `HidDevicesHiddenByFilter`/`UsbtmcDevicesHiddenByFilter` (some detected device of that kind is
   hidden only by the filter) lets the TUI say "No detected HID/USBTMC device matches the
   Vendor/Product ID entered (0 means any)" instead of a misleading "Nothing was detected." for an
-  empty picker. The TUI's fields only reach the view model when pushed, so each Detect button pushes
-  them first. Consequence worth knowing: **picking a device fills in both ids, which then narrows
+  empty picker. The fields are bound live in both front ends, so the filter always reflects what's
+  typed. Consequence worth knowing: **picking a device fills in both ids, which then narrows
   both lists to just devices matching that pair** — to pick a different one, clear an id (or set it
   to 0) first. A device whose own vendor id is 0 is not treated as a wildcard.
 - **The decimal/hex toggle for the shared Vendor/Product ID fields is display-only, backed by a
@@ -247,9 +276,10 @@ Shown in two situations:
   notification from within its own setter — only from `IdsShowHex`'s setter or from `VendorId`/
   `ProductId` changing some other way, e.g. Load or either detected-devices picker — so a bound
   `TextBox` doesn't get its text reformatted, and its caret reset to the end, after every single
-  keystroke). The TUI has no continuous binding to fight the same way — its "Show as hex" `CheckBox`
-  reformats the two fields immediately on toggle anyway, via its own `Activated` handler (confirmed
-  via a headless probe that `Activated` fires *after* `Value` has already flipped).
+  keystroke). Both generated forms now bind the two text fields to `VendorIdDisplay`/`ProductIdDisplay`
+  through `FormBinding`, which re-reads a field only when *its* property is notified — so the same
+  rule keeps the caret in place while typing, and toggling "Show as hex" (which does notify both)
+  reformats them immediately in either front end.
 - **Double-click-to-load is a per-row `MouseDoubleClick` handler in WPF, an event handler calling
   the same command in the TUI**: the original WPF version was a `<ListBox.InputBindings><MouseBinding
   MouseAction="LeftDoubleClick" Command="{Binding LoadCommand}" />` (pure binding, no code-behind) and
@@ -310,7 +340,14 @@ Shown in two situations:
 
 ## Open items
 
-None right now. Everything requested 2026-09-16 has landed: the presenter picker and per-input-line
-parser on 2026-09-18, and the last item, serial-port descriptions on Linux/macOS, on 2026-09-25 (see
-Fields and Per-front-end notes). Remaining Connection Editor follow-ups live in `BACKLOG.md`.
+- The generated form shows only the fields the view model declares; the saved-profile settings the
+  editor never exposed (`Dtr`, `Rts`, the timeouts, `AsciiMaxLineLength`, `ManifestName`,
+  `ScpiAutoDetectTimeoutMs`) are still carried over untouched rather than shown. Exposing them is now
+  a matter of annotating view-model properties for them (the form would render them with no front-end
+  change), not of hand-building two more field groups.
+
+Everything requested 2026-09-16 has landed: the presenter picker and per-input-line parser on
+2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, and the generated form (which
+also fixed the TUI's gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor
+follow-ups live in `BACKLOG.md`.
 

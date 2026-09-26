@@ -391,4 +391,58 @@ public sealed class ControlPanelWindowTests
             await Task.CompletedTask;
         });
     }
+
+    /// <summary>
+    /// The Busylight's color radios and its Custom... button share the "color" command. Picking a preset
+    /// used to leave no way back to the custom color short of reopening the picker. The "Custom" radio
+    /// (ButtonControl.ColorPickerChoiceOption) re-applies the remembered custom color instead of sending
+    /// the word "Custom".
+    /// </summary>
+    [TestMethod]
+    public void BusylightCustomRadio_AfterAPreset_ReappliesTheRememberedCustomColor()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            DevTerm.Configuration.LastPickedColors.Set("customColor", (10, 20, 30));
+            try
+            {
+                var surface = new FakeControlSurface();
+                var window = new ControlPanelWindow(DevTerm.Devices.Busylight.BusylightUiDefinition.Build(), surface, null) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+                var radios = FindRadios(window, "Red", "Custom");
+
+                radios["Red"].IsChecked = true;
+                radios["Custom"].IsChecked = true;
+                StaTestRunner.DoEvents();
+
+                Assert.AreSequenceEqual(new[] { ("color", (string?)"Red"), ("color", (string?)"10,20,30") }, surface.Invocations);
+            }
+            finally
+            {
+                DevTerm.Configuration.LastPickedColors.Forget("customColor");
+            }
+
+            await Task.CompletedTask;
+        });
+    }
+
+    private static Dictionary<string, RadioButton> FindRadios(System.Windows.DependencyObject root, params string[] contents)
+    {
+        var found = new Dictionary<string, RadioButton>();
+        void Walk(System.Windows.DependencyObject node)
+        {
+            if (node is RadioButton { Content: string text } radio && contents.Contains(text))
+            {
+                found[text] = radio;
+            }
+
+            foreach (var child in System.Windows.LogicalTreeHelper.GetChildren(node).OfType<System.Windows.DependencyObject>())
+            {
+                Walk(child);
+            }
+        }
+
+        Walk(root);
+        return found;
+    }
 }

@@ -571,6 +571,7 @@ internal static class ControlPanelMode
                             LastPickedColors.Set(button.Id, picked);
                             ShowSwatch(swatchLabel, picked);
                             Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
+                            SelectCustomColorOption(panel, colorTargetId, button);
                         }
 
                         e.Handled = true;
@@ -701,9 +702,19 @@ internal static class ControlPanelMode
                     selector.Value = defaultIndex >= 0 ? defaultIndex : 0;
                     selector.ValueChanged += (_, _) =>
                     {
-                        if (selector.Value is { } index && index >= 0 && index < choice.Options.Count)
+                        if (!panel.SuppressChoiceSend && selector.Value is { } index && index >= 0 && index < choice.Options.Count)
                         {
-                            Invoke(app, surface, choice.Id, choice.Options[index]);
+                            var option = choice.Options[index];
+                            if (panel.CustomColorLinks.TryGetValue(choice.Id, out var link) && option == link.Option)
+                            {
+                                // The "Custom" option: re-apply the picked color rather than send the
+                                // word "Custom" (the surface only knows presets and "r,g,b").
+                                ApplyCustomColor(panel, choice.Id, link.Button);
+                            }
+                            else
+                            {
+                                Invoke(app, surface, choice.Id, option);
+                            }
                         }
 
                         panel.RefreshPreview();
@@ -817,6 +828,53 @@ internal static class ControlPanelMode
     private static double ParseOr(string text, double fallback) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 
+    /// <summary>
+    /// The linked "Custom" choice option was selected: send the button's last picked color. If none
+    /// has been picked yet, open the picker - a Custom option with nothing behind it would otherwise
+    /// silently send white.
+    /// </summary>
+    private static void ApplyCustomColor(PanelState panel, string choiceId, ButtonControl button)
+    {
+        if (!LastPickedColors.TryGet(button.Id, out var color))
+        {
+            if (PickColor(panel.App, 255, 255, 255) is not { } picked)
+            {
+                return;
+            }
+
+            color = picked;
+            LastPickedColors.Set(button.Id, color);
+        }
+
+        if (panel.ControlViews.TryGetValue($"{button.Id}.swatch", out var swatch) && swatch is Label swatchLabel)
+        {
+            ShowSwatch(swatchLabel, color);
+        }
+
+        Invoke(panel.App, panel.Surface, choiceId, $"{color.R},{color.G},{color.B}");
+    }
+
+    /// <summary>After a color pick, select its linked choice option (without sending it again).</summary>
+    private static void SelectCustomColorOption(PanelState panel, string choiceId, ButtonControl button)
+    {
+        if (!panel.CustomColorLinks.TryGetValue(choiceId, out var link) || link.Button != button
+            || !panel.ControlViews.TryGetValue(choiceId, out var view) || view is not OptionSelector selector
+            || panel.Definition(choiceId) is not ChoiceControl choice)
+        {
+            return;
+        }
+
+        panel.SuppressChoiceSend = true;
+        try
+        {
+            selector.Value = choice.Options.IndexOf(link.Option);
+        }
+        finally
+        {
+            panel.SuppressChoiceSend = false;
+        }
+    }
+
     private static void ShowSwatch(Label swatch, (byte R, byte G, byte B) color)
     {
         var background = new Terminal.Gui.Drawing.Color(color.R, color.G, color.B, 255);
@@ -890,6 +948,7 @@ internal static class ControlPanelMode
             _preview = surface as ICommandPreview;
             _previewLabel = previewLabel;
             _messageLabel = messageLabel;
+            CustomColorLinks = CustomColorChoices.Find(definition);
 
             foreach (var control in definition.Sections.SelectMany(s => s.Controls))
             {
@@ -907,6 +966,15 @@ internal static class ControlPanelMode
         public IApplication App { get; }
 
         public IControlSurface Surface { get; }
+
+        /// <summary>Choice ids whose option stands for a color button's picked color - see <see cref="CustomColorChoices"/>.</summary>
+        public IReadOnlyDictionary<string, (ButtonControl Button, string Option)> CustomColorLinks { get; private set; } = new Dictionary<string, (ButtonControl, string)>();
+
+        /// <summary>Set while a color pick selects its choice option, so that selection isn't sent a second time.</summary>
+        public bool SuppressChoiceSend { get; set; }
+
+        /// <summary>The definition's control with <paramref name="id"/>, if any.</summary>
+        public UiControl? Definition(string id) => _controlsById.TryGetValue(id, out var control) ? control : null;
 
         public Dictionary<string, View> ControlViews { get; } = [];
 

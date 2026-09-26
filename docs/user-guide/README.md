@@ -39,6 +39,9 @@ test class's own doc comment.
 - [Controlling a device from a panel](device-control-panels.md) — the **Device** menu's K8055,
   Busylight, SCPI Instrument, and Device Manifest control panels (including the bar graph, strip
   chart, and vector displays), in TUI/WPF.
+- [Editing a device manifest](manifest-editor.md) — **Device > Edit Device Manifest...**: build or
+  change a device manifest's commands, reply patterns and control panel in forms, with a live preview
+  of the panel, in TUI/WPF.
 - [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
   Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
   preview in WPF.

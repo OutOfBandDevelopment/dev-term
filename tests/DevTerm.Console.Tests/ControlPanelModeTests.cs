@@ -419,4 +419,31 @@ public sealed class ControlPanelModeTests
             Assert.AreEqual(new Terminal.Gui.Drawing.Color(0x10, 0x20, 0x30, 255), swatch.GetScheme().Normal.Background);
         });
     }
+
+    /// <summary>The TUI half of the Busylight "Custom" radio - see the WPF test of the same name.</summary>
+    [TestMethod]
+    public void BusylightCustomRadio_AfterAPreset_ReappliesTheRememberedCustomColor()
+    {
+        DevTerm.Configuration.LastPickedColors.Set("customColor", (10, 20, 30));
+        try
+        {
+            var surface = new FakeControlSurface();
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var definition = DevTerm.Devices.Busylight.BusylightUiDefinition.Build();
+                var options = definition.Sections.SelectMany(s => s.Controls).OfType<ChoiceControl>().Single(c => c.Id == "color").Options;
+                var parts = ControlPanelMode.BuildWindow(app, definition, surface, null, "Busylight");
+                var selector = (OptionSelector)parts.ControlViews["color"];
+
+                selector.Value = options.IndexOf("Red");
+                selector.Value = options.IndexOf("Custom");
+            });
+
+            Assert.AreSequenceEqual(new[] { ("color", (string?)"Red"), ("color", (string?)"10,20,30") }, surface.Invocations);
+        }
+        finally
+        {
+            DevTerm.Configuration.LastPickedColors.Forget("customColor");
+        }
+    }
 }
