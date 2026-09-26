@@ -86,6 +86,24 @@ public sealed class LoopbackTransportTests
     }
 
     [TestMethod]
+    public async Task SimulatedSensor_MeasureThenSamples_ContinueOneDeterministicSequence()
+    {
+        var transport = CreateTransport();
+        await transport.OpenAsync(TestContext.CancellationToken);
+        var reader = CreateReader(transport);
+
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("MEAS?\n"), TestContext.CancellationToken);
+        Assert.AreEqual("A=50.00 B=90.00 C=0.00 X=0.80 Y=0.00 Z=0.00 R=0.50 T=0.00 H=0.00", await ReadLineAsync(reader));
+
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("Samples: 3\n"), TestContext.CancellationToken);
+        Assert.AreEqual(LoopbackGenerators.SensorSample(1), await ReadLineAsync(reader));
+        Assert.AreEqual(LoopbackGenerators.SensorSample(2), await ReadLineAsync(reader));
+        Assert.AreEqual(LoopbackGenerators.SensorSample(3), await ReadLineAsync(reader));
+        Assert.StartsWith("A=", LoopbackGenerators.SensorSample(3));
+        Assert.AreNotEqual(LoopbackGenerators.SensorSample(1), LoopbackGenerators.SensorSample(2));
+    }
+
+    [TestMethod]
     public async Task WriteAsync_WithHelpCommand_PushesTheCommandList()
     {
         var transport = CreateTransport();
