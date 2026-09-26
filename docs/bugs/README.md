@@ -28,7 +28,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 002 | [USBTMC Close hangs forever while a reply over 64 KB is being read](fixed/002-usbtmc-close-hang-large-reply.md) | DevTerm.Transports.Usbtmc | Fixed |
 | 003 | [Loopback transport can't reconnect after Disconnect](fixed/003-loopback-cannot-reconnect.md) | DevTerm.Transports.Loopback | Fixed |
 | 004 | [One saved profile with a bad value crashes TUI startup and blocks the WPF connect](fixed/004-bad-profile-value-crashes-title.md) | DevTerm.Configuration (ConnectionProfileStore), TUI, WPF | Fixed |
-| 005 | [DE-5000 negative phase angle and D readings decode as huge positives](005-de5000-negative-secondary.md) | DevTerm.Devices.De5000 | Open |
+| 005 | [DE-5000 negative phase angle and D readings decode as huge positives](fixed/005-de5000-negative-secondary.md) | DevTerm.Devices.De5000 | Fixed |
 | 006 | [One missing SCPI or manifest reply shifts every later reply onto the wrong field](006-reply-queue-desync.md) | DevTerm.Core (LineReplyPresenter), DevTerm.Devices.Scpi, DevTerm.DeviceManifests | Open |
 | 007 | [Closed TUI windows are never disposed: Page Up/Down stop working and handlers leak](007-tui-modal-windows-not-disposed.md) | TUI (DevTerm.Console) | Open |
 

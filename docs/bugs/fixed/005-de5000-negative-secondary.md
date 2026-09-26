@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed (checked against the 4x1md/de5000_lcr_py reference) |
 | **Area** | DevTerm.Devices.De5000 |
 | **Created** | 2026-09-26 |
@@ -31,3 +31,11 @@ For `%` and `deg` secondary units, treat the value as signed: `(short)((frame[11
 
 ## Tests to add
 Frames with a negative θ and a negative D or %.
+
+## Resolution
+Fixed on 2026-09-26 (branch `dev/fix-bugs`): the secondary 16-bit value is now sign-extended via
+`(short)` when `secondaryUnit is "%" or "deg"` (`De5000Framer.TryParse`,
+`src/DevTerm.Devices.De5000/De5000Framer.cs`) — matching the reference implementation, which only
+sign-extends for those two secondary units. Regression tests:
+`DevTerm.Devices.De5000.Tests.De5000FramerTests.TryParse_NegativeSecondaryDegrees_DecodesAsANegativeValue`
+and `TryParse_NegativeSecondaryPercent_DecodesAsANegativeValue`.
