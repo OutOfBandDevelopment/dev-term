@@ -11,8 +11,16 @@ namespace DevTerm.Transports.Ble.Tests;
 [TestClass]
 public sealed class BleTransportTests
 {
-    private static IOptions<BleTransportOptions> Options(string deviceId = "AA:BB:CC:DD:EE:FF") =>
-        Microsoft.Extensions.Options.Options.Create(new BleTransportOptions { DeviceId = deviceId });
+    private static IOptions<BleTransportOptions> Options(
+        string deviceId = "AA:BB:CC:DD:EE:FF",
+        int connectTimeoutMs = 10000,
+        int writeTimeoutMs = 5000) =>
+        Microsoft.Extensions.Options.Options.Create(new BleTransportOptions
+        {
+            DeviceId = deviceId,
+            ConnectTimeoutMs = connectTimeoutMs,
+            WriteTimeoutMs = writeTimeoutMs,
+        });
 
     [TestMethod]
     public async Task OpenAsync_ConnectsAdapterFromFactory()
@@ -161,6 +169,40 @@ public sealed class BleTransportTests
         await transport.CloseAsync(TestContext.CancellationToken);
 
         factory.Verify(f => f.Create(It.IsAny<BleTransportOptions>()), Times.Never);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task OpenAsync_ConnectNeverCompletes_ThrowsTimeoutExceptionAfterConnectTimeoutMs()
+    {
+        var adapter = new Mock<IBleAdapter>();
+        adapter.Setup(a => a.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct => Task.Delay(Timeout.Infinite, ct));
+        var factory = new Mock<IBleAdapterFactory>();
+        factory.Setup(f => f.Create(It.IsAny<BleTransportOptions>())).Returns(adapter.Object);
+
+        var transport = new BleTransport(factory.Object, Options(connectTimeoutMs: 50));
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => transport.OpenAsync(TestContext.CancellationToken));
+        Assert.AreEqual(ConnectionState.Faulted, transport.State);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task WriteAsync_WriteNeverCompletes_ThrowsTimeoutExceptionAfterWriteTimeoutMs()
+    {
+        var adapter = new Mock<IBleAdapter>();
+        adapter.Setup(a => a.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .Returns<ReadOnlyMemory<byte>, CancellationToken>((_, ct) => Task.Delay(Timeout.Infinite, ct));
+        var factory = new Mock<IBleAdapterFactory>();
+        factory.Setup(f => f.Create(It.IsAny<BleTransportOptions>())).Returns(adapter.Object);
+
+        var transport = new BleTransport(factory.Object, Options(writeTimeoutMs: 50));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => transport.WriteAsync(new byte[] { 1 }, TestContext.CancellationToken));
+
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     public required TestContext TestContext { get; set; }

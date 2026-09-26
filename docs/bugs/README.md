@@ -55,7 +55,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 024 | [A comma inside a text parameter shifts every later parameter](fixed/024-comma-in-text-parameter.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Fixed |
 | 025 | [BLE Disconnect doesn't actually drop the link](fixed/025-ble-service-not-disposed.md) | DevTerm.Transports.Ble.Windows | Fixed |
 | 026 | [BLE writes aren't split to the packet size](fixed/026-ble-writes-not-mtu-chunked.md) | DevTerm.Transports.Ble.Windows | Fixed |
-| 027 | [BLE connect and write timeouts are documented but never used](027-ble-timeouts-unused.md) | DevTerm.Transports.Ble, DevTerm.Configuration | Open |
+| 027 | [BLE connect and write timeouts are documented but never used](fixed/027-ble-timeouts-unused.md) | DevTerm.Transports.Ble, DevTerm.Configuration | Fixed |
 | 028 | [UTF-8 characters split across two reads come out garbled](028-utf8-split-across-reads.md) | DevTerm.Presenters.Text (Utf8Presenter) | Open |
 | 029 | [TCP writes block with no timeout and ignore cancellation](029-tcp-write-blocks-no-timeout.md) | DevTerm.Transports.Tcp | Open |
 | 030 | [Adding a note to a log that's still being recorded fails and leaves memory and disk out of step](030-playback-addnote-live-log.md) | DevTerm.Logging (PlaybackController, SessionLog) | Open |

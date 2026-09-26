@@ -82,6 +82,8 @@ public static class ServiceCollectionExtensions
                 {
                     o.NotifyCharacteristicUuid = notifyUuid;
                 }
+
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
             });
 
             // Must come after AddBleTransport() - see BlePlatformAdapterLoader's doc comment for why
