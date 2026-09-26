@@ -85,6 +85,9 @@ public partial class MainWindow
     {
         LoggingMenuItem.Header = _logger is null ? StartLoggingHeader : StopLoggingHeader;
         LoggingStatusText.Text = _logger?.Path is { } path ? $"● REC {Path.GetFileName(path)}" : string.Empty;
+
+        // The file name trims to the status bar's width; the tooltip has the whole path.
+        LoggingStatusText.ToolTip = _logger?.Path;
     }
 
     private void LoggingMenuItem_Click(object sender, RoutedEventArgs e)

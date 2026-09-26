@@ -116,7 +116,7 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **TUI**: no preview by design (Terminal.Gui can't draw images); open the saved file. The window is
   modal like every other TUI screen, which is why closing it doesn't stop monitoring. Device names
   and file names are shown verbatim (`_` is not treated as a hotkey marker).
-- **WPF**: live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free
+- **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free
   where a format already has a native decoder".
 
 ## Open items

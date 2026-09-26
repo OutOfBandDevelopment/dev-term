@@ -28,6 +28,10 @@ public partial class ManifestEditorWindow : Window
     {
         ArgumentNullException.ThrowIfNull(editor);
         InitializeComponent();
+
+        // Every other window did this; the editor didn't, so it stayed light under a dark theme
+        // (found by UiLayoutReviewTests' dark-theme checks).
+        WpfTheme.Attach(this);
         Editor = editor;
         OutlineList.ItemsSource = editor.Nodes;
 

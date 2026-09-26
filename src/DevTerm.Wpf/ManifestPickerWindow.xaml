@@ -1,20 +1,32 @@
 <Window x:Class="DevTerm.Wpf.ManifestPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="dev-term — Open Device Manifest" Height="400" Width="520" MinHeight="260" MinWidth="360"
+        Title="dev-term — Open Device Manifest" Height="400" Width="520" MinHeight="320" MinWidth="360"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
-    <DockPanel Margin="10">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Content="Open" Width="80" Height="32" Margin="0,0,8,0" IsDefault="True" Click="OpenButton_Click" />
-            <Button Content="Cancel" Width="80" Height="32" IsCancel="True" />
-        </StackPanel>
-        <TextBlock x:Name="ErrorText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.Error}" />
-        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+    <!-- A grid, not a DockPanel: with everything docked around a filling list, a long load error
+         (it quotes the whole path) squeezed the list to nothing and pushed the "Or a path" label off
+         the top at the minimum size. Now the list keeps a minimum height and the error scrolls. -->
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="60" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ListBox x:Name="ManifestList" Grid.Row="0" DisplayMemberPath="DisplayName" MouseDoubleClick="ManifestList_MouseDoubleClick" />
+        <TextBlock Grid.Row="1" Margin="0,8,0,0" Text="Or a path (file, folder, .zip):" />
+        <DockPanel Grid.Row="2" Margin="0,4,0,0">
             <Button DockPanel.Dock="Right" Content="Folder..." Width="72" Margin="6,0,0,0" Click="BrowseFolder_Click" />
             <Button DockPanel.Dock="Right" Content="File..." Width="72" Margin="6,0,0,0" Click="BrowseFile_Click" />
             <TextBox x:Name="PathBox" VerticalContentAlignment="Center" ToolTip="A manifest file (.json), a folder with a device.json, or a .zip of one" />
         </DockPanel>
-        <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" Text="Or a path (file, folder, .zip):" />
-        <ListBox x:Name="ManifestList" DisplayMemberPath="DisplayName" MouseDoubleClick="ManifestList_MouseDoubleClick" />
-    </DockPanel>
+        <ScrollViewer Grid.Row="3" MaxHeight="72" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.Error}" />
+        </ScrollViewer>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Open" Width="80" Height="32" Margin="0,0,8,0" IsDefault="True" Click="OpenButton_Click" />
+            <Button Content="Cancel" Width="80" Height="32" IsCancel="True" />
+        </StackPanel>
+    </Grid>
 </Window>
