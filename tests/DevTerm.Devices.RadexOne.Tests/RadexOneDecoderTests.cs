@@ -141,6 +141,32 @@ public sealed class RadexOneDecoderTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_WithAFalseHeaderWithAHugeDeclaredLength_StillDecodesTheFollowingValidPacketPromptly()
+    {
+        var decoder = new RadexOneDecoder();
+
+        // A false header: real prefix bytes (as line noise could produce), but a wrong type marker,
+        // a huge declared ExtensionLength (0xFFFF), and a wrong header checksum — none of which the
+        // buggy code checked before waiting for the full (bogus) 65,535-byte extension to arrive.
+        byte[] falseHeader =
+        [
+            RadexOneFramer.InboundPrefix0, RadexOneFramer.InboundPrefix1,
+            0x00, 0x00, // wrong type marker (real inbound marker is 0x8020)
+            0xFF, 0xFF, // ExtensionLength = 0xFFFF
+            0x00, 0x00, // packet number
+            0x00, 0x00, // reserved
+            0x00, 0x00, // wrong header checksum
+        ];
+        var validExtension = BuildReadDataExtension(ambient: 10, accumulated: 20, cpm: 30);
+        var validReport = RadexOneFramer.BuildReply(1, validExtension);
+
+        var lines = decoder.Render(new ReadOnlySequence<byte>([.. falseHeader, .. validReport]));
+
+        StringAssert.Contains(lines[^1], "RADEX-ONE: CPM=30 Ambient=10 Accum=20");
+    }
+
+    [TestMethod]
     public void Render_WhenReplySplitsAcrossTwoReads_StillDecodes()
     {
         var decoder = new RadexOneDecoder();

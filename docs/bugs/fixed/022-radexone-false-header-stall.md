@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Devices.RadexOne |
 | **Created** | 2026-09-26 |
@@ -27,3 +27,13 @@ Check the type marker and header checksum as soon as 12 bytes are buffered and r
 
 ## Tests to add
 A false header with a huge length followed by a valid packet decodes the valid packet promptly.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: added `RadexOneFramer.TryValidateHeader`, which checks the
+prefix, type marker and header checksum as soon as `HeaderLength` (12) bytes are buffered, returning
+the declared `ExtensionLength` on success. `RadexOneDecoder.Render` now calls it immediately after
+buffering the header, instead of unconditionally waiting for `HeaderLength + ExtensionLength` bytes
+(up to 65,547) before validating anything — a bad header (wrong type marker or checksum) is now
+rejected and resynchronized one byte at a time right away, rather than stalling until a bogus
+declared length's worth of bytes accumulates. Regression test:
+`RadexOneDecoderTests.Render_WithAFalseHeaderWithAHugeDeclaredLength_StillDecodesTheFollowingValidPacketPromptly`.

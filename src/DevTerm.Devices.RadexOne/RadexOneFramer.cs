@@ -94,6 +94,40 @@ public static class RadexOneFramer
     }
 
     /// <summary>
+    /// Validates just the fixed-size header (prefix, type marker, header checksum) as soon as
+    /// <see cref="HeaderLength"/> bytes are buffered, without waiting for the full
+    /// <paramref name="header"/>'s declared <c>ExtensionLength</c> worth of bytes to arrive first —
+    /// a stream-buffering reader (see <see cref="RadexOneDecoder"/>) needs to reject a bogus header
+    /// (e.g. line noise that happens to start with the prefix bytes, with a garbage length up to
+    /// 65,535) immediately rather than stalling until that many bytes accumulate (see
+    /// docs/bugs/fixed/022-radexone-false-header-stall.md). Returns the declared
+    /// <paramref name="extensionLength"/> on success so the caller knows how many more bytes to wait
+    /// for before the extension itself can be parsed.
+    /// </summary>
+    public static bool TryValidateHeader(ReadOnlySpan<byte> header, out ushort extensionLength)
+    {
+        extensionLength = 0;
+
+        if (header.Length < HeaderLength || header[0] != _inboundPrefix0 || header[1] != _inboundPrefix1)
+        {
+            return false;
+        }
+
+        if (BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(2, 2)) != _inboundTypeMarker)
+        {
+            return false;
+        }
+
+        if (BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(_checksumOffset, 2)) != ComputeChecksum(header[.._checksumCoveredLength]))
+        {
+            return false;
+        }
+
+        extensionLength = BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(4, 2));
+        return true;
+    }
+
+    /// <summary>
     /// Parses an inbound (0x7A 0xFF-prefixed) reply out of <paramref name="buffer"/>, which may carry
     /// trailing bytes past the packet's own declared <c>ExtensionLength</c> — anything beyond the
     /// parsed extension is ignored rather than treated as an error. Returns false for a short buffer,

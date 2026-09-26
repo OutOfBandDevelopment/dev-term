@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using DevTerm.Core.Presenters;
@@ -58,7 +57,14 @@ public sealed class RadexOneDecoder : IPresenter
             }
 
             var header = CollectionsMarshal.AsSpan(_buffer)[..RadexOneFramer.HeaderLength];
-            var extensionLength = BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(4, 2));
+
+            if (!RadexOneFramer.TryValidateHeader(header, out var extensionLength))
+            {
+                (results ??= []).Add("RADEX-ONE: unrecognized reply (header checksum mismatch or wrong prefix)");
+                _buffer.RemoveAt(0);
+                continue;
+            }
+
             var totalLength = RadexOneFramer.HeaderLength + extensionLength;
 
             if (_buffer.Count < totalLength)
