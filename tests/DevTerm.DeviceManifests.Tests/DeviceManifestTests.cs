@@ -207,6 +207,121 @@ public sealed class DeviceManifestTests
         }
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_UiFileIsARootedPath_ThrowsInsteadOfReadingIt()
+    {
+        var directory = CreateTempDirectory();
+        var outsideDirectory = CreateTempDirectory();
+        try
+        {
+            var outsideUiPath = Path.Combine(outsideDirectory, "evil.json");
+            File.WriteAllText(outsideUiPath, UiDefinitionSerializer.ToJson(BuildKoradUi()));
+
+            var manifest = BuildKoradManifest(uiFile: outsideUiPath);
+            File.WriteAllText(Path.Combine(directory, DeviceManifestLoader.ManifestFileName), DeviceManifestSerializer.ToJson(manifest));
+
+            Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestLoader.Load(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            Directory.Delete(outsideDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_UiFileEscapesTheManifestFolderWithDotDot_Throws()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var manifest = BuildKoradManifest(uiFile: @"..\..\evil.json");
+            File.WriteAllText(Path.Combine(directory, DeviceManifestLoader.ManifestFileName), DeviceManifestSerializer.ToJson(manifest));
+
+            Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestLoader.Load(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_KaitaiFileIsARootedPath_ThrowsInsteadOfProbingIt()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var manifest = BuildKoradManifest(inlineUi: BuildKoradUi());
+            manifest.Inbound!.KaitaiFile = Path.Combine(Path.GetTempPath(), "some-unrelated-file.ksy");
+            File.WriteAllText(Path.Combine(directory, DeviceManifestLoader.ManifestFileName), DeviceManifestSerializer.ToJson(manifest));
+
+            Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestLoader.Load(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Save_UiFileIsARootedPath_ThrowsInsteadOfWritingOutsideTheManifestFolder()
+    {
+        var directory = CreateTempDirectory();
+        var outsideDirectory = CreateTempDirectory();
+        try
+        {
+            var outsideUiPath = Path.Combine(outsideDirectory, "evil.json");
+            var manifest = BuildKoradManifest(inlineUi: BuildKoradUi(), uiFile: outsideUiPath);
+
+            Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestWriter.Save(manifest, directory));
+            Assert.IsFalse(File.Exists(outsideUiPath));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            Directory.Delete(outsideDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Save_KaitaiFileEscapesTheManifestFolderWithDotDot_Throws()
+    {
+        var directory = CreateTempDirectory();
+        var sourceDirectory = CreateTempDirectory();
+        try
+        {
+            var manifest = BuildKoradManifest(inlineUi: BuildKoradUi());
+            manifest.Inbound!.KaitaiFile = @"..\..\evil.ksy";
+
+            Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestWriter.Save(manifest, directory, sourceDirectory));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+            Directory.Delete(sourceDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_UiFileOrKaitaiFileEscapesTheManifestFolder_ReportsAnError()
+    {
+        var manifest = BuildKoradManifest(inlineUi: BuildKoradUi(), uiFile: @"C:\evil.json");
+        manifest.Inbound!.KaitaiFile = @"..\evil.ksy";
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.Contains("UiFile", string.Join(" ", result.Errors));
+        Assert.Contains("KaitaiFile", string.Join(" ", result.Errors));
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-manifest-tests", Path.GetRandomFileName());

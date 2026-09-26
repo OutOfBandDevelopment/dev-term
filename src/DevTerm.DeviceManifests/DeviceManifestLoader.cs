@@ -83,7 +83,7 @@ public static class DeviceManifestLoader
 
         if (manifest.Ui is null && manifest.UiFile is not null)
         {
-            var uiPath = Path.Combine(baseDirectory, manifest.UiFile);
+            var uiPath = ManifestRelativePath.CombineSafely(baseDirectory, manifest.UiFile, "UiFile");
             if (!File.Exists(uiPath))
             {
                 throw new FileNotFoundException($"Manifest references a UI file that doesn't exist: '{manifest.UiFile}'.", uiPath);
@@ -97,7 +97,7 @@ public static class DeviceManifestLoader
 
         if (manifest.Inbound?.KaitaiFile is { } kaitaiFile)
         {
-            var kaitaiPath = Path.Combine(baseDirectory, kaitaiFile);
+            var kaitaiPath = ManifestRelativePath.CombineSafely(baseDirectory, kaitaiFile, "KaitaiFile");
             if (!File.Exists(kaitaiPath))
             {
                 throw new FileNotFoundException($"Manifest references a Kaitai file that doesn't exist: '{kaitaiFile}'.", kaitaiPath);

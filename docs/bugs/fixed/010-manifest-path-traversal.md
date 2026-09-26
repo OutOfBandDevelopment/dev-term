@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.DeviceManifests (loader, writer, validator) |
 | **Created** | 2026-09-26 |
@@ -32,3 +32,20 @@ Enforce the same check in the loader and the writer.
 
 ## Tests to add
 Manifests with `UiFile`/`KaitaiFile` set to a rooted path and to `..\` are rejected on load and on save.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: new `ManifestRelativePath` (`src/DevTerm.DeviceManifests/ManifestRelativePath.cs`)
+rejects a rooted `UiFile`/`KaitaiFile` path and any path containing a `..` segment, and confirms the resolved
+(`Path.GetFullPath`) result still falls inside the manifest's own folder. `DeviceManifestLoader.LoadFromFile` and
+`DeviceManifestWriter.Save` now combine both paths through `ManifestRelativePath.CombineSafely` (which throws
+`InvalidOperationException`) instead of a bare `Path.Combine`, on both the load side (including the writer's own
+Kaitai *source* path, which is just as attacker-controlled as its destination) and the save side. This runs before
+validation ever gets a chance to run (`Load(path, validate: false, ...)`, used by the manifest editor to open a
+broken manifest, still calls `LoadFromFile` first), so the guard has to live in the loader/writer themselves, not
+only in `DeviceManifestValidator`. `DeviceManifestValidator.Validate` also gained the same `ManifestRelativePath.IsSafe`
+check as an error, so the manifest editor's own save-time validation catches an unsafe path before `Save` is ever
+reached. Regression tests: `DeviceManifestTests.Load_UiFileIsARootedPath_ThrowsInsteadOfReadingIt`,
+`Load_UiFileEscapesTheManifestFolderWithDotDot_Throws`, `Load_KaitaiFileIsARootedPath_ThrowsInsteadOfProbingIt`,
+`Save_UiFileIsARootedPath_ThrowsInsteadOfWritingOutsideTheManifestFolder`,
+`Save_KaitaiFileEscapesTheManifestFolderWithDotDot_Throws`,
+`Validate_UiFileOrKaitaiFileEscapesTheManifestFolder_ReportsAnError`.

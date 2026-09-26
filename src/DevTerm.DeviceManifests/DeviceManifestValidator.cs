@@ -58,6 +58,16 @@ public static partial class DeviceManifestValidator
             errors.Add("The manifest needs a name.");
         }
 
+        if (manifest.UiFile is { Length: > 0 } uiFile && !ManifestRelativePath.IsSafe(uiFile))
+        {
+            errors.Add($"The manifest's UiFile '{uiFile}' must be a path inside the manifest's own folder.");
+        }
+
+        if (manifest.Inbound?.KaitaiFile is { Length: > 0 } kaitaiFile && !ManifestRelativePath.IsSafe(kaitaiFile))
+        {
+            errors.Add($"The manifest's KaitaiFile '{kaitaiFile}' must be a path inside the manifest's own folder.");
+        }
+
         var commandIds = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < manifest.OutboundCommands.Count; i++)
         {

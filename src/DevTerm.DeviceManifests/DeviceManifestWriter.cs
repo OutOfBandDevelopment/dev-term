@@ -52,7 +52,7 @@ public static class DeviceManifestWriter
         var toWrite = manifest;
         if (manifest.UiFile is { Length: > 0 } uiFile && manifest.Ui is { } ui)
         {
-            var uiPath = Path.Combine(directory, uiFile);
+            var uiPath = ManifestRelativePath.CombineSafely(directory, uiFile, "UiFile");
             Directory.CreateDirectory(Path.GetDirectoryName(uiPath)!);
             File.WriteAllText(uiPath, string.Equals(Path.GetExtension(uiPath), ".xml", StringComparison.OrdinalIgnoreCase)
                 ? UiDefinitionSerializer.ToXml(ui)
@@ -63,8 +63,8 @@ public static class DeviceManifestWriter
 
         if (manifest.Inbound?.KaitaiFile is { Length: > 0 } kaitai && sourceDirectory is not null)
         {
-            var destination = Path.Combine(directory, kaitai);
-            var source = Path.Combine(sourceDirectory, kaitai);
+            var destination = ManifestRelativePath.CombineSafely(directory, kaitai, "KaitaiFile");
+            var source = ManifestRelativePath.CombineSafely(sourceDirectory, kaitai, "KaitaiFile");
             if (!File.Exists(destination) && File.Exists(source) && !string.Equals(Path.GetFullPath(source), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);

@@ -38,7 +38,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 |---|---|---|---|
 | 008 | [Real read failures are reported as a clean hang-up with no error](fixed/008-pump-swallows-read-errors.md) | DevTerm.Core (StreamToPipePump), Serial/TCP/HID | Fixed |
 | 009 | [Closing while the pipe is full throws part-way and leaks the port or socket](fixed/009-pump-flush-cancel-close-leak.md) | DevTerm.Core (StreamToPipePump, Session), Serial/TCP/HID | Fixed |
-| 010 | [A manifest's UiFile/KaitaiFile path can make Save write, and Load read, anywhere on disk](010-manifest-path-traversal.md) | DevTerm.DeviceManifests (loader, writer, validator) | Open |
+| 010 | [A manifest's UiFile/KaitaiFile path can make Save write, and Load read, anywhere on disk](fixed/010-manifest-path-traversal.md) | DevTerm.DeviceManifests (loader, writer, validator) | Fixed |
 | 011 | [Manifest zips extract with no size limit and leave a temp folder behind on every open](011-manifest-zip-unbounded-temp-leak.md) | DevTerm.DeviceManifests (loader) | Open |
 | 012 | [Profile names are never validated](012-profile-names-not-validated.md) | DevTerm.Configuration (ConnectionProfileStore, DevTermUserDataPaths) | Open |
 | 013 | [Save Profile and Export crash on a bad name or path](013-save-export-no-error-handling.md) | DevTerm.Configuration (ConnectionEditorViewModel), TUI, WPF | Open |
