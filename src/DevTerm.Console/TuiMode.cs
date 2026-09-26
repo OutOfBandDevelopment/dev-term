@@ -143,6 +143,9 @@ public static class TuiMode
             Height = Dim.Fill(2),
             ReadOnly = true,
             Text = string.Join('\n', outputLines),
+
+            // Colors [error]/[dev-term] lines apart from device output - see OutputHighlighting.
+            HighlightingDefinition = OutputHighlighting.Definition,
         };
 
         var sendLabel = new Label
