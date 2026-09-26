@@ -4,13 +4,12 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Devices.RadexOne.Tests;
 
 /// <summary>
-/// Feeds <see cref="RadexOneDecoder"/> HID-wrapped sample replies (built via
-/// <see cref="RadexOneFramer.BuildReply"/> + <see cref="RadexOneHidFraming.WrapRequest"/>, reused here
-/// purely as a byte-layout helper since the report shape is symmetric for this test's purposes) and
-/// asserts the rendered text — no real device involved, so this is <c>UNIT</c>.
+/// Feeds <see cref="RadexOneDecoder"/> sample replies (built via <see cref="RadexOneFramer.BuildReply"/>
+/// and <see cref="RadexOneExtensionCodec"/>) and asserts the rendered text — no real device involved,
+/// so this is <c>UNIT</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
-[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Serial)]
 [TestCategory(TestCategories.Radex_One)]
 [TestClass]
 public sealed class RadexOneDecoderTests
@@ -29,8 +28,8 @@ public sealed class RadexOneDecoderTests
     public void Render_WithReadDataReply_FormatsAmbientAccumAndCpm()
     {
         var decoder = new RadexOneDecoder();
-        byte[] extension = [0x0A, 0x00, 0x14, 0x00, 0x1E, 0x00]; // Ambient=10, Accumulated=20, Cpm=30
-        var report = WrapReply(RadexOneCommand.ReadData, extension);
+        var extension = BuildReadDataExtension(ambient: 10, accumulated: 20, cpm: 30);
+        var report = RadexOneFramer.BuildReply(1, extension);
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(report));
 
@@ -42,7 +41,12 @@ public sealed class RadexOneDecoderTests
     public void Render_WithSerialVersionReply_RendersAsciiText()
     {
         var decoder = new RadexOneDecoder();
-        var report = WrapReply(RadexOneCommand.ReadSerialVersion, "RD1706123"u8.ToArray());
+        var payload = "RD1706123"u8.ToArray();
+        var extension = new byte[4 + payload.Length + 2];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.ReadSerialVersion);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(2), 0x000C);
+        payload.CopyTo(extension.AsSpan(4));
+        var report = RadexOneFramer.BuildReply(1, extension);
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(report));
 
@@ -53,8 +57,8 @@ public sealed class RadexOneDecoderTests
     public void Render_WithSettingsReply_FormatsAlarmModeAndThreshold()
     {
         var decoder = new RadexOneDecoder();
-        byte[] extension = [0x02, 0x2C, 0x01]; // Audio, threshold=0x012C=300
-        var report = WrapReply(RadexOneCommand.ReadSettings, extension);
+        var extension = BuildReadSettingsExtension(alarmMode: 2, threshold: 300); // Audio
+        var report = RadexOneFramer.BuildReply(1, extension);
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(report));
 
@@ -65,8 +69,9 @@ public sealed class RadexOneDecoderTests
     public void Render_WithBadChecksum_ProducesADiagnosticLineInsteadOfThrowing()
     {
         var decoder = new RadexOneDecoder();
-        var report = WrapReply(RadexOneCommand.ReadData, [0x01, 0x02, 0x03, 0x04, 0x05, 0x06]);
-        report[11] ^= 0xFF;
+        var extension = BuildReadDataExtension(ambient: 10, accumulated: 20, cpm: 30);
+        var report = RadexOneFramer.BuildReply(1, extension);
+        report[10] ^= 0xFF; // corrupt the outer header checksum
 
         var lines = decoder.Render(new ReadOnlySequence<byte>(report));
 
@@ -74,6 +79,41 @@ public sealed class RadexOneDecoderTests
         StringAssert.Contains(lines[0], "unrecognized reply");
     }
 
-    private static byte[] WrapReply(ushort type, byte[] extension) =>
-        RadexOneHidFraming.WrapRequest(RadexOneFramer.BuildReply(type, 1, extension));
+    [TestMethod]
+    public void Render_WhenReplySplitsAcrossTwoReads_StillDecodes()
+    {
+        var decoder = new RadexOneDecoder();
+        var extension = BuildReadDataExtension(ambient: 10, accumulated: 20, cpm: 30);
+        var report = RadexOneFramer.BuildReply(1, extension);
+        var splitAt = report.Length / 2;
+
+        var first = decoder.Render(new ReadOnlySequence<byte>(report[..splitAt]));
+        Assert.IsEmpty(first);
+
+        var second = decoder.Render(new ReadOnlySequence<byte>(report[splitAt..]));
+
+        Assert.HasCount(1, second);
+        Assert.AreEqual("RADEX-ONE: CPM=30 Ambient=10 Accum=20", second[0]);
+    }
+
+    private static byte[] BuildReadDataExtension(ushort ambient, ushort accumulated, ushort cpm)
+    {
+        var extension = new byte[22];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.ReadData);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(4), 0x000C);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(8), ambient);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(12), accumulated);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(16), cpm);
+        return extension;
+    }
+
+    private static byte[] BuildReadSettingsExtension(byte alarmMode, ushort threshold)
+    {
+        var extension = new byte[16];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension, RadexOneCommand.ReadSettings);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(4), 0x0005);
+        extension[8] = alarmMode;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(9), threshold);
+        return extension;
+    }
 }

@@ -67,9 +67,10 @@ the rest.
   `RealHardwareDe5000Tests` once the adapter is on the bench and `devterm.runsettings` has its
   device id/UUIDs filled in.
   - [Radex One](docs/design/proposals/radex-one-protocol.md) landed 2026-09-25 (`DevTerm.Devices.RadexOne`,
-  see `docs/changes/2026-09-25.md`) but is unverified against real hardware — no device was found
-  attached during a live enumeration pass. Re-run `RealHardwareRadexOneTests` once the device is
-  available and `devterm.runsettings` has its VendorId/ProductId filled in (see `TODO.md`).
+  see `docs/changes/2026-09-25.md`); a real device on COM8 never replied, traced to two protocol bugs
+  (outer header's Type field, checksum formula) since fixed and checksum-verified against the source
+  doc's real traces. Still needs a real-hardware re-run to confirm the device replies now — see
+  `TODO.md`.
   - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) landed 2026-09-25
   (`DevTerm.Devices.ZoomH4n`, see `docs/changes/2026-09-25.md`) but is unverified against real
   hardware — no `h4n2rs485` adapter was attached. Re-run `RealHardwareZoomH4nTests` once it's

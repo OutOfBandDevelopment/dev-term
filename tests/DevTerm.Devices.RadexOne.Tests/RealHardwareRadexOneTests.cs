@@ -1,34 +1,32 @@
+using System.IO.Ports;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Test.Utilities;
-using DevTerm.Transports.Hid;
+using DevTerm.Transports.Serial;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Devices.RadexOne.Tests;
 
 /// <summary>
-/// Opt-in test against a real Radex One HID device — same shape as
-/// <c>DevTerm.Devices.Busylight.Tests.RealHardwareBusylightTests</c>. Sends a Read Data query and
-/// waits for a reply to reach <see cref="RadexOneDecoder"/> via <see cref="Session.Output"/>.
+/// Opt-in test against a real Radex One over its virtual COM port (2400 8-N-1, no handshake — real-
+/// hardware confirmed 2026-09-25 on COM8; see docs/design/proposals/radex-one-protocol.md). Same
+/// in-process pattern as <c>DevTerm.Devices.ZoomH4n.Tests.RealHardwareZoomH4nTests</c>: constructs a
+/// real <see cref="SerialTransport"/> directly, parameterized entirely via
+/// <c>devterm.runsettings</c> so a COM port reassignment doesn't require a code change.
 ///
-/// <para>This test is also, by design, the first real check of this whole module's biggest unverified
-/// assumption: the HID report framing in <see cref="RadexOneHidFraming"/> (leading report-ID byte,
-/// 64-byte body). If it's wrong, this test will very likely time out waiting for a reply rather than
-/// fail cleanly — see that type's doc comment before spending time debugging a timeout here as
-/// something else.</para>
+/// <para>An earlier draft of this module was built on a wrong "confirmed directly... USB HID device"
+/// assumption (see the proposal doc's "Device" section) and sent every request wrapped in a fake HID
+/// report — that would have corrupted every byte on a real serial connection. This test, along with
+/// <see cref="RadexOneDecoder"/> and <see cref="RadexOneControlSurface"/>, was corrected to plain
+/// serial once a real device turned up enumerated as a COM port instead of a HID device.</para>
 ///
-/// Preflights via <see cref="RealDeviceReachability.IsHidDeviceAvailable"/> and reports
-/// <see cref="Assert.Inconclusive(string)"/>, never a failure, when the device isn't currently
-/// enumerated — true as of this writing (2026-09-25): a live enumeration pass on the development
-/// machine found no Radex One HID device attached, only an unrelated MSI "MYSTIC LIGHT" RGB
-/// controller, despite it being expected to be attached. VendorId/ProductId are therefore still
-/// unconfirmed and left blank in <c>devterm.runsettings</c> pending the device actually being
-/// plugged in for a real session.
+/// Sends a Read Data query and waits for a reply to reach <see cref="RadexOneDecoder"/> via
+/// <see cref="Session.Output"/> — the "no fault, no timeout, at least one decoded reply" bar used by
+/// every other real-hardware test in this repo.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
-[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Serial)]
 [TestCategory(TestCategories.Radex_One)]
-[TestCategory(TestCategories.Hardware)]
 [TestClass]
 public sealed class RealHardwareRadexOneTests
 {
@@ -39,41 +37,39 @@ public sealed class RealHardwareRadexOneTests
     private string? GetProperty(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 
     [TestMethod]
+    [TestCategory(TestCategories.Hardware)]
     public async Task RealDevice_ReadData_ReceivesADecodedReply()
     {
-        var vendorIdText = GetProperty("RealHidRadexOneVendorId");
-        var productIdText = GetProperty("RealHidRadexOneProductId");
-        var devicePath = GetProperty("RealHidRadexOneDevicePath");
-
-        TestContext.WriteLine($"VendorId/ProductId/DevicePath: {vendorIdText}/{productIdText}/{devicePath}");
-
-        if (string.IsNullOrEmpty(vendorIdText) || string.IsNullOrEmpty(productIdText)
-            || !int.TryParse(vendorIdText, out var vendorId) || !int.TryParse(productIdText, out var productId))
+        var port = GetProperty("RealSerialRadexOnePort");
+        if (string.IsNullOrEmpty(port))
         {
-            Assert.Inconclusive("No 'RealHidRadexOneVendorId'/'RealHidRadexOneProductId' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            Assert.Inconclusive("No 'RealSerialRadexOnePort' - run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
             return;
         }
 
-        if (!RealDeviceReachability.IsHidDeviceAvailable(vendorId, productId, devicePath))
+        if (!RealDeviceReachability.IsSerialPortAvailable(port))
         {
-            Assert.Inconclusive($"No Radex One HID device (VendorId {vendorId}, ProductId {productId}) is currently enumerated — is it plugged in?");
+            Assert.Inconclusive($"'{port}' is not currently enumerated by the OS — is the Radex One plugged in?");
             return;
         }
 
-        var options = Options.Create(new HidTransportOptions
+        var options = Options.Create(new SerialTransportOptions
         {
-            VendorId = vendorId,
-            ProductId = productId,
-            DevicePath = string.IsNullOrEmpty(devicePath) ? null : devicePath,
+            PortName = port,
+            BaudRate = 2400,
+            DataBits = 8,
+            Parity = Parity.None,
+            StopBits = StopBits.One,
+            Handshake = Handshake.None,
         });
 
-        await using var transport = new HidTransport(new SystemHidDeviceFactory(), options);
+        await using var transport = new SerialTransport(new SystemSerialPortFactory(), options);
         await using var session = new Session(transport, new Pipeline([new RadexOneDecoder()]));
 
         string? received = null;
         session.Output += (_, output) => received = output.Text;
 
-        TestContext.WriteLine("Connecting...");
+        TestContext.WriteLine($"Connecting to {port}...");
         await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         TestContext.WriteLine("Connected.");
 
@@ -87,8 +83,8 @@ public sealed class RealHardwareRadexOneTests
             await Task.Delay(100, TestContext.CancellationToken);
         }
 
-        TestContext.WriteLine($"Received: {received ?? "(nothing — see this test class's doc comment about the HID framing assumption)"}");
-        Assert.IsNotNull(received, "No reply received — either the device didn't respond, or RadexOneHidFraming's report-framing guess is wrong.");
+        TestContext.WriteLine($"Received: {received ?? "(nothing)"}");
+        Assert.IsNotNull(received, "No reply received from the real device.");
 
         await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         TestContext.WriteLine("Closed.");

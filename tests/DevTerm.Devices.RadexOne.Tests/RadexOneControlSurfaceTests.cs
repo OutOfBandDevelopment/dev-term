@@ -7,12 +7,12 @@ using Moq;
 namespace DevTerm.Devices.RadexOne.Tests;
 
 /// <summary>
-/// Verifies the exact HID reports <see cref="RadexOneControlSurface"/> sends, against a mocked
-/// <see cref="ITransport"/> behind a real <see cref="Session"/> — no real HID device involved, so
+/// Verifies the exact framer packets <see cref="RadexOneControlSurface"/> sends, against a mocked
+/// <see cref="ITransport"/> behind a real <see cref="Session"/> — no real serial device involved, so
 /// this is <c>UNIT</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
-[TestCategory(TestCategories.Hid)]
+[TestCategory(TestCategories.Serial)]
 [TestCategory(TestCategories.Radex_One)]
 [TestClass]
 public sealed class RadexOneControlSurfaceTests
@@ -98,7 +98,7 @@ public sealed class RadexOneControlSurfaceTests
         var preview = surface.PreviewCommand("readData", null);
 
         Assert.IsNotNull(preview);
-        StringAssert.StartsWith(preview, "00 7B FF");
+        StringAssert.StartsWith(preview, "7B FF");
     }
 
     [TestMethod]
@@ -111,11 +111,11 @@ public sealed class RadexOneControlSurfaceTests
         Assert.IsNull(surface.PreviewCommand("threshold", "300"));
     }
 
-    private static bool IsWellFormedQuery(byte[] report, ushort expectedType) =>
-        report.Length == 1 + RadexOneHidFraming.AssumedReportBodyLength
-        && report[0] == 0x00 // assumed HID report-ID byte
-        && report[1] == 0x7B && report[2] == 0xFF // outbound framer prefix
-        && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(3, 2)) == expectedType;
+    private static bool IsWellFormedQuery(byte[] report, ushort expectedCommandCode) =>
+        report.Length >= RadexOneFramer.HeaderLength + 2
+        && report[0] == 0x7B && report[1] == 0xFF // outbound framer prefix
+        && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(2, 2)) == 0x0020 // constant outbound type marker
+        && System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(RadexOneFramer.HeaderLength, 2)) == expectedCommandCode;
 
     public required TestContext TestContext { get; set; }
 }

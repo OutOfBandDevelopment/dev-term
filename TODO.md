@@ -16,14 +16,18 @@ Completed work is logged by date under `docs/changes/`.
   USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
   - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
   - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
-- **Radex One (`DevTerm.Devices.RadexOne`) needs real-hardware verification.** Built and unit-tested
-  2026-09-25 (see `docs/changes/2026-09-25.md`), but a live HID enumeration pass that same session
-  found no Radex One device attached (only an unrelated MSI "MYSTIC LIGHT" RGB controller) — the
-  HID report-framing assumptions in `RadexOneHidFraming`/`RadexOneFramer` are unconfirmed. Once the
-  device is attached: run `--listhiddevices true` to get its real VendorId/ProductId, fill those into
-  `devterm.runsettings`' blank `RealHidRadexOne*` parameters, then run
-  `RealHardwareRadexOneTests` (`TestCategory=Hardware`). Tighten `DevicePanels.IsAvailable`'s
-  `DevicePanel.RadexOne` gate (currently "any HID connection") to the confirmed id pair once known.
+- **Radex One (`DevTerm.Devices.RadexOne`) needs a real-hardware re-run after a protocol fix.** A
+  real device turned up on COM8 (2400 8N1 serial, not HID as an earlier draft wrongly assumed) but
+  never replied to queries. Root-caused and fixed 2026-09-25 (see `docs/changes/2026-09-25.md`): the
+  outer header's Type field was assumed to be a per-command code when it's actually a constant
+  marker (the real command code lives in the Extension's own first word), and the checksum was a
+  byte-sum instead of the real word-sum with a required modulo. Framer, a new
+  `RadexOneExtensionCodec`, decoder, and control surface were all rewritten and checksum-verified
+  byte-for-byte against the source doc's real trace examples; `RealHardwareRadexOneTests`' baud rate
+  was also fixed (was 9600, device is 2400). Run
+  `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware&TestCategory=Radex_One"`
+  against the COM8 device to confirm it now replies — the actual point of this fix, not yet
+  empirically confirmed.
 - **Zoom H4n remote (`DevTerm.Devices.ZoomH4n`) needs real-hardware verification.** Built and
   unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): decoder, control surface (including
   the init handshake's wake-byte watcher), `UiDefinition`, and menu wiring in both front ends. No

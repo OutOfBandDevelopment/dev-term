@@ -5,19 +5,19 @@ using DevTerm.Core.Sessions;
 namespace DevTerm.Devices.RadexOne;
 
 /// <summary>
-/// <see cref="IControlSurface"/> for the Radex One geiger counter, sending framed+HID-wrapped
-/// requests (see <see cref="RadexOneFramer"/>/<see cref="RadexOneHidFraming"/>) over the given
-/// <see cref="Session"/>'s live HID connection, per docs/design/proposals/radex-one-protocol.md.
-/// "readData"/"readSerialVersion"/"readSettings" are one-shot queries with an empty extension
-/// (assumed — the proposal doesn't specify a query payload for any of the four command types);
-/// their replies arrive asynchronously through <see cref="RadexOneDecoder"/> on the session's normal
-/// output path, not through this surface. "alarmMode"/"threshold" only mutate local state;
-/// "writeSettings" is the only command that sends a Write Settings request, and sends it three times
-/// in a row per the proposal's documented "must be sent 3x for the device to accept it" quirk — a
-/// real-device gotcha worth keeping even though it can't be verified against actual hardware
-/// acceptance behavior without the device attached. Extension layout for Write/Read Settings (1-byte
-/// alarm mode + 2-byte little-endian threshold) is likewise a best-effort assumption, not confirmed.
-/// Also an <see cref="ICommandPreview"/>: shows the exact HID report bytes a query/apply would send.
+/// <see cref="IControlSurface"/> for the Radex One geiger counter, sending framed requests (see
+/// <see cref="RadexOneFramer"/> and <see cref="RadexOneExtensionCodec"/>) over the given
+/// <see cref="Session"/>'s live serial connection (2400 8N1, no handshake — real-hardware confirmed
+/// 2026-09-25 on COM8), per docs/design/proposals/radex-one-protocol.md. The device is a plain
+/// virtual COM port; there is no HID report wrapping (an earlier "confirmed directly" HID assumption
+/// in that doc was wrong). "readData"/"readSerialVersion"/"readSettings" are one-shot queries built
+/// via <see cref="RadexOneExtensionCodec.BuildQuery"/>; their replies arrive asynchronously through
+/// <see cref="RadexOneDecoder"/> on the session's normal output path, not through this surface.
+/// "alarmMode"/"threshold" only mutate local state; "writeSettings" is the only command that sends a
+/// Write Settings request, and sends it three times in a row per the proposal's documented "must be
+/// sent 3x for the device to accept it" quirk — a real-device gotcha worth keeping even though it
+/// can't be verified against actual hardware acceptance behavior without the device attached.
+/// Also an <see cref="ICommandPreview"/>: shows the exact packet bytes a query/apply would send.
 /// </summary>
 public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
 {
@@ -68,7 +68,7 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
         }
     }
 
-    /// <summary>The HID report a query/apply would send right now, as hex bytes; null for a state-only setter or an unknown command.</summary>
+    /// <summary>The framed packet a query/apply would send right now, as hex bytes; null for a state-only setter or an unknown command.</summary>
     public string? PreviewCommand(string commandId, string? value)
     {
         ArgumentNullException.ThrowIfNull(commandId);
@@ -94,7 +94,7 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
         byte[] report;
         lock (_stateLock)
         {
-            report = RadexOneHidFraming.WrapRequest(RadexOneFramer.BuildRequest(RadexOneCommand.WriteSettings, (ushort)TakePacketNumberLocked(), BuildSettingsExtension(_alarmMode, _threshold)));
+            report = RadexOneFramer.BuildRequest((ushort)TakePacketNumberLocked(), RadexOneExtensionCodec.BuildWriteSettings(_alarmMode, _threshold));
         }
 
         // Real-device gotcha (docs/design/proposals/radex-one-protocol.md): a single Write Settings
@@ -117,13 +117,13 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
     {
         lock (_stateLock)
         {
-            var packet = RadexOneFramer.BuildRequest(RadexOneCommand.WriteSettings, (ushort)_nextPacketNumber, BuildSettingsExtension(_alarmMode, _threshold));
-            return CommandPreviewFormat.ToHex(RadexOneHidFraming.WrapRequest(packet));
+            var packet = RadexOneFramer.BuildRequest((ushort)_nextPacketNumber, RadexOneExtensionCodec.BuildWriteSettings(_alarmMode, _threshold));
+            return CommandPreviewFormat.ToHex(packet);
         }
     }
 
-    private byte[] BuildQueryReport(ushort commandType, int packetNumber) =>
-        RadexOneHidFraming.WrapRequest(RadexOneFramer.BuildRequest(commandType, (ushort)packetNumber, []));
+    private static byte[] BuildQueryReport(ushort commandType, int packetNumber) =>
+        RadexOneFramer.BuildRequest((ushort)packetNumber, RadexOneExtensionCodec.BuildQuery(commandType));
 
     private int TakePacketNumber()
     {
@@ -138,14 +138,6 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
         var packetNumber = _nextPacketNumber;
         _nextPacketNumber = (ushort)(_nextPacketNumber + 1);
         return packetNumber;
-    }
-
-    private static byte[] BuildSettingsExtension(byte alarmMode, ushort threshold)
-    {
-        var extension = new byte[3];
-        extension[0] = alarmMode;
-        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(extension.AsSpan(1), threshold);
-        return extension;
     }
 
     private static byte ParseAlarmMode(string? value) => value switch

@@ -19,9 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Devices.RadexOne\DevTerm.Devices.RadexOne.csproj" />
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
-    <!-- Real-hardware Integration tests (RealHardwareRadexOneTests) construct a real HidTransport
-         directly - same reasoning as DevTerm.Devices.Busylight.Tests' equivalent reference. -->
-    <ProjectReference Include="..\..\src\DevTerm.Transports.Hid\DevTerm.Transports.Hid.csproj" />
+    <!-- Real-hardware Integration tests (RealHardwareRadexOneTests) construct a real SerialTransport
+         directly - same reasoning as DevTerm.Devices.ZoomH4n.Tests' equivalent reference. -->
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Serial\DevTerm.Transports.Serial.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 

@@ -52,10 +52,11 @@ public static class DevicePanels
             // SCPI is text over a byte stream: any transport but HID (fixed-size binary reports).
             DevicePanel.Scpi => !isHid,
 
-            // Radex One's real VID/PID is unconfirmed (device wasn't enumerated during development -
-            // see RadexOneHidFraming's doc comment) - gated on "any HID connection" rather than a
-            // specific id pair until a real device confirms one. Flagged for tightening later.
-            DevicePanel.RadexOne => isHid,
+            // Radex One is a plain virtual-COM-port device (2400 8N1, real-hardware confirmed
+            // 2026-09-25 on COM8 - it does not enumerate as HID at all, contradicting this module's
+            // original "confirmed directly" HID assumption) - gated on "any serial connection", like
+            // Zoom H4n's.
+            DevicePanel.RadexOne => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
 
             // Zoom H4n's RC04/RC2 remote port is presented as plain serial (via the h4n2rs485
             // adapter, see docs/design/proposals/zoom-h4n-remote-protocol.md) - no VID/PID to gate
