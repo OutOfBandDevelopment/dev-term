@@ -25,17 +25,21 @@ but how it's wrapped (report IDs, feature vs. input/output reports, fixed report
 is unverified and needs checking against the source repo's own USB capture/notes, or a fresh
 capture, before implementation.
 
-## Why this is no longer a good *first* protocol decoder
+## Why this needed re-scoping (now resolved)
 
 This was originally proposed as the best first decoder to build, on the assumption it needed only
-the already-built serial transport. That assumption was wrong — being HID means it depends on the
-**USB HID transport**, which is still design-only (see [transports.md](../transports.md)'s "USB
-HID" section — no VID/PID discovery, no report I/O, nothing implemented). So this proposal is now
-gated on a transport that doesn't exist yet, not just on decoder work. [SCPI](scpi-instrument-control.md)
-needs no new transport (serial + TCP already work) and is the better first target; see that
-proposal and the ordering note in `BACKLOG.md`.
+the already-built serial transport. That assumption was wrong — being HID meant it depended on the
+**USB HID transport**, which was design-only at the time this section was written. [SCPI](scpi-instrument-control.md)
+needed no new transport (serial + TCP already worked) and became the better first target instead;
+see that proposal and the ordering note in `BACKLOG.md`.
 
-What's still true and still worth keeping about this protocol once the HID transport exists:
+**Update:** `DevTerm.Transports.Hid` is now built (VID/PID discovery, report I/O — see
+[transports.md](../transports.md)'s "USB HID" section and `DevTerm.Transports.Hid`), so this
+proposal's transport dependency is no longer the blocker. What remains open is the HID
+report-framing question below (how the packet shape is wrapped in report ID/fixed report length) —
+see `BACKLOG.md`'s "Device control modules & hardware profiles" section.
+
+What's still true and still worth keeping about this protocol now that the HID transport exists:
 
 - **Fully specified, symmetric framing** — request and response share one packet shape
   (prefix, type, length, packet number, reserved, checksum, variable extension), just with
@@ -95,7 +99,7 @@ package "Radex One Device Control Module (plugin)" {
 }
 
 [Session / Transport] <<ITransport>> as transport
-note right of transport : USB HID (not yet built —\nsee transports.md)
+note right of transport : USB HID (built —\nreport framing for this device still open)
 
 user --> surface : Invokes command\n(e.g. Read Data, Set Threshold)
 surface --> framer : Builds request packet
