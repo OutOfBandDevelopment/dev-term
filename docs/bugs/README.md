@@ -43,7 +43,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 012 | [Profile names are never validated](fixed/012-profile-names-not-validated.md) | DevTerm.Configuration (ConnectionProfileStore, DevTermUserDataPaths) | Fixed |
 | 013 | [Save Profile and Export crash on a bad name or path](fixed/013-save-export-no-error-handling.md) | DevTerm.Configuration (ConnectionEditorViewModel), TUI, WPF | Fixed |
 | 014 | [Saving "bench" silently overwrites "Bench"](fixed/014-save-overwrites-different-case.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Fixed |
-| 015 | [A mistyped baud rate or data bits silently connects with defaults](015-mistyped-numbers-silently-default.md) | DevTerm.Configuration (ConnectionEditorViewModel, CliOptionsValidator) | Open |
+| 015 | [A mistyped baud rate or data bits silently connects with defaults](fixed/015-mistyped-numbers-silently-default.md) | DevTerm.Configuration (ConnectionEditorViewModel, CliOptionsValidator) | Fixed |
 | 016 | [WPF control panels stay bound to the old session after a profile switch](016-wpf-panels-bound-to-old-session.md) | WPF (MainWindow, control panels) | Open |
 | 017 | [A WPF profile switch can't be superseded by a second switch](017-wpf-profile-switch-no-supersede.md) | WPF (MainWindow) | Open |
 | 018 | [Quitting the TUI after a profile switch never closes the live session](018-tui-exit-leaves-switched-session-open.md) | TUI (TuiMode) | Open |

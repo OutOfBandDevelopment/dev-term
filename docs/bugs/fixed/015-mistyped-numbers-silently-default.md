@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Configuration (ConnectionEditorViewModel, CliOptionsValidator) |
 | **Created** | 2026-09-26 |
@@ -26,3 +26,13 @@ DataBits 5-8, timeouts >= -1, PlaybackSpeed >= 0.
 
 ## Tests to add
 `BuildOptions` with invalid Baud/DataBits text fails validation; validator range cases.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `ConnectionEditorViewModel.ValidateFields` now fails when Baud, DataBits,
+VendorId or ProductId text doesn't parse as an integer, instead of silently keeping the `CliOptions()` default;
+`CliOptionsValidator.Validate` gained range checks for Baud (> 0), DataBits (5-8), ReadTimeoutMs/WriteTimeoutMs
+(>= -1) and PlaybackSpeed (>= 0), which also protects a profile loaded directly from JSON (bypassing the editor's
+text fields entirely). Regression tests: `ConnectionEditorViewModelTests.SaveCommand_WithAnUnparseableBaud_SetsStatusMessageInsteadOfSavingWithTheDefault`,
+`CliOptionsValidatorTests.Validate_SerialWithNonPositiveBaud_Fails`,
+`Validate_SerialWithDataBitsOutOfRange_Fails`, `Validate_ReadTimeoutBelowNegativeOne_Fails`,
+`Validate_WriteTimeoutBelowNegativeOne_Fails`, `Validate_NegativePlaybackSpeed_Fails`.

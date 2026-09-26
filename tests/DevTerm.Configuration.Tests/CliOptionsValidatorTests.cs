@@ -119,4 +119,58 @@ public sealed class CliOptionsValidatorTests
 
         Assert.IsTrue(result.Succeeded);
     }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_SerialWithNonPositiveBaud_Fails()
+    {
+        // Regression test for bug 015: a saved/loaded profile's Baud (e.g. 0, or a negative value)
+        // passed validation and only failed once SerialPort actually opened, with an
+        // ArgumentOutOfRangeException. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", Baud = 0 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_SerialWithDataBitsOutOfRange_Fails()
+    {
+        // Regression test for bug 015: DataBits: 9 in a profile passed validation and only failed
+        // once SerialPort actually opened. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", DataBits = 9 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_ReadTimeoutBelowNegativeOne_Fails()
+    {
+        // Regression test for bug 015: ReadTimeoutMs: -5 in a profile passed validation.
+        // See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", ReadTimeoutMs = -5 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_WriteTimeoutBelowNegativeOne_Fails()
+    {
+        // Regression test for bug 015. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", WriteTimeoutMs = -5 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_NegativePlaybackSpeed_Fails()
+    {
+        // Regression test for bug 015. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", PlaybackSpeed = -1 });
+
+        Assert.IsTrue(result.Failed);
+    }
 }

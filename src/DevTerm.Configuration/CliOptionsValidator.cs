@@ -16,12 +16,37 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--scpiautodetecttimeoutms' must be between 100 and 60000.");
         }
 
+        if (options.ReadTimeoutMs < -1)
+        {
+            return ValidateOptionsResult.Fail("'--readtimeoutms' must be -1 (infinite) or a non-negative timeout in milliseconds.");
+        }
+
+        if (options.WriteTimeoutMs < -1)
+        {
+            return ValidateOptionsResult.Fail("'--writetimeoutms' must be -1 (infinite) or a non-negative timeout in milliseconds.");
+        }
+
+        if (options.PlaybackSpeed < 0)
+        {
+            return ValidateOptionsResult.Fail("'--playbackspeed' must be 0 or greater.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":
                 if (string.IsNullOrWhiteSpace(options.Port))
                 {
                     return ValidateOptionsResult.Fail("Missing required '--port' for the serial transport.");
+                }
+
+                if (options.Baud <= 0)
+                {
+                    return ValidateOptionsResult.Fail("'--baud' must be a positive number.");
+                }
+
+                if (options.DataBits is < 5 or > 8)
+                {
+                    return ValidateOptionsResult.Fail("'--databits' must be between 5 and 8.");
                 }
 
                 break;

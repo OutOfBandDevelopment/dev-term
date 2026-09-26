@@ -199,6 +199,36 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SaveCommand_WithAnUnparseableBaud_SetsStatusMessageInsteadOfSavingWithTheDefault()
+    {
+        // Regression test for bug 015: BuildOptions() used int.TryParse(Baud, out var baud) and only
+        // assigned options.Baud when it succeeded, silently leaving the CliOptions() default (9600)
+        // in place for something like "115200x" - so a mistyped baud rate saved and connected at
+        // 9600 with no error. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "serial",
+                Port = "COM3",
+                Baud = "115200x",
+                SaveName = "bench",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            Assert.IsEmpty(vm.Profiles);
+            Assert.DoesNotContain("Saved", vm.StatusMessage);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void LoadCommand_WithNoSelection_SetsStatusMessage()
     {
         var directory = CreateTempDirectory();

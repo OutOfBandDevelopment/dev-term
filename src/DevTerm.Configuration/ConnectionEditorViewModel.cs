@@ -1143,10 +1143,35 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             : selected;
 
     /// <summary><see cref="CliOptionsValidator"/> plus the one rule only this editor can break: an empty presenter picker (a bound <see cref="CliOptions"/> with no <c>Presenter</c> means "the default", so it can't tell).</summary>
-    private ValidateOptionsResult ValidateFields(CliOptions options) =>
-        SelectedPresenters.Count == 0
-            ? ValidateOptionsResult.Fail("Select at least one presenter.")
-            : _validator.Validate(null, options);
+    private ValidateOptionsResult ValidateFields(CliOptions options)
+    {
+        if (SelectedPresenters.Count == 0)
+        {
+            return ValidateOptionsResult.Fail("Select at least one presenter.");
+        }
+
+        if (!int.TryParse(Baud, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{Baud}' isn't a valid baud rate.");
+        }
+
+        if (!int.TryParse(DataBits, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{DataBits}' isn't a valid data bits value.");
+        }
+
+        if (!int.TryParse(VendorId, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{VendorId}' isn't a valid vendor id.");
+        }
+
+        if (!int.TryParse(ProductId, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{ProductId}' isn't a valid product id.");
+        }
+
+        return _validator.Validate(null, options);
+    }
 
     public void RefreshProfiles()
     {
