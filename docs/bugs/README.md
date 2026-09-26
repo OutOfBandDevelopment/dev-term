@@ -58,7 +58,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 027 | [BLE connect and write timeouts are documented but never used](fixed/027-ble-timeouts-unused.md) | DevTerm.Transports.Ble, DevTerm.Configuration | Fixed |
 | 028 | [UTF-8 characters split across two reads come out garbled](fixed/028-utf8-split-across-reads.md) | DevTerm.Presenters.Text (Utf8Presenter) | Fixed |
 | 029 | [TCP writes block with no timeout and ignore cancellation](fixed/029-tcp-write-blocks-no-timeout.md) | DevTerm.Transports.Tcp | Fixed |
-| 030 | [Adding a note to a log that's still being recorded fails and leaves memory and disk out of step](030-playback-addnote-live-log.md) | DevTerm.Logging (PlaybackController, SessionLog) | Open |
+| 030 | [Adding a note to a log that's still being recorded fails and leaves memory and disk out of step](fixed/030-playback-addnote-live-log.md) | DevTerm.Logging (PlaybackController, SessionLog) | Fixed |
 | 031 | [The TUI output pane has no backpressure](031-tui-output-no-backpressure.md) | TUI (TuiMode) | Open |
 | 032 | [A bad value on the command line or in the saved default crashes startup instead of opening the editor](032-startup-bind-failure-crash.md) | DevTerm.Console (Program), DevTerm.Wpf (App) | Open |
 

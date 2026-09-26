@@ -122,6 +122,27 @@ public sealed class PlaybackControllerTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void AddNote_WhenTheLogFileIsHeldOpenByAWriter_ThrowsAndLeavesMemoryUnchanged()
+    {
+        var controller = Open();
+        controller.SeekTo(2);
+        var recordCountBefore = controller.Log.Records.Count;
+        var positionBefore = controller.Engine.Position;
+        var selectionEndBefore = controller.SelectionEnd;
+
+        // Mirrors SessionLogWriter's own share mode (FileShare.Read, no Delete) - simulates the log still
+        // being captured by an active SessionLogger while it's opened for playback.
+        using var writerHold = new FileStream(_path, FileMode.Open, FileAccess.Write, FileShare.Read);
+
+        Assert.ThrowsExactly<UnauthorizedAccessException>(() => controller.AddNote("scope triggered here"));
+
+        Assert.AreEqual(recordCountBefore, controller.Log.Records.Count, "The note must not be inserted in memory if the save failed.");
+        Assert.AreEqual(positionBefore, controller.Engine.Position);
+        Assert.AreEqual(selectionEndBefore, controller.SelectionEnd);
+    }
+
+    [TestMethod]
     public void TogglePlayPause_AtTheEnd_StartsOverFromTheBeginning()
     {
         var controller = Open();
