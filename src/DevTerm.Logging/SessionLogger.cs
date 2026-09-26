@@ -51,7 +51,9 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
     /// <summary>How many captured records have been written so far.</summary>
     public long RecordCount => Interlocked.Read(ref _sequence);
 
-    public bool IsActive => !_disposed;
+    /// <summary>False once disposed, or once a write to the underlying log file has failed (e.g. a
+    /// full disk) — see <see cref="SessionLogWriter.IsFaulted"/>.</summary>
+    public bool IsActive => !_disposed && !_writer.IsFaulted;
 
     /// <summary>
     /// Starts following <paramref name="session"/> (detaching from whichever one it followed

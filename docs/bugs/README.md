@@ -70,7 +70,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 033 | [Profiles, the saved default and preferences are written non-atomically](fixed/033-non-atomic-writes.md) | DevTerm.Configuration | Fixed |
 | 034 | [Export All deletes the existing zip before checking the profile names](fixed/034-exportzip-deletes-target-first.md) | DevTerm.Configuration (ConnectionProfileStore) | Fixed |
 | 035 | [Typing an export path marks the editor as having unsaved changes](fixed/035-dirty-tracking-non-connection-fields.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Fixed |
-| 036 | [A session-log write failure is silent and can leave a torn line that makes the whole log unloadable](036-log-write-failure-silent.md) | DevTerm.Logging (SessionLogWriter, SessionLogger), DevTerm.Core (Session) | Open |
+| 036 | [A session-log write failure is silent and can leave a torn line that makes the whole log unloadable](fixed/036-log-write-failure-silent.md) | DevTerm.Logging (SessionLogWriter, SessionLogger), DevTerm.Core (Session) | Fixed |
 | 037 | [A line exactly at the max length is followed by a spurious empty line](037-ascii-maxlength-spurious-empty-line.md) | DevTerm.Presenters.Text (AsciiPresenter) | Open |
 | 038 | [Session logging does blocking file I/O on the read loop for every chunk](038-logging-blocking-io-read-loop.md) | DevTerm.Logging (SessionLogger, SessionLogWriter) | Open |
 | 039 | [Calling SendAsync from the read-loop thread deadlocks if the send fails](039-sendasync-from-read-loop-deadlock.md) | DevTerm.Core (Session) | Open |

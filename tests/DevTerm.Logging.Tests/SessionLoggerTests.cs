@@ -202,6 +202,68 @@ public sealed class SessionLoggerTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task AWriteFailure_MarksTheLoggerInactive_AndStopsAdvancingTheRecordCount()
+    {
+        var backing = new MemoryStream();
+        // Calls 1-2: header (content, newline). Calls 3-4: the "session" record Attach writes below.
+        // Call 5: the "open" record's content succeeds; call 6 (its newline) fails - a torn line,
+        // exactly the disk-full-mid-write scenario from docs/bugs/fixed/036-log-write-failure-silent.md.
+        var failing = new FailOnNthWriteStream(backing, failOnWriteNumber: 6);
+        var writer = new SessionLogWriter(failing, Header());
+        using var logger = new SessionLogger(writer);
+        var transport = new FakeTransport();
+        await using var session = new Session(transport, new Pipeline([]));
+        logger.Attach(session, "loopback://");
+
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        Assert.IsFalse(logger.IsActive, "A failed write should mark the logger inactive instead of leaving it looking like it's still capturing.");
+        var recordCountAfterFault = logger.RecordCount;
+        var lengthAfterFault = backing.Length;
+
+        await session.SendAsync(new byte[] { 1 }, TestContext.CancellationToken);
+
+        Assert.AreEqual(recordCountAfterFault, logger.RecordCount, "Once faulted, the sequence number must stop advancing along with the file - it shouldn't look like more was captured than actually made it to disk.");
+        Assert.AreEqual(lengthAfterFault, backing.Length, "Once faulted, no further record - valid or not - should be appended after the torn line, or SessionLog.Load's own end-of-file-only tolerance for a torn line breaks.");
+    }
+
+    /// <summary>Writes normally until <paramref name="failOnWriteNumber"/>, then throws <see cref="IOException"/> on that call and every call after (simulating a disk that stays full).</summary>
+    private sealed class FailOnNthWriteStream(Stream inner, int failOnWriteNumber) : Stream
+    {
+        private int _writeCount;
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            _writeCount++;
+            if (_writeCount >= failOnWriteNumber)
+            {
+                throw new IOException("There is not enough space on the disk.");
+            }
+
+            inner.Write(buffer, offset, count);
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => inner.Length;
+
+        public override long Position { get => inner.Position; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    [TestMethod]
     public async Task Logging_DoesNotChangeWhatThePresentersRender()
     {
         var transport = new FakeTransport();

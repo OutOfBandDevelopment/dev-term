@@ -17,6 +17,7 @@ public sealed class SessionLogWriter : IDisposable
     private readonly Lock _gate = new();
     private readonly bool _leaveOpen;
     private bool _disposed;
+    private bool _faulted;
 
     /// <param name="leaveOpen">Leave <paramref name="stream"/> open when this writer is disposed.</param>
     public SessionLogWriter(Stream stream, SessionLogHeader header, bool leaveOpen = false)
@@ -30,6 +31,23 @@ public sealed class SessionLogWriter : IDisposable
 
     /// <summary>The file this writes to, when created by <see cref="Create"/>.</summary>
     public string? Path { get; private init; }
+
+    /// <summary>
+    /// Whether a previous write failed (e.g. the disk filled). Once true, every further
+    /// <see cref="Write(SessionLogRecord)"/> is a no-op instead of attempting another write — a
+    /// second, successful write after a torn one would leave a malformed line that isn't the file's
+    /// last line, which <see cref="SessionLog.Load"/> only tolerates at end-of-file.
+    /// </summary>
+    public bool IsFaulted
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _faulted;
+            }
+        }
+    }
 
     /// <summary>
     /// Creates (or replaces) <paramref name="path"/>, creating its directory if needed. The file is
@@ -60,11 +78,15 @@ public sealed class SessionLogWriter : IDisposable
     public void Write(SessionLogRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
-        var line = SessionLogFormat.WriteRecord(record);
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            WriteLine(line);
+            if (_faulted)
+            {
+                return;
+            }
+
+            WriteLine(SessionLogFormat.WriteRecord(record));
         }
     }
 
@@ -74,6 +96,15 @@ public sealed class SessionLogWriter : IDisposable
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+
+            // Once faulted, don't even build the record - a caller like SessionLogger takes its
+            // next sequence number as a side effect of building it, and that number should stop
+            // advancing along with the file once nothing more is actually being written.
+            if (_faulted)
+            {
+                return;
+            }
+
             WriteLine(SessionLogFormat.WriteRecord(build()));
         }
     }
@@ -97,8 +128,16 @@ public sealed class SessionLogWriter : IDisposable
 
     private void WriteLine(string line)
     {
-        _stream.Write(Encoding.UTF8.GetBytes(line));
-        _stream.Write(_newline);
-        _stream.Flush();
+        try
+        {
+            _stream.Write(Encoding.UTF8.GetBytes(line));
+            _stream.Write(_newline);
+            _stream.Flush();
+        }
+        catch
+        {
+            _faulted = true;
+            throw;
+        }
     }
 }
