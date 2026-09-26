@@ -1,6 +1,6 @@
 ┌┤dev-term — Busylight Control Panel├──────────────────────────────────────────┐
 │[-] Color                                                                     │
-│  Color:     ○ Red  ○ Green  ○ Blue  ○ Yellow  ◉ Off                          │
+│  Color:     ○ Red  ○ Green  ○ Blue  ○ Yellow  ○ Custom  ◉ Off                │
 │  Custom...: ⟦ Custom... ⟧▖  #FF6600                                          │
 │                                                                              │
 │[-] Blink                                                                     │

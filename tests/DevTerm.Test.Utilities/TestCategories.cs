@@ -29,6 +29,11 @@ public static class TestCategories
     // Device profile types.
     public const string Scpi = nameof(Scpi);
 
+    // Features.
+
+    /// <summary>Session logging (logger mode) and log playback — the format, recorder, engine, and each front end's controls/window.</summary>
+    public const string Logging = nameof(Logging);
+
     // Device make/model — one real physical unit each.
     public const string Tektronix_2230 = nameof(Tektronix_2230);
     public const string Tektronix_Tds2024 = nameof(Tektronix_Tds2024);

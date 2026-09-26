@@ -1,0 +1,25 @@
+┌┤dev-term — Playback: tek2230.jsonl├──────────────────────────────────────────┐
+│tek2230 (tcp://192.168.0.107:23), 2026-09-25 08:00:00, 8 records              │
+│Presenters: ascii, hex                                                        │
+│  (Enter applies) ascii utf8 hex decimal octal binary k8055 busylight scpi    │
+│00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23), connection clos│
+│00:00.040 [dev-term] Connected.                                               │
+│00:01.000 [tx] ID?\r                                                          │
+│00:01.200 [hex] 49442054454B2F323233302C                                      │
+│00:01.250 [ascii] ID TEK/2230,V81.1,VERS:14                                   │
+│00:01.250 [hex] 5638312E312C564552533A31340D                                  │
+│00:01.250 [note] IDN reply is correct                                         │
+│00:06.000 [tx] CH1?\r                                                         │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│Paused  7/9  00:06.000 / 00:09.000  2x  Selection 7–9                         │
+│⟦ Rewind ⟧  ⟦ Step ⟧  ⟦ Play ⟧  ⟦ +10s ⟧  ⟦ End ⟧  ⟦ Slower ⟧  ⟦ Faster ⟧     │
+│⟦ Mark In ⟧  ⟦ Mark Out ⟧  ⟦ Save Selection... ⟧  ⟦ Add Note... ⟧  ⟦ Close ⟧  │
+└──────────────────────────────────────────────────────────────────────────────┘

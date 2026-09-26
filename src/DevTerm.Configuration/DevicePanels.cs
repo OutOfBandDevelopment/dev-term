@@ -9,6 +9,9 @@ public enum DevicePanel
     RadexOne,
     ZoomH4n,
     De5000,
+
+    /// <summary>A panel built from a loaded device manifest (Device > Device Manifest...) — any connection.</summary>
+    Manifest,
 }
 
 /// <summary>
@@ -66,6 +69,10 @@ public static class DevicePanels
             // The DE-5000's optical-to-BLE adapter has no VID/PID (it's a GATT peripheral, not a
             // USB device) - gated on "any BLE connection", like ZoomH4n's "any serial connection".
             DevicePanel.De5000 => string.Equals(options.Transport, "ble", StringComparison.OrdinalIgnoreCase),
+
+            // A manifest names its own transport and commands, so which manifests make sense is the
+            // user's call (the picker) - the item is enabled whenever connected.
+            DevicePanel.Manifest => true,
             _ => false,
         };
     }

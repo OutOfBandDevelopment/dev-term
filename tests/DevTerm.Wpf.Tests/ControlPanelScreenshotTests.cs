@@ -162,6 +162,39 @@ public sealed class ControlPanelScreenshotTests
     }
 
     [TestMethod]
+    public void ControlPanelWindow_ManifestLoopbackDemo_WithLiveCharts_IsCaptured()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            // The bundled example manifest, opened as Device > Device Manifest... opens it
+            // (ManifestPanel -> ControlPanelWindow), fed 40 simulated samples plus one measured one.
+            var manifest = DevTerm.DeviceManifests.DeviceManifestLoader.Load(Path.Combine(AppContext.BaseDirectory, "manifests", "loopback-sensor-demo"));
+            DevTerm.Configuration.SectionExpansionState.Forget(manifest.Name);
+            var transport = new FakeTransport();
+            var session = new Session(transport, new Pipeline([]));
+            await session.OpenAsync(TestContext.CancellationToken);
+            using var panel = DevTerm.DeviceManifests.ManifestPanel.Attach(session, manifest);
+            var window = new ControlPanelWindow(panel.Definition, panel.Surface, panel.Presenter) { ShowInTaskbar = false };
+            WpfScreenshot.ShowOffScreen(window, width: 640, height: 1320);
+
+            await panel.Surface.InvokeAsync("measure", null, TestContext.CancellationToken);
+            var lines = string.Concat(Enumerable.Range(0, 41).Select(i => DevTerm.Transports.Loopback.LoopbackGenerators.SensorSample(i) + "\n"));
+            await transport.PushIncomingAsync(Encoding.ASCII.GetBytes(lines));
+
+            var strip = (DevTerm.UiDefinitions.StripChartState)window.Displays["history"].State;
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => strip.SamplesOf("chA").Count == 41, _pumpTimeout));
+            window.UpdateLayout();
+            StaTestRunner.DoEvents();
+
+            var path = Path.Combine(_imagesDirectory, "wpf-control-panel-manifest.png");
+            WpfScreenshot.Save(window, path);
+            AssertRealImage(path);
+
+            await session.CloseAsync(TestContext.CancellationToken);
+        });
+    }
+
+    [TestMethod]
     public void ColorPickerWindow_AtItsNaturalSize_IsCaptured()
     {
         StaTestRunner.Run(async () =>

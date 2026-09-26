@@ -13,12 +13,20 @@ Every panel works the same way, whichever device it's for:
 - **Sections fold away.** Each named section can be collapsed to just its heading, and the
   sections below move up to fill the space. In WPF, click the section heading (the round arrow
   button). In the TUI, each heading reads `[-] Name`; Tab to it and press Enter or Space (or click
-  it) and it becomes `[+] Name` with its rows hidden. Every section starts expanded.
+  it) and it becomes `[+] Name` with its rows hidden. Sections start expanded the first time; after
+  that, a panel reopens with each section the way you left it (collapse the 34401A's **Measure**
+  section once and it stays collapsed every time you open that panel, until you quit dev-term).
 - **Labels line up.** Within a section, every control starts in the same column, just past the
   longest label, and labels stay on one line.
+- **Wide rows scroll sideways (TUI).** A row wider than the terminal (a long button name, a choice
+  with many options) never gets cut off: the form scrolls sideways instead, with a scroll bar along
+  its bottom edge. Moving focus to a control scrolls it, and its `(i)` marker, into view by itself;
+  a section heading scrolls back to the left edge. **Ctrl+PageDown**/**Ctrl+PageUp** (or a sideways
+  mouse wheel) scroll by half a screen, for the end of a row you can't focus, like a long reply.
 - **Notes are at the bottom.** A device's descriptive notes (for a SCPI instrument, its profile's
   notes: required connection settings, a command you must send first, known quirks) are in a
-  **Notes** section after all the others, wrapped to fit the window.
+  **Notes** section after all the others, wrapped to fit the window. In the TUI they re-wrap when
+  you resize the terminal.
 - **See exactly what a control sends before you send it.** A control that sends a command has a
   small info marker next to it: "ⓘ" in WPF, `(i)` in the TUI. In WPF, hover the icon: the tooltip
   shows the command for the control's current value (the slider's position, what's typed in the
@@ -36,6 +44,12 @@ Here the 34401A panel's **Common** and **Measure** sections are collapsed, and f
 **Configure DC Voltage Range** button, so the bottom line shows the exact command it sends:
 
 ![TUI SCPI control panel (HP 34401A) with two sections collapsed and the Sends preview for a focused button](images/tui-control-panel-scpi-preview.png)
+
+And here focus has moved to **Configure 4-Wire Resistance Range**, the 34401A's widest row: the form
+has scrolled sideways so the whole button and its `(i)` marker are on screen (the scroll bar above
+the bottom line shows where you are):
+
+![TUI SCPI control panel (HP 34401A) scrolled sideways to show a wide row's button and marker](images/tui-control-panel-wide-row.png)
 
 ## K8055 and Busylight: open and go
 
@@ -60,7 +74,15 @@ immediately — no setup, no picker. These two devices have one fixed, built-in 
 
 **Custom...** opens the RGB/HSV picker. It opens on the last color you picked, even if you've closed
 and reopened the panel since; before any pick it starts on white. Once a custom color has been set,
-a swatch next to the button shows its hex value on a background of that color. Here the color is
+a swatch next to the button shows its hex value on a background of that color.
+
+The Color radios include **Custom**, which stands for that picked color:
+- Picking a color in **Custom...** selects the Custom radio.
+- Choosing a preset (Red, Green, ...) and then selecting **Custom** again puts your custom color back,
+  with no need to reopen the picker.
+- If no custom color has been picked yet, selecting **Custom** opens the picker.
+
+As with every color change, it takes effect when you press **Apply**. Here the custom color is
 `#FF6600`:
 
 ![TUI Busylight control panel with a custom color set](images/tui-control-panel-busylight-custom-color.png)
@@ -78,7 +100,8 @@ The chosen color is remembered only while the app is running, not across restart
 Both only make sense connected to that actual device over HID, so their **Device** menu items are
 greyed out otherwise. The K8055 item needs vendor `10CF`, products `5500`–`5503`; the Busylight item
 needs `04D8:F848` or a Plenom `27BB` device. **SCPI Instrument...** is available on any connection
-except HID. All three are greyed out while disconnected.
+except HID, and **Device Manifest...** (below) on any connection at all. All four are greyed out
+while disconnected.
 
 ## SCPI instruments: pick a profile first
 
@@ -126,8 +149,52 @@ their reply in a read-only field right next to the button, as soon as it arrives
 you just won't see replies show up in the panel itself (they still appear in the main output as
 plain text).
 
+## Device manifests: a panel from a file
+
+**Device > Device Manifest...** opens a panel for any device described by a
+[device manifest](../design/device-manifests.md) — a JSON file (or a folder with a `device.json`, or
+a `.zip` of one) that lists the device's commands, how to read its replies, and the panel's layout.
+No code, and nothing built into dev-term for that device.
+
+1. Connect to the device as usual.
+2. Choose **Device > Device Manifest...**. A picker lists the manifests dev-term found: your own,
+   in `~/.dev-term/manifests/` (each one a folder with a `device.json`, a single `.json` file, or a
+   `.zip`), then the ones installed with dev-term. To use one from anywhere else, type or paste its
+   path into the path field (WPF also has **File...** and **Folder...** buttons to browse for it).
+3. Choose **Open**. If the manifest can't be loaded (a typo in the JSON, a missing file it refers
+   to), the picker says why: in WPF, in red under the path field, and the picker stays open; in the
+   TUI, in an error box.
+
+The panel works like every other one (sections, `(i)`/ⓘ previews, validation), and each command's
+button sends exactly what the manifest's template says. A query's reply shows in its reply field,
+and any line the device sends — a reply or data it streams on its own — is matched against the
+manifest's reply patterns to drive live displays:
+
+- **Bar graphs**: one bar per channel, filled to its latest value, with the value beside it.
+- **Strip charts**: a scrolling trace per channel, newest on the right, with its latest value in
+  the legend.
+- **Vector displays**: a point plotted from x/y, x/y/z, or radius/angle values, with a short fading
+  trail of where it's been, optionally colored from live hue/saturation/brightness values.
+
+dev-term installs one example, **Loopback Sensor Demo**, that needs no hardware: connect with the
+loopback transport (`--transport loopback`, or pick **loopback** in the connection editor), open
+**Device > Device Manifest...**, and pick it. **Measure** asks the simulated sensor for one reading;
+**Stream Samples** asks for the next 40 (or however many you type), and the charts fill in as they
+arrive:
+
+![TUI Loopback Sensor Demo manifest panel with bar graph, strip chart, and x/y, x/y/z, and polar vector displays after streaming samples](images/tui-control-panel-manifest.png)
+
+![WPF Loopback Sensor Demo manifest panel with bar graph, strip chart, and x/y, x/y/z, and polar vector displays after streaming samples](images/wpf-control-panel-manifest.png)
+
+The TUI draws bars with block characters and plots with braille dots, so they need a font with
+those characters (Cascadia Mono, Consolas, and most modern terminal fonts have them).
+
+To write a manifest for your own device, or change one, use **Device > Edit Device Manifest...**
+instead of editing the JSON by hand: see [Editing a device manifest](manifest-editor.md).
+
 ## What's not built yet
 
-- No custom, per-manifest control panel yet for a device described only by a
-  [device manifest](../design/device-manifests.md) — today's three panels are each built into
-  dev-term directly.
+- A manifest can only describe text commands and replies; one that references a binary Kaitai
+  Struct (`.ksy`) layout loads, but nothing decodes that layout yet.
+- A saved connection profile's manifest name doesn't open that manifest's panel by itself yet —
+  pick it from **Device > Device Manifest...**.

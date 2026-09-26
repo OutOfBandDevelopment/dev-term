@@ -45,14 +45,11 @@ the rest.
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
-- Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG). A concrete
-  consumer of this now has its own design:
-  [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md)
-  (2026-09-23) — an optional "Stream Monitor..." window that recognizes HPGL/PostScript/PCL/binary-
-  image replies (via a declared per-command response-format hint or by sniffing known signatures)
-  and captures/exports them, phased so a graphics-free capture-and-auto-save capability (TUI: save
-  as `{device}_{timestamp}.{ext}`; WPF: same, plus a free live preview for image formats WPF can
-  already decode natively) ships ahead of the harder HPGL/PostScript/PCL rendering work above.
+- Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
+  drawing/rendering half. The first consumer's capture-and-save / WPF-native-image-preview phase (the
+  "Stream Monitor..." window from
+  [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md))
+  landed 2026-09-25 (`docs/specs/stream-monitor.md`); the real HPGL/PostScript/PCL rendering it defers stays here.
 
 ### Device control modules & hardware profiles
 
@@ -71,10 +68,6 @@ the rest.
   (outer header's Type field, checksum formula) since fixed and checksum-verified against the source
   doc's real traces. Still needs a real-hardware re-run to confirm the device replies now — see
   `TODO.md`.
-  - [Zoom H4n remote](docs/design/proposals/zoom-h4n-remote-protocol.md) landed 2026-09-25
-  (`DevTerm.Devices.ZoomH4n`, see `docs/changes/2026-09-25.md`) but is unverified against real
-  hardware — no `h4n2rs485` adapter was attached. Re-run `RealHardwareZoomH4nTests` once it's
-  available and `devterm.runsettings` has its `RealSerialZoomH4nPort` filled in (see `TODO.md`).
 
 ### Tektronix TDS2024
 
@@ -114,58 +107,17 @@ all, then import" option) both landed 2026-09-18, as did the Windows half of a l
 detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
 (`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
 
-### Device manifests & shared UI framework
+- **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
+  fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
+  just annotating the view-model properties (and adding the view-model properties where missing).
 
-- **Wire a loaded `DeviceManifest` to an actual live `IControlSurface`/decoder pair and connection** —
-  `device-manifests.md` and `connection-profiles.md` both still describe this as unwired ("nothing yet
-  turns a loaded `DeviceManifest` into an actual `IControlSurface`/decoder pair or opens a connection
-  from one"), but that reasoning predates `IControlSurface` actually landing (2026-09-22, proven by
-  K8055/Busylight/SCPI). The blocker is no longer "the interface doesn't exist" — it's that nothing
-  builds one from a manifest's declarative command/response schema + `UiDefinition` at load time. This
-  is the actual payoff of the no-code device-manifest path (device-control-modules.md's "assembled
-  declaratively" goal); today a profile with a `ManifestName` only makes the `UiDefinition` available,
-  not a working control panel.
-- Once device manifest support is further along, build an editor for it — at least a default
-  render for request/response messages, ideally a presentation editor. New field types this implies
-  beyond `DevTerm.UiDefinitions`' current seven: bar graph (one bar per channel), strip/roll chart
-  recorder (1+ channels), and the vector/coordinate families x/y/z/h/s/v, x/y/h/s/v, r/theta,
-  r/theta/h/s/v.
-- **Low priority: consolidate hand-coded settings forms onto `DevTerm.UiDefinitions`' own model,
-  driven by metadata on the model class itself, instead of maintaining separate ad-hoc forms per
-  screen.** Today there are two disconnected ways dev-term describes "a form": `DevTerm.UiDefinitions`'
-  `UiSection`/`UiControl` vocabulary (built for device manifests, not yet wired to any renderer),
-  and the `[Category]`/`[DisplayName]` `System.ComponentModel` attributes added to `CliOptions` this
-  session (pure documentation metadata today — nothing reads them). Meanwhile the Connection
-  Editor's actual fields are hand-built twice, once per front end (`ConfigureMode`'s Terminal.Gui
-  controls, `DeviceProfilesWindow`'s XAML), with no shared declarative source at all. The idea:
-  define a small set of attributes (reusing or extending `UiDefinitions`' existing control-kind
-  vocabulary — button/toggle/slider/numeric/choice/textField/indicator — rather than inventing a
-  second one) that can annotate *any* model's properties (`CliOptions` included), a reflection-based
-  generator that turns an annotated model into the same `UiDefinition` a device manifest already
-  produces, and exactly one render engine per front end (Terminal.Gui, WPF) that turns a
-  `UiDefinition` into real controls regardless of whether it came from a device manifest's JSON or
-  from reflecting over `CliOptions`. Design once, render everywhere — the render engine work this
-  unlocks is also the actual blocker on `UiDefinitions`' own "step one only" status and on the
-  device-manifest editor item above, so it isn't purely a Connection Editor cleanup. Real scope
-  questions before starting: whether `UiDefinition`'s current one-level-of-grouping shape (built
-  from device mockups, not a settings form) covers the Connection Editor's transport-conditional
-  field groups without extension, and whether the Connection Editor's existing
-  `ConnectionEditorViewModel`/`RelayCommand` binding layer sits *under* the render engine (rendered
-  controls still bind to the same view model) or gets subsumed by it.
+### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
-### Device control panel UX & theming
-
-- **Low priority: theming — light/dark mode plus custom, user-defined theme profiles, for both
-  front ends.** Neither has any theme support today; both currently just take whatever colors their
-  framework defaults to. Two separate investigations before designing anything, per this project's
-  own "check before assuming" habit:
-  - **WPF**: .NET's newer Fluent theme for WPF (`ThemeMode` = Light/Dark/System) may already cover
-    light/dark for free on `net10.0-windows` — needs confirming against this project's actual TFM/
-    styles before assuming it's available, not assumed from memory of the feature's announcement.
-  - **TUI**: Terminal.Gui v2.5.0 has its own `Scheme`/`Attribute` system with real RGB colors (not
-    just 16 named ones — confirmed this session via `Cell.Attribute.Foreground`/`Background` while
-    building `TuiScreenshot`) and a `Color.Colors16`/`ColorName16` palette; check whether it already
-    ships swappable named schemes before building light/dark switching from scratch.
+- **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
+  dropdown); only the form renderers handle both.
+- **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
+- **The manifest editor's status line shows the full file path,** which reads long; a shortened path
+  (or just the folder name) would fit better.
 
 ### Tooling
 
@@ -175,11 +127,6 @@ detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
-
-### Logging
-
-- A logger mode — capture every sent/received message with a direction prefix and a sequence
-  number, for later review (not the same as the rendering-presenter export formats above).
 
 ## Research (not backlog-ready)
 
@@ -194,6 +141,3 @@ detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 
   already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
   fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
   itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
-- A logger-playback mode (realtime/fast/slow/rewind/fast-forward/pause, plus trim/markup) for the
-  logger-mode capture above — speculative, depends on logger mode existing first and on a concrete
-  file format for the captured log, neither of which exist yet.

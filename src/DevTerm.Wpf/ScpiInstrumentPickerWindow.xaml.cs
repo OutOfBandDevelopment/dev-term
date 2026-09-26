@@ -19,6 +19,7 @@ public partial class ScpiInstrumentPickerWindow : Window
     public ScpiInstrumentPickerWindow()
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
 
         var items = new List<string> { AutoDetectChoice, GenericChoice };
         items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));

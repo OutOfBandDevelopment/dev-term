@@ -180,6 +180,9 @@ public sealed class ControlPanelScreenshotTests
         var surface = new ScpiControlSurface(session, profile, tracker: null);
         var definition = ScpiUiDefinitionBuilder.Build(profile);
 
+        // Section expand/collapse state is remembered per definition for the process: start from
+        // all-expanded, and don't leave Common/Measure collapsed for later tests (see finally).
+        DevTerm.Configuration.SectionExpansionState.Forget(definition.Name);
         var dump = string.Empty;
         TuiTestRunner.RunHeadlessApp(app =>
         {
@@ -203,6 +206,7 @@ public sealed class ControlPanelScreenshotTests
             finally
             {
                 app.End(token);
+                DevTerm.Configuration.SectionExpansionState.Forget(definition.Name);
             }
         });
 
@@ -245,5 +249,99 @@ public sealed class ControlPanelScreenshotTests
         {
             DevTerm.Configuration.LastPickedColors.Forget("customColor");
         }
+    }
+
+    [TestMethod]
+    public async Task ControlPanelMode_ManifestLoopbackDemo_WithLiveCharts_IsCaptured()
+    {
+        // The bundled example manifest, opened exactly as Device > Device Manifest... opens it
+        // (ManifestPanel + ManifestPanelMode.BuildWindow), over the real loopback transport, after
+        // streaming 40 simulated samples - in a taller-than-default terminal so every chart shows.
+        var manifest = DevTerm.DeviceManifests.DeviceManifestLoader.Load(Path.Combine(AppContext.BaseDirectory, "manifests", "loopback-sensor-demo"));
+        DevTerm.Configuration.SectionExpansionState.Forget(manifest.Name);
+        DevTerm.Configuration.SectionExpansionState.Set(manifest.Name, ControlPanelMode.NotesSectionLabel, expanded: false);
+        var transport = new DevTerm.Transports.Loopback.LoopbackTransport(Microsoft.Extensions.Options.Options.Create(new DevTerm.Transports.Loopback.LoopbackTransportOptions()));
+        await using var session = new Session(transport, new Pipeline([]));
+        await session.OpenAsync(TestContext.CancellationToken);
+        using var panel = DevTerm.DeviceManifests.ManifestPanel.Attach(session, manifest);
+
+        var dump = string.Empty;
+        try
+        {
+            TuiTestRunner.RunWithLoop(
+                app =>
+                {
+                    app.Driver!.SetScreenSize(90, 66);
+                    return ManifestPanelMode.BuildWindow(app, panel);
+                },
+                parts =>
+                {
+                    panel.Surface.InvokeAsync("measure", null, TestContext.CancellationToken).GetAwaiter().GetResult();
+                    panel.Surface.InvokeAsync("samples", "40", TestContext.CancellationToken).GetAwaiter().GetResult();
+                    var filled = TuiTestRunner.WaitUntilOnLoop(
+                        () => ((DevTerm.UiDefinitions.StripChartState)parts.DisplayViews["history"].State).SamplesOf("chA").Count == 41,
+                        _waitTimeout);
+                    Assert.IsTrue(filled, "Expected all 41 samples (1 measured + 40 streamed) in the strip chart.");
+
+                    dump = TuiTestRunner.InvokeOnLoop(() =>
+                    {
+                        TuiTestRunner.CurrentApp.LayoutAndDraw(true);
+                        return TuiTestRunner.DumpBuffer();
+                    });
+                    TuiTestRunner.InvokeOnLoop(() =>
+                    {
+                        Directory.CreateDirectory(_imagesDirectory);
+                        TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-control-panel-manifest.png"));
+                        return true;
+                    });
+                });
+        }
+        finally
+        {
+            DevTerm.Configuration.SectionExpansionState.Forget(manifest.Name);
+        }
+
+        SaveDump("tui-control-panel-manifest", dump);
+        Assert.Contains("[-] Levels", dump);
+        Assert.Contains("▕", dump);
+        Assert.Contains("r=", dump);
+    }
+
+    [TestMethod]
+    public void ControlPanelMode_Scpi34401a_WideRowScrolledIntoView_IsCaptured()
+    {
+        var profile = ScpiProfileCatalog.All.Single(p => p.Name.Contains("34401A", StringComparison.OrdinalIgnoreCase));
+        var session = new Session(new FakeTransport(), new Pipeline([]));
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+        var definition = ScpiUiDefinitionBuilder.Build(profile);
+        DevTerm.Configuration.SectionExpansionState.Forget(definition.Name);
+
+        var dump = string.Empty;
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, surface, structuredSource: null, $"dev-term — {profile.Name}");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+
+            try
+            {
+                // The row that used to run off the right edge: focusing its button scrolls the form
+                // sideways until the button and its (i) marker are both visible.
+                parts.ControlViews["confFres.send"].SetFocus();
+                app.LayoutAndDraw(true);
+
+                dump = TuiTestRunner.DumpBuffer();
+                Directory.CreateDirectory(_imagesDirectory);
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-control-panel-wide-row.png"));
+            }
+            finally
+            {
+                app.End(token);
+            }
+        });
+
+        SaveDump("tui-control-panel-wide-row", dump);
+        Assert.Contains("Configure 4-Wire Resistance Range ⟧", dump);
+        Assert.Contains("Sends: CONF:FRES DEF\\n", dump);
     }
 }

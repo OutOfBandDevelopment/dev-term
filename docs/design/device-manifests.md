@@ -66,30 +66,106 @@ stop
   relative path (package mode, for authors who'd rather keep it in its own file even though it
   could be inline).
 
+## Live panels (landed 2026-09-25)
+
+A loaded manifest is now a working, no-code device control module for text protocols, opened from
+**Device > Device Manifest...** in both front ends on the *current* session (see
+[docs/specs/device-control-panel.md](../specs/device-control-panel.md)'s "Picking a device
+manifest"). `DevTerm.DeviceManifests.ManifestPanel.Attach(session, manifest)` builds the three parts
+a generic renderer needs:
+
+- **`ManifestUiBuilder.Build`** — the manifest's own `Ui`, or one generated from its outbound
+  commands when it has none (a field per parameter, a button per command, a reply indicator per
+  query), so a commands-only manifest still gets a panel.
+- **`ManifestControlSurface`** (`IControlSurface` + `ICommandPreview`, the same shape as
+  `ScpiControlSurface`) — finds the command by `OutboundCommand.EffectiveId` (`Id`, else `Name`),
+  substitutes each `{Parameter}` token (values arrive comma-joined from a `ParameterFieldIds`
+  button; a parameterless template's `{value}` takes a single control's value), appends the
+  manifest's `Terminator`, and sends ASCII over the session. A parameter field or display control id
+  is a no-op (the renderers commit fields by their own id), an unknown id throws. A query
+  (`IsQuery`, or an explicit `ReplyId`) registers its reply id (`{id}.reply` by default) before
+  sending. The preview and the send share one `Resolve` path.
+- **`ManifestReplyPresenter`** — the inbound half: the same CR/LF/CRLF line buffering and FIFO
+  reply correlation as the SCPI module, now shared as `DevTerm.Core.Presenters.LineReplyPresenter`
+  (which `ScpiReplyPresenter` also derives from — no duplicate), plus every `Inbound.Patterns` regex
+  matched against every complete line: the pattern's `Name` gets its first capture group and each
+  named group (`(?<chA>…)`) its own value. That's what feeds indicators and the chart controls
+  (see [ui-definitions.md](ui-definitions.md)), for a correlated reply and for unsolicited streamed
+  telemetry alike. It renders no text of its own, and it's bound into the live pipeline only while
+  the panel is open (`Session.AddPresenter`/`RemovePresenter`).
+
+Manifest fields added for this (all optional, so existing manifests load unchanged):
+`DeviceManifest.Terminator`; `OutboundCommand.Id`, `IsQuery`, `ReplyId`; `CommandParameter.DefaultValue`
+and `Format` (a .NET numeric format, e.g. `"00.00"` for `VSET1:05.00`; `Type` `number`/`integer`
+values are parsed, clamped to `Minimum`/`Maximum`, and formatted, `string` is sent as typed); and
+`InboundProtocol.LineTerminated` (false for a device whose replies have no terminator). JSON is read
+case-insensitively, so hand-written camelCase manifests work.
+
+**Where they come from**: `DevTerm.Configuration.InstalledManifests.Discover()` lists
+`~/.dev-term/manifests` then the app's `manifests\` folder (the two locations
+[connection-profiles.md](connection-profiles.md) already resolves a `ManifestName` from) — every
+subfolder with a `device.json`, every `.zip`, every other `.json` (`ManifestCatalog`) — and the
+picker also takes any path. The first bundled manifest is **Loopback Sensor Demo**
+(`src/DevTerm.DeviceManifests/Manifests/loopback-sensor-demo/device.json`, copied into every front
+end's output as `manifests\loopback-sensor-demo\device.json`): a simulated sensor answered by the
+loopback transport (`MEAS?`, `Samples: N`), exercising the bar graph, strip chart and all three
+vector modes with no hardware — tested end to end over the real loopback transport.
+
+## Validation, saving, and the editor (landed 2026-09-25)
+
+**One set of checks, run on every load and before every save.** `DeviceManifestValidator.Validate`
+returns *errors* — a blank name; a command with no name or template; two commands with the same
+effective id (only the first could ever run); a parameter with no name or a duplicate one; a response
+pattern with no name, no regex, or one that doesn't compile; a panel control with no id — and
+*warnings* — a button or field whose command id no command declares (the panel would report
+"Unknown manifest command" on use), a button reading a parameter field the panel lacks, a template
+`{placeholder}` no parameter fills. `DeviceManifestLoader.Load` now throws
+`DeviceManifestValidationException` (an `InvalidOperationException`, which the pickers and the
+catalog already handle) for errors; warnings never block a load. `Load(path, validate: false, out
+manifestFile)` skips the checks — the editor opens a broken manifest so it can be fixed.
+
+**Writing one back.** `DeviceManifestWriter.Save(manifest, path, sourceDirectory)` writes a `.json`
+path as that file and anything else as a folder's `device.json`, in the hand-written style (camelCase,
+indented, unset values left out); a package-mode manifest keeps its panel in its `UiFile` (JSON or
+XML by extension) and out of `device.json`; a referenced Kaitai file missing at the destination is
+copied from where the manifest was loaded, so the saved copy still loads. The bundled Loopback Sensor
+Demo round-trips unchanged through open → save → load.
+
+**The manifest editor** (**Device > Edit Device Manifest...**, both front ends; see
+[the spec](../specs/manifest-editor.md) and [the user guide](../user-guide/manifest-editor.md)) edits
+every part of a manifest through forms generated by the [forms engine](ui-definitions.md#forms-from-one-definition)
+from small annotated facades over the manifest objects (`DevTerm.DeviceManifests.Editing`), shows a
+live preview drawn by the real control-panel renderer against `ManifestControlSurface.ForPreview` (a
+surface with no session: it previews and "sends" nothing, raising `PreviewInvoked` instead), and saves
+to `~/.dev-term/manifests` by default.
+
 ## What this explicitly is not (yet)
 
 - **Not a code plugin mechanism** — see [plugin-model.md](plugin-model.md) for dynamic *code*
   plugin loading, which is a separate, larger, not-yet-built concern. A device manifest is for the
   no-code case device-control-modules.md's declarative-schema section describes; a device needing
   real logic still needs a real plugin.
-- **Not wired to anything yet** — like `ui-definitions.md`'s model, this is the file-format/loading
-  design plus (once built) a representation model, not a working device control module. Nothing
-  yet turns a loaded `DeviceManifest` into an actual `IControlSurface`/decoder pair or opens a
-  connection from one, because `IControlSurface` itself doesn't exist in code yet.
+- **Not a connection opener** — a manifest's panel rides on whatever session is already open; its
+  `Transport` hint doesn't pre-fill or open a connection, and a profile's `ManifestName` doesn't
+  open the panel by itself yet.
 - **Not a Kaitai Struct reimplementation** — the manifest only *references* a `.ksy` file by path;
-  actually running Kaitai-generated parsing code against it is separate, future work.
+  actually running Kaitai-generated parsing code against it is separate, future work, so binary
+  replies aren't decoded (a `.ksy`-referencing manifest loads and its commands send, but only text
+  patterns publish values).
 
 ## Open questions
 
-- Whether outbound command templates need more than simple placeholder substitution (`{value}`) —
-  e.g. numeric formatting/padding, unit conversion — or whether that's pushed onto the parameter
-  definition itself (a `Format` hint) rather than the template syntax.
-- Whether response patterns need to express *which* command they're a reply to (request/response
-  pairing — the same open question already flagged in device-control-modules.md) or stay
-  independent, always-on matches against whatever comes back.
-- Where package-mode manifests actually live on disk once loaded from a `.zip` — a per-user cache
-  directory, alongside the app, or something the plugin model (once built) already needs to solve
-  for real code plugins anyway, in which case this might not need its own answer.
+- ~~Whether outbound command templates need more than simple placeholder substitution~~ —
+  **settled 2026-09-25**: pushed onto the parameter (`Type`, `Minimum`/`Maximum` clamping, a
+  `Format` string, `DefaultValue`), keeping the template syntax plain `{Name}` substitution. Unit
+  conversion is still not supported.
+- ~~Whether response patterns need to express *which* command they're a reply to~~ — **settled
+  2026-09-25** for the synchronous case: pairing is per *command* (`IsQuery`/`ReplyId`, FIFO like
+  SCPI), and patterns stay independent, always-on matches against every line, which is what lets
+  them decode streamed telemetry too. Interleaved/concurrent replies remain unsupported.
+- Where package-mode manifests actually live on disk once loaded from a `.zip` — still extracted to
+  a fresh temp folder per load (`%TEMP%\devterm-manifests\…`) and never cleaned up; a per-user cache
+  keyed by the zip's hash would avoid re-extracting and the leak.
 - Whether a single-file manifest should be allowed to *also* reference an external `.ksy` (accepting
   that it's then not really "single file" in practice) or whether that combination should be
   rejected outright to keep the two modes' guarantees clean and unambiguous.

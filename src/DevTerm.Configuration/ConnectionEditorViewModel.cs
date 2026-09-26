@@ -9,6 +9,8 @@ using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Usbtmc;
+using DevTerm.UiDefinitions;
+using DevTerm.UiDefinitions.Forms;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
@@ -22,6 +24,22 @@ namespace DevTerm.Configuration;
 /// and business logic itself (connect/load/save/import/export) lives here exactly once. See
 /// docs/design/connection-profiles.md.
 /// </summary>
+/// <remarks>
+/// It is also the <em>form model</em> of the editor's connection fields: the properties carrying
+/// <see cref="FormFieldAttribute"/> (with <c>[Category]</c>/<c>[DisplayName]</c>) are what
+/// <see cref="FormDefinitionGenerator"/> turns into the <see cref="UiDefinition"/> both front ends'
+/// generic form renderers draw and bind back to these same properties — one declaration of the
+/// fields, their grouping, and which transport shows which group (<see cref="FormSectionAttribute"/>'s
+/// visibility conditions on <see cref="IsSerialTransport"/> etc.), instead of a hand-built field list
+/// per front end. See docs/design/ui-definitions.md's "Forms from one definition".
+/// </remarks>
+[FormSection("General", Label = "", Order = 0)]
+[FormSection("Serial", Order = 1, VisibleWhen = nameof(IsSerialTransport))]
+[FormSection("TCP", Order = 2, VisibleWhen = nameof(IsTcpTransport))]
+[FormSection("USB Device", Order = 3, VisibleWhen = nameof(IsUsbDeviceTransport))]
+[FormSection("BLE", Order = 4, VisibleWhen = nameof(IsBleTransport))]
+[FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
+[FormSection("Presentation", Order = 6)]
 public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly CliOptionsValidator _validator = new();
@@ -67,6 +85,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private IReadOnlyList<UsbtmcDeviceOption> _detectedUsbtmcDevices = [];
     private readonly ObservableCollection<UsbtmcDeviceOption> _usbtmcDeviceOptions = [];
     private bool _idsShowHex;
+    private UiDefinition? _formDefinition;
 
     /// <summary>
     /// Property names that setting doesn't count as an unsaved edit for <see cref="IsDirty"/>
@@ -123,6 +142,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             choice.PropertyChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(PresenterChoices));
+                OnPropertyChanged(nameof(PresentersText));
                 OnPropertyChanged(nameof(IsScpiPresenterSelected));
             };
         }
@@ -367,9 +387,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// Set once <see cref="ConnectCommand"/> validates; <see langword="null"/> until then. What
     /// "Connect" means depends on the caller: at startup, with no valid configuration yet, it's
     /// used directly to build the DI host and connect immediately. From the "Device Profiles..."
-    /// menu item (already connected), it's saved as the default profile and a restart is requested
-    /// instead — see docs/design/connection-profiles.md's note on why this doesn't live-swap the
-    /// running session's transport.
+    /// menu item (already connected), it's saved as the default profile and live-switched to: the
+    /// running session closes and the new one opens in place (<c>MainWindow.SwitchProfileAsync</c>,
+    /// <c>TuiMode</c>'s <c>SwitchProfileAsync</c>) — see docs/specs/connection-editor.md.
     /// </summary>
     public CliOptions? Result { get; private set; }
 
@@ -450,6 +470,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>Same idea as <see cref="HidDevicesHiddenByFilter"/>, for <see cref="UsbtmcDeviceOptions"/>.</summary>
     public bool UsbtmcDevicesHiddenByFilter => _usbtmcDeviceOptions.Count < _detectedUsbtmcDevices.Count;
 
+    [Category("General")]
+    [DisplayName("Transport")]
+    [FormField(Order = 0, OptionsFrom = nameof(TransportOptions))]
     public string Transport
     {
         get => _transport;
@@ -517,6 +540,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public bool IsUsbDeviceTransport => IsHidTransport || IsUsbtmcTransport;
 
+    [Category("Serial")]
+    [DisplayName("Port")]
+    [FormField(Order = 0)]
     public string Port
     {
         get => _port;
@@ -534,6 +560,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// marks the editor dirty). <see langword="null"/> doesn't clear <see cref="Port"/> — it just
     /// means nothing from the list is currently selected.
     /// </summary>
+    [Category("Serial")]
+    [DisplayName("Detected ports")]
+    [FormField(Order = 1, OptionsFrom = nameof(SerialPortNames))]
     public string? SelectedSerialPort
     {
         get => _selectedSerialPort;
@@ -549,14 +578,38 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    /// <summary>The serial port names <see cref="SerialPortOptions"/> offers — the generic choice list behind the "Detected ports" row, which each front end replaces with its own richer picker (see <c>ConfigureMode</c>/<c>DeviceProfilesWindow</c>).</summary>
+    public IReadOnlyList<string> SerialPortNames => [.. SerialPortOptions.Select(p => p.Name)];
+
+    /// <summary>Shown (see <see cref="ConnectedDeviceNotFound"/>) under the serial port when the saved port isn't attached.</summary>
+    [Category("Serial")]
+    [DisplayName("")]
+    [FormField(Order = 2, Kind = FormFieldKind.Indicator, VisibleWhen = nameof(ConnectedDeviceNotFound), Warning = true)]
+    public string SerialPortNotFoundHint => "(not found — this port isn't connected right now)";
+
+    [Category("Serial")]
+    [DisplayName("Baud")]
+    [FormField(Order = 3, ValueKind = ValueKind.Integer, Minimum = 1)]
     public string Baud { get => _baud; set => SetField(ref _baud, value); }
 
+    [Category("Serial")]
+    [DisplayName("Data bits")]
+    [FormField(Order = 4, ValueKind = ValueKind.Integer, Minimum = 5, Maximum = 8)]
     public string DataBits { get => _dataBits; set => SetField(ref _dataBits, value); }
 
+    [Category("Serial")]
+    [DisplayName("Parity")]
+    [FormField(Order = 5, OptionsFrom = nameof(ParityOptions))]
     public string ParityText { get => _parityText; set => SetField(ref _parityText, value); }
 
+    [Category("Serial")]
+    [DisplayName("Stop bits")]
+    [FormField(Order = 6, OptionsFrom = nameof(StopBitsOptions))]
     public string StopBitsText { get => _stopBitsText; set => SetField(ref _stopBitsText, value); }
 
+    [Category("Serial")]
+    [DisplayName("Handshake")]
+    [FormField(Order = 7, OptionsFrom = nameof(HandshakeOptions))]
     public string HandshakeText { get => _handshakeText; set => SetField(ref _handshakeText, value); }
 
     /// <summary>
@@ -564,6 +617,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// see <see cref="ScpiProfileOptions"/> for the valid values and <see cref="CliOptions.ScpiProfile"/>
     /// for how a front end's menu handler consumes it.
     /// </summary>
+    [Category("Presentation")]
+    [DisplayName("SCPI profile")]
+    [FormField(Order = 1, OptionsFrom = nameof(ScpiProfileOptions), VisibleWhen = nameof(IsScpiPresenterSelected))]
     public string ScpiProfile { get => _scpiProfile; set => SetField(ref _scpiProfile, value); }
 
     /// <summary>
@@ -573,10 +629,19 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public bool IsScpiPresenterSelected => SelectedPresenters.Contains("scpi", StringComparer.OrdinalIgnoreCase);
 
+    [Category("TCP")]
+    [DisplayName("Host")]
+    [FormField(Order = 0)]
     public string Host { get => _host; set => SetField(ref _host, value); }
 
+    [Category("TCP")]
+    [DisplayName("Port")]
+    [FormField(Order = 1, ValueKind = ValueKind.Integer, Minimum = 0, Maximum = 65535)]
     public string TcpPort { get => _tcpPort; set => SetField(ref _tcpPort, value); }
 
+    [Category("TCP")]
+    [DisplayName("Listen (server mode)")]
+    [FormField(Order = 2)]
     public bool Listen { get => _listen; set => SetField(ref _listen, value); }
 
     /// <summary>
@@ -626,6 +691,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// itself a connection field, so it doesn't mark the editor dirty and isn't saved as part of a
     /// profile (<see cref="VendorId"/>/<see cref="ProductId"/> are always decimal regardless of this).
     /// </summary>
+    [Category("USB Device")]
+    [DisplayName("Show as hex")]
+    [FormField(Order = 3)]
     public bool IdsShowHex
     {
         get => _idsShowHex;
@@ -650,6 +718,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// changes the canonical value): a bound WPF <c>TextBox</c> re-pulling and reformatting its own
     /// text on every keystroke would reset the caret to the end after each character typed.
     /// </summary>
+    [Category("USB Device")]
+    [DisplayName("Vendor ID")]
+    [FormField(Order = 0)]
     public string VendorIdDisplay
     {
         get => FormatId(_vendorId, _idsShowHex);
@@ -667,6 +738,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     }
 
     /// <summary>Same idea as <see cref="VendorIdDisplay"/>.</summary>
+    [Category("USB Device")]
+    [DisplayName("Product ID")]
+    [FormField(Order = 1)]
     public string ProductIdDisplay
     {
         get => FormatId(_productId, _idsShowHex);
@@ -690,6 +764,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// when more than one device on the bench shares the same vendor/product ID. Shared by the HID
     /// and USBTMC transports, same as <see cref="VendorId"/>/<see cref="ProductId"/>.
     /// </summary>
+    [Category("USB Device")]
+    [DisplayName("Serial number")]
+    [FormField(Order = 2)]
     public string SerialNumber { get => _serialNumber; set => SetField(ref _serialNumber, value); }
 
     /// <summary>
@@ -710,15 +787,27 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// in the Windows-only backend, loaded at runtime — see <see cref="BlePlatformAdapterLoader"/>).
     /// A live "Detect..." picker is deferred; see BACKLOG.md.
     /// </summary>
+    [Category("BLE")]
+    [DisplayName("Device ID")]
+    [FormField(Order = 0)]
     public string BleDeviceId { get => _bleDeviceId; set => SetField(ref _bleDeviceId, value); }
 
     /// <summary>Blank uses <c>DevTerm.Transports.Ble.BleTransportOptions</c>'s own Nordic UART Service default.</summary>
+    [Category("BLE")]
+    [DisplayName("Service UUID")]
+    [FormField(Order = 1)]
     public string BleServiceUuid { get => _bleServiceUuid; set => SetField(ref _bleServiceUuid, value); }
 
     /// <summary>Same idea as <see cref="BleServiceUuid"/>.</summary>
+    [Category("BLE")]
+    [DisplayName("Write characteristic UUID")]
+    [FormField(Order = 2)]
     public string BleWriteCharacteristicUuid { get => _bleWriteCharacteristicUuid; set => SetField(ref _bleWriteCharacteristicUuid, value); }
 
     /// <summary>Same idea as <see cref="BleServiceUuid"/>.</summary>
+    [Category("BLE")]
+    [DisplayName("Notify characteristic UUID")]
+    [FormField(Order = 3)]
     public string BleNotifyCharacteristicUuid { get => _bleNotifyCharacteristicUuid; set => SetField(ref _bleNotifyCharacteristicUuid, value); }
 
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
@@ -740,6 +829,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             : text;
 
     /// <summary>Same idea as <see cref="SelectedSerialPort"/>, for <see cref="VendorId"/>/<see cref="ProductId"/> together.</summary>
+    [Category("USB Device")]
+    [DisplayName("Detected HID devices")]
+    [FormField(Order = 4, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsHidTransport))]
     public HidDeviceOption? SelectedHidDevice
     {
         get => _selectedHidDevice;
@@ -759,6 +851,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     }
 
     /// <summary>Same idea as <see cref="SelectedHidDevice"/>, for a real USBTMC device — writes into the same shared <see cref="VendorId"/>/<see cref="ProductId"/>.</summary>
+    [Category("USB Device")]
+    [DisplayName("Detected USBTMC devices")]
+    [FormField(Order = 5, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsUsbtmcTransport))]
     public UsbtmcDeviceOption? SelectedUsbtmcDevice
     {
         get => _selectedUsbtmcDevice;
@@ -777,6 +872,18 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    /// <summary>Shown (see <see cref="ConnectedDeviceNotFound"/>) under the USB device fields when no attached device matches them.</summary>
+    [Category("USB Device")]
+    [DisplayName("")]
+    [FormField(Order = 6, Kind = FormFieldKind.Indicator, VisibleWhen = nameof(ConnectedDeviceNotFound), Warning = true)]
+    public string UsbDeviceNotFoundHint => "(not found — no connected device matches this vendor/product/serial)";
+
+    /// <summary>The loopback transport's only "field": what it is and what to try.</summary>
+    [Category("Loopback")]
+    [DisplayName("")]
+    [FormField(Order = 0, Kind = FormFieldKind.Indicator)]
+    public string LoopbackInfo => "No configuration needed — a scripted fake device. Try \"hello\", \"Send Stream: N, ascii\", \"Send Events: N\", or \"help\"/\"?\".";
+
     /// <summary>
     /// The presenter picker: one checkable entry per <see cref="PresenterOptions"/> name, in that
     /// order. Every checked one displays incoming data (the session's pipeline fans each chunk out
@@ -786,14 +893,46 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public IReadOnlyList<PresenterSelection> PresenterChoices { get; }
 
     /// <summary>The send format for typed lines — see <see cref="CliOptions.Parser"/>. One of <see cref="PresenterOptions"/> (every built-in presenter can encode input).</summary>
+    [Category("Presentation")]
+    [DisplayName("Send as")]
+    [FormField(Order = 2, OptionsFrom = nameof(PresenterOptions))]
     public string Parser { get => _parser; set => SetField(ref _parser, value); }
 
     /// <summary>The names of the checked <see cref="PresenterChoices"/>, in picker order.</summary>
     public IReadOnlyList<string> SelectedPresenters => [.. PresenterChoices.Where(c => c.IsSelected).Select(c => c.Name)];
 
+    /// <summary>
+    /// <see cref="PresenterChoices"/> as one comma-separated value (checked names, picker order) — what
+    /// the generated form's presenter check list binds to; setting it checks exactly the named ones.
+    /// </summary>
+    [Category("Presentation")]
+    [DisplayName("Presenters")]
+    [FormField(Order = 0, OptionsFrom = nameof(PresenterOptions), ChoiceStyle = ChoiceStyle.CheckList)]
+    public string PresentersText
+    {
+        get => string.Join(',', SelectedPresenters);
+        set
+        {
+            var names = FormBinding.SplitList(value);
+            foreach (var choice in PresenterChoices)
+            {
+                choice.IsSelected = names.Contains(choice.Name, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    [Category("Presentation")]
+    [DisplayName("Line ending")]
+    [FormField(Order = 3, OptionsFrom = nameof(LineEndingOptions))]
     public string LineEndingText { get => _lineEndingText; set => SetField(ref _lineEndingText, value); }
 
+    [Category("General")]
+    [DisplayName("Description")]
+    [FormField(Order = 1)]
     public string Description { get => _description; set => SetField(ref _description, value); }
+
+    /// <summary>The connection fields' form (see the class remarks) — generated once per editor, since its choice lists are read from this instance.</summary>
+    public UiDefinition FormDefinition => _formDefinition ??= FormDefinitionGenerator.Generate(this, "Connection");
 
     public string SaveName { get => _saveName; set => SetField(ref _saveName, value); }
 

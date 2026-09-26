@@ -8,18 +8,18 @@
 │                                                                             █│
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
+│                                                                             █│
+│  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ loopback                  █│
+│  Description: Tektronix 2230 bench scope                                    █│
 │                                                                             ░│
-│Transport: ◉ Serial  ○ Tcp  ○ Hid  ○ Usbtmc  ○ Ble  ○ Loopback               ░│
-│                                                                             ░│
-│Description: Tektronix 2230 bench scope                                      ░│
-│                                                                             ░│
-│Serial port: COM3         ⟦ Detect... ⟧▖   Baud: 9600         (not found)    ░│
-│                          ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                     ░│
-│Data bits: 8      Parity: ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space             ░│
-│                                                                             ░│
-│Stop bits: ○ None  ◉ One  ○ Two  ○ OnePointFive                              ░│
-│                                                                             ░│
-│Handshake: ◉ None  ○ XOnXOff  ○ RequestToSend  ○ RequestToSendXOnXOff        ░│
-│                                                                             ░│
-│                                                                             ▼│
+│── Serial ──                                                                 ░│
+│  Port:           COM3                                                       ░│
+│  Detected ports: ⟦ Detect... ⟧▖                                             ░│
+│                  ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                             ░│
+│                  (not found — this port isn't connected right now)          ░│
+│  Baud:           9600                                                       ░│
+│  Data bits:      8                                                          ░│
+│  Parity:         ◉ None  ○ Odd  ○ Even  ○ Mark  ○ Space                     ░│
+│  Stop bits:      ○ None  ◉ One  ○ Two  ○ OnePointFive                       ░│
+│  Handshake:      ◉ None  ○ XOnXOff  ○ RequestToSend  ○ RequestToSendXOnXOff ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

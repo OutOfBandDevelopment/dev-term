@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using DevTerm.Core.Control;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.StreamContent;
 
 namespace DevTerm.Devices.Scpi;
 
@@ -70,6 +71,16 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
             _tracker?.QuerySent(replyIndicatorId);
         }
 
+        if (resolved.ResponseFormat != StreamContentFormat.Text)
+        {
+            // Found on the session's live pipeline rather than passed in, so nothing has to be
+            // wired between a control panel and a Stream Monitor - no monitor running, no sink.
+            foreach (var sink in _session.Presenters.OfType<IStreamContentHintSink>())
+            {
+                sink.ExpectResponse(resolved.ResponseFormat);
+            }
+        }
+
         var bytes = Encoding.ASCII.GetBytes(resolved.WireText);
         return _session.SendAsync(bytes, cancellationToken);
     }
@@ -100,11 +111,11 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
     /// what's actually sent. Null for a value-holder field id (sends nothing); throws for an unknown
     /// command id.
     /// </summary>
-    private (string WireText, string? ReplyIndicatorId)? Resolve(string commandId, string? value)
+    private (string WireText, string? ReplyIndicatorId, StreamContentFormat ResponseFormat)? Resolve(string commandId, string? value)
     {
         if (commandId == SendCustomCommandId)
         {
-            return ((value ?? string.Empty) + _profile.Terminator, $"{SendCustomCommandId}.reply");
+            return ((value ?? string.Empty) + _profile.Terminator, $"{SendCustomCommandId}.reply", StreamContentFormat.Text);
         }
 
         if (_parameterFieldIds.Contains(commandId))
@@ -117,7 +128,7 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
             throw new ArgumentException($"Unknown SCPI command '{commandId}'.", nameof(commandId));
         }
 
-        return (BuildCommandText(command, value) + _profile.Terminator, command.IsQuery ? $"{command.Id}.reply" : null);
+        return (BuildCommandText(command, value) + _profile.Terminator, command.IsQuery ? $"{command.Id}.reply" : null, command.ExpectedResponseFormat);
     }
 
     private static string BuildCommandText(ScpiCommandDefinition command, string? value)

@@ -429,6 +429,76 @@ file only points there, it doesn't restate them.**
 - **In a WPF `Grid` star column, a fixed-`Width` control with the default `HorizontalAlignment`
   (Stretch) is centered, not left-aligned.** A `Width=160` `ComboBox` sat in the middle of the Busylight
   panel's Track row until the row content got `HorizontalAlignment = Left`.
+- **WPF decodes a truncated PNG without error.** `BitmapDecoder.Create(..., BitmapCacheOption.OnLoad)`
+  accepted the first 200 bytes of a ~10 KB PNG and returned a frame, so a successful decode says nothing
+  about completeness. The Stream Monitor finds a capture's end structurally (`StreamContentEndFinder`)
+  instead of "does it decode yet".
+- **Terminal.Gui `Label.Text` treats `_` as a hotkey marker.** `Rigol_DG1062Z_…` rendered as
+  `RigolDG1062Z_…`. Any label showing data (device names, file names) needs
+  `HotKeySpecifier = (Rune)0xFFFF`.
+- **A Terminal.Gui `Label` wraps a line longer than its width, and whatever falls past its `Height` is
+  silently dropped.** A two-line label whose first line was too long lost its second line entirely. Keep
+  each explicit line shorter than the label's width.
+- **A headless Terminal.Gui resize works:** `app.Driver.SetScreenSize(w, h)` followed by
+  `LayoutAndDraw(true)` on v2.5.0's "dotnet" driver acts as a real resize and fires `SubViewsLaidOut` with the
+  new viewport width. Calling `SetContentSize` from a `SubViewsLaidOut` handler settles without looping, as
+  long as it only runs when the value actually changed; that's how the control panel's form sizes its
+  sideways scroll area.
+- **A library's `<None Include="Manifests\**\*" Link="manifests\%(RecursiveDir)..."
+  CopyToOutputDirectory="PreserveNewest">` is copied into the output of every app and test project that
+  references it, even indirectly.** That's how the bundled device manifests reach both apps and the tests
+  without per-project wiring.
+- **The WPF project's implicit usings don't include `System.IO`.** `IOException`/`InvalidDataException`
+  fail with CS0103 there without an explicit `using System.IO;`, unlike the console and library projects.
+- **WPF `Window.Owner` can't be set to a window that has never been shown.** It throws "Cannot set Owner
+  property to a Window that has not been shown previously", which is exactly a `MainWindow` under test
+  (constructed, never shown). Set `Owner` only right before a real `Show()`/`ShowDialog()`.
+- **A Terminal.Gui `Button` with `ShadowStyles.None` still takes two rows, and `Height = 1` makes it disappear
+  entirely.** Lay out button rows from a fixed anchor (`Pos.Bottom(label) + 1`), not `Pos.Bottom(button)`.
+- **Terminal.Gui `Window.Disposing` doesn't fire when the app shuts down after `Run` returns**, including in
+  headless tests. Do end-of-run cleanup (closing a log, say) explicitly after `app.Run(...)`, not in a
+  `Disposing` handler.
+- **A redirected Windows console writes stdout in the OEM code page:** `—` becomes `-` and `·` becomes `?` in
+  captured CLI output. Keep CLI-facing text to ASCII punctuation, or it arrives mangled in scripts and
+  transcripts.
+- **`DateTimeOffset.AddSeconds(1.2)` lands one tick short and prints as `00:01.199`.** Use
+  `AddMilliseconds` for exact timestamps in tests.
+- **WPF Fluent `ThemeMode` is still `[Experimental("WPF0001")]` on .NET 10.** Any use fails the build under
+  TreatWarningsAsErrors. It also re-templates every control with much larger metrics, and Dark's window
+  background is transparent (Mica), so a `RenderTargetBitmap` capture comes out white on white. dev-term themes
+  the stock templates itself (`WpfTheme`) instead.
+- **The stock WPF control chrome is hard-coded light.** Overriding `SystemColors` keys only fixes controls whose
+  styles read them (TextBox, menus, status bar). Button hover/pressed, the ComboBox toggle and editable box, the
+  MenuItem drop-down popup (`#F0F0F0`) and the ListBox background stayed light under light dark-theme text, and
+  needed replacement templates (`DarkControls.xaml`).
+- **Terminal.Gui v2.5.0's built-in "Dark"/"Light" themes don't set a background.** `Base` stays `None` (the
+  terminal's own), so each is unreadable on the opposite-colored terminal.
+- **`SchemeManager.AddScheme` overrides are process-wide, not per `IApplication`.** They survive
+  `Application.Init` and later `ThemeManager.Theme` switches. A test that applies a theme must call
+  `TuiTheme.Restore()` and `ActiveTheme.Reset()`, and run `[DoNotParallelize]`.
+- **A static-event subscription made in `TuiMode.BuildWindow` outlives the test that built the window.**
+  Headless tests never dispose their windows, so `Disposing` never fires, and a later `ActiveTheme.Select` from
+  another test's thread hit the stale handler: "Call from invalid thread". Marshal with `app.Invoke` when not on
+  the UI thread, and unsubscribe once `app.Driver is null`.
+- **An XSHD highlighting definition's colors are fixed once loaded.** A live theme switch has to swap
+  `Editor.HighlightingDefinition` for a new definition (`OutputHighlighting.For(theme)`, cached per theme).
+- **Windows PowerShell 5's `Get-Content`/`Set-Content` corrupt non-ASCII characters in UTF-8 source** ("●" came
+  back as three garbage characters) and add a BOM and CRLF. Use `[IO.File]::ReadAllText`/`WriteAllText` with
+  `UTF8Encoding($false)`, or the Edit tool.
+- **`XmlSerializer` turns a null list into an empty one on the round trip.** A null `List<T>` property (e.g.
+  `ButtonControl.ParameterFieldIds`) comes back as `[]`, so JSON→XML→JSON isn't byte-identical even though
+  JSON→JSON is. Compare field by field in XML round-trip tests.
+- **A Terminal.Gui `Window` embeds as an ordinary subview.** The manifest editor adds
+  `ControlPanelMode.BuildWindow`'s window to a `FrameView` for its live preview; it lays out and takes input.
+- **`app.End(token)` doesn't dispose a Terminal.Gui window, and `View.Dispose()` raises `Disposing` on every
+  call** (twice → twice, no exception). Cleanup hooked on `Disposing` needs an explicit `Dispose()` after a
+  nested `Run`, and must tolerate running twice.
+- **`ShadowStyle = ShadowStyles.None` still leaves the shadow's column,** so buttons placed at
+  `Pos.Right(prev) + 1` show a two-column gap. Drop the `+ 1` to pack shadowless buttons.
+- **Private constants need the `_` prefix** (`private const string _buttonKind`), or the build fails with
+  IDE1006.
+- **A `JsonStringEnumConverter<T>` on the enum type writes names but still reads numbers**, so adding one to an
+  existing enum stays backward-compatible (`FormDefinitionGeneratorTests.ChoiceStyle_IsWrittenByName_AndStillReadsAsANumber`).
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

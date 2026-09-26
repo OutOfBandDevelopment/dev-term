@@ -28,13 +28,6 @@ Completed work is logged by date under `docs/changes/`.
   `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware&TestCategory=Radex_One"`
   against the COM8 device to confirm it now replies — the actual point of this fix, not yet
   empirically confirmed.
-- **Zoom H4n remote (`DevTerm.Devices.ZoomH4n`) needs real-hardware verification.** Built and
-  unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): decoder, control surface (including
-  the init handshake's wake-byte watcher), `UiDefinition`, and menu wiring in both front ends. No
-  `h4n2rs485` adapter/Zoom H4n was attached this session, so the handshake timing and status-bitmask
-  semantics are unconfirmed against a live unit. Once the adapter is attached: fill in
-  `devterm.runsettings`' blank `RealSerialZoomH4nPort`, then run `RealHardwareZoomH4nTests`
-  (`TestCategory=Hardware`).
 - **BLE transport (`DevTerm.Transports.Ble` + Windows backend) needs real-hardware verification.**
   Built and wired end-to-end 2026-09-25 (see `docs/changes/2026-09-25.md`): `IBleAdapter`/
   `IBleAdapterFactory`/`IBleDeviceDiscovery` contract, a `Windows.Devices.Bluetooth`-backed
@@ -54,6 +47,23 @@ Completed work is logged by date under `docs/changes/`.
   Once the adapter is paired: fill in `devterm.runsettings`' blank `RealBleDe5000DeviceId` (and the
   `RealBleDe5000*CharacteristicUuid` overrides if it turns out not to speak NUS), then run
   `RealHardwareDe5000Tests` (`TestCategory=Hardware`).
+
+### UI batch (started 2026-09-25)
+
+Being built in three phases on `dev/error-handling-and-todo`. Parallel work happens in separate git
+worktrees, merged and verified before the next phase starts. Items moved here from `BACKLOG.md`
+(and from the specs' Open items) when work started. Each is deleted from this file once its detail
+has landed in `docs/changes/`.
+
+**Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
+
+**Phase 2 — done** (2026-09-25): theming, the forms engine (generated Connection Editor fields) and the
+device manifest editor all landed; see `docs/changes/2026-09-25.md`.
+
+**Phase 3 — queued (last; it restructures both main windows):**
+
+- **Multiple sessions per window** (from the TUI/WPF main-window specs' Open items). Presenters stopped
+  being the blocker on 2026-09-25, since they're per-session now; nothing builds the UI for it yet.
 
 ## Backlog / research
 

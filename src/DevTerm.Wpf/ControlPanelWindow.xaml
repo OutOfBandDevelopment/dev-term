@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="dev-term — Control Panel" Height="640" Width="560" MinHeight="300" MinWidth="360">
     <DockPanel Margin="8">
-        <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="DarkRed" />
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.Error}" />
         <!-- Horizontal scrolling disabled so the Notes section's text wraps to the window width. -->
         <ScrollViewer x:Name="SectionsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel x:Name="SectionsPanel" />

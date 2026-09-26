@@ -105,8 +105,8 @@ For simple query/response devices (most bench gear — a command string in, a fo
 
 ## Open questions
 
-- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, seven control kinds, no conditional/interlocked support yet), now proven end-to-end against two real devices (K8055, Busylight) with no renderer changes between them; see that doc's own open questions for what's still undecided.
-- Whether/how a device control module gets registered via the declarative manifest/plugin-loading path (see [device-manifests.md](device-manifests.md)/[plugin-model.md](plugin-model.md)) rather than a front end constructing its `IControlSurface` directly from a live `Session`, as `K8055ControlSurface` does today — the current wiring is a front-end-specific menu item (`_Device`/`Device` → "K8055 Control Panel..."), not something a loaded `DeviceManifest` drives yet.
+- How rich the control-surface metadata needs to be (flat parameter list vs. grouped/paged forms, conditional/interlocked parameters) — answered for the common case by [ui-definitions.md](ui-definitions.md)'s model (one level of grouping, ten control kinds — seven input/indicator kinds plus bar graph, strip chart and vector displays, 2026-09-25 — no conditional/interlocked support yet), now proven end-to-end against two real devices (K8055, Busylight) with no renderer changes between them; see that doc's own open questions for what's still undecided.
+- Whether/how a device control module gets registered via the declarative manifest/plugin-loading path (see [device-manifests.md](device-manifests.md)/[plugin-model.md](plugin-model.md)) rather than a front end constructing its `IControlSurface` directly from a live `Session`, as `K8055ControlSurface` does today — the current wiring is a front-end-specific menu item (`_Device`/`Device` → "K8055 Control Panel..."). **Partly answered 2026-09-25**: a loaded `DeviceManifest` now drives a panel itself (Device > Device Manifest..., `DevTerm.DeviceManifests.ManifestPanel` — a declarative `IControlSurface` plus a reply/pattern presenter over the live session), with no per-device code; code plugins still aren't loaded dynamically.
 - ~~Whether commands can declare an expected reply pattern (request/response pairing)...~~
   **Answered 2026-09-23** for the plain-text/synchronous case by `DevTerm.Devices.Scpi`'s
   `ScpiReplyPresenter`/`IScpiReplyTracker`: a command that's a query registers a
@@ -116,9 +116,10 @@ For simple query/response devices (most bench gear — a command string in, a fo
   whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
   that case is still open. A related but distinct question — whether a command can also declare
   its reply's *content type* (plain text vs. HPGL/PostScript/PCL/a binary image), so a front end
-  can render or export it properly instead of just showing text/hex — is proposed but not yet
-  built; see [stream content detection](proposals/stream-content-detection.md)'s
-  `ExpectedResponseFormat`.
+  can render or export it properly instead of just showing text/hex — is **built for SCPI commands
+  (2026-09-25)** as `ScpiCommandDefinition.ExpectedResponseFormat`, consumed by the Stream Monitor;
+  a device manifest's own command schema can't declare one yet. See
+  [stream content detection](proposals/stream-content-detection.md).
 - ~~Whether device control modules can be assembled declaratively...~~ **Answered 2026-09-23** by
   the same module: `ScpiInstrumentProfile`'s JSON schema (command id/label/category/template/
   parameters) plus `ScpiProfileCatalog`'s bundled-plus-drop-in-folder loading is exactly the

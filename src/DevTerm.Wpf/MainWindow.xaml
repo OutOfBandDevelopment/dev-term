@@ -12,6 +12,10 @@
                 <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
                 <MenuItem Header="_Device Profiles..." Click="DeviceProfiles_Click" />
                 <Separator />
+                <!-- Logger mode and playback: MainWindow.Logging.cs. -->
+                <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
+                <MenuItem Header="Open Log for _Playback..." Click="OpenLogForPlayback_Click" />
+                <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
@@ -21,6 +25,14 @@
                 <MenuItem x:Name="RadexOneMenuItem" Header="_Radex One Control Panel..." Click="RadexOneControlPanel_Click" />
                 <MenuItem x:Name="ZoomH4nMenuItem" Header="_Zoom H4n Remote..." Click="ZoomH4nControlPanel_Click" />
                 <MenuItem x:Name="De5000MenuItem" Header="_DE-5000 LCR Meter..." Click="De5000ControlPanel_Click" />
+                <MenuItem x:Name="ManifestMenuItem" Header="Device _Manifest..." Click="DeviceManifest_Click" />
+                <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
+                <Separator />
+                <MenuItem Header="S_tream Monitor..." Click="StreamMonitor_Click" />
+            </MenuItem>
+            <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
+            <MenuItem Header="_View">
+                <MenuItem x:Name="ThemeMenuItem" Header="_Theme" />
             </MenuItem>
         </Menu>
         <!-- Connection-state indicator (MainWindow.RefreshConnectionUi): a colored dot plus
@@ -28,9 +40,13 @@
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
-                    <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="Firebrick" />
+                    <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource DevTerm.StatusDisconnected}" />
                     <TextBlock x:Name="ConnectionStatusText" VerticalAlignment="Center" />
                 </StackPanel>
+            </StatusBarItem>
+            <!-- "● REC capture.jsonl" while logging (MainWindow.Logging.cs). -->
+            <StatusBarItem>
+                <TextBlock x:Name="LoggingStatusText" Foreground="{DynamicResource DevTerm.Recording}" FontWeight="SemiBold" Margin="12,0,0,0" />
             </StatusBarItem>
         </StatusBar>
         <DockPanel Margin="8">
@@ -45,18 +61,18 @@
                           VerticalContentAlignment="Center" PreviewKeyDown="SendBox_PreviewKeyDown" />
             </DockPanel>
             <!-- Items are OutputLine records: device output in the normal color, app status lines
-                 dimmed and italic, errors dark red - so they can't be mistaken for each other. -->
+                 dimmed and italic, errors in the error color (theme roles OutputStatus/OutputError, WpfTheme) - so they can't be mistaken for each other. -->
             <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:OutputLine}">
                         <TextBlock x:Name="LineText" Text="{Binding Text}" />
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Status}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="DimGray" />
+                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputStatus}" />
                                 <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Error}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="DarkRed" />
+                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
                                 <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
                             </DataTrigger>
                         </DataTemplate.Triggers>

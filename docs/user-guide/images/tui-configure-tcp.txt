@@ -8,18 +8,18 @@
 │                                                                             █│
 │⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
+│                                                                             █│
+│  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ loopback                  █│
+│  Description: Tektronix 2230 bench scope                                    █│
+│                                                                             █│
+│── TCP ──                                                                    █│
+│  Host: 192.168.0.107                                                        ░│
+│  Port: 23                                                                   ░│
+│        ☐ Listen (server mode)                                               ░│
 │                                                                             ░│
-│Transport: ○ Serial  ◉ Tcp  ○ Hid  ○ Usbtmc  ○ Ble  ○ Loopback               ░│
-│                                                                             ░│
-│Description: Tektronix 2230 bench scope                                      ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│TCP host: 192.168.0.107          Port: 23         ☐ Listen                   ▼│
+│── Presentation ──                                                           ░│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi                                            ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
+│               ○ k8055  ○ busylight  ○ scpi                                  ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

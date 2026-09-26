@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
-using System.IO.Ports;
 using DevTerm.Configuration;
+using DevTerm.UiDefinitions.Forms;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -11,50 +11,30 @@ namespace DevTerm.Console;
 
 /// <summary>
 /// Shown instead of hard-failing when the bound <see cref="CliOptions"/> doesn't validate (see
-/// <see cref="CliOptionsValidator"/>) and the TUI is the active mode — lets the user pick a saved
-/// connection profile (<see cref="ConnectionProfileStore"/>) or fill in a transport's fields by
-/// hand, and optionally save the result as a new named profile, or import/export one as a
-/// standalone file. See docs/design/connection-profiles.md.
+/// <see cref="CliOptionsValidator"/>) and the TUI is the active mode, and from File > Device
+/// Profiles... — lets the user pick a saved connection profile (<see cref="ConnectionProfileStore"/>)
+/// or fill in a transport's fields by hand, and optionally save the result as a new named profile, or
+/// import/export one as a standalone file. See docs/design/connection-profiles.md and
+/// docs/specs/connection-editor.md.
 /// </summary>
 /// <remarks>
-/// A first stub, not the full design: there's no live device-manifest picker yet (a manifest is
-/// still referenced by typing its name, matching <c>--manifestname</c>), and hiding a transport's
-/// irrelevant field group doesn't reflow the layout to close the gap it leaves (Terminal.Gui's
-/// <c>Pos.Bottom(view)</c> positioning is computed from a view's frame regardless of its
-/// <c>Visible</c> state, so the Presentation/Save/Import-export/Connect section below always sits
-/// where it would if every group were shown). See docs/design/frontends.md's startup/configure
-/// flow note for the target.
-///
-/// All connect/load/save/import/export logic lives in the shared <see cref="ConnectionEditorViewModel"/>
-/// (also used by WPF's <c>DeviceProfilesWindow</c> via XAML command bindings) — this class only
-/// builds Terminal.Gui controls and copies values to/from the view model around each button press,
-/// since Terminal.Gui has no data-binding system of its own to do that automatically the way WPF's
-/// <c>{Binding ...}</c> does.
+/// <para>
+/// The connection fields are <em>generated</em>: <see cref="ConnectionEditorViewModel.FormDefinition"/>
+/// (made by <see cref="FormDefinitionGenerator"/> from the view model's own annotated properties)
+/// rendered by the generic <see cref="FormRenderer"/> and bound two-way to the view model — the same
+/// definition WPF's <c>DeviceProfilesWindow</c> renders, so the field list, labels, grouping and
+/// "which transport shows which fields" are declared once. A hidden transport's fields no longer
+/// leave a gap: the form re-lays itself out on every change. Hand-built around it: the saved-profile
+/// list and its buttons, the save-as/import/export rows, Connect/Quit, and the three "Detect..."
+/// device pickers (each fills in the generated fields through the view model; the form places them).
+/// </para>
+/// <para>
+/// All connect/load/save/import/export logic lives in the shared <see cref="ConnectionEditorViewModel"/>;
+/// this class builds the hand-built controls and forwards their button presses to its commands.
+/// </para>
 /// </remarks>
 public static class ConfigureMode
 {
-    /// <summary>Terminal.Gui's <c>OptionSelector&lt;TEnum&gt;</c> needs an enum (its <c>Values</c> are derived from <c>Enum.GetValues&lt;TEnum&gt;()</c> and can't be set directly) — <see cref="ConnectionEditorViewModel.Transport"/> is a plain string shared with WPF, so this exists purely to drive that one Terminal.Gui widget.</summary>
-    internal enum TransportChoice
-    {
-        Serial,
-        Tcp,
-        Hid,
-        Usbtmc,
-        Ble,
-        Loopback,
-    }
-
-    /// <summary>Same reasoning as <see cref="TransportChoice"/>, for <see cref="ConnectionEditorViewModel.Parser"/> (the presenter picker itself is checkboxes, not this).</summary>
-    internal enum PresenterChoice
-    {
-        Ascii,
-        Utf8,
-        Hex,
-        Decimal,
-        Octal,
-        Binary,
-    }
-
     /// <returns>Valid <see cref="CliOptions"/> once the user presses Connect with something that validates; <see langword="null"/> if they quit instead.</returns>
     public static CliOptions? Run(CliOptions initial, string? validationError)
     {
@@ -92,16 +72,14 @@ public static class ConfigureMode
         };
 
         // Everything below is added to this scrollable container, not directly to the window - the
-        // full form (~32 rows) is routinely taller than a small terminal window. ContentHeight is a
-        // generous fixed estimate covering every field group, not computed from an actual layout
-        // pass (Terminal.Gui doesn't have positions resolved to concrete rows until Application.Begin
-        // runs, well after this method returns) - needs bumping if a future field group makes the
-        // form taller still. Confirmed via a real headless probe against the installed Terminal.Gui
-        // package that SetContentSize + ViewportSettings actually scrolls (View has no built-in
-        // Command.ScrollDown/PageDown implementation to invoke instead - checked directly, neither
-        // moved the viewport - so PageUp/PageDown/arrow keys and the mouse wheel are wired by hand
-        // below).
-        const int ContentHeight = 56;
+        // full form is routinely taller than a small terminal window. Its content height follows the
+        // real layout (the Quit button's bottom, re-measured after every layout pass) since the
+        // generated form grows and shrinks with the selected transport. Confirmed via a real
+        // headless probe against the installed Terminal.Gui package that SetContentSize +
+        // ViewportSettings actually scrolls (View has no built-in Command.ScrollDown/PageDown
+        // implementation to invoke instead - checked directly, neither moved the viewport - so
+        // PageUp/PageDown and the mouse wheel are wired by hand below).
+        var contentHeight = 48;
         var formContent = new View
         {
             X = 0,
@@ -115,7 +93,7 @@ public static class ConfigureMode
             // that introduced this container, and none after.
             CanFocus = true,
         };
-        formContent.SetContentSize(new Size(100, ContentHeight));
+        formContent.SetContentSize(new Size(100, contentHeight));
         formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
 
         var errorLabel = new Label
@@ -156,150 +134,23 @@ public static class ConfigureMode
         var exportAllButton = new Button { X = Pos.Right(exportSelectedButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Export All" };
         var deleteSelectedButton = new Button { X = Pos.Right(exportAllButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Delete Selected" };
 
-        var transportLabel = new Label { X = 0, Y = Pos.Bottom(exportSelectedButton) + 1, Text = "Transport:" };
-        var transportSelector = new OptionSelector<TransportChoice>
-        {
-            X = Pos.Right(transportLabel) + 1,
-            Y = Pos.Top(transportLabel),
-            Orientation = Orientation.Horizontal,
-            HorizontalSpace = 2,
-        };
+        // The three "pick from what's attached" pickers stay hand-built (each needs the view model's
+        // rich device lists and a modal list, which the generic form has no vocabulary for); the
+        // generated form still places each one in its row, labels it, and shows/hides it with its
+        // transport. Picking writes the view model, whose change notifications refresh the fields.
+        var detectPortButton = new Button { Text = "Detect..." };
+        var detectHidButton = new Button { Text = "Detect HID..." };
+        var detectUsbtmcButton = new Button { Text = "Detect USBTMC..." };
+        var formOptions = new TuiFormOptions();
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => new TuiCustomWidget(detectUsbtmcButton, 2);
 
-        var descriptionLabel = new Label { X = 0, Y = Pos.Bottom(transportLabel) + 1, Text = "Description:" };
-        var descriptionField = new TextField { X = Pos.Right(descriptionLabel) + 1, Y = Pos.Top(descriptionLabel), Width = 40 };
+        var binding = new FormBinding(viewModel);
+        var form = FormRenderer.Build(app, viewModel.FormDefinition, binding, formOptions);
+        form.Root.Y = Pos.Bottom(exportSelectedButton) + 1;
 
-        var portLabel = new Label { X = 0, Y = Pos.Bottom(descriptionLabel) + 1, Text = "Serial port:" };
-        var portField = new TextField { X = Pos.Right(portLabel) + 1, Y = Pos.Top(portLabel), Width = 12, Text = initial.Port ?? string.Empty };
-        var detectPortButton = new Button { X = Pos.Right(portField) + 1, Y = Pos.Top(portLabel), Text = "Detect..." };
-        var baudLabel = new Label { X = Pos.Right(detectPortButton) + 3, Y = Pos.Top(portLabel), Text = "Baud:" };
-        var baudField = new TextField { X = Pos.Right(baudLabel) + 1, Y = Pos.Top(portLabel), Width = 10, Text = initial.Baud.ToString() };
-
-        // Reflects ConnectionEditorViewModel.ConnectedDeviceNotFound - a saved port name that isn't
-        // among the ports currently detected (unplugged, or never plugged in on this machine at
-        // all). Refreshed explicitly wherever Port/the detected-ports list can change, since
-        // Terminal.Gui has no data-binding to do that automatically.
-        var portNotFoundLabel = new Label { X = Pos.Right(baudField) + 3, Y = Pos.Top(portLabel), Text = "(not found)" };
-
-        var dataBitsLabel = new Label { X = 0, Y = Pos.Bottom(portLabel) + 1, Text = "Data bits:" };
-        var dataBitsField = new TextField { X = Pos.Right(dataBitsLabel) + 1, Y = Pos.Top(dataBitsLabel), Width = 4, Text = initial.DataBits.ToString() };
-        var parityLabel = new Label { X = Pos.Right(dataBitsField) + 3, Y = Pos.Top(dataBitsLabel), Text = "Parity:" };
-        var paritySelector = new OptionSelector<Parity> { X = Pos.Right(parityLabel) + 1, Y = Pos.Top(dataBitsLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
-
-        var stopBitsLabel = new Label { X = 0, Y = Pos.Bottom(dataBitsLabel) + 1, Text = "Stop bits:" };
-        var stopBitsSelector = new OptionSelector<StopBits> { X = Pos.Right(stopBitsLabel) + 1, Y = Pos.Top(stopBitsLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
-
-        var handshakeLabel = new Label { X = 0, Y = Pos.Bottom(stopBitsLabel) + 1, Text = "Handshake:" };
-        var handshakeSelector = new OptionSelector<Handshake> { X = Pos.Right(handshakeLabel) + 1, Y = Pos.Top(handshakeLabel), Orientation = Orientation.Horizontal, HorizontalSpace = 2 };
-
-        var hostLabel = new Label { X = 0, Y = Pos.Bottom(handshakeLabel) + 1, Text = "TCP host:" };
-        var hostField = new TextField { X = Pos.Right(hostLabel) + 1, Y = Pos.Top(hostLabel), Width = 20, Text = initial.Host ?? string.Empty };
-        var tcpPortLabel = new Label { X = Pos.Right(hostField) + 3, Y = Pos.Top(hostLabel), Text = "Port:" };
-        var tcpPortField = new TextField { X = Pos.Right(tcpPortLabel) + 1, Y = Pos.Top(hostLabel), Width = 8, Text = initial.Port ?? "0" };
-        var listenCheckBox = new CheckBox { X = Pos.Right(tcpPortField) + 3, Y = Pos.Top(hostLabel), Text = "Listen", Value = initial.Listen ? CheckState.Checked : CheckState.UnChecked };
-
-        // Shared by the "hid" and "usbtmc" transports — both select a physical USB device the same
-        // way (vendor/product ID, optionally a serial number), so one field group serves both;
-        // only the Detect... button differs, since HID and USBTMC devices come from different
-        // discovery sources.
-        var vendorLabel = new Label { X = 0, Y = Pos.Bottom(hostLabel) + 1, Text = "Vendor ID:" };
-        var vendorField = new TextField { X = Pos.Right(vendorLabel) + 1, Y = Pos.Top(vendorLabel), Width = 10, Text = initial.VendorId.ToString() };
-        var productLabel = new Label { X = Pos.Right(vendorField) + 3, Y = Pos.Top(vendorLabel), Text = "Product ID:" };
-        var productField = new TextField { X = Pos.Right(productLabel) + 1, Y = Pos.Top(vendorLabel), Width = 10, Text = initial.ProductId.ToString() };
-        var detectHidButton = new Button { X = Pos.Right(productField) + 3, Y = Pos.Top(vendorLabel), Text = "Detect HID..." };
-        var detectUsbtmcButton = new Button { X = Pos.Right(detectHidButton) + 1, Y = Pos.Top(vendorLabel), Text = "Detect USBTMC..." };
-
-        // Optional - blank/"0" means "match the first device found for the Vendor/Product ID above"
-        // (both transports' Open() already treat a null/empty serial number as a wildcard); set it to
-        // pin the connection to one specific physical unit when more than one device on the bench
-        // shares the same VID/PID.
-        var serialNumberLabel = new Label { X = 0, Y = Pos.Bottom(vendorLabel) + 1, Text = "Serial number:" };
-        var serialNumberField = new TextField { X = Pos.Right(serialNumberLabel) + 1, Y = Pos.Top(serialNumberLabel), Width = 20, Text = initial.SerialNumber ?? string.Empty };
-
-        // Same reasoning as portNotFoundLabel above, for the HID/USBTMC case - a saved
-        // Vendor/Product ID (tie-broken by SerialNumber, which may itself be a DevicePath
-        // fallback - see HidDeviceOption) that doesn't resolve to any currently-detected device.
-        // Moving a device to a different USB hub/port breaks a DevicePath-based match; that's
-        // accepted, not a bug (see ConnectionEditorViewModel.ConnectedDeviceNotFound's doc comment).
-        var usbNotFoundLabel = new Label { X = Pos.Right(serialNumberField) + 3, Y = Pos.Top(serialNumberLabel), Text = "(not found)" };
-        var idsShowHexCheckBox = new CheckBox { X = 0, Y = Pos.Bottom(serialNumberLabel) + 1, Text = "Show as hex" };
-
-        // No live "Detect..." picker yet — see ConnectionEditorViewModel.BleDeviceId's doc comment
-        // for why (no cross-platform default discovery instance this shared view model can build).
-        var bleDeviceIdLabel = new Label { X = 0, Y = Pos.Bottom(idsShowHexCheckBox) + 1, Text = "BLE device ID:" };
-        var bleDeviceIdField = new TextField { X = Pos.Right(bleDeviceIdLabel) + 1, Y = Pos.Top(bleDeviceIdLabel), Width = 40 };
-        var bleServiceUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleDeviceIdLabel) + 1, Text = "Service UUID:" };
-        var bleServiceUuidField = new TextField { X = Pos.Right(bleServiceUuidLabel) + 1, Y = Pos.Top(bleServiceUuidLabel), Width = 40 };
-        var bleWriteUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleServiceUuidLabel) + 1, Text = "Write characteristic UUID:" };
-        var bleWriteUuidField = new TextField { X = Pos.Right(bleWriteUuidLabel) + 1, Y = Pos.Top(bleWriteUuidLabel), Width = 40 };
-        var bleNotifyUuidLabel = new Label { X = 0, Y = Pos.Bottom(bleWriteUuidLabel) + 1, Text = "Notify characteristic UUID:" };
-        var bleNotifyUuidField = new TextField { X = Pos.Right(bleNotifyUuidLabel) + 1, Y = Pos.Top(bleNotifyUuidLabel), Width = 40 };
-
-        var loopbackInfoLabel = new Label
-        {
-            X = 0,
-            Y = Pos.Bottom(bleNotifyUuidLabel) + 1,
-            Text = "No configuration needed — a scripted fake device. Try \"hello\", \"Send Stream: N, ascii\", \"Send Events: N\", or \"help\"/\"?\".",
-        };
-
-        // The presenter picker is multi-select, so a row of checkboxes rather than an OptionSelector
-        // (radio buttons, single-select only) - one per PresenterChoices entry, in that order.
-        var presenterLabel = new Label { X = 0, Y = Pos.Bottom(loopbackInfoLabel) + 1, Text = "Presenters:" };
-        var presenterCheckBoxes = new List<CheckBox>();
-        foreach (var choice in viewModel.PresenterChoices)
-        {
-            presenterCheckBoxes.Add(new CheckBox
-            {
-                X = presenterCheckBoxes.Count == 0 ? Pos.Right(presenterLabel) + 1 : Pos.Right(presenterCheckBoxes[^1]) + 1,
-                Y = Pos.Top(presenterLabel),
-                Text = choice.Name,
-            });
-        }
-
-        // Shown only when the "scpi" presenter checkbox above is checked - preselects a profile so
-        // the runtime "SCPI Instrument..." menu item's own picker doesn't need to be re-run every
-        // connection (see CliOptions.ScpiProfile). A TextField + picker button rather than a
-        // Terminal.Gui combobox, matching the port/HID "type it or Detect..." pattern above - there's
-        // no built-in combobox widget (see PickFromList's own doc comment).
-        var scpiChoiceIndex = -1;
-        for (var i = 0; i < viewModel.PresenterChoices.Count; i++)
-        {
-            if (viewModel.PresenterChoices[i].Name.Equals("scpi", StringComparison.OrdinalIgnoreCase))
-            {
-                scpiChoiceIndex = i;
-                break;
-            }
-        }
-
-        var scpiProfileLabel = new Label { X = 0, Y = Pos.Bottom(presenterLabel) + 1, Text = "SCPI profile:" };
-        var scpiProfileField = new TextField { X = Pos.Right(scpiProfileLabel) + 1, Y = Pos.Top(scpiProfileLabel), Width = 30 };
-        var scpiProfilePickButton = new Button { X = Pos.Right(scpiProfileField) + 1, Y = Pos.Top(scpiProfileLabel), Text = "Pick..." };
-
-        void UpdateScpiProfileVisibility()
-        {
-            var visible = scpiChoiceIndex >= 0 && presenterCheckBoxes[scpiChoiceIndex].Value == CheckState.Checked;
-            scpiProfileLabel.Visible = scpiProfileField.Visible = scpiProfilePickButton.Visible = visible;
-        }
-
-        // What encodes a typed line - independent of the presenters above (display only).
-        var parserLabel = new Label { X = 0, Y = Pos.Bottom(scpiProfileLabel) + 1, Text = "Send as:" };
-        var parserSelector = new OptionSelector<PresenterChoice>
-        {
-            X = Pos.Right(parserLabel) + 1,
-            Y = Pos.Top(parserLabel),
-            Orientation = Orientation.Horizontal,
-            HorizontalSpace = 2,
-        };
-
-        var lineEndingLabel = new Label { X = 0, Y = Pos.Bottom(parserLabel) + 1, Text = "Line ending:" };
-        var lineEndingSelector = new OptionSelector<LineEnding>
-        {
-            X = Pos.Right(lineEndingLabel) + 1,
-            Y = Pos.Top(lineEndingLabel),
-            Orientation = Orientation.Horizontal,
-            HorizontalSpace = 2,
-        };
-
-        var saveNameLabel = new Label { X = 0, Y = Pos.Bottom(lineEndingLabel) + 1, Text = "Save as profile named:" };
+        var saveNameLabel = new Label { X = 0, Y = Pos.Bottom(form.Root) + 1, Text = "Save as profile named:" };
         var saveNameField = new TextField { X = Pos.Right(saveNameLabel) + 1, Y = Pos.Top(saveNameLabel), Width = 20 };
         var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile" };
 
@@ -318,10 +169,14 @@ public static class ConfigureMode
         var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true };
         var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
 
+        TextField Field(string id) => (TextField)form.ControlViews[id];
+
         var parts = new ConfigureWindowParts
         {
             ViewModel = viewModel,
             Window = window,
+            FormContent = formContent,
+            Form = form,
             ErrorLabel = errorLabel,
             ProfilesList = profilesList,
             LoadButton = loadButton,
@@ -330,36 +185,36 @@ public static class ConfigureMode
             ExportSelectedButton = exportSelectedButton,
             ExportAllButton = exportAllButton,
             DeleteSelectedButton = deleteSelectedButton,
-            TransportSelector = transportSelector,
-            DescriptionField = descriptionField,
-            PortField = portField,
+            TransportSelector = form.Choices[nameof(ConnectionEditorViewModel.Transport)],
+            DescriptionField = Field(nameof(ConnectionEditorViewModel.Description)),
+            PortField = Field(nameof(ConnectionEditorViewModel.Port)),
             DetectPortButton = detectPortButton,
-            BaudField = baudField,
-            PortNotFoundLabel = portNotFoundLabel,
-            DataBitsField = dataBitsField,
-            ParitySelector = paritySelector,
-            StopBitsSelector = stopBitsSelector,
-            HandshakeSelector = handshakeSelector,
-            HostField = hostField,
-            TcpPortField = tcpPortField,
-            ListenCheckBox = listenCheckBox,
-            VendorField = vendorField,
-            ProductField = productField,
+            BaudField = Field(nameof(ConnectionEditorViewModel.Baud)),
+            PortNotFoundLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.SerialPortNotFoundHint)],
+            DataBitsField = Field(nameof(ConnectionEditorViewModel.DataBits)),
+            ParitySelector = form.Choices[nameof(ConnectionEditorViewModel.ParityText)],
+            StopBitsSelector = form.Choices[nameof(ConnectionEditorViewModel.StopBitsText)],
+            HandshakeSelector = form.Choices[nameof(ConnectionEditorViewModel.HandshakeText)],
+            HostField = Field(nameof(ConnectionEditorViewModel.Host)),
+            TcpPortField = Field(nameof(ConnectionEditorViewModel.TcpPort)),
+            ListenCheckBox = (CheckBox)form.ControlViews[nameof(ConnectionEditorViewModel.Listen)],
+            VendorField = Field(nameof(ConnectionEditorViewModel.VendorIdDisplay)),
+            ProductField = Field(nameof(ConnectionEditorViewModel.ProductIdDisplay)),
             DetectHidButton = detectHidButton,
             DetectUsbtmcButton = detectUsbtmcButton,
-            SerialNumberField = serialNumberField,
-            UsbNotFoundLabel = usbNotFoundLabel,
-            IdsShowHexCheckBox = idsShowHexCheckBox,
-            BleDeviceIdField = bleDeviceIdField,
-            BleServiceUuidField = bleServiceUuidField,
-            BleWriteUuidField = bleWriteUuidField,
-            BleNotifyUuidField = bleNotifyUuidField,
-            LoopbackInfoLabel = loopbackInfoLabel,
-            PresenterCheckBoxes = presenterCheckBoxes,
-            ScpiProfileField = scpiProfileField,
-            ScpiProfilePickButton = scpiProfilePickButton,
-            ParserSelector = parserSelector,
-            LineEndingSelector = lineEndingSelector,
+            SerialNumberField = Field(nameof(ConnectionEditorViewModel.SerialNumber)),
+            UsbNotFoundLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.UsbDeviceNotFoundHint)],
+            IdsShowHexCheckBox = (CheckBox)form.ControlViews[nameof(ConnectionEditorViewModel.IdsShowHex)],
+            BleDeviceIdField = Field(nameof(ConnectionEditorViewModel.BleDeviceId)),
+            BleServiceUuidField = Field(nameof(ConnectionEditorViewModel.BleServiceUuid)),
+            BleWriteUuidField = Field(nameof(ConnectionEditorViewModel.BleWriteCharacteristicUuid)),
+            BleNotifyUuidField = Field(nameof(ConnectionEditorViewModel.BleNotifyCharacteristicUuid)),
+            LoopbackInfoLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.LoopbackInfo)],
+            PresenterCheckBoxes = form.CheckLists[nameof(ConnectionEditorViewModel.PresentersText)],
+            ScpiProfileSelector = form.Choices[nameof(ConnectionEditorViewModel.ScpiProfile)],
+            ScpiProfilePickButton = form.PickButtons.GetValueOrDefault(nameof(ConnectionEditorViewModel.ScpiProfile)),
+            ParserSelector = form.Choices[nameof(ConnectionEditorViewModel.Parser)],
+            LineEndingSelector = form.Choices[nameof(ConnectionEditorViewModel.LineEndingText)],
             SaveNameField = saveNameField,
             SaveButton = saveButton,
             PathField = pathField,
@@ -372,131 +227,23 @@ public static class ConfigureMode
             QuitButton = quitButton,
         };
 
-        // Only the fields for the currently-selected transport are relevant - showing all three
-        // groups at once regardless of selection was confusing (a real complaint, not a guess).
-        void UpdateTransportVisibility(TransportChoice selected)
-        {
-            portLabel.Visible = portField.Visible = detectPortButton.Visible = baudLabel.Visible = baudField.Visible = selected == TransportChoice.Serial;
-            dataBitsLabel.Visible = dataBitsField.Visible = parityLabel.Visible = paritySelector.Visible = selected == TransportChoice.Serial;
-            stopBitsLabel.Visible = stopBitsSelector.Visible = selected == TransportChoice.Serial;
-            handshakeLabel.Visible = handshakeSelector.Visible = selected == TransportChoice.Serial;
-            hostLabel.Visible = hostField.Visible = tcpPortLabel.Visible = tcpPortField.Visible = listenCheckBox.Visible = selected == TransportChoice.Tcp;
-            var isUsbDevice = selected is TransportChoice.Hid or TransportChoice.Usbtmc;
-            vendorLabel.Visible = vendorField.Visible = productLabel.Visible = productField.Visible = idsShowHexCheckBox.Visible = isUsbDevice;
-            serialNumberLabel.Visible = serialNumberField.Visible = isUsbDevice;
-            detectHidButton.Visible = selected == TransportChoice.Hid;
-            detectUsbtmcButton.Visible = selected == TransportChoice.Usbtmc;
-            var isBle = selected == TransportChoice.Ble;
-            bleDeviceIdLabel.Visible = bleDeviceIdField.Visible = isBle;
-            bleServiceUuidLabel.Visible = bleServiceUuidField.Visible = isBle;
-            bleWriteUuidLabel.Visible = bleWriteUuidField.Visible = isBle;
-            bleNotifyUuidLabel.Visible = bleNotifyUuidField.Visible = isBle;
-            loopbackInfoLabel.Visible = selected == TransportChoice.Loopback;
-        }
+        // The generated fields are bound live; only the hand-built parts are copied around each
+        // button press (Terminal.Gui has no data binding of its own).
+        saveNameField.TextChanged += (_, _) => viewModel.SaveName = saveNameField.Text;
+        pathField.TextChanged += (_, _) => viewModel.ImportExportPath = pathField.Text;
 
-        // ConnectionEditorViewModel.ConnectedDeviceNotFound already accounts for which transport is
-        // active (false for whichever one isn't), so the two labels never both show at once - this
-        // just also respects UpdateTransportVisibility's own per-transport grouping so a stale
-        // "not found" doesn't linger visible after switching transports.
-        void UpdateNotFoundIndicator()
+        void PullFromViewModel()
         {
-            portNotFoundLabel.Visible = viewModel.IsSerialTransport && viewModel.ConnectedDeviceNotFound;
-            usbNotFoundLabel.Visible = (viewModel.IsHidTransport || viewModel.IsUsbtmcTransport) && viewModel.ConnectedDeviceNotFound;
-        }
-
-        // Terminal.Gui has no data-binding system, so fields are copied to/from the shared view
-        // model explicitly around each button press, rather than staying continuously in sync the
-        // way WPF's {Binding ...} does for DeviceProfilesWindow.
-        void PushFieldsIntoViewModel()
-        {
-            viewModel.Transport = (transportSelector.Value ?? TransportChoice.Serial).ToString().ToLowerInvariant();
-            viewModel.Description = descriptionField.Text;
-            viewModel.Port = portField.Text;
-            viewModel.Baud = baudField.Text;
-            viewModel.DataBits = dataBitsField.Text;
-            viewModel.ParityText = (paritySelector.Value ?? Parity.None).ToString();
-            viewModel.StopBitsText = (stopBitsSelector.Value ?? StopBits.One).ToString();
-            viewModel.HandshakeText = (handshakeSelector.Value ?? Handshake.None).ToString();
-            viewModel.Host = hostField.Text;
-            viewModel.TcpPort = tcpPortField.Text;
-            viewModel.Listen = listenCheckBox.Value == CheckState.Checked;
-            viewModel.IdsShowHex = idsShowHexCheckBox.Value == CheckState.Checked;
-            viewModel.VendorIdDisplay = vendorField.Text;
-            viewModel.ProductIdDisplay = productField.Text;
-            viewModel.SerialNumber = serialNumberField.Text;
-            viewModel.BleDeviceId = bleDeviceIdField.Text;
-            viewModel.BleServiceUuid = bleServiceUuidField.Text;
-            viewModel.BleWriteCharacteristicUuid = bleWriteUuidField.Text;
-            viewModel.BleNotifyCharacteristicUuid = bleNotifyUuidField.Text;
-            for (var i = 0; i < presenterCheckBoxes.Count; i++)
+            if (saveNameField.Text != viewModel.SaveName)
             {
-                viewModel.PresenterChoices[i].IsSelected = presenterCheckBoxes[i].Value == CheckState.Checked;
+                saveNameField.Text = viewModel.SaveName;
             }
 
-            viewModel.ScpiProfile = scpiProfileField.Text;
-            viewModel.Parser = (parserSelector.Value ?? PresenterChoice.Hex).ToString().ToLowerInvariant();
-            viewModel.LineEndingText = (lineEndingSelector.Value ?? DevTerm.Configuration.LineEnding.None).ToString();
-            viewModel.SaveName = saveNameField.Text;
-            viewModel.ImportExportPath = pathField.Text;
-        }
-
-        void PullFieldsFromViewModel()
-        {
-            var transportChoice = Enum.TryParse<TransportChoice>(viewModel.Transport, ignoreCase: true, out var t) ? t : TransportChoice.Serial;
-            transportSelector.Value = transportChoice;
-            descriptionField.Text = viewModel.Description;
-            portField.Text = viewModel.Port;
-            baudField.Text = viewModel.Baud;
-            dataBitsField.Text = viewModel.DataBits;
-            paritySelector.Value = Enum.TryParse<Parity>(viewModel.ParityText, ignoreCase: true, out var parity) ? parity : Parity.None;
-            stopBitsSelector.Value = Enum.TryParse<StopBits>(viewModel.StopBitsText, ignoreCase: true, out var stopBits) ? stopBits : StopBits.One;
-            handshakeSelector.Value = Enum.TryParse<Handshake>(viewModel.HandshakeText, ignoreCase: true, out var handshake) ? handshake : Handshake.None;
-            hostField.Text = viewModel.Host;
-            tcpPortField.Text = viewModel.TcpPort;
-            listenCheckBox.Value = viewModel.Listen ? CheckState.Checked : CheckState.UnChecked;
-            idsShowHexCheckBox.Value = viewModel.IdsShowHex ? CheckState.Checked : CheckState.UnChecked;
-            vendorField.Text = viewModel.VendorIdDisplay;
-            productField.Text = viewModel.ProductIdDisplay;
-            serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
-            bleDeviceIdField.Text = viewModel.BleDeviceId ?? string.Empty;
-            bleServiceUuidField.Text = viewModel.BleServiceUuid ?? string.Empty;
-            bleWriteUuidField.Text = viewModel.BleWriteCharacteristicUuid ?? string.Empty;
-            bleNotifyUuidField.Text = viewModel.BleNotifyCharacteristicUuid ?? string.Empty;
-            for (var i = 0; i < presenterCheckBoxes.Count; i++)
-            {
-                presenterCheckBoxes[i].Value = viewModel.PresenterChoices[i].IsSelected ? CheckState.Checked : CheckState.UnChecked;
-            }
-
-            scpiProfileField.Text = viewModel.ScpiProfile;
-            parserSelector.Value = Enum.TryParse<PresenterChoice>(viewModel.Parser, ignoreCase: true, out var p) ? p : PresenterChoice.Hex;
-            lineEndingSelector.Value = Enum.TryParse<DevTerm.Configuration.LineEnding>(viewModel.LineEndingText, ignoreCase: true, out var le) ? le : DevTerm.Configuration.LineEnding.None;
-            saveNameField.Text = viewModel.SaveName;
             errorLabel.Text = viewModel.StatusMessage;
             profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
-            UpdateTransportVisibility(transportChoice);
-            UpdateScpiProfileVisibility();
-            UpdateNotFoundIndicator();
         }
 
-        PullFieldsFromViewModel();
-
-        transportSelector.ValueChanged += (_, _) => UpdateTransportVisibility(transportSelector.Value ?? TransportChoice.Serial);
-
-        if (scpiChoiceIndex >= 0)
-        {
-            presenterCheckBoxes[scpiChoiceIndex].Activated += (_, _) => UpdateScpiProfileVisibility();
-        }
-
-        scpiProfilePickButton.Accepting += (_, e) =>
-        {
-            var index = PickFromList(app, "SCPI instrument profile", viewModel.ScpiProfileOptions);
-            if (index is int i)
-            {
-                scpiProfileField.Text = viewModel.ScpiProfileOptions[i];
-            }
-
-            e.Handled = true;
-        };
+        PullFromViewModel();
 
         // The TUI's own "overwrite '{name}'?" confirmation - Terminal.Gui's MessageBox.Query is the
         // equivalent of the WPF window's MessageBox.Show wiring for the same ConfirmOverwrite hook.
@@ -543,14 +290,18 @@ public static class ConfigureMode
                 app.Invoke(() =>
                 {
                     viewModel.RefreshCommand.Execute(null);
-                    PullFieldsFromViewModel();
+                    PullFromViewModel();
                 });
             }
             catch (NotInitializedException)
             {
             }
         };
-        window.Disposing += (_, _) => viewModel.Dispose();
+        window.Disposing += (_, _) =>
+        {
+            binding.Dispose();
+            viewModel.Dispose();
+        };
 
         viewModel.CloseRequested += (_, _) =>
         {
@@ -578,14 +329,21 @@ public static class ConfigureMode
             }
 
             viewModel.LoadCommand.Execute(null);
-            PullFieldsFromViewModel();
+            PullFromViewModel();
         }
 
-        loadButton.Accepting += (_, e) =>
+        // Runs a view-model command from a hand-built button, then shows its outcome.
+        void Run(Button button, Action command)
         {
-            LoadSelectedProfile();
-            e.Handled = true;
-        };
+            button.Accepting += (_, e) =>
+            {
+                command();
+                PullFromViewModel();
+                e.Handled = true;
+            };
+        }
+
+        Run(loadButton, LoadSelectedProfile);
 
         // ListView's default mouse bindings map a double-click specifically to Command.Accept
         // (a single click maps to Command.Activate instead) - confirmed via reflection against the
@@ -599,28 +357,13 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
-        deleteButton.Accepting += (_, e) =>
+        Run(deleteButton, () =>
         {
             SelectProfileIntoViewModel();
             viewModel.DeleteCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        refreshButton.Accepting += (_, e) =>
-        {
-            viewModel.RefreshCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        saveButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.SaveCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
+        });
+        Run(refreshButton, () => viewModel.RefreshCommand.Execute(null));
+        Run(saveButton, () => viewModel.SaveCommand.Execute(null));
 
         // Mirrors WPF's own Browse... button: it also just opens a real, native file dialog and
         // sets ImportExportPath from whatever's picked - the one piece of either front end that's
@@ -658,84 +401,23 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
-        // A small nested modal picker for "type it yourself, or pick from what's actually attached"
-        // - the same Application.Run(dialog)/read-result-after pattern as OpenDialog above, built
-        // from a plain Dialog+ListView instead of a Terminal.Gui built-in since there's no built-in
-        // combobox widget (checked via reflection against the installed v2.5.0 package - see
-        // docs/changes/2026-09-16.md). Selecting a row is wired the same way double-click-to-load
-        // is above: ListView's own double-click maps to Command.Accept, raising the inherited
-        // Accepting event.
-        // Returns the picked *index*, not the picked string — two entries can legitimately show the
-        // same text (confirmed live: three attached Velleman K8055 boards sharing a VID/PID/no-serial
-        // Display), so a caller resolving "which one did they pick" by searching its own list for a
-        // string match (as this used to return) would always resolve to the first match regardless
-        // of which row was actually selected. Indexing the caller's own list with this index instead
-        // is unambiguous no matter how many rows render identically.
-        static int? PickFromList(IApplication app, string title, IReadOnlyList<string> items, string emptyMessage = "Nothing was detected.")
-        {
-            if (items.Count == 0)
-            {
-                MessageBox.Query(app, "dev-term", emptyMessage, ["OK"]);
-                return null;
-            }
-
-            int? picked = null;
-            var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
-            var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
-            listView.SetSource(new ObservableCollection<string>(items));
-            listView.Accepting += (_, e) =>
-            {
-                if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
-                {
-                    picked = index;
-                }
-
-                e.Handled = true;
-                app.RequestStop();
-            };
-            var selectButton = new Button { X = 0, Y = Pos.Bottom(listView), Text = "Select", IsDefault = true };
-            selectButton.Accepting += (_, e) =>
-            {
-                if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
-                {
-                    picked = index;
-                }
-
-                e.Handled = true;
-                app.RequestStop();
-            };
-            var cancelButton = new Button { X = Pos.Right(selectButton) + 1, Y = Pos.Top(selectButton), Text = "Cancel" };
-            cancelButton.Accepting += (_, e) =>
-            {
-                e.Handled = true;
-                app.RequestStop();
-            };
-            dialog.Add(listView, selectButton, cancelButton);
-            app.Run(dialog);
-            return picked;
-        }
-
         detectPortButton.Accepting += (_, e) =>
         {
             var ports = viewModel.SerialPortOptions;
-            var index = PickFromList(app, "Detected serial ports", [.. ports.Select(p => p.Display)]);
-            if (index is int i)
+            if (FormRenderer.PickFromList(app, "Detected serial ports", [.. ports.Select(p => p.Display)]) is int i)
             {
-                portField.Text = ports[i].Name;
-                viewModel.Port = portField.Text;
+                viewModel.SelectedSerialPort = ports[i].Name;
             }
 
-            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
+        // The picker is filtered by the Vendor/Product ID fields (non-zero = must match), which the
+        // live-bound form has already written to the view model.
         detectHidButton.Accepting += (_, e) =>
         {
-            // The picker is filtered by the Vendor/Product ID fields (non-zero = must match), and
-            // the TUI's fields only reach the view model when pushed, so push what's typed first.
-            PushFieldsIntoViewModel();
             var devices = viewModel.HidDeviceOptions;
-            var index = PickFromList(
+            var index = FormRenderer.PickFromList(
                 app,
                 "Detected HID devices",
                 [.. devices.Select(d => d.Display)],
@@ -745,23 +427,17 @@ public static class ConfigureMode
             if (index is int i)
             {
                 viewModel.SelectedHidDevice = devices[i];
-                vendorField.Text = viewModel.VendorIdDisplay;
-                productField.Text = viewModel.ProductIdDisplay;
-                serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
-            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
+        // Same filtering as detectHidButton, against the USBTMC discovery source - the two device
+        // lists come from different places even though they write into the same shared fields.
         detectUsbtmcButton.Accepting += (_, e) =>
         {
-            // Same filtering/push convention as detectHidButton, but against the USBTMC discovery
-            // source - the two device lists come from different places even though they write into
-            // the same shared Vendor/Product ID fields.
-            PushFieldsIntoViewModel();
             var devices = viewModel.UsbtmcDeviceOptions;
-            var index = PickFromList(
+            var index = FormRenderer.PickFromList(
                 app,
                 "Detected USBTMC devices",
                 [.. devices.Select(d => d.Display)],
@@ -771,54 +447,14 @@ public static class ConfigureMode
             if (index is int i)
             {
                 viewModel.SelectedUsbtmcDevice = devices[i];
-                vendorField.Text = viewModel.VendorIdDisplay;
-                productField.Text = viewModel.ProductIdDisplay;
-                serialNumberField.Text = viewModel.SerialNumber ?? string.Empty;
             }
 
-            UpdateNotFoundIndicator();
             e.Handled = true;
         };
 
-        // Reformats the two shared fields immediately when the toggle changes, rather than waiting
-        // for the next button press. CheckBox.Activated fires *after* Value has already flipped
-        // (confirmed via a headless probe against the installed Terminal.Gui v2.5.0 package -
-        // Command.Activate, bound to Space, updates Value before raising Activating/Activated), so
-        // the currently-displayed text is pushed through the view model's *old* IdsShowHex
-        // first - reinterpreting it in whatever format it's actually showing right now - before
-        // IdsShowHex itself is updated to match the checkbox's new state.
-        idsShowHexCheckBox.Activated += (_, _) =>
-        {
-            viewModel.VendorIdDisplay = vendorField.Text;
-            viewModel.ProductIdDisplay = productField.Text;
-            viewModel.IdsShowHex = idsShowHexCheckBox.Value == CheckState.Checked;
-            vendorField.Text = viewModel.VendorIdDisplay;
-            productField.Text = viewModel.ProductIdDisplay;
-        };
-
-        importButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.ImportCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        replaceAllButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.ReplaceAllFromZipCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        exportButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.ExportCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
+        Run(importButton, () => viewModel.ImportCommand.Execute(null));
+        Run(replaceAllButton, () => viewModel.ReplaceAllFromZipCommand.Execute(null));
+        Run(exportButton, () => viewModel.ExportCommand.Execute(null));
 
         // Reads marks directly off profilesList rather than tracking them as marks change (there's
         // no Terminal.Gui event for that - marking is driven by ListView's own SPACE-key command
@@ -836,79 +472,38 @@ public static class ConfigureMode
             }
         }
 
-        exportSelectedButton.Accepting += (_, e) =>
+        Run(exportSelectedButton, () =>
         {
-            PushFieldsIntoViewModel();
             PushMarkedProfilesIntoViewModel();
             viewModel.ExportSelectedProfilesCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        exportAllButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.ExportAllProfilesCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        deleteSelectedButton.Accepting += (_, e) =>
+        });
+        Run(exportAllButton, () => viewModel.ExportAllProfilesCommand.Execute(null));
+        Run(deleteSelectedButton, () =>
         {
             PushMarkedProfilesIntoViewModel();
             viewModel.DeleteSelectedProfilesCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
-
-        connectButton.Accepting += (_, e) =>
-        {
-            PushFieldsIntoViewModel();
-            viewModel.ConnectCommand.Execute(null);
-            PullFieldsFromViewModel();
-            e.Handled = true;
-        };
+        });
+        Run(connectButton, () => viewModel.ConnectCommand.Execute(null));
 
         quitButton.Accepting += (_, e) =>
         {
-            // Pushed first so a field typed but never sent through Save/Import/Export/Connect (the
-            // only buttons that otherwise sync Terminal.Gui's controls into the view model) still
-            // counts as dirty here - otherwise Quit could see IsDirty == false purely because the
-            // view model was never told about an edit that's actually sitting unsaved on screen.
-            PushFieldsIntoViewModel();
+            e.Handled = true;
             if (!viewModel.ConfirmClose())
             {
-                e.Handled = true;
                 return;
             }
 
             parts.Result = null;
-            e.Handled = true;
             app.RequestStop();
         };
 
         formContent.Add(
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
             exportSelectedButton, exportAllButton, deleteSelectedButton,
-            transportLabel, transportSelector,
-            descriptionLabel, descriptionField,
-            portLabel, portField, detectPortButton, baudLabel, baudField, portNotFoundLabel,
-            dataBitsLabel, dataBitsField, parityLabel, paritySelector, stopBitsLabel, stopBitsSelector,
-            handshakeLabel, handshakeSelector,
-            hostLabel, hostField, tcpPortLabel, tcpPortField, listenCheckBox,
-            vendorLabel, vendorField, productLabel, productField, detectHidButton, detectUsbtmcButton, serialNumberLabel, serialNumberField, usbNotFoundLabel, idsShowHexCheckBox,
-            bleDeviceIdLabel, bleDeviceIdField, bleServiceUuidLabel, bleServiceUuidField, bleWriteUuidLabel, bleWriteUuidField, bleNotifyUuidLabel, bleNotifyUuidField,
-            loopbackInfoLabel,
-            presenterLabel, scpiProfileLabel, scpiProfileField, scpiProfilePickButton,
-            parserLabel, parserSelector, lineEndingLabel, lineEndingSelector,
+            form.Root,
             saveNameLabel, saveNameField, saveButton,
             pathLabel, pathField, browseButton, importButton, exportButton, saveAsButton, replaceAllButton,
             connectButton, quitButton);
-        foreach (var presenterCheckBox in presenterCheckBoxes)
-        {
-            formContent.Add(presenterCheckBox);
-        }
-
         window.Add(formContent);
 
         // PageUp/PageDown and the mouse wheel scroll the form when it doesn't fit. PageUp/PageDown
@@ -920,43 +515,57 @@ public static class ConfigureMode
         // already binds PageUp/PageDown *and* CursorUp/CursorDown for its own item navigation - a
         // global intercept would reach Application.KeyDown before ListView's own routing and steal
         // those keys from it entirely whenever the saved-profiles list has focus. Clamped to
-        // [0, ContentHeight - viewport height] so it can't scroll past either end.
+        // [0, content height - viewport height] so it can't scroll past either end.
         void ScrollBy(int delta)
         {
-            var maxY = Math.Max(0, ContentHeight - formContent.Viewport.Height);
+            var maxY = Math.Max(0, contentHeight - formContent.Viewport.Height);
             var newY = Math.Clamp(formContent.Viewport.Y + delta, 0, maxY);
             formContent.Viewport = formContent.Viewport with { Y = newY };
         }
 
-        // Tabbing (or clicking) onto a control that's scrolled out of view scrolls it into view -
-        // without this, focus moved to an off-screen field and the user typed blind. Wired per
-        // direct child: a container (an option selector's radio buttons) reports HasFocus when any
-        // of its own children does, so the direct child's Frame is the right thing to reveal.
-        void RevealInViewport(View child)
+        // The content ends at the Quit button - re-measured after each layout pass, since the form
+        // above it changes height with the transport.
+        formContent.SubViewsLaidOut += (_, _) =>
         {
-            var top = child.Frame.Y;
-            var bottom = top + child.Frame.Height;
+            var measured = Math.Max(quitButton.Frame.Bottom + 1, 1);
+            if (measured != contentHeight)
+            {
+                contentHeight = measured;
+                formContent.SetContentSize(new Size(100, contentHeight));
+                ScrollBy(0);
+            }
+        };
+
+        // Tabbing (or clicking) onto a control that's scrolled out of view scrolls it into view -
+        // without this, focus moved to an off-screen field and the user typed blind.
+        void RevealRows(int top, int height)
+        {
             var viewport = formContent.Viewport;
             if (top < viewport.Y)
             {
                 ScrollBy(top - viewport.Y);
             }
-            else if (bottom > viewport.Y + viewport.Height)
+            else if (top + height > viewport.Y + viewport.Height)
             {
-                ScrollBy(bottom - (viewport.Y + viewport.Height));
+                ScrollBy(top + height - (viewport.Y + viewport.Height));
             }
         }
 
-        foreach (var child in formContent.SubViews)
+        // Wired per direct child: a container (an option selector's radio buttons) reports HasFocus
+        // when any of its own children does, so the direct child's Frame is the right thing to
+        // reveal. The generated form reports its own focused row instead (its Frame is the whole form).
+        foreach (var child in formContent.SubViews.Where(v => v != form.Root))
         {
             child.HasFocusChanged += (_, e) =>
             {
                 if (e.NewValue)
                 {
-                    RevealInViewport(child);
+                    RevealRows(child.Frame.Y, child.Frame.Height);
                 }
             };
         }
+
+        form.RowFocused += (top, height) => RevealRows(form.Root.Frame.Y + top, height);
 
         void scrollOnKey(object? _, Key key)
         {
@@ -999,13 +608,19 @@ public static class ConfigureMode
     }
 }
 
-/// <summary>The controls a test needs to drive <see cref="ConfigureMode"/> headlessly.</summary>
+/// <summary>The controls a test needs to drive <see cref="ConfigureMode"/> headlessly — the generated form's widgets looked up by field id, plus the hand-built parts.</summary>
 internal sealed class ConfigureWindowParts
 {
     /// <summary>Exposed so tests can stub <see cref="ConnectionEditorViewModel.ConfirmOverwrite"/>/<see cref="ConnectionEditorViewModel.ConfirmDiscardChanges"/> instead of hitting the real, blocking Terminal.Gui <c>MessageBox.Query</c> this class wires them to.</summary>
     public required ConnectionEditorViewModel ViewModel { get; init; }
 
     public required Window Window { get; init; }
+
+    /// <summary>The scrolling container holding everything; its <c>Viewport</c> is the visible part.</summary>
+    public required View FormContent { get; init; }
+
+    /// <summary>The generated connection-field form (see <see cref="FormRenderer"/>).</summary>
+    public required TuiFormParts Form { get; init; }
 
     public required Label ErrorLabel { get; init; }
 
@@ -1023,7 +638,8 @@ internal sealed class ConfigureWindowParts
 
     public required Button DeleteSelectedButton { get; init; }
 
-    public required OptionSelector<ConfigureMode.TransportChoice> TransportSelector { get; init; }
+    /// <summary>The transport choice — an <see cref="OptionSelector"/> of the view model's <see cref="ConnectionEditorViewModel.TransportOptions"/>; set <see cref="TuiChoice.Value"/> to pick one as a user would.</summary>
+    public required TuiChoice TransportSelector { get; init; }
 
     public required TextField DescriptionField { get; init; }
 
@@ -1033,16 +649,16 @@ internal sealed class ConfigureWindowParts
 
     public required TextField BaudField { get; init; }
 
-    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the serial transport — see <see cref="ConfigureMode"/>'s <c>portNotFoundLabel</c>.</summary>
+    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the serial transport.</summary>
     public required Label PortNotFoundLabel { get; init; }
 
     public required TextField DataBitsField { get; init; }
 
-    public required OptionSelector<Parity> ParitySelector { get; init; }
+    public required TuiChoice ParitySelector { get; init; }
 
-    public required OptionSelector<StopBits> StopBitsSelector { get; init; }
+    public required TuiChoice StopBitsSelector { get; init; }
 
-    public required OptionSelector<Handshake> HandshakeSelector { get; init; }
+    public required TuiChoice HandshakeSelector { get; init; }
 
     public required TextField HostField { get; init; }
 
@@ -1061,7 +677,7 @@ internal sealed class ConfigureWindowParts
     /// <summary>Optional - blank means "match the first device found for Vendor/Product ID" (see <see cref="ConnectionEditorViewModel.SerialNumber"/>).</summary>
     public required TextField SerialNumberField { get; init; }
 
-    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the HID/USBTMC transport — see <see cref="ConfigureMode"/>'s <c>usbNotFoundLabel</c>.</summary>
+    /// <summary>Visible when <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/> is true for the HID/USBTMC transport.</summary>
     public required Label UsbNotFoundLabel { get; init; }
 
     public required CheckBox IdsShowHexCheckBox { get; init; }
@@ -1076,21 +692,21 @@ internal sealed class ConfigureWindowParts
 
     public required TextField BleNotifyUuidField { get; init; }
 
-    /// <summary>Shown only when <see cref="ConfigureMode.TransportChoice.Loopback"/> is selected — the loopback transport takes no configuration.</summary>
+    /// <summary>Shown only when the loopback transport is selected — it takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }
 
     /// <summary>One checkbox per presenter, in <see cref="ConnectionEditorViewModel.PresenterChoices"/> order — the multi-select presenter picker.</summary>
     public required IReadOnlyList<CheckBox> PresenterCheckBoxes { get; init; }
 
-    /// <summary>Shown only when the "scpi" presenter is checked — see <see cref="ConnectionEditorViewModel.IsScpiPresenterSelected"/>.</summary>
-    public required TextField ScpiProfileField { get; init; }
+    /// <summary>Shown only when the "scpi" presenter is checked — see <see cref="ConnectionEditorViewModel.IsScpiPresenterSelected"/>. Too many profiles for one line, so a text field plus <see cref="ScpiProfilePickButton"/>.</summary>
+    public required TuiChoice ScpiProfileSelector { get; init; }
 
-    public required Button ScpiProfilePickButton { get; init; }
+    public required Button? ScpiProfilePickButton { get; init; }
 
-    /// <summary>The send format (parser) — an <see cref="ConfigureMode.PresenterChoice"/> because every presenter that registers can encode input.</summary>
-    public required OptionSelector<ConfigureMode.PresenterChoice> ParserSelector { get; init; }
+    /// <summary>The send format (parser) — every presenter can encode input, so its options are <see cref="ConnectionEditorViewModel.PresenterOptions"/>.</summary>
+    public required TuiChoice ParserSelector { get; init; }
 
-    public required OptionSelector<LineEnding> LineEndingSelector { get; init; }
+    public required TuiChoice LineEndingSelector { get; init; }
 
     public required TextField SaveNameField { get; init; }
 

@@ -11,7 +11,7 @@ This is the concrete front-end feature that sits on top of two things already de
 built in [presenters.md](../presenters.md)'s "Rendering presenters" section (§3): an HPGL/
 PostScript/PCL presenter that renders a command stream to a drawing and exports it as SVG/PNG/JPG,
 and the general idea that a presenter "declares what representation(s) it produces" so a front end
-can show it generically. Design only so far — no code yet.
+can show it generically. **Phase 1 is built (2026-09-25)** — see Status below.
 
 ## Problem
 
@@ -126,3 +126,61 @@ work, already backlogged in presenters.md §3 and `BACKLOG.md`, not rushed here)
   usually a deliberate, single, waited-for action, unlike telemetry streaming).
 - Retention/cleanup policy for `~/.dev-term/captures/` — nothing today prunes old files there
   automatically; low priority until real usage shows it matters.
+
+## Status
+
+**Phase 1: implemented 2026-09-25. Phase 2: not started.** Screen reference:
+[docs/specs/stream-monitor.md](../../specs/stream-monitor.md); walkthrough:
+[docs/user-guide/stream-monitor.md](../../user-guide/stream-monitor.md).
+
+What was built, and where it differs from the text above:
+
+- **Detection is a pure, front-end-independent component in `DevTerm.Core.StreamContent`.**
+  `StreamContentSniffer` matches the signatures above (plus TIFF, binary EPS, the PJL universal exit
+  language and the HP-GL/2-in-PCL mode switch, and IEEE 488.2 definite-length `#<n><len>` blocks
+  wrapping any of them). `StreamContentEndFinder` finds each format's structural end (PNG `IEND`,
+  JPEG EOI by walking segments, GIF trailer by walking blocks, BMP/binary-EPS header sizes,
+  PostScript `%%EOF`/Ctrl-D, a PJL job's closing UEL). HP-GL, TIFF and bare-reset PCL have no
+  reliable in-band end and finish after a 2 s idle gap instead. `StreamContentWatcher` is the
+  proposed `IPresenter`: it buffers, captures and raises `ContentDetected`, and never emits text.
+  To keep ordinary uppercase text from looking like a plot, HP-GL is only recognized at a reply
+  boundary (after a quiet gap or a CR/LF), and a lone `ESC E` (also VT100 NEL) doesn't count as PCL.
+- **Declared hint: `ScpiCommandDefinition.ExpectedResponseFormat`**, as proposed (enum
+  `StreamContentFormat`: `Text`/`Hpgl`/`PostScript`/`Pcl`/`Image`/`Binary`). It's delivered
+  differently, though: not through `IScpiReplyTracker.QuerySent`. `ScpiControlSurface` calls
+  `IStreamContentHintSink.ExpectResponse` on every sink in the session's live pipeline
+  (`Session.Presenters`) just before sending. So nothing is wired between a control panel and the
+  monitor, and a hinted command still just sends when no monitor is running. A declared reply is
+  captured whatever its bytes are: by length when it's a definite-length block (header stripped),
+  otherwise until idle. The bundled Rigol DG1062Z's `HCOPy:SDUMp:DATA?` declares `Image`. The
+  TDS2024's `HARDCopy STARt` doesn't: its output format is itself set by `HARDCopy:FORMat`, so it's
+  left to sniffing.
+- **Not a selectable `--presenter streamwatch`, deliberately.** The watcher emits no text, so as a
+  display presenter it would do nothing visible. Instead, `DevTerm.Configuration.StreamMonitor` binds
+  a fresh watcher per session into the live pipeline with `Session.AddPresenter`, the mechanism the
+  SCPI panel already uses; the new `Session.RemovePresenter`/`Pipeline.RemovePresenter` unbinds it.
+  That lets monitoring be switched on and off mid-connection without reconnecting, keeps its state
+  per session, and leaves every other presenter's output unchanged. It also means no
+  `ConnectionEditorViewModel.PresenterOptions` entry is needed. The main window owns one
+  `StreamMonitor` and calls `SetSession` on every profile switch, so monitoring follows the switch:
+  a capture in progress on the old session is flushed and saved first.
+- **Files go to the existing `DevTermUserDataPaths.ExportsDirectory` (`~/.dev-term/exports`)**, not a
+  new `~/.dev-term/captures/`, via each profile's `CliOptions.EffectiveExportDirectory`. That
+  directory and its override already existed for this purpose. Names are
+  `{device}_{yyyyMMdd-HHmmss}.{ext}` as proposed, with `-2`, `-3`, … for same-second collisions and
+  the device name made file-name-safe.
+- **Front ends as proposed.** The TUI window (modal) shows state, folder, a capture list and
+  Start/Stop. Because it's modal, monitoring keeps running after it closes, and each capture adds a
+  status line to the main output; WPF behaves the same way for consistency. WPF adds a live
+  `System.Windows.Media.Imaging` preview for BMP/PNG/JPEG/GIF/TIFF, Open Folder, and Export As....
+  HP-GL/PostScript/PCL show "Preview not available yet".
+- **Verified**: unit tests only, covering every signature/end finder byte-by-byte, the watcher on a
+  fake clock, the monitor over a real `Session`, both windows, and the main windows' wiring including
+  a live profile switch. **Not verified against real hardware yet**: the DG1062Z screen capture and
+  the TDS2024 hard copy are the obvious first checks.
+- **Open questions, as answered so far**: unsolicited captures work (sniffing needs no tracked
+  query). One capture at a time: a second stream starting mid-capture is appended to the first.
+  No retention/cleanup.
+
+**Phase 2 (still ahead):** HP-GL/PostScript/PCL preview and a rasterize/convert export, gated on the
+rendering presenter from [presenters.md](../presenters.md) §3.

@@ -38,10 +38,18 @@ public sealed class MainWindowStateTests
     }
 
     [TestMethod]
+    public void Manifest_ForAnyConnection()
+    {
+        Assert.IsTrue(DevicePanels.IsAvailable(DevicePanel.Manifest, new CliOptions { Transport = "loopback" }, connected: true));
+        Assert.IsTrue(DevicePanels.IsAvailable(DevicePanel.Manifest, Hid(0x10CF, 0x5500), connected: true));
+    }
+
+    [TestMethod]
     public void NoPanelWhileDisconnected()
     {
         Assert.IsFalse(DevicePanels.IsAvailable(DevicePanel.K8055, Hid(0x10CF, 0x5500), connected: false));
         Assert.IsFalse(DevicePanels.IsAvailable(DevicePanel.Scpi, new CliOptions { Transport = "tcp" }, connected: false));
+        Assert.IsFalse(DevicePanels.IsAvailable(DevicePanel.Manifest, new CliOptions { Transport = "loopback" }, connected: false));
     }
 
     [TestMethod]

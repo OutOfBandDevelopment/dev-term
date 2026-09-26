@@ -15,10 +15,11 @@ namespace DevTerm.Configuration;
 /// Properties carry <see cref="CategoryAttribute"/>/<see cref="DisplayNameAttribute"/> from
 /// <c>System.ComponentModel</c> — plain metadata, not tied to any particular UI framework — so a
 /// property's group ("Serial"/"TCP"/"USB HID"/"Presentation"/"Mode") is declared once, here, rather
-/// than re-decided independently by each front end's editor. <see cref="ConnectionEditorViewModel"/>
-/// doesn't read these back via reflection today (its own <c>IsSerialTransport</c>/etc. properties
-/// group fields for show/hide instead) — this is the metadata layer such a reflection-driven
-/// approach would consume if the editor grows one later, and documents the grouping either way.
+/// than re-decided independently by each front end's editor. They're exactly what
+/// <c>DevTerm.UiDefinitions.Forms.FormDefinitionGenerator</c> reads: <c>Generate&lt;CliOptions&gt;()</c>
+/// yields a form section per category. The Connection Editor's own form is generated from
+/// <see cref="ConnectionEditorViewModel"/> instead (its editable, string-typed properties carry the
+/// same categories and labels), since that's the model its fields bind to.
 /// </remarks>
 public sealed class CliOptions
 {
@@ -274,4 +275,30 @@ public sealed class CliOptions
     /// <summary><see cref="ExportDirectory"/> with the <see cref="DevTermUserDataPaths.ExportsDirectory"/> default applied.</summary>
     [Browsable(false)]
     public string EffectiveExportDirectory => ExportDirectory is { Length: > 0 } dir ? dir : DevTermUserDataPaths.ExportsDirectory;
+
+    /// <summary>
+    /// Logger mode: record every sent/received chunk and connect/disconnect event of the session to
+    /// this session-log file from startup (<c>--log capture.jsonl</c>). <c>--log true</c> picks a
+    /// timestamped name under <see cref="DevTermUserDataPaths.LogsDirectory"/> instead (see
+    /// <see cref="SessionLogging.ResolveLogPath"/>). Honored by every front end; the TUI/WPF can also
+    /// start and stop logging from File &gt; Start Logging.... See docs/design/session-logging.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("Log to file")]
+    public string? Log { get; set; }
+
+    /// <summary>
+    /// Plays a session log back through the presenters (<c>--presenter</c>, or the log's own) and
+    /// prints the decoded output, then exits — no connection is made. Console app only; the TUI/WPF
+    /// have File &gt; Open Log for Playback... instead.
+    /// </summary>
+    [Category("Mode")]
+    public string? Playback { get; set; }
+
+    /// <summary>
+    /// <see cref="Playback"/>'s speed relative to how it was captured: 1 is realtime, 0.5 half speed,
+    /// 10 ten times faster; 0 (the default) prints everything as fast as possible.
+    /// </summary>
+    [Category("Mode")]
+    public double PlaybackSpeed { get; set; }
 }

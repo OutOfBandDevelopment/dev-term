@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
+    <PackageReference Include="MSTest" Version="4.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <!-- DevTerm.Presenters.Text: real, stateful presenters (the ASCII line buffer) to prove playback
+       reproduces what they rendered live, not a mock that can't tell the difference. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DevTerm.Logging\DevTerm.Logging.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Presenters.Text\DevTerm.Presenters.Text.csproj" />
+    <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
+  </ItemGroup>
+
+</Project>

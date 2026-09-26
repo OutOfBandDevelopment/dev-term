@@ -69,6 +69,9 @@ public sealed class ControlPanelWindowLayoutTests
 
     private static ControlPanelWindow Create(IControlSurface surface)
     {
+        // Expand/collapse state is remembered per definition for the process (a test collapses a
+        // section below) — every test here starts from all-expanded.
+        DevTerm.Configuration.SectionExpansionState.Forget(BuildDefinition().Name);
         var window = new ControlPanelWindow(BuildDefinition(), surface, null) { ShowInTaskbar = false };
         StaTestRunner.DoEvents();
         return window;

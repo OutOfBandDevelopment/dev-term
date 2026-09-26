@@ -54,6 +54,7 @@ public static class TuiMode
         }
 
         var app = Application.Create().Init();
+        TuiTheme.Apply(ActiveTheme.Current);
         try
         {
             var parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
@@ -66,6 +67,7 @@ public static class TuiMode
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
             app.Run(parts.Window, OnUnhandledException);
+            parts.Logging.Stop();
         }
         finally
         {
@@ -118,6 +120,16 @@ public static class TuiMode
         MenuItem? radexOneMenuItem = null;
         MenuItem? zoomH4nMenuItem = null;
         MenuItem? de5000MenuItem = null;
+        MenuItem? manifestMenuItem = null;
+
+        // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
+        // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
+        StreamMonitor? streamMonitor = null;
+
+        // Logger mode (File > Start Logging... / Stop Logging): the logger follows `session` across
+        // a profile switch (see SwitchProfileAsync). State and menu item live in TuiLogging; declared
+        // up here because RefreshConnectionUi reads it (same definite-assignment reason as above).
+        var logging = new TuiLogging();
 
         string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore, session.State == ConnectionState.Open);
 
@@ -136,6 +148,9 @@ public static class TuiMode
             outputLines.Add(StatusLine(startupWarning));
         }
 
+        // Bad theme files, an unknown --theme, an unreadable preferences file - reported, never fatal.
+        outputLines.AddRange(ActiveTheme.StartupProblems.Select(StatusLine));
+
         if (initialMessage is not null)
         {
             outputLines.Add(ErrorLine(initialMessage));
@@ -149,6 +164,9 @@ public static class TuiMode
             Height = Dim.Fill(2),
             ReadOnly = true,
             Text = string.Join('\n', outputLines),
+
+            // Colors [error]/[dev-term] lines apart from device output - see OutputHighlighting.
+            HighlightingDefinition = OutputHighlighting.Definition,
         };
 
         var sendLabel = new Label
@@ -238,6 +256,45 @@ public static class TuiMode
 
         session.Disconnected += OnSessionDisconnected;
 
+        bool StartLogging(string path)
+        {
+            try
+            {
+                logging.Start(path, session, cliOptions, parser, profileStore.FindName(cliOptions));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                AppendError($"Could not start logging to '{path}': {ex.Message}");
+                return false;
+            }
+
+            AppendStatus($"Logging to {SessionLogging.DisplayPath(logging.Logger!.Path!)}.");
+            RefreshConnectionUi();
+            return true;
+        }
+
+        void StopLogging()
+        {
+            if (logging.Logger?.Path is { } path)
+            {
+                logging.Stop();
+                AppendStatus($"Stopped logging to {SessionLogging.DisplayPath(path)}.");
+                RefreshConnectionUi();
+            }
+        }
+
+        logging.MenuItem.Action = Guarded(() =>
+        {
+            if (logging.Logger is not null)
+            {
+                StopLogging();
+            }
+            else if (TuiLogging.PromptForPath(app, cliOptions, profileStore.FindName(cliOptions)) is { } path)
+            {
+                StartLogging(path);
+            }
+        });
+
         void SetParser(string name)
         {
             // Called from a menu item's action, already on the UI thread - no Application.Invoke
@@ -245,6 +302,9 @@ public static class TuiMode
             parser = name;
             window.Title = TitleFor();
         }
+
+        // View > Theme: switching re-applies live through OnThemeChanged below.
+        var themeMenu = new TuiThemeMenu(AppendStatus);
 
         var menuBar = new MenuBar(
         [
@@ -262,6 +322,8 @@ public static class TuiMode
                         Observe(SwitchProfileAsync(chosen), AppendOutput);
                     }
                 })),
+                logging.MenuItem,
+                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, cliOptions))),
                 new MenuItem("_Quit", "Ctrl+Q", () => app.RequestStop(), Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
@@ -357,8 +419,50 @@ public static class TuiMode
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
                     OpenScpiInstrumentWindow(app, session, structuredSource, profile);
                 })),
+                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, session))),
+
+                // Always available: editing a manifest needs no connection (see ManifestEditorMode).
+                new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
+                new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
+            themeMenu.MenuBarItem,
         ]);
+
+        // A theme switch (View > Theme, from this window or any other) re-applies everything themed:
+        // Terminal.Gui's schemes, the output pane's highlighting (XSHD colors are fixed per
+        // definition, so it's swapped for the new theme's), and the status line. Raised on the thread
+        // that selected - the UI thread, from a menu action - so no app.Invoke (which would never
+        // flush under a headless test). Selected from any other thread, it's marshaled over instead;
+        // a window whose application has already shut down just unsubscribes.
+        var uiThreadId = Environment.CurrentManagedThreadId;
+        void OnThemeChanged(object? sender, EventArgs e)
+        {
+            if (app.Driver is null)
+            {
+                ActiveTheme.Changed -= OnThemeChanged;
+                return;
+            }
+
+            if (Environment.CurrentManagedThreadId != uiThreadId)
+            {
+                app.Invoke(ReapplyTheme);
+                return;
+            }
+
+            ReapplyTheme();
+        }
+
+        void ReapplyTheme()
+        {
+            TuiTheme.Apply(ActiveTheme.Current);
+            output.HighlightingDefinition = OutputHighlighting.Definition;
+            themeMenu.Refresh();
+            RefreshConnectionUi();
+            window.SetNeedsDraw();
+        }
+
+        ActiveTheme.Changed += OnThemeChanged;
+        window.Disposing += (_, _) => ActiveTheme.Changed -= OnThemeChanged;
 
         // Everything that depends on the connection state, derived from session.State in one
         // place: the File menu label, the send field, the title (" — disconnected" when closed), the
@@ -373,13 +477,8 @@ public static class TuiMode
             sendField.Enabled = connected;
             window.Title = TitleFor();
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}";
-            var (foreground, background) = connected
-                ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(120, 200, 120, 255))
-                : state == ConnectionState.Opening
-                    ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(230, 200, 90, 255))
-                    : (new Terminal.Gui.Drawing.Color(255, 255, 255, 255), new Terminal.Gui.Drawing.Color(170, 40, 40, 255));
-            statusLabel.SetScheme(new Terminal.Gui.Drawing.Scheme(new Terminal.Gui.Drawing.Attribute(foreground, background)));
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}{logging.StatusSuffix}";
+            statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
 
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, cliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, cliOptions, connected);
@@ -387,6 +486,7 @@ public static class TuiMode
             radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, cliOptions, connected);
             zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, cliOptions, connected);
             de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, cliOptions, connected);
+            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
         }
 
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
@@ -467,8 +567,10 @@ public static class TuiMode
             catalog = built.Catalog;
             cliOptions = newOptions;
             parser = newOptions.EffectiveParser;
+            streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
             mySession.Output += OnSessionOutput;
             mySession.Disconnected += OnSessionDisconnected;
+            logging.Follow(mySession, newOptions, profileStore.FindName(newOptions));
 
             app.Invoke(() =>
             {
@@ -523,6 +625,28 @@ public static class TuiMode
             app.Invoke(RefreshConnectionUi);
             AppendStatus($"Switched to {ConnectionDescription.For(cliOptions)}.");
             return true;
+        }
+
+        // Device > Stream Monitor...: opening it starts monitoring the current session (that's what
+        // opening it is for); its Stop button stops it. The monitor outlives the modal window so
+        // captures keep being auto-saved - each reported as a status line here - while the user is
+        // back in this window sending commands. SwitchProfileAsync moves it to the new session.
+        void OpenStreamMonitor()
+        {
+            if (streamMonitor is null)
+            {
+                var monitor = new StreamMonitor();
+                monitor.CaptureAdded += (_, capture) => AppendStatus(capture.Describe());
+                window.Disposing += (_, _) => monitor.Dispose();
+                streamMonitor = monitor;
+            }
+
+            streamMonitor.SetSession(session, StreamMonitor.DeviceNameFor(cliOptions, profileStore), cliOptions.EffectiveExportDirectory);
+            streamMonitor.Start();
+
+            var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor);
+            app.Run(monitorParts.Window);
+            monitorParts.Window.Dispose();
         }
 
         sendField.KeyDown += (_, key) =>
@@ -584,7 +708,14 @@ public static class TuiMode
         window.Add(menuBar, output, sendLabel, sendField, statusLabel);
         RefreshConnectionUi();
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, radexOneMenuItem!, zoomH4nMenuItem!, de5000MenuItem!, ToggleAndRefreshAsync);
+        // --log starts logging straight away (the session may already be open - the log's first
+        // record says so). RunAsync stops it when the loop ends.
+        if (cliOptions.Log is { Length: > 0 } logOption)
+        {
+            StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
+        }
+
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu);
     }
 
     /// <summary>
@@ -790,6 +921,9 @@ public static class TuiMode
         app.Run(panelParts.Window);
     }
 
+    /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
+    private static void OpenDeviceManifest(IApplication app, Session session) => ManifestPanelMode.PickAndRun(app, session);
+
     private static string? PickScpiProfileChoice(IApplication app)
     {
         var items = new List<string> { _scpiAutoDetectChoice, _scpiGenericChoice };
@@ -842,4 +976,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, MenuItem RadexOneMenuItem, MenuItem ZoomH4nMenuItem, MenuItem De5000MenuItem, Func<Task> ToggleConnectionAsync);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu);
