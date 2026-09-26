@@ -69,6 +69,11 @@ public static class TuiMode
             // debugger can break on the original exception.
             app.Run(parts.Window, OnUnhandledException);
             parts.Logging.Stop();
+
+            // window.Disposing never fires once Run returns (the window is never disposed here -
+            // see app.Dispose() below, which only tears down the driver), so a capture still in
+            // progress must be flushed/saved explicitly rather than relying on that event.
+            parts.CurrentStreamMonitor()?.Dispose();
         }
         finally
         {
@@ -133,6 +138,7 @@ public static class TuiMode
         MenuItem? zoomH4nMenuItem = null;
         MenuItem? de5000MenuItem = null;
         MenuItem? manifestMenuItem = null;
+        MenuItem? streamMonitorMenuItem = null;
 
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
         // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
@@ -484,7 +490,7 @@ public static class TuiMode
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
-                new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
+                streamMonitorMenuItem = new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
             themeMenu.MenuBarItem,
         ]);
@@ -700,7 +706,6 @@ public static class TuiMode
             {
                 var monitor = new StreamMonitor();
                 monitor.CaptureAdded += (_, capture) => AppendStatus(capture.Describe());
-                window.Disposing += (_, _) => monitor.Dispose();
                 streamMonitor = monitor;
             }
 
@@ -778,7 +783,7 @@ public static class TuiMode
             StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
         }
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => session);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => session, streamMonitorMenuItem!, () => streamMonitor);
     }
 
     /// <summary>
@@ -1054,4 +1059,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu, Func<Session> CurrentSession);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu, Func<Session> CurrentSession, MenuItem StreamMonitorMenuItem, Func<StreamMonitor?> CurrentStreamMonitor);

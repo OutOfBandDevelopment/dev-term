@@ -3,6 +3,7 @@ using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.StreamContent;
 using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
@@ -258,6 +259,74 @@ public sealed class TuiModeTests
         Assert.AreEqual(0, k8055.SubscriberCount, "Expected window.Disposing to unsubscribe from ValuesChanged after the panel closes.");
 
         await session.CloseAsync(TestContext.CancellationToken);
+    }
+
+    /// <summary>
+    /// Bug 019 (docs/bugs/fixed/019-tui-stream-monitor-capture-lost-on-quit.md): the Stream Monitor
+    /// used to be disposed only via <c>window.Disposing</c> on the main window, which never fires
+    /// once <c>Application.Run</c> returns (CLAUDE.md) - so a capture still in progress at quit was
+    /// never flushed or saved. <see cref="TuiMode.RunAsync"/> now disposes whatever
+    /// <c>TuiWindowParts.CurrentStreamMonitor</c> returns once its loop ends; this replicates that
+    /// call directly (the same "what TuiMode.RunAsync does once the loop ends" convention
+    /// <see cref="TuiLoggingTests"/> uses), since RunAsync itself can't easily be driven end-to-end
+    /// here.
+    /// </summary>
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task Quitting_WithACaptureStillInProgress_FlushesAndSavesIt()
+    {
+        var (session, transport, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var exportDirectory = Path.Combine(Path.GetTempPath(), "devterm-tests-streammonitor-" + Guid.NewGuid().ToString("N"));
+        var cliOptions = new CliOptions { Transport = "loopback", ExportDirectory = exportDirectory };
+
+        StreamMonitor? monitor = null;
+        try
+        {
+            TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+            {
+                var app = TuiTestRunner.CurrentApp;
+
+                TuiTestRunner.InvokeOnLoop(() =>
+                {
+                    app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                    {
+                        app.RequestStop();
+                        return false;
+                    });
+
+                    parts.StreamMonitorMenuItem.Action!.Invoke();
+                    return true;
+                });
+
+                monitor = parts.CurrentStreamMonitor();
+                Assert.IsNotNull(monitor, "Opening Stream Monitor... should have created it, reachable via TuiWindowParts.CurrentStreamMonitor.");
+
+                // HP-GL has no in-band end marker - it only ends on idle timeout - so it's still "in
+                // progress" as soon as this returns, the same as real device output caught mid-reply.
+                transport.PushIncomingAsync(StreamContentSamples.Hpgl()).GetAwaiter().GetResult();
+                var seen = TuiTestRunner.WaitUntilOnLoop(() => monitor!.IsRunning, _waitTimeout);
+                Assert.IsTrue(seen, "Expected the monitor to still be running before quitting.");
+                Assert.IsEmpty(monitor!.Captures, "The capture should still be in progress, not yet saved.");
+
+                // What TuiMode.RunAsync now does once the loop ends.
+                monitor.Dispose();
+            });
+
+            Assert.HasCount(1, monitor!.Captures);
+            var capture = monitor.Captures[0];
+            Assert.AreEqual(StreamCaptureEnd.Flushed, capture.Capture.EndReason);
+            Assert.IsNotNull(capture.SavedPath);
+            Assert.IsTrue(File.Exists(capture.SavedPath));
+        }
+        finally
+        {
+            await session.CloseAsync(TestContext.CancellationToken);
+            if (Directory.Exists(exportDirectory))
+            {
+                Directory.Delete(exportDirectory, recursive: true);
+            }
+        }
     }
 
     [TestMethod]
