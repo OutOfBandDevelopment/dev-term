@@ -80,15 +80,15 @@ public sealed class PlaybackController
 
     public bool HasSelection => SelectionEnd > SelectionStart;
 
-    /// <summary>A one-line summary of the log, for the window's header line.</summary>
+    /// <summary>A one-line summary of the log, for the window's header line (the file name is in the title): <c>tek2230 (tcp://192.168.0.107:23) · 2026-09-25 12:00:00 · 8 records</c>.</summary>
     public string Description
     {
         get
         {
             var header = Log.Header;
             var subject = header.Profile is { Length: > 0 } profile ? $"{profile} ({header.Connection})" : header.Connection ?? "unknown connection";
-            var trimmed = header.TrimmedFrom is { } from ? $", trimmed from {from}" : string.Empty;
-            return $"{System.IO.Path.GetFileName(Path)} — {subject}, captured {header.Created.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}, {Log.Records.Count} records{trimmed}";
+            var trimmed = header.TrimmedFrom is { } from ? $" · trimmed from {from}" : string.Empty;
+            return $"{subject} · {header.Created.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} · {Log.Records.Count} records{trimmed}";
         }
     }
 

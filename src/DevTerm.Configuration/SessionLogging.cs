@@ -49,6 +49,20 @@ public static class SessionLogging
         return Path.Combine(DevTermUserDataPaths.LogsDirectory, $"{stamp}_{(safe.Length > 0 ? safe : "session")}{SessionLogFormat.FileExtension}");
     }
 
+    /// <summary>
+    /// <paramref name="path"/> for a status message: the user's home directory shortened to
+    /// <c>~</c> (<c>~\.dev-term\logs\20260925-120000_tek2230.jsonl</c>), so it fits and doesn't spell
+    /// out the account name in every screenshot.
+    /// </summary>
+    public static string DisplayPath(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).TrimEnd(Path.DirectorySeparatorChar);
+        return home.Length > 0 && path.StartsWith(home + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? "~" + path[home.Length..]
+            : path;
+    }
+
     /// <summary>The header for a log of <paramref name="cliOptions"/>'s connection.</summary>
     public static SessionLogHeader HeaderFor(CliOptions cliOptions, string parser, string? profileName, string frontEnd, DateTimeOffset created)
     {
