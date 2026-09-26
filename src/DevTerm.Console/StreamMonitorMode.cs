@@ -40,7 +40,7 @@ internal static class StreamMonitorMode
         // Device names and file paths are data, not menu text - never treat an '_' in one as a hotkey marker.
         var noHotKey = (Rune)0xFFFF;
         var statusLabel = new Label { X = 0, Y = 0, Width = Dim.Fill(), HotKeySpecifier = noHotKey };
-        var folderLabel = new Label { X = 0, Y = 1, Width = Dim.Fill(), HotKeySpecifier = noHotKey };
+        var folderLabel = new Label { X = 0, Y = 1, Width = Dim.Fill(), Height = 1, HotKeySpecifier = noHotKey };
         var explanationLabel = new Label { X = 0, Y = 2, Width = Dim.Fill(), Height = 2, Text = ExplanationText };
         var capturesLabel = new Label { X = 0, Y = 5, Text = "Captures (newest last):" };
         var captureList = new ListView
@@ -82,7 +82,9 @@ internal static class StreamMonitorMode
             statusLabel.SetScheme(TuiTheme.Solid(running
                 ? TuiTheme.Attribute(theme, ThemeRole.StatusConnectedText, ThemeRole.StatusConnected)
                 : TuiTheme.Attribute(theme, ThemeRole.MenuForeground, ThemeRole.MenuBackground)));
-            folderLabel.Text = $"Saving to: {StreamMonitor.DisplayPath(monitor.ExportDirectory)}";
+            // One line, the folder's middle elided if need be: a long path used to wrap onto the
+            // explanation below it.
+            folderLabel.Text = $"Saving to: {TuiText.CompactPath(monitor.ExportDirectory, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 14, 20))}";
             toggleButton.Text = running ? "Stop Monitoring" : "Start Monitoring";
 
             var captures = monitor.Captures;

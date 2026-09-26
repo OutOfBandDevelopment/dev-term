@@ -534,12 +534,29 @@ internal static class ControlPanelMode
         return lines;
     }
 
+    /// <summary>
+    /// A command button in a one-line row: shadowless, since every row is one line - a button's
+    /// shadow is drawn on the line below it, which is the next control's row (it striped every SCPI
+    /// "... Reply:" row and covered the reply shown there), or, for a section's last button, was cut
+    /// off by the section's edge. Same as the manifest editor's and playback's button rows.
+    /// </summary>
+    private static Button RowButton(string text, int x, int y) => new()
+    {
+        X = x,
+        Y = y,
+        Text = text,
+        ShadowStyle = ShadowStyles.None,
+
+        // Button labels come from device data (a profile, a manifest) - an '_' in one isn't a hotkey marker.
+        HotKeySpecifier = (Rune)0xFFFF,
+    };
+
     /// <summary>Adds one control's row(s) at <paramref name="row"/>; returns how many rows it took.</summary>
     private static int AddControlRow(PanelState panel, View body, int row, int columnX, UiControl control)
     {
         var app = panel.App;
         var surface = panel.Surface;
-        var label = new Label { X = 0, Y = row, Text = control.Label + ":" };
+        var label = new Label { X = 0, Y = row, Text = control.Label + ":", HotKeySpecifier = (Rune)0xFFFF };
         body.Add(label);
 
         View? previewAnchor = null;
@@ -552,7 +569,7 @@ internal static class ControlPanelMode
         {
             case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
                 {
-                    var colorButtonView = new Button { X = columnX, Y = row, Text = control.Label };
+                    var colorButtonView = RowButton(control.Label, columnX, row);
 
                     // A swatch next to the button: the current custom color's hex value on a background of
                     // that color - hidden until one has been set (including in an earlier opening of this
@@ -591,7 +608,7 @@ internal static class ControlPanelMode
 
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
                 {
-                    var parameterButtonView = new Button { X = columnX, Y = row, Text = control.Label };
+                    var parameterButtonView = RowButton(control.Label, columnX, row);
                     var commandId = button.CommandId ?? button.Id;
                     parameterButtonView.Accepting += (_, e) =>
                     {
@@ -614,7 +631,7 @@ internal static class ControlPanelMode
 
             case ButtonControl button:
                 {
-                    var buttonView = new Button { X = columnX, Y = row, Text = control.Label };
+                    var buttonView = RowButton(control.Label, columnX, row);
                     var commandId = button.CommandId ?? button.Id;
                     buttonView.Accepting += (_, e) =>
                     {
@@ -1099,7 +1116,7 @@ internal static class ControlPanelMode
     /// widget exists in the installed Terminal.Gui package (see this class's own remarks on that),
     /// so every field is a bounded <see cref="TextField"/>, synced on Enter.
     /// </summary>
-    private static (byte R, byte G, byte B)? PickColor(IApplication app, byte initialR, byte initialG, byte initialB)
+    internal static (byte R, byte G, byte B)? PickColor(IApplication app, byte initialR, byte initialG, byte initialB)
     {
         (byte R, byte G, byte B)? picked = null;
         var dialog = new Dialog { Title = "Custom Color", Width = 40, Height = 12 };

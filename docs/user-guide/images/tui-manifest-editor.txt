@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
-│Opened                                                                        │
-│'C:\repo\oobdev\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\manif  │
+│Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
+│~\…\13ogcwqq.zuh\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Stream Samples├──────────────────────────────╮│
 ││Identity                    ││  Name:     Stream Samples                    ││
 ││Commands (3)                ││  Id:       samples                           ││

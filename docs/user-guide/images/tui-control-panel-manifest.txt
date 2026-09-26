@@ -1,11 +1,11 @@
 ┌┤dev-term — Loopback Sensor Demo├───────────────────────────────────────────────────────┐
 │[-] Acquire                                                                             │
-│  Measure:        ⟦ Measure ⟧▖ (i)                                                      │
+│  Measure:        ⟦ Measure ⟧  (i)                                                      │
 │  Last Sample:    A=50.00 B=90.00 C=0.00 X=0.80 Y=0.00 Z=0.00 R=0.50 T=0.00 H=0.00      │
 │  Sample Count:   40                                                                    │
-│  Stream Samples: ⟦ Stream Samples ⟧▖ (i)                                               │
-│  Hello:          ⟦ Hello ⟧▖▀(i)▀▀▀▀▘                                                   │
-│  Hello Reply:    ▝▀▀▀▀▀▀▀▀▘                                                            │
+│  Stream Samples: ⟦ Stream Samples ⟧  (i)                                               │
+│  Hello:          ⟦ Hello ⟧  (i)                                                        │
+│  Hello Reply:                                                                          │
 │                                                                                        │
 │[-] Levels                                                                              │
 │  Channels: A ▕████████▌                     ▏ 28.54 %                                  │

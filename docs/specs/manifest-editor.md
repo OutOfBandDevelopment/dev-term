@@ -139,7 +139,7 @@ same mechanism that shows the Connection Editor's Serial fields only for the ser
 
 ## Per-front-end notes
 
-- **Layout**: WPF shows outline, form and preview at once; the TUI (80×24 by default) shows outline
+- **Layout**: WPF shows outline, form and preview at once, in proportional columns (5:7:8, at least 160/290/260px - the outline used to be a fixed 280px, which pushed the preview past the right edge at the window's 820px minimum). WPF themes the editor like every other window (it had been left out of View > Theme and stayed light under Dark). The TUI (80×24 by default) shows outline
   plus one pane, switching the pane between form and preview. The TUI's toolbar buttons have no
   shadow so all seven fit on one line of an 80-column terminal.
 - **The preview is the real renderer in both**: the TUI adds the `Window` `ControlPanelMode.BuildWindow`

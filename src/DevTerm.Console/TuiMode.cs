@@ -165,6 +165,11 @@ public static class TuiMode
             ReadOnly = true,
             Text = string.Join('\n', outputLines),
 
+            // Soft-wrapped: a long reply or error line used to run off the right edge, and moving the
+            // caret to the end after each append scrolled the whole pane sideways to that line's end,
+            // hiding the start of every line (the "[source]" tags included).
+            WordWrap = true,
+
             // Colors [error]/[dev-term] lines apart from device output - see OutputHighlighting.
             HighlightingDefinition = OutputHighlighting.Definition,
         };
@@ -326,7 +331,7 @@ public static class TuiMode
                 })),
                 logging.MenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, cliOptions))),
-                new MenuItem("_Quit", "Ctrl+Q", () => app.RequestStop(), Key.Q.WithCtrl),
+                new MenuItem("_Quit", string.Empty, () => app.RequestStop(), Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
             // line typed on (the title bar shows which is current). Built from the catalog as of
@@ -504,7 +509,9 @@ public static class TuiMode
         // fires ahead of per-view focus routing, so it works regardless of what's currently focused.
         void quitOnCtrlQ(object? _, Key key)
         {
-            if (key != Key.Q.WithCtrl)
+            // The Connection Editor (File > Device Profiles...) quits itself on Ctrl+Q, with its
+            // unsaved-changes prompt; stopping it from here would skip that prompt.
+            if (key != Key.Q.WithCtrl || key.Handled || ConfigureMode.OwnsQuitKey(app.TopRunnableView))
             {
                 return;
             }
@@ -926,7 +933,7 @@ public static class TuiMode
     /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
     private static void OpenDeviceManifest(IApplication app, Session session) => ManifestPanelMode.PickAndRun(app, session);
 
-    private static string? PickScpiProfileChoice(IApplication app)
+    internal static string? PickScpiProfileChoice(IApplication app)
     {
         var items = new List<string> { _scpiAutoDetectChoice, _scpiGenericChoice };
         items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));
@@ -941,8 +948,8 @@ public static class TuiMode
     private static string? PickFromList(IApplication app, string title, IReadOnlyList<string> items)
     {
         string? picked = null;
-        var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
-        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
+        var dialog = new Dialog { Title = title, Width = FormRenderer.ListDialogWidth(app, items), Height = Math.Min(items.Count + 5, 20) };
+        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2) };
         listView.SetSource(new ObservableCollection<string>(items));
         listView.Accepting += (_, e) =>
         {

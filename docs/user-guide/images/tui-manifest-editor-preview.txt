@@ -1,16 +1,16 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Edit ⟧ ⟦ Close ⟧      │
-│Opened                                                                        │
-│'C:\repo\oobdev\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\manif  │
+│Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
+│~\…\13ogcwqq.zuh\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Preview (sends nothing)├─────────────────────╮│
 ││Commands (3)                ││┌┤Loopback Sensor Demo├──────────────────────┐││
 ││  Measure                   │││[-] Acquire                                ▲│││
-││  Stream Samples            │││  Measure:        ⟦ Measure ⟧▖ (i)         █│││
-││    count (integer)         │││  Last Sample:    ▝▀▀▀▀▀▀▀▀▀▀▘             ░│││
+││  Stream Samples            │││  Measure:        ⟦ Measure ⟧  (i)         █│││
+││    count (integer)         │││  Last Sample:                             ░│││
 ││  Hello                     │││  Sample Count:   40                       ░│││
-││Response patterns (1)       │││  Stream Samples: ⟦ Stream Samples ⟧▖ (i)  ░│││
-││  sample                    │││  Hello:          ⟦ Hello ⟧▖▀(i)▀▀▀▀▘      ░│││
-││Panel                       │││  Hello Reply:    ▝▀▀▀▀▀▀▀▀▘               ░│││
+││Response patterns (1)       │││  Stream Samples: ⟦ Stream Samples ⟧  (i)  ░│││
+││  sample                    │││  Hello:          ⟦ Hello ⟧  (i)           ░│││
+││Panel                       │││  Hello Reply:                             ░│││
 ││  [Acquire]                 │││                                           ░│││
 ││    button: Measure         │││[-] Levels                                 ░│││
 ││    indicator: Last Sample  │││  Channels: A ▕                            ░│││

@@ -35,6 +35,11 @@ namespace DevTerm.Console;
 /// </remarks>
 public static class ConfigureMode
 {
+    /// <summary>Every editor window built, so another window's global Ctrl+Q handler can tell it handles that key itself (see <see cref="OwnsQuitKey"/>).</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, ConfigureWindowParts> _windows = [];
+
+    /// <summary>Whether <paramref name="view"/> is a Connection Editor window - it handles Ctrl+Q itself (as its Quit button), so an outer window's Ctrl+Q handler leaves the key to it.</summary>
+    internal static bool OwnsQuitKey(View? view) => view is not null && _windows.TryGetValue(view, out _);
     /// <returns>Valid <see cref="CliOptions"/> once the user presses Connect with something that validates; <see langword="null"/> if they quit instead.</returns>
     public static CliOptions? Run(CliOptions initial, string? validationError)
     {
@@ -93,7 +98,7 @@ public static class ConfigureMode
             // that introduced this container, and none after.
             CanFocus = true,
         };
-        formContent.SetContentSize(new Size(100, contentHeight));
+        formContent.SetContentSize(new Size(Math.Max(app.Screen.Width - 2, 1), contentHeight));
         formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
 
         var errorLabel = new Label
@@ -485,9 +490,8 @@ public static class ConfigureMode
         });
         Run(connectButton, () => viewModel.ConnectCommand.Execute(null));
 
-        quitButton.Accepting += (_, e) =>
+        void Quit()
         {
-            e.Handled = true;
             if (!viewModel.ConfirmClose())
             {
                 return;
@@ -495,7 +499,34 @@ public static class ConfigureMode
 
             parts.Result = null;
             app.RequestStop();
+        }
+
+        quitButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            Quit();
         };
+
+        // Ctrl+Q, as the title advertises - the same as Quit (unsaved-changes prompt included). On
+        // the global KeyDown event for the same reason as TuiMode's: a focused field sees keys
+        // first. Only while this window is on top (not under a file dialog it opened). Checked in a
+        // real console: before this, Ctrl+Q did nothing in the startup editor (only Esc closed it),
+        // and from File > Device Profiles... it was TuiMode's handler that closed it, skipping the
+        // unsaved-changes prompt - TuiMode now leaves it to this one (see OwnsQuitKey).
+        void quitOnCtrlQ(object? _, Key key)
+        {
+            if (key != Key.Q.WithCtrl || key.Handled || app.TopRunnableView != window)
+            {
+                return;
+            }
+
+            key.Handled = true;
+            Quit();
+        }
+
+        app.Keyboard.KeyDown += quitOnCtrlQ;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= quitOnCtrlQ;
+        _windows.AddOrUpdate(window, parts);
 
         formContent.Add(
             errorLabel, profilesLabel, profilesList, loadButton, deleteButton, refreshButton,
@@ -524,14 +555,17 @@ public static class ConfigureMode
         }
 
         // The content ends at the Quit button - re-measured after each layout pass, since the form
-        // above it changes height with the transport.
+        // above it changes height with the transport - and is exactly as wide as the visible area:
+        // nothing here is wider than an 80-column window, and a fixed width (it was 100) clipped
+        // the full-width rows (the Loopback note, the error line) on a wider terminal.
         formContent.SubViewsLaidOut += (_, _) =>
         {
             var measured = Math.Max(quitButton.Frame.Bottom + 1, 1);
-            if (measured != contentHeight)
+            var width = Math.Max(formContent.Viewport.Width, 1);
+            if (measured != contentHeight || width != formContent.GetContentSize().Width)
             {
                 contentHeight = measured;
-                formContent.SetContentSize(new Size(100, contentHeight));
+                formContent.SetContentSize(new Size(width, contentHeight));
                 ScrollBy(0);
             }
         };
