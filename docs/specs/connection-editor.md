@@ -67,8 +67,8 @@ Shown in two situations:
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Connect** | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`Dtr`, `Rts`, `WriteTimeoutMs`/`ReadTimeoutMs`, `AsciiMaxLineLength`, `ManifestName`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
-| **Close** (WPF) / **Quit** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
+| **Connect** (also **Enter** in a field, in both front ends: it is the default button; in the TUI, Enter in the saved-profiles list loads instead) | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`Dtr`, `Rts`, `WriteTimeoutMs`/`ReadTimeoutMs`, `AsciiMaxLineLength`, `ManifestName`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
+| **Close** (WPF) / **Quit** or **Ctrl+Q** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
 | **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
 | **Delete** | Deletes the selected saved profile; refreshes the list; clears the selection | A profile must be selected | "Select a profile first." |
@@ -98,7 +98,7 @@ Shown in two situations:
   ID, serial number, and for USBTMC the device location), doesn't match anything detected right now, both front
   ends show `(not found — this port isn't connected right now)` / `(not found — no connected device matches this
   vendor/product/serial)` under the detected-devices row — a generated warning indicator
-  (`SerialPortNotFoundHint`/`UsbDeviceNotFoundHint`, shown while `ConnectedDeviceNotFound`), red in WPF. The TUI
+  (`SerialPortNotFoundHint`/`UsbDeviceNotFoundHint`, shown while `ConnectedDeviceNotFound`), in the theme's Error color in both front ends (the TUI form renderer draws a warning indicator, and a field's inline `! ...` message, with the `Error` scheme since 2026-09-25). The TUI
   showed a shorter `(not found)` beside the field before the form was generated. It never blocks Connect.
 - **USBTMC device location**: picking a detected USBTMC device also fills `DevicePath` with its physical USB
   location (`usb:{bus}-{port chain}`, e.g. `usb:1-4.2`, the same form `--listusbtmcdevices` prints as
@@ -152,7 +152,13 @@ Shown in two situations:
   was visible or not — left the hidden group's whole height blank. WPF's `StackPanel` layout
   collapses a `Collapsed` section, as it always did.
 - **Saved-profiles list sizing**: WPF's list grows/shrinks proportionally with the window (a `Grid`
-  row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The TUI's list has a
+  row sized `1*` against the field editor's `2*`, both with a `MinHeight`). The list row's minimum
+  (190px) is the height of its six-button column, so Refresh/Export Selected/Export All stay reachable
+  at the window's minimum size (420x520; the row minimum used to be 90px and the window's 480px, which
+  cut the bottom three buttons off). The WPF status line collapses while it's empty, and
+  Connect/Close are the same 80x32 buttons as the other dialogs' OK/Cancel. The generated form's label
+  column is at least 140px and grows to the longest label ("Detected USBTMC devices:" used to be cut
+  off). The TUI's list has a
   fixed height (4 rows) — Terminal.Gui's absolute-position layout doesn't have an equivalent to
   WPF's star-sized rows without a more involved container.
 - **Import/export path entry**: both front ends have a "Browse..." button next to the typed path

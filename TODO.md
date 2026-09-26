@@ -6,12 +6,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **Re-check the window-title fix on the machine the 2026-09-23 report came from.** The report was that the
-  title doesn't show the loaded profile's name. A real cause was found and fixed on 2026-09-25: the Connection
-  Editor's Connect reset settings the form doesn't show, so the result no longer matched the saved profile the
-  title looks up. That cause is covered by a test, but the reporting machine's own profiles weren't available.
-  Confirm there that loading a profile in Device Profiles and connecting shows its name in the title (TUI and
-  WPF). See `docs/changes/2026-09-25.md`, "Front ends never crash on errors…".
 - **Re-run the real-hardware suites once devices are attached.** `ReplyCollector` (multi-chunk replies) and the
   USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
   - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
@@ -19,20 +13,12 @@ Completed work is logged by date under `docs/changes/`.
 
 ### UI batch (started 2026-09-25)
 
-Being built in three phases on `dev/error-handling-and-todo`. Parallel work happens in separate git
-worktrees, merged and verified before the next phase starts. Items moved here from `BACKLOG.md`
-(and from the specs' Open items) when work started. Each is deleted from this file once its detail
-has landed in `docs/changes/`.
+Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
+verified one at a time. Each item is deleted from this file once its detail has landed in `docs/changes/`.
 
-**Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
-
-**Phase 2 — done** (2026-09-25): theming, the forms engine (generated Connection Editor fields) and the
-device manifest editor all landed; see `docs/changes/2026-09-25.md`.
-
-**Phase 3 — queued (last; it restructures both main windows):**
-
-- **Multiple sessions per window** (from the TUI/WPF main-window specs' Open items). Presenters stopped
-  being the blocker on 2026-09-25, since they're per-session now; nothing builds the UI for it yet.
+- **Multiple sessions per window** (queued last, since it restructures both main windows; from the TUI/WPF
+  main-window specs' Open items). Presenters stopped being the blocker on 2026-09-25, since they're
+  per-session now. Nothing builds the UI for it yet.
 
 ## Backlog / research
 

@@ -22,3 +22,6 @@ TestResults/
 # Personal/local machine profiles (device ports, addresses) — never committed.
 appsettings.Local.json
 appsettings.*.Local.json
+
+# Untracked review output (TUI/WPF layout-review screenshots, see tests/DevTerm.Console.Tests/TuiReview.cs)
+artifacts/

@@ -42,10 +42,8 @@ the rest.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
-  drawing/rendering half. The first consumer's capture-and-save / WPF-native-image-preview phase (the
-  "Stream Monitor..." window from
-  [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md))
-  landed 2026-09-25 (`docs/specs/stream-monitor.md`); the real HPGL/PostScript/PCL rendering it defers stays here.
+  drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
+  already captures and saves but doesn't draw yet.
 
 ### Device control modules & hardware profiles
 
@@ -86,30 +84,48 @@ the rest.
 
 ### Connection Editor
 
-**Connection Editor, from the 2026-09-15 Architect Notes** (see `TODO.md`'s "In progress" entry
-for a summary of what already landed, and `docs/changes/2026-09-15.md`/`2026-09-16.md` for full
-detail on each increment). Still open — prioritized per direction given 2026-09-16, with the
-serial-port naming item moved to lower priority. ~~Export-selected/export-all as a zip~~ landed
-2026-09-16: multi-select in the profiles list (WPF `ListBox.SelectionMode="Extended"`, TUI
-`ListView.MarkMultiple`/`ShowMarks`), Export Selected/Export All (one `{name}.json` per profile in
-a zip), and zip-aware Import with per-name Replace/Rename/Skip conflict resolution
-(`ConnectionEditorViewModel.ResolveZipImportConflict`) — see `docs/changes/2026-09-16.md` and
-`docs/specs/connection-editor.md`. Its two follow-ups (bulk profile removal and a wholesale "delete
-all, then import" option) both landed 2026-09-18, as did the Windows half of a long/short name for
-detected serial ports; the Linux/macOS half and the WPF "not found" hint landed 2026-09-25
-(`docs/changes/2026-09-25.md`). Nothing from those notes is still open.
-
 - **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
   fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
   just annotating the view-model properties (and adding the view-model properties where missing).
+
+### WPF layout review follow-ups (from 2026-09-25)
+
+- **Light theme Accent/Warning are below 4.5:1 as text colors** (4.1:1 and 3.3:1; Playback's `[tx]` and
+  `[note]` lines). Needs a palette decision covering both front ends and `docs/design/theming.md`; allow-listed
+  in `UiLayoutReviewTests` until then.
+- **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
+  charts shrink to the column would fix it.
+- **Cap field widths on wide windows.** At 1600px, text boxes and combos in Device Profiles and the
+  manifest editor stretch across the whole window.
+- **The Manifest picker's empty error area leaves ~24px of blank space** above the buttons.
+- **Busylight's unlabeled Apply row isn't aligned** with the section label columns above it.
+- **The Manifest Editor's pane title repeats its first section header** ("Identity" / "Identity").
+- **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
+- **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
+  Generic, most manifest-editor node kinds, and the menus in the second theme.
+
+### TUI layout review follow-ups (from 2026-09-25)
+
+- **Control-panel button rows repeat their label** ("Apply: [Apply]", "Custom...: [Custom...]"). It's how
+  the label column lines up; a design call.
+- **Ctrl+Q in a nested TUI panel or dialog closes that window** rather than quitting the app. Decide which
+  it should be.
+- **The layout matrix made `DevTerm.Console.Tests` ~2 min** (was ~16 s). Reuse one app per class, or trim
+  the matrix to 80x25 plus 200x60.
+- **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
+- **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
+  invisible field backgrounds, faint focus).
+- **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
+  structured source; check whether that message suits an output-only device.
+- **Not reviewed yet:** the Terminal.Gui file dialogs (Browse, Save As); the manifest editor's New/empty
+  state and its "Create panel from commands" hint; Playback, the Stream Monitor and the SCPI panels in Dark;
+  the K8055 with live data; the main window's menus while disconnected.
 
 ### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
 - **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
   dropdown); only the form renderers handle both.
 - **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
-- **The manifest editor's status line shows the full file path,** which reads long; a shortened path
-  (or just the folder name) would fit better.
 
 ### Tooling
 

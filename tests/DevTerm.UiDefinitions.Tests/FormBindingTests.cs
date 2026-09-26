@@ -88,6 +88,24 @@ public sealed class FormBindingTests
     };
 
     [TestMethod]
+    public void BlankOptionalNumber_IsValid_AndClearsIt_ButABlankRequiredNumberIsNot()
+    {
+        // A form field generated for an int? gets an Integer constraint, which on its own rejects a
+        // blank - so an optional number (the manifest editor's text-field Max length) showed
+        // "! '' is not a whole number." as soon as it was selected, and couldn't be cleared.
+        var model = new Plain();
+        using var binding = new FormBinding(model);
+        var optional = Field(nameof(Plain.Optional), ValueKind.Integer, min: 0);
+
+        Assert.IsTrue(binding.Validate(optional, "  ").IsValid);
+        Assert.IsTrue(binding.SetText(optional, string.Empty).IsValid);
+        Assert.IsNull(model.Optional);
+
+        Assert.IsFalse(binding.Validate(optional, "x").IsValid, "Anything else still has to be a whole number.");
+        Assert.IsFalse(binding.Validate(Field(nameof(Plain.Count), ValueKind.Integer), string.Empty).IsValid, "A plain int can't be blank.");
+    }
+
+    [TestMethod]
     public void SetText_ConvertsToThePropertyType_AndOnlyWritesAValueThatConverts()
     {
         var model = new Plain();

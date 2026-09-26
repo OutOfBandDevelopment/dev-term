@@ -202,13 +202,16 @@ public partial class DeviceProfilesWindow : Window
     // Same LoadCommand the Load button is bound to - not a separate code path. Selects the
     // double-clicked row first so a ctrl/shift-extended multi-selection can't leave Load acting on
     // some other profile than the one that was actually clicked.
-    private void ProfilesList_ItemDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void ProfilesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is System.Windows.Controls.ListBoxItem { DataContext: string name })
+        // Only a double-click on a row loads - not one on the list's empty space or scroll bar.
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(ProfilesList, source) is not ListBoxItem { DataContext: string name })
         {
-            ViewModel.SelectedProfileName = name;
+            return;
         }
 
+        ViewModel.SelectedProfileName = name;
         ViewModel.LoadCommand.Execute(null);
         e.Handled = true;
     }

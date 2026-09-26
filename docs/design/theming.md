@@ -143,9 +143,19 @@ menu) are themed too. Each attached window gets a merged `ThemeDictionary`:
   - `ComboBox`/`ComboBoxItem`: the toggle chrome and the editable text area.
   - `MenuItem` and `ContextMenu`: the drop-down popup background is fixed `#F0F0F0`.
   - Explicit backgrounds for `ListBox`, `TextBox`, `Menu`, `StatusBar`, `ToolTip`.
+  - `ListBoxItem`: the stock hover/selection fills, and the `#DADADA` frame round an unfocused list's
+    selected row.
+  - `ScrollBar` (track, arrows, thumb: fixed `#F0F0F0`/`#CDCDCD`), `CheckBox`/`RadioButton` (a fixed
+    white box/circle), `Expander` (its header's white circle; downward only), `Slider` (its light
+    track and thumb; horizontal only), and `GroupBox` (a hard-coded white inner line inside its frame).
 
-  Check boxes, radio buttons, sliders, scroll bars and the expander glyph keep their stock (light)
-  chrome. It stays readable on dark: a white box with a dark glyph.
+  These last ones used to keep their stock light chrome, on the grounds that a white box with a dark
+  glyph stays readable. The WPF layout review (`UiLayoutReviewTests`, which fails on any light surface
+  in a dark theme) flagged them as what they looked like in the screenshots: a light scroll-bar stripe
+  down every list and form, white check boxes and expander buttons, and a doubled white frame round
+  the color picker's groups - so they're themed now too. A window's own item style replaces the
+  implicit dark `ListBoxItem` style, so windows don't set one (the Device Profiles list handles
+  double-click on the `ListBox` instead of with an item `EventSetter`).
 - A light-based user theme recolors surfaces and text but keeps the stock templates. Their chrome
   stays light, so they stay readable.
 - The chart elements (`LiveDisplayElement`) bind their ink to the chart roles, and the chart palette

@@ -88,9 +88,18 @@ public sealed class FormBinding : IDisposable
     public ValueValidationResult SetText(UiControl control, string text)
     {
         ArgumentNullException.ThrowIfNull(control);
-        var result = ValueValidator.Validate(ValueValidator.ConstraintFor(control), text);
+        var result = Validate(control, text);
         if (Property(control.Id) is not { SetMethod.IsPublic: true } property)
         {
+            return result;
+        }
+
+        if (IsBlankOptional(property, text))
+        {
+            // Clearing an optional number (an int? such as a text field's Max length) unsets it -
+            // before, the blank was rejected as "'' is not a whole number." and the value couldn't
+            // be cleared at all.
+            Write(property, null);
             return result;
         }
 
@@ -114,6 +123,22 @@ public sealed class FormBinding : IDisposable
         Write(property, converted);
         return result;
     }
+
+    /// <summary>
+    /// Validates <paramref name="text"/> for <paramref name="control"/> the way <see cref="SetText"/>
+    /// would: its <see cref="ValueValidator"/> constraint, except that a blank value is valid for an
+    /// optional (nullable) number - blank there means "not set". What a renderer shows inline.
+    /// </summary>
+    public ValueValidationResult Validate(UiControl control, string text)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        return Property(control.Id) is { } property && IsBlankOptional(property, text)
+            ? ValueValidationResult.Valid(string.Empty)
+            : ValueValidator.Validate(ValueValidator.ConstraintFor(control), text);
+    }
+
+    private static bool IsBlankOptional(PropertyInfo property, string? text) =>
+        string.IsNullOrWhiteSpace(text) && Nullable.GetUnderlyingType(property.PropertyType) is not null;
 
     public void SetBool(string id, bool value)
     {

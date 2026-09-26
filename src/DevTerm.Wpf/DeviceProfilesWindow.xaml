@@ -1,21 +1,34 @@
 <Window x:Class="DevTerm.Wpf.DeviceProfilesWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="dev-term — Device Profiles" Height="640" Width="480" MinHeight="480" MinWidth="420"
+        Title="dev-term — Device Profiles" Height="640" Width="480" MinHeight="520" MinWidth="420"
         WindowStartupLocation="CenterOwner">
     <DockPanel Margin="8">
-        <TextBlock DockPanel.Dock="Top" Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource DevTerm.Error}" />
+        <!-- Collapsed while there's no message, so an empty status line doesn't leave a blank band across the top. -->
+        <TextBlock DockPanel.Dock="Top" Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource DevTerm.Error}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="Connect" Padding="12,4" Margin="0,0,8,0" IsDefault="True" Command="{Binding ConnectCommand}" />
-            <Button Content="Close" Padding="12,4" IsCancel="True" />
+            <Button Content="Connect" MinWidth="80" Height="32" Padding="12,0" Margin="0,0,8,0" IsDefault="True" Command="{Binding ConnectCommand}" />
+            <Button Content="Close" MinWidth="80" Height="32" Padding="12,0" IsCancel="True" />
         </StackPanel>
 
         <!-- Two proportional rows (not fixed heights) so both the saved-profiles list and the
-             field editor below it grow/shrink together as the window is resized. -->
+             field editor below it grow/shrink together as the window is resized. The first row's
+             minimum is the height of its button column ("Saved profiles:" plus six buttons) - it was
+             90, which cut Refresh/Export Selected/Export All off at the window's minimum size. -->
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="1*" MinHeight="90" />
+                <RowDefinition Height="1*" MinHeight="190" />
                 <RowDefinition Height="2*" MinHeight="160" />
             </Grid.RowDefinitions>
 
@@ -35,17 +48,15 @@
                      SelectedProfileNames from code-behind instead (see DeviceProfilesWindow.xaml.cs).
                      SelectedItem stays bound as before - Load/Delete only ever act on one profile;
                      Export Selected/Delete Selected act on the whole multi-selection.
-                     Double-click is a per-item MouseDoubleClick EventSetter, not a MouseBinding on the
-                     ListBox: ListBoxItem marks the mouse-down handled (that's how it selects), so an
-                     InputBinding on the ListBox never sees the second click of a double-click. -->
+                     Double-click is the ListBox's own MouseDoubleClick event (Control raises it on
+                     every control under the pointer), with the row found from the click's source -
+                     not a MouseBinding (ListBoxItem marks the mouse-down handled, so an InputBinding
+                     never sees the second click), and not an ItemContainerStyle EventSetter either: a
+                     local item style replaces the theme's (DarkControls) ListBoxItem style, which left
+                     this one list with the stock light selection frame under a dark theme. -->
                 <ListBox x:Name="ProfilesList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfileName}"
-                         SelectionMode="Extended" SelectionChanged="ProfilesList_SelectionChanged" Margin="0,0,8,0">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <EventSetter Event="MouseDoubleClick" Handler="ProfilesList_ItemDoubleClick" />
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                </ListBox>
+                         SelectionMode="Extended" SelectionChanged="ProfilesList_SelectionChanged" Margin="0,0,8,0"
+                         MouseDoubleClick="ProfilesList_MouseDoubleClick" />
             </DockPanel>
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">

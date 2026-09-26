@@ -31,10 +31,23 @@ public static class LastPickedColors
         string.Create(CultureInfo.InvariantCulture, $"#{color.R:X2}{color.G:X2}{color.B:X2}");
 
     /// <summary>
-    /// Whether dark (black) text reads better than light (white) text on <paramref name="color"/>,
-    /// by relative luminance (ITU-R BT.709 weights) - so a yellow swatch gets black text and a navy
-    /// one white.
+    /// Whether dark (black) text reads better than light (white) text on <paramref name="color"/>:
+    /// whichever has the higher WCAG contrast ratio against it, from its relative luminance (linear
+    /// sRGB, BT.709 weights) - so a yellow swatch gets black text and a navy one white. Black wins
+    /// once the luminance reaches about 0.179. (A weighted sum of the raw 0-255 values used to be
+    /// compared with 140, which gave an orange like #FF6600 white text at 2.9:1 where black is 7.2:1.)
     /// </summary>
-    public static bool UseDarkText((byte R, byte G, byte B) color) =>
-        (0.2126 * color.R) + (0.7152 * color.G) + (0.0722 * color.B) > 140;
+    public static bool UseDarkText((byte R, byte G, byte B) color)
+    {
+        static double Linear(byte value)
+        {
+            var c = value / 255.0;
+            return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+
+        var luminance = (0.2126 * Linear(color.R)) + (0.7152 * Linear(color.G)) + (0.0722 * Linear(color.B));
+        var againstBlack = (luminance + 0.05) / 0.05;
+        var againstWhite = 1.05 / (luminance + 0.05);
+        return againstBlack >= againstWhite;
+    }
 }

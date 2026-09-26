@@ -4,8 +4,10 @@
         Title="dev-term — Control Panel" Height="640" Width="560" MinHeight="300" MinWidth="360">
     <DockPanel Margin="8">
         <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.Error}" />
-        <!-- Horizontal scrolling disabled so the Notes section's text wraps to the window width. -->
-        <ScrollViewer x:Name="SectionsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- Scrolls sideways too: a section's aligned label column plus its widest control can be
+             wider than the window at its minimum width. The Notes text wraps to the visible width
+             (ControlPanelWindow.xaml.cs). -->
+        <ScrollViewer x:Name="SectionsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <StackPanel x:Name="SectionsPanel" />
         </ScrollViewer>
     </DockPanel>

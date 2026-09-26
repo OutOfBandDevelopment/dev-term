@@ -499,6 +499,33 @@ file only points there, it doesn't restate them.**
   IDE1006.
 - **A `JsonStringEnumConverter<T>` on the enum type writes names but still reads numbers**, so adding one to an
   existing enum stays backward-compatible (`FormDefinitionGeneratorTests.ChoiceStyle_IsWrittenByName_AndStillReadsAsANumber`).
+- **A window-local `ItemContainerStyle` without `BasedOn` replaces the implicit theme `ListBoxItem` style.**
+  The Device Profiles list kept the stock light selection frame under Dark because of its EventSetter style.
+  `BasedOn` a type key doesn't help, since `DarkControls` is merged after `InitializeComponent`. Use
+  `ListBox.MouseDoubleClick` plus `ItemsControl.ContainerFromElement` instead.
+- **Closing a dirty `DeviceProfilesWindow` in a test pops a real modal `MessageBox` and hangs the run.** Set
+  `ViewModel.ConfirmDiscardChanges = () => true` first. If a run does hang, use `--blame-hang-timeout`
+  rather than killing every `testhost` (that kills other runs on the machine too).
+- **A WPF menu popup's content has an animated opacity right after `IsSubmenuOpen = true`.** Reading it then
+  made contrast look like 1.16:1 though the capture was fine. Don't fold the popup root's opacity into color
+  checks.
+- **The stock Aero2 GroupBox draws a hard-coded white inner border, and the stock ListBoxItem draws a
+  `#DADADA` frame round an unfocused selected row.** Neither follows `SystemColors` overrides; both need
+  dark templates (`DarkControls.xaml`).
+- **A nested Terminal.Gui `app.Run` started inside an `Application.Invoke` callback never drains later
+  `Invoke`s**, so a test waiting on one hangs. The nested loop does keep firing `AddTimeout` timers, which is
+  how `TuiReview.Modal` opens, inspects and closes real dialogs.
+- **Enter in a Terminal.Gui `TextField` presses the default button only via a real key**
+  (`app.Keyboard.RaiseKeyDownEvent(Key.Enter)`). `InvokeCommand(Command.Accept)` on the field reports
+  unhandled and doesn't redirect, so it's no test of default-button behavior (it misled a 2026-09-25 probe
+  into documenting "Enter doesn't connect").
+- **After `app.Begin(window)`, `app.TopRunnableView == window`, and during a nested `Run` it's the dialog.**
+  That's how one global KeyDown handler tells which window is on top (`ConfigureMode.OwnsQuitKey`).
+- **A shadowless Terminal.Gui `Button` still has a transparent 1-row bottom margin** (its frame is 2 rows). A
+  shadowed button's shadow is drawn on the next row, over whatever sibling is there, which is why panel
+  buttons are shadowless.
+- **Terminal.Gui.Editor has `WordWrap` (soft wrap).** Without it, setting `CaretOffset` to the end scrolls
+  the pane sideways to the last line's end, hiding every line's start.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.
