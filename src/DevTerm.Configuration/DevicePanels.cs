@@ -6,6 +6,9 @@ public enum DevicePanel
     K8055,
     Busylight,
     Scpi,
+
+    /// <summary>A panel built from a loaded device manifest (Device > Device Manifest...) — any connection.</summary>
+    Manifest,
 }
 
 /// <summary>
@@ -48,6 +51,10 @@ public static class DevicePanels
 
             // SCPI is text over a byte stream: any transport but HID (fixed-size binary reports).
             DevicePanel.Scpi => !isHid,
+
+            // A manifest names its own transport and commands, so which manifests make sense is the
+            // user's call (the picker) - the item is enabled whenever connected.
+            DevicePanel.Manifest => true,
             _ => false,
         };
     }

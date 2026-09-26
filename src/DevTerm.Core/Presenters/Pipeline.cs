@@ -55,6 +55,21 @@ public sealed class Pipeline
         }
     }
 
+    /// <summary>
+    /// Removes <paramref name="presenter"/> from this pipeline's live presenter list (a no-op if it
+    /// isn't present) — the counterpart of <see cref="AddPresenter"/> for a presenter that only lives
+    /// as long as one control panel (e.g. a device manifest's reply presenter), so reopening that
+    /// panel doesn't stack up one more presenter per opening.
+    /// </summary>
+    public void RemovePresenter(IPresenter presenter)
+    {
+        ArgumentNullException.ThrowIfNull(presenter);
+        lock (_gate)
+        {
+            _presenters.Remove(presenter);
+        }
+    }
+
     public IReadOnlyList<PresenterOutput> Render(ReadOnlySequence<byte> data)
     {
         IPresenter[] snapshot;

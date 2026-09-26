@@ -1,0 +1,96 @@
+{
+  "name": "Loopback Sensor Demo",
+  "vendor": "dev-term",
+  "version": "1.0",
+  "description": "A simulated multi-channel sensor answered by the built-in loopback transport (connect with --transport loopback, no hardware needed). MEAS? returns one sample; Samples: N returns the next N, one per line. Each line carries three 0-100 channels (A, B, C), an x/y/z point, a polar r/theta and a hue, which the response pattern below publishes as live values for the bar graph, strip chart and vector displays.",
+  "transport": {
+    "type": "loopback",
+    "options": []
+  },
+  "terminator": "\n",
+  "inbound": {
+    "patterns": [
+      {
+        "name": "sample",
+        "match": "^A=(?<chA>[-\\d.]+) B=(?<chB>[-\\d.]+) C=(?<chC>[-\\d.]+) X=(?<x>[-\\d.]+) Y=(?<y>[-\\d.]+) Z=(?<z>[-\\d.]+) R=(?<r>[-\\d.]+) T=(?<theta>[-\\d.]+) H=(?<hue>[-\\d.]+)$"
+      }
+    ]
+  },
+  "outboundCommands": [
+    { "id": "measure", "name": "Measure", "template": "MEAS?", "isQuery": true },
+    {
+      "id": "samples",
+      "name": "Stream Samples",
+      "template": "Samples: {count}",
+      "parameters": [
+        { "name": "count", "type": "integer", "minimum": 1, "maximum": 200, "defaultValue": "40" }
+      ]
+    },
+    { "id": "hello", "name": "Hello", "template": "hello", "isQuery": true }
+  ],
+  "ui": {
+    "name": "Loopback Sensor Demo",
+    "sections": [
+      {
+        "label": "Acquire",
+        "controls": [
+          { "kind": "button", "id": "measure", "label": "Measure" },
+          { "kind": "indicator", "id": "measure.reply", "label": "Last Sample" },
+          {
+            "kind": "textField",
+            "id": "samples.count",
+            "label": "Sample Count",
+            "defaultValue": "40",
+            "constraint": { "kind": "Integer", "minimum": 1, "maximum": 200 }
+          },
+          { "kind": "button", "id": "samples.send", "label": "Stream Samples", "commandId": "samples", "parameterFieldIds": [ "samples.count" ] },
+          { "kind": "button", "id": "hello", "label": "Hello" },
+          { "kind": "indicator", "id": "hello.reply", "label": "Hello Reply" }
+        ]
+      },
+      {
+        "label": "Levels",
+        "controls": [
+          {
+            "kind": "barGraph",
+            "id": "levels",
+            "label": "Channels",
+            "minimum": 0,
+            "maximum": 100,
+            "unit": "%",
+            "channels": [
+              { "id": "chA", "label": "A" },
+              { "id": "chB", "label": "B" },
+              { "id": "chC", "label": "C" }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "History",
+        "controls": [
+          {
+            "kind": "stripChart",
+            "id": "history",
+            "label": "A / B",
+            "minimum": 0,
+            "maximum": 100,
+            "historyLength": 60,
+            "channels": [
+              { "id": "chA", "label": "A" },
+              { "id": "chB", "label": "B" }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "Position",
+        "controls": [
+          { "kind": "vector", "id": "xy", "label": "X/Y", "coordinates": "XY", "xId": "x", "yId": "y", "range": 1, "hueId": "hue" },
+          { "kind": "vector", "id": "xyz", "label": "X/Y/Z", "coordinates": "XYZ", "xId": "x", "yId": "y", "zId": "z", "range": 1 },
+          { "kind": "vector", "id": "polar", "label": "R/Theta", "coordinates": "Polar", "radiusId": "r", "angleId": "theta", "angleUnit": "Degrees", "range": 1 }
+        ]
+      }
+    ]
+  }
+}

@@ -6,7 +6,7 @@ namespace DevTerm.UiDefinitions;
 /// <summary>JSON/XML round-trip for <see cref="UiDefinition"/>, via the framework's own polymorphic serialization support (no hand-rolled parsing).</summary>
 public static class UiDefinitionSerializer
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
     private static readonly XmlSerializer _xmlSerializerInstance = new(typeof(UiDefinition));
 
