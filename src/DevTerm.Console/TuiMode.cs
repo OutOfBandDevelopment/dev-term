@@ -381,6 +381,9 @@ public static class TuiMode
                     OpenScpiInstrumentWindow(app, session, structuredSource, profile);
                 })),
                 manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, session))),
+
+                // Always available: editing a manifest needs no connection (see ManifestEditorMode).
+                new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
                 new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
             themeMenu.MenuBarItem,

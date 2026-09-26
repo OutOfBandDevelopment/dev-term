@@ -23,4 +23,10 @@ public abstract class UiControl
     public required string Id { get; set; }
 
     public required string Label { get; set; }
+
+    /// <summary>Optional help text (a tooltip in WPF; the TUI has no hover to show it on). A generated form fills it from a property's <c>[Description]</c>.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>When set, the control is shown only while this condition holds — honored by the form renderers (see docs/design/ui-definitions.md's "Forms from one definition").</summary>
+    public UiCondition? VisibleWhen { get; set; }
 }

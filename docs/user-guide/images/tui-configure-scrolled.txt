@@ -1,18 +1,16 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │                                                                             ▲│
+│── TCP ──                                                                    ░│
+│  Host: 192.168.0.107                                                        ░│
+│  Port: 23                                                                   ░│
+│        ☐ Listen (server mode)                                               ░│
 │                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│Send as: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
-│                                                                             █│
-│Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
+│── Presentation ──                                                           ░│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi                                            ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          █│
+│               ○ k8055  ○ busylight  ○ scpi                                  █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
@@ -21,5 +19,7 @@
 │⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      █│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      █│
 │                                                                             █│
-│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    ▼│
+│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▘                                                    █│
+│                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

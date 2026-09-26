@@ -498,7 +498,9 @@ public partial class ControlPanelWindow : Window
     private bool TryPickColor(string buttonId, out (byte R, byte G, byte B) picked)
     {
         var (r, g, b) = LastPickedColors.Get(buttonId);
-        var picker = new ColorPickerWindow(r, g, b) { Owner = this };
+        // The window showing this panel's content: this one, or the manifest editor hosting it as a
+        // preview (a never-shown window can't own a dialog).
+        var picker = new ColorPickerWindow(r, g, b) { Owner = GetWindow(SectionsPanel) ?? this };
         if (picker.ShowDialog() != true)
         {
             picked = default;

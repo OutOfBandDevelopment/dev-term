@@ -376,6 +376,15 @@ public partial class MainWindow : Window
         }
     }
 
+    // Device > Edit Device Manifest...: the manifest editor, non-modal, always available (editing a
+    // manifest needs no connection) - see ManifestEditorWindow.
+    private void EditDeviceManifest_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = ManifestEditorWindow.Create();
+        editor.Owner = this;
+        editor.Show();
+    }
+
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
         var chosen = ResolveSavedScpiProfileChoice(_cliOptions.ScpiProfile);

@@ -54,6 +54,16 @@ Manifest...**); the TUI form scrolls sideways instead of letting a wide row run 
 and re-wraps its Notes on resize; and both renderers remember each section's expand/collapse state
 per definition for the life of the process.
 
+**Forms from one definition, landed 2026-09-25 (Phase 2 of the UI batch)**: attributes on a model's
+properties plus a reflection-based generator (`DevTerm.UiDefinitions.Forms`) turn any annotated model
+into a `UiDefinition`, and a form-oriented renderer in each front end draws it two-way bound to the
+model — see [Forms from one definition](#forms-from-one-definition) below. The Connection Editor's
+connection fields are generated this way in both front ends, and the new
+[manifest editor](../specs/manifest-editor.md) builds all of its forms with it. Sections and
+controls gained an optional visibility condition (`VisibleWhen`), `UiControl` an optional
+`Description` (help text), `ChoiceStyle` a `CheckList` (multi-select), and `IndicatorControl` a
+`Style` (`Plain`/`Warning`).
+
 ## Shape
 
 A `UiDefinition` is a named panel made of `UiSection`s (a label plus a flat list of controls — no
@@ -118,11 +128,18 @@ class UiDefinition {
 }
 class UiSection {
   Label: string?
+  VisibleWhen: UiCondition?
   Controls: UiControl[]
 }
 abstract class UiControl {
   Id: string
   Label: string
+  Description: string?
+  VisibleWhen: UiCondition?
+}
+class UiCondition {
+  Id: string
+  Values: string[]
 }
 class ButtonControl
 class ToggleControl
@@ -162,6 +179,8 @@ class ValueConstraint {
 
 UiDefinition *-- UiSection
 UiSection *-- UiControl
+UiSection o-- UiCondition
+UiControl o-- UiCondition
 TextFieldControl o-- ValueConstraint
 UiControl <|-- ButtonControl
 UiControl <|-- ToggleControl
@@ -292,6 +311,98 @@ describe it implements `DevTerm.Core.Control.ICommandPreview` alongside `IContro
 separate so existing surfaces and test fakes compile unchanged), and both renderers show it — see
 the spec's "Command preview" section.
 
+## Forms from one definition
+
+A settings screen is the same vocabulary as a device panel — labeled groups of text fields, toggles,
+choices, read-only lines — so it's declared the same way, once, on the model it edits, and each front
+end renders it with one generic engine instead of a hand-built field list per front end.
+
+**Declaring a form.** Standard `System.ComponentModel` attributes a model may already carry
+(`CliOptions` did) do most of it: `[Category]` is the section, `[DisplayName]` the label (a property
+without one gets its name humanized: `DataBits` → "Data bits"), `[Description]` the help text,
+`[Browsable(false)]` leaves a property out. Two attributes add what those can't say:
+
+- `[FormField]` on a property: `Kind` (`Auto`, or `TextField`/`Toggle`/`Choice`/`Numeric`/`Slider`/
+  `Indicator`/`Button`), `Order` within its section, `OptionsFrom` (a property listing the choices),
+  `ChoiceStyle`, `VisibleWhen`/`VisibleWhenValues`, a `ValueKind` with `Minimum`/`Maximum` (becomes
+  the field's `ValueConstraint`), `Step`, `Unit`, `MaxLength`, `Warning` (for an indicator).
+- `[FormSection("Category", ...)]` on the class: the section's `Order`, a `Label` other than the
+  category name (empty: no header), and a `VisibleWhen` for the whole section.
+
+Once any property of a type has `[FormField]`, only those are fields (opt-in — a view model has many
+properties that aren't); a type with none gets a field for every browsable, editable property of a
+type a form can edit. `Auto` infers the widget from the property: `bool` → toggle, an enum or
+`OptionsFrom` → choice, a read-only property → indicator, `ICommand` → button, anything else → text
+field (with an `Integer`/`Number` constraint for a numeric type).
+
+**Generating it.** `FormDefinitionGenerator.Generate(model)` (or `Generate<T>()`/`Generate(type,
+instance)`) walks the properties in declaration order and produces a plain `UiDefinition`: a
+control's `Id` is its property name, defaults and `OptionsFrom` lists are read from the instance.
+The result is an ordinary definition — it serializes to JSON/XML like any other.
+
+**Binding it.** `FormBinding` connects a rendered form to its model by id = property name: read as
+text/bool/check-list selection, write back (validated against the control's constraint and converted
+to the property's type — a string-typed view-model property keeps whatever was typed, so a field is
+never fought mid-edit, while an `int` property is only written a value that converts), evaluate
+conditions, run a command property, and report changes — relaying the model's own
+`INotifyPropertyChanged`, or raising its own after each write for a plain model. Both front ends'
+renderers bind through it (not WPF `{Binding}`s), so the conversion/visibility/validation rules are
+the same in both and a plain model still updates every dependent row.
+
+**Rendering it.** `DevTerm.Console.FormRenderer` and `DevTerm.Wpf.FormRenderer` are the form-oriented
+siblings of the control-panel renderers: same vocabulary and layout conventions (labeled sections,
+aligned label column, the shared `ValueValidator`), but a field *writes a property* instead of
+invoking a command, and they return an embeddable view rather than a window. Each lets a host
+replace one control's widget (`CustomWidgets`) while the form keeps its row, label, alignment and
+visibility — how the Connection Editor keeps its rich detected-device pickers. TUI specifics
+(Terminal.Gui v2.5.0 has no combo box): a choice that fits one line is an `OptionSelector`, one too
+wide wraps as radio-style check boxes over up to three lines, a longer one becomes a text field plus a
+`Pick...` list; a hidden section or row takes no rows, and the form re-lays itself out on every
+change.
+
+**Conditions** (`UiCondition`, on a section or a control): `Id` names a value — a model property in a
+form (e.g. `IsSerialTransport`), another control's value in a definition — and `Values` the values
+that show it (case-insensitive; none means "while it's true"; a collection value matches when any
+item does). This answers the open question below about conditional controls, for forms: the
+Connection Editor shows one transport's group at a time with section conditions, the SCPI profile row
+only while the `scpi` presenter is checked, and the manifest editor shows only the fields a control's
+kind has. The control-panel renderers don't evaluate conditions yet.
+
+**Scope questions from the backlog, settled**:
+
+1. *Does one level of grouping cover the Connection Editor's transport-conditional field groups?*
+   Yes, with conditions: each transport's fields are one section with a visibility condition, and a
+   row inside one (the HID vs. USBTMC picker) carries its own. No nesting was needed.
+2. *Does `ConnectionEditorViewModel` sit under the render engine or get subsumed by it?* Under it.
+   The view model stays the binding/validation layer — it is the form's model (its annotated
+   properties generate `FormDefinition`), and everything that isn't a field (profile list,
+   import/export, dirty tracking, detected-device discovery, carrying over the settings the form
+   doesn't show) is unchanged and still covered by its own tests.
+
+```plantuml
+@startuml
+skinparam backgroundColor #FEFEFE
+class "Annotated model\n(ConnectionEditorViewModel, CommandForm, ...)" as Model
+class FormDefinitionGenerator {
+  Generate(model): UiDefinition
+}
+class UiDefinition
+class FormBinding {
+  GetText / SetText / GetSelection / IsVisible / Invoke
+  Changed
+}
+class "TUI FormRenderer" as Tui
+class "WPF FormRenderer" as Wpf
+Model ..> FormDefinitionGenerator : [Category] [DisplayName]\n[FormField] [FormSection]
+FormDefinitionGenerator --> UiDefinition
+Tui --> UiDefinition : renders
+Wpf --> UiDefinition : renders
+Tui --> FormBinding
+Wpf --> FormBinding
+FormBinding --> Model : reads/writes by property name
+@enduml
+```
+
 ## Why a flat one-level Section→Control structure, not deeper nesting
 
 Every real mockup written against actual devices so far (Busylight, K8055, EByte, H4n) needed at
@@ -312,10 +423,11 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
 - Whether `IndicatorControl` needs a format/unit hint (e.g. "show this raw byte as hex" vs. "show
   this as a percentage") or whether that's better left to the decoder producing the value in
   already-formatted form.
-- Whether conditional/interlocked controls (a control that's disabled or hidden based on another
-  control's value — device-control-modules.md's open question) belong in this model at all, or are
-  out of scope for a first declarative version and require a real code-based control surface
-  instead.
+- ~~Whether conditional/interlocked controls (a control that's disabled or hidden based on another
+  control's value — device-control-modules.md's open question) belong in this model at all~~ —
+  **partly settled 2026-09-25**: *hidden* based on another value does, as `VisibleWhen`
+  (`UiCondition`), evaluated by the form renderers (see [Forms from one definition](#forms-from-one-definition)).
+  Still open: evaluating it in the control-panel renderers too, and *disabled*/interlocked controls.
 - Whether `Sections` should ever nest — deferred per above until a real device actually needs it.
 
 See [device-manifests.md](device-manifests.md) for how a `UiDefinition` fits into a complete,

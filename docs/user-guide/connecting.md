@@ -95,7 +95,12 @@ way — see `ConnectionErrorMessages` in [`docs/design/platform.md`](../design/p
 
 Both front ends open the same Connection Editor screen at startup whenever no valid connection is
 configured — no flags, no saved profile, or an invalid one. It's also reachable any time from
-**File > Device Profiles...**. Selecting a Transport shows only that transport's fields.
+**File > Device Profiles...**. Selecting a Transport shows only that transport's fields, under a
+heading for its group (Serial, TCP, USB Device, Loopback), followed by the Presentation fields. The
+fields are the same in both front ends because both draw them from one definition (see
+[the Connection Editor spec](../specs/connection-editor.md)); a value that isn't what the field
+expects (a Baud rate that isn't a whole number, say) is flagged right under or beside the field as
+you type.
 
 **Serial** (TUI, then WPF):
 
@@ -103,10 +108,9 @@ configured — no flags, no saved profile, or an invalid one. It's also reachabl
 
 ![WPF connection editor, serial transport](images/wpf-device-profiles-serial.png)
 
-These captures come from a machine with no COM3 attached. The red "(not found — …)" line is how
-both front ends flag a saved port or USB device that isn't connected right now; the TUI shows
-"(not found)" next to the field. It's only a hint: Connect still tries, and reports the error if the
-connection fails.
+These captures come from a machine with no COM3 attached. The "(not found — …)" line (red in WPF)
+is how both front ends flag a saved port or USB device that isn't connected right now. It's only a
+hint: Connect still tries, and reports the error if the connection fails.
 
 **TCP**:
 
@@ -114,7 +118,7 @@ connection fails.
 
 ![WPF connection editor, TCP transport](images/wpf-device-profiles-tcp.png)
 
-**USB HID**:
+**USB HID** (the TUI capture is scrolled so the USB Device section starts at the top):
 
 ![TUI connection editor, HID transport](images/tui-configure-hid.png)
 
@@ -136,11 +140,10 @@ save a profile first (Save is for reusing the setup later; see
 
 The Serial port field and the Vendor/Product ID fields — shared by the HID and USBTMC transports,
 since both identify a device the same way — stay freely typable, but next to each is a way to pick
-from what's actually plugged in right now. WPF shows a second "Detected ports"/"Detected HID
-devices"/"Detected USBTMC devices" dropdown (whichever matches the selected transport); the TUI
-shows a "Detect..." button (serial) or a "Detect HID..."/"Detect USBTMC..." button (one per
-transport, since HID and USBTMC devices come from separate discovery sources) that opens a small
-list to pick from. Picking a device fills in both Vendor ID and Product ID together, since they
+from what's actually plugged in right now: a "Detected ports"/"Detected HID devices"/"Detected
+USBTMC devices" row (whichever matches the selected transport, since HID and USBTMC devices come
+from separate discovery sources). WPF shows a dropdown there; the TUI a "Detect..."/"Detect
+HID..."/"Detect USBTMC..." button that opens a small list to pick from. Picking a device fills in both Vendor ID and Product ID together, since they
 identify one device. The list is filtered by the ID fields: type a Vendor ID and only that vendor's
 devices are listed, add a Product ID and only the matching device is; `0` means "any", so leaving
 both at `0` lists everything detected. (That also means that after picking a device the list shrinks
@@ -159,26 +162,19 @@ Bluetooth port — is listed by its short name alone. (`--listports` still print
 
 ### Viewing Vendor/Product ID as hex
 
-Check **Show as hex** next to the Vendor/Product ID fields (HID and USBTMC transports both use it)
+Check **Show as hex** under the Vendor/Product ID fields (HID and USBTMC transports both use it)
 to switch Vendor ID/Product ID between plain decimal and 4-digit hex (e.g. `04D2` instead of `1234`)
 — the same no-`0x`-prefix format `--listhiddevices`/`--listusbtmcdevices`/the detected-devices
 picker above already use. Toggling it reformats whatever's already entered rather than clearing the
 fields; it's purely a display/typing preference, not saved as part of a profile.
 
-### A TUI-specific limitation to know about
-
-Notice the TUI's TCP/HID captures above have blank rows where the Serial fields used to be:
-Terminal.Gui's absolute `Pos.Bottom(view)` positioning is computed from a view's frame regardless of
-its `Visible` state, so hiding a field group doesn't let anything below it move up to fill the gap
-(WPF's `Grid`/`StackPanel` does this automatically).
-
 ### Scrolling to see the rest of the TUI form
 
-None of the three captures above show the Line ending/Save/Import-export controls or the
-Connect/Quit buttons — the default window is tall enough for the fields shown but not the whole
-form (~33 rows). **Press Page Up/Page Down, or use the mouse wheel, to scroll** — a real scrollbar
-appears on the right edge. Here's the same serial-transport screen scrolled down (TCP fields shown
-instead, to demonstrate a different starting point):
+The serial and TCP captures above don't show the Save/Import-export controls or the Connect/Quit
+buttons — the default window is tall enough for the fields shown but not the whole form. (Switching
+transports never leaves a gap: the fields below move up into the space a hidden group leaves.)
+**Press Page Up/Page Down, or use the mouse wheel, to scroll** — a real scrollbar appears on the
+right edge. Here's the TCP screen scrolled down:
 
 ![TUI connection editor, scrolled down to reveal Presenters/Send as/Line ending/Save/Import-export/Connect/Quit](images/tui-configure-scrolled.png)
 

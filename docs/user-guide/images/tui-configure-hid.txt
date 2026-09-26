@@ -1,25 +1,25 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│                                                                             ▲│
-│Vendor ID: 4216         Product ID: 63560        ⟦ Detect HID... ⟧▖          ░│
-│                                                 ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘          ░│
-│Serial number:                        (not found)                            ░│
-│                                                                             ░│
-│☐ Show as hex                                                                ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│Presenters: ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig░│
-│                                                                             ░│
+│── USB Device ──                                                             ▲│
+│  Vendor ID:            4216                                                 ░│
+│  Product ID:           63560                                                ░│
+│  Serial number:                                                             ░│
+│                        ☐ Show as hex                                        ░│
+│  Detected HID devices: ⟦ Detect HID... ⟧▖                                   ░│
+│                        ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   ░│
+│                        (not found — no connected device matches this        ░│
+│                        vendor/product/serial)                               █│
 │                                                                             █│
-│                                                                             █│
-│Send as: ○ Ascii  ○ Utf8  ◉ Hex  ○ Decimal  ○ Octal  ○ Binary                █│
-│                                                                             █│
-│Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                      █│
+│── Presentation ──                                                           █│
+│  Presenters:  ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       █│
+│               ☐ busylight ☐ scpi                                            █│
+│  Send as:     ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal  ○ binary          █│
+│               ○ k8055  ○ busylight  ○ scpi                                  █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│
 │                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
 │Import/export file path:                                                     █│
-│                                                                             █│
+│                                                                             ░│
 │⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      ░│
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
