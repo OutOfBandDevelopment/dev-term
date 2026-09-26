@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Transports.Loopback |
 | **Created** | 2026-09-26 |
@@ -27,3 +27,11 @@ Create a new `Pipe` in `OpenAsync`, as the other transports do.
 
 ## Tests to add
 Open, Close, Open, send `hello`, and the reply arrives. No transport has a reopen test today; add one for each.
+
+## Resolution
+Fixed on 2026-09-26 (branch `dev/fix-bugs`): `LoopbackTransport` now holds `_pipe` as a mutable field and
+creates a fresh `Pipe` in `OpenAsync`, matching the other transports (e.g. `TcpTransport`), instead of
+reusing one `Pipe` for the transport's whole lifetime. `CloseAsync` still completes that pipe's writer, but
+a later `OpenAsync` now gets a new, writable one rather than reopening over an already-completed writer.
+Regression test:
+`DevTerm.Transports.Loopback.Tests.LoopbackTransportTests.OpenAsync_AfterClose_CanReconnectAndExchangeData`.

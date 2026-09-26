@@ -15,8 +15,8 @@ namespace DevTerm.Transports.Loopback;
 /// </summary>
 public sealed class LoopbackTransport : ITransport
 {
-    private readonly Pipe _pipe = new();
     private readonly IReadOnlyList<LoopbackRule> _rules;
+    private Pipe _pipe = new();
     private ConnectionState _state = ConnectionState.Closed;
 
     public LoopbackTransport(IOptions<LoopbackTransportOptions> options)
@@ -50,6 +50,10 @@ public sealed class LoopbackTransport : ITransport
 
     public Task OpenAsync(CancellationToken cancellationToken = default)
     {
+        // A previous CloseAsync completes the old pipe's writer permanently, so a reopen needs a
+        // fresh Pipe rather than reusing one that can never accept writes again. See
+        // docs/bugs/003-loopback-cannot-reconnect.md.
+        _pipe = new Pipe();
         State = ConnectionState.Open;
         return Task.CompletedTask;
     }
