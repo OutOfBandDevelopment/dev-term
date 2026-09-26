@@ -72,7 +72,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 035 | [Typing an export path marks the editor as having unsaved changes](fixed/035-dirty-tracking-non-connection-fields.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Fixed |
 | 036 | [A session-log write failure is silent and can leave a torn line that makes the whole log unloadable](fixed/036-log-write-failure-silent.md) | DevTerm.Logging (SessionLogWriter, SessionLogger), DevTerm.Core (Session) | Fixed |
 | 037 | [A line exactly at the max length is followed by a spurious empty line](fixed/037-ascii-maxlength-spurious-empty-line.md) | DevTerm.Presenters.Text (AsciiPresenter) | Fixed |
-| 038 | [Session logging does blocking file I/O on the read loop for every chunk](038-logging-blocking-io-read-loop.md) | DevTerm.Logging (SessionLogger, SessionLogWriter) | Open |
+| 038 | [Session logging does blocking file I/O on the read loop for every chunk](fixed/038-logging-blocking-io-read-loop.md) | DevTerm.Logging (SessionLogger, SessionLogWriter) | Fixed |
 | 039 | [Calling SendAsync from the read-loop thread deadlocks if the send fails](039-sendasync-from-read-loop-deadlock.md) | DevTerm.Core (Session) | Open |
 | 040 | [Playback offsets over 24 hours wrap](040-playback-offset-over-24h.md) | DevTerm.Logging (PlaybackText) | Open |
 | 041 | [An unknown first record with no timestamp makes 1x playback wait effectively forever](041-unknown-record-min-timestamp.md) | DevTerm.Logging (SessionLogFormat) | Open |

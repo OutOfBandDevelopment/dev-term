@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Presenters.Text;
@@ -69,7 +70,7 @@ public sealed class SessionLoggerTests
             await WaitForAsync(() => logger.RecordCount == 4);
             clock.Advance(TimeSpan.FromSeconds(1));
             await session.CloseAsync(TestContext.CancellationToken);
-            Assert.AreEqual(5, logger.RecordCount);
+            await WaitForAsync(() => logger.RecordCount == 5);
         }
 
         var log = SessionLog.Load(_path);
@@ -132,6 +133,7 @@ public sealed class SessionLoggerTests
 
         transport.FailNextWrite(new IOException("write failed"));
         await Assert.ThrowsExactlyAsync<IOException>(() => session.SendAsync(new byte[] { 1 }, TestContext.CancellationToken));
+        await WaitForAsync(() => logger.RecordCount == 4);
 
         var log = SessionLog.Load(_path);
         Assert.AreEqual("session,open,tx,disconnect", Shape(log));
@@ -218,7 +220,7 @@ public sealed class SessionLoggerTests
 
         await session.OpenAsync(TestContext.CancellationToken);
 
-        Assert.IsFalse(logger.IsActive, "A failed write should mark the logger inactive instead of leaving it looking like it's still capturing.");
+        await WaitForAsync(() => !logger.IsActive);
         var recordCountAfterFault = logger.RecordCount;
         var lengthAfterFault = backing.Length;
 
@@ -226,6 +228,56 @@ public sealed class SessionLoggerTests
 
         Assert.AreEqual(recordCountAfterFault, logger.RecordCount, "Once faulted, the sequence number must stop advancing along with the file - it shouldn't look like more was captured than actually made it to disk.");
         Assert.AreEqual(lengthAfterFault, backing.Length, "Once faulted, no further record - valid or not - should be appended after the torn line, or SessionLog.Load's own end-of-file-only tolerance for a torn line breaks.");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task Write_WithASlowUnderlyingStream_ReturnsWithoutWaitingForTheDiskWrite()
+    {
+        var slow = new SlowStream(new MemoryStream(), delay: TimeSpan.FromMilliseconds(100));
+        using var writer = new SessionLogWriter(slow, Header()); // Constructor's own header write is synchronous and slow - that's fine, it's not what's timed below.
+
+        var stopwatch = Stopwatch.StartNew();
+        writer.Write(new SessionLogRecord { Kind = SessionLogRecordKind.Rx, Sequence = 1, Timestamp = DateTimeOffset.UnixEpoch, Data = new byte[] { 1 } });
+        stopwatch.Stop();
+
+        Assert.IsLessThan(
+            TimeSpan.FromMilliseconds(50),
+            stopwatch.Elapsed,
+            "Write should hand the record to the background drain task instead of blocking the caller - here, what would be a Session's read loop - on the actual (slow) disk write.");
+
+        await WaitForAsync(() => slow.WriteCount >= 4); // Header: content + newline. This record: content + newline.
+    }
+
+    /// <summary>Writes normally, but each underlying write takes <paramref name="delay"/> - simulating a slow disk or an AV scanner stalling I/O.</summary>
+    private sealed class SlowStream(Stream inner, TimeSpan delay) : Stream
+    {
+        public int WriteCount { get; private set; }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            WriteCount++;
+            Thread.Sleep(delay);
+            inner.Write(buffer, offset, count);
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => inner.Length;
+
+        public override long Position { get => inner.Position; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
     }
 
     /// <summary>Writes normally until <paramref name="failOnWriteNumber"/>, then throws <see cref="IOException"/> on that call and every call after (simulating a disk that stays full).</summary>
