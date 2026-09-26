@@ -34,6 +34,10 @@ Each spec follows the same shape:
   end's "File > Device Profiles..." menu item.
 - [TUI Main Screen](tui-main-screen.md) — `TuiMode`, the console app's default full-screen mode.
 - [WPF Main Window](wpf-main-window.md) — `MainWindow`, the GUI front end's only window today.
+- [Playback Window](playback-window.md) — replaying a session log (`PlaybackMode`/`PlaybackWindow`
+  over the shared `PlaybackController`), reachable from each front end's **File > Open Log for
+  Playback...**. Logger mode's own controls (**File > Start/Stop Logging**) are in the two main-screen
+  specs above.
 - [Device Control Panel](device-control-panel.md) — the generic `UiDefinition` renderer
   (`ControlPanelMode`/`ControlPanelWindow`) shared by the K8055, Busylight, SCPI Instrument, and Device Manifest panels
   reachable from each front end's `Device` menu.

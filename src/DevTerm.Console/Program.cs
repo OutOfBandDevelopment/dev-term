@@ -28,11 +28,14 @@ const string Usage =
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
     + "\n   or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
+    + "\nAdd --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any"
+    + "\nconnection to record everything sent and received."
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"
     + $"\nfrom an untracked '{DevTermConfiguration.LocalSettingsFileName}' next to the app, for a saved default profile."
     + "\nCommand-line arguments always win, then environment variables, then the settings file.";
@@ -92,6 +95,15 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
     return 0;
 }
 
+// Playback is a one-off action like the listings above: it replays a log file and never connects,
+// so it skips profile layering and transport validation entirely (command-line flags only).
+if (earlyConfig[nameof(CliOptions.Playback)] is { Length: > 0 })
+{
+    var playbackOptions = new CliOptions();
+    DevTermConfiguration.Bind(earlyConfig, playbackOptions);
+    return await PlaybackCliMode.RunAsync(playbackOptions, [.. playbackOptions.Presenter.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim())]);
+}
+
 // Bind cliOptions from the same layered sources the host will use, but before building the host
 // at all — building the host eagerly wires a transport from cliOptions (AddDevTermFrontEnd), so an
 // invalid CliOptions has to be caught here, ahead of that, to decide whether to hard-fail (CLI) or
@@ -148,6 +160,10 @@ using (host)
     var transport = host.Services.GetRequiredService<ITransport>();
     var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
     await using var session = sessionFactory.Create(transport, new Pipeline(presenters));
+
+    // --log: the CLI starts logging here, before connecting; the TUI starts it itself (its File
+    // menu owns the logger so it can stop it).
+    using var cliLogger = useTui ? null : CliLogging.Start(session, cliOptions, Console.Error);
 
     // TUI is the default mode; --cli true (or --tui false) forces the plain scriptable loop —
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's

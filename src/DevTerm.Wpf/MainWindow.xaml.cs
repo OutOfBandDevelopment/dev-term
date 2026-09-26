@@ -64,6 +64,7 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         Closing += OnClosing;
         RefreshConnectionUi();
+        StartLoggingFromOptions();
 
         // MenuItem.InputGestureText only labels the shortcut in the menu - it doesn't register a
         // live accelerator by itself (same gotcha found for Terminal.Gui's MenuItem.Key building
@@ -570,6 +571,7 @@ public partial class MainWindow : Window
         ParserBox.SelectedItem = newOptions.EffectiveParser;
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
+        FollowLogging();
 
         // A different profile means a different device/connection - clearing prior output avoids
         // mixing readings from the old connection in with the new one.
@@ -622,6 +624,7 @@ public partial class MainWindow : Window
             // isn't worth crashing the app over (and would leave the window unclosable).
         }
 
+        StopLogging(report: false);
         _closeConfirmed = true;
 
         // Never call Close() from inside this Closing event's own call stack: when the session was

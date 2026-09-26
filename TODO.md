@@ -24,19 +24,9 @@ worktrees, merged and verified before the next phase starts. Items moved here fr
 (and from the specs' Open items) when work started. Each is deleted from this file once its detail
 has landed in `docs/changes/`.
 
-**Phase 1 — in progress.** The Stream Monitor and panels (leftovers, chart controls, live manifest panels) branches landed 2026-09-25 and are documented in `docs/changes/2026-09-25.md`; the logger/playback branch is still running:
+**Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
 
-- **Logger mode:** capture every sent/received message with direction, a sequence number and a
-  timestamp, plus connect/disconnect events, to a documented, lossless log format. It's enabled from
-  the CLI (`--log`), the TUI and WPF.
-- **Playback mode** (was a `BACKLOG.md` research item):
-  - Replays a log through the presenters: play/pause, realtime/fast/slow, step, rewind, fast-forward
-    and a position indicator.
-  - Trim (save a range as a new log) and markup (notes at a position).
-  - A playback window in the TUI and WPF, and `--playback` in the CLI.
-  - Never touches a real transport.
-
-**Phase 2 — queued (after Phase 1 merges):**
+**Phase 2 — next:**
 
 - **Forms from one definition** (was a low-priority `BACKLOG.md` item):
   - Attributes on a model's properties plus a reflection-based generator that turns an annotated

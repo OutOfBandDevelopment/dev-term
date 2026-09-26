@@ -74,10 +74,19 @@ Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-
    or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]
    or: dev-term --listports true
-   or: dev-term --listhiddevices true
-   or: dev-term --listusbtmcdevices true
+   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]
+   or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]
+The full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead
+(e.g. for automation/CI), or --tui false, equivalently.
+Add --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any
+connection to record everything sent and received.
+...
 ```
+
+Recording a session (`--log`) and replaying one (`--playback`) are covered in
+[Logging and playing back a session](logging-and-playback.md).
 
 A real connection failure (device offline, wrong host/port, wrong serial port) is reported the same
 way — see `ConnectionErrorMessages` in [`docs/design/platform.md`](../design/platform.md).

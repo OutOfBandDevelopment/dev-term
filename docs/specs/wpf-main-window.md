@@ -12,7 +12,7 @@ menu — the WPF equivalent of the TUI's main screen.
 | Field | Type | Notes |
 |---|---|---|
 | `OutputList` | `ListBox` of `OutputLine(Text, Kind)` records, fills the window above the send row | Every incoming decoded message is appended as `[{presenterName}] {text}` (kind `Device`, normal text). App status lines (connected, disconnected, switched, auto-detect progress) are kind `Status`, shown dimmed and italic; errors (failed connects, lost connections, rejected input) are kind `Error`, dark red and semibold, styled by a `DataTemplate` trigger. `OutputLine.ToString()` is the text, so copying or reading the list as strings is unaffected |
-| Status bar | `StatusBar` docked at the bottom: a colored dot (`ConnectionStatusDot`) and text (`ConnectionStatusText`) | `Connected — tcp://192.168.0.107:23` with a green dot, `Connecting — …` amber, `Disconnected — …` red (`ConnectionDescription.StatusText`) |
+| Status bar | `StatusBar` docked at the bottom: a colored dot (`ConnectionStatusDot`) and text (`ConnectionStatusText`), then `LoggingStatusText` | `Connected — tcp://192.168.0.107:23` with a green dot, `Connecting — …` amber, `Disconnected — …` red (`ConnectionDescription.StatusText`). While logging, `● REC {log file name}` in red semibold follows it; it's empty otherwise |
 | `SendBox` | Editable `ComboBox` (`IsEditable`, `IsTextSearchEnabled="False"`), fills the remaining width next to the Send button | `IsEnabled` only when the session is open (every text presenter can encode input, so there's no per-presenter check any more); `ItemsSource` is bound directly to a shared `SendHistory.Items` (100 entries, in-memory only), so its drop-down doubles as the history list; Up/Down also recall without opening the drop-down; a line identical to the one just before it isn't recorded again |
 | `ParserBox` | `ComboBox` labelled "Send as:", docked right of the Send button | One item per presenter that can encode typed text; starts as the profile's `Parser` (its first presenter if none is saved); selecting one changes the send format for every line typed afterward and refreshes the title |
 
@@ -24,6 +24,8 @@ menu — the WPF equivalent of the TUI's main screen.
 | **Up / Down in `SendBox`** | Recalls the previously sent line (Up, repeatable toward older entries) or steps back toward the newest (Down); handled on `PreviewKeyDown` so the `ComboBox`'s own native key handling never sees it first | None | n/a |
 | **File > Connect/Disconnect** | A single menu item whose header flips (`_Connect`/`_Disconnect`); toggles the same `Session`/transport without touching the loaded profile | None | `ConnectionErrorMessages.For` text appended to `OutputList` (no modal); session stays closed, ready to retry |
 | **File > Device Profiles...** | Opens `DeviceProfilesWindow` as a modal (`ShowDialog`) | None | n/a |
+| **File > Start Logging...** / **Stop Logging** (`LoggingMenuItem`) | One item whose header flips. Start shows a Save File dialog, defaulting to `~/.dev-term/logs/{yyyyMMdd-HHmmss}_{profile or connection}.jsonl`, and records the session there (`MainWindow.Logging.cs`, `SessionLogger`), the same records as the TUI. It adds a `Status` line `Logging to ~\….` and the status bar's `● REC`. Stop closes the file. The log **follows a live profile switch**. Closing the window records the final `close` and then ends the log. `--log <path>`/`--log true` starts it at construction, before the `Loaded`-triggered connect, so the connect is in the log. See [`docs/design/session-logging.md`](../design/session-logging.md) | None | An `Error` line `Could not start logging to '…': …`, and it stays stopped |
+| **File > Open Log for Playback...** | An Open File dialog (starting in `~/.dev-term/logs`), then a non-modal [Playback window](playback-window.md) owned by this one. Never touches this window's connection | None | An `Error` line `Could not open '…' for playback: …` |
 | **File > Exit** / **Ctrl+Q** | Closes the window | None | n/a |
 | **Device > K8055/Busylight/SCPI Instrument/Device Manifest...** | Opens a generic, non-modal control-panel window for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with the TUI and data-driven rather than a fixed set of fields | None checked | n/a |
 | **Device > Stream Monitor...** (below a separator) | Starts watching the current session for images/HP-GL/PostScript/PCL (auto-saving each capture) and opens the non-modal `StreamMonitorWindow`, or brings an open one forward; monitoring continues after that window closes, each capture adding a status line to `OutputList`, follows a profile switch, and stops when this window closes — see [`docs/specs/stream-monitor.md`](stream-monitor.md) | None (always enabled) | A failed save is reported on the capture/status line, never thrown |
@@ -81,6 +83,11 @@ window stays usable:
   reentrancy bug. It's fixed and covered for constructed windows (`MainWindowTests.Close_*`) and, since
   2026-09-25, for a really-shown, auto-connected one
   (`MainWindowConnectionStateTests.AReallyShownWindow_ClosesCleanly`).
+
+- **The Playback window's `Owner` is set only when it's really shown.** WPF throws
+  `InvalidOperationException` ("Cannot set Owner property to a Window that has not been shown
+  previously") when the owner itself was never shown, which is the case for a `MainWindow` under
+  test. `OpenPlayback(path, clock, show: false)` is the seam tests use.
 
 ## Open items
 

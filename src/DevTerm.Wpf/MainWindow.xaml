@@ -12,6 +12,10 @@
                 <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
                 <MenuItem Header="_Device Profiles..." Click="DeviceProfiles_Click" />
                 <Separator />
+                <!-- Logger mode and playback: MainWindow.Logging.cs. -->
+                <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
+                <MenuItem Header="Open Log for _Playback..." Click="OpenLogForPlayback_Click" />
+                <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
@@ -31,6 +35,10 @@
                     <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="Firebrick" />
                     <TextBlock x:Name="ConnectionStatusText" VerticalAlignment="Center" />
                 </StackPanel>
+            </StatusBarItem>
+            <!-- "● REC capture.jsonl" while logging (MainWindow.Logging.cs). -->
+            <StatusBarItem>
+                <TextBlock x:Name="LoggingStatusText" Foreground="Firebrick" FontWeight="SemiBold" Margin="12,0,0,0" />
             </StatusBarItem>
         </StatusBar>
         <DockPanel Margin="8">

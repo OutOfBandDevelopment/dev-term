@@ -18,6 +18,7 @@
     <Project Path="src/DevTerm.Devices.Busylight/DevTerm.Devices.Busylight.csproj" />
     <Project Path="src/DevTerm.Devices.K8055/DevTerm.Devices.K8055.csproj" />
     <Project Path="src/DevTerm.Devices.Scpi/DevTerm.Devices.Scpi.csproj" />
+    <Project Path="src/DevTerm.Logging/DevTerm.Logging.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
     <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
@@ -36,6 +37,7 @@
     <Project Path="tests/DevTerm.Devices.Busylight.Tests/DevTerm.Devices.Busylight.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.K8055.Tests/DevTerm.Devices.K8055.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.Scpi.Tests/DevTerm.Devices.Scpi.Tests.csproj" />
+    <Project Path="tests/DevTerm.Logging.Tests/DevTerm.Logging.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
     <Project Path="tests/DevTerm.Test.Utilities/DevTerm.Test.Utilities.csproj" />
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />

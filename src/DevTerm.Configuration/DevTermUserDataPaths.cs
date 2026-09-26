@@ -25,6 +25,13 @@ public static class DevTermUserDataPaths
     /// </summary>
     public static string ExportsDirectory => Path.Combine(_userRootDirectory, "exports");
 
+    /// <summary>
+    /// <c>~/.dev-term/logs</c> — where session logs (logger mode) go by default, named
+    /// <c>{yyyyMMdd-HHmmss}_{connection}.jsonl</c> (see <see cref="SessionLogging.DefaultLogPath"/>),
+    /// and where the Open Log for Playback dialogs start.
+    /// </summary>
+    public static string LogsDirectory => Path.Combine(_userRootDirectory, "logs");
+
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");
 

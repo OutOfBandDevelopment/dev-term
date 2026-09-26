@@ -450,6 +450,19 @@ file only points there, it doesn't restate them.**
   without per-project wiring.
 - **The WPF project's implicit usings don't include `System.IO`.** `IOException`/`InvalidDataException`
   fail with CS0103 there without an explicit `using System.IO;`, unlike the console and library projects.
+- **WPF `Window.Owner` can't be set to a window that has never been shown.** It throws "Cannot set Owner
+  property to a Window that has not been shown previously", which is exactly a `MainWindow` under test
+  (constructed, never shown). Set `Owner` only right before a real `Show()`/`ShowDialog()`.
+- **A Terminal.Gui `Button` with `ShadowStyles.None` still takes two rows, and `Height = 1` makes it disappear
+  entirely.** Lay out button rows from a fixed anchor (`Pos.Bottom(label) + 1`), not `Pos.Bottom(button)`.
+- **Terminal.Gui `Window.Disposing` doesn't fire when the app shuts down after `Run` returns**, including in
+  headless tests. Do end-of-run cleanup (closing a log, say) explicitly after `app.Run(...)`, not in a
+  `Disposing` handler.
+- **A redirected Windows console writes stdout in the OEM code page:** `—` becomes `-` and `·` becomes `?` in
+  captured CLI output. Keep CLI-facing text to ASCII punctuation, or it arrives mangled in scripts and
+  transcripts.
+- **`DateTimeOffset.AddSeconds(1.2)` lands one tick short and prints as `00:01.199`.** Use
+  `AddMilliseconds` for exact timestamps in tests.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

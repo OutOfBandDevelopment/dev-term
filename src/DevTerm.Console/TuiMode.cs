@@ -63,6 +63,7 @@ public static class TuiMode
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
             app.Run(parts.Window, OnUnhandledException);
+            parts.Logging.Stop();
         }
         finally
         {
@@ -117,6 +118,11 @@ public static class TuiMode
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
         // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
         StreamMonitor? streamMonitor = null;
+
+        // Logger mode (File > Start Logging... / Stop Logging): the logger follows `session` across
+        // a profile switch (see SwitchProfileAsync). State and menu item live in TuiLogging; declared
+        // up here because RefreshConnectionUi reads it (same definite-assignment reason as above).
+        var logging = new TuiLogging();
 
         string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore, session.State == ConnectionState.Open);
 
@@ -240,6 +246,45 @@ public static class TuiMode
 
         session.Disconnected += OnSessionDisconnected;
 
+        bool StartLogging(string path)
+        {
+            try
+            {
+                logging.Start(path, session, cliOptions, parser, profileStore.FindName(cliOptions));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                AppendError($"Could not start logging to '{path}': {ex.Message}");
+                return false;
+            }
+
+            AppendStatus($"Logging to {SessionLogging.DisplayPath(logging.Logger!.Path!)}.");
+            RefreshConnectionUi();
+            return true;
+        }
+
+        void StopLogging()
+        {
+            if (logging.Logger?.Path is { } path)
+            {
+                logging.Stop();
+                AppendStatus($"Stopped logging to {SessionLogging.DisplayPath(path)}.");
+                RefreshConnectionUi();
+            }
+        }
+
+        logging.MenuItem.Action = Guarded(() =>
+        {
+            if (logging.Logger is not null)
+            {
+                StopLogging();
+            }
+            else if (TuiLogging.PromptForPath(app, cliOptions, profileStore.FindName(cliOptions)) is { } path)
+            {
+                StartLogging(path);
+            }
+        });
+
         void SetParser(string name)
         {
             // Called from a menu item's action, already on the UI thread - no Application.Invoke
@@ -264,6 +309,8 @@ public static class TuiMode
                         Observe(SwitchProfileAsync(chosen), AppendOutput);
                     }
                 })),
+                logging.MenuItem,
+                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, cliOptions))),
                 new MenuItem("_Quit", "Ctrl+Q", () => app.RequestStop(), Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
@@ -344,7 +391,7 @@ public static class TuiMode
             sendField.Enabled = connected;
             window.Title = TitleFor();
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}";
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}{logging.StatusSuffix}";
             var (foreground, background) = connected
                 ? (new Terminal.Gui.Drawing.Color(0, 0, 0, 255), new Terminal.Gui.Drawing.Color(120, 200, 120, 255))
                 : state == ConnectionState.Opening
@@ -439,6 +486,7 @@ public static class TuiMode
             streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
             mySession.Output += OnSessionOutput;
             mySession.Disconnected += OnSessionDisconnected;
+            logging.Follow(mySession, newOptions, profileStore.FindName(newOptions));
 
             app.Invoke(() =>
             {
@@ -576,7 +624,14 @@ public static class TuiMode
         window.Add(menuBar, output, sendLabel, sendField, statusLabel);
         RefreshConnectionUi();
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync);
+        // --log starts logging straight away (the session may already be open - the log's first
+        // record says so). RunAsync stops it when the loop ends.
+        if (cliOptions.Log is { Length: > 0 } logOption)
+        {
+            StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
+        }
+
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger));
     }
 
     /// <summary>
@@ -837,4 +892,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging);

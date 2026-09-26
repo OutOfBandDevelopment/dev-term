@@ -33,6 +33,9 @@ test class's own doc comment.
   connected, across all three front ends.
 - [Connecting and disconnecting without restarting](connect-disconnect.md) — the **File >
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
+- [Logging and playing back a session](logging-and-playback.md) — recording everything sent and
+  received (`--log`, **File > Start Logging...**) and replaying it through any presenters, with
+  transport controls, trimming and notes (`--playback`, **File > Open Log for Playback...**).
 - [Controlling a device from a panel](device-control-panels.md) — the **Device** menu's K8055,
   Busylight, SCPI Instrument, and Device Manifest control panels (including the bar graph, strip
   chart, and vector displays), in TUI/WPF.
