@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed (found by two reviewers) |
 | **Area** | TUI (DevTerm.Console) |
 | **Created** | 2026-09-26 |
@@ -36,3 +36,14 @@ helper.
 ## Tests to add
 After a panel or Device Profiles closes, PageDown still reaches the main window and the panel's `ValuesChanged` and
 watcher subscriptions are gone.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: every `app.Run(x.Window)`/`app.Run(dialog)` call site named above (all six
+Device menu control panels and the SCPI instrument window in `TuiMode.cs`, its `_Device Profiles...` menu item,
+`ManifestPanelMode.Run`, and `ConfigureMode.Run`) now wraps its `app.Run` in `try { ... } finally { x.Dispose(); }` —
+the plain inline pattern `ManifestEditorMode.cs`/`TuiMode.OpenStreamMonitor` already used, not a shared `RunModal`
+helper. `TuiMode.PickFromList` and `ManifestPanelMode.Pick`'s own dialogs got the same treatment for consistency,
+though they weren't separately cited. Regression test:
+`DevTerm.Console.Tests.TuiModeTests.K8055MenuItem_AfterThePanelCloses_UnsubscribesFromValuesChanged`, which drives
+the real "_K8055 Control Panel..." menu item's `Action` and confirms `structuredPresenter.ValuesChanged` has zero
+subscribers once the panel closes (it fails without the fix, at one subscriber leaked).

@@ -47,8 +47,15 @@ public static class ConfigureMode
         try
         {
             var parts = BuildWindow(app, initial, validationError, new ConnectionProfileStore());
-            app.Run(parts.Window);
-            return parts.Result;
+            try
+            {
+                app.Run(parts.Window);
+                return parts.Result;
+            }
+            finally
+            {
+                parts.Window.Dispose();
+            }
         }
         finally
         {

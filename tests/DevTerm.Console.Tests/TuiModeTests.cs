@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
@@ -33,6 +34,24 @@ public sealed class TuiModeTests
         var presenter = new AsciiPresenter(Options.Create(new AsciiPresenterOptions()));
         var session = new Session(transport, new Pipeline([presenter]));
         return (session, transport, presenter);
+    }
+
+    /// <summary>
+    /// Stands in for <c>K8055Decoder</c> (see <see cref="ControlPanelModeTests"/>'s own nested
+    /// equivalent) so bug 007's regression test below can tell whether closing the K8055 panel
+    /// actually unsubscribed from <see cref="ValuesChanged"/> — <see cref="SubscriberCount"/> reads
+    /// the live delegate's invocation list rather than a separately tracked counter, so it can't
+    /// drift from what the event itself actually holds.
+    /// </summary>
+    private sealed class FakeStructuredPresenter : IPresenter, IStructuredPresenter
+    {
+        public string Name => "k8055";
+
+        public IReadOnlyList<string> Render(ReadOnlySequence<byte> data) => [];
+
+        public event EventHandler<IReadOnlyDictionary<string, string>>? ValuesChanged;
+
+        public int SubscriberCount => ValuesChanged?.GetInvocationList().Length ?? 0;
     }
 
     [TestMethod]
@@ -188,6 +207,55 @@ public sealed class TuiModeTests
             Assert.AreEqual(ConnectionState.Open, session.State);
             Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled));
         });
+
+        await session.CloseAsync(TestContext.CancellationToken);
+    }
+
+    /// <summary>
+    /// Bug 007 (docs/bugs/fixed/007-tui-modal-windows-not-disposed.md): the K8055 panel window
+    /// opened via <c>app.Run(panelParts.Window)</c> used to never be disposed by its caller, so
+    /// <c>window.Disposing</c>'s <c>structuredPresenter.ValuesChanged -= onValuesChanged</c>
+    /// (registered in <c>ControlPanelMode.BuildWindow</c>) never ran — the subscription leaked for
+    /// the rest of the process. Drives the real "_K8055 Control Panel..." menu item's own
+    /// <c>Action</c> (not a copy of its logic) so this proves the actual production code path, the
+    /// same way <see cref="ToggleConnectionAsync_DisconnectsThenReconnects"/> drives
+    /// <see cref="TuiMode.ToggleConnectionAsync"/> directly. Needs <see cref="TuiTestRunner.RunWithLoop"/>
+    /// (not <see cref="TuiTestRunner.RunHeadless"/>): a nested <c>Application.Run</c> only drains an
+    /// <c>AddTimeout</c> registered ahead of it while a real loop is pumping (see
+    /// <see cref="TuiReview.Modal"/>'s identical technique for the same reason).
+    /// </summary>
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task K8055MenuItem_AfterThePanelCloses_UnsubscribesFromValuesChanged()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5501 };
+        var k8055 = new FakeStructuredPresenter();
+        var catalog = new PresenterCatalog([presenter, k8055]);
+
+        TuiTestRunner.RunWithLoop(session, catalog, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+
+            var subscribedWhileOpen = TuiTestRunner.InvokeOnLoop(() =>
+            {
+                var sawSubscription = false;
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    sawSubscription = k8055.SubscriberCount == 1;
+                    app.RequestStop();
+                    return false;
+                });
+
+                parts.K8055MenuItem.Action!.Invoke();
+                return sawSubscription;
+            });
+
+            Assert.IsTrue(subscribedWhileOpen, "Expected the panel to subscribe to ValuesChanged while its nested Application.Run was active.");
+        });
+
+        Assert.AreEqual(0, k8055.SubscriberCount, "Expected window.Disposing to unsubscribe from ValuesChanged after the panel closes.");
 
         await session.CloseAsync(TestContext.CancellationToken);
     }

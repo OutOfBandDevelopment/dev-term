@@ -321,7 +321,14 @@ public static class TuiMode
                 new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
                     var configureParts = ConfigureMode.BuildWindow(app, cliOptions, null, profileStore);
-                    app.Run(configureParts.Window);
+                    try
+                    {
+                        app.Run(configureParts.Window);
+                    }
+                    finally
+                    {
+                        configureParts.Window.Dispose();
+                    }
 
                     if (configureParts.Result is { } chosen)
                     {
@@ -352,7 +359,14 @@ public static class TuiMode
                         new K8055ControlSurface(session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
                 {
@@ -363,7 +377,14 @@ public static class TuiMode
                         new BusylightControlSurface(session),
                         structuredSource,
                         "dev-term — Busylight Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
                 {
@@ -374,7 +395,14 @@ public static class TuiMode
                         new RadexOneControlSurface(session),
                         structuredSource,
                         "dev-term — Radex One Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
                 {
@@ -385,7 +413,14 @@ public static class TuiMode
                         new ZoomH4nControlSurface(session),
                         structuredSource,
                         "dev-term — Zoom H4n Remote");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
                 {
@@ -396,7 +431,14 @@ public static class TuiMode
                         new De5000ControlSurface(),
                         structuredSource,
                         "dev-term — DE-5000 LCR Meter");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
@@ -927,7 +969,14 @@ public static class TuiMode
             new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
             structuredSource,
             $"dev-term — {profile.Name}");
-        app.Run(panelParts.Window);
+        try
+        {
+            app.Run(panelParts.Window);
+        }
+        finally
+        {
+            panelParts.Window.Dispose();
+        }
     }
 
     /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
@@ -979,7 +1028,15 @@ public static class TuiMode
             app.RequestStop();
         };
         dialog.Add(listView, selectButton, cancelButton);
-        app.Run(dialog);
+        try
+        {
+            app.Run(dialog);
+        }
+        finally
+        {
+            dialog.Dispose();
+        }
+
         return picked;
     }
 }

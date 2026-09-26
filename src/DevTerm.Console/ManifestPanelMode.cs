@@ -34,7 +34,14 @@ internal static class ManifestPanelMode
     {
         using var panel = ManifestPanel.Attach(session, manifest);
         var parts = BuildWindow(app, panel);
-        app.Run(parts.Window);
+        try
+        {
+            app.Run(parts.Window);
+        }
+        finally
+        {
+            parts.Window.Dispose();
+        }
     }
 
     /// <summary>The panel window for an attached <paramref name="panel"/> — split out so tests can drive it headlessly.</summary>
@@ -96,7 +103,15 @@ internal static class ManifestPanelMode
             app.RequestStop();
         };
         dialog.Add(listView, pathLabel, pathField, openButton, cancelButton);
-        app.Run(dialog);
+        try
+        {
+            app.Run(dialog);
+        }
+        finally
+        {
+            dialog.Dispose();
+        }
+
         return picked;
     }
 }
