@@ -56,6 +56,13 @@ public sealed class ManifestControlSurfaceTests
                 ],
             },
             new OutboundCommand { Id = "out", Name = "Output", Template = "OUT{value}" },
+            new OutboundCommand
+            {
+                Id = "echo",
+                Name = "Echo",
+                Template = "A={a} B={b}",
+                Parameters = [new CommandParameter { Name = "a" }, new CommandParameter { Name = "b" }],
+            },
         ],
         Ui = new UiDefinition
         {
@@ -129,6 +136,24 @@ public sealed class ManifestControlSurfaceTests
         await panel.Surface.InvokeAsync("ch", joined, TestContext.CancellationToken);
 
         Assert.AreEqual("CH3:HIGH,extra\n", Sent(transport, 0));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted()
+    {
+        // Regression test for bug 043: parameters used to be substituted one after another with
+        // Replace, so a value typed into an earlier parameter that contains "{Later}" was itself
+        // replaced by the later parameter's value. See
+        // docs/bugs/fixed/043-template-substitution-not-single-pass.md.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        var joined = ParameterValueList.Join(["{b}", "X"]);
+        await panel.Surface.InvokeAsync("echo", joined, TestContext.CancellationToken);
+
+        Assert.AreEqual("A={b} B=X\n", Sent(transport, 0));
     }
 
     [TestMethod]

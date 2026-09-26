@@ -77,7 +77,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 040 | [Playback offsets over 24 hours wrap](fixed/040-playback-offset-over-24h.md) | DevTerm.Logging (PlaybackText) | Fixed |
 | 041 | [An unknown first record with no timestamp makes 1x playback wait effectively forever](fixed/041-unknown-record-min-timestamp.md) | DevTerm.Logging (SessionLogFormat) | Fixed |
 | 042 | [A hinted #0 indefinite-length block keeps its header bytes in the capture](fixed/042-stream-watcher-indefinite-block.md) | DevTerm.Core (StreamContentSniffer, StreamContentWatcher) | Fixed |
-| 043 | [A typed value containing {OtherParam} is itself substituted](043-template-substitution-not-single-pass.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Open |
+| 043 | [A typed value containing {OtherParam} is itself substituted](fixed/043-template-substitution-not-single-pass.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Fixed |
 | 044 | [A profile's numeric parameter limits can throw or force every value to 0](044-scpi-clamp-bad-limits.md) | DevTerm.Devices.Scpi (ScpiControlSurface) | Open |
 | 045 | [Device control surfaces parse numbers with throwing Parse](045-control-surface-parse-throws.md) | DevTerm.Devices.Busylight, K8055, RadexOne | Open |
 | 046 | [Manifest numbers can go out as NaN, or rounded past Max](046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Open |

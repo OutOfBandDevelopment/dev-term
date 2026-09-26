@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using DevTerm.Core.Control;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.StreamContent;
@@ -14,7 +15,7 @@ namespace DevTerm.Devices.Scpi;
 /// (see <see cref="Value"/>) — see docs/design/features/scpi-instrument-control.md and
 /// <see cref="DevTerm.UiDefinitions.ButtonControl.ParameterFieldIds"/>.
 /// </summary>
-public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
+public sealed partial class ScpiControlSurface : IControlSurface, ICommandPreview
 {
     /// <summary>The always-present escape-hatch command id — see <see cref="ScpiUiDefinitionBuilder"/>. Sends its value verbatim, no template.</summary>
     public const string SendCustomCommandId = "sendCustom";
@@ -163,17 +164,22 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
         }
 
         var values = ParameterValueList.Split(value);
+        var substitutions = new Dictionary<string, string>(command.Parameters.Count, StringComparer.Ordinal);
         for (var i = 0; i < command.Parameters.Count; i++)
         {
             var parameter = command.Parameters[i];
             var raw = i < values.Length && values[i].Length > 0 ? values[i] : parameter.DefaultValue ?? string.Empty;
-            var formatted = parameter.Kind == ScpiParameterKind.Numeric
+            substitutions[parameter.Name] = parameter.Kind == ScpiParameterKind.Numeric
                 ? FormatNumeric(raw, parameter)
                 : raw;
-            text = text.Replace("{" + parameter.Name + "}", formatted, StringComparison.Ordinal);
         }
 
-        return text;
+        // A single pass over the original template: a parameter's own substituted value is never
+        // re-scanned for further "{name}" tokens, so a value that itself contains another
+        // parameter's placeholder text is inserted verbatim instead of being substituted again
+        // (see docs/bugs/fixed/043-template-substitution-not-single-pass.md).
+        return TemplatePlaceholder().Replace(text, match =>
+            substitutions.TryGetValue(match.Groups[1].Value, out var substituted) ? substituted : match.Value);
     }
 
     private static string FormatNumeric(string raw, ScpiParameterDefinition parameter)
@@ -193,4 +199,7 @@ public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
         var format = new string('0', integerDigits) + (decimalPlaces > 0 ? "." + new string('0', decimalPlaces) : string.Empty);
         return clamped.ToString(format, CultureInfo.InvariantCulture);
     }
+
+    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
+    private static partial Regex TemplatePlaceholder();
 }

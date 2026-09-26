@@ -130,6 +130,23 @@ public sealed class ScpiControlSurfaceTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted()
+    {
+        // Regression test for bug 043: parameters used to be substituted one after another with
+        // Replace, so a value typed into an earlier parameter that contains "{Later}" was itself
+        // replaced by the later parameter's value. See
+        // docs/bugs/fixed/043-template-substitution-not-single-pass.md.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        var joined = ParameterValueList.Join(["{Range}", "10"]);
+        await surface.InvokeAsync("conf", joined, TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:{Range} 10\n");
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_NumericParameterOutOfRange_ClampsToBounds()
     {
         var (session, transport) = CreateSurfaceSession();

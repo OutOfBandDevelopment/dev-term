@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -17,7 +18,7 @@ namespace DevTerm.DeviceManifests;
 /// and sends the ASCII bytes. A query registers its reply id with the <see cref="IReplyTracker"/>
 /// first, so the next complete line lands in that indicator. See docs/design/device-manifests.md.
 /// </summary>
-public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
+public sealed partial class ManifestControlSurface : IControlSurface, ICommandPreview
 {
     private readonly Session? _session;
     private readonly DeviceManifest _manifest;
@@ -157,14 +158,20 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
         }
 
         var values = ParameterValueList.Split(value);
+        var substitutions = new Dictionary<string, string>(command.Parameters.Count, StringComparer.Ordinal);
         for (var i = 0; i < command.Parameters.Count; i++)
         {
             var parameter = command.Parameters[i];
             var raw = i < values.Length && values[i].Length > 0 ? values[i] : parameter.DefaultValue ?? string.Empty;
-            text = text.Replace("{" + parameter.Name + "}", parameter.IsNumeric ? FormatNumber(raw, parameter) : raw, StringComparison.Ordinal);
+            substitutions[parameter.Name] = parameter.IsNumeric ? FormatNumber(raw, parameter) : raw;
         }
 
-        return text;
+        // A single pass over the original template: a parameter's own substituted value is never
+        // re-scanned for further "{name}" tokens, so a value that itself contains another
+        // parameter's placeholder text is inserted verbatim instead of being substituted again
+        // (see docs/bugs/fixed/043-template-substitution-not-single-pass.md).
+        return TemplatePlaceholder().Replace(text, match =>
+            substitutions.TryGetValue(match.Groups[1].Value, out var substituted) ? substituted : match.Value);
     }
 
     private static string FormatNumber(string raw, CommandParameter parameter)
@@ -184,4 +191,7 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             ? number.ToString(CultureInfo.InvariantCulture)
             : number.ToString(parameter.Format, CultureInfo.InvariantCulture);
     }
+
+    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
+    private static partial Regex TemplatePlaceholder();
 }
