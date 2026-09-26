@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | High |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Code path confirmed; trigger plausible |
 | **Area** | DevTerm.Transports.Usbtmc |
 | **Created** | 2026-09-26 |
@@ -29,3 +29,11 @@ Alternatives: `PauseWriterThreshold = 0`, or flush outside the lock.
 
 ## Tests to add
 Close during a reply larger than the pipe's pause threshold completes within a timeout.
+
+## Resolution
+Fixed on 2026-09-26 (branch `dev/fix-bugs`): `CloseAsync` now calls `_pipe?.Writer.CancelPendingFlush()`
+before waiting on `_ioLock`, unblocking a `WriteAsync` stuck flushing a reply over the pipe's default
+64 KB pause threshold into a pipe nobody is reading any more. `CancelPendingFlush` only cancels that one
+pending flush (not the pipe itself), so `WriteAsync` still completes normally rather than throwing.
+Regression test:
+`DevTerm.Transports.Usbtmc.Tests.UsbtmcTransportTests.CloseAsync_DuringAWriteFlushingAReplyOverThePauseThreshold_CompletesWithoutHanging`.

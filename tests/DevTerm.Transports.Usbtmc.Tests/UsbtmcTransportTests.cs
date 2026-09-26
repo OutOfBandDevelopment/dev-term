@@ -378,6 +378,37 @@ public sealed class UsbtmcTransportTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task CloseAsync_DuringAWriteFlushingAReplyOverThePauseThreshold_CompletesWithoutHanging()
+    {
+        // Regression test for bug 002 (docs/bugs/002-usbtmc-close-hang-large-reply.md): WriteAsync
+        // holds _ioLock while it flushes the reply into the pipe. A reply over the pipe's default
+        // 64 KB pause threshold blocks that flush until a reader drains it - but Session stops its
+        // read loop before calling CloseAsync, so nobody ever will. CloseAsync then waits on
+        // _ioLock forever, holding Session._lifecycleLock, which hangs every later
+        // Open/Close/Dispose. transport.Input is deliberately never read here, matching that real
+        // sequence.
+        var cancellationToken = TestContext.CancellationToken;
+        const int replySize = 200_000; // over the Pipe default 64 KB (65536) PauseWriterThreshold
+
+        // maxTransferSize is bigger than the actual reply so the single physical read below comes
+        // back shorter than the read buffer (a short packet) - ending the transfer immediately,
+        // the same as a real device's final packet.
+        var (transport, device) = CreateTransport(maxTransferSize: replySize + 4096);
+        await transport.OpenAsync(cancellationToken);
+
+        device.EnqueueRead(Concat(BuildReplyHeader(_firstQueryRequestTag, transferSize: replySize, eom: true), new byte[replySize]));
+
+        var writeTask = transport.WriteAsync(Encoding.ASCII.GetBytes("WAV:DATA?"), cancellationToken);
+
+        await transport.CloseAsync(cancellationToken).WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+
+        // The write's own flush was canceled by the close, not failed - it should still complete
+        // (not throw) once the close has gone through.
+        await writeTask.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+    }
+
+    [TestMethod]
     public async Task OpenAndClose_ByDefault_NoClearButRemoteAndBackToLocal()
     {
         var (transport, device) = CreateTransport();
