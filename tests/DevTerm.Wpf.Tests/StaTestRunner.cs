@@ -58,7 +58,9 @@ internal static class StaTestRunner
 
         if (exception is not null)
         {
-            throw exception;
+            // Rethrow with the original stack trace - a bare `throw exception;` here reported every
+            // failure as coming from this line, hiding where in the test or app it really happened.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception).Throw();
         }
     }
 

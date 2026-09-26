@@ -217,6 +217,17 @@ public sealed class CliOptions
     [DisplayName("SCPI profile")]
     public string? ScpiProfile { get; set; }
 
+    public const int DefaultScpiAutoDetectTimeoutMs = 3000;
+
+    /// <summary>
+    /// How long SCPI auto-detect waits for the <c>*IDN?</c> reply before falling back to the Generic
+    /// panel (milliseconds, 100-60000). A slow instrument, or one that needs a moment after being put
+    /// into remote, can need longer than the 3 s default.
+    /// </summary>
+    [Category("Presentation")]
+    [DisplayName("SCPI auto-detect timeout (ms)")]
+    public int ScpiAutoDetectTimeoutMs { get; set; } = DefaultScpiAutoDetectTimeoutMs;
+
     /// <summary>
     /// Directory where auto-saved captures (e.g. the Stream Monitor's detected binary/image data —
     /// see docs/design/proposals/stream-content-detection.md) are written. Unset means

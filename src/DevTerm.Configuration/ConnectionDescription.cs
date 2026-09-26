@@ -1,4 +1,5 @@
 using System.IO.Ports;
+using DevTerm.Core.Transports;
 
 namespace DevTerm.Configuration;
 
@@ -96,12 +97,31 @@ public static class ConnectionDescription
     /// Recomputed by each front end whenever the connection or send format changes, so it follows a
     /// live profile switch instead of only describing whatever was launched.
     /// </summary>
-    public static string WindowTitle(CliOptions cliOptions, string parser, ConnectionProfileStore profileStore)
+    /// <param name="connected">When false, <c> — disconnected</c> is appended, so the title reflects the connection state rather than still describing a closed connection as if it were live.</param>
+    public static string WindowTitle(CliOptions cliOptions, string parser, ConnectionProfileStore profileStore, bool connected = true)
     {
         ArgumentNullException.ThrowIfNull(cliOptions);
         ArgumentNullException.ThrowIfNull(profileStore);
         var subject = profileStore.FindName(cliOptions) ?? Definition(cliOptions);
-        return $"dev-term — {subject} ({Formats(cliOptions, parser)})";
+        var state = connected ? string.Empty : " — disconnected";
+        return $"dev-term — {subject} ({Formats(cliOptions, parser)}){state}";
+    }
+
+    /// <summary>
+    /// The main windows' status-bar text for the current connection state, e.g.
+    /// <c>Connected — tcp://192.168.0.110:23</c> / <c>Connecting — …</c> / <c>Disconnected — …</c>.
+    /// </summary>
+    public static string StatusText(CliOptions cliOptions, ConnectionState state)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        var label = state switch
+        {
+            ConnectionState.Open => "Connected",
+            ConnectionState.Opening => "Connecting",
+            ConnectionState.Closing => "Disconnecting",
+            _ => "Disconnected",
+        };
+        return $"{label} — {Definition(cliOptions)}";
     }
 
     /// <summary>

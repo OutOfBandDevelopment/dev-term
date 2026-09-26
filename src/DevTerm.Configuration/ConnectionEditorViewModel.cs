@@ -909,6 +909,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             ReadTimeoutMs = _loadedOptions.ReadTimeoutMs,
             AsciiMaxLineLength = _loadedOptions.AsciiMaxLineLength,
             ManifestName = _loadedOptions.ManifestName,
+            ScpiAutoDetectTimeoutMs = _loadedOptions.ScpiAutoDetectTimeoutMs,
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
