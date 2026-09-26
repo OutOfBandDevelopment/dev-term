@@ -37,6 +37,10 @@ Each spec follows the same shape:
 - [Device Control Panel](device-control-panel.md) — the generic `UiDefinition` renderer
   (`ControlPanelMode`/`ControlPanelWindow`) shared by the K8055, Busylight, and SCPI Instrument panels
   reachable from each front end's `Device` menu.
+- [Stream Monitor](stream-monitor.md) — `StreamMonitorMode` (TUI) / `StreamMonitorWindow` (WPF) over
+  the shared `DevTerm.Configuration.StreamMonitor`: detects images/HP-GL/PostScript/PCL in a live
+  session, auto-saves each capture, and (WPF) previews native image formats. **Device > Stream
+  Monitor...** in both front ends.
 
 **Keep these current as the screens they describe change** — a spec that's drifted from the code is
 worse than no spec, since it looks authoritative while being wrong. Update the relevant spec in the
