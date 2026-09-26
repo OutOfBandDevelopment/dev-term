@@ -22,12 +22,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddDevTermFrontEnd(this IServiceCollection services, CliOptions cliOptions)
     {
-        services.AddDevTermCore();
-        services.AddTextPresenters();
-        services.AddK8055Presenter();
-        services.AddBusylightPresenter();
-        services.AddScpiPresenter();
-        services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
+        services.AddDevTermPresenters(cliOptions);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
@@ -85,6 +80,23 @@ public static class ServiceCollectionExtensions
             });
         }
 
+        return services;
+    }
+
+    /// <summary>
+    /// The core engine and every presenter, configured from <paramref name="cliOptions"/> — but no
+    /// transport. What <see cref="AddDevTermFrontEnd"/> builds on, and all playback composes
+    /// (<see cref="PlaybackPresenters"/>), so replaying a log can't reach a real device.
+    /// </summary>
+    public static IServiceCollection AddDevTermPresenters(this IServiceCollection services, CliOptions cliOptions)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        services.AddDevTermCore();
+        services.AddTextPresenters();
+        services.AddK8055Presenter();
+        services.AddBusylightPresenter();
+        services.AddScpiPresenter();
+        services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
         return services;
     }
 }

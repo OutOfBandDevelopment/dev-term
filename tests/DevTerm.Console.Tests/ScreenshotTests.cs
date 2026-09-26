@@ -2,6 +2,7 @@ using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Logging.Playback;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
@@ -356,6 +357,85 @@ public sealed class ScreenshotTests
         await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.Contains("[ascii] ID TEK/2230,V81.1,VERS:14", dump);
+    }
+
+    [TestMethod]
+    public async Task TuiMode_Logging_IsCaptured()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"] };
+        var directory = CreateTempProfilesDirectory();
+
+        var dump = "";
+        try
+        {
+            TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
+            {
+                Assert.IsTrue(parts.Logging.Start(Path.Combine(directory, "20260925-120000_tcp_192.168.0.107_23.jsonl")));
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
+                dump = TuiTestRunner.DumpBuffer();
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-logging.png"));
+                parts.Logging.Stop();
+            });
+        }
+        finally
+        {
+            await session.CloseAsync(TestContext.CancellationToken);
+            Directory.Delete(directory, recursive: true);
+        }
+
+        Assert.Contains("● REC …tcp_192.168.0.107_23.jsonl", dump);
+    }
+
+    [TestMethod]
+    public void PlaybackMode_PartWayThroughWithANote_IsCaptured()
+    {
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var controller = new PlaybackPresenters().Open(PlaybackModeTests.WriteSampleLog(directory), new ManualTimeProvider());
+
+            var dump = "";
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var parts = PlaybackMode.BuildWindow(app, controller);
+                var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+                try
+                {
+                    parts.Do(() => controller.SetPresenters(["ascii", "hex"]));
+                    parts.Do(() => controller.SeekTo(5));
+                    parts.Do(() => controller.AddNote("IDN reply is correct"));
+                    parts.Do(controller.Step);
+                    controller.MarkIn();
+                    parts.Do(() =>
+                    {
+                        controller.SetSpeed(PlaybackController.Speeds[3]);
+                        return PlaybackBatch.Empty;
+                    });
+                    app.LayoutAndDraw(true);
+
+                    dump = TuiTestRunner.DumpBuffer();
+                    Directory.CreateDirectory(_imagesDirectory);
+                    TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-playback.png"));
+                }
+                finally
+                {
+                    app.End(token);
+                }
+            });
+
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-playback.txt"), dump);
+
+            Assert.Contains("[note] IDN reply is correct", dump);
+            Assert.Contains("[ascii] ID TEK/2230,V81.1,VERS:14", dump);
+            Assert.Contains("Mark In", dump);
+            Assert.Contains("2x", dump);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     public required TestContext TestContext { get; set; }

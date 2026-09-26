@@ -35,10 +35,16 @@ public partial class MainWindow : Window
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
 
+    // Device > Stream Monitor...: created on first use, then kept (and moved along on every profile
+    // switch) for this window's lifetime - see EnsureStreamMonitor.
+    private StreamMonitor? _streamMonitor;
+    private StreamMonitorWindow? _streamMonitorWindow;
+
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
 
         _session = session;
@@ -54,11 +60,15 @@ public partial class MainWindow : Window
             AppendOutput(manifestWarning, OutputKind.Status);
         }
 
+        // View > Theme, and any problems loading themes/preferences at startup - MainWindow.Theme.cs.
+        BuildThemeMenu();
+
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
         Loaded += OnLoaded;
         Closing += OnClosing;
         RefreshConnectionUi();
+        StartLoggingFromOptions();
 
         // MenuItem.InputGestureText only labels the shortcut in the menu - it doesn't register a
         // live accelerator by itself (same gotcha found for Terminal.Gui's MenuItem.Key building
@@ -128,13 +138,14 @@ public partial class MainWindow : Window
         Title = TitleText;
 
         ConnectionStatusText.Text = ConnectionDescription.StatusText(_cliOptions, state);
-        ConnectionStatusDot.Fill = connected
-            ? System.Windows.Media.Brushes.ForestGreen
-            : state == ConnectionState.Opening ? System.Windows.Media.Brushes.Goldenrod : System.Windows.Media.Brushes.Firebrick;
+        ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(connected
+            ? ThemeRole.StatusConnected
+            : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
+        ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _cliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -354,6 +365,17 @@ public partial class MainWindow : Window
 
     // ShowDialog(), not Show(): unlike the two panels above, this is a one-shot picker (mirrors
     // Device Profiles), and the resulting control panel is opened separately below with Show().
+    // Device > Device Manifest...: pick and load a manifest, then open its panel (non-modal) on the
+    // current session - see ManifestPickerWindow.
+    private void DeviceManifest_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
+        if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
+        {
+            ManifestPickerWindow.OpenPanel(this, _session, manifest);
+        }
+    }
+
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
         var chosen = ResolveSavedScpiProfileChoice(_cliOptions.ScpiProfile);
@@ -482,6 +504,44 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Device > Stream Monitor...'s monitor, pointed at the current session and started — opening
+    /// the window is asking to watch. Created on first use and kept for this window's lifetime, so
+    /// monitoring (and a status line per capture here) carries on after its window closes;
+    /// <see cref="SwitchProfileAsync"/> moves it to the new session. Split from the click handler
+    /// so tests can drive it without showing a window.
+    /// </summary>
+    internal StreamMonitor EnsureStreamMonitor()
+    {
+        if (_streamMonitor is null)
+        {
+            _streamMonitor = new StreamMonitor();
+            _streamMonitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(capture.Describe(), OutputKind.Status));
+        }
+
+        _streamMonitor.SetSession(_session, StreamMonitor.DeviceNameFor(_cliOptions, _profileStore), _cliOptions.EffectiveExportDirectory);
+        _streamMonitor.Start();
+        return _streamMonitor;
+    }
+
+    // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
+    // alongside this window. A second click brings the already-open one forward.
+    private void StreamMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        var monitor = EnsureStreamMonitor();
+        if (_streamMonitorWindow is { } open)
+        {
+            open.RefreshState();
+            open.Activate();
+            return;
+        }
+
+        var window = new StreamMonitorWindow(monitor) { Owner = this };
+        window.Closed += (_, _) => _streamMonitorWindow = null;
+        _streamMonitorWindow = window;
+        window.Show();
+    }
+
+    /// <summary>
     /// Tears down the current session/transport and opens a new one composed from
     /// <paramref name="newOptions"/> — live, without restarting the app, unlike the
     /// save-as-default-and-ask-for-a-restart this replaced. Exposed as an awaitable method (rather
@@ -511,9 +571,11 @@ public partial class MainWindow : Window
         _session = built.Session;
         _catalog = built.Catalog;
         _cliOptions = newOptions;
+        _streamMonitor?.SetSession(_session, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
         ParserBox.SelectedItem = newOptions.EffectiveParser;
         _session.Output += OnSessionOutput;
         _session.Disconnected += OnSessionDisconnected;
+        FollowLogging();
 
         // A different profile means a different device/connection - clearing prior output avoids
         // mixing readings from the old connection in with the new one.
@@ -552,6 +614,7 @@ public partial class MainWindow : Window
         // Session.CloseAsync/DisposeAsync must be awaited before the window actually closes, so
         // cancel the first close request, do the async cleanup, then close for real.
         e.Cancel = true;
+        _streamMonitor?.Dispose();
         _session.Output -= OnSessionOutput;
         _session.Disconnected -= OnSessionDisconnected;
         try
@@ -565,6 +628,7 @@ public partial class MainWindow : Window
             // isn't worth crashing the app over (and would leave the window unclosable).
         }
 
+        StopLogging(report: false);
         _closeConfirmed = true;
 
         // Never call Close() from inside this Closing event's own call stack: when the session was

@@ -33,8 +33,17 @@ test class's own doc comment.
   connected, across all three front ends.
 - [Connecting and disconnecting without restarting](connect-disconnect.md) — the **File >
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
+- [Logging and playing back a session](logging-and-playback.md) — recording everything sent and
+  received (`--log`, **File > Start Logging...**) and replaying it through any presenters, with
+  transport controls, trimming and notes (`--playback`, **File > Open Log for Playback...**).
 - [Controlling a device from a panel](device-control-panels.md) — the **Device** menu's K8055,
-  Busylight, and SCPI Instrument control panels, in TUI/WPF.
+  Busylight, SCPI Instrument, and Device Manifest control panels (including the bar graph, strip
+  chart, and vector displays), in TUI/WPF.
+- [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
+  Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
+  preview in WPF.
+- [Choosing a theme](themes.md) — **View > Theme** (Light, Dark, System) in TUI/WPF, `--theme`, and
+  writing your own JSON theme in `~/.dev-term/themes`.
 
 For the precise field-by-field/action-by-action reference behind these screens, see
 [`docs/specs/`](../specs/README.md).

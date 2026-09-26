@@ -26,6 +26,12 @@ Every front end builds on that the same way:
 - The user resumes from there: File > Connect in the TUI/WPF, or simply the next typed line in the CLI.
 - A failed *startup* connect opens the TUI/WPF disconnected instead of exiting.
 
+**Observers (2026-09-25).** `Session.AddObserver(ISessionObserver)` is a passive tap on the raw
+traffic and lifecycle. It sees each received chunk just before the pipeline renders it, each send
+just before the transport write, and each open and close. It sits outside the pipeline, so attaching
+one never changes what a presenter renders, and an observer that throws is ignored. The session
+logger is built on it. See [session-logging.md](session-logging.md).
+
 ### Transport
 
 `ITransport` — abstraction over a byte- or message-oriented, full-duplex (or receive-only) connection to a device: connection lifecycle (discover/open/close), device-specific configuration, and streaming bytes in and out. See [transports.md](transports.md).

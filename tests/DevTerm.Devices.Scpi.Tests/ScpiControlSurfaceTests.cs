@@ -1,6 +1,7 @@
 using System.Text;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.StreamContent;
 using DevTerm.Core.Transports;
 using DevTerm.Test.Utilities;
 using Moq;
@@ -245,6 +246,48 @@ public sealed class ScpiControlSurfaceTests
         await surface.InvokeAsync(ScpiUiDefinitionBuilder.CustomCommandFieldId, "*IDN?", TestContext.CancellationToken);
 
         transport.Verify(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_CommandDeclaringAResponseFormat_TellsAStreamMonitorOnThePipelineToExpectIt()
+    {
+        var transport = new Mock<ITransport>();
+        var sink = new Mock<IPresenter>();
+        sink.SetupGet(p => p.Name).Returns("streamwatch");
+        var hints = sink.As<IStreamContentHintSink>();
+        var session = new Session(transport.Object, new Pipeline([sink.Object]));
+        var profile = BuildProfile();
+        profile.Commands.Add(new ScpiCommandDefinition { Id = "dump", Label = "Screen Dump", Template = "HCOP:DATA?", IsQuery = true, ExpectedResponseFormat = StreamContentFormat.Image });
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+
+        await surface.InvokeAsync("idn", null, TestContext.CancellationToken);
+        hints.Verify(h => h.ExpectResponse(It.IsAny<StreamContentFormat>()), Times.Never);
+
+        await surface.InvokeAsync("dump", null, TestContext.CancellationToken);
+        hints.Verify(h => h.ExpectResponse(StreamContentFormat.Image), Times.Once);
+        VerifySent(transport, "HCOP:DATA?\n");
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_DeclaredFormatWithNoMonitorRunning_StillJustSends()
+    {
+        var (session, transport) = CreateSurfaceSession();
+        var profile = BuildProfile();
+        profile.Commands.Add(new ScpiCommandDefinition { Id = "dump", Label = "Screen Dump", Template = "HCOP:DATA?", IsQuery = true, ExpectedResponseFormat = StreamContentFormat.Image });
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+
+        await surface.InvokeAsync("dump", null, TestContext.CancellationToken);
+
+        VerifySent(transport, "HCOP:DATA?\n");
+    }
+
+    [TestMethod]
+    public void BundledRigolDg1062zScreenCapture_DeclaresAnImageReply()
+    {
+        var dg1062z = ScpiProfileCatalog.All.Single(p => p.Name.Contains("DG1062Z", StringComparison.OrdinalIgnoreCase));
+
+        Assert.AreEqual(StreamContentFormat.Image, dg1062z.Commands.Single(c => c.Id == "hcopyData").ExpectedResponseFormat);
+        Assert.AreEqual(StreamContentFormat.Text, dg1062z.Commands.First(c => c.IsQuery && c.Id != "hcopyData").ExpectedResponseFormat);
     }
 
     public required TestContext TestContext { get; set; }

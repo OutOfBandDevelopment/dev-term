@@ -925,7 +925,7 @@
     { "Id": "lxiIdentifyQuery", "Label": "LXI Identify Beacon?", "Category": "System", "Template": "LXI:IDENtify:STATe?", "IsQuery": true },
     { "Id": "lxiReset", "Label": "LXI Network Reset", "Category": "System", "Template": "LXI:RESet" },
     { "Id": "lxiRestore", "Label": "LXI Restore Factory LAN Defaults", "Category": "System", "Template": "LXI:RESTore" },
-    { "Id": "hcopyData", "Label": "Screen Capture (Bitmap)?", "Category": "System", "Template": "HCOPy:SDUMp:DATA?", "IsQuery": true },
+    { "Id": "hcopyData", "Label": "Screen Capture (Bitmap)?", "Category": "System", "Template": "HCOPy:SDUMp:DATA?", "IsQuery": true, "ExpectedResponseFormat": "Image" },
     {
       "Id": "dispBrightness", "Label": "Display Brightness", "Category": "System", "Template": "DISPlay:BRIGhtness {Percent}",
       "Parameters": [ { "Name": "Percent", "Kind": "Numeric", "Minimum": 0, "Maximum": 100, "Unit": "%", "DefaultValue": "50" } ]

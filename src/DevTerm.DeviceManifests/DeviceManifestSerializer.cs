@@ -6,7 +6,7 @@ namespace DevTerm.DeviceManifests;
 /// <summary>JSON/XML round-trip for <see cref="DeviceManifest"/>, mirroring <c>DevTerm.UiDefinitions.UiDefinitionSerializer</c>.</summary>
 public static class DeviceManifestSerializer
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
     private static readonly XmlSerializer _xmlSerializerInstance = new(typeof(DeviceManifest));
 

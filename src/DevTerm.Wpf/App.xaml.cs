@@ -54,7 +54,23 @@ public partial class App : Application
         var earlyConfigBuilder = new ConfigurationBuilder();
         DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
         var cliOptions = new CliOptions();
-        DevTermConfiguration.Bind(earlyConfigBuilder.Build(), cliOptions);
+        var layeredConfig = earlyConfigBuilder.Build();
+        DevTermConfiguration.Bind(layeredConfig, cliOptions);
+
+        // The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this
+        // run, else the saved View > Theme choice, else "system" - applied before the first window
+        // (even the startup Device Profiles editor below). Problems show in MainWindow's output.
+        ActiveTheme.Initialize(layeredConfig);
+        WpfTheme.AttachApplication(this);
+
+        // "system" follows Windows' app mode live: re-resolve when the user flips it in Settings.
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += (_, args) =>
+        {
+            if (args.Category is Microsoft.Win32.UserPreferenceCategory.General or Microsoft.Win32.UserPreferenceCategory.Color)
+            {
+                Dispatcher.BeginInvoke(ActiveTheme.RefreshSystem);
+            }
+        };
 
         var validation = new CliOptionsValidator().Validate(null, cliOptions);
         if (validation.Failed)

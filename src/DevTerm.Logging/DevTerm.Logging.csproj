@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The session log format (reader/writer), the recorder that taps a live Session, and the
+       playback engine - UI-agnostic, shared by every front end (CLI, TUI, WPF). See
+       docs/design/session-logging.md. Depends on DevTerm.Core only: playback never references a
+       transport project, so it can't talk to a real device even by accident. -->
+  <ItemGroup>
+    <ProjectReference Include="..\DevTerm.Core\DevTerm.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DevTerm.Logging.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

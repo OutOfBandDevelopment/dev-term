@@ -50,6 +50,8 @@ public partial class ControlPanelWindow : Window
     private readonly Dictionary<string, TextBlock> _infoIcons = [];
     private readonly Dictionary<string, Func<string?>> _previewSources = [];
     private readonly Dictionary<string, Expander> _sectionExpanders = [];
+    private readonly Dictionary<string, LiveDisplayElement> _displays = [];
+    private readonly string _definitionName;
     private bool _showingValidationError;
 
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
@@ -67,13 +69,18 @@ public partial class ControlPanelWindow : Window
     /// <summary>The "ⓘ" icon next to each control that sends a previewable command, keyed by <c>UiControl.Id</c>.</summary>
     internal IReadOnlyDictionary<string, TextBlock> InfoIcons => _infoIcons;
 
+    /// <summary>The bar graph / strip chart / vector displays, keyed by <c>UiControl.Id</c> — each exposing its live state.</summary>
+    internal IReadOnlyDictionary<string, LiveDisplayElement> Displays => _displays;
+
     /// <summary>Each labeled section's <see cref="Expander"/>, keyed by section label (<see cref="NotesSectionLabel"/> for the notes).</summary>
     internal IReadOnlyDictionary<string, Expander> SectionExpanders => _sectionExpanders;
 
     public ControlPanelWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource)
     {
         InitializeComponent();
+        WpfTheme.Attach(this);
         Title = $"dev-term — {definition.Name}";
+        _definitionName = definition.Name;
         _surface = surface;
         _preview = surface as ICommandPreview;
 
@@ -100,7 +107,7 @@ public partial class ControlPanelWindow : Window
 
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
-            var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.DimGray, Margin = new Thickness(4, 2, 4, 2) };
+            var notes = new TextBlock { Text = definition.Description, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) }.Themed(TextBlock.ForegroundProperty, ThemeRole.MutedForeground);
             SectionsPanel.Children.Add(BuildExpander(NotesSectionLabel, notes));
         }
 
@@ -129,17 +136,19 @@ public partial class ControlPanelWindow : Window
         var expander = new Expander
         {
             Header = new TextBlock { Text = label, FontWeight = FontWeights.SemiBold },
-            IsExpanded = true,
+            // Opens the way it was last left for this definition (expanded the first time).
+            IsExpanded = SectionExpansionState.IsExpanded(_definitionName, label),
             Margin = new Thickness(0, 0, 0, 8),
             Content = new Border
             {
-                BorderBrush = System.Windows.Media.Brushes.LightGray,
                 BorderThickness = new Thickness(1, 0, 0, 0),
                 Margin = new Thickness(8, 4, 0, 0),
                 Padding = new Thickness(8, 0, 0, 0),
                 Child = content,
-            },
+            }.Themed(Border.BorderBrushProperty, ThemeRole.ControlBorder),
         };
+        expander.Expanded += (_, _) => SectionExpansionState.Set(_definitionName, label, expanded: true);
+        expander.Collapsed += (_, _) => SectionExpansionState.Set(_definitionName, label, expanded: false);
         _sectionExpanders.TryAdd(label, expander);
         return expander;
     }
@@ -161,7 +170,9 @@ public partial class ControlPanelWindow : Window
             {
                 Text = control.Label + ":",
                 TextWrapping = TextWrapping.NoWrap,
-                VerticalAlignment = VerticalAlignment.Center,
+
+                // A chart's label sits at its top, not beside its middle.
+                VerticalAlignment = control is BarGraphControl or StripChartControl or VectorControl ? VerticalAlignment.Top : VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 4),
             };
             Grid.SetRow(label, row);
@@ -199,10 +210,9 @@ public partial class ControlPanelWindow : Window
             Margin = new Thickness(6, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 15,
-            Foreground = System.Windows.Media.Brushes.SteelBlue,
             Cursor = Cursors.Help,
             ToolTip = preview() ?? string.Empty,
-        };
+        }.Themed(TextBlock.ForegroundProperty, ThemeRole.Accent);
 
         // Recomputed on every open, so the tooltip reflects the slider position/typed text/selection
         // at hover time rather than whatever it was when the panel was built.
@@ -241,6 +251,11 @@ public partial class ControlPanelWindow : Window
                     label.Text = value;
                 }
             }
+
+            foreach (var display in _displays.Values)
+            {
+                display.Apply(values);
+            }
         });
     }
 
@@ -260,12 +275,11 @@ public partial class ControlPanelWindow : Window
                         Margin = new Thickness(6, 0, 0, 0),
                         Padding = new Thickness(8, 2, 8, 2),
                         MinWidth = 80,
-                        BorderBrush = System.Windows.Media.Brushes.Black,
                         BorderThickness = new Thickness(1),
                         VerticalAlignment = VerticalAlignment.Center,
                         Visibility = Visibility.Collapsed,
                         Child = new TextBlock { FontFamily = new System.Windows.Media.FontFamily("Consolas"), HorizontalAlignment = HorizontalAlignment.Center },
-                    };
+                    }.Themed(Border.BorderBrushProperty, ThemeRole.SwatchBorder);
                     _colorSwatches[button.Id] = swatch;
                     if (LastPickedColors.TryGet(button.Id, out var current))
                     {
@@ -422,6 +436,20 @@ public partial class ControlPanelWindow : Window
                 {
                     var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
                     _indicatorLabels[control.Id] = view;
+                    return (view, view, null, null);
+                }
+
+            case BarGraphControl or StripChartControl or VectorControl:
+                {
+                    LiveDisplayElement view = LiveDisplayState.For(control) switch
+                    {
+                        BarGraphState bars => new BarGraphElement(bars),
+                        StripChartState strip => new StripChartElement(strip),
+                        VectorState vector => new VectorElement(vector),
+                        _ => throw new InvalidOperationException($"No live display for '{control.Id}'."),
+                    };
+                    view.Margin = new Thickness(0, 2, 0, 2);
+                    _displays[control.Id] = view;
                     return (view, view, null, null);
                 }
 

@@ -114,6 +114,77 @@ public sealed class ScreenshotTests
     }
 
     [TestMethod]
+    public void MainWindow_Logging_IsCaptured()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var (window, transport) = CreateMainWindow();
+                WpfScreenshot.ShowOffScreen(window);
+                StaTestRunner.PumpUntil(() => window.SendBox.IsEnabled, _pumpTimeout);
+
+                Assert.IsTrue(window.StartLogging(Path.Combine(directory, "20260925-120000_tcp_192.168.0.107_23.jsonl")));
+                await transport.PushIncomingAsync("ID TEK/2230,V81.1,VERS:14\r"u8.ToArray());
+                StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 1, _pumpTimeout);
+                StaTestRunner.DoEvents();
+                window.UpdateLayout();
+
+                var path = Path.Combine(_imagesDirectory, "wpf-main-window-logging.png");
+                WpfScreenshot.Save(window, path);
+                window.StopLogging();
+
+                AssertRealImage(path);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void PlaybackWindow_PartWayThroughWithANote_IsCaptured()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var controller = new PlaybackPresenters().Open(PlaybackWindowTests.WriteSampleLog(directory), new ManualTimeProvider());
+                var window = new PlaybackWindow(controller);
+                WpfScreenshot.ShowOffScreen(window, 900, 560);
+
+                window.Do(() => controller.SetPresenters(["ascii", "hex"]));
+                window.Do(() => controller.SeekTo(5));
+                window.NoteBox.Text = "IDN reply is correct";
+                window.AddNote();
+                window.Do(controller.Step);
+                window.Do(() =>
+                {
+                    controller.MarkIn();
+                    controller.SetSpeed(Logging.Playback.PlaybackController.Speeds[3]);
+                    return Logging.Playback.PlaybackBatch.Empty;
+                });
+                StaTestRunner.DoEvents();
+                window.UpdateLayout();
+
+                var path = Path.Combine(_imagesDirectory, "wpf-playback.png");
+                WpfScreenshot.Save(window, path);
+
+                AssertRealImage(path);
+                window.Close();
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void DeviceProfilesWindow_SerialTransport_IsCaptured()
     {
         var directory = CreateTempDirectory();

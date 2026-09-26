@@ -244,4 +244,30 @@ public sealed class CliOptions
     /// <summary><see cref="ExportDirectory"/> with the <see cref="DevTermUserDataPaths.ExportsDirectory"/> default applied.</summary>
     [Browsable(false)]
     public string EffectiveExportDirectory => ExportDirectory is { Length: > 0 } dir ? dir : DevTermUserDataPaths.ExportsDirectory;
+
+    /// <summary>
+    /// Logger mode: record every sent/received chunk and connect/disconnect event of the session to
+    /// this session-log file from startup (<c>--log capture.jsonl</c>). <c>--log true</c> picks a
+    /// timestamped name under <see cref="DevTermUserDataPaths.LogsDirectory"/> instead (see
+    /// <see cref="SessionLogging.ResolveLogPath"/>). Honored by every front end; the TUI/WPF can also
+    /// start and stop logging from File &gt; Start Logging.... See docs/design/session-logging.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("Log to file")]
+    public string? Log { get; set; }
+
+    /// <summary>
+    /// Plays a session log back through the presenters (<c>--presenter</c>, or the log's own) and
+    /// prints the decoded output, then exits — no connection is made. Console app only; the TUI/WPF
+    /// have File &gt; Open Log for Playback... instead.
+    /// </summary>
+    [Category("Mode")]
+    public string? Playback { get; set; }
+
+    /// <summary>
+    /// <see cref="Playback"/>'s speed relative to how it was captured: 1 is realtime, 0.5 half speed,
+    /// 10 ten times faster; 0 (the default) prints everything as fast as possible.
+    /// </summary>
+    [Category("Mode")]
+    public double PlaybackSpeed { get; set; }
 }

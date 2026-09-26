@@ -7,7 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DevTerm.Core\DevTerm.Core.csproj" />
     <ProjectReference Include="..\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
+  </ItemGroup>
+
+  <!-- Pre-packaged manifests: copied to "manifests\{device}\..." next to every app that references
+       this project, which is where DevTermUserDataPaths.AppManifestsDirectory looks. -->
+  <ItemGroup>
+    <None Include="Manifests\**\*" Link="manifests\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

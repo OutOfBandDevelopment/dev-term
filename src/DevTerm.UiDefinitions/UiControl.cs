@@ -15,6 +15,9 @@ namespace DevTerm.UiDefinitions;
 [JsonDerivedType(typeof(ChoiceControl), "choice")]
 [JsonDerivedType(typeof(TextFieldControl), "textField")]
 [JsonDerivedType(typeof(IndicatorControl), "indicator")]
+[JsonDerivedType(typeof(BarGraphControl), "barGraph")]
+[JsonDerivedType(typeof(StripChartControl), "stripChart")]
+[JsonDerivedType(typeof(VectorControl), "vector")]
 public abstract class UiControl
 {
     public required string Id { get; set; }
