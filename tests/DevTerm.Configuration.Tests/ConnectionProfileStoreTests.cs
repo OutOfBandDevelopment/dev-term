@@ -262,6 +262,36 @@ public sealed class ConnectionProfileStoreTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ExportZip_WhenOneOfTheNamesIsMissing_LeavesAnExistingZipAtThatPathUntouched()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", BuildSerialOptions());
+            store.Save("gamma", BuildSerialOptions());
+            var zipPath = Path.Combine(directory, "export.zip");
+            store.ExportZip(zipPath, ["alpha", "gamma"]);
+
+            // "beta" doesn't exist - simulates another process deleting a profile between the user
+            // picking names to export and the export actually running (the watcher refresh is
+            // asynchronous, per the bug report). Without the fix, the existing 2-entry zip is
+            // deleted before "beta" is found missing, and a truncated 1-entry (alpha-only) zip is
+            // left in its place.
+            Assert.ThrowsExactly<FileNotFoundException>(() => store.ExportZip(zipPath, ["alpha", "beta"]));
+
+            Assert.IsTrue(File.Exists(zipPath));
+            using var archive = ZipFile.OpenRead(zipPath);
+            Assert.AreEqual(2, archive.Entries.Count);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ImportZip_ConflictingName_DefaultsToReplaceWhenNoResolverGiven()
     {
         var directory = CreateTempDirectory();

@@ -130,16 +130,9 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
     /// </summary>
     public void ExportZip(string zipPath, IEnumerable<string> names)
     {
-        if (File.Exists(zipPath))
-        {
-            // ZipFile.Open(..., Create) throws if the file already exists - Export/Save As already
-            // let the user pick an existing filename to overwrite, same as the single-profile
-            // ExportToFile above (a plain unconditional File.WriteAllText).
-            File.Delete(zipPath);
-        }
-
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        foreach (var name in names)
+        var resolvedNames = names is ICollection<string> collection ? collection : [..names];
+        var paths = new List<(string Name, string Path)>(resolvedNames.Count);
+        foreach (var name in resolvedNames)
         {
             var path = GetPath(name);
             if (!File.Exists(path))
@@ -147,8 +140,24 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
                 throw new FileNotFoundException($"No connection profile named '{name}' was found.", path);
             }
 
-            archive.CreateEntryFromFile(path, $"{name}.json");
+            paths.Add((name, path));
         }
+
+        // Build in a temp file first, then move it into place - an existing zip at zipPath (which
+        // Export/Save As already let the user pick to overwrite) must never be deleted/truncated
+        // unless the new archive fully succeeded. See
+        // docs/bugs/fixed/034-exportzip-deletes-target-first.md.
+        var temporary = $"{zipPath}.tmp";
+        File.Delete(temporary);
+        using (var archive = ZipFile.Open(temporary, ZipArchiveMode.Create))
+        {
+            foreach (var (name, path) in paths)
+            {
+                archive.CreateEntryFromFile(path, $"{name}.json");
+            }
+        }
+
+        File.Move(temporary, zipPath, overwrite: true);
     }
 
     /// <summary>
