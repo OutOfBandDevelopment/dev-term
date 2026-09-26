@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Globalization;
+using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
@@ -21,14 +22,28 @@ namespace DevTerm.Console;
 /// <c>Application.Run</c> call.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Terminal.Gui v2.5.0 has no generic slider or combo-box/radio-group widget (checked directly by
 /// reflecting the installed package — see docs/coding-standards.md's "check the installed API shape"
 /// rule) — <c>Slider</c>/<c>Numeric</c> controls render as a bounded <see cref="TextField"/> instead
 /// of a drag affordance, and <c>Choice</c> controls (both <see cref="ChoiceStyle"/> values) render as
 /// an <see cref="OptionSelector"/>, the one selection widget the installed package actually has.
+/// </para>
+/// <para>
+/// It has no expander either: each labeled section gets a focusable <c>[-] Name</c>/<c>[+] Name</c>
+/// header <see cref="Button"/> that shows/hides the section's rows, and every section below it is
+/// re-positioned (<c>Reflow</c>) so a collapsed section leaves no gap. The definition's
+/// <see cref="UiDefinition.Description"/> renders as a collapsible "Notes" section after the rest.
+/// Within a section every control starts in the same column (the longest label plus padding). There's
+/// no hover in a terminal, so what a command-sending control would send (via the surface's optional
+/// <see cref="ICommandPreview"/>) is shown in a footer line while that control — or a field feeding
+/// it — has focus, and such controls get a small <c>(i)</c> marker.
+/// </para>
 /// </remarks>
 internal static class ControlPanelMode
 {
+    internal const string NotesSectionLabel = "Notes";
+
     internal static ControlPanelWindowParts BuildWindow(IApplication app, UiDefinition definition, IControlSurface surface, IPresenter? structuredSource, string title)
     {
         var window = new Window
@@ -40,73 +55,107 @@ internal static class ControlPanelMode
             Height = Dim.Fill(),
         };
 
-        var hasDescription = !string.IsNullOrWhiteSpace(definition.Description);
-        var contentHeight = definition.Sections.Sum(s => s.Controls.Count + 3) + 1 + (hasDescription ? 2 : 0);
         var formContent = new View
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
+
+            // Two rows reserved at the bottom for the always-visible footer (preview + message).
+            Height = Dim.Fill(2),
 
             // A plain View defaults to CanFocus = false, which blocks focus (and so input) from
             // ever reaching any child — the same gotcha ConfigureMode's own scrollable container
             // hit first (see its comment on this same line).
             CanFocus = true,
         };
-        formContent.SetContentSize(new Size(100, contentHeight));
         formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
 
-        var controlViews = new Dictionary<string, View>();
-        var indicatorLabels = new Dictionary<string, Label>();
+        var previewLabel = new Label { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1, Text = string.Empty };
+        var messageLabel = new Label { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1, Text = string.Empty };
 
-        View? previousFrame = null;
-        if (hasDescription && !string.IsNullOrWhiteSpace(definition.Description))
+        var panel = new PanelState(app, surface, definition, previewLabel, messageLabel);
+
+        var blocks = definition.Sections.Select(section => BuildSection(panel, section)).ToList();
+        if (!string.IsNullOrWhiteSpace(definition.Description))
         {
-            var descriptionLabel = new Label
-            {
-                X = 0,
-                Y = 0,
-                Width = Dim.Fill(2),
-                Height = 1,
-                Text = definition.Description,
-            };
-            formContent.Add(descriptionLabel);
-            previousFrame = descriptionLabel;
-        }
-
-        foreach (var section in definition.Sections)
-        {
-            var frame = new FrameView
-            {
-                Title = section.Label ?? string.Empty,
-                X = 0,
-                Y = previousFrame is null ? 0 : Pos.Bottom(previousFrame) + 1,
-                Width = Dim.Fill(2),
-                Height = section.Controls.Count + 2,
-            };
-
-            for (var row = 0; row < section.Controls.Count; row++)
-            {
-                AddControlRow(app, frame, row, section.Controls[row], surface, controlViews, indicatorLabels);
-            }
-
-            formContent.Add(frame);
-            previousFrame = frame;
+            blocks.Add(BuildNotesSection(app, definition.Description));
         }
 
         var statusLabel = new Label
         {
             X = 0,
-            Y = previousFrame is null ? 0 : Pos.Bottom(previousFrame) + 1,
             Width = Dim.Fill(),
             Text = structuredSource is IStructuredPresenter
                 ? string.Empty
                 : "Not decoding — connect with the matching --presenter to see live values.",
         };
-        formContent.Add(statusLabel);
 
-        window.Add(formContent);
+        foreach (var block in blocks)
+        {
+            if (block.Header is not null)
+            {
+                formContent.Add(block.Header);
+            }
+
+            formContent.Add(block.Body);
+        }
+
+        formContent.Add(statusLabel);
+        window.Add(formContent, previewLabel, messageLabel);
+
+        var contentHeight = 0;
+
+        // Absolute rows, recomputed on every expand/collapse: header, then (if expanded) the
+        // section's rows, then one blank row — so collapsing a section pulls everything below it up.
+        void Reflow()
+        {
+            var y = 0;
+            foreach (var block in blocks)
+            {
+                if (block.Header is { } header)
+                {
+                    header.Y = y;
+                    panel.Tops[header] = y;
+                    header.Text = HeaderText(block.Label, block.Expanded);
+                    y++;
+                }
+
+                block.Body.Visible = block.Expanded;
+                if (block.Expanded)
+                {
+                    block.Body.Y = y;
+                    panel.Tops[block.Body] = y;
+                    y += block.Rows;
+                }
+
+                y++;
+            }
+
+            statusLabel.Y = y;
+            contentHeight = y + 1;
+            formContent.SetContentSize(new Size(100, contentHeight));
+            var maxY = Math.Max(0, contentHeight - formContent.Viewport.Height);
+            if (formContent.Viewport.Y > maxY)
+            {
+                formContent.Viewport = formContent.Viewport with { Y = maxY };
+            }
+        }
+
+        foreach (var block in blocks)
+        {
+            if (block.Header is { } header)
+            {
+                header.Accepting += (_, e) =>
+                {
+                    block.Expanded = !block.Expanded;
+                    Reflow();
+                    e.Handled = true;
+                };
+            }
+        }
+
+        Reflow();
 
         EventHandler<IReadOnlyDictionary<string, string>>? onValuesChanged = null;
         if (structuredSource is IStructuredPresenter structuredPresenter)
@@ -119,7 +168,7 @@ internal static class ControlPanelMode
                     {
                         foreach (var (id, value) in values)
                         {
-                            if (indicatorLabels.TryGetValue(id, out var label))
+                            if (panel.IndicatorLabels.TryGetValue(id, out var label))
                             {
                                 label.Text = value;
                             }
@@ -176,23 +225,28 @@ internal static class ControlPanelMode
             }
         };
 
-        foreach (var child in formContent.SubViews)
+        // Scrolls the focused row (a section header, or one control row inside a section) into view.
+        panel.Reveal = (top, height) =>
         {
-            child.HasFocusChanged += (_, e) =>
+            var viewport = formContent.Viewport;
+            if (top < viewport.Y)
+            {
+                ScrollBy(top - viewport.Y);
+            }
+            else if (top + height > viewport.Y + viewport.Height)
+            {
+                ScrollBy(top + height - (viewport.Y + viewport.Height));
+            }
+        };
+
+        foreach (var header in blocks.Select(b => b.Header).OfType<Button>())
+        {
+            header.HasFocusChanged += (_, e) =>
             {
                 if (e.NewValue)
                 {
-                    var top = child.Frame.Y;
-                    var bottom = top + child.Frame.Height;
-                    var viewport = formContent.Viewport;
-                    if (top < viewport.Y)
-                    {
-                        ScrollBy(top - viewport.Y);
-                    }
-                    else if (bottom > viewport.Y + viewport.Height)
-                    {
-                        ScrollBy(bottom - (viewport.Y + viewport.Height));
-                    }
+                    panel.SetPreviewSource(null);
+                    panel.Reveal?.Invoke(panel.Tops.GetValueOrDefault(header), 1);
                 }
             };
         }
@@ -200,180 +254,359 @@ internal static class ControlPanelMode
         return new ControlPanelWindowParts
         {
             Window = window,
-            ControlViews = controlViews,
-            IndicatorLabels = indicatorLabels,
+            ControlViews = panel.ControlViews,
+            IndicatorLabels = panel.IndicatorLabels,
+            InfoMarkers = panel.InfoMarkers,
+            SectionHeaders = blocks.Where(b => b.Header is not null).GroupBy(b => b.Label).ToDictionary(g => g.Key, g => g.First().Header!),
+            SectionBodies = blocks.GroupBy(b => b.Label).ToDictionary(g => g.Key, g => g.First().Body),
+            PreviewLabel = previewLabel,
+            MessageLabel = messageLabel,
         };
     }
 
-    private static void AddControlRow(
-        IApplication app,
-        FrameView frame,
-        int row,
-        UiControl control,
-        IControlSurface surface,
-        Dictionary<string, View> controlViews,
-        Dictionary<string, Label> indicatorLabels)
+    private static string HeaderText(string label, bool expanded) => $"[{(expanded ? '-' : '+')}] {label}";
+
+    private static Button CreateHeader(string label) => new()
     {
+        X = 0,
+        Text = HeaderText(label, expanded: true),
+        NoDecorations = true,
+        NoPadding = true,
+        ShadowStyle = ShadowStyles.None,
+
+        // Section labels are data, not menu text — never treat an '_' in one as a hotkey marker.
+        HotKeySpecifier = (Rune)0xFFFF,
+    };
+
+    private static SectionBlock BuildSection(PanelState panel, UiSection section)
+    {
+        var label = section.Label ?? string.Empty;
+        var body = new View
+        {
+            X = 2,
+            Width = Dim.Fill(),
+            Height = Math.Max(section.Controls.Count, 1),
+            CanFocus = true,
+        };
+
+        // Every control in the section starts in the same column: the longest "Label:" plus a space.
+        var columnX = section.Controls.Count == 0 ? 0 : section.Controls.Max(c => c.Label.Length + 1) + 1;
+        for (var row = 0; row < section.Controls.Count; row++)
+        {
+            AddControlRow(panel, body, row, columnX, section.Controls[row]);
+        }
+
+        return new SectionBlock
+        {
+            Label = label,
+
+            // An unlabeled section (e.g. Busylight's lone Apply button) has nothing to name a
+            // header with, so it stays always-expanded with no header, the same as before.
+            Header = string.IsNullOrWhiteSpace(label) ? null : CreateHeader(label),
+            Body = body,
+            Rows = section.Controls.Count,
+        };
+    }
+
+    private static SectionBlock BuildNotesSection(IApplication app, string description)
+    {
+        // Wrapped once, to the screen width at build time (body indent + border + scroll bar
+        // taken off) — a manual word wrap rather than TextFormatter.WordWrap so the section's row
+        // count is known up front for Reflow's absolute positioning.
+        var screenWidth = app.Screen.Width > 0 ? app.Screen.Width : 80;
+        var lines = WordWrap(description, Math.Max(30, screenWidth - 6));
+        var body = new View { X = 2, Width = Dim.Fill(), Height = lines.Count, CanFocus = false };
+        body.Add(new Label { X = 0, Y = 0, Width = Dim.Fill(), Height = lines.Count, Text = string.Join('\n', lines) });
+        return new SectionBlock { Label = NotesSectionLabel, Header = CreateHeader(NotesSectionLabel), Body = body, Rows = lines.Count };
+    }
+
+    /// <summary>Greedy word wrap to <paramref name="width"/> columns, keeping explicit line breaks; a single word longer than the width is split.</summary>
+    internal static List<string> WordWrap(string text, int width)
+    {
+        var lines = new List<string>();
+        foreach (var paragraph in text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+        {
+            var line = new StringBuilder();
+            foreach (var word in paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var remaining = word;
+                while (remaining.Length > 0)
+                {
+                    var needed = line.Length == 0 ? remaining.Length : line.Length + 1 + remaining.Length;
+                    if (needed <= width)
+                    {
+                        if (line.Length > 0)
+                        {
+                            line.Append(' ');
+                        }
+
+                        line.Append(remaining);
+                        remaining = string.Empty;
+                    }
+                    else if (line.Length > 0)
+                    {
+                        lines.Add(line.ToString());
+                        line.Clear();
+                    }
+                    else
+                    {
+                        lines.Add(remaining[..width]);
+                        remaining = remaining[width..];
+                    }
+                }
+            }
+
+            lines.Add(line.ToString());
+        }
+
+        return lines;
+    }
+
+    private static void AddControlRow(PanelState panel, View body, int row, int columnX, UiControl control)
+    {
+        var app = panel.App;
+        var surface = panel.Surface;
         var label = new Label { X = 0, Y = row, Text = control.Label + ":" };
-        frame.Add(label);
+        body.Add(label);
+
+        View? previewAnchor = null;
+        string? probeCommandId = null;
+        string? probeValue = null;
+        Func<string?>? previewSource = null;
+        View widget;
 
         switch (control)
         {
             case ButtonControl { ColorPickerTargetCommandId: { } colorTargetId } button:
-                var colorButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
-
-                // A swatch next to the button: the current custom color's hex value on a background of
-                // that color - hidden until one has been set (including in an earlier opening of this
-                // panel, see LastPickedColors). Registered under "{id}.swatch" in ControlViews.
-                var swatchLabel = new Label { X = Pos.Right(colorButtonView) + 1, Y = row, Visible = false };
-                if (LastPickedColors.TryGet(button.Id, out var current))
                 {
-                    ShowSwatch(swatchLabel, current);
+                    var colorButtonView = new Button { X = columnX, Y = row, Text = control.Label };
+
+                    // A swatch next to the button: the current custom color's hex value on a background of
+                    // that color - hidden until one has been set (including in an earlier opening of this
+                    // panel, see LastPickedColors). Registered under "{id}.swatch" in ControlViews.
+                    var swatchLabel = new Label { X = Pos.Right(colorButtonView) + 1, Y = row, Visible = false };
+                    if (LastPickedColors.TryGet(button.Id, out var current))
+                    {
+                        ShowSwatch(swatchLabel, current);
+                    }
+
+                    colorButtonView.Accepting += (_, e) =>
+                    {
+                        var (lastR, lastG, lastB) = LastPickedColors.Get(button.Id);
+                        if (PickColor(app, lastR, lastG, lastB) is { } picked)
+                        {
+                            LastPickedColors.Set(button.Id, picked);
+                            ShowSwatch(swatchLabel, picked);
+                            Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
+                        }
+
+                        e.Handled = true;
+                    };
+                    body.Add(colorButtonView, swatchLabel);
+                    panel.ControlViews[$"{control.Id}.swatch"] = swatchLabel;
+                    widget = colorButtonView;
+                    previewAnchor = swatchLabel;
+                    probeCommandId = colorTargetId;
+                    previewSource = () =>
+                    {
+                        var (r, g, b) = LastPickedColors.Get(button.Id);
+                        return panel.SendsText(colorTargetId, $"{r},{g},{b}");
+                    };
+                    break;
                 }
 
-                colorButtonView.Accepting += (_, e) =>
-                {
-                    var (lastR, lastG, lastB) = LastPickedColors.Get(button.Id);
-                    if (PickColor(app, lastR, lastG, lastB) is { } picked)
-                    {
-                        LastPickedColors.Set(button.Id, picked);
-                        ShowSwatch(swatchLabel, picked);
-                        Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
-                    }
-
-                    e.Handled = true;
-                };
-                frame.Add(colorButtonView, swatchLabel);
-                controlViews[control.Id] = colorButtonView;
-                controlViews[$"{control.Id}.swatch"] = swatchLabel;
-                break;
-
             case ButtonControl { ParameterFieldIds: { } parameterFieldIds } button:
-                var parameterButtonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
-                parameterButtonView.Accepting += (_, e) =>
                 {
-                    var joined = string.Join(',', parameterFieldIds.Select(id => controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                    Invoke(app, surface, button.CommandId ?? button.Id, joined);
-                    e.Handled = true;
-                };
-                frame.Add(parameterButtonView);
-                controlViews[control.Id] = parameterButtonView;
-                break;
+                    var parameterButtonView = new Button { X = columnX, Y = row, Text = control.Label };
+                    var commandId = button.CommandId ?? button.Id;
+                    parameterButtonView.Accepting += (_, e) =>
+                    {
+                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined))
+                        {
+                            Invoke(app, surface, commandId, joined);
+                        }
+
+                        e.Handled = true;
+                    };
+                    body.Add(parameterButtonView);
+                    widget = parameterButtonView;
+                    probeCommandId = commandId;
+                    probeValue = panel.RawParameters(parameterFieldIds);
+                    previewSource = () => panel.TryReadParameters(parameterFieldIds, reportErrors: false, out var joined)
+                        ? panel.SendsText(commandId, joined)
+                        : $"Won't send: {panel.LastParameterError}";
+                    break;
+                }
 
             case ButtonControl button:
-                var buttonView = new Button { X = Pos.Right(label) + 1, Y = row, Text = control.Label };
-                buttonView.Accepting += (_, e) =>
                 {
-                    Invoke(app, surface, button.CommandId ?? button.Id, null);
-                    e.Handled = true;
-                };
-                frame.Add(buttonView);
-                controlViews[control.Id] = buttonView;
-                break;
+                    var buttonView = new Button { X = columnX, Y = row, Text = control.Label };
+                    var commandId = button.CommandId ?? button.Id;
+                    buttonView.Accepting += (_, e) =>
+                    {
+                        Invoke(app, surface, commandId, null);
+                        e.Handled = true;
+                    };
+                    body.Add(buttonView);
+                    widget = buttonView;
+                    probeCommandId = commandId;
+                    previewSource = () => panel.SendsText(commandId, null);
+                    break;
+                }
 
             case ToggleControl toggle:
-                var checkBox = new CheckBox
                 {
-                    X = Pos.Right(label) + 1,
-                    Y = row,
-                    Value = toggle.DefaultValue ? CheckState.Checked : CheckState.UnChecked,
-                };
-                checkBox.ValueChanged += (_, _) =>
-                    Invoke(app, surface, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
-                frame.Add(checkBox);
-                controlViews[control.Id] = checkBox;
-                break;
+                    var checkBox = new CheckBox
+                    {
+                        X = columnX,
+                        Y = row,
+                        Value = toggle.DefaultValue ? CheckState.Checked : CheckState.UnChecked,
+                    };
+                    checkBox.ValueChanged += (_, _) =>
+                    {
+                        Invoke(app, surface, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
+                        panel.RefreshPreview();
+                    };
+                    body.Add(checkBox);
+                    widget = checkBox;
+                    probeCommandId = toggle.Id;
+                    probeValue = toggle.DefaultValue ? "0" : "1";
 
-            case SliderControl slider:
-                var sliderField = new TextField
-                {
-                    X = Pos.Right(label) + 1,
-                    Y = row,
-                    Width = 10,
-                    Text = slider.DefaultValue.ToString(CultureInfo.InvariantCulture),
-                };
-                sliderField.Accepting += (_, e) =>
-                {
-                    var clamped = Math.Clamp(ParseOr(sliderField.Text, slider.DefaultValue), slider.Minimum, slider.Maximum);
-                    sliderField.Text = clamped.ToString(CultureInfo.InvariantCulture);
-                    Invoke(app, surface, slider.Id, clamped.ToString(CultureInfo.InvariantCulture));
-                    e.Handled = true;
-                };
-                frame.Add(sliderField);
-                var sliderHint = new Label { X = Pos.Right(sliderField) + 1, Y = row, Text = $"[{slider.Minimum:0.#}-{slider.Maximum:0.#}]{slider.Unit}" };
-                frame.Add(sliderHint);
-                controlViews[control.Id] = sliderField;
-                break;
+                    // What toggling it would send — the next state, not the current one.
+                    previewSource = () => panel.SendsText(toggle.Id, checkBox.Value == CheckState.Checked ? "0" : "1");
+                    break;
+                }
 
-            case NumericControl numeric:
-                var numericField = new TextField
+            case SliderControl or NumericControl:
                 {
-                    X = Pos.Right(label) + 1,
-                    Y = row,
-                    Width = 10,
-                    Text = numeric.DefaultValue.ToString(CultureInfo.InvariantCulture),
-                };
-                numericField.Accepting += (_, e) =>
-                {
-                    var clamped = Math.Clamp(ParseOr(numericField.Text, numeric.DefaultValue), numeric.Minimum, numeric.Maximum);
-                    numericField.Text = clamped.ToString(CultureInfo.InvariantCulture);
-                    Invoke(app, surface, numeric.Id, clamped.ToString(CultureInfo.InvariantCulture));
-                    e.Handled = true;
-                };
-                frame.Add(numericField);
-                var numericHint = new Label { X = Pos.Right(numericField) + 1, Y = row, Text = $"[{numeric.Minimum:0.#}-{numeric.Maximum:0.#}]{numeric.Unit}" };
-                frame.Add(numericHint);
-                controlViews[control.Id] = numericField;
-                break;
+                    var (minimum, maximum, defaultValue, unit) = control switch
+                    {
+                        SliderControl s => (s.Minimum, s.Maximum, s.DefaultValue, s.Unit),
+                        NumericControl n => (n.Minimum, n.Maximum, n.DefaultValue, n.Unit),
+                        _ => (0d, 0d, 0d, (string?)null),
+                    };
+                    var field = new TextField
+                    {
+                        X = columnX,
+                        Y = row,
+                        Width = 10,
+                        Text = defaultValue.ToString(CultureInfo.InvariantCulture),
+                    };
+                    field.Accepting += (_, e) =>
+                    {
+                        if (panel.TryValidate(control, field.Text, out var value))
+                        {
+                            field.Text = value;
+                            Invoke(app, surface, control.Id, value);
+                        }
+
+                        e.Handled = true;
+                    };
+                    field.TextChanged += (_, _) => panel.RefreshPreview();
+                    body.Add(field);
+                    var hint = new Label { X = Pos.Right(field) + 1, Y = row, Text = $"[{minimum:0.#}-{maximum:0.#}]{unit}" };
+                    body.Add(hint);
+                    widget = field;
+                    probeCommandId = control.Id;
+                    probeValue = field.Text;
+                    previewAnchor = hint;
+                    previewSource = panel.ValuePreviewSource(control, () => field.Text);
+                    break;
+                }
 
             case ChoiceControl choice:
-                var selector = new OptionSelector
                 {
-                    X = Pos.Right(label) + 1,
-                    Y = row,
-                    Orientation = Orientation.Horizontal,
-                    HorizontalSpace = 2,
-                    Labels = choice.Options,
-                };
-                var defaultIndex = choice.DefaultValue is { } dv ? choice.Options.IndexOf(dv) : -1;
-                selector.Value = defaultIndex >= 0 ? defaultIndex : 0;
-                selector.ValueChanged += (_, _) =>
-                {
-                    if (selector.Value is { } index && index >= 0 && index < choice.Options.Count)
+                    var selector = new OptionSelector
                     {
-                        Invoke(app, surface, choice.Id, choice.Options[index]);
-                    }
-                };
-                frame.Add(selector);
-                controlViews[control.Id] = selector;
-                break;
+                        X = columnX,
+                        Y = row,
+                        Orientation = Orientation.Horizontal,
+                        HorizontalSpace = 2,
+                        Labels = choice.Options,
+                    };
+                    var defaultIndex = choice.DefaultValue is { } dv ? choice.Options.IndexOf(dv) : -1;
+                    selector.Value = defaultIndex >= 0 ? defaultIndex : 0;
+                    selector.ValueChanged += (_, _) =>
+                    {
+                        if (selector.Value is { } index && index >= 0 && index < choice.Options.Count)
+                        {
+                            Invoke(app, surface, choice.Id, choice.Options[index]);
+                        }
+
+                        panel.RefreshPreview();
+                    };
+                    body.Add(selector);
+                    widget = selector;
+                    probeCommandId = choice.Id;
+                    probeValue = GetCurrentValue(selector);
+                    previewSource = () => panel.SendsText(choice.Id, GetCurrentValue(selector));
+                    break;
+                }
 
             case TextFieldControl textField:
-                var textFieldView = new TextField { X = Pos.Right(label) + 1, Y = row, Width = 20, Text = textField.DefaultValue ?? string.Empty };
-                textFieldView.Accepting += (_, e) =>
                 {
-                    var value = textField.MaxLength is { } max && textFieldView.Text.Length > max
-                        ? textFieldView.Text[..max]
-                        : textFieldView.Text;
-                    textFieldView.Text = value;
-                    Invoke(app, surface, textField.Id, value);
-                    e.Handled = true;
-                };
-                frame.Add(textFieldView);
-                controlViews[control.Id] = textFieldView;
-                break;
+                    var textFieldView = new TextField { X = columnX, Y = row, Width = 20, Text = textField.DefaultValue ?? string.Empty };
+                    textFieldView.Accepting += (_, e) =>
+                    {
+                        if (panel.TryValidate(control, textFieldView.Text, out var value))
+                        {
+                            value = textField.MaxLength is { } max && value.Length > max ? value[..max] : value;
+                            textFieldView.Text = value;
+                            Invoke(app, surface, textField.Id, value);
+                        }
+
+                        e.Handled = true;
+                    };
+                    textFieldView.TextChanged += (_, _) => panel.RefreshPreview();
+                    body.Add(textFieldView);
+                    widget = textFieldView;
+                    probeCommandId = textField.Id;
+                    probeValue = textFieldView.Text;
+                    previewSource = panel.ValuePreviewSource(control, () => textFieldView.Text);
+                    break;
+                }
 
             case IndicatorControl indicator:
-                var indicatorLabel = new Label { X = Pos.Right(label) + 1, Y = row, Text = indicator.DefaultValue ?? string.Empty };
-                frame.Add(indicatorLabel);
-                controlViews[control.Id] = indicatorLabel;
-                indicatorLabels[control.Id] = indicatorLabel;
-                break;
-        }
-    }
+                {
+                    var indicatorLabel = new Label { X = columnX, Y = row, Text = indicator.DefaultValue ?? string.Empty };
+                    body.Add(indicatorLabel);
+                    panel.IndicatorLabels[control.Id] = indicatorLabel;
+                    widget = indicatorLabel;
+                    break;
+                }
 
-    private static double ParseOr(string text, double fallback) =>
-        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+            default:
+                return;
+        }
+
+        panel.ControlViews[control.Id] = widget;
+
+        // Only a control that actually sends something gets its own preview + (i) marker; a
+        // value-holder field feeding a parameter button (e.g. a SCPI command's parameter) shows that
+        // button's preview instead while it has focus, since that's what editing it changes.
+        var sendsSomething = previewSource is not null && probeCommandId is not null && panel.Sends(probeCommandId, probeValue) && !panel.IsValueHolderOnly(control);
+        if (sendsSomething)
+        {
+            panel.PreviewSources[control.Id] = previewSource!;
+            var marker = new Label { X = Pos.Right(previewAnchor ?? widget) + 1, Y = row, Text = "(i)" };
+            body.Add(marker);
+            panel.InfoMarkers[control.Id] = marker;
+        }
+
+        var focusSource = sendsSomething ? previewSource : panel.ConsumerPreviewSource(control.Id);
+        widget.HasFocusChanged += (_, e) =>
+        {
+            if (e.NewValue)
+            {
+                panel.SetPreviewSource(focusSource);
+                panel.Reveal?.Invoke(panel.Tops.GetValueOrDefault(body) + row, 1);
+            }
+            else
+            {
+                panel.ClearPreviewSource(focusSource);
+            }
+        };
+    }
 
     /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
     private static string GetCurrentValue(View view) => view switch
@@ -385,14 +618,9 @@ internal static class ControlPanelMode
         _ => string.Empty,
     };
 
-    /// <summary>
-    /// A small nested modal RGB/HSV color picker, opened by any <c>ButtonControl</c> with
-    /// <c>ColorPickerTargetCommandId</c> set (see <see cref="AddControlRow"/>) — the TUI half of the
-    /// same generic color-picker support as <c>DevTerm.Wpf.ColorPickerWindow</c>. No slider/hex
-    /// widget exists in the installed Terminal.Gui package (see this class's own remarks on that),
-    /// so every field is a bounded <see cref="TextField"/>, synced on Enter the same way
-    /// Slider/Numeric rows above are.
-    /// </summary>
+    private static double ParseOr(string text, double fallback) =>
+        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
     private static void ShowSwatch(Label swatch, (byte R, byte G, byte B) color)
     {
         var background = new Terminal.Gui.Drawing.Color(color.R, color.G, color.B, 255);
@@ -429,6 +657,176 @@ internal static class ControlPanelMode
         _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
+    /// <summary>One section's header (null for an unlabeled section), its rows, and whether it's expanded — see <c>Reflow</c>.</summary>
+    private sealed class SectionBlock
+    {
+        public required string Label { get; init; }
+
+        public required Button? Header { get; init; }
+
+        public required View Body { get; init; }
+
+        public required int Rows { get; init; }
+
+        public bool Expanded { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Everything the rows of one panel share: the surface and its optional preview capability, the
+    /// id → view lookups, and the footer's preview/message lines.
+    /// </summary>
+    private sealed class PanelState
+    {
+        private readonly ICommandPreview? _preview;
+        private readonly Label _previewLabel;
+        private readonly Label _messageLabel;
+        private readonly Dictionary<string, UiControl> _controlsById = [];
+        private readonly Dictionary<string, string> _consumerByFieldId = [];
+        private Func<string?>? _currentPreviewSource;
+
+        public PanelState(IApplication app, IControlSurface surface, UiDefinition definition, Label previewLabel, Label messageLabel)
+        {
+            App = app;
+            Surface = surface;
+            _preview = surface as ICommandPreview;
+            _previewLabel = previewLabel;
+            _messageLabel = messageLabel;
+
+            foreach (var control in definition.Sections.SelectMany(s => s.Controls))
+            {
+                _controlsById.TryAdd(control.Id, control);
+                if (control is ButtonControl { ParameterFieldIds: { } fieldIds })
+                {
+                    foreach (var fieldId in fieldIds)
+                    {
+                        _consumerByFieldId.TryAdd(fieldId, control.Id);
+                    }
+                }
+            }
+        }
+
+        public IApplication App { get; }
+
+        public IControlSurface Surface { get; }
+
+        public Dictionary<string, View> ControlViews { get; } = [];
+
+        public Dictionary<string, Label> IndicatorLabels { get; } = [];
+
+        public Dictionary<string, Label> InfoMarkers { get; } = [];
+
+        public Dictionary<string, Func<string?>> PreviewSources { get; } = [];
+
+        /// <summary>Scrolls a content-relative row range into view; set once the form's scrolling is wired.</summary>
+        public Action<int, int>? Reveal { get; set; }
+
+        /// <summary>Each header's/section body's content row as of the last <c>Reflow</c> — used for scrolling into view instead of <c>Frame.Y</c>, which lags until the next layout pass (e.g. right after a collapse).</summary>
+        public Dictionary<View, int> Tops { get; } = [];
+
+        public string? LastParameterError { get; private set; }
+
+        /// <summary>Whether invoking <paramref name="commandId"/> would send anything at all — decides which controls get a preview and an (i) marker.</summary>
+        public bool Sends(string commandId, string? value) => _preview?.PreviewCommand(commandId, value) is not null;
+
+        /// <summary>The named parameter fields' current values, comma-joined, unvalidated — only for probing <see cref="Sends"/>.</summary>
+        public string RawParameters(IReadOnlyList<string> fieldIds) =>
+            string.Join(',', fieldIds.Select(id => ControlViews.TryGetValue(id, out var view) ? GetCurrentValue(view) : string.Empty));
+
+        /// <summary>The footer text for invoking <paramref name="commandId"/> with <paramref name="value"/>, or null when the surface has no preview for it.</summary>
+        public string? SendsText(string commandId, string? value) =>
+            _preview?.PreviewCommand(commandId, value) is { } preview ? $"Sends: {preview}" : null;
+
+        /// <summary>A value field's preview: its current text validated first, so the footer shows what would actually be sent (or why nothing would be).</summary>
+        public Func<string?> ValuePreviewSource(UiControl control, Func<string> currentText) => () =>
+        {
+            var result = ValueValidator.Validate(ValueValidator.ConstraintFor(control), currentText());
+            return result.IsValid ? SendsText(control.Id, result.Value) : $"Won't send: {result.Error}";
+        };
+
+        /// <summary>A field some parameter button reads from shows that button's preview while focused.</summary>
+        public Func<string?>? ConsumerPreviewSource(string fieldId) =>
+            _consumerByFieldId.TryGetValue(fieldId, out var buttonId)
+                ? () => PreviewSources.TryGetValue(buttonId, out var source) ? source() : null
+                : null;
+
+        /// <summary>True for a field only ever read by a parameter button — committing it on its own sends nothing worth previewing.</summary>
+        public bool IsValueHolderOnly(UiControl control) =>
+            control is not ButtonControl && _consumerByFieldId.ContainsKey(control.Id);
+
+        public void SetPreviewSource(Func<string?>? source)
+        {
+            _currentPreviewSource = source;
+            RefreshPreview();
+        }
+
+        public void ClearPreviewSource(Func<string?>? source)
+        {
+            if (ReferenceEquals(_currentPreviewSource, source))
+            {
+                SetPreviewSource(null);
+            }
+        }
+
+        public void RefreshPreview() => _previewLabel.Text = _currentPreviewSource?.Invoke() ?? string.Empty;
+
+        public void ShowMessage(string? message) => _messageLabel.Text = message ?? string.Empty;
+
+        /// <summary>Runs the shared <see cref="ValueValidator"/> on a committed value; an invalid one is reported in the footer and must not be sent.</summary>
+        public bool TryValidate(UiControl control, string input, out string value)
+        {
+            var result = ValueValidator.Validate(ValueValidator.ConstraintFor(control), input);
+            value = result.Value;
+            if (!result.IsValid)
+            {
+                ShowMessage($"{control.Label}: {result.Error} Not sent.");
+                return false;
+            }
+
+            ShowMessage(null);
+            return true;
+        }
+
+        /// <summary>Reads and validates every named parameter field's current value, comma-joined; on the first invalid one, fails (reporting it in the footer when <paramref name="reportErrors"/>).</summary>
+        public bool TryReadParameters(IReadOnlyList<string> fieldIds, bool reportErrors, out string joined)
+        {
+            var values = new List<string>(fieldIds.Count);
+            foreach (var fieldId in fieldIds)
+            {
+                var raw = ControlViews.TryGetValue(fieldId, out var view) ? GetCurrentValue(view) : string.Empty;
+                var constraint = _controlsById.TryGetValue(fieldId, out var fieldControl) ? ValueValidator.ConstraintFor(fieldControl) : null;
+                var result = ValueValidator.Validate(constraint, raw);
+                if (!result.IsValid)
+                {
+                    LastParameterError = $"{fieldControl?.Label ?? fieldId}: {result.Error}";
+                    if (reportErrors)
+                    {
+                        ShowMessage($"{LastParameterError} Not sent.");
+                    }
+
+                    joined = string.Empty;
+                    return false;
+                }
+
+                values.Add(result.Value);
+            }
+
+            if (reportErrors)
+            {
+                ShowMessage(null);
+            }
+
+            joined = string.Join(',', values);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// A small nested modal RGB/HSV color picker, opened by any <c>ButtonControl</c> with
+    /// <c>ColorPickerTargetCommandId</c> set (see <see cref="AddControlRow"/>) — the TUI half of the
+    /// same generic color-picker support as <c>DevTerm.Wpf.ColorPickerWindow</c>. No slider/hex
+    /// widget exists in the installed Terminal.Gui package (see this class's own remarks on that),
+    /// so every field is a bounded <see cref="TextField"/>, synced on Enter.
+    /// </summary>
     private static (byte R, byte G, byte B)? PickColor(IApplication app, byte initialR, byte initialG, byte initialB)
     {
         (byte R, byte G, byte B)? picked = null;
@@ -584,4 +982,19 @@ internal sealed class ControlPanelWindowParts
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
     public required IReadOnlyDictionary<string, Label> IndicatorLabels { get; init; }
+
+    /// <summary>The <c>(i)</c> marker next to each control that sends a previewable command, keyed by <c>UiControl.Id</c>.</summary>
+    public required IReadOnlyDictionary<string, Label> InfoMarkers { get; init; }
+
+    /// <summary>Each labeled section's <c>[-]</c>/<c>[+]</c> expand/collapse header, keyed by section label (<see cref="ControlPanelMode.NotesSectionLabel"/> for the notes).</summary>
+    public required IReadOnlyDictionary<string, Button> SectionHeaders { get; init; }
+
+    /// <summary>Each section's container of rows, keyed by section label (an unlabeled section under the empty string).</summary>
+    public required IReadOnlyDictionary<string, View> SectionBodies { get; init; }
+
+    /// <summary>The footer line showing what the focused control would send (<c>Sends: ...</c>).</summary>
+    public required Label PreviewLabel { get; init; }
+
+    /// <summary>The footer line reporting a rejected (invalid, not sent) value.</summary>
+    public required Label MessageLabel { get; init; }
 }

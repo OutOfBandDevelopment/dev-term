@@ -11,7 +11,8 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 
 | Field | Type | Notes |
 |---|---|---|
-| Output pane | read-only `TextView`, fills the window above the send line | Every incoming decoded message is appended as `[{presenterName}] {text}`; auto-scrolls to the newest line (`MoveEnd()`) |
+| Output pane | read-only `Terminal.Gui.Editor`, fills the window above the send line | Every incoming decoded message is appended as `[{presenterName}] {text}`. App status lines are tagged `[dev-term] …` (connected, disconnected, switched, auto-detect progress) and errors `[error] …` (failed connects, lost connections, rejected input), so they can't be mistaken for device output. It auto-scrolls to the newest line and keeps the last 300 |
+| Status line | full-width `Label` under the send line | ` ● Connected — tcp://192.168.0.107:23` on green, ` ● Connecting — …` on amber, ` ● Disconnected — …` on red (`ConnectionDescription.StatusText`) |
 | `Send:` | `TextField`, fills the remaining width next to the `Send:` label | Disabled whenever the session isn't open; cleared immediately on Enter, before the send even completes; Up/Down recall prior sent lines (a shared `SendHistory`, 100 entries, in-memory only; a line identical to the one just before it isn't recorded again) — no visible drop-down, since Terminal.Gui 2.5.0 has no combo box |
 
 ## Actions
@@ -37,10 +38,18 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
   **connection definition** (`ConnectionDescription.Definition`): `tcp://192.168.0.110:23`,
   `tcp://*:9000 (listening)`, `serial://COM3:4800,8,n,1` (data bits, lowercase parity letter, stop
   bits), `hid://{vendor}.{product}[.{serial number}]` (hex ids).
-  Recomputed when the **Send as** parser changes or a profile is switched (so it follows a live
-  switch to a saved profile or a one-off connection), but not on Connect/Disconnect (see Open items).
+  While the connection is closed, ` — disconnected` is appended, e.g.
+  `dev-term — tek2230 (ascii; send as ascii) — disconnected`. The title is recomputed whenever the
+  **Send as** parser changes or the connection state changes: connect, disconnect, self-disconnect and
+  profile switch.
   A saved profile is recognised at startup too — the untracked default profile a run starts from
   counts if it matches a saved one.
+- **One refresh for everything connection-dependent** (`RefreshConnectionUi`, inside `BuildWindow`): the
+  File menu label, `Send:`, the title, the status line, and which **Device** menu items are enabled (see
+  [`device-control-panel.md`](device-control-panel.md)) are all derived from `Session.State` in one pass.
+  It runs at startup and after every connect, disconnect, self-disconnect and profile switch, so they
+  can't drift apart. File > Connect/Disconnect runs it too; `TuiWindowParts.ToggleConnectionAsync` is
+  that exact action for tests.
 - Incoming bytes arrive via `Session.Output`, marshaled onto the UI thread with
   `Application.Invoke` — this only works because a real `Application.Run()` loop is actively
   pumping; see `CLAUDE.md`'s constraint on `Application.Invoke` silently queuing forever otherwise.
@@ -83,10 +92,7 @@ points:
 
 ## Open items
 
-- **The title bar doesn't reflect Connect/Disconnect state** — it's set once at window construction
-  from the connection/presenters/parser and only refreshed by a parser or profile change, so after a
-  Disconnect the title still describes the (now closed) connection. `MainWindow`'s WPF title has the same gap.
-- **No visual indicator of connection state** beyond the `Send:` field's enabled/disabled look and
-  the menu item's label — no status bar, no colored indicator.
+- **The output pane can't color individual lines** (it's one plain-text `Editor`), so status and error
+  lines are told apart by their `[dev-term]`/`[error]` tag rather than by color, unlike WPF.
 - **Only one session per window.** Presenters are no longer the blocker: they've been per-session since 2026-09-25
   (see `docs/design/presenters.md`). Nothing builds a multi-session UI yet.

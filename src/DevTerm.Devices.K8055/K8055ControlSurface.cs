@@ -20,9 +20,12 @@ namespace DevTerm.Devices.K8055;
 /// K8055's own 9-byte *input* reports observed live
 /// (<c>[00, 00, 03, AnalogIn1, ...]</c> — byte 0 is the same report-ID slot). The original
 /// implementation omitted this byte and only ever verified that the write didn't throw, not that it
-/// changed anything on the device — see docs/changes/2026-09-22.md's follow-up entry.
+/// changed anything on the device — see docs/changes/2026-09-22.md's follow-up entry. Also an
+/// <see cref="ICommandPreview"/>: <see cref="PreviewCommand"/> shows the exact report bytes (as hex)
+/// an invocation would send, computed by the same <see cref="Plan"/> path <see cref="InvokeAsync"/>
+/// uses, without committing the state change.
 /// </summary>
-public sealed class K8055ControlSurface : IControlSurface
+public sealed class K8055ControlSurface : IControlSurface, ICommandPreview
 {
     private const byte _setOutputsCommand = 0x05;
     private const byte _resetCounter1Command = 0x03;
@@ -30,9 +33,7 @@ public sealed class K8055ControlSurface : IControlSurface
 
     private readonly Session _session;
     private readonly Lock _stateLock = new();
-    private readonly bool[] _digitalOut = new bool[8];
-    private byte _analogOut1;
-    private byte _analogOut2;
+    private (byte DigitalOut, byte AnalogOut1, byte AnalogOut2) _state;
 
     public K8055ControlSurface(Session session)
     {
@@ -44,19 +45,75 @@ public sealed class K8055ControlSurface : IControlSurface
     {
         ArgumentNullException.ThrowIfNull(commandId);
 
-        if (TryParseDigitalOutChannel(commandId, out var channelIndex))
+        byte[] frame;
+        lock (_stateLock)
         {
-            return SetDigitalOutAsync(channelIndex, ParseBool(value), cancellationToken);
+            (frame, _state) = Plan(commandId, value, _state);
         }
 
-        return commandId switch
+        return _session.SendAsync(frame, cancellationToken);
+    }
+
+    /// <summary>The report <see cref="InvokeAsync"/> would send, as hex bytes (report-ID byte included), without changing any output state; null for an unknown command or unparsable value.</summary>
+    public string? PreviewCommand(string commandId, string? value)
+    {
+        ArgumentNullException.ThrowIfNull(commandId);
+
+        try
         {
-            "analogOut1" => SetAnalogOutAsync(ParseByte(value), null, cancellationToken),
-            "analogOut2" => SetAnalogOutAsync(null, ParseByte(value), cancellationToken),
-            "resetCounter1" => SendFixedFrameAsync(_resetCounter1Command, cancellationToken),
-            "resetCounter2" => SendFixedFrameAsync(_resetCounter2Command, cancellationToken),
-            _ => throw new ArgumentException($"Unknown K8055 command '{commandId}'.", nameof(commandId)),
-        };
+            byte[] frame;
+            lock (_stateLock)
+            {
+                (frame, _) = Plan(commandId, value, _state);
+            }
+
+            return CommandPreviewFormat.ToHex(frame);
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The one place a command id + value becomes a report and a new output state — shared by
+    /// <see cref="InvokeAsync"/> (which commits the new state) and <see cref="PreviewCommand"/>
+    /// (which discards it). Throws <see cref="ArgumentException"/> for an unknown command id.
+    /// </summary>
+    private static (byte[] Frame, (byte DigitalOut, byte AnalogOut1, byte AnalogOut2) NewState) Plan(
+        string commandId,
+        string? value,
+        (byte DigitalOut, byte AnalogOut1, byte AnalogOut2) state)
+    {
+        if (TryParseDigitalOutChannel(commandId, out var channelIndex))
+        {
+            var mask = (byte)(1 << channelIndex);
+            var digitalOut = ParseBool(value) ? (byte)(state.DigitalOut | mask) : (byte)(state.DigitalOut & ~mask);
+            var newState = state with { DigitalOut = digitalOut };
+            return (BuildSetOutputsFrame(newState), newState);
+        }
+
+        switch (commandId)
+        {
+            case "analogOut1":
+                {
+                    var newState = state with { AnalogOut1 = ParseByte(value) };
+                    return (BuildSetOutputsFrame(newState), newState);
+                }
+
+            case "analogOut2":
+                {
+                    var newState = state with { AnalogOut2 = ParseByte(value) };
+                    return (BuildSetOutputsFrame(newState), newState);
+                }
+
+            case "resetCounter1":
+                return (BuildFixedFrame(_resetCounter1Command), state);
+            case "resetCounter2":
+                return (BuildFixedFrame(_resetCounter2Command), state);
+            default:
+                throw new ArgumentException($"Unknown K8055 command '{commandId}'.", nameof(commandId));
+        }
     }
 
     private static bool TryParseDigitalOutChannel(string commandId, out int channelIndex)
@@ -85,53 +142,8 @@ public sealed class K8055ControlSurface : IControlSurface
         return (byte)Math.Clamp(number, 0, 255);
     }
 
-    private Task SetDigitalOutAsync(int channelIndex, bool isOn, CancellationToken cancellationToken)
-    {
-        byte[] frame;
-        lock (_stateLock)
-        {
-            _digitalOut[channelIndex] = isOn;
-            frame = BuildSetOutputsFrame();
-        }
+    private static byte[] BuildSetOutputsFrame((byte DigitalOut, byte AnalogOut1, byte AnalogOut2) state) =>
+        [0x00, _setOutputsCommand, state.DigitalOut, state.AnalogOut1, state.AnalogOut2, 0x00, 0x00, 0x00, 0x00];
 
-        return _session.SendAsync(frame, cancellationToken);
-    }
-
-    private Task SetAnalogOutAsync(byte? analogOut1, byte? analogOut2, CancellationToken cancellationToken)
-    {
-        byte[] frame;
-        lock (_stateLock)
-        {
-            if (analogOut1 is { } a1)
-            {
-                _analogOut1 = a1;
-            }
-
-            if (analogOut2 is { } a2)
-            {
-                _analogOut2 = a2;
-            }
-
-            frame = BuildSetOutputsFrame();
-        }
-
-        return _session.SendAsync(frame, cancellationToken);
-    }
-
-    private byte[] BuildSetOutputsFrame()
-    {
-        byte digitalOutByte = 0;
-        for (var i = 0; i < _digitalOut.Length; i++)
-        {
-            if (_digitalOut[i])
-            {
-                digitalOutByte |= (byte)(1 << i);
-            }
-        }
-
-        return [0x00, _setOutputsCommand, digitalOutByte, _analogOut1, _analogOut2, 0x00, 0x00, 0x00, 0x00];
-    }
-
-    private Task SendFixedFrameAsync(byte command, CancellationToken cancellationToken) =>
-        _session.SendAsync(new byte[] { 0x00, command, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, cancellationToken);
+    private static byte[] BuildFixedFrame(byte command) => [0x00, command, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 }

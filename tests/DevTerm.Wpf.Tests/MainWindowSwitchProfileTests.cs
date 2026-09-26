@@ -62,12 +62,12 @@ public sealed class MainWindowSwitchProfileTests
             Assert.Contains("hex", window.Title);
             Assert.AreEqual("_Disconnect", window.ConnectMenuItem.Header);
             Assert.AreEqual(1, window.OutputList.Items.Count, "Old output should be cleared; only the 'Switched to ...' line should remain.");
-            Assert.Contains("Switched to", (string)window.OutputList.Items[0]!);
+            Assert.Contains("Switched to", window.OutputList.Items[0]!.ToString()!);
 
             await stream.WriteAsync(Encoding.ASCII.GetBytes("AB"), TestContext.CancellationToken);
             var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 1, _timeout);
             Assert.IsTrue(appeared, "Expected the new (real TCP) session's incoming bytes to reach the output list.");
-            Assert.Contains("[hex]", (string)window.OutputList.Items[1]!);
+            Assert.Contains("[hex]", window.OutputList.Items[1]!.ToString()!);
         });
     }
 

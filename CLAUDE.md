@@ -407,6 +407,28 @@ file only points there, it doesn't restate them.**
   `DevTermConfiguration.Bind(configuration, options)` (never a bare `configuration.Bind`), which
   splits a scalar `Presenter` on commas afterwards. `Parser` (which presenter encodes typed lines)
   is separate and null on old profiles — `EffectiveParser` falls back to the first presenter.
+- **WPF tests must not run in parallel: WPF's XAML parser races across STA threads.** Two windows
+  parsed at the same moment on different threads (each `StaTestRunner.Run` is its own STA thread)
+  intermittently failed with `XamlParseException: The given key 'Title' was not present in the
+  dictionary` (from a `ConcurrentDictionary` inside the parser) or a bare `NullReferenceException`, about
+  once every few full-suite runs. `DevTerm.Wpf.Tests` is now `[assembly: DoNotParallelize]`, so a new test
+  class can't bring it back by forgetting the attribute. Related: `StaTestRunner` used to rethrow with a
+  bare `throw exception;`, which reported every failure at its own line; it now uses `ExceptionDispatchInfo`.
+- **A WPF screenshot taken right after a UI change that ran synchronously shows the *previous* state.**
+  `RenderTargetBitmap` renders whatever the last layout pass produced. If the code under test updated the
+  UI synchronously (e.g. `ToggleConnectionAsync` against a `FakeTransport`), a "wait until X" poll that is
+  already true pumps nothing. `wpf-main-window.png` showed a connected window under a "disconnected"
+  caption because of this. Call `StaTestRunner.DoEvents()` plus `window.UpdateLayout()` before
+  `WpfScreenshot.Save`, and assert the state you mean to capture.
+- **After changing a Terminal.Gui view's `Y`/`Visible`, its `Frame` is stale until the next layout
+  pass.** A reveal-on-focus that read `Frame.Y` right after a control-panel section collapse scrolled to the
+  old, expanded position. Track the positions you assigned yourself (`ControlPanelMode`'s `PanelState.Tops`)
+  instead of reading `Frame` right after mutating layout. Separately, `View.SetFocus()` in a headless
+  `RunHeadlessApp` test *does* raise `HasFocusChanged`: enough to test focus-driven UI like the panel's
+  `Sends:` footer, with no key injection, so it avoids the injector-degradation problem above.
+- **In a WPF `Grid` star column, a fixed-`Width` control with the default `HorizontalAlignment`
+  (Stretch) is centered, not left-aligned.** A `Width=160` `ComboBox` sat in the middle of the Busylight
+  panel's Track row until the row content got `HorizontalAlignment = Left`.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

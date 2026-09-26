@@ -66,7 +66,8 @@ public sealed class MainWindowTests
             });
 
             Assert.HasCount(1, window.OutputList.Items);
-            Assert.Contains("Warning:", (string)window.OutputList.Items[0]!);
+            Assert.Contains("Warning:", window.OutputList.Items[0]!.ToString()!);
+            Assert.AreEqual(OutputKind.Status, ((OutputLine)window.OutputList.Items[0]!).Kind, "App messages are styled apart from device output.");
 
             await Task.CompletedTask;
         });
@@ -155,8 +156,9 @@ public sealed class MainWindowTests
             var appeared = StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
             Assert.IsTrue(appeared, "Expected the decoded line to arrive via the real Session pull loop + Dispatcher.Invoke.");
-            Assert.Contains("[ascii]", (string)window.OutputList.Items[0]!);
-            Assert.Contains("ID TEK/2230", (string)window.OutputList.Items[0]!);
+            Assert.Contains("[ascii]", window.OutputList.Items[0]!.ToString()!);
+            Assert.Contains("ID TEK/2230", window.OutputList.Items[0]!.ToString()!);
+            Assert.AreEqual(OutputKind.Device, ((OutputLine)window.OutputList.Items[0]!).Kind);
         });
     }
 

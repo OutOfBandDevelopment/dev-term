@@ -13,7 +13,13 @@ Connected — the menu item reads "Disconnect":
 
 ![TUI main screen, connected](images/tui-main-connected.png)
 
-After **File > Disconnect**: the send field is disabled, and the menu item flips back to "Connect":
+The bottom line is the connection-state indicator, green for connected. After **File > Disconnect**:
+- the send field is disabled;
+- the menu item flips back to "Connect";
+- the title gains " — disconnected";
+- the status line turns red and reads "Disconnected — …";
+- a `[dev-term] Disconnected.` line appears. App messages are tagged `[dev-term]`, and errors
+  `[error]`, so neither can be mistaken for device output (tagged `[ascii]` etc.).
 
 ![TUI main screen, disconnected](images/tui-main-disconnected.png)
 
@@ -25,7 +31,9 @@ The same toggle — connected:
 
 ![WPF main window, connected](images/wpf-main-window-connected.png)
 
-Disconnected — the send box disables and a line is appended to the output list:
+Disconnected: the send box disables, the status bar's dot turns red and reads "Disconnected — …", and
+a line is added to the output. App messages are shown dimmed and italic, errors in dark red, and
+device output in normal text:
 
 ![WPF main window, disconnected](images/wpf-main-window.png)
 

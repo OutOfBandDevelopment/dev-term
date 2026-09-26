@@ -73,7 +73,9 @@ public sealed class ScreenshotTests
             var (window, transport) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), _pumpTimeout);
+            // Wait for the Loaded-triggered connect to finish (the title names the connection before
+            // it opens now, so it is no longer a "connected" signal).
+            StaTestRunner.PumpUntil(() => window.SendBox.IsEnabled, _pumpTimeout);
             await transport.PushIncomingAsync("ID TEK/2230,V81.1,VERS:14\r"u8.ToArray());
             StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
 
@@ -91,9 +93,18 @@ public sealed class ScreenshotTests
             var (window, _) = CreateMainWindow();
             WpfScreenshot.ShowOffScreen(window);
 
-            StaTestRunner.PumpUntil(() => window.Title.Contains("tcp://"), _pumpTimeout);
+            // Wait for the Loaded-triggered connect to finish (the title names the connection before
+            // it opens now, so it is no longer a "connected" signal).
+            StaTestRunner.PumpUntil(() => window.SendBox.IsEnabled, _pumpTimeout);
             await window.ToggleConnectionAsync();
             StaTestRunner.PumpUntil(() => window.OutputList.Items.Count > 0, _pumpTimeout);
+
+            // The toggle updates the UI synchronously, so the wait above returns without pumping
+            // anything - render only after a layout pass, or the capture shows the pre-disconnect
+            // window (it did: this image showed a connected window under a "disconnected" caption).
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+            Assert.IsFalse(window.SendBox.IsEnabled, "Captured state should be disconnected.");
 
             var path = Path.Combine(_imagesDirectory, "wpf-main-window.png");
             WpfScreenshot.Save(window, path);

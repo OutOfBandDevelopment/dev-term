@@ -15,11 +15,21 @@
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
-                <MenuItem Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
-                <MenuItem Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
-                <MenuItem Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
+                <MenuItem x:Name="K8055MenuItem" Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
+                <MenuItem x:Name="BusylightMenuItem" Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
+                <MenuItem x:Name="ScpiMenuItem" Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
             </MenuItem>
         </Menu>
+        <!-- Connection-state indicator (MainWindow.RefreshConnectionUi): a colored dot plus
+             "Connected — tcp://…" / "Connecting — …" / "Disconnected — …". -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="ConnectionStatusDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="Firebrick" />
+                    <TextBlock x:Name="ConnectionStatusText" VerticalAlignment="Center" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
         <DockPanel Margin="8">
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                 <Button DockPanel.Dock="Right" Content="Send" Padding="16,0" Margin="8,0,0,0"
@@ -31,7 +41,25 @@
                 <ComboBox x:Name="SendBox" IsEditable="True" IsTextSearchEnabled="False"
                           VerticalContentAlignment="Center" PreviewKeyDown="SendBox_PreviewKeyDown" />
             </DockPanel>
-            <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+            <!-- Items are OutputLine records: device output in the normal color, app status lines
+                 dimmed and italic, errors dark red - so they can't be mistaken for each other. -->
+            <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:OutputLine}">
+                        <TextBlock x:Name="LineText" Text="{Binding Text}" />
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Status}">
+                                <Setter TargetName="LineText" Property="Foreground" Value="DimGray" />
+                                <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Error}">
+                                <Setter TargetName="LineText" Property="Foreground" Value="DarkRed" />
+                                <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
         </DockPanel>
     </DockPanel>
 </Window>

@@ -11,6 +11,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--asciimaxlinelength' must be 0 (unbounded) or a positive maximum length.");
         }
 
+        if (options.ScpiAutoDetectTimeoutMs is < 100 or > 60000)
+        {
+            return ValidateOptionsResult.Fail("'--scpiautodetecttimeoutms' must be between 100 and 60000.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":

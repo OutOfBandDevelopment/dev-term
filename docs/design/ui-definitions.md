@@ -38,6 +38,13 @@ button kinds K8055 already exercised; `TextFieldControl` is still unexercised by
 module. Busylight's real-hardware verification is still pending (software-only pass so far, real
 device review deferred to the user); K8055's is done for WPF, still pending for the TUI side.
 
+**Value constraints, command previews, and renderer layout, landed 2026-09-25**: a serializable
+`ValueConstraint` (below) plus one shared `ValueValidator`, both renderers validating every typed
+value with it before sending; an optional `DevTerm.Core.Control.ICommandPreview` capability that
+lets a surface show exactly what a control would send (implemented by the SCPI, K8055, and
+Busylight surfaces); and collapsible sections, aligned labels, and a bottom "Notes" section for
+`Description` in both renderers — see [docs/specs/device-control-panel.md](../specs/device-control-panel.md).
+
 ## Shape
 
 A `UiDefinition` is a named panel made of `UiSection`s (a label plus a flat list of controls — no
@@ -60,7 +67,9 @@ fields:
 - `ChoiceControl` — one of a fixed set of named options, either as a dropdown or a radio group (a
   `Style` field picks which — a small option count reads better as radio buttons, e.g. a color
   preset or a connection mode; a longer list reads better as a dropdown, e.g. a sound track name).
-- `TextFieldControl` — free text (e.g. an IP address, a hostname).
+- `TextFieldControl` — free text (e.g. an IP address, a hostname), or, with an optional
+  `Constraint: ValueConstraint?`, a typed value with a data type and bounds (see "Values and
+  widgets" below).
 - `IndicatorControl` — a read-only display bound to live decoder output, not a control the user
   changes (e.g. a digital input's current state, a pulse counter value, a connection status line).
 
@@ -90,11 +99,20 @@ class ToggleControl
 class SliderControl
 class NumericControl
 class ChoiceControl
-class TextFieldControl
+class TextFieldControl {
+  Constraint: ValueConstraint?
+}
 class IndicatorControl
+class ValueConstraint {
+  Kind: Text | Integer | Number
+  Minimum: double?
+  Maximum: double?
+  ClampToRange: bool
+}
 
 UiDefinition *-- UiSection
 UiSection *-- UiControl
+TextFieldControl o-- ValueConstraint
 UiControl <|-- ButtonControl
 UiControl <|-- ToggleControl
 UiControl <|-- SliderControl
@@ -170,6 +188,41 @@ and XML serializers:
   ]
 }
 ```
+
+## Values and widgets
+
+A value's **data type and bounds** are declared separately from the **widget** that collects it.
+Before this, the widget implied the type: only `SliderControl`/`NumericControl` had
+`Minimum`/`Maximum`, so "a number typed into a plain text field" couldn't be expressed, and a SCPI
+parameter's `Kind` fixed its widget.
+
+- `ValueConstraint` (`DevTerm.UiDefinitions`): `Kind` (`Text`, `Integer`, `Number`; written by name
+  in JSON), optional inclusive `Minimum`/`Maximum`, and `ClampToRange` (default false: an
+  out-of-range value is *rejected*; true: it's clamped). A plain class of nullable scalars, so it
+  round-trips through both `System.Text.Json` and `XmlSerializer` with no special-casing (see
+  `ValueConstraintTests`). Carried by `TextFieldControl.Constraint`; a definition written before it
+  existed loads with no constraint (free text), unchanged.
+- `ValueValidator.Validate(constraint, input)`: the **one** validator both renderers run on commit,
+  and on each field a `ParameterFieldIds` button reads. Result: valid plus a normalized value
+  (invariant culture: `" 1e3 "` → `"1000"`, `"3.0"` → `"3"` for `Integer`), or invalid plus a
+  message (`'abc' is not a number.`, `9 is out of range (1 to 4).`). An invalid value is never sent.
+- `ValueValidator.ConstraintFor(control)` is how a renderer gets a control's constraint:
+  `TextFieldControl.Constraint` as declared, or `ValueConstraint.ForRange(Minimum, Maximum)` (a
+  clamping `Number` range) for `SliderControl`/`NumericControl` — so their existing `Minimum`/
+  `Maximum` JSON keeps working and keeps clamping, but unparsable input is now rejected instead of
+  silently replaced by `DefaultValue`.
+- The SCPI module uses this so a `ScpiParameterDefinition` can pick its widget independently of its
+  `Kind`/bounds: an optional `Control` hint (`Numeric`, `Slider`, `Text`, `Choice`). A `Numeric`
+  parameter with `"Control": "Text"` becomes a `TextFieldControl` with a non-clamping `Number`
+  constraint (`Integer` when `DecimalPlaces` is 0) over its `Minimum`/`Maximum`; `"Slider"` becomes a
+  `SliderControl` (step `10^-DecimalPlaces`). A hint that doesn't fit the kind (a slider for text, a
+  choice with no options) falls back to the kind's default widget. See
+  [scpi-instrument-control.md](features/scpi-instrument-control.md).
+
+The model says nothing about *what a control sends*; that's the surface's job. A surface that can
+describe it implements `DevTerm.Core.Control.ICommandPreview` alongside `IControlSurface` (kept
+separate so existing surfaces and test fakes compile unchanged), and both renderers show it — see
+the spec's "Command preview" section.
 
 ## Why a flat one-level Section→Control structure, not deeper nesting
 

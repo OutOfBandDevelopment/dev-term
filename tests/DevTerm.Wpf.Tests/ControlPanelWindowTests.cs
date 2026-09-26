@@ -282,14 +282,13 @@ public sealed class ControlPanelWindowTests
     }
 
     [TestMethod]
-    public void RowLabel_WrapsInsteadOfOverlappingRowContent()
+    public void RowLabel_StaysOnOneLine_AndNeverOverlapsItsRowContent()
     {
-        // Regression test: the row label was a fixed-Width TextBlock with no TextWrapping, so a
-        // label longer than fits in that width painted past its column and overlapped the row's
-        // control (WPF doesn't clip an unwrapped TextBlock to its layout Width) — not visible with
-        // K8055/Busylight's short labels, but real with SCPI profile labels like "Configure DC
-        // Voltage Range" (see the 34401A profile). Fixed by wrapping instead of widening, since a
-        // wrapped label only grows its own row's height, never the sibling's position.
+        // History: the row label was first a fixed-Width, unwrapped TextBlock, so a long label
+        // ("Configure DC Voltage Range", the 34401A profile) painted over its row's control; the
+        // fix wrapped it, which then broke short-but-not-short-enough labels like Busylight's
+        // "On (unit unconfirmed):" onto two lines. Now labels never wrap and sit in an auto-sized
+        // label column per section, so the control column starts past the longest label instead.
         StaTestRunner.Run(async () =>
         {
             var definition = new UiDefinition
@@ -300,14 +299,30 @@ public sealed class ControlPanelWindowTests
                     new UiSection
                     {
                         Label = "Configure",
-                        Controls = [new ButtonControl { Id = "longLabel", Label = "Configure DC Voltage Range" }],
+                        Controls =
+                        [
+                            new ButtonControl { Id = "longLabel", Label = "Configure DC Voltage Range" },
+                            new ButtonControl { Id = "short", Label = "Go" },
+                        ],
                     },
                 ],
             };
             var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
             StaTestRunner.DoEvents();
+            var content = (System.Windows.FrameworkElement)window.Content;
+            content.Measure(new System.Windows.Size(800, 600));
+            content.Arrange(new System.Windows.Rect(0, 0, 800, 600));
+            content.UpdateLayout();
 
-            Assert.AreEqual(System.Windows.TextWrapping.Wrap, window.ControlLabels["longLabel"].TextWrapping);
+            var label = window.ControlLabels["longLabel"];
+            Assert.AreEqual(System.Windows.TextWrapping.NoWrap, label.TextWrapping);
+
+            var grid = (Grid)label.Parent;
+            var labelRight = label.TranslatePoint(new System.Windows.Point(label.ActualWidth, 0), grid).X;
+            var longX = window.ControlViews["longLabel"].TranslatePoint(default, grid).X;
+            var shortX = window.ControlViews["short"].TranslatePoint(default, grid).X;
+            Assert.IsGreaterThanOrEqualTo(labelRight, longX, "The control starts past its label, not over it.");
+            Assert.AreEqual(longX, shortX, 0.5, "Every control in a section starts in the same column.");
 
             await Task.CompletedTask;
         });

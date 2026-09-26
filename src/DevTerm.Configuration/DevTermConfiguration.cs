@@ -140,6 +140,11 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.ScpiProfile)] = options.ScpiProfile;
         }
 
+        if (options.ScpiAutoDetectTimeoutMs != CliOptions.DefaultScpiAutoDetectTimeoutMs)
+        {
+            profile[nameof(CliOptions.ScpiAutoDetectTimeoutMs)] = options.ScpiAutoDetectTimeoutMs;
+        }
+
         return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
     }
 }
