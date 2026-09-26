@@ -55,9 +55,10 @@ public static class TuiMode
 
         var app = Application.Create().Init();
         TuiTheme.Apply(ActiveTheme.Current);
+        TuiWindowParts parts;
         try
         {
-            var parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -74,7 +75,18 @@ public static class TuiMode
             app.Dispose();
         }
 
-        await session.CloseAsync();
+        // A profile switch replaces `session` with a new one (see BuildWindow's own `session`
+        // parameter, reassigned by its closed-over SwitchProfileAsync) without this method ever
+        // seeing it - closing/disposing this method's own (by-then-stale, already-closed-by-the-
+        // switch) `session` parameter here would leave whichever session is actually current never
+        // closed or disposed. CurrentSession always names the real one.
+        var currentSession = parts.CurrentSession();
+        await currentSession.CloseAsync();
+        if (!ReferenceEquals(currentSession, session))
+        {
+            await currentSession.DisposeAsync();
+        }
+
         return 0;
 
         bool OnUnhandledException(Exception ex)
@@ -766,7 +778,7 @@ public static class TuiMode
             StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
         }
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => session);
     }
 
     /// <summary>
@@ -1042,4 +1054,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu, Func<Session> CurrentSession);
