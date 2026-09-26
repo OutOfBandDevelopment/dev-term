@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Code confirmed; timing plausible, not reproduced (found by two reviewers) |
 | **Area** | DevTerm.Core (StreamToPipePump, Session), Serial/TCP/HID |
 | **Created** | 2026-09-26 |
@@ -36,3 +36,20 @@ HID handle is never closed. A later `OpenAsync` on the same COM port fails with 
 
 ## Tests to add
 Close with a full, unread pipe completes, releases the resource, and a reopen succeeds.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26, all three suggested layers:
+- `StreamToPipePump.RunAsync` (`src/DevTerm.Core/Transports/StreamToPipePump.cs`) now wraps
+  `writer.FlushAsync(cancellationToken)` in its own try/catch and treats a cancellation (a paused pipe unblocked by
+  the transport deliberately closing) as a normal `break`, instead of letting `OperationCanceledException` escape
+  and turn the pump's own `Task` `Canceled`.
+- `SerialTransport.CloseAsync`, `TcpTransport.CloseAsync`, and `HidTransport.CloseAsync` now await `_pumpTask`
+  inside a `try/catch (OperationCanceledException)`, with the port/socket/device teardown and `State =
+  ConnectionState.Closed` moved into a `finally`, so a still-Canceled pump task (belt-and-suspenders, since the pump
+  fix above should prevent one) can no longer stop the transport from actually closing.
+- `Session.StopAsync` (`src/DevTerm.Core/Sessions/Session.cs`) now swallows an `OperationCanceledException` from
+  `_transport.CloseAsync` too, unless it's the caller's own `cancellationToken` that's cancelled — a transport-internal
+  cancellation must not escape `CloseAsync`'s "never throws" contract.
+
+Regression test: `DevTerm.Core.Tests.Transports.StreamToPipePumpTests.RunAsync_WhenTheTokenIsCancelledBeforeTheFlushThatFollowsARead_CompletesWithoutThrowing`,
+which fails without the pump fix (`TaskCanceledException` escapes `RunAsync`) and passes with it.

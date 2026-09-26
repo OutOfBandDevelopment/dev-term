@@ -37,7 +37,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | # | Bug | Area | Status |
 |---|---|---|---|
 | 008 | [Real read failures are reported as a clean hang-up with no error](fixed/008-pump-swallows-read-errors.md) | DevTerm.Core (StreamToPipePump), Serial/TCP/HID | Fixed |
-| 009 | [Closing while the pipe is full throws part-way and leaks the port or socket](009-pump-flush-cancel-close-leak.md) | DevTerm.Core (StreamToPipePump, Session), Serial/TCP/HID | Open |
+| 009 | [Closing while the pipe is full throws part-way and leaks the port or socket](fixed/009-pump-flush-cancel-close-leak.md) | DevTerm.Core (StreamToPipePump, Session), Serial/TCP/HID | Fixed |
 | 010 | [A manifest's UiFile/KaitaiFile path can make Save write, and Load read, anywhere on disk](010-manifest-path-traversal.md) | DevTerm.DeviceManifests (loader, writer, validator) | Open |
 | 011 | [Manifest zips extract with no size limit and leave a temp folder behind on every open](011-manifest-zip-unbounded-temp-leak.md) | DevTerm.DeviceManifests (loader) | Open |
 | 012 | [Profile names are never validated](012-profile-names-not-validated.md) | DevTerm.Configuration (ConnectionProfileStore, DevTermUserDataPaths) | Open |

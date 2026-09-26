@@ -57,7 +57,18 @@ public static class StreamToPipePump
 
                 writer.Advance(bytesRead);
 
-                var flushResult = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                FlushResult flushResult;
+                try
+                {
+                    flushResult = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Expected: a paused pipe (backpressure) blocks FlushAsync until either a
+                    // reader catches up or the transport deliberately closes and cancels us.
+                    break;
+                }
+
                 if (flushResult.IsCompleted || flushResult.IsCanceled)
                 {
                     break;

@@ -102,21 +102,31 @@ public sealed class HidTransport : ITransport
         State = ConnectionState.Closing;
 
         _pumpCts?.Cancel();
-        if (_pumpTask is not null)
+        try
         {
-            await _pumpTask.ConfigureAwait(false);
+            if (_pumpTask is not null)
+            {
+                await _pumpTask.ConfigureAwait(false);
+            }
         }
+        catch (OperationCanceledException)
+        {
+            // Expected: cancelling the pump while it's blocked flushing into a paused pipe can
+            // surface as the pump task itself completing Canceled rather than completing normally.
+        }
+        finally
+        {
+            _pumpCts?.Dispose();
+            _pumpCts = null;
+            _pumpTask = null;
+            _pipe = null;
 
-        _pumpCts?.Dispose();
-        _pumpCts = null;
-        _pumpTask = null;
-        _pipe = null;
+            _device.Close();
+            _device.Dispose();
+            _device = null;
 
-        _device.Close();
-        _device.Dispose();
-        _device = null;
-
-        State = ConnectionState.Closed;
+            State = ConnectionState.Closed;
+        }
     }
 
     public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)

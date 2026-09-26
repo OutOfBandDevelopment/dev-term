@@ -317,8 +317,10 @@ public sealed class Session : IAsyncDisposable
         {
             await _transport.CloseAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
+            // A transport-internal cancellation (its own pump task, not this call's own token)
+            // must not escape CloseAsync's "never throws" contract.
             Debug.WriteLine($"Session: closing the transport failed: {ex}");
         }
 
