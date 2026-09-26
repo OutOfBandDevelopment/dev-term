@@ -132,9 +132,34 @@ in, just Connect:
 
 ![WPF connection editor, Loopback transport](images/wpf-device-profiles-loopback.png)
 
-Filling in the fields and pressing **Connect** validates them and connects immediately — no need to
-save a profile first (Save is for reusing the setup later; see
-[Managing connection profiles](managing-profiles.md)).
+### Accepting your changes: Connect
+
+**Connect** is how you accept what's in the form. There's no separate OK or Apply. Connect:
+
+1. checks the fields; if one is wrong, it says why and the editor stays open (at the top of the TUI
+   form, in red at the top of the WPF window);
+2. closes the editor and connects with those settings.
+
+Opened from **File > Device Profiles...** while running, Connect also saves the settings as your
+default connection (the one dev-term uses next time you start it with no arguments), then drops the
+current connection and connects with the new settings in place, with no restart. The editor that
+opens at startup, when nothing valid is configured, only connects; it doesn't change the saved
+default.
+
+You don't need to save a named profile first. **Save Profile** is only for reusing the setup later
+(see [Managing connection profiles](managing-profiles.md)), and it doesn't close the editor.
+
+How to press it:
+
+- **TUI**: Connect and Quit are the last row of the form, below Import/Export. **Tab** to Connect
+  (the form scrolls to follow focus; **Page Down** jumps there faster) and press **Enter** or
+  **Space**, or click it. Pressing Enter while you're in a text field does *not* connect, so move to
+  the button first. **Quit**, next to it, leaves without connecting; at startup that exits dev-term.
+- **WPF**: **Connect** and **Close** are at the bottom right of the window. Connect is the default button, so
+  **Enter** in a field presses it. **Close** (or Esc) leaves without connecting.
+
+Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
+changes away.
 
 ### Picking a detected serial port, HID device, or USBTMC device
 

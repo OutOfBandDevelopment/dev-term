@@ -73,6 +73,23 @@ The send box is an editable drop-down: click its arrow to see recently sent line
 field focused, press **Up**/**Down** the same way the TUI does — the same 100-line, this-run-only
 history.
 
+## Telling device output from dev-term's own messages
+
+The output pane mixes three kinds of line, and each looks different so you never mistake one for
+another:
+
+- **Device output** is in the normal text color. In the TUI each line is tagged with the presenter
+  that decoded it (`[ascii] ID TEK/2230,…`).
+- **dev-term's own notices** (connected, disconnected, logging started, a theme problem) are in
+  italics, in a dimmer color. The TUI also tags them `[dev-term]`.
+- **Errors** (a failed send, a lost connection) are red: bold in the TUI, where they're also tagged
+  `[error]`, and dark red in WPF.
+
+The exact colors follow the current theme (see [Choosing a theme](themes.md)). The CLI doesn't color
+or tag its own messages: device output is `[ascii] …` as above, and dev-term's messages are plain
+lines, with errors on stderr. For how these look around a disconnect, see
+[Connecting and disconnecting](connect-disconnect.md).
+
 ## If something goes wrong
 
 No front end crashes or exits over an error once it's running. It tells you what happened, and you

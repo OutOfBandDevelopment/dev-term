@@ -189,6 +189,9 @@ arrive:
 The TUI draws bars with block characters and plots with braille dots, so they need a font with
 those characters (Cascadia Mono, Consolas, and most modern terminal fonts have them).
 
+To write a manifest for your own device, or change one, use **Device > Edit Device Manifest...**
+instead of editing the JSON by hand: see [Editing a device manifest](manifest-editor.md).
+
 ## What's not built yet
 
 - A manifest can only describe text commands and replies; one that references a binary Kaitai

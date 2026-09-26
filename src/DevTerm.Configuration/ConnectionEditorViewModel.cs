@@ -381,9 +381,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// Set once <see cref="ConnectCommand"/> validates; <see langword="null"/> until then. What
     /// "Connect" means depends on the caller: at startup, with no valid configuration yet, it's
     /// used directly to build the DI host and connect immediately. From the "Device Profiles..."
-    /// menu item (already connected), it's saved as the default profile and a restart is requested
-    /// instead — see docs/design/connection-profiles.md's note on why this doesn't live-swap the
-    /// running session's transport.
+    /// menu item (already connected), it's saved as the default profile and live-switched to: the
+    /// running session closes and the new one opens in place (<c>MainWindow.SwitchProfileAsync</c>,
+    /// <c>TuiMode</c>'s <c>SwitchProfileAsync</c>) — see docs/specs/connection-editor.md.
     /// </summary>
     public CliOptions? Result { get; private set; }
 
