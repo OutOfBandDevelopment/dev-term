@@ -77,7 +77,7 @@
 
         <!-- HP/Agilent/Keysight 34401A: 9600 8N2, no handshake, LF terminator, real hardware confirmed
              (see docs/changes/2026-09-23.md). SYSTem:REMote must be sent before any query. -->
-        <Parameter name="RealSerialHp34401aPort" value="COM9" />
+        <Parameter name="RealSerialHp34401aPort" value="COM3" />
         <Parameter name="RealSerialHp34401aBaud" value="9600" />
         <Parameter name="RealSerialHp34401aDataBits" value="8" />
         <Parameter name="RealSerialHp34401aParity" value="None" />
@@ -130,14 +130,16 @@
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
 
-        <!-- Radex One (RealHardwareRadexOneTests, in DevTerm.Devices.RadexOne.Tests): 2400 8-N-1, no
-             handshake - real-hardware confirmed 2026-09-25 as a plain virtual COM port at COM8, not
+        <!-- Radex One (RealHardwareRadexOneTests, in DevTerm.Devices.RadexOne.Tests): 9600 8-N-1, no
+             handshake - real-hardware confirmed 2026-09-26 as a plain virtual COM port at COM8, not
              the USB HID device an earlier draft of this module wrongly assumed (a live `listhiddevices
              true` enumeration that day found no matching device at all; `listports true` (CLAUDE.md's
              Commands section) showed COM8 present). The underlying USB-serial bridge reports
              VID 0xABBA / PID 0xA011 (Windows Device Manager, 2026-09-25) - not usable for HID
              matching since the device isn't HID, but useful if COM8 needs auto-detecting later.
-             See docs/changes/2026-09-25.md and TODO.md. -->
+             Corrects an earlier, unverified "2400 baud" claim (docs/bugs/fixed/061-radexone-wrong-baud-rate.md):
+             the device never actually replied at 2400; the real device answers at 9600.
+             See docs/changes/2026-09-26.md and docs/design/proposals/radex-one-protocol.md. -->
         <Parameter name="RealSerialRadexOnePort" value="COM8" />
 
         <!-- DE-5000 LCR meter's custom IR-to-BLE adapter (RealHardwareDe5000Tests, in

@@ -11,14 +11,19 @@ as prior art:
 
 This source project is a finished reverse-engineering effort with a fully documented binary
 framing, checksum, and four command types. **2026-09-25: confirmed against a real device on
-COM8 that the source doc's original transport claim (a plain virtual COM port, 2400 8-N-1) was
-right all along** — see "Device" below for how an earlier draft of this doc got that backwards.
+COM8 that the source doc's original transport claim (a plain virtual COM port) was right all
+along** — see "Device" below for how an earlier draft of this doc got that backwards. The same
+2026-09-25 pass also guessed the wrong baud rate (2400); **2026-09-26: corrected to 9600, the
+device's actual real-hardware-confirmed baud** — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md).
 
 ## Device
 
 [Radex One](https://quartarad.com/product/radex-one/) — a portable USB geiger counter from
-Quarta. It enumerates as a **plain virtual COM port** (2400 baud, 8 data bits, no parity, 1 stop
-bit, no handshake) — real-hardware confirmed 2026-09-25 on COM8. An earlier draft of this doc
+Quarta. It enumerates as a **plain virtual COM port** (9600 baud, 8 data bits, no parity, 1 stop
+bit, no handshake) — real-hardware confirmed 2026-09-26 on COM8 (correcting an earlier, unverified
+"2400 baud" guess from 2026-09-25 — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md)). An earlier draft of this doc
 claimed it was "confirmed directly" as a USB HID device instead and built the whole module (HID
 transport, a `RadexOneHidFraming` report wrapper) around that claim; that claim was never actually
 checked against a real device and turned out to be wrong. Once a real unit turned up as a COM
@@ -144,7 +149,7 @@ package "Radex One Device Control Module (plugin)" {
 }
 
 [Session / Transport] <<ITransport>> as transport
-note right of transport : Plain serial (2400 8N1, no handshake)\nreal-hardware confirmed 2026-09-25
+note right of transport : Plain serial (9600 8N1, no handshake)\nreal-hardware confirmed 2026-09-26
 
 user --> surface : Invokes command\n(e.g. Read Data, Set Threshold)
 surface --> framer : Builds request packet
@@ -188,14 +193,21 @@ list. Once a real device turned up enumerated as a COM port (not HID), the whole
 corrected: `RadexOneHidFraming` was deleted, the transport assumption fixed, and the framer/codec
 rewritten and checksum-verified byte-for-byte against several of the source doc's real trace
 examples (Read Data, Read Settings, Write Settings, both directions) — every one matched, including
-one that requires the checksum's modulo to actually wrap. `RealHardwareRadexOneTests` was fixed to
-use 2400 baud (was 9600) to match the device's real serial settings.
+one that requires the checksum's modulo to actually wrap. `RealHardwareRadexOneTests` was changed to
+use 2400 baud (was 9600) that same day, based on the source doc's prose rather than a real-hardware
+check of the baud rate specifically — this later turned out to be wrong (see below).
 
 Unit-tested (`tests/DevTerm.Devices.RadexOne.Tests`, 22 tests, including two that assert exact bytes
 against the source doc's own real-hardware trace examples) — full solution builds clean and the
-whole `TestCategory=Unit` suite passes. **Still pending: a fresh `RealHardwareRadexOneTests` run
-against the actual device on COM8** to confirm it now replies, now that both the transport and the
-packet-layout bugs are fixed.
+whole `TestCategory=Unit` suite passes.
+
+**2026-09-26: `RealHardwareRadexOneTests` run against the real device on COM8 at 2400 baud received
+zero bytes** — the transport and packet-layout fixes above were correct, but the 2400 baud setting
+adopted the same day was never itself checked against real hardware. Trying alternate baud rates
+found the device answers at **9600 baud**, not 2400 — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md). Every code/doc location claiming "2400
+baud, real-hardware confirmed 2026-09-25" was corrected to 9600, and the real-hardware test now
+passes end to end, decoding a real reading (`RADEX-ONE: CPM=15 Ambient=10 Accum=259`).
 
 `RadexOneExtensionCodec.TryParseReadData`/`TryParseReadSettings`/`TryVerifyWriteSettingsAck` now also
 verify each extension's own trailing checksum, not just the framer's outer header checksum

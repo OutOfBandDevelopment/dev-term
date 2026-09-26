@@ -31,6 +31,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 005 | [DE-5000 negative phase angle and D readings decode as huge positives](fixed/005-de5000-negative-secondary.md) | DevTerm.Devices.De5000 | Fixed |
 | 006 | [One missing SCPI or manifest reply shifts every later reply onto the wrong field](fixed/006-reply-queue-desync.md) | DevTerm.Core (LineReplyPresenter), DevTerm.Devices.Scpi, DevTerm.DeviceManifests | Fixed |
 | 007 | [Closed TUI windows are never disposed: Page Up/Down stop working and handlers leak](fixed/007-tui-modal-windows-not-disposed.md) | TUI (DevTerm.Console) | Fixed |
+| 061 | [The Radex One never replies because its serial connection uses the wrong baud rate](fixed/061-radexone-wrong-baud-rate.md) | DevTerm.Devices.RadexOne | Fixed |
 
 ## Medium
 

@@ -40,9 +40,10 @@ public static class RadexOneCommand
 /// packets (Read Data, Read Settings, Write Settings, both directions) byte-for-byte against this
 /// exact formula — every one matched, including the one that requires the modulo to wrap.</para>
 ///
-/// <para>The device is a plain virtual COM port (2400 8N1, real-hardware confirmed 2026-09-25), not a
-/// USB HID device as an earlier draft of the proposal wrongly claimed, so there is no report wrapping
-/// to account for here.</para>
+/// <para>The device is a plain virtual COM port (9600 8N1, real-hardware confirmed 2026-09-26,
+/// correcting an earlier, unverified "2400 baud" claim - see
+/// docs/bugs/fixed/061-radexone-wrong-baud-rate.md), not a USB HID device as an earlier draft of the
+/// proposal wrongly claimed, so there is no report wrapping to account for here.</para>
 /// </summary>
 public static class RadexOneFramer
 {
