@@ -29,7 +29,7 @@ of the handshake.
 Opening and closing the panel twice leaves no watcher in the pipeline.
 
 ## Resolution
-Fixed on 2026-09-26: `ZoomH4nControlSurface` is now `IDisposable` — `Dispose()` calls
+Fixed in `dev/fix-bugs` on 2026-09-26: `ZoomH4nControlSurface` is now `IDisposable` — `Dispose()` calls
 `_session.RemovePresenter(_wakeWatcher)` (mirroring `ManifestPanel`'s own Attach/Dispose pattern) and disposes its
 `SemaphoreSlim`. Rather than fixing each front-end call site individually, the shared generic renderers now check
 for it once: `ControlPanelMode.BuildWindow` (`src/DevTerm.Console/ControlPanelMode.cs`) hooks
