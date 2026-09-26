@@ -67,7 +67,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
-| 033 | [Profiles, the saved default and preferences are written non-atomically](033-non-atomic-writes.md) | DevTerm.Configuration | Open |
+| 033 | [Profiles, the saved default and preferences are written non-atomically](fixed/033-non-atomic-writes.md) | DevTerm.Configuration | Fixed |
 | 034 | [Export All deletes the existing zip before checking the profile names](034-exportzip-deletes-target-first.md) | DevTerm.Configuration (ConnectionProfileStore) | Open |
 | 035 | [Typing an export path marks the editor as having unsaved changes](035-dirty-tracking-non-connection-fields.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Open |
 | 036 | [A session-log write failure is silent and can leave a torn line that makes the whole log unloadable](036-log-write-failure-silent.md) | DevTerm.Logging (SessionLogWriter, SessionLogger), DevTerm.Core (Session) | Open |

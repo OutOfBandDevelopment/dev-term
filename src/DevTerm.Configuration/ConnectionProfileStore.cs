@@ -96,7 +96,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
     {
         ProfileName.ThrowIfInvalid(name);
         Directory.CreateDirectory(_profilesDirectory);
-        File.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
+        AtomicFile.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
     /// <summary>Writes <paramref name="options"/> to <paramref name="path"/> as a standalone JSON file, the same shape <see cref="Save"/> writes under a profile name — for exporting/sharing a profile outside <see cref="DevTermUserDataPaths.ProfilesDirectory"/>.</summary>
     public static void ExportToFile(string path, CliOptions options) =>
-        File.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
+        AtomicFile.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
 
     /// <summary>
     /// Writes several saved profiles to a single zip file at <paramref name="zipPath"/>, one
@@ -196,7 +196,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
             }
 
             using var reader = new StreamReader(entry.Open());
-            File.WriteAllText(GetPath(targetName), reader.ReadToEnd());
+            AtomicFile.WriteAllText(GetPath(targetName), reader.ReadToEnd());
             existing.Add(targetName);
             imported++;
         }
@@ -267,7 +267,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
         foreach (var profile in profiles)
         {
-            File.WriteAllText(GetPath(profile.Name), profile.Json);
+            AtomicFile.WriteAllText(GetPath(profile.Name), profile.Json);
         }
 
         return removed;
