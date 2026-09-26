@@ -26,6 +26,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePre
 
     private readonly List<byte> _buffer = [];
     private bool _pendingCr;
+    private bool _pendingLengthFlushTerminator;
 
     /// <remarks>
     /// <see cref="AsciiPresenterOptions.MaxLineLength"/> flushes the accumulated line once it
@@ -63,6 +64,15 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePre
                     {
                         // The second half of a CRLF pair already flushed by the CR — swallow it.
                         _pendingCr = false;
+                        _pendingLengthFlushTerminator = false;
+                        continue;
+                    }
+
+                    if (_pendingLengthFlushTerminator)
+                    {
+                        // This LF terminates the line a length-triggered flush already emitted —
+                        // swallow it rather than flushing the (empty) buffer as a spurious line.
+                        _pendingLengthFlushTerminator = false;
                         continue;
                     }
 
@@ -74,15 +84,26 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePre
 
                 if (b == _carriageReturn)
                 {
+                    if (_pendingLengthFlushTerminator)
+                    {
+                        // Same as above, but keep watching for a following LF to still swallow the
+                        // rest of a CRLF pair.
+                        _pendingLengthFlushTerminator = false;
+                        _pendingCr = true;
+                        continue;
+                    }
+
                     (lines ??= []).Add(Flush());
                     _pendingCr = true;
                     continue;
                 }
 
+                _pendingLengthFlushTerminator = false;
                 _buffer.Add(b);
                 if (MaxLineLength > 0 && _buffer.Count >= MaxLineLength)
                 {
                     (lines ??= []).Add(Flush());
+                    _pendingLengthFlushTerminator = true;
                 }
             }
         }
@@ -97,6 +118,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePre
     {
         _buffer.Clear();
         _pendingCr = false;
+        _pendingLengthFlushTerminator = false;
     }
 
     private string Flush()
