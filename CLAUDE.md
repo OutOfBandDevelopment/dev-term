@@ -439,6 +439,17 @@ file only points there, it doesn't restate them.**
 - **A Terminal.Gui `Label` wraps a line longer than its width, and whatever falls past its `Height` is
   silently dropped.** A two-line label whose first line was too long lost its second line entirely. Keep
   each explicit line shorter than the label's width.
+- **A headless Terminal.Gui resize works:** `app.Driver.SetScreenSize(w, h)` followed by
+  `LayoutAndDraw(true)` on v2.5.0's "dotnet" driver acts as a real resize and fires `SubViewsLaidOut` with the
+  new viewport width. Calling `SetContentSize` from a `SubViewsLaidOut` handler settles without looping, as
+  long as it only runs when the value actually changed; that's how the control panel's form sizes its
+  sideways scroll area.
+- **A library's `<None Include="Manifests\**\*" Link="manifests\%(RecursiveDir)..."
+  CopyToOutputDirectory="PreserveNewest">` is copied into the output of every app and test project that
+  references it, even indirectly.** That's how the bundled device manifests reach both apps and the tests
+  without per-project wiring.
+- **The WPF project's implicit usings don't include `System.IO`.** `IOException`/`InvalidDataException`
+  fail with CS0103 there without an explicit `using System.IO;`, unlike the console and library projects.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

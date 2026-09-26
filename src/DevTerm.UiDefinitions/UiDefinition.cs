@@ -27,5 +27,8 @@ public sealed class UiSection
     [XmlElement("Choice", typeof(ChoiceControl))]
     [XmlElement("TextField", typeof(TextFieldControl))]
     [XmlElement("Indicator", typeof(IndicatorControl))]
+    [XmlElement("BarGraph", typeof(BarGraphControl))]
+    [XmlElement("StripChart", typeof(StripChartControl))]
+    [XmlElement("Vector", typeof(VectorControl))]
     public List<UiControl> Controls { get; set; } = [];
 }

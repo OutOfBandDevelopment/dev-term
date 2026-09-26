@@ -140,6 +140,7 @@ public partial class MainWindow : Window
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
+        ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _cliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -359,6 +360,17 @@ public partial class MainWindow : Window
 
     // ShowDialog(), not Show(): unlike the two panels above, this is a one-shot picker (mirrors
     // Device Profiles), and the resulting control panel is opened separately below with Show().
+    // Device > Device Manifest...: pick and load a manifest, then open its panel (non-modal) on the
+    // current session - see ManifestPickerWindow.
+    private void DeviceManifest_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
+        if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
+        {
+            ManifestPickerWindow.OpenPanel(this, _session, manifest);
+        }
+    }
+
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
         var chosen = ResolveSavedScpiProfileChoice(_cliOptions.ScpiProfile);

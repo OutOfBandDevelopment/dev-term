@@ -69,7 +69,7 @@ internal static class ControlPanelMode
             // hit first (see its comment on this same line).
             CanFocus = true,
         };
-        formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar;
+        formContent.ViewportSettings |= ViewportSettingsFlags.AllowNegativeY | ViewportSettingsFlags.HasVerticalScrollBar | ViewportSettingsFlags.HasHorizontalScrollBar;
 
         var previewLabel = new Label { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1, Text = string.Empty };
         var messageLabel = new Label { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1, Text = string.Empty };
@@ -80,6 +80,13 @@ internal static class ControlPanelMode
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
             blocks.Add(BuildNotesSection(app, definition.Description));
+        }
+
+        // Each labeled section opens the way it was last left for this definition (see
+        // SectionExpansionState) — expanded the first time.
+        foreach (var block in blocks.Where(b => b.Header is not null))
+        {
+            block.Expanded = SectionExpansionState.IsExpanded(definition.Name, block.Label);
         }
 
         var statusLabel = new Label
@@ -105,6 +112,11 @@ internal static class ControlPanelMode
         window.Add(formContent, previewLabel, messageLabel);
 
         var contentHeight = 0;
+
+        // The form's content width: the widest row as last laid out (see MeasureContentWidth), never
+        // narrower than the viewport. Rows wider than the window scroll horizontally instead of
+        // running off the right edge.
+        var contentWidth = 200;
 
         // Absolute rows, recomputed on every expand/collapse: header, then (if expanded) the
         // section's rows, then one blank row — so collapsing a section pulls everything below it up.
@@ -134,7 +146,7 @@ internal static class ControlPanelMode
 
             statusLabel.Y = y;
             contentHeight = y + 1;
-            formContent.SetContentSize(new Size(100, contentHeight));
+            formContent.SetContentSize(new Size(Math.Max(contentWidth, 1), contentHeight));
             var maxY = Math.Max(0, contentHeight - formContent.Viewport.Height);
             if (formContent.Viewport.Y > maxY)
             {
@@ -149,6 +161,7 @@ internal static class ControlPanelMode
                 header.Accepting += (_, e) =>
                 {
                     block.Expanded = !block.Expanded;
+                    SectionExpansionState.Set(definition.Name, block.Label, block.Expanded);
                     Reflow();
                     e.Handled = true;
                 };
@@ -156,6 +169,41 @@ internal static class ControlPanelMode
         }
 
         Reflow();
+
+        // After every layout pass: re-wrap the Notes if the visible width changed (a terminal
+        // resize), and re-measure the widest row so the horizontal scroll range matches it. Each
+        // only acts on a real change, so the extra layout pass SetContentSize triggers settles.
+        var wrapWidth = -1;
+        formContent.SubViewsLaidOut += (_, _) =>
+        {
+            var viewportWidth = formContent.Viewport.Width;
+            if (viewportWidth > 0 && viewportWidth != wrapWidth)
+            {
+                wrapWidth = viewportWidth;
+                var rowsChanged = false;
+                foreach (var block in blocks)
+                {
+                    rowsChanged |= block.Rewrap?.Invoke(viewportWidth) ?? false;
+                }
+
+                if (rowsChanged)
+                {
+                    Reflow();
+                }
+            }
+
+            var measured = Math.Max(MeasureContentWidth(blocks), viewportWidth);
+            if (measured != contentWidth)
+            {
+                contentWidth = measured;
+                formContent.SetContentSize(new Size(Math.Max(contentWidth, 1), contentHeight));
+                var maxX = Math.Max(0, contentWidth - viewportWidth);
+                if (formContent.Viewport.X > maxX)
+                {
+                    formContent.Viewport = formContent.Viewport with { X = maxX };
+                }
+            }
+        };
 
         EventHandler<IReadOnlyDictionary<string, string>>? onValuesChanged = null;
         if (structuredSource is IStructuredPresenter structuredPresenter)
@@ -172,6 +220,11 @@ internal static class ControlPanelMode
                             {
                                 label.Text = value;
                             }
+                        }
+
+                        foreach (var display in panel.DisplayViews.Values)
+                        {
+                            display.Apply(values);
                         }
                     });
                 }
@@ -193,8 +246,25 @@ internal static class ControlPanelMode
             formContent.Viewport = formContent.Viewport with { Y = newY };
         }
 
+        void ScrollXBy(int delta)
+        {
+            var maxX = Math.Max(0, contentWidth - formContent.Viewport.Width);
+            var newX = Math.Clamp(formContent.Viewport.X + delta, 0, maxX);
+            formContent.Viewport = formContent.Viewport with { X = newX };
+        }
+
         void scrollOnKey(object? _, Key key)
         {
+            // Ctrl+PageUp/Ctrl+PageDown scroll sideways by half a screen, for a wide row whose end
+            // isn't a focusable control (a long indicator value, a wide chart).
+            var halfWidth = Math.Max(formContent.Viewport.Width / 2, 1);
+            if (key == Key.PageDown.WithCtrl || key == Key.PageUp.WithCtrl)
+            {
+                ScrollXBy(key == Key.PageDown.WithCtrl ? halfWidth : -halfWidth);
+                key.Handled = true;
+                return;
+            }
+
             var delta = key == Key.PageDown ? formContent.Viewport.Height
                 : key == Key.PageUp ? -formContent.Viewport.Height
                 : 0;
@@ -223,6 +293,38 @@ internal static class ControlPanelMode
                 ScrollBy(-1);
                 mouse.Handled = true;
             }
+            else if (mouse.Flags.HasFlag(MouseFlags.WheeledRight))
+            {
+                ScrollXBy(2);
+                mouse.Handled = true;
+            }
+            else if (mouse.Flags.HasFlag(MouseFlags.WheeledLeft))
+            {
+                ScrollXBy(-2);
+                mouse.Handled = true;
+            }
+        };
+
+        // Scrolls a focused control's content-relative column span into view: its end (the (i)
+        // marker included) if it fits, but never so far that its start goes off the left edge.
+        panel.RevealColumns = (left, right) =>
+        {
+            var viewport = formContent.Viewport;
+            var newX = viewport.X;
+            if (right > viewport.X + viewport.Width)
+            {
+                newX = Math.Min(left, right - viewport.Width);
+            }
+
+            if (left < newX)
+            {
+                newX = left;
+            }
+
+            if (newX != viewport.X)
+            {
+                ScrollXBy(newX - viewport.X);
+            }
         };
 
         // Scrolls the focused row (a section header, or one control row inside a section) into view.
@@ -247,6 +349,7 @@ internal static class ControlPanelMode
                 {
                     panel.SetPreviewSource(null);
                     panel.Reveal?.Invoke(panel.Tops.GetValueOrDefault(header), 1);
+                    panel.RevealColumns?.Invoke(0, 0);
                 }
             };
         }
@@ -256,7 +359,9 @@ internal static class ControlPanelMode
             Window = window,
             ControlViews = panel.ControlViews,
             IndicatorLabels = panel.IndicatorLabels,
+            DisplayViews = panel.DisplayViews,
             InfoMarkers = panel.InfoMarkers,
+            FormContent = formContent,
             SectionHeaders = blocks.Where(b => b.Header is not null).GroupBy(b => b.Label).ToDictionary(g => g.Key, g => g.First().Header!),
             SectionBodies = blocks.GroupBy(b => b.Label).ToDictionary(g => g.Key, g => g.First().Body),
             PreviewLabel = previewLabel,
@@ -284,17 +389,25 @@ internal static class ControlPanelMode
         var body = new View
         {
             X = 2,
-            Width = Dim.Fill(),
+
+            // A fixed, generous width rather than Dim.Fill(): a row wider than the window must
+            // still lay out at its natural width (the form scrolls sideways to reach it), not be
+            // squeezed to the form's current content width.
+            Width = _bodyWidth,
             Height = Math.Max(section.Controls.Count, 1),
             CanFocus = true,
         };
 
         // Every control in the section starts in the same column: the longest "Label:" plus a space.
+        // A chart takes several rows; everything else one.
         var columnX = section.Controls.Count == 0 ? 0 : section.Controls.Max(c => c.Label.Length + 1) + 1;
-        for (var row = 0; row < section.Controls.Count; row++)
+        var y = 0;
+        foreach (var control in section.Controls)
         {
-            AddControlRow(panel, body, row, columnX, section.Controls[row]);
+            y += AddControlRow(panel, body, y, columnX, control);
         }
+
+        body.Height = Math.Max(y, 1);
 
         return new SectionBlock
         {
@@ -304,20 +417,79 @@ internal static class ControlPanelMode
             // header with, so it stays always-expanded with no header, the same as before.
             Header = string.IsNullOrWhiteSpace(label) ? null : CreateHeader(label),
             Body = body,
-            Rows = section.Controls.Count,
+            Rows = y,
         };
     }
 
+    private const int _bodyWidth = 1000;
+
+    /// <summary>The narrowest the Notes ever wrap to, however small the window.</summary>
+    internal const int MinimumNotesWidth = 20;
+
+    /// <summary>The Notes' wrap width for a form viewport <paramref name="viewportWidth"/> columns wide (the body's indent and a spare column taken off).</summary>
+    internal static int NotesWrapWidth(int viewportWidth) => Math.Max(MinimumNotesWidth, viewportWidth - 3);
+
     private static SectionBlock BuildNotesSection(IApplication app, string description)
     {
-        // Wrapped once, to the screen width at build time (body indent + border + scroll bar
-        // taken off) — a manual word wrap rather than TextFormatter.WordWrap so the section's row
-        // count is known up front for Reflow's absolute positioning.
+        // A manual word wrap rather than TextFormatter.WordWrap so the section's row count is
+        // known for Reflow's absolute positioning. First wrapped to the screen width (before any
+        // layout), then re-wrapped to the form's real visible width after every layout pass that
+        // changed it - a terminal resize included (see Rewrap below, and BuildWindow).
         var screenWidth = app.Screen.Width > 0 ? app.Screen.Width : 80;
-        var lines = WordWrap(description, Math.Max(30, screenWidth - 6));
-        var body = new View { X = 2, Width = Dim.Fill(), Height = lines.Count, CanFocus = false };
-        body.Add(new Label { X = 0, Y = 0, Width = Dim.Fill(), Height = lines.Count, Text = string.Join('\n', lines) });
-        return new SectionBlock { Label = NotesSectionLabel, Header = CreateHeader(NotesSectionLabel), Body = body, Rows = lines.Count };
+        var lines = WordWrap(description, NotesWrapWidth(screenWidth - 3));
+        var body = new View { X = 2, Width = _bodyWidth, Height = lines.Count, CanFocus = false };
+        var text = new Label { X = 0, Y = 0, Width = lines.Max(l => l.Length), Height = lines.Count, Text = string.Join('\n', lines) };
+        body.Add(text);
+        var block = new SectionBlock { Label = NotesSectionLabel, Header = CreateHeader(NotesSectionLabel), Body = body, Rows = lines.Count };
+        block.Rewrap = viewportWidth =>
+        {
+            var wrapped = WordWrap(description, NotesWrapWidth(viewportWidth));
+            var joined = string.Join('\n', wrapped);
+            if (joined == text.Text)
+            {
+                return false;
+            }
+
+            text.Text = joined;
+            text.Width = Math.Max(wrapped.Max(l => l.Length), 1);
+            text.Height = wrapped.Count;
+            body.Height = wrapped.Count;
+            var rowsChanged = block.Rows != wrapped.Count;
+            block.Rows = wrapped.Count;
+            return rowsChanged;
+        };
+        return block;
+    }
+
+    /// <summary>
+    /// The form's widest row as laid out: each shown section's rows (its indent plus its widest
+    /// control's right edge) and each header. Views are measured by their laid-out
+    /// <see cref="View.Frame"/>, so it covers every widget kind — a long button, a many-option
+    /// selector, a chart — without predicting each one's width.
+    /// </summary>
+    private static int MeasureContentWidth(IEnumerable<SectionBlock> blocks)
+    {
+        var width = 0;
+        foreach (var block in blocks)
+        {
+            if (block.Header is not null)
+            {
+                width = Math.Max(width, HeaderText(block.Label, block.Expanded).Length);
+            }
+
+            if (block.Expanded)
+            {
+                foreach (var view in block.Body.SubViews)
+                {
+                    if (view.Visible)
+                    {
+                        width = Math.Max(width, block.Body.Frame.X + view.Frame.Right + 1);
+                    }
+                }
+            }
+        }
+
+        return width;
     }
 
     /// <summary>Greedy word wrap to <paramref name="width"/> columns, keeping explicit line breaks; a single word longer than the width is split.</summary>
@@ -362,7 +534,8 @@ internal static class ControlPanelMode
         return lines;
     }
 
-    private static void AddControlRow(PanelState panel, View body, int row, int columnX, UiControl control)
+    /// <summary>Adds one control's row(s) at <paramref name="row"/>; returns how many rows it took.</summary>
+    private static int AddControlRow(PanelState panel, View body, int row, int columnX, UiControl control)
     {
         var app = panel.App;
         var surface = panel.Surface;
@@ -575,8 +748,25 @@ internal static class ControlPanelMode
                     break;
                 }
 
+            case BarGraphControl or StripChartControl or VectorControl:
+                {
+                    var state = LiveDisplayState.For(control)!;
+                    Func<CellGrid> render = state switch
+                    {
+                        BarGraphState bars => () => CellCharts.RenderBarGraph(bars),
+                        StripChartState strip => () => CellCharts.RenderStripChart(strip),
+                        VectorState vector => () => CellCharts.RenderVector(vector),
+                        _ => () => new CellGrid(1, 1),
+                    };
+                    var canvas = new CellCanvasView(state, render) { X = columnX, Y = row };
+                    body.Add(canvas);
+                    panel.DisplayViews[control.Id] = canvas;
+                    panel.ControlViews[control.Id] = canvas;
+                    return canvas.Render().Height;
+                }
+
             default:
-                return;
+                return 1;
         }
 
         panel.ControlViews[control.Id] = widget;
@@ -594,18 +784,24 @@ internal static class ControlPanelMode
         }
 
         var focusSource = sendsSomething ? previewSource : panel.ConsumerPreviewSource(control.Id);
+        var rowEnd = sendsSomething ? panel.InfoMarkers[control.Id] : previewAnchor ?? widget;
         widget.HasFocusChanged += (_, e) =>
         {
             if (e.NewValue)
             {
                 panel.SetPreviewSource(focusSource);
                 panel.Reveal?.Invoke(panel.Tops.GetValueOrDefault(body) + row, 1);
+
+                // A row wider than the window: bring the control and its (i) marker into view.
+                panel.RevealColumns?.Invoke(body.Frame.X + widget.Frame.X, body.Frame.X + rowEnd.Frame.Right);
             }
             else
             {
                 panel.ClearPreviewSource(focusSource);
             }
         };
+
+        return 1;
     }
 
     /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
@@ -666,9 +862,12 @@ internal static class ControlPanelMode
 
         public required View Body { get; init; }
 
-        public required int Rows { get; init; }
+        public required int Rows { get; set; }
 
         public bool Expanded { get; set; } = true;
+
+        /// <summary>Re-wraps the section for a new visible width (the Notes); true when its row count changed, so the form must reflow.</summary>
+        public Func<int, bool>? Rewrap { get; set; }
     }
 
     /// <summary>
@@ -712,6 +911,11 @@ internal static class ControlPanelMode
         public Dictionary<string, View> ControlViews { get; } = [];
 
         public Dictionary<string, Label> IndicatorLabels { get; } = [];
+
+        public Dictionary<string, CellCanvasView> DisplayViews { get; } = [];
+
+        /// <summary>Scrolls a content-relative column span into view; set once the form's scrolling is wired.</summary>
+        public Action<int, int>? RevealColumns { get; set; }
 
         public Dictionary<string, Label> InfoMarkers { get; } = [];
 
@@ -982,6 +1186,12 @@ internal sealed class ControlPanelWindowParts
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
     public required IReadOnlyDictionary<string, Label> IndicatorLabels { get; init; }
+
+    /// <summary>The bar graph / strip chart / vector displays, keyed by <c>UiControl.Id</c> — each with its live state and its rendered cells.</summary>
+    public required IReadOnlyDictionary<string, CellCanvasView> DisplayViews { get; init; }
+
+    /// <summary>The scrolling form holding every section — its <c>Viewport</c> is the visible part of the content (scrolled vertically and horizontally).</summary>
+    public required View FormContent { get; init; }
 
     /// <summary>The <c>(i)</c> marker next to each control that sends a previewable command, keyed by <c>UiControl.Id</c>.</summary>
     public required IReadOnlyDictionary<string, Label> InfoMarkers { get; init; }

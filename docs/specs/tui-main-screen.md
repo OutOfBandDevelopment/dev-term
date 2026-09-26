@@ -25,7 +25,7 @@ life of the process: a scrolling output pane, a send line, and a `File` menu.
 | **File > Connect/Disconnect** | A single menu item whose label flips; toggles the same `Session`/transport open or closed without touching which profile is loaded | None | `ConnectionErrorMessages.For` text in the output pane; stays disconnected, ready to retry |
 | **File > Device Profiles...** | Opens `ConfigureMode` as a nested modal (`Application.Run` on top of the current window) | None | n/a |
 | **File > Quit** / **Ctrl+Q** | Stops the application loop | None | n/a |
-| **Device > K8055/Busylight/SCPI Instrument...** | Opens a generic control-panel screen for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with WPF and data-driven rather than a fixed set of fields | None checked | n/a |
+| **Device > K8055/Busylight/SCPI Instrument/Device Manifest...** | Opens a generic control-panel screen for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with WPF and data-driven rather than a fixed set of fields | None checked | n/a |
 | **Device > Stream Monitor...** | Starts watching the current session for images/HP-GL/PostScript/PCL (auto-saving each capture) and opens its modal window; monitoring continues after the window closes, each capture adding a `[dev-term] Captured …` status line here, and follows a profile switch — see [`docs/specs/stream-monitor.md`](stream-monitor.md) | None (always enabled) | A failed save is reported on the capture/status line, never thrown |
 
 ## States

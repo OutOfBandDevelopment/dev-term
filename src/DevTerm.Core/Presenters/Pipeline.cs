@@ -57,9 +57,10 @@ public sealed class Pipeline
 
     /// <summary>
     /// Removes <paramref name="presenter"/> from this pipeline's live presenter list (a no-op if it
-    /// isn't there) — the counterpart to <see cref="AddPresenter"/> for something bound in only
-    /// for a while, like the Stream Monitor's watcher being stopped. A <see cref="Render"/> already
-    /// in progress on the read loop may still hand it that one last chunk.
+    /// isn't there) — the counterpart to <see cref="AddPresenter"/> for a presenter bound in only for
+    /// a while: the Stream Monitor's watcher while monitoring, or a device manifest's reply presenter
+    /// while its panel is open, so reopening the panel doesn't stack up another presenter each time.
+    /// A <see cref="Render"/> already in progress on the read loop may still hand it one last chunk.
     /// </summary>
     public void RemovePresenter(IPresenter presenter)
     {

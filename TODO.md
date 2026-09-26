@@ -24,18 +24,8 @@ worktrees, merged and verified before the next phase starts. Items moved here fr
 (and from the specs' Open items) when work started. Each is deleted from this file once its detail
 has landed in `docs/changes/`.
 
-**Phase 1 — in progress** (the Stream Monitor branch landed 2026-09-25 and is documented in `docs/changes/2026-09-25.md`; the panels and logger/playback branches are still running):
+**Phase 1 — in progress.** The Stream Monitor and panels (leftovers, chart controls, live manifest panels) branches landed 2026-09-25 and are documented in `docs/changes/2026-09-25.md`; the logger/playback branch is still running:
 
-- **Control-panel leftovers** (from `docs/specs/device-control-panel.md` Open items):
-  - TUI Notes re-wrap on terminal resize.
-  - Long TUI rows no longer run off the right edge.
-  - Section expand/collapse state is remembered across panel openings.
-- **New `UiDefinitions` display controls:** bar graph (one bar per channel), strip/roll chart recorder
-  (1+ channels), and the vector/coordinate families (x/y, x/y/z, r/theta, optionally with an h/s/v
-  color channel). They're rendered in both front ends.
-- **Live panels from device manifests:** a declarative control surface that runs a loaded
-  `DeviceManifest`'s command templates over the live session, and a "Device > Device Manifest..."
-  menu item. A loaded manifest's `UiDefinition` was model-and-loader only until now.
 - **Logger mode:** capture every sent/received message with direction, a sequence number and a
   timestamp, plus connect/disconnect events, to a documented, lossless log format. It's enabled from
   the CLI (`--log`), the TUI and WPF.

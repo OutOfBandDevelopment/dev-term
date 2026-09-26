@@ -1,0 +1,25 @@
+┌┤dev-term — HP/Agilent/Keysight 34401A Digital Multimeter├────────────────────┐
+│Measure Period:                  ⟦ Measure Period ⟧▖ (i)                     ▲│
+│Measure Period Reply:            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                         ░│
+│Measure Continuity:              ⟦ Measure Continuity ⟧▖ (i)                 ░│
+│Measure Continuity Reply:        ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                     ░│
+│Measure Diode:                   ⟦ Measure Diode ⟧▖ (i)                      ░│
+│Measure Diode Reply:             ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                          ░│
+│                                                                             █│
+│] Configure                                                                  █│
+│Range:                             ◉ DEF  ○ 0.1  ○ 1  ○ 10  ○ 100  ○ 1000    █│
+│Configure DC Voltage Range:        ⟦ Configure DC Voltage Range ⟧▖ (i)       ░│
+│Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘           ░│
+│Configure AC Voltage Range:        ⟦ Configure AC Voltage Range ⟧▖ (i)       ░│
+│Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘           ░│
+│Configure DC Current Range:        ⟦ Configure DC Current Range ⟧▖ (i)       ░│
+│Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘           ░│
+│Configure AC Current Range:        ⟦ Configure AC Current Range ⟧▖ (i)       ░│
+│Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘           ░│
+│Configure Resistance Range:        ⟦ Configure Resistance Range ⟧▖ (i)       ░│
+│Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘           ░│
+│Configure 4-Wire Resistance Range: ⟦ Configure 4-Wire Resistance Range ⟧▖ (i)▼│
+│◄░░████████████████████████████████████████████████████████████████████████░► │
+│Sends: CONF:FRES DEF\n                                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘

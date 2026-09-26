@@ -112,6 +112,7 @@ public static class TuiMode
         MenuItem? k8055MenuItem = null;
         MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
+        MenuItem? manifestMenuItem = null;
 
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
         // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
@@ -325,6 +326,7 @@ public static class TuiMode
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
                     OpenScpiInstrumentWindow(app, session, structuredSource, profile);
                 })),
+                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, session))),
                 new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
         ]);
@@ -353,6 +355,7 @@ public static class TuiMode
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, cliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, cliOptions, connected);
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, cliOptions, connected);
+            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
         }
 
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
@@ -778,6 +781,9 @@ public static class TuiMode
             $"dev-term — {profile.Name}");
         app.Run(panelParts.Window);
     }
+
+    /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
+    private static void OpenDeviceManifest(IApplication app, Session session) => ManifestPanelMode.PickAndRun(app, session);
 
     private static string? PickScpiProfileChoice(IApplication app)
     {

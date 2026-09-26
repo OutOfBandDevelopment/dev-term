@@ -1,0 +1,20 @@
+<Window x:Class="DevTerm.Wpf.ManifestPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="dev-term — Open Device Manifest" Height="400" Width="520" MinHeight="260" MinWidth="360"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Open" Width="80" Height="32" Margin="0,0,8,0" IsDefault="True" Click="OpenButton_Click" />
+            <Button Content="Cancel" Width="80" Height="32" IsCancel="True" />
+        </StackPanel>
+        <TextBlock x:Name="ErrorText" DockPanel.Dock="Bottom" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="DarkRed" />
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" Content="Folder..." Width="72" Margin="6,0,0,0" Click="BrowseFolder_Click" />
+            <Button DockPanel.Dock="Right" Content="File..." Width="72" Margin="6,0,0,0" Click="BrowseFile_Click" />
+            <TextBox x:Name="PathBox" VerticalContentAlignment="Center" ToolTip="A manifest file (.json), a folder with a device.json, or a .zip of one" />
+        </DockPanel>
+        <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" Text="Or a path (file, folder, .zip):" />
+        <ListBox x:Name="ManifestList" DisplayMemberPath="DisplayName" MouseDoubleClick="ManifestList_MouseDoubleClick" />
+    </DockPanel>
+</Window>

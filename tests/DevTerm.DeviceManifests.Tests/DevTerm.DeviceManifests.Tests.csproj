@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.DeviceManifests\DevTerm.DeviceManifests.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 

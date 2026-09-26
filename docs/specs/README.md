@@ -35,7 +35,7 @@ Each spec follows the same shape:
 - [TUI Main Screen](tui-main-screen.md) — `TuiMode`, the console app's default full-screen mode.
 - [WPF Main Window](wpf-main-window.md) — `MainWindow`, the GUI front end's only window today.
 - [Device Control Panel](device-control-panel.md) — the generic `UiDefinition` renderer
-  (`ControlPanelMode`/`ControlPanelWindow`) shared by the K8055, Busylight, and SCPI Instrument panels
+  (`ControlPanelMode`/`ControlPanelWindow`) shared by the K8055, Busylight, SCPI Instrument, and Device Manifest panels
   reachable from each front end's `Device` menu.
 - [Stream Monitor](stream-monitor.md) — `StreamMonitorMode` (TUI) / `StreamMonitorWindow` (WPF) over
   the shared `DevTerm.Configuration.StreamMonitor`: detects images/HP-GL/PostScript/PCL in a live

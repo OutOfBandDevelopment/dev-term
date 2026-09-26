@@ -5,7 +5,7 @@
 │                                                                             █│
 │[-] Configure                                                                █│
 │  Range:                             ◉ DEF  ○ 0.1  ○ 1  ○ 10  ○ 100  ○ 1000  █│
-│  Configure DC Voltage Range:        ⟦ Configure DC Voltage Range ⟧▖ (i)     █│
+│  Configure DC Voltage Range:        ⟦ Configure DC Voltage Range ⟧▖ (i)     ░│
 │  Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘         ░│
 │  Configure AC Voltage Range:        ⟦ Configure AC Voltage Range ⟧▖ (i)     ░│
 │  Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▘         ░│
@@ -18,8 +18,8 @@
 │  Configure 4-Wire Resistance Range: ⟦ Configure 4-Wire Resistance Range ⟧▖ (░│
 │  Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ░│
 │  Configure Frequency Range:         ⟦ Configure Frequency Range ⟧▖ (i)      ░│
-│  Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▘          ░│
-│  Configure Period Range:            ⟦ Configure Period Range ⟧▖ (i)         ▼│
+│  Range:                             ◉ DEF  ○ MIN  ○ MAX▀▀▀▀▀▀▀▀▀▀▘          ▼│
+│◄████████████████████████████████████████████████████████████████████████░░░► │
 │Sends: CONF:VOLT:DC DEF\n                                                     │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

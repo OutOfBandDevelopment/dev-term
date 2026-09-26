@@ -45,6 +45,15 @@ lets a surface show exactly what a control would send (implemented by the SCPI, 
 Busylight surfaces); and collapsible sections, aligned labels, and a bottom "Notes" section for
 `Description` in both renderers — see [docs/specs/device-control-panel.md](../specs/device-control-panel.md).
 
+**Display controls, manifest panels, and TUI fitting, landed 2026-09-25 (later the same day)**: three
+display-only chart controls — `BarGraphControl`, `StripChartControl`, `VectorControl` (below) — with
+their shared, framework-agnostic live state (`LiveDisplayState`) rendered in both front ends (TUI:
+block characters and braille in colored character cells; WPF: real drawing); a loaded
+[device manifest](device-manifests.md)'s `UiDefinition` is now a live panel (**Device > Device
+Manifest...**); the TUI form scrolls sideways instead of letting a wide row run off the right edge
+and re-wraps its Notes on resize; and both renderers remember each section's expand/collapse state
+per definition for the life of the process.
+
 ## Shape
 
 A `UiDefinition` is a named panel made of `UiSection`s (a label plus a flat list of controls — no
@@ -72,6 +81,27 @@ fields:
   widgets" below).
 - `IndicatorControl` — a read-only display bound to live decoder output, not a control the user
   changes (e.g. a digital input's current state, a pulse counter value, a connection status line).
+- `BarGraphControl` — a read-only bar graph, one bar per `ChartChannel` (`Id`, optional `Label`,
+  optional `#RRGGBB` `Color`), each filled to its latest value within `Minimum`/`Maximum`, with a
+  `Unit` for the readout (e.g. several ADC channels side by side).
+- `StripChartControl` — a read-only strip/roll chart recorder: a trace per `ChartChannel` of its last
+  `HistoryLength` values, scrolling left as values arrive; the value axis is `Minimum`/`Maximum` when
+  both are set, otherwise auto-scaled (e.g. a temperature or voltage over time).
+- `VectorControl` — a read-only coordinate display: a point plus a short trail, from x/y
+  (`Coordinates: XY`, `XId`/`YId`), x/y/z (`XYZ`, adding `ZId`, drawn in an oblique projection), or
+  r/theta (`Polar`, `RadiusId`/`AngleId` in `AngleUnit` degrees or radians), on axes spanning
+  ±`Range`, with an optional live h/s/v color (`HueId`/`SaturationId`/`BrightnessId`) — e.g. a
+  joystick, an accelerometer, a phase angle, an RGB sensor's hue.
+
+The three chart controls are display-only like `IndicatorControl`: each channel/coordinate id is a
+key the device's structured presenter publishes (`IStructuredPresenter.ValuesChanged`), and one
+published value can feed an indicator and any number of charts at once. What's drawn is decided once,
+in `DevTerm.UiDefinitions`, by `LiveDisplayState` (`BarGraphState`/`StripChartState`/`VectorState`:
+number parsing via `ChartValue.TryParse` — tolerant of a unit or prefix in the reply — clamping,
+rolling history, scaling, polar-to-Cartesian conversion, one trail point per published batch, and
+HSV color), so both renderers plot identical data identically and the logic is tested without a UI.
+Channel colors default to `ChartPalette`'s fixed eight-slot categorical order (never cycled; a ninth
+channel is neutral gray).
 
 Serialization is polymorphic on control kind — `System.Text.Json`'s `[JsonDerivedType]` for JSON,
 `[XmlInclude]` for XML — both built into their respective frameworks, no hand-rolled discriminator
@@ -103,6 +133,26 @@ class TextFieldControl {
   Constraint: ValueConstraint?
 }
 class IndicatorControl
+class BarGraphControl {
+  Channels: ChartChannel[]
+  Minimum / Maximum: double
+}
+class StripChartControl {
+  Channels: ChartChannel[]
+  Minimum / Maximum: double?
+  HistoryLength: int
+}
+class VectorControl {
+  Coordinates: XY | XYZ | Polar
+  XId / YId / ZId / RadiusId / AngleId
+  Range: double
+  HueId / SaturationId / BrightnessId
+}
+class ChartChannel {
+  Id: string
+  Label: string?
+  Color: string?
+}
 class ValueConstraint {
   Kind: Text | Integer | Number
   Minimum: double?
@@ -120,7 +170,25 @@ UiControl <|-- NumericControl
 UiControl <|-- ChoiceControl
 UiControl <|-- TextFieldControl
 UiControl <|-- IndicatorControl
+UiControl <|-- BarGraphControl
+UiControl <|-- StripChartControl
+UiControl <|-- VectorControl
+BarGraphControl *-- ChartChannel
+StripChartControl *-- ChartChannel
 @enduml
+```
+
+A chart control in JSON (discriminators `barGraph`, `stripChart`, `vector`; XML elements
+`BarGraph`, `StripChart`, `Vector`; property names are case-insensitive on read, but `kind` must come
+first in each control object):
+
+```json
+{ "kind": "barGraph", "id": "levels", "label": "Channels", "minimum": 0, "maximum": 100, "unit": "%",
+  "channels": [ { "id": "chA", "label": "A" }, { "id": "chB", "label": "B" } ] }
+{ "kind": "stripChart", "id": "history", "label": "A / B", "historyLength": 60,
+  "channels": [ { "id": "chA", "label": "A" } ] }
+{ "kind": "vector", "id": "polar", "label": "R/Theta", "coordinates": "Polar",
+  "radiusId": "r", "angleId": "theta", "angleUnit": "Degrees", "range": 1 }
 ```
 
 ## Example
