@@ -40,7 +40,7 @@ public sealed class PlaybackCliModeTests
         CollectionAssert.AreEqual(
             new[]
             {
-                "00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23) — closed.",
+                "00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23), connection closed.",
                 "00:00.040 [dev-term] Connected.",
                 "00:01.000 [tx] ID?\\r",
                 "00:01.250 [ascii] ID TEK/2230,V81.1,VERS:14",

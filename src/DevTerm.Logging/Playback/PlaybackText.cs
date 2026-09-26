@@ -58,7 +58,7 @@ public static class PlaybackText
                     PlaybackLineKind.Error)];
             case SessionLogRecordKind.Session:
                 var subject = record.Profile is { Length: > 0 } profile ? $"{profile} ({record.Connection})" : record.Connection ?? "(unknown connection)";
-                return [new($"{time} [dev-term] Logging {subject} — {record.State ?? "unknown"}.", PlaybackLineKind.Status)];
+                return [new($"{time} [dev-term] Logging {subject}, connection {record.State ?? "unknown"}.", PlaybackLineKind.Status)];
             case SessionLogRecordKind.Note:
                 return [new($"{time} [note] {record.Text}", PlaybackLineKind.Note)];
             default:

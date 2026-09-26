@@ -65,6 +65,13 @@ A command-line mode for automation, CI, and scripting: open a session, apply a t
 
 **Implemented** (`DevTerm.Console`): connects using a transport/presenter/config chosen via `CliOptions` (command-line args, env vars, or a saved `appsettings.Local.json` profile — see [platform.md](platform.md)), prints `[presenter] text` per line of output, and reads stdin for lines to send — so today's CLI is actually interactive-by-default (a REPL-like loop) rather than the pure batch/pipe mode described above; a dedicated non-interactive/scripted mode (env-driven, no stdin loop, explicit exit) is still just this section's original intent, not yet split out as its own thing.
 
+**Logging and playback (2026-09-25)**: `--log <file>` (or `--log true`) records the session to a
+session log, and `--playback <file>` is the first genuinely non-interactive mode. It replays a log
+through `--presenter` (or the log's own presenters), prints the decoded lines, and exits without
+connecting to anything, optionally paced by `--playbackspeed`. The TUI and WPF have the same through
+File > Start Logging... and File > Open Log for Playback.... See
+[session-logging.md](session-logging.md).
+
 ## GUI (graphical desktop app, WPF)
 
 A richer visual front end for cases where a graphical view adds real value beyond what a terminal can show: live rendering-presenter output (HPGL/PostScript/PCL drawings, telemetry plots), device control module control panels (see [device-control-modules.md](device-control-modules.md), rendered from the declarative model in [ui-definitions.md](ui-definitions.md) once that's wired up), a hex-grid editor for composing binary sends, and drag-and-drop plugin/session management. Built with WPF, so it ships as a separate Windows desktop application from the console app, both consuming the same core engine via DI (see [platform.md](platform.md)).

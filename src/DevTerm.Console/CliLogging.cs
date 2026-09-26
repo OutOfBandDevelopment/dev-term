@@ -24,7 +24,7 @@ internal static class CliLogging
         try
         {
             var logger = SessionLogging.Start(path, session, cliOptions, cliOptions.EffectiveParser, profileName, "cli");
-            stderr.WriteLine($"Logging to {path}.");
+            stderr.WriteLine($"Logging to {SessionLogging.DisplayPath(path)}.");
             return logger;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)

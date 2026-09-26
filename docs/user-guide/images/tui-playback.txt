@@ -1,8 +1,8 @@
 ┌┤dev-term — Playback: tek2230.jsonl├──────────────────────────────────────────┐
-│tek2230 (tcp://192.168.0.107:23) · 2026-09-25 08:00:00 · 8 records            │
+│tek2230 (tcp://192.168.0.107:23), 2026-09-25 08:00:00, 8 records              │
 │Presenters: ascii, hex                                                        │
 │  (Enter applies) ascii utf8 hex decimal octal binary k8055 busylight scpi    │
-│00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23) — closed.       │
+│00:00.000 [dev-term] Logging tek2230 (tcp://192.168.0.107:23), connection clos│
 │00:00.040 [dev-term] Connected.                                               │
 │00:01.000 [tx] ID?\r                                                          │
 │00:01.200 [hex] 49442054454B2F323233302C                                      │
