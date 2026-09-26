@@ -87,6 +87,7 @@ public sealed class UsbtmcTransportTests
     // REQUEST_DEV_DEP_MSG_IN, tag 2) - so a reply header must claim bTag 2 to pass the new
     // expected-tag validation.
     private const byte _firstQueryRequestTag = 2;
+    private static readonly bool[] _expected = [true];
 
     [TestMethod]
     public async Task WriteAsync_ReplySpanningTwoPhysicalTransfers_ReassemblesCorrectly()
@@ -383,10 +384,10 @@ public sealed class UsbtmcTransportTests
 
         await transport.OpenAsync(TestContext.CancellationToken);
         Assert.AreEqual(0, device.ClearCount);
-        Assert.AreSequenceEqual(new[] { true }, device.RemoteCalls);
+        Assert.AreSequenceEqual(_expected, device.RemoteCalls);
 
         await transport.CloseAsync(TestContext.CancellationToken);
-        Assert.AreSequenceEqual(new[] { true, false }, device.RemoteCalls);
+        Assert.AreSequenceEqual([true, false], device.RemoteCalls);
     }
 
     [TestMethod]

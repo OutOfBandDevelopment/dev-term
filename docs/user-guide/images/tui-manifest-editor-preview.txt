@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Edit ⟧ ⟦ Close ⟧      │
 │Opened                                                                        │
-│'C:\repos\github\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\mani  │
+│'C:\repo\oobdev\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\manif  │
 │╭┤Outline├───────────────────╮╭┤Preview (sends nothing)├─────────────────────╮│
 ││Commands (3)                ││┌┤Loopback Sensor Demo├──────────────────────┐││
 ││  Measure                   │││[-] Acquire                                ▲│││

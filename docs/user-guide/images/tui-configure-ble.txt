@@ -1,25 +1,25 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│                                                                             ▲│
+│  Device ID:                  4-1234-5678-9abc-def012345678                  ▲│
+│  Service UUID:                                                              ░│
+│  Write characteristic UUID:                                                 ░│
+│  Notify characteristic UUID:                                                ░│
 │                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│BLE device ID: AB12CD34-1234-5678-9abc-def012345678                          ░│
-│                                                                             ░│
-│Service UUID:                                                                ░│
+│── Presentation ──                                                           ░│
+│  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
+│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000              ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
+│               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           █│
+│               ○ de5000                                                      █│
+│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
-│Write characteristic UUID:                                                   █│
+│Save as profile named:                      ⟦ Save Profile ⟧▖                █│
+│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
+│Import/export file path:                                                     █│
 │                                                                             █│
-│Notify characteristic UUID:                                                  █│
+│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      █│
 │                                                                             █│
-│                                                                             █│
-│                                                                             █│
-│Presenters: ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055 ☐ busylig█│
-│                                                                             ░│
-│                                                                             ░│
-│                                                                             ░│
-│Send as: ◉ Ascii  ○ Utf8  ○ Hex  ○ Decimal  ○ Octal  ○ Binary                ░│
+│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    █│
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▘                                                    █│
 │                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

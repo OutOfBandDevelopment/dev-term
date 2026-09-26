@@ -28,7 +28,7 @@ public sealed class ZoomH4nDecoderTests
     {
         var decoder = new ZoomH4nDecoder();
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x00 }));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([0x00]));
 
         Assert.HasCount(1, lines);
         Assert.AreEqual("Status: (none)", lines[0]);
@@ -39,7 +39,7 @@ public sealed class ZoomH4nDecoderTests
     {
         var decoder = new ZoomH4nDecoder();
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x03 }));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([0x03]));
 
         Assert.AreEqual("Status: Record | Peak", lines[0]);
     }
@@ -49,7 +49,7 @@ public sealed class ZoomH4nDecoderTests
     {
         var decoder = new ZoomH4nDecoder();
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x73 }));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([0x73]));
 
         Assert.AreEqual("Status: Record | Peak | Mic | Led1 | Led2", lines[0]);
     }
@@ -59,7 +59,7 @@ public sealed class ZoomH4nDecoderTests
     {
         var decoder = new ZoomH4nDecoder();
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x01, 0x02 }));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([0x01, 0x02]));
 
         Assert.HasCount(2, lines);
         Assert.AreEqual("Status: Record", lines[0]);
@@ -73,11 +73,11 @@ public sealed class ZoomH4nDecoderTests
         // Establish a baseline first: on the very first Render call every key is new to
         // _lastValues, so all 5 would publish regardless of value - only a second, differing
         // frame isolates just the bit that actually changed.
-        decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x00 }));
+        decoder.Render(new ReadOnlySequence<byte>([0x00]));
 
         IReadOnlyDictionary<string, string>? published = null;
         decoder.ValuesChanged += (_, values) => published = values;
-        decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x01 }));
+        decoder.Render(new ReadOnlySequence<byte>([0x01]));
 
         Assert.IsNotNull(published);
         Assert.AreEqual("1", published!["statusRecord"]);
@@ -91,8 +91,8 @@ public sealed class ZoomH4nDecoderTests
         var publishCount = 0;
         decoder.ValuesChanged += (_, _) => publishCount++;
 
-        decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x01 }));
-        decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x01 }));
+        decoder.Render(new ReadOnlySequence<byte>([0x01]));
+        decoder.Render(new ReadOnlySequence<byte>([0x01]));
 
         Assert.AreEqual(1, publishCount);
     }
@@ -102,7 +102,7 @@ public sealed class ZoomH4nDecoderTests
     {
         var decoder = new ZoomH4nDecoder();
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(new byte[] { 0x80 }));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([0x80]));
 
         Assert.AreEqual("Status: (none)", lines[0]);
     }

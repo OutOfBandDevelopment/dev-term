@@ -45,9 +45,9 @@ public sealed class ConnectionEditorFormTests
         {
             var definition = viewModel.FormDefinition;
 
-            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "Loopback", "Presentation"], [.. definition.Sections.Select(s => s.Label)]);
+            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation"], [.. definition.Sections.Select(s => s.Label)]);
             Assert.AreSequenceEqual(
-                [null, nameof(ConnectionEditorViewModel.IsSerialTransport), nameof(ConnectionEditorViewModel.IsTcpTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null],
+                [null, nameof(ConnectionEditorViewModel.IsSerialTransport), nameof(ConnectionEditorViewModel.IsTcpTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null],
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
             Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
@@ -57,16 +57,16 @@ public sealed class ConnectionEditorFormTests
             Assert.AreSequenceEqual(
                 ["Vendor ID", "Product ID", "Serial number", "Show as hex", "Detected HID devices", "Detected USBTMC devices", ""],
                 [.. definition.Sections[3].Controls.Select(c => c.Label)]);
-            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "Send as", "Line ending"], [.. definition.Sections[5].Controls.Select(c => c.Label)]);
+            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "Send as", "Line ending"], [.. definition.Sections[6].Controls.Select(c => c.Label)]);
 
             var transport = (ChoiceControl)definition.Sections[0].Controls[0];
             Assert.AreSequenceEqual(viewModel.TransportOptions, transport.Options);
-            var presenters = (ChoiceControl)definition.Sections[5].Controls[0];
+            var presenters = (ChoiceControl)definition.Sections[6].Controls[0];
             Assert.AreEqual(ChoiceStyle.CheckList, presenters.Style);
             Assert.AreSequenceEqual(viewModel.PresenterOptions, presenters.Options);
             Assert.AreEqual(ValueKind.Integer, ((TextFieldControl)definition.Sections[1].Controls[3]).Constraint!.Kind);
             Assert.AreEqual(IndicatorStyle.Warning, ((IndicatorControl)definition.Sections[1].Controls[2]).Style);
-            Assert.AreEqual(nameof(ConnectionEditorViewModel.IsScpiPresenterSelected), definition.Sections[5].Controls[1].VisibleWhen!.Id);
+            Assert.AreEqual(nameof(ConnectionEditorViewModel.IsScpiPresenterSelected), definition.Sections[6].Controls[1].VisibleWhen!.Id);
             Assert.AreEqual(nameof(ConnectionEditorViewModel.IsHidTransport), definition.Sections[3].Controls[4].VisibleWhen!.Id);
         });
     }
@@ -76,6 +76,7 @@ public sealed class ConnectionEditorFormTests
     [DataRow("tcp", "TCP")]
     [DataRow("hid", "USB Device")]
     [DataRow("usbtmc", "USB Device")]
+    [DataRow("ble", "BLE")]
     [DataRow("loopback", "Loopback")]
     public void EachTransport_ShowsExactlyItsOwnFieldGroup(string transport, string expected)
     {
@@ -131,7 +132,7 @@ public sealed class ConnectionEditorFormTests
     {
         var definition = FormDefinitionGenerator.Generate<CliOptions>();
 
-        Assert.AreSequenceEqual(["General", "Mode", "Presentation", "Serial", "TCP", "USB Device"], [.. definition.Sections.Select(s => s.Label)]);
+        Assert.AreSequenceEqual(["General", "Mode", "Presentation", "Serial", "TCP", "USB Device", "BLE"], [.. definition.Sections.Select(s => s.Label)]);
         var ids = Controls(definition).Select(c => c.Id).ToList();
         Assert.DoesNotContain(nameof(CliOptions.EffectivePresenters), ids, "[Browsable(false)] is left out.");
         Assert.Contains(nameof(CliOptions.Baud), ids);
@@ -144,7 +145,7 @@ public sealed class ConnectionEditorFormTests
         Assert.AreEqual("Read timeout (ms)", Controls(definition).Single(c => c.Id == nameof(CliOptions.ReadTimeoutMs)).Label);
         Assert.IsTrue(((ToggleControl)Controls(definition).Single(c => c.Id == nameof(CliOptions.Dtr))).DefaultValue);
         Assert.AreEqual(
-            "Which transport to use: serial, tcp, hid, usbtmc, or loopback.",
+            "Which transport to use: serial, tcp, hid, usbtmc, ble, or loopback.",
             Controls(definition).Single(c => c.Id == nameof(CliOptions.Transport)).Description);
     }
 }

@@ -115,7 +115,7 @@ you type.
 
 ![WPF connection editor, serial transport](images/wpf-device-profiles-serial.png)
 
-These captures come from a machine with no COM3 attached. The "(not found — …)" line (red in WPF)
+These captures use a saved port (COM99) that isn't attached. The "(not found — …)" line (red in WPF)
 is how both front ends flag a saved port or USB device that isn't connected right now. It's only a
 hint: Connect still tries, and reports the error if the connection fails.
 

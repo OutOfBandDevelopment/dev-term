@@ -134,13 +134,14 @@ public sealed class ControlPanelModeLayoutTests
         });
     }
 
+    private static readonly string[] _sourceArray = ["reset", "toggle1", "slider1", "silent", "channel", "send"];
+
     [TestMethod]
     public void Controls_InOneSection_StartInTheSameColumn_PastTheLongestLabel()
     {
         RunHeadless(new PlainSurface(), (app, parts) =>
         {
-            var xs = new[] { "reset", "toggle1", "slider1", "silent", "channel", "send" }
-                .Select(id => parts.ControlViews[id].Frame.X)
+            var xs = _sourceArray.Select(id => parts.ControlViews[id].Frame.X)
                 .Distinct()
                 .ToList();
 
@@ -165,11 +166,13 @@ public sealed class ControlPanelModeLayoutTests
         });
     }
 
+    private static readonly string[] _expected = ["one two", "three", "four"];
+
     [TestMethod]
     public void WordWrap_BreaksAtSpacesAndKeepsExplicitLineBreaks()
     {
-        Assert.AreSequenceEqual(new[] { "one two", "three", "four" }, ControlPanelMode.WordWrap("one two three\nfour", 8));
-        Assert.AreSequenceEqual(new[] { "abcd", "ef" }, ControlPanelMode.WordWrap("abcdef", 4));
+        Assert.AreSequenceEqual(_expected, ControlPanelMode.WordWrap("one two three\nfour", 8));
+        Assert.AreSequenceEqual(["abcd", "ef"], ControlPanelMode.WordWrap("abcdef", 4));
     }
 
     [TestMethod]

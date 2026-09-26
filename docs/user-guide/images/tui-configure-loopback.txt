@@ -1,15 +1,15 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│  Description:                                                               ▲│
-│                                                                             ░│
+│                                                                             ▲│
 │── Loopback ──                                                               ░│
 │  No configuration needed — a scripted fake device. Try "hello", "Send       ░│
 │  Stream: N, ascii", "Send Events: N", or "help"/"?".                        ░│
 │                                                                             ░│
 │── Presentation ──                                                           ░│
 │  Presenters:  ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       ░│
-│               ☐ busylight ☐ scpi                                            █│
-│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          █│
-│               ○ k8055  ○ busylight  ○ scpi                                  █│
+│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000              ░│
+│  Send as:     ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal  ○ binary          ░│
+│               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           █│
+│               ○ de5000                                                      █│
 │  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧▖                █│

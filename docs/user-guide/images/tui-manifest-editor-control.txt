@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened                                                                        │
-│'C:\repos\github\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\mani  │
+│'C:\repo\oobdev\dev-term\tests\DevTerm.Console.Tests\bin\Debug\net10.0\manif  │
 │╭┤Outline├───────────────────╮╭┤barGraph: Channels├──────────────────────────╮│
 ││Commands (3)                ││  Kind:  barGraph                  ⟦ Pick... ⟧││
 ││  Measure                   ││                                   ▝▀▀▀▀▀▀▀▀▀▀││

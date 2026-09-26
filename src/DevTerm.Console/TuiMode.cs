@@ -220,11 +220,13 @@ public static class TuiMode
         void AppendStatus(string text) => AppendOutput(StatusLine(text));
         void AppendError(string text) => AppendOutput(ErrorLine(text));
 
+#pragma warning disable IDE0017 // Simplify object initialization
         var connectMenuItem = new MenuItem(
             session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
         connectMenuItem.Action = () => Observe(ToggleAndRefreshAsync(), AppendOutput);
+#pragma warning restore IDE0017 // Simplify object initialization
 
         async Task ToggleAndRefreshAsync()
         {

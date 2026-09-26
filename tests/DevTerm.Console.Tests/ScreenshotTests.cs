@@ -79,14 +79,19 @@ public sealed class ScreenshotTests
         var directory = CreateTempProfilesDirectory();
         try
         {
-            var initial = new CliOptions { Transport = "serial", Port = "COM3", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
+            // A port name real hardware is vanishingly unlikely to occupy - this is a Unit test, and
+            // SerialPortOptions reads real OS port enumeration (no fake to inject through
+            // ConfigureMode.BuildWindow), so a real "COM3" here would make the "not found" hint below
+            // depend on whatever happens to be plugged into the machine running the test.
+            var initial = new CliOptions { Transport = "serial", Port = "COM99", Baud = 9600, Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
             Assert.Contains("Transport:", dump);
             Assert.Contains("── Serial ──", dump);
             Assert.Contains("Port:", dump);
-            Assert.Contains("COM3", dump);
+            Assert.Contains("COM99", dump);
             Assert.Contains("Baud:", dump);
+            Assert.Contains("not found", dump);
         }
         finally
         {
@@ -197,8 +202,11 @@ public sealed class ScreenshotTests
 
             File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-ble.txt"), dump);
 
-            Assert.Contains("BLE device ID:", dump);
-            Assert.Contains("AB12CD34-1234-5678-9abc-def012345678", dump);
+            Assert.Contains("Device ID:", dump);
+
+            // The field is narrower than the full UUID, so it scrolls to show the cursor (the end
+            // of the typed value) rather than the start - assert on the visible tail, not the whole string.
+            Assert.Contains("def012345678", dump);
         }
         finally
         {
