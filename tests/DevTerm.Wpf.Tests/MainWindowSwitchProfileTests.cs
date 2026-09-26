@@ -5,6 +5,7 @@ using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Devices.Scpi;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 
@@ -71,6 +72,88 @@ public sealed class MainWindowSwitchProfileTests
         });
     }
 
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SwitchProfileAsync_WithAnOpenControlPanel_ClosesItInsteadOfLeavingItBoundToTheOldSession()
+    {
+        // Regression test for bug 016: control panels hold an IControlSurface (and, for most, a
+        // structured presenter) built against the session/catalog active when the panel was opened.
+        // Before the fix, SwitchProfileAsync disposed that session and opened a new one without ever
+        // closing an already-open panel, so its buttons went on calling into a disposed transport.
+        // See docs/bugs/016-wpf-panels-bound-to-old-session.md.
+        StaTestRunner.Run(async () =>
+        {
+            var initialTransport = new FakeTransport();
+            var initialPresenter = new AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new AsciiPresenterOptions()));
+            var initialSession = new Session(initialTransport, new Pipeline([initialPresenter]));
+            var window = new MainWindow(initialSession, new PresenterCatalog([initialPresenter]), new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Parser = "ascii" },
+                IsolatedProfiles.Empty())
+            {
+                ShowInTaskbar = false,
+            };
+            window.Show();
+            await window.ConnectAsync();
+
+            var panel = window.OpenK8055ControlPanel();
+            Assert.AreEqual(1, window.OpenControlPanels.Count);
+
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
+
+            var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] });
+            using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
+
+            Assert.IsTrue(switched);
+            Assert.IsFalse(panel.IsVisible, "A panel bound to the old session should be closed on a profile switch.");
+            Assert.AreEqual(0, window.OpenControlPanels.Count);
+        });
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SwitchProfileAsync_DuringAnInFlightScpiAutoDetect_PreventsOpeningAPanelAgainstTheNewSession()
+    {
+        // Regression test for the "Related" race in bug 016: DetectAndOpenScpiInstrumentAsync
+        // captures the old catalog's structuredSource before awaiting a reply. Before the fix, if a
+        // profile switch completed while that await was still pending, the detection's completion
+        // paired the OLD structuredSource with the NEW _session when opening a panel. See
+        // docs/bugs/016-wpf-panels-bound-to-old-session.md.
+        StaTestRunner.Run(async () =>
+        {
+            var initialTransport = new FakeTransport();
+            var scpiPresenter = new ScpiReplyPresenter();
+            var initialSession = new Session(initialTransport, new Pipeline([scpiPresenter]));
+            var window = new MainWindow(
+                initialSession,
+                new PresenterCatalog([scpiPresenter]),
+                new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Parser = "ascii", ScpiAutoDetectTimeoutMs = 300 },
+                IsolatedProfiles.Empty())
+            {
+                ShowInTaskbar = false,
+            };
+            window.Show();
+            await window.ConnectAsync();
+
+            // Never replies: DetectAndOpenScpiInstrumentAsync's *IDN? wait times out after 300 ms.
+            var detectTask = window.DetectAndOpenScpiInstrumentAsync(scpiPresenter);
+
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
+
+            var switched = await window.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["hex"] });
+            using var client = await acceptTask.AsTask().WaitAsync(_timeout, TestContext.CancellationToken);
+
+            await detectTask.WaitAsync(_timeout, TestContext.CancellationToken);
+
+            Assert.IsTrue(switched);
+            Assert.AreEqual(0, window.OpenControlPanels.Count, "Auto-detect completing after a switch must not open a panel against the new session using the old catalog's presenter.");
+        });
+    }
 
     [TestMethod]
     public void SwitchProfileAsync_ToASavedProfile_RetitlesTheWindowWithItsName()

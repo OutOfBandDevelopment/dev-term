@@ -43,6 +43,16 @@ public partial class MainWindow : Window
     private StreamMonitor? _streamMonitor;
     private StreamMonitorWindow? _streamMonitorWindow;
 
+    // Every open control panel (K8055, Busylight, RadexOne, ZoomH4n, De5000, SCPI, a device manifest
+    // panel) holds an IControlSurface built against _session and, for most of them, a structured
+    // presenter from _catalog - both go stale the moment SwitchProfileAsync disposes the old session,
+    // so every panel gets closed there instead of being left to fail silently against a dead
+    // transport. See docs/bugs/016-wpf-panels-bound-to-old-session.md.
+    private readonly List<Window> _openControlPanels = [];
+
+    /// <summary>Every currently open control panel window, for tests to assert against.</summary>
+    internal IReadOnlyList<Window> OpenControlPanels => _openControlPanels;
+
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
@@ -337,10 +347,26 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Tracks a just-created control panel window (K8055/Busylight/RadexOne/ZoomH4n/De5000/SCPI/a
+    /// device manifest panel) so <see cref="SwitchProfileAsync"/> can close it — its
+    /// <see cref="IControlSurface"/> and structured presenter are both bound to the session/catalog
+    /// active when it was opened, and go stale the moment those are replaced. Removed from
+    /// <see cref="_openControlPanels"/> as soon as the window closes for any other reason too.
+    /// </summary>
+    private void TrackControlPanel(Window window)
+    {
+        _openControlPanels.Add(window);
+        window.Closed += (_, _) => _openControlPanels.Remove(window);
+    }
+
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
     // -open _session rather than opening a second competing connection to the same physical device.
-    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e)
+    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e) => OpenK8055ControlPanel();
+
+    /// <summary>Split from the click handler so tests can drive it and assert against <see cref="OpenControlPanels"/> without simulating a menu click.</summary>
+    internal ControlPanelWindow OpenK8055ControlPanel()
     {
         var structuredSource = _catalog.TryGet("k8055", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
@@ -350,7 +376,9 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
+        return window;
     }
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
@@ -366,6 +394,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -382,6 +411,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -398,6 +428,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -416,6 +447,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -428,7 +460,7 @@ public partial class MainWindow : Window
         var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
         if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
         {
-            ManifestPickerWindow.OpenPanel(this, _session, manifest);
+            TrackControlPanel(ManifestPickerWindow.OpenPanel(this, _session, manifest));
         }
     }
 
@@ -520,8 +552,14 @@ public partial class MainWindow : Window
     // this can't finish before the click handler returns - fire-and-forget (observed). Shares its
     // detect logic with the TUI (ScpiAutoDetect); reports progress while it waits (a wait cursor and
     // a status line) and what it found afterward, using the connection's configured timeout.
-    private async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
+    /// <summary>internal so a test can drive the auto-detect-during-a-profile-switch race directly.</summary>
+    internal async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
+        // Captured so that if SwitchProfileAsync replaces _session/_catalog while this detection is
+        // in flight, the completion below can tell and not open a panel pairing the NEW _session with
+        // structuredSource from the OLD catalog - part of bug 016, see
+        // docs/bugs/016-wpf-panels-bound-to-old-session.md's "Related" note.
+        var sessionAtStart = _session;
         var timeout = TimeSpan.FromMilliseconds(_cliOptions.ScpiAutoDetectTimeoutMs);
         AppendOutput(ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);
 
@@ -530,7 +568,7 @@ public partial class MainWindow : Window
         Cursor = System.Windows.Input.Cursors.Wait;
         try
         {
-            result = await ScpiAutoDetect.DetectAsync(_session, structuredSource, timeout);
+            result = await ScpiAutoDetect.DetectAsync(sessionAtStart, structuredSource, timeout);
         }
         catch (Exception ex)
         {
@@ -542,6 +580,13 @@ public partial class MainWindow : Window
         finally
         {
             Cursor = previousCursor;
+        }
+
+        if (!ReferenceEquals(_session, sessionAtStart))
+        {
+            // The profile changed while auto-detect was waiting; the detected profile belongs to a
+            // connection that's already closed, so there's nothing live to open a panel against.
+            return;
         }
 
         AppendOutput(result.Describe(timeout), OutputKind.Status);
@@ -565,6 +610,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -626,6 +672,15 @@ public partial class MainWindow : Window
         {
             AppendOutput($"Could not switch profile: {ex.Message}", OutputKind.Error);
             return false;
+        }
+
+        // Every open control panel's IControlSurface (and, for most, its structured presenter) is
+        // bound to the session/catalog being replaced below - closing them here, rather than leaving
+        // them open against a disposed session, is what fixes bug 016. ToArray: Closed removes each
+        // one from _openControlPanels as it fires, which would otherwise mutate the list mid-iteration.
+        foreach (var panel in _openControlPanels.ToArray())
+        {
+            panel.Close();
         }
 
         _session.Output -= OnSessionOutput;

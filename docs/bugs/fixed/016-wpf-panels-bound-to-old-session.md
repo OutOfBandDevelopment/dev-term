@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | WPF (MainWindow, control panels) |
 | **Created** | 2026-09-26 |
@@ -29,3 +29,15 @@ Track open panels and close them on a switch (or rebind them to the new session 
 
 ## Tests to add
 After a profile switch, an open panel is closed (or works against the new session).
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `MainWindow` now tracks every open control panel window
+(`_openControlPanels`, populated by a `TrackControlPanel` helper wired into all 7 panel-opening call
+sites: K8055, Busylight, RadexOne, ZoomH4n, De5000, the SCPI instrument panel, and a device manifest
+panel) and closes each of them from `SwitchProfileAsync` right before the old session is disposed,
+rather than leaving them bound to a session that's about to go away. The related SCPI auto-detect
+race is fixed too: `DetectAndOpenScpiInstrumentAsync` now captures the session it started against and
+bails out without opening a panel if `_session` no longer matches by the time the `*IDN?` wait
+completes, instead of pairing the new `_session` with the old catalog's `structuredSource`.
+Regression tests: `MainWindowSwitchProfileTests.SwitchProfileAsync_WithAnOpenControlPanel_ClosesItInsteadOfLeavingItBoundToTheOldSession`,
+`SwitchProfileAsync_DuringAnInFlightScpiAutoDetect_PreventsOpeningAPanelAgainstTheNewSession`.
