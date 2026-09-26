@@ -282,6 +282,66 @@ internal static class TuiTestRunner
         }
     }
 
+    /// <summary>
+    /// The same real-<c>Application.Run()</c>-loop pattern again, for any window: <paramref name="build"/>
+    /// runs on the loop thread (after <paramref name="beforeBuild"/>, e.g. a screen resize), and
+    /// <paramref name="body"/> on the test thread, marshaling in with <see cref="InvokeOnLoop{T}"/>.
+    /// What a test needs to look at a real modal dialog - a nested <c>Run</c> inside an
+    /// <c>Application.Invoke</c> keeps pumping the loop, so the dialog can be inspected and stopped from here.
+    /// </summary>
+    public static void RunWithLoopApp(Action<IApplication>? beforeBuild, Func<IApplication, Terminal.Gui.ViewBase.View> build, Action<IApplication, Terminal.Gui.ViewBase.View> body)
+    {
+        Terminal.Gui.ViewBase.View? root = null;
+        IApplication? app = null;
+        var ready = new ManualResetEventSlim(false);
+        Exception? threadException = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                app = Application.Create().Init("dotnet");
+                _currentApp = app;
+                beforeBuild?.Invoke(app);
+                root = build(app);
+                app.Invoke(() => ready.Set());
+                app.Run((IRunnable)root);
+            }
+            catch (Exception ex)
+            {
+                threadException = ex;
+                ready.Set();
+            }
+        })
+        {
+            IsBackground = true,
+        };
+        thread.Start();
+
+        if (!ready.Wait(_startTimeout))
+        {
+            throw new TimeoutException("The TUI run loop did not start in time.");
+        }
+
+        if (threadException is not null)
+        {
+            throw new InvalidOperationException("The TUI run loop failed to start.", threadException);
+        }
+
+        try
+        {
+            body(app!, root!);
+        }
+        finally
+        {
+            app!.Invoke(() => app.RequestStop((IRunnable)root!));
+            thread.Join(_stopTimeout);
+            _currentApp = null;
+            root!.Dispose();
+            app.Dispose();
+        }
+    }
+
     /// <summary>Runs <paramref name="func"/> on the TUI loop thread (see <see cref="RunWithLoop"/>) and waits for it to complete, so reads of view state don't race the loop's own redraw/input processing.</summary>
     public static T InvokeOnLoop<T>(Func<T> func)
     {

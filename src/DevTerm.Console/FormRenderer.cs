@@ -44,6 +44,9 @@ internal static class FormRenderer
     /// <summary>How far a section's rows sit in from its header.</summary>
     internal const int Indent = 2;
 
+    /// <summary>The Terminal.Gui scheme warning text is drawn with - the theme's <c>Error</c> role (see <see cref="TuiTheme"/>), so a theme switch recolors it.</summary>
+    internal const string ErrorSchemeName = "Error";
+
     public static TuiFormParts Build(IApplication app, UiDefinition definition, FormBinding binding, TuiFormOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -108,8 +111,8 @@ internal static class FormRenderer
         }
 
         int? picked = null;
-        var dialog = new Dialog { Title = title, Width = 60, Height = Math.Min(items.Count + 4, 20) };
-        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() - 1 };
+        var dialog = new Dialog { Title = title, Width = ListDialogWidth(app, items), Height = Math.Min(items.Count + 5, 20) };
+        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2) };
         listView.SetSource(new ObservableCollection<string>(items));
 
         void Choose()
@@ -142,6 +145,18 @@ internal static class FormRenderer
         dialog.Add(listView, selectButton, cancelButton);
         app.Run(dialog);
         return picked;
+    }
+
+    /// <summary>
+    /// A list picker's width: wide enough for its longest item (the SCPI profile names ran past a
+    /// fixed 60 columns and were cut off) but never wider than the screen, and at least 60. Its list
+    /// leaves the last two rows to the Select/Cancel row and its shadow, which a one-row gap cut off.
+    /// </summary>
+    internal static int ListDialogWidth(IApplication app, IReadOnlyList<string> items)
+    {
+        var screen = app.Screen.Width > 0 ? app.Screen.Width : 80;
+        var widest = items.Count == 0 ? 0 : items.Max(i => i.Length);
+        return Math.Clamp(widest + 4, 60, Math.Max(screen - 4, 60));
     }
 
     /// <summary>Greedy placement of items <paramref name="widths"/> wide, <paramref name="gap"/> apart, into lines of at most <paramref name="width"/> columns: each item's (column offset, line).</summary>
@@ -235,6 +250,13 @@ internal static class FormRenderer
             case IndicatorControl indicator:
                 {
                     var label = new Label { X = column, Text = indicator.DefaultValue ?? string.Empty };
+                    if (indicator.Style == IndicatorStyle.Warning)
+                    {
+                        // The theme's Error color, like WPF's form renderer and the inline "! ..."
+                        // messages below - a "(not found ...)" hint used to look like plain help text.
+                        label.SchemeName = ErrorSchemeName;
+                    }
+
                     row.Add(label);
                     row.Refresh = () =>
                     {
@@ -271,19 +293,23 @@ internal static class FormRenderer
                 }
 
             default:
-                BuildTextField(parts, row, control, column);
+                BuildTextField(parts, row, control, column, width);
                 break;
         }
 
         return row;
     }
 
-    private static void BuildTextField(TuiFormParts parts, FormRow row, UiControl control, int column)
+    private static void BuildTextField(TuiFormParts parts, FormRow row, UiControl control, int column, int width)
     {
         var binding = parts.Binding;
         var constraint = ValueValidator.ConstraintFor(control);
         var numeric = constraint is { Kind: not ValueKind.Text };
         var fieldWidth = numeric ? 10 : control is TextFieldControl { MaxLength: { } max } ? Math.Clamp(max + 1, 4, 40) : 30;
+
+        // Never wider than the room left in the row: in a narrow form (the manifest editor's pane
+        // at 80 columns) a 30-wide field ran past the pane's edge and was cut off.
+        fieldWidth = Math.Min(fieldWidth, Math.Max(width, 4));
         var field = new TextField { X = column, Width = fieldWidth };
         row.Add(field);
         var next = column + fieldWidth + 1;
@@ -296,7 +322,7 @@ internal static class FormRenderer
         }
 
         // Always "shown" with the row; empty (so invisible) while the value is valid.
-        var error = new Label { X = next, Text = string.Empty };
+        var error = new Label { X = next, Text = string.Empty, SchemeName = ErrorSchemeName };
         row.Add(error);
         parts.ErrorLabels[control.Id] = error;
 
@@ -311,7 +337,7 @@ internal static class FormRenderer
                 field.Text = text;
             }
 
-            ShowResult(ValueValidator.Validate(constraint, text));
+            ShowResult(binding.Validate(control, text));
         };
         field.ReadOnly = binding.IsReadOnly(control.Id);
         parts.ControlViews[control.Id] = field;
@@ -335,7 +361,8 @@ internal static class FormRenderer
     {
         var binding = parts.Binding;
         var options = choice.Options;
-        var selectorWidth = options.Sum(o => o.Length + 2) + (2 * Math.Max(options.Count - 1, 0));
+        var labels = options.Select(ChoiceLabel).ToList();
+        var selectorWidth = labels.Sum(o => o.Length + 2) + (2 * Math.Max(options.Count - 1, 0));
 
         if (selectorWidth <= width)
         {
@@ -344,7 +371,7 @@ internal static class FormRenderer
                 X = column,
                 Orientation = Orientation.Horizontal,
                 HorizontalSpace = 2,
-                Labels = options,
+                Labels = labels,
 
                 // Options are data, not menu text — an '_' in one isn't a hotkey marker.
                 HotKeySpecifier = (Rune)0xFFFF,
@@ -374,10 +401,10 @@ internal static class FormRenderer
             return;
         }
 
-        var placed = Wrap([.. options.Select(o => o.Length + 2)], width, 2);
+        var placed = Wrap([.. labels.Select(o => o.Length + 2)], width, 2);
         if (placed.Count > 0 && placed[^1].Line < MaxWrappedChoiceRows)
         {
-            var radios = options.Select(option => new CheckBox { Text = option, RadioStyle = true }).ToList();
+            var radios = labels.Select(label => new CheckBox { Text = label, RadioStyle = true, HotKeySpecifier = (Rune)0xFFFF }).ToList();
             for (var i = 0; i < radios.Count; i++)
             {
                 var radio = radios[i];
@@ -404,13 +431,13 @@ internal static class FormRenderer
             row.Height = placed[^1].Line + 1;
             row.Refresh = () =>
             {
-                var current = binding.GetText(choice.Id);
-                foreach (var radio in radios)
+                var current = IndexOf(options, binding.GetText(choice.Id));
+                for (var i = 0; i < radios.Count; i++)
                 {
-                    var check = string.Equals(radio.Text, current, StringComparison.OrdinalIgnoreCase) ? CheckState.Checked : CheckState.UnChecked;
-                    if (radio.Value != check)
+                    var check = i == current ? CheckState.Checked : CheckState.UnChecked;
+                    if (radios[i].Value != check)
                     {
-                        radio.Value = check;
+                        radios[i].Value = check;
                     }
                 }
             };
@@ -419,19 +446,20 @@ internal static class FormRenderer
             parts.Choices[choice.Id] = new TuiChoice(
                 options,
                 radios[0],
-                () => radios.FirstOrDefault(r => r.Value == CheckState.Checked)?.Text,
+                () => radios.FindIndex(r => r.Value == CheckState.Checked) is var i and >= 0 ? options[i] : null,
                 value =>
                 {
-                    if (radios.FirstOrDefault(r => string.Equals(r.Text, value, StringComparison.OrdinalIgnoreCase)) is { } radio)
+                    if (IndexOf(options, value) is var i and >= 0)
                     {
-                        radio.Value = CheckState.Checked;
+                        radios[i].Value = CheckState.Checked;
                     }
                 });
             return;
         }
 
         // Too many to show at once: type it, or pick it from the list.
-        var field = new TextField { X = column, Width = Math.Min(30, Math.Max(width - 12, 10)) };
+        // Room for the "⟦ Pick... ⟧" button and its shadow (12 columns) plus a gap after the field.
+        var field = new TextField { X = column, Width = Math.Min(30, Math.Max(width - 13, 10)) };
         var pick = new Button { X = Pos.Right(field) + 1, Text = "Pick..." };
         field.TextChanged += (_, _) => parts.Push(() => binding.SetText(choice, field.Text));
         pick.Accepting += (_, e) =>
@@ -457,6 +485,9 @@ internal static class FormRenderer
         parts.PickButtons[choice.Id] = pick;
         parts.Choices[choice.Id] = new TuiChoice(options, field, () => field.Text, value => field.Text = value ?? string.Empty);
     }
+
+    /// <summary>How a choice option is shown: an empty option (the "not set" choice, e.g. a manifest's transport hint) as "(none)" rather than a bare radio button with nothing beside it.</summary>
+    internal static string ChoiceLabel(string option) => option.Length == 0 ? "(none)" : option;
 
     private static int IndexOf(IReadOnlyList<string> options, string? value)
     {

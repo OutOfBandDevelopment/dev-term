@@ -247,7 +247,6 @@ internal static class FormRenderer
     private static FrameworkElement BuildTextBox(WpfFormParts parts, WpfFormRow row, UiControl control)
     {
         var binding = parts.Binding;
-        var constraint = ValueValidator.ConstraintFor(control);
         var box = new TextBox { VerticalContentAlignment = VerticalAlignment.Center, IsReadOnly = binding.IsReadOnly(control.Id) };
         if (control is TextFieldControl { MaxLength: { } max })
         {
@@ -273,7 +272,7 @@ internal static class FormRenderer
                 box.Text = text;
             }
 
-            Show(ValueValidator.Validate(constraint, text));
+            Show(binding.Validate(control, text));
         };
         parts.TextBoxes[control.Id] = box;
 

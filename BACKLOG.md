@@ -104,13 +104,28 @@ the rest.
 - **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
   Generic, most manifest-editor node kinds, and the menus in the second theme.
 
+### TUI layout review follow-ups (from 2026-09-25)
+
+- **Control-panel button rows repeat their label** ("Apply: [Apply]", "Custom...: [Custom...]"). It's how
+  the label column lines up; a design call.
+- **Ctrl+Q in a nested TUI panel or dialog closes that window** rather than quitting the app. Decide which
+  it should be.
+- **The layout matrix made `DevTerm.Console.Tests` ~2 min** (was ~16 s). Reuse one app per class, or trim
+  the matrix to 80x25 plus 200x60.
+- **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
+- **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
+  invisible field backgrounds, faint focus).
+- **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
+  structured source; check whether that message suits an output-only device.
+- **Not reviewed yet:** the Terminal.Gui file dialogs (Browse, Save As); the manifest editor's New/empty
+  state and its "Create panel from commands" hint; Playback, the Stream Monitor and the SCPI panels in Dark;
+  the K8055 with live data; the main window's menus while disconnected.
+
 ### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
 - **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
   dropdown); only the form renderers handle both.
 - **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
-- **The manifest editor's status line shows the full file path,** which reads long; a shortened path
-  (or just the folder name) would fit better.
 
 ### Tooling
 

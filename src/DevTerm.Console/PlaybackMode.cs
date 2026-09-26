@@ -121,6 +121,9 @@ public static class PlaybackMode
             Width = Dim.Fill(),
             Height = Dim.Fill(3),
             ReadOnly = true,
+
+            // Soft-wrapped like the main window's output pane: long lines stay readable from their start.
+            WordWrap = true,
         };
 
         var positionLabel = new Label { X = 0, Y = Pos.Bottom(output), Width = Dim.Fill() };
@@ -283,7 +286,7 @@ public static class PlaybackMode
     internal static string? PromptForText(IApplication app, string title, string label, string initial)
     {
         string? result = null;
-        var dialog = new Dialog { Title = title, Width = 76, Height = 7 };
+        var dialog = new Dialog { Title = title, Width = 76, Height = 8 };
         var prompt = new Label { X = 0, Y = 0, Text = label };
         var field = new TextField { X = 0, Y = 1, Width = Dim.Fill(), Text = initial };
         var okButton = new Button { X = 0, Y = 3, Text = "OK", IsDefault = true };

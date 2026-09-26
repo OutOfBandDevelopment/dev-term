@@ -23,5 +23,5 @@ TestResults/
 appsettings.Local.json
 appsettings.*.Local.json
 
-# Local review output (UI review screenshots from UiLayoutReviewTests etc.) - never committed.
+# Untracked review output (TUI/WPF layout-review screenshots, see tests/DevTerm.Console.Tests/TuiReview.cs)
 artifacts/

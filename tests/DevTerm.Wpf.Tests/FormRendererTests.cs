@@ -48,6 +48,10 @@ public sealed class FormRendererTests
         [FormField(Order = 5)]
         public bool ShowExtra { get; set; }
 
+        [Category("Main")]
+        [FormField(Order = 6)]
+        public int? Limit { get; set; }
+
         [Category("Extra")]
         [FormField]
         public string Secret { get; set; } = "hidden";
@@ -89,6 +93,28 @@ public sealed class FormRendererTests
             ((CheckBox)parts.ControlViews[nameof(Model.ShowExtra)]).IsChecked = true;
             Assert.IsTrue(model.ShowExtra);
             Assert.AreEqual(Visibility.Visible, parts.SectionPanels["Extra"].Visibility, "A plain model: the binding's own change notice re-evaluates the condition.");
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void BlankOptionalNumber_IsValid_AndClearsTheValue()
+    {
+        // Mirrors the TUI renderer's fix: "! '' is not a whole number." used to show for a blank
+        // optional number, which then couldn't be cleared.
+        StaTestRunner.Run(async () =>
+        {
+            var model = new Model();
+            using var binding = new FormBinding(model);
+            var parts = FormRenderer.Build(FormDefinitionGenerator.Generate(model), binding);
+
+            parts.TextBoxes[nameof(Model.Limit)].Text = "5";
+            Assert.AreEqual(5, model.Limit);
+            parts.TextBoxes[nameof(Model.Limit)].Text = string.Empty;
+
+            Assert.IsNull(model.Limit);
+            Assert.AreEqual(Visibility.Collapsed, parts.ErrorTexts[nameof(Model.Limit)].Visibility, parts.ErrorTexts[nameof(Model.Limit)].Text);
 
             await Task.CompletedTask;
         });
