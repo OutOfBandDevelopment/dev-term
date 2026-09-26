@@ -60,6 +60,44 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task OpenAsync_ResetsAnyResettablePresenterBeforeStartingTheReadLoop()
+    {
+        // Regression test for bug 006: a LineReplyPresenter (or AsciiPresenter) survives Close and a
+        // later OpenAsync on this same Session, so its pending-reply queue/partial line used to carry
+        // over into the new connection. See docs/bugs/fixed/006-reply-queue-desync.md.
+        var (transport, _) = CreateOpenableTransport();
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("resettable");
+        var resettable = presenter.As<IResettablePresenter>();
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        resettable.Verify(r => r.Reset(), Times.Once);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task OpenAsync_AfterClose_ResetsTheResettablePresenterAgain()
+    {
+        // Same regression as above, for the reconnect case the report specifically calls out: a
+        // presenter bound to a Session that closes and reopens must be reset every time, not just on
+        // the very first open. See docs/bugs/fixed/006-reply-queue-desync.md.
+        var (transport, _) = CreateOpenableTransport();
+        var presenter = new Mock<IPresenter>();
+        presenter.SetupGet(p => p.Name).Returns("resettable");
+        var resettable = presenter.As<IResettablePresenter>();
+        await using var session = new Session(transport.Object, new Pipeline([presenter.Object]));
+
+        await session.OpenAsync(TestContext.CancellationToken);
+        await session.CloseAsync(TestContext.CancellationToken);
+        await session.OpenAsync(TestContext.CancellationToken);
+
+        resettable.Verify(r => r.Reset(), Times.Exactly(2));
+    }
+
+    [TestMethod]
     public async Task IncomingBytes_RaiseOutputForEveryPresenter()
     {
         var (transport, pipe) = CreateOpenableTransport();

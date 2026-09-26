@@ -140,6 +140,35 @@ public sealed class ManifestControlSurfaceTests
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => panel.Surface.InvokeAsync("nope", null, TestContext.CancellationToken));
     }
 
+    /// <summary>Records every <see cref="Cancel"/> call — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    private sealed class RecordingReplyTracker : IReplyTracker
+    {
+        public List<string> Cancelled { get; } = [];
+
+        public void QuerySent(string replyIndicatorId)
+        {
+        }
+
+        public void Cancel(string replyIndicatorId) => Cancelled.Add(replyIndicatorId);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_QueryCommand_WhenSendFails_CancelsTheReplyIndicatorAndRethrows()
+    {
+        // Regression test for bug 006: a failed send used to leave the reply id InvokeAsync just
+        // registered pending forever, shifting the *next* query's reply onto the wrong field. See
+        // docs/bugs/fixed/006-reply-queue-desync.md.
+        var transport = new FakeTransport { FailWritesWith = new IOException("write failed") };
+        var session = new Session(transport, new Pipeline([]));
+        var tracker = new RecordingReplyTracker();
+        var surface = new ManifestControlSurface(session, BuildPowerSupply(), tracker);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("read", null, TestContext.CancellationToken));
+
+        Assert.AreSequenceEqual(["read.reply"], tracker.Cancelled.ToArray());
+    }
+
     [TestMethod]
     public async Task QueryReply_IsCorrelated_AndResponsePatternsPublishNamedGroups()
     {

@@ -15,7 +15,7 @@
 
 ## What happens
 A device ending lines in LF CR produces a second, empty line, which consumes a pending query id (see
-[006](006-reply-queue-desync.md)).
+[006](fixed/006-reply-queue-desync.md)).
 
 ## Suggested fix
 Treat LF CR as one terminator, or skip empty lines while an id is pending.

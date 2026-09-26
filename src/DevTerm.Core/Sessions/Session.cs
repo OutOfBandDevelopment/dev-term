@@ -126,6 +126,15 @@ public sealed class Session : IAsyncDisposable
 
             await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
 
+            // A presenter (a pending SCPI/manifest reply queue, a partial ASCII line) survives
+            // Close/OpenAsync on this same Session instance - without this, a stale pending id or a
+            // half-received line from the previous connection carried into the new one. See
+            // docs/bugs/fixed/006-reply-queue-desync.md.
+            foreach (var presenter in _pipeline.Presenters.OfType<IResettablePresenter>())
+            {
+                presenter.Reset();
+            }
+
             // Before the read loop starts, so an observer always sees "opened" ahead of the first
             // received chunk.
             Notify(o => o.OnOpened());

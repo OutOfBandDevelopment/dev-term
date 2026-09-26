@@ -94,7 +94,30 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             _tracker?.QuerySent(replyId);
         }
 
-        return _session.SendAsync(Encoding.ASCII.GetBytes(resolved.WireText), cancellationToken);
+        return SendAsync(Encoding.ASCII.GetBytes(resolved.WireText), resolved.ReplyId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends the resolved bytes, cancelling the reply id <see cref="InvokeAsync"/> just registered
+    /// via <see cref="IReplyTracker.QuerySent"/> if the send itself fails — otherwise that id stays
+    /// queued forever waiting for a reply that will never arrive, shifting every later reply onto
+    /// the wrong field. See docs/bugs/fixed/006-reply-queue-desync.md.
+    /// </summary>
+    private async Task SendAsync(byte[] bytes, string? replyIndicatorId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _session!.SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (replyIndicatorId is not null)
+            {
+                _tracker?.Cancel(replyIndicatorId);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>The exact text <see cref="InvokeAsync"/> would send, control characters escaped (<c>MEAS?\n</c>); null for a passive id or an unknown command.</summary>

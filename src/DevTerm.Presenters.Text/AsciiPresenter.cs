@@ -17,7 +17,7 @@ namespace DevTerm.Presenters.Text;
 /// One instance is meant to back one session's pipeline at a time; sharing an instance across
 /// concurrent sessions would interleave their partial lines.
 /// </remarks>
-public sealed class AsciiPresenter : IPresenter, IPresenterInput
+public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePresenter
 {
     public const int DefaultMaxLineLength = 4096;
 
@@ -91,6 +91,13 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput
     }
 
     public byte[] Parse(string input) => Encoding.ASCII.GetBytes(input);
+
+    /// <summary>Clears any partial line left over from a previous connection — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    public void Reset()
+    {
+        _buffer.Clear();
+        _pendingCr = false;
+    }
 
     private string Flush()
     {

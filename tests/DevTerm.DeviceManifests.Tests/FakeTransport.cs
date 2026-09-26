@@ -11,6 +11,9 @@ internal sealed class FakeTransport : ITransport
 
     public List<byte[]> WrittenPayloads { get; } = [];
 
+    /// <summary>When set, <see cref="WriteAsync"/> throws this instead of recording the write — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    public Exception? FailWritesWith { get; set; }
+
     public ConnectionState State
     {
         get => _state;
@@ -40,6 +43,11 @@ internal sealed class FakeTransport : ITransport
 
     public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
+        if (FailWritesWith is { } failure)
+        {
+            return Task.FromException(failure);
+        }
+
         WrittenPayloads.Add(data.ToArray());
         return Task.CompletedTask;
     }

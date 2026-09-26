@@ -72,11 +72,24 @@ public static class ScpiAutoDetect
         try
         {
             tracker.QuerySent(_detectReplyId);
-            await session.SendAsync(Encoding.ASCII.GetBytes("*IDN?\n")).ConfigureAwait(false);
+            try
+            {
+                await session.SendAsync(Encoding.ASCII.GetBytes("*IDN?\n")).ConfigureAwait(false);
+            }
+            catch
+            {
+                // The send failed, so the id QuerySent just registered will never get a reply -
+                // cancel it or it shifts every later reply onto the wrong field. See
+                // docs/bugs/fixed/006-reply-queue-desync.md.
+                tracker.Cancel(_detectReplyId);
+                throw;
+            }
 
             var winner = await Task.WhenAny(replyReceived.Task, Task.Delay(timeout)).ConfigureAwait(false);
             if (winner != replyReceived.Task)
             {
+                // No reply within the timeout - same reasoning as the send-failure case above.
+                tracker.Cancel(_detectReplyId);
                 return new ScpiAutoDetectResult(ScpiAutoDetectOutcome.NoReply, null, null);
             }
 

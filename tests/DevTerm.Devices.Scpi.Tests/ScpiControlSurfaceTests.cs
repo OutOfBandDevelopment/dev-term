@@ -153,6 +153,24 @@ public sealed class ScpiControlSurfaceTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_QueryCommand_WhenSendFails_CancelsTheReplyIndicatorAndRethrows()
+    {
+        // Regression test for bug 006: a failed send used to leave the reply id QuerySent just
+        // registered pending forever, shifting the *next* query's reply onto the wrong field. See
+        // docs/bugs/fixed/006-reply-queue-desync.md.
+        var (session, transport) = CreateSurfaceSession();
+        transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("write failed"));
+        var tracker = new Mock<IScpiReplyTracker>();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("idn", null, TestContext.CancellationToken));
+
+        tracker.Verify(t => t.Cancel("idn.reply"), Times.Once);
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_NonQueryCommand_NeverRegistersWithTracker()
     {
         var (session, _) = CreateSurfaceSession();
