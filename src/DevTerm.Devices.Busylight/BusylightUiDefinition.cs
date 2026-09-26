@@ -26,10 +26,12 @@ public static class BusylightUiDefinition
                         Id = "color",
                         Label = "Color",
                         Style = ChoiceStyle.RadioGroup,
-                        Options = ["Red", "Green", "Blue", "Yellow", "Off"],
+                        Options = ["Red", "Green", "Blue", "Yellow", "Custom", "Off"],
                         DefaultValue = "Off",
                     },
-                    new ButtonControl { Id = "customColor", Label = "Custom...", ColorPickerTargetCommandId = "color" },
+                    // "Custom" in the radio group above stands for the color picked here - picking a
+                    // color selects it, and selecting it re-applies the picked color.
+                    new ButtonControl { Id = "customColor", Label = "Custom...", ColorPickerTargetCommandId = "color", ColorPickerChoiceOption = "Custom" },
                 ],
             },
             new UiSection

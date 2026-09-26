@@ -74,7 +74,15 @@ immediately — no setup, no picker. These two devices have one fixed, built-in 
 
 **Custom...** opens the RGB/HSV picker. It opens on the last color you picked, even if you've closed
 and reopened the panel since; before any pick it starts on white. Once a custom color has been set,
-a swatch next to the button shows its hex value on a background of that color. Here the color is
+a swatch next to the button shows its hex value on a background of that color.
+
+The Color radios include **Custom**, which stands for that picked color:
+- Picking a color in **Custom...** selects the Custom radio.
+- Choosing a preset (Red, Green, ...) and then selecting **Custom** again puts your custom color back,
+  with no need to reopen the picker.
+- If no custom color has been picked yet, selecting **Custom** opens the picker.
+
+As with every color change, it takes effect when you press **Apply**. Here the custom color is
 `#FF6600`:
 
 ![TUI Busylight control panel with a custom color set](images/tui-control-panel-busylight-custom-color.png)

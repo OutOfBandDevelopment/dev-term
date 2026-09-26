@@ -46,6 +46,12 @@ public partial class ControlPanelWindow : Window
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
     private readonly Dictionary<string, Border> _colorSwatches = [];
+
+    // "Custom" choice options backed by a color button (CustomColorChoices), each radio group's
+    // buttons by choice id, and a flag so checking the Custom radio after a pick doesn't resend.
+    private readonly IReadOnlyDictionary<string, (ButtonControl Button, string Option)> _customColorLinks;
+    private readonly Dictionary<string, List<RadioButton>> _choiceRadios = [];
+    private bool _suppressChoiceSend;
     private readonly Dictionary<string, TextBlock> _controlLabels = [];
     private readonly Dictionary<string, TextBlock> _infoIcons = [];
     private readonly Dictionary<string, Func<string?>> _previewSources = [];
@@ -81,6 +87,7 @@ public partial class ControlPanelWindow : Window
         WpfTheme.Attach(this);
         Title = $"dev-term — {definition.Name}";
         _definitionName = definition.Name;
+        _customColorLinks = CustomColorChoices.Find(definition);
         _surface = surface;
         _preview = surface as ICommandPreview;
 
@@ -389,10 +396,28 @@ public partial class ControlPanelWindow : Window
                 {
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     var groupName = "choice_" + control.Id;
+                    var radios = new List<RadioButton>();
+                    _choiceRadios[choice.Id] = radios;
                     foreach (var option in choice.Options)
                     {
                         var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
-                        radio.Checked += (_, _) => Invoke(choice.Id, option);
+                        radio.Checked += (_, _) =>
+                        {
+                            if (_suppressChoiceSend)
+                            {
+                                return;
+                            }
+
+                            if (_customColorLinks.TryGetValue(choice.Id, out var link) && option == link.Option)
+                            {
+                                ApplyCustomColor(choice.Id, link.Button);
+                            }
+                            else
+                            {
+                                Invoke(choice.Id, option);
+                            }
+                        };
+                        radios.Add(radio);
                         panel.Children.Add(radio);
                     }
 
@@ -461,21 +486,77 @@ public partial class ControlPanelWindow : Window
 
     private void OpenColorPicker(string buttonId, string targetCommandId)
     {
-        // Shared across panel openings (see LastPickedColors), not per window instance - a
-        // per-window dictionary here lost the color every time the panel was closed and reopened.
+        if (TryPickColor(buttonId, out var picked))
+        {
+            Invoke(targetCommandId, FormatColor(picked));
+            SelectCustomColorOption(targetCommandId, buttonId);
+        }
+    }
+
+    // Shared across panel openings (see LastPickedColors), not per window instance - a per-window
+    // dictionary here lost the color every time the panel was closed and reopened.
+    private bool TryPickColor(string buttonId, out (byte R, byte G, byte B) picked)
+    {
         var (r, g, b) = LastPickedColors.Get(buttonId);
         var picker = new ColorPickerWindow(r, g, b) { Owner = this };
-        if (picker.ShowDialog() == true)
+        if (picker.ShowDialog() != true)
         {
-            var picked = (picker.SelectedR, picker.SelectedG, picker.SelectedB);
-            LastPickedColors.Set(buttonId, picked);
-            if (_colorSwatches.TryGetValue(buttonId, out var swatch))
-            {
-                ShowSwatch(swatch, picked);
-            }
+            picked = default;
+            return false;
+        }
 
-            var value = string.Create(CultureInfo.InvariantCulture, $"{picker.SelectedR},{picker.SelectedG},{picker.SelectedB}");
-            Invoke(targetCommandId, value);
+        picked = (picker.SelectedR, picker.SelectedG, picker.SelectedB);
+        LastPickedColors.Set(buttonId, picked);
+        if (_colorSwatches.TryGetValue(buttonId, out var swatch))
+        {
+            ShowSwatch(swatch, picked);
+        }
+
+        return true;
+    }
+
+    private static string FormatColor((byte R, byte G, byte B) color) =>
+        string.Create(CultureInfo.InvariantCulture, $"{color.R},{color.G},{color.B}");
+
+    /// <summary>
+    /// The linked "Custom" radio was selected (see <see cref="ButtonControl.ColorPickerChoiceOption"/>):
+    /// send the button's last picked color instead of the word "Custom" - opening the picker if none
+    /// has been picked yet, rather than silently sending white.
+    /// </summary>
+    internal void ApplyCustomColor(string choiceId, ButtonControl button)
+    {
+        if (LastPickedColors.TryGet(button.Id, out var color))
+        {
+            if (_colorSwatches.TryGetValue(button.Id, out var swatch))
+            {
+                ShowSwatch(swatch, color);
+            }
+        }
+        else if (!TryPickColor(button.Id, out color))
+        {
+            return;
+        }
+
+        Invoke(choiceId, FormatColor(color));
+    }
+
+    /// <summary>After a color pick, check its linked choice option - without sending it a second time.</summary>
+    private void SelectCustomColorOption(string choiceId, string buttonId)
+    {
+        if (!_customColorLinks.TryGetValue(choiceId, out var link) || link.Button.Id != buttonId
+            || !_choiceRadios.TryGetValue(choiceId, out var radios))
+        {
+            return;
+        }
+
+        _suppressChoiceSend = true;
+        try
+        {
+            radios.First(radio => (string)radio.Content == link.Option).IsChecked = true;
+        }
+        finally
+        {
+            _suppressChoiceSend = false;
         }
     }
 
