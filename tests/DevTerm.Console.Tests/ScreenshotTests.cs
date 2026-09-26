@@ -83,7 +83,8 @@ public sealed class ScreenshotTests
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
             Assert.Contains("Transport:", dump);
-            Assert.Contains("Serial port:", dump);
+            Assert.Contains("── Serial ──", dump);
+            Assert.Contains("Port:", dump);
             Assert.Contains("COM3", dump);
             Assert.Contains("Baud:", dump);
         }
@@ -102,7 +103,8 @@ public sealed class ScreenshotTests
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-tcp");
 
-            Assert.Contains("TCP host:", dump);
+            Assert.Contains("── TCP ──", dump);
+            Assert.Contains("Host:", dump);
             Assert.Contains("192.168.0.107", dump);
             Assert.Contains("Port:", dump);
         }
@@ -115,10 +117,9 @@ public sealed class ScreenshotTests
     [TestMethod]
     public void ConfigureMode_HidTransport_IsCaptured()
     {
-        // The HID field group sits below the fold on an 80x24 window now that the Handshake row
-        // (added above it) pushed it down further - same reason
-        // ConfigureMode_LoopbackTransport_IsCaptured/ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold
-        // need to scroll. A plain unscrolled capture would miss it entirely.
+        // The USB Device fields sit partly below the fold on an 80x24 window, so the capture is
+        // scrolled to put that section's header at the top - the same scrolling PageDown drives, just
+        // to an exact row so the whole section is in frame.
         var directory = CreateTempProfilesDirectory();
         try
         {
@@ -134,7 +135,8 @@ public sealed class ScreenshotTests
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    var header = parts.Form.SectionHeaderLabels["USB Device"];
+                    parts.FormContent.Viewport = parts.FormContent.Viewport with { Y = parts.Form.Root.Frame.Y + header.Frame.Y };
                     app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();

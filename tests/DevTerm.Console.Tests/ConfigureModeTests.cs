@@ -136,11 +136,11 @@ public sealed class ConfigureModeTests
                     ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
                 Assert.AreSequenceEqual(
                     [true, false, false, false, false, true, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
-                Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
+                Assert.AreEqual("hex", parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 
                 parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8
                 parts.PresenterCheckBoxes[0].Value = CheckState.UnChecked; // ascii
-                parts.ParserSelector.Value = ConfigureMode.PresenterChoice.Decimal;
+                parts.ParserSelector.Value = "decimal";
 
                 Click(parts.ConnectButton);
 
@@ -192,7 +192,7 @@ public sealed class ConfigureModeTests
             {
                 Assert.Contains("Missing required", parts.ErrorLabel.Text);
 
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
+                parts.TransportSelector.Value = "tcp";
                 parts.HostField.Text = "192.168.0.107";
                 parts.TcpPortField.Text = "23";
 
@@ -347,7 +347,7 @@ public sealed class ConfigureModeTests
                 Click(parts.LoadButton);
 
                 Assert.Contains("Loaded profile 'tek108'", parts.ErrorLabel.Text);
-                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
+                Assert.AreEqual("tcp", parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
             });
@@ -378,7 +378,7 @@ public sealed class ConfigureModeTests
                 parts.ProfilesList.InvokeCommand(Command.Accept);
 
                 Assert.Contains("Loaded profile 'tek108'", parts.ErrorLabel.Text);
-                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
+                Assert.AreEqual("tcp", parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
             });
@@ -426,13 +426,13 @@ public sealed class ConfigureModeTests
                 Assert.IsFalse(parts.HostField.Visible);
                 Assert.IsFalse(parts.VendorField.Visible);
 
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Tcp;
+                parts.TransportSelector.Value = "tcp";
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsTrue(parts.HostField.Visible);
                 Assert.IsFalse(parts.VendorField.Visible);
 
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Hid;
+                parts.TransportSelector.Value = "hid";
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
@@ -441,7 +441,7 @@ public sealed class ConfigureModeTests
                 Assert.IsFalse(parts.DetectUsbtmcButton.Visible);
                 Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
 
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Usbtmc;
+                parts.TransportSelector.Value = "usbtmc";
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
@@ -450,12 +450,42 @@ public sealed class ConfigureModeTests
                 Assert.IsTrue(parts.DetectUsbtmcButton.Visible);
                 Assert.IsFalse(parts.LoopbackInfoLabel.Visible);
 
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Loopback;
+                parts.TransportSelector.Value = "loopback";
 
                 Assert.IsFalse(parts.PortField.Visible);
                 Assert.IsFalse(parts.HostField.Visible);
                 Assert.IsFalse(parts.VendorField.Visible);
                 Assert.IsTrue(parts.LoopbackInfoLabel.Visible);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SwitchingTransport_ReflowsTheForm_SoAHiddenGroupLeavesNoGap()
+    {
+        // The hand-built editor positioned every group with Pos.Bottom(previous), which Terminal.Gui
+        // computes from a view's frame whether it's visible or not - so hiding the Serial fields left
+        // their whole height blank above Presentation. The generated form re-lays itself out.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "serial" }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                var presentation = parts.Form.SectionHeaderLabels["Presentation"];
+                var serialTop = presentation.Frame.Y;
+                var serialSaveTop = parts.SaveNameField.Frame.Y;
+
+                parts.TransportSelector.Value = "tcp";
+                TuiTestRunner.CurrentApp.LayoutAndDraw(true);
+
+                var tcpHeader = parts.Form.SectionHeaderLabels["TCP"];
+                Assert.AreEqual(parts.Form.SectionHeaderLabels["Presentation"].Frame.Y, tcpHeader.Frame.Y + 5, "TCP: its header, three rows, then a blank line, then Presentation.");
+                Assert.IsLessThan(serialTop, presentation.Frame.Y, "Presentation moved up into the space the Serial fields left.");
+                Assert.AreEqual(serialSaveTop - (serialTop - presentation.Frame.Y), parts.SaveNameField.Frame.Y, "The hand-built rows below the form follow it.");
             });
         }
         finally
@@ -473,7 +503,7 @@ public sealed class ConfigureModeTests
             var initial = new CliOptions { Transport = "serial" }; // invalid: no Port
             RunHeadless(initial, "Missing required '--port' for the serial transport.", new ConnectionProfileStore(directory), parts =>
             {
-                parts.TransportSelector.Value = ConfigureMode.TransportChoice.Loopback;
+                parts.TransportSelector.Value = "loopback";
 
                 Click(parts.ConnectButton);
 
@@ -511,7 +541,7 @@ public sealed class ConfigureModeTests
                 Click(parts.ImportButton);
 
                 Assert.Contains("Imported", parts.ErrorLabel.Text);
-                Assert.AreEqual(ConfigureMode.TransportChoice.Tcp, parts.TransportSelector.Value);
+                Assert.AreEqual("tcp", parts.TransportSelector.Value);
                 Assert.AreEqual("192.168.0.108", parts.HostField.Text);
                 Assert.AreEqual("23", parts.TcpPortField.Text);
             });

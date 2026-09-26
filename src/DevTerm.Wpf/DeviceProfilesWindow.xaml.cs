@@ -1,5 +1,9 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using DevTerm.Configuration;
+using DevTerm.UiDefinitions.Forms;
 using Microsoft.Win32;
 
 namespace DevTerm.Wpf;
@@ -8,9 +12,13 @@ namespace DevTerm.Wpf;
 /// A full connection editor — pick a saved profile to load, edit any field by hand, save it under
 /// a name, import/export a profile as a standalone JSON file, or connect with the current fields.
 /// All of that logic lives in <see cref="ConnectionEditorViewModel"/>, shared with the TUI's
-/// <c>ConfigureMode</c>: this window is just XAML bound to it (<c>Command="{Binding ...}"</c>), no
-/// business logic in code-behind — the one exception is the native file-browse dialog, which has
-/// no pure-binding equivalent. See docs/design/connection-profiles.md.
+/// <c>ConfigureMode</c>: the profile list and the save/import/export/connect rows are XAML bound to
+/// it (<c>Command="{Binding ...}"</c>), and the connection fields are <em>generated</em> —
+/// <see cref="ConnectionEditorViewModel.FormDefinition"/> rendered by the generic
+/// <see cref="FormRenderer"/> and bound back to the view model, the same definition the TUI renders.
+/// No business logic in code-behind; the native file-browse dialogs are the one exception, having
+/// no pure-binding equivalent. See docs/design/connection-profiles.md and
+/// docs/specs/connection-editor.md.
 /// </summary>
 public partial class DeviceProfilesWindow : Window
 {
@@ -26,11 +34,81 @@ public partial class DeviceProfilesWindow : Window
     /// </summary>
     public CliOptions? Result => ViewModel.Result;
 
+    /// <summary>The generated connection-field form (see <see cref="FormRenderer"/>).</summary>
+    internal WpfFormParts Form { get; }
+
+    // The generated widgets the tests (and nothing else) reach by their old XAML names.
+    internal ComboBox TransportBox => (ComboBox)Form.ControlViews[nameof(ConnectionEditorViewModel.Transport)];
+
+    internal TextBox PortBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.Port)];
+
+    internal TextBox HostBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.Host)];
+
+    internal TextBox TcpPortBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.TcpPort)];
+
+    internal TextBox VendorBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.VendorIdDisplay)];
+
+    internal TextBox ProductBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.ProductIdDisplay)];
+
+    internal TextBox SerialNumberBox => Form.TextBoxes[nameof(ConnectionEditorViewModel.SerialNumber)];
+
+    internal CheckBox IdsShowHexBox => (CheckBox)Form.ControlViews[nameof(ConnectionEditorViewModel.IdsShowHex)];
+
+    internal ComboBox ParserBox => (ComboBox)Form.ControlViews[nameof(ConnectionEditorViewModel.Parser)];
+
+    internal FrameworkElement PresenterChoicesList => Form.ControlViews[nameof(ConnectionEditorViewModel.PresentersText)];
+
+    internal FrameworkElement SerialPanel => Form.SectionPanels["Serial"];
+
+    internal FrameworkElement TcpPanel => Form.SectionPanels["TCP"];
+
+    internal FrameworkElement UsbDevicePanel => Form.SectionPanels["USB Device"];
+
+    internal FrameworkElement LoopbackPanel => Form.SectionPanels["Loopback"];
+
+    internal FrameworkElement DetectedHidDevicesRow => Form.Rows[nameof(ConnectionEditorViewModel.SelectedHidDevice)];
+
+    internal FrameworkElement DetectedUsbtmcDevicesRow => Form.Rows[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)];
+
+    /// <summary>The serial "not found" hint's row (collapsed unless <see cref="ConnectionEditorViewModel.ConnectedDeviceNotFound"/>).</summary>
+    internal FrameworkElement PortNotFoundText => Form.Rows[nameof(ConnectionEditorViewModel.SerialPortNotFoundHint)];
+
+    internal FrameworkElement UsbDeviceNotFoundText => Form.Rows[nameof(ConnectionEditorViewModel.UsbDeviceNotFoundHint)];
+
+    internal ComboBox DetectedPortsBox { get; }
+
+    internal ComboBox DetectedHidDevicesBox { get; }
+
+    internal ComboBox DetectedUsbtmcDevicesBox { get; }
+
     public DeviceProfilesWindow(ConnectionProfileStore store, CliOptions initial, string? statusText = null)
     {
         InitializeComponent();
         ViewModel = new ConnectionEditorViewModel(store, initial, statusText);
         DataContext = ViewModel;
+
+        // The detected-device pickers stay hand-built, real WPF bindings to the view model's rich
+        // device lists (a port's description-bearing Display over its Name; a live-filtered HID/USBTMC
+        // list whose selection survives filtering) - the generic form places, labels and shows/hides
+        // them with their transport like every other field.
+        DetectedPortsBox = new ComboBox { DisplayMemberPath = nameof(SerialPortOption.Display), SelectedValuePath = nameof(SerialPortOption.Name) };
+        DetectedPortsBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.SerialPortOptions)));
+        DetectedPortsBox.SetBinding(Selector.SelectedValueProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedSerialPort)));
+        DetectedHidDevicesBox = new ComboBox { DisplayMemberPath = nameof(HidDeviceOption.Display) };
+        DetectedHidDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.HidDeviceOptions)));
+        DetectedHidDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedHidDevice)));
+        DetectedUsbtmcDevicesBox = new ComboBox { DisplayMemberPath = nameof(UsbtmcDeviceOption.Display) };
+        DetectedUsbtmcDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.UsbtmcDeviceOptions)));
+        DetectedUsbtmcDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)));
+
+        var options = new WpfFormOptions();
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => DetectedPortsBox;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => DetectedHidDevicesBox;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => DetectedUsbtmcDevicesBox;
+        var binding = new FormBinding(ViewModel);
+        Form = FormRenderer.Build(ViewModel.FormDefinition, binding, options);
+        ConnectionFormHost.Content = Form.Root;
+        Closed += (_, _) => binding.Dispose();
         ViewModel.ConfirmOverwrite = name => MessageBox.Show(
             this,
             $"A profile named '{name}' already exists. Overwrite it?",
