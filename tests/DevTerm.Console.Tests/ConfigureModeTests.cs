@@ -133,9 +133,9 @@ public sealed class ConfigureModeTests
             RunHeadless(initial, null, new ConnectionProfileStore(directory), parts =>
             {
                 Assert.AreSequenceEqual(
-                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi", "radexone", "zoomh4n", "de5000"], [.. parts.PresenterCheckBoxes.Select(c => c.Text.ToString())]);
                 Assert.AreSequenceEqual(
-                    [true, false, false, false, false, true, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
+                    [true, false, false, false, false, true, false, false, false, false, false, false], [.. parts.PresenterCheckBoxes.Select(c => c.Value == CheckState.Checked)]);
                 Assert.AreEqual(ConfigureMode.PresenterChoice.Hex, parts.ParserSelector.Value, "The send format is its own setting, not tied to the checked presenters.");
 
                 parts.PresenterCheckBoxes[1].Value = CheckState.Checked; // utf8

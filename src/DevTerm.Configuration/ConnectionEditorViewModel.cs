@@ -396,7 +396,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// against the K8055 GUI panel 2026-09-22.
     /// </summary>
     public IReadOnlyList<string> PresenterOptions { get; } =
-        ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"];
+        ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi", "radexone", "zoomh4n", "de5000"];
 
     public IReadOnlyList<string> LineEndingOptions { get; } = Enum.GetNames<LineEnding>();
 

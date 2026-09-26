@@ -461,9 +461,9 @@ public sealed class DeviceProfilesWindowTests
                 window.PresenterChoicesList.UpdateLayout();
                 var boxes = FindVisualChildren<System.Windows.Controls.CheckBox>(window.PresenterChoicesList).ToList();
                 Assert.AreSequenceEqual(
-                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi"], [.. boxes.Select(b => (string)b.Content)]);
+                    ["ascii", "utf8", "hex", "decimal", "octal", "binary", "k8055", "busylight", "scpi", "radexone", "zoomh4n", "de5000"], [.. boxes.Select(b => (string)b.Content)]);
                 Assert.AreSequenceEqual(
-                    [true, false, false, false, false, true, false, false, false], [.. boxes.Select(b => b.IsChecked == true)], "Each checkbox should reflect its presenter's IsSelected.");
+                    [true, false, false, false, false, true, false, false, false, false, false, false], [.. boxes.Select(b => b.IsChecked == true)], "Each checkbox should reflect its presenter's IsSelected.");
                 Assert.AreEqual("hex", window.ParserBox.SelectedItem, "The Send as box shows the profile's parser, separately from the presenters.");
 
                 boxes[1].IsChecked = true; // utf8
