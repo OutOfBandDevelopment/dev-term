@@ -542,6 +542,45 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void SaveCommand_WhenNameAlreadyExistsUnderADifferentCase_AsksForConfirmationFirst()
+    {
+        // Regression test for bug 014: Profiles.Contains(name) is ordinal/case-sensitive, but the
+        // store and NTFS are case-insensitive (List() itself uses OrdinalIgnoreCase), so saving
+        // "bench" over an existing "Bench" skipped ConfirmOverwrite entirely and silently
+        // overwrote it. See docs/bugs/014-save-overwrites-different-case.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("Bench", new CliOptions { Transport = "tcp", Host = "1.1.1.1", Port = "1" });
+
+            var confirmPrompts = new List<string>();
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "2.2.2.2",
+                TcpPort = "2",
+                SaveName = "bench",
+                ConfirmOverwrite = name =>
+                {
+                    confirmPrompts.Add(name);
+                    return false;
+                },
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            Assert.Contains("bench", confirmPrompts);
+            Assert.AreEqual("1.1.1.1", store.Load("Bench").Host, "Declining the overwrite should leave the existing profile untouched.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void LoadCommand_SetsSaveNameToTheLoadedProfile()
     {
         var directory = CreateTempDirectory();

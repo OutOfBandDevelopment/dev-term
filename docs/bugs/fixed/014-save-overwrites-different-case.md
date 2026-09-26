@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Configuration (ConnectionEditorViewModel) |
 | **Created** | 2026-09-26 |
@@ -25,3 +25,11 @@ Profile `Bench` exists; the user saves as `bench`. `ConfirmOverwrite` is never a
 
 ## Tests to add
 Save with a different-case existing name asks for confirmation.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `ConnectionEditorViewModel.SaveAsProfile`
+(`src/DevTerm.Configuration/ConnectionEditorViewModel.cs`) now checks
+`Profiles.Contains(name, StringComparer.OrdinalIgnoreCase)`, matching the store's own `List()` and NTFS's
+case-insensitivity, so saving "bench" over an existing "Bench" asks `ConfirmOverwrite` instead of silently
+overwriting it. Regression test:
+`ConnectionEditorViewModelTests.SaveCommand_WhenNameAlreadyExistsUnderADifferentCase_AsksForConfirmationFirst`.

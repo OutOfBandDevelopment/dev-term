@@ -1257,7 +1257,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             return;
         }
 
-        if (Profiles.Contains(name) && ConfirmOverwrite?.Invoke(name) == false)
+        if (Profiles.Contains(name, StringComparer.OrdinalIgnoreCase) && ConfirmOverwrite?.Invoke(name) == false)
         {
             StatusMessage = $"Not saved — '{name}' already exists.";
             return;
