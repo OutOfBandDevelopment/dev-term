@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Logging (SessionLogFormat) |
 | **Created** | 2026-09-26 |
@@ -19,3 +19,11 @@ MinValue and every later record is billions of seconds "later".
 
 ## Suggested fix
 Skip records without a timestamp when computing `Start`, or give them the previous record's time.
+
+## Resolution
+Fixed on 2026-09-26 on `dev/fix-bugs`: `SessionLog.Start` (`src/DevTerm.Logging/SessionLog.cs`) now walks the
+records looking for the first one that isn't an `Unknown`-kind record with a `DateTimeOffset.MinValue`
+placeholder timestamp, using that one's timestamp; it falls back to `Header.Created` if the log is empty or
+every record is such a placeholder. Regression tests:
+`SessionLogTests.Start_FirstRecordIsUnknownWithNoTimestamp_SkipsItInsteadOfUsingMinValue`,
+`SessionLogTests.Start_AllRecordsAreUnknownWithNoTimestamp_FallsBackToHeaderCreated`.
