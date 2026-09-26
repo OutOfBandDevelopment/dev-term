@@ -6,6 +6,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
@@ -116,6 +117,7 @@ public static class TuiMode
         MenuItem? scpiMenuItem = null;
         MenuItem? radexOneMenuItem = null;
         MenuItem? zoomH4nMenuItem = null;
+        MenuItem? de5000MenuItem = null;
 
         string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore, session.State == ConnectionState.Open);
 
@@ -316,6 +318,17 @@ public static class TuiMode
                         "dev-term — Zoom H4n Remote");
                     app.Run(panelParts.Window);
                 })),
+                de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
+                {
+                    var structuredSource = catalog.TryGet("de5000", out var presenter) ? presenter : null;
+                    var panelParts = ControlPanelMode.BuildWindow(
+                        app,
+                        De5000UiDefinition.Build(),
+                        new De5000ControlSurface(),
+                        structuredSource,
+                        "dev-term — DE-5000 LCR Meter");
+                    app.Run(panelParts.Window);
+                })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
@@ -373,6 +386,7 @@ public static class TuiMode
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, cliOptions, connected);
             radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, cliOptions, connected);
             zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, cliOptions, connected);
+            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, cliOptions, connected);
         }
 
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
@@ -570,7 +584,7 @@ public static class TuiMode
         window.Add(menuBar, output, sendLabel, sendField, statusLabel);
         RefreshConnectionUi();
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, radexOneMenuItem!, zoomH4nMenuItem!, ToggleAndRefreshAsync);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, radexOneMenuItem!, zoomH4nMenuItem!, de5000MenuItem!, ToggleAndRefreshAsync);
     }
 
     /// <summary>
@@ -828,4 +842,4 @@ public static class TuiMode
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, MenuItem RadexOneMenuItem, MenuItem ZoomH4nMenuItem, Func<Task> ToggleConnectionAsync);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, MenuItem RadexOneMenuItem, MenuItem ZoomH4nMenuItem, MenuItem De5000MenuItem, Func<Task> ToggleConnectionAsync);

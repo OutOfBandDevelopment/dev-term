@@ -41,6 +41,15 @@ Completed work is logged by date under `docs/changes/`.
   adapter, or any NUS-speaking device) is paired: run `--listbledevices true` to confirm it lists,
   then connect with `--transport ble --bledeviceid <id>` and confirm read/write/notify actually
   round-trip real bytes.
+- **DE-5000 LCR meter (`DevTerm.Devices.De5000`) needs real-hardware verification.** Built and
+  unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): `De5000Framer`/`De5000Decoder` (stream-
+  buffering around the fixed 17-byte ES51919 packet), a deliberately no-op `De5000ControlSurface`
+  (the meter has no writable commands), `De5000UiDefinition`, and menu wiring in both front ends,
+  gated on "any BLE connection". No custom IR-to-BLE adapter was paired this session — its GATT
+  profile (Nordic UART Service or custom) is still unconfirmed, per the BLE transport entry above.
+  Once the adapter is paired: fill in `devterm.runsettings`' blank `RealBleDe5000DeviceId` (and the
+  `RealBleDe5000*CharacteristicUuid` overrides if it turns out not to speak NUS), then run
+  `RealHardwareDe5000Tests` (`TestCategory=Hardware`).
 
 ## Backlog / research
 

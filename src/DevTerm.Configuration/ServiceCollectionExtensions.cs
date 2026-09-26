@@ -1,5 +1,6 @@
 using DevTerm.Core.Hosting;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
@@ -32,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScpiPresenter();
         services.AddRadexOnePresenter();
         services.AddZoomH4nPresenter();
+        services.AddDe5000Presenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))

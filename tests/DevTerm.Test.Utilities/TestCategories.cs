@@ -43,4 +43,5 @@ public static class TestCategories
     public const string Kuando_Busylight = nameof(Kuando_Busylight);
     public const string Radex_One = nameof(Radex_One);
     public const string Zoom_H4n = nameof(Zoom_H4n);
+    public const string DerEe_De5000 = nameof(DerEe_De5000);
 }

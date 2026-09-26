@@ -7,6 +7,7 @@ using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Devices.Busylight;
+using DevTerm.Devices.De5000;
 using DevTerm.Devices.K8055;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
@@ -139,6 +140,7 @@ public partial class MainWindow : Window
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
         RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _cliOptions, connected);
         ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, _cliOptions, connected);
+        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, _cliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -381,6 +383,24 @@ public partial class MainWindow : Window
         var window = new ControlPanelWindow(
             ZoomH4nUiDefinition.Build(),
             new ZoomH4nControlSurface(_session),
+            structuredSource)
+        {
+            Owner = this,
+        };
+        window.Show();
+    }
+
+    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
+    // stay open and update live alongside the main window, not block it. Reuses the current, already
+    // -open _session rather than opening a second competing connection to the same physical device.
+    // Passes no session to the control surface itself (De5000ControlSurface takes none) - the DE-5000
+    // has no writable commands, only live indicators driven by the structured presenter below.
+    private void De5000ControlPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var structuredSource = _catalog.TryGet("de5000", out var presenter) ? presenter : null;
+        var window = new ControlPanelWindow(
+            De5000UiDefinition.Build(),
+            new De5000ControlSurface(),
             structuredSource)
         {
             Owner = this,

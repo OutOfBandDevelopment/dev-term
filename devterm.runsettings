@@ -134,11 +134,23 @@
         <!-- Radex One (RealHardwareRadexOneTests) - VendorId/ProductId are still unconfirmed: a live
              HID enumeration pass on 2026-09-25 found no Radex One device attached (only an unrelated
              MSI "MYSTIC LIGHT" RGB controller). Left blank; the test reports Assert.Inconclusive
-             until these are filled in with real values from a `--listhiddevices true` run against
-             the actual device. See docs/changes/2026-09-25.md and TODO.md. -->
+             until these are filled in with real values from a `listhiddevices true` run (CLAUDE.md's
+             Commands section) against the actual device. See docs/changes/2026-09-25.md and TODO.md. -->
         <Parameter name="RealHidRadexOneVendorId" value="" />
         <Parameter name="RealHidRadexOneProductId" value="" />
         <Parameter name="RealHidRadexOneDevicePath" value="" />
+
+        <!-- DE-5000 LCR meter's custom IR-to-BLE adapter (RealHardwareDe5000Tests, in
+             DevTerm.Devices.De5000.Tests) - GATT profile is still unconfirmed (see BACKLOG.md/
+             TODO.md), so the *CharacteristicUuid overrides are blank too, meaning "assume NUS"
+             (BleTransportOptions' own defaults) until proven otherwise. Left blank - no adapter has
+             been paired to confirm a device id yet; the test reports Assert.Inconclusive until this
+             is filled in with a real value from a `listbledevices true` run (CLAUDE.md's Commands
+             section). -->
+        <Parameter name="RealBleDe5000DeviceId" value="" />
+        <Parameter name="RealBleDe5000ServiceUuid" value="" />
+        <Parameter name="RealBleDe5000WriteCharacteristicUuid" value="" />
+        <Parameter name="RealBleDe5000NotifyCharacteristicUuid" value="" />
 
         <!-- Rigol DM3058E multimeter: USBTMC, VID 0x1AB1 PID 0x09C4. SerialNumber/ExpectedIdnReply are
              real-hardware confirmed (docs/test/2026-09-25-18-03-06.md). -->

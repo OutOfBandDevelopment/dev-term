@@ -24,7 +24,8 @@ the rest.
     from a `--listbledevices` run) — unlike HID/USBTMC's "Detect..." pickers, neither the TUI nor
     WPF has one for BLE yet (promised by `ConnectionEditorViewModel.BleDeviceId`'s doc comment).
   - Which GATT profile the DE-5000's custom IR-to-BLE adapter actually exposes (NUS or custom) is
-    still unconfirmed — needed before the DE-5000 proposal below can be verified against it.
+    still unconfirmed — needed before `DevTerm.Devices.De5000` (landed 2026-09-25, see "Device
+    control modules & hardware profiles" below) can be verified against real hardware.
 - RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
   `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
   `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
@@ -60,10 +61,11 @@ the rest.
   baseline for common bench-instrument commands) — see the new section in
   `docs/design/device-control-modules.md`.
   **Still open:**
-  - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) — the BLE transport it
-  was gated on landed 2026-09-25 (see "Transports" above), so this can now start; still need to
-  confirm which GATT profile the custom IR-to-BLE adapter actually exposes (NUS or custom) before
-  the device module's framing can be verified against real hardware.
+  - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) landed 2026-09-25
+  (`DevTerm.Devices.De5000`, see `docs/changes/2026-09-25.md`) but is unverified against real
+  hardware — the custom IR-to-BLE adapter's GATT profile (NUS or custom) is still unconfirmed. Run
+  `RealHardwareDe5000Tests` once the adapter is on the bench and `devterm.runsettings` has its
+  device id/UUIDs filled in.
   - [Radex One](docs/design/proposals/radex-one-protocol.md) landed 2026-09-25 (`DevTerm.Devices.RadexOne`,
   see `docs/changes/2026-09-25.md`) but is unverified against real hardware — no device was found
   attached during a live enumeration pass. Re-run `RealHardwareRadexOneTests` once the device is

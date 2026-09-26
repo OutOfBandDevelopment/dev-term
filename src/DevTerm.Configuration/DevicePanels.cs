@@ -8,6 +8,7 @@ public enum DevicePanel
     Scpi,
     RadexOne,
     ZoomH4n,
+    De5000,
 }
 
 /// <summary>
@@ -60,6 +61,10 @@ public static class DevicePanels
             // adapter, see docs/design/proposals/zoom-h4n-remote-protocol.md) - no VID/PID to gate
             // on, so any serial connection is offered, like SCPI's "any non-HID transport".
             DevicePanel.ZoomH4n => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
+
+            // The DE-5000's optical-to-BLE adapter has no VID/PID (it's a GATT peripheral, not a
+            // USB device) - gated on "any BLE connection", like ZoomH4n's "any serial connection".
+            DevicePanel.De5000 => string.Equals(options.Transport, "ble", StringComparison.OrdinalIgnoreCase),
             _ => false,
         };
     }

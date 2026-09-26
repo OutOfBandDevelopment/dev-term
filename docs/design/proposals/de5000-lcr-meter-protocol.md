@@ -82,13 +82,28 @@ Byte 10     : Secondary measured quantity (D/Q/ESR-RP/angle)
 Bytes 11-12 : Secondary value, MSB/LSB
 Byte 13     : Secondary — same multiplier/units shape as byte 8
 Byte 14     : Secondary display status
-Bytes 15-16 : Footer — reported as 0x0D 0x0D in the source README's own summary line, but as
-              (0x0D, 0x0A) in that same source's byte-by-byte table — see open questions, this
-              needs resolving against the actual reference implementation's code, not just its
-              prose, before trusting either.
+Bytes 15-16 : Footer — 0x0D 0x0A (see "Resolved discrepancies" below).
 ```
 
-**Value calculation** (both measurements): `(MSB * 0x10000 + LSB) * 10^-multiplier`.
+**Value calculation** (both measurements): `(MSB * 0x100 + LSB) * 10^-multiplier`.
+
+## Resolved discrepancies (2026-09-25)
+
+The source README disagreed with itself in two places; both are resolved against
+[4x1md/de5000_lcr_py](https://github.com/4x1md/de5000_lcr_py)'s actual parsing code
+(`src/de5000.py`), not just its prose, per this codebase's "verify against real reference code"
+convention:
+
+- **Footer bytes are `0x0D 0x0A`**, not `0x0D 0x0D` — the README's own summary line said `0x0D 0x0D`,
+  but its byte-by-byte table said `(0x0D, 0x0A)`; the code's `is_data_valid` check
+  (`raw_data[15] != '\x0D' or raw_data[16] != '\x0A'`) confirms the table, not the summary.
+- **Value calculation is `MSB * 0x100 + LSB`**, not `MSB * 0x10000 + LSB` — `0x10000` doesn't fit in
+  a 2-byte value and would be wrong by a factor of 256; the code does `raw_data[i] * 0x100 + raw_data[i + 1]`.
+
+Also confirmed while implementing (see `De5000Framer.cs`'s doc comment): the secondary status byte
+(14) is masked to 3 bits, not the 4 bits the primary status byte (9) uses — so FAIL/OPEn/Srt (status
+codes 8-10) are only reachable for the primary reading, never the secondary one. This is a real
+asymmetry in the source, not an oversight.
 
 ## Proposed shape
 
@@ -125,16 +140,25 @@ decoder --> decoder : Human-readable text baseline\n(e.g. "L=1.234mH D=0.012 @1k
 @enduml
 ```
 
+## Status
+
+Implemented (2026-09-25): `DevTerm.Devices.De5000` — `De5000Framer`/`De5000Decoder` (stream-buffering
+around the fixed 17-byte packet, resyncing one byte at a time on a header/footer mismatch),
+`De5000ControlSurface` (a deliberate no-op — the meter has no writable commands), and
+`De5000UiDefinition` (read-only indicators). Wired into both front ends' Device menu, gated on "any
+BLE connection" (`DevicePanels.De5000`). Unit-tested (`tests/DevTerm.Devices.De5000.Tests`) against
+synthetic packets; **not yet verified against the real meter/adapter** — see the open question below.
+
 ## Open questions
 
 - **What GATT profile the custom BLE adapter exposes** — Nordic UART Service (the default
-  `transports.md`'s BLE Serial mode assumes) or a custom one. Needed before the BLE Serial
-  transport can actually be pointed at this specific adapter, even once that transport exists.
-- **The footer-byte discrepancy above** (`0x0D 0x0D` vs `0x0D 0x0A` in the same source project) —
-  resolve against the actual parsing code, not just the README prose, before implementing the
-  framer's footer check.
+  `transports.md`'s BLE Serial mode assumes) or a custom one. Still unconfirmed; a
+  `RealHardwareDe5000Tests` opt-in test exists but can only be run (and can only prove connectivity/
+  framing, not full protocol correctness) once the adapter is available on the bench and its device
+  id/UUIDs are known.
 - Whether the primary/secondary "measurement record" (value + multiplier/units + display status)
   is worth a small shared sub-parser used twice, or whether that's over-engineering a 5-byte field
-  group that's simple enough to just parse twice inline.
+  group that's simple enough to just parse twice inline. Implemented as the latter (parsed twice
+  inline in `De5000Framer.TryParse`) since both call sites are only a few lines each.
 - Whether other ES51919-based meters (rebadged under other brands) are worth explicitly supporting
   via the same decoder, or left as "probably works, not verified" until one shows up.
