@@ -74,7 +74,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 037 | [A line exactly at the max length is followed by a spurious empty line](fixed/037-ascii-maxlength-spurious-empty-line.md) | DevTerm.Presenters.Text (AsciiPresenter) | Fixed |
 | 038 | [Session logging does blocking file I/O on the read loop for every chunk](fixed/038-logging-blocking-io-read-loop.md) | DevTerm.Logging (SessionLogger, SessionLogWriter) | Fixed |
 | 039 | [Calling SendAsync from the read-loop thread deadlocks if the send fails](fixed/039-sendasync-from-read-loop-deadlock.md) | DevTerm.Core (Session) | Fixed |
-| 040 | [Playback offsets over 24 hours wrap](040-playback-offset-over-24h.md) | DevTerm.Logging (PlaybackText) | Open |
+| 040 | [Playback offsets over 24 hours wrap](fixed/040-playback-offset-over-24h.md) | DevTerm.Logging (PlaybackText) | Fixed |
 | 041 | [An unknown first record with no timestamp makes 1x playback wait effectively forever](041-unknown-record-min-timestamp.md) | DevTerm.Logging (SessionLogFormat) | Open |
 | 042 | [A hinted #0 indefinite-length block keeps its header bytes in the capture](042-stream-watcher-indefinite-block.md) | DevTerm.Logging (StreamContentWatcher) | Open |
 | 043 | [A typed value containing {OtherParam} is itself substituted](043-template-substitution-not-single-pass.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Open |

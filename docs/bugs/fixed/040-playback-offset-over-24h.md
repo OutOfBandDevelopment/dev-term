@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | DevTerm.Logging (PlaybackText) |
 | **Created** | 2026-09-26 |
@@ -18,3 +18,10 @@
 
 ## Suggested fix
 Format with `(int)offset.TotalHours`.
+
+## Resolution
+Fixed on 2026-09-26 on `dev/fix-bugs`: `FormatOffset` (`src/DevTerm.Logging/Playback/PlaybackText.cs`) now builds
+the hour part from `(int)offset.TotalHours` explicitly instead of relying on `TimeSpan`'s `h` custom-format
+specifier (which is the hour-of-day component, 0-23, not total hours), while `mm:ss.fff` still comes from
+`TimeSpan.ToString` for the minute/second/millisecond components. Regression test:
+`PlaybackTextTests.FormatOffset_PastTwentyFourHours_DoesNotWrap`.
