@@ -1,8 +1,10 @@
 # Bug reports
 
-One file per bug: `NNN-short-slug.md`, numbered in the order filed. Each report gives the severity, a status, how
-confident the finding is, where it is (file and line at the time it was filed), what happens, a concrete failure
-scenario, a suggested fix, and the tests that should come with the fix.
+One file per bug: `NNN-short-slug.md`, numbered in the order filed. **File and maintain them with the
+[`bug-report` skill](../../.claude/skills/bug-report/SKILL.md)**, which has the template, numbering, severity and
+confidence rules, and the Fixed/Resolution lifecycle. Each report records the date and the full git commit it was
+found at (`git show <hash>:<path>` shows the code its line numbers refer to), plus the failure scenario, a suggested
+fix, and the tests that should come with the fix.
 
 **Keeping them current:**
 - **Status** is `Open`, `In progress`, `Fixed` or `Won't fix`. When a fix lands, set `Fixed`, add a `## Resolution`
@@ -10,7 +12,8 @@ scenario, a suggested fix, and the tests that should come with the fix.
   Keep the file (so the number isn't reused); update its row below.
 - **Confidence** says whether a finding was confirmed by reading the code, reproduced, or only plausible. Reproduce
   a `Plausible` one (ideally as a failing test) before fixing it.
-- Line numbers go stale as code moves; the symbol names in each report are the durable part.
+- Line numbers go stale as code moves; they refer to the report's **Found at commit**, and the symbol names are the
+  durable part.
 
 Bugs 001-059 came from a static, read-only review of `main` @ `42758db` on 2026-09-26 (five parallel reviewers:
 Core/Logging/presenters, transports, devices/manifests/UI model, Configuration, TUI/WPF front ends). None has been

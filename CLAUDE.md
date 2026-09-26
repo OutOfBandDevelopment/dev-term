@@ -155,7 +155,8 @@ Seven kinds of doc, each with a distinct job — don't blend them:
   repeating its content.
 
 - **[`docs/bugs/`](docs/bugs/README.md)** — one file per known bug (`NNN-short-slug.md`): severity, status,
-  confidence, location, failure scenario, suggested fix, tests to add. When a fix lands, set its Status to `Fixed`
+  confidence, the date and full git commit it was found at, location, failure scenario, suggested fix, tests to
+  add. File and update them with the `bug-report` skill (`.claude/skills/bug-report/SKILL.md`). When a fix lands, set its Status to `Fixed`
   with a `## Resolution` section (commit + regression test) and update its row in `docs/bugs/README.md` in the same
   change; the fix's detail still goes in `docs/changes/`. Keep fixed reports (numbers aren't reused).
 

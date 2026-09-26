@@ -6,7 +6,9 @@
 | **Status** | Open |
 | **Confidence** | Code confirmed; timing plausible, not reproduced (found by two reviewers) |
 | **Area** | DevTerm.Core (StreamToPipePump, Session), Serial/TCP/HID |
-| **Found** | 2026-09-26 code review of `main` @ `42758db` (branch `dev/review-code`); static review, not yet reproduced |
+| **Created** | 2026-09-26 |
+| **Found at commit** | `42758db2e9fecc95584fe15465fd7f41e637e2e4` (`main`) |
+| **Found by** | Static code review (read-only; not yet reproduced) |
 
 ## Where
 - `src/DevTerm.Core/Transports/StreamToPipePump.cs:38, 50`
