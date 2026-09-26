@@ -222,20 +222,25 @@ public static class TuiMode
         // DevTerm.Wpf.MainWindow's editable ComboBox for the WPF equivalent of the same history.
         var sendHistory = new SendHistory();
 
-        void AppendOutput(string line)
+        // Coalesces a burst of lines into a single pending app.Invoke, instead of queuing one
+        // marshal-to-UI-thread closure per line - see docs/bugs/fixed/031-tui-output-no-backpressure.md.
+        // Declared then assigned (not `var = new(...)` in one step) because the constructor's own
+        // callback closes over this same variable to schedule its drain.
+        BatchedOutputQueue outputQueue = null!;
+        outputQueue = new BatchedOutputQueue(() => app.Invoke(() => outputQueue.Drain(lines =>
         {
-            app.Invoke(() =>
+            outputLines.AddRange(lines);
+            var excess = outputLines.Count - _maxOutputLines;
+            if (excess > 0)
             {
-                outputLines.Add(line);
-                if (outputLines.Count > _maxOutputLines)
-                {
-                    outputLines.RemoveAt(0);
-                }
+                outputLines.RemoveRange(0, excess);
+            }
 
-                output.Text = string.Join('\n', outputLines);
-                output.CaretOffset = output.Text.Length;
-            });
-        }
+            output.Text = string.Join('\n', outputLines);
+            output.CaretOffset = output.Text.Length;
+        })));
+
+        void AppendOutput(string line) => outputQueue.Enqueue(line);
 
         // The output pane is one plain-text Editor (no per-line colors), so status and error lines
         // are told apart from device output by a source tag, the same "[source] text" shape device
