@@ -92,6 +92,9 @@ public static class StreamContentSamples
         return [.. Encoding.ASCII.GetBytes($"#{length.Length}{length}"), .. payload];
     }
 
+    /// <summary>Wraps <paramref name="payload"/> in an IEEE 488.2 indefinite-length block (<c>#0</c>) - no declared length, the end has to be found some other way.</summary>
+    public static byte[] ScpiIndefiniteBlock(byte[] payload) => [.. "#0"u8, .. payload];
+
     private static byte[] Chunk(string type, byte[] data)
     {
         var chunk = new byte[12 + data.Length];

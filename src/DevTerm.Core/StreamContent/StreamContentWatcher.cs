@@ -234,6 +234,18 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
 
                     return reply[headerLength..];
 
+                case BlockHeaderStatus.Indefinite:
+                    _pendingHint = null;
+                    _carry = [];
+                    var indefinitePayload = reply[headerLength..];
+
+                    // No declared length: the wrapped content's signature may not be fully in hand
+                    // yet (a chunked read can split it right after the header), so identification is
+                    // deferred to AppendToCapture as more bytes arrive rather than attempted once
+                    // here against whatever little is already available.
+                    BeginCapture(kind: null, hint, endFinder: null);
+                    return indefinitePayload;
+
                 default:
                     if (reply.IsEmpty)
                     {
@@ -284,6 +296,17 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
         var room = _options.MaxCaptureBytes - (int)capture.Length;
         var accepted = data.Length <= room ? data : data[..Math.Max(room, 0)];
         capture.Write(accepted);
+
+        // A capture that began with no known kind or end-finder (an indefinite-length block, or
+        // undeclared/unrecognized bytes) gets another chance to be identified as each new chunk
+        // arrives, in case the signature just hadn't fully arrived yet - once it is, its structural
+        // end applies instead of waiting out the idle timeout.
+        if (_captureKind is null && _endFinder is null
+            && StreamContentSniffer.Identify(capture.GetBuffer().AsSpan(0, (int)capture.Length)) is { } lateKind)
+        {
+            _captureKind = lateKind;
+            _endFinder = StreamContentEndFinder.For(lateKind);
+        }
 
         if (_endFinder?.FindEnd(capture.GetBuffer().AsSpan(0, (int)capture.Length)) is { } end)
         {

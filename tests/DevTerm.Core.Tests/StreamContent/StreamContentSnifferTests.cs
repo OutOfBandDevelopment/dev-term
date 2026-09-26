@@ -115,7 +115,7 @@ public sealed class StreamContentSnifferTests
     [DataRow("#10", BlockHeaderStatus.Complete, 3, 0L)]
     [DataRow("#", BlockHeaderStatus.Incomplete, 0, 0L)]
     [DataRow("#4001", BlockHeaderStatus.Incomplete, 0, 0L)]
-    [DataRow("#0", BlockHeaderStatus.NotABlock, 0, 0L)]
+    [DataRow("#0", BlockHeaderStatus.Indefinite, 2, 0L)]
     [DataRow("#A12", BlockHeaderStatus.NotABlock, 0, 0L)]
     [DataRow("#3x12", BlockHeaderStatus.NotABlock, 0, 0L)]
     [DataRow("12345", BlockHeaderStatus.NotABlock, 0, 0L)]
@@ -126,5 +126,24 @@ public sealed class StreamContentSnifferTests
         Assert.AreEqual(expected, status);
         Assert.AreEqual(expectedHeaderLength, headerLength);
         Assert.AreEqual(expectedPayloadLength, payloadLength);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Find_IndefiniteLengthBlockWrappingAnImage_ReportsTheHeaderWithNoPayloadLength()
+    {
+        // Regression test for bug 042: a "#0" indefinite-length block used to be reported as
+        // NotABlock, so its two header bytes were left in front of the wrapped content instead of
+        // being stripped as part of the match. See docs/bugs/fixed/042-stream-watcher-indefinite-block.md.
+        var png = StreamContentSamples.Png();
+        byte[] data = [.. "x"u8, .. StreamContentSamples.ScpiIndefiniteBlock(png)];
+
+        var match = StreamContentSniffer.Find(data, startIsBoundary: true);
+
+        Assert.IsNotNull(match);
+        Assert.AreEqual(StreamContentKind.Png, match.Value.Kind);
+        Assert.AreEqual(1, match.Value.Offset);
+        Assert.AreEqual(2, match.Value.HeaderLength); // "#0"
+        Assert.IsNull(match.Value.PayloadLength);
     }
 }
