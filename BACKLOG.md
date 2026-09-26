@@ -45,7 +45,7 @@ the rest.
   drawing/rendering half. The first consumer's capture-and-save / WPF-native-image-preview phase (the
   "Stream Monitor..." window from
   [stream content detection & rendering window](docs/design/proposals/stream-content-detection.md))
-  is in progress — see `TODO.md` — and the real HPGL/PostScript/PCL rendering it defers stays here.
+  landed 2026-09-25 (`docs/specs/stream-monitor.md`); the real HPGL/PostScript/PCL rendering it defers stays here.
 
 ### Device control modules & hardware profiles
 

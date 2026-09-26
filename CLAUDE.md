@@ -429,6 +429,16 @@ file only points there, it doesn't restate them.**
 - **In a WPF `Grid` star column, a fixed-`Width` control with the default `HorizontalAlignment`
   (Stretch) is centered, not left-aligned.** A `Width=160` `ComboBox` sat in the middle of the Busylight
   panel's Track row until the row content got `HorizontalAlignment = Left`.
+- **WPF decodes a truncated PNG without error.** `BitmapDecoder.Create(..., BitmapCacheOption.OnLoad)`
+  accepted the first 200 bytes of a ~10 KB PNG and returned a frame, so a successful decode says nothing
+  about completeness. The Stream Monitor finds a capture's end structurally (`StreamContentEndFinder`)
+  instead of "does it decode yet".
+- **Terminal.Gui `Label.Text` treats `_` as a hotkey marker.** `Rigol_DG1062Z_…` rendered as
+  `RigolDG1062Z_…`. Any label showing data (device names, file names) needs
+  `HotKeySpecifier = (Rune)0xFFFF`.
+- **A Terminal.Gui `Label` wraps a line longer than its width, and whatever falls past its `Height` is
+  silently dropped.** A two-line label whose first line was too long lost its second line entirely. Keep
+  each explicit line shorter than the label's width.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

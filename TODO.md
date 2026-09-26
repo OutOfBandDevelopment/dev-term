@@ -24,7 +24,7 @@ worktrees, merged and verified before the next phase starts. Items moved here fr
 (and from the specs' Open items) when work started. Each is deleted from this file once its detail
 has landed in `docs/changes/`.
 
-**Phase 1 — in progress (three parallel branches):**
+**Phase 1 — in progress** (the Stream Monitor branch landed 2026-09-25 and is documented in `docs/changes/2026-09-25.md`; the panels and logger/playback branches are still running):
 
 - **Control-panel leftovers** (from `docs/specs/device-control-panel.md` Open items):
   - TUI Notes re-wrap on terminal resize.
@@ -36,13 +36,6 @@ has landed in `docs/changes/`.
 - **Live panels from device manifests:** a declarative control surface that runs a loaded
   `DeviceManifest`'s command templates over the live session, and a "Device > Device Manifest..."
   menu item. A loaded manifest's `UiDefinition` was model-and-loader only until now.
-- **Stream Monitor, first phase** of
-  [stream content detection & rendering](docs/design/proposals/stream-content-detection.md):
-  - A "Stream Monitor..." window that detects HPGL/PostScript/PCL/image replies, by a declared
-    response-format hint or signature sniffing.
-  - It auto-saves each capture as `{device}_{timestamp}.{ext}`, and WPF previews natively decodable
-    images.
-  - Real HPGL/PostScript/PCL *rendering* stays in `BACKLOG.md`.
 - **Logger mode:** capture every sent/received message with direction, a sequence number and a
   timestamp, plus connect/disconnect events, to a documented, lossless log format. It's enabled from
   the CLI (`--log`), the TUI and WPF.

@@ -1,7 +1,14 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="BACKLOG.md" />
+    <File Path="CLAUDE.md" />
     <File Path="devterm.runsettings" />
+    <File Path="Directory.Build.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="TODO.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/DevTerm.Configuration/DevTerm.Configuration.csproj" />
@@ -30,11 +37,11 @@
     <Project Path="tests/DevTerm.Devices.K8055.Tests/DevTerm.Devices.K8055.Tests.csproj" />
     <Project Path="tests/DevTerm.Devices.Scpi.Tests/DevTerm.Devices.Scpi.Tests.csproj" />
     <Project Path="tests/DevTerm.Presenters.Text.Tests/DevTerm.Presenters.Text.Tests.csproj" />
+    <Project Path="tests/DevTerm.Test.Utilities/DevTerm.Test.Utilities.csproj" />
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
-    <Project Path="tests/DevTerm.Test.Utilities/DevTerm.Test.Utilities.csproj" />
     <Project Path="tests/DevTerm.Transports.Usbtmc.Tests/DevTerm.Transports.Usbtmc.Tests.csproj" />
     <Project Path="tests/DevTerm.UiDefinitions.Tests/DevTerm.UiDefinitions.Tests.csproj" />
     <Project Path="tests/DevTerm.Wpf.Tests/DevTerm.Wpf.Tests.csproj" />
