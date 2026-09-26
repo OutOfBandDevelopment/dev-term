@@ -6,6 +6,37 @@ fields generated from that device's own declared layout. Once connected (see
 what's available. Full field-by-field/action-by-action reference:
 [`docs/specs/device-control-panel.md`](../specs/device-control-panel.md).
 
+## Finding your way around a panel
+
+Every panel works the same way, whichever device it's for:
+
+- **Sections fold away.** Each named section can be collapsed to just its heading, and the
+  sections below move up to fill the space. In WPF, click the section heading (the round arrow
+  button). In the TUI, each heading reads `[-] Name`; Tab to it and press Enter or Space (or click
+  it) and it becomes `[+] Name` with its rows hidden. Every section starts expanded.
+- **Labels line up.** Within a section, every control starts in the same column, just past the
+  longest label, and labels stay on one line.
+- **Notes are at the bottom.** A device's descriptive notes (for a SCPI instrument, its profile's
+  notes: required connection settings, a command you must send first, known quirks) are in a
+  **Notes** section after all the others, wrapped to fit the window.
+- **See exactly what a control sends before you send it.** A control that sends a command has a
+  small info marker next to it: "ⓘ" in WPF, `(i)` in the TUI. In WPF, hover the icon: the tooltip
+  shows the command for the control's current value (the slider's position, what's typed in the
+  field, the selected option). In the TUI, move focus to the control, or to a field that feeds its
+  button, and the line at the bottom of the panel reads, say, `Sends: CONF:VOLT:DC DEF\n`. Line
+  endings and other control characters are shown escaped (`\n`, `\r`). For the K8055 and Busylight,
+  which talk in binary HID reports, it shows the report bytes in hex.
+- **Bad values are caught before they're sent.** Type something a field can't take (letters in a
+  number field, a value outside the allowed range) and nothing is sent; the panel says why, e.g.
+  `Channel: 9 is out of range (1 to 4). Not sent.` In the TUI that's the panel's bottom line; in WPF,
+  the red line at the bottom of the window. A number you type is tidied up (`1e3` becomes `1000`),
+  and a number field with a fixed range pulls an out-of-range value back into that range.
+
+Here the 34401A panel's **Common** and **Measure** sections are collapsed, and focus is on the
+**Configure DC Voltage Range** button, so the bottom line shows the exact command it sends:
+
+![TUI SCPI control panel (HP 34401A) with two sections collapsed and the Sends preview for a focused button](images/tui-control-panel-scpi-preview.png)
+
 ## K8055 and Busylight: open and go
 
 **Device > K8055 Control Panel...** and **Device > Busylight Control Panel...** each open
@@ -18,8 +49,10 @@ immediately — no setup, no picker. These two devices have one fixed, built-in 
 
 ![WPF K8055 control panel, with a live decoded input report showing Analog In/Digital In values](images/wpf-control-panel-k8055.png)
 
-- **Busylight** (a USB HID RGB status light): color buttons (including a custom RGB/HSV color
-  picker) and an on/off toggle.
+- **Busylight** (a USB HID RGB status light): color, blink, and sound settings (including a custom
+  RGB/HSV color picker), sent to the light together when you press **Apply**. Since only **Apply**
+  sends anything, it's the only control with an info marker. Its long "On (unit unconfirmed)" label
+  now sits on one line, with the fields lined up after it.
 
 ![TUI Busylight control panel](images/tui-control-panel-busylight.png)
 
@@ -73,9 +106,11 @@ there — so you're never limited to what's in the curated command list.
 
 ### Sending a command with parameters
 
-A curated command that needs a value (say, a frequency) shows as one or more fields next to a single
+A curated command that needs a value (say, a frequency) shows as one or more fields above a single
 button. Fill in the field(s), then press the button — it reads whatever's currently in those fields
-and sends the fully-formed command in one action. Query-type commands (anything ending in `?`) show
+and sends the fully-formed command in one action. If a field holds something it can't take, the
+button sends nothing and the panel says which field and why. While you're in one of those fields,
+the TUI's bottom line already shows the command the button would send with what you've typed. Query-type commands (anything ending in `?`) show
 their reply in a read-only field right next to the button, as soon as it arrives — but only if the
 `scpi` presenter is selected for the connection (see
 [Connecting to a device](connecting.md)'s Presenters field); without it, commands still send fine,

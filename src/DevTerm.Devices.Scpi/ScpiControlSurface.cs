@@ -13,7 +13,7 @@ namespace DevTerm.Devices.Scpi;
 /// (see <see cref="Value"/>) — see docs/design/features/scpi-instrument-control.md and
 /// <see cref="DevTerm.UiDefinitions.ButtonControl.ParameterFieldIds"/>.
 /// </summary>
-public sealed class ScpiControlSurface : IControlSurface
+public sealed class ScpiControlSurface : IControlSurface, ICommandPreview
 {
     /// <summary>The always-present escape-hatch command id — see <see cref="ScpiUiDefinitionBuilder"/>. Sends its value verbatim, no template.</summary>
     public const string SendCustomCommandId = "sendCustom";
@@ -60,14 +60,56 @@ public sealed class ScpiControlSurface : IControlSurface
     {
         ArgumentNullException.ThrowIfNull(commandId);
 
+        if (Resolve(commandId, value) is not { } resolved)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (resolved.ReplyIndicatorId is { } replyIndicatorId)
+        {
+            _tracker?.QuerySent(replyIndicatorId);
+        }
+
+        var bytes = Encoding.ASCII.GetBytes(resolved.WireText);
+        return _session.SendAsync(bytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// The exact text <see cref="InvokeAsync"/> would send for <paramref name="commandId"/>/<paramref name="value"/>
+    /// — same template substitution, numeric formatting, and terminator, via the same
+    /// <see cref="Resolve"/> path — with the terminator and any other control character escaped
+    /// visibly (e.g. <c>*IDN?\n</c>). Null for a value-holder field id or an unknown command.
+    /// </summary>
+    public string? PreviewCommand(string commandId, string? value)
+    {
+        ArgumentNullException.ThrowIfNull(commandId);
+
+        if (commandId != SendCustomCommandId && !_parameterFieldIds.Contains(commandId) && !_commandsById.ContainsKey(commandId))
+        {
+            return null;
+        }
+
+        return Resolve(commandId, value) is { } resolved
+            ? CommandPreviewFormat.EscapeControlCharacters(resolved.WireText)
+            : null;
+    }
+
+    /// <summary>
+    /// The one place a command id + value becomes wire text (terminator included) — shared by
+    /// <see cref="InvokeAsync"/> and <see cref="PreviewCommand"/> so a preview can never drift from
+    /// what's actually sent. Null for a value-holder field id (sends nothing); throws for an unknown
+    /// command id.
+    /// </summary>
+    private (string WireText, string? ReplyIndicatorId)? Resolve(string commandId, string? value)
+    {
         if (commandId == SendCustomCommandId)
         {
-            return SendAsync(value ?? string.Empty, $"{SendCustomCommandId}.reply", cancellationToken);
+            return ((value ?? string.Empty) + _profile.Terminator, $"{SendCustomCommandId}.reply");
         }
 
         if (_parameterFieldIds.Contains(commandId))
         {
-            return Task.CompletedTask;
+            return null;
         }
 
         if (!_commandsById.TryGetValue(commandId, out var command))
@@ -75,8 +117,7 @@ public sealed class ScpiControlSurface : IControlSurface
             throw new ArgumentException($"Unknown SCPI command '{commandId}'.", nameof(commandId));
         }
 
-        var text = BuildCommandText(command, value);
-        return SendAsync(text, command.IsQuery ? $"{command.Id}.reply" : null, cancellationToken);
+        return (BuildCommandText(command, value) + _profile.Terminator, command.IsQuery ? $"{command.Id}.reply" : null);
     }
 
     private static string BuildCommandText(ScpiCommandDefinition command, string? value)
@@ -117,16 +158,5 @@ public sealed class ScpiControlSurface : IControlSurface
         var integerDigits = Math.Max(parameter.IntegerDigits ?? 1, 1);
         var format = new string('0', integerDigits) + (decimalPlaces > 0 ? "." + new string('0', decimalPlaces) : string.Empty);
         return clamped.ToString(format, CultureInfo.InvariantCulture);
-    }
-
-    private Task SendAsync(string commandText, string? replyIndicatorId, CancellationToken cancellationToken)
-    {
-        if (replyIndicatorId is not null)
-        {
-            _tracker?.QuerySent(replyIndicatorId);
-        }
-
-        var bytes = Encoding.ASCII.GetBytes(commandText + _profile.Terminator);
-        return _session.SendAsync(bytes, cancellationToken);
     }
 }
