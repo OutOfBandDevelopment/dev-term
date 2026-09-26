@@ -24,6 +24,7 @@ public static class StreamToPipePump
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(writer);
 
+        Exception? error = null;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -35,8 +36,17 @@ public static class StreamToPipePump
                 {
                     bytesRead = await source.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException)
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
                 {
+                    // Expected: the transport is deliberately closing and cancelled the read.
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // A real read failure (TCP reset, USB-serial unplug) - the writer completes
+                    // with this exception so Session.PumpAsync's ReadAsync surfaces it instead of
+                    // reporting a clean, error-less hang-up.
+                    error = ex;
                     break;
                 }
 
@@ -56,7 +66,7 @@ public static class StreamToPipePump
         }
         finally
         {
-            await writer.CompleteAsync().ConfigureAwait(false);
+            await writer.CompleteAsync(error).ConfigureAwait(false);
         }
     }
 }

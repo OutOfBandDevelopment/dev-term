@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed (found by two reviewers) |
 | **Area** | DevTerm.Core (StreamToPipePump), Serial/TCP/HID |
 | **Created** | 2026-09-26 |
@@ -33,3 +33,15 @@ as a normal completion.
 
 ## Tests to add
 `StreamToPipePump` has no tests. Add one where the stream throws `IOException` and `Session.Disconnected.Error` carries it.
+
+## Resolution
+Fixed in `dev/fix-bugs` on 2026-09-26: `StreamToPipePump.RunAsync`
+(`src/DevTerm.Core/Transports/StreamToPipePump.cs`) now captures any exception from `source.ReadAsync` into a local
+`error` and completes the writer with it (`writer.CompleteAsync(error)`), unless `cancellationToken.IsCancellationRequested`
+(a deliberate close), which still completes with no error. Previously it caught `IOException`, `ObjectDisposedException`,
+and `OperationCanceledException` unconditionally and always completed clean, so `Session.PumpAsync`'s
+`reader.ReadAsync` saw `IsCompleted` with no exception and reported a real read failure (TCP reset, USB-serial
+unplug) the same as a clean hang-up. Regression test:
+`DevTerm.Core.Tests.Transports.StreamToPipePumpTests.RunAsync_WhenTheStreamThrowsDuringARead_CompletesTheWriterWithThatExceptionInsteadOfACleanHangUp`
+(plus a companion `RunAsync_WhenCancelledDuringARead_CompletesTheWriterWithNoErrorAsACleanClose` covering the
+deliberate-close path), which fails without the fix (no exception observed on the reader side) and passes with it.
