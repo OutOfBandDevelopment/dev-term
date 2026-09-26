@@ -31,6 +31,12 @@ public sealed class Session : IAsyncDisposable
     // previous connection can never tear down, or be reported against, a newer one.
     private int _generation;
 
+    // Copy-on-write: AddObserver/remove replace the array under _observersGate, and every notify
+    // reads one snapshot without locking - notifications happen on the read loop many times a
+    // second, subscriptions only when logging starts or stops.
+    private readonly Lock _observersGate = new();
+    private ISessionObserver[] _observers = [];
+
     public Session(ITransport transport, Pipeline pipeline)
     {
         ArgumentNullException.ThrowIfNull(transport);
@@ -55,6 +61,47 @@ public sealed class Session : IAsyncDisposable
     public event EventHandler<PresenterOutput>? Output;
 
     /// <summary>
+    /// Registers a passive tap on this session's raw traffic and lifecycle (see
+    /// <see cref="ISessionObserver"/>) - e.g. the session logger. Dispose the returned handle to
+    /// detach it. Doesn't touch the presenter pipeline.
+    /// </summary>
+    public IDisposable AddObserver(ISessionObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        lock (_observersGate)
+        {
+            _observers = [.. _observers, observer];
+        }
+
+        return new ObserverRegistration(this, observer);
+    }
+
+    private void RemoveObserver(ISessionObserver observer)
+    {
+        lock (_observersGate)
+        {
+            _observers = [.. _observers.Where(o => !ReferenceEquals(o, observer))];
+        }
+    }
+
+    // An observer's own failure (a full disk under the session logger, say) must never take the
+    // connection down with it, so each callback is isolated.
+    private void Notify(Action<ISessionObserver> callback)
+    {
+        foreach (var observer in Volatile.Read(ref _observers))
+        {
+            try
+            {
+                callback(observer);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Session: an observer threw: {ex}");
+            }
+        }
+    }
+
+    /// <summary>
     /// Raised (on a background thread) after the session has closed itself because the connection
     /// ended without being asked to: a read failure, the device closing it, or a failed send. Not
     /// raised for <see cref="CloseAsync"/>/<see cref="DisposeAsync"/>.
@@ -67,6 +114,10 @@ public sealed class Session : IAsyncDisposable
         try
         {
             await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+            // Before the read loop starts, so an observer always sees "opened" ahead of the first
+            // received chunk.
+            Notify(o => o.OnOpened());
 
             var generation = ++_generation;
 
@@ -100,7 +151,7 @@ public sealed class Session : IAsyncDisposable
         await _lifecycleLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
-            await StopAsync(cancellationToken).ConfigureAwait(false);
+            await StopAsync(cancellationToken, requested: true, error: null).ConfigureAwait(false);
         }
         finally
         {
@@ -117,6 +168,13 @@ public sealed class Session : IAsyncDisposable
     {
         var generation = Volatile.Read(ref _generation);
         var wasOpen = State == ConnectionState.Open;
+
+        // Before the write, so a reply racing the write's completion can't be observed first.
+        // Only for an open connection - a write attempted while closed is never really sent.
+        if (wasOpen)
+        {
+            Notify(o => o.OnSent(data));
+        }
 
         try
         {
@@ -142,6 +200,7 @@ public sealed class Session : IAsyncDisposable
 
                 if (!buffer.IsEmpty)
                 {
+                    Notify(o => o.OnReceived(buffer));
                     foreach (var output in _pipeline.Render(buffer))
                     {
                         Output?.Invoke(this, output);
@@ -192,7 +251,7 @@ public sealed class Session : IAsyncDisposable
                 return;
             }
 
-            await StopAsync(CancellationToken.None).ConfigureAwait(false);
+            await StopAsync(CancellationToken.None, requested: false, error).ConfigureAwait(false);
         }
         finally
         {
@@ -210,10 +269,11 @@ public sealed class Session : IAsyncDisposable
         }
     }
 
-    // Caller holds _lifecycleLock.
-    private async Task StopAsync(CancellationToken cancellationToken)
+    // Caller holds _lifecycleLock. requested/error are only what observers are told about why.
+    private async Task StopAsync(CancellationToken cancellationToken, bool requested, Exception? error)
     {
         _generation++;
+        var wasOpen = _readLoopTask is not null;
 
         _readLoopCts?.Cancel();
         if (_readLoopTask is { } readLoop)
@@ -241,6 +301,11 @@ public sealed class Session : IAsyncDisposable
         {
             Debug.WriteLine($"Session: closing the transport failed: {ex}");
         }
+
+        if (wasOpen)
+        {
+            Notify(o => o.OnClosed(requested, error));
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -253,6 +318,27 @@ public sealed class Session : IAsyncDisposable
         catch (Exception ex)
         {
             Debug.WriteLine($"Session: disposing the transport failed: {ex}");
+        }
+    }
+
+    private sealed class ObserverRegistration : IDisposable
+    {
+        private readonly Session _session;
+        private readonly ISessionObserver _observer;
+        private int _disposed;
+
+        public ObserverRegistration(Session session, ISessionObserver observer)
+        {
+            _session = session;
+            _observer = observer;
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _session.RemoveObserver(_observer);
+            }
         }
     }
 }

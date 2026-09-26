@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DevTerm.Core\DevTerm.Core.csproj" />
+    <ProjectReference Include="..\DevTerm.Logging\DevTerm.Logging.csproj" />
     <ProjectReference Include="..\DevTerm.Presenters.Text\DevTerm.Presenters.Text.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Serial\DevTerm.Transports.Serial.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Tcp\DevTerm.Transports.Tcp.csproj" />
