@@ -1,25 +1,25 @@
 ┌┤dev-term — Korad KA6003P Power Supply├───────────────────────────────────────┐
 │[-] Common                                                                   ▲│
-│  Identify:                ⟦ Identify ⟧▖ (i)                                 █│
-│  Identify Reply:          ▝▀▀▀▀▀▀▀▀▀▀▀▘                                     █│
-│  Query Status Byte:       ⟦ Query Status Byte ⟧▖ (i)                        █│
-│  Query Status Byte Reply: ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                            █│
+│  Identify:                ⟦ Identify ⟧  (i)                                 █│
+│  Identify Reply:                                                            █│
+│  Query Status Byte:       ⟦ Query Status Byte ⟧  (i)                        █│
+│  Query Status Byte Reply:                                                   █│
 │                                                                             █│
 │[-] Source                                                                   █│
 │  Voltage:                 0          [0-60]V                                ░│
-│  Set Voltage:             ⟦ Set Voltage ⟧▖ (i)                              ░│
-│  Current:                 0         ▀[0-3]A                                 ░│
-│  Set Current:             ⟦ Set Current ⟧▖ (i)                              ░│
-│  Query Set Voltage:       ⟦ Query Set Voltage ⟧▖ (i)                        ░│
-│  Query Set Voltage Reply: 05.00▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                            ░│
-│  Query Set Current:       ⟦ Query Set Current ⟧▖ (i)                        ░│
-│  Query Set Current Reply: ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                            ░│
+│  Set Voltage:             ⟦ Set Voltage ⟧  (i)                              ░│
+│  Current:                 0          [0-3]A                                 ░│
+│  Set Current:             ⟦ Set Current ⟧  (i)                              ░│
+│  Query Set Voltage:       ⟦ Query Set Voltage ⟧  (i)                        ░│
+│  Query Set Voltage Reply: 05.00                                             ░│
+│  Query Set Current:       ⟦ Query Set Current ⟧  (i)                        ░│
+│  Query Set Current Reply:                                                   ░│
 │                                                                             ░│
 │[-] Measure                                                                  ░│
-│  Query Output Voltage:       ⟦ Query Output Voltage ⟧▖ (i)                  ░│
-│  Query Output Voltage Reply: ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                      ░│
-│  Query Output Current:       ⟦ Query Output Current ⟧▖ (i)                  ░│
-│  Query Output Current Reply: ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                      ▼│
+│  Query Output Voltage:       ⟦ Query Output Voltage ⟧  (i)                  ░│
+│  Query Output Voltage Reply:                                                ░│
+│  Query Output Current:       ⟦ Query Output Current ⟧  (i)                  ░│
+│  Query Output Current Reply:                                                ▼│
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

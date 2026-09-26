@@ -153,8 +153,9 @@ How to press it:
 
 - **TUI**: Connect and Quit are the last row of the form, below Import/Export. **Tab** to Connect
   (the form scrolls to follow focus; **Page Down** jumps there faster) and press **Enter** or
-  **Space**, or click it. Pressing Enter while you're in a text field does *not* connect, so move to
-  the button first. **Quit**, next to it, leaves without connecting; at startup that exits dev-term.
+  **Space**, or click it. Connect is the default button, so **Enter** in a text field (or on a
+  check box) presses it too; Enter in the saved-profiles list loads the selected profile instead.
+  **Quit**, next to it, or **Ctrl+Q**, leaves without connecting; at startup that exits dev-term.
 - **WPF**: **Connect** and **Close** are at the bottom right of the window. Connect is the default button, so
   **Enter** in a field presses it. **Close** (or Esc) leaves without connecting.
 

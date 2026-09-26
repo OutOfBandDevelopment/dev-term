@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
+using System.Text;
 using DevTerm.Configuration;
 using DevTerm.DeviceManifests;
 using DevTerm.DeviceManifests.Editing;
@@ -42,6 +43,26 @@ internal static class ManifestEditorMode
         }
     }
 
+    /// <summary>The longest a file path in the status line is shown before its middle is elided.</summary>
+    internal const int MaxStatusPathLength = 40;
+
+    /// <summary>The status line's text for <paramref name="message"/>: paths shortened (see <see cref="TuiText.CompactPath"/>), wrapped to <paramref name="width"/>, at most two lines (the second ending "…" if more was cut).</summary>
+    internal static string StatusText(string message, int width)
+    {
+        var compact = System.Text.RegularExpressions.Regex.Replace(
+            message ?? string.Empty,
+            @"(?<![\w\\])(?:[A-Za-z]:\\|\\\\)[^\s']+?(?=\.?(?:\s|'|$))",
+            match => TuiText.CompactPath(match.Value, MaxStatusPathLength));
+        var lines = ControlPanelMode.WordWrap(compact, width);
+        if (lines.Count <= 2)
+        {
+            return string.Join('\n', lines);
+        }
+
+        var second = lines[1].Length >= width ? lines[1][..(width - 1)] : lines[1];
+        return lines[0] + "\n" + second + "…";
+    }
+
     /// <summary>Builds the editor window around <paramref name="editor"/> without running it — the seam tests drive headlessly.</summary>
     public static ManifestEditorParts BuildWindow(IApplication app, ManifestEditorViewModel editor)
     {
@@ -68,9 +89,11 @@ internal static class ManifestEditorMode
             previous = button;
         }
 
-        const int StatusWidth = 76;
-        var status = new Label { X = 0, Y = 1, Width = Dim.Fill(), Height = 2 };
-        void ShowStatus(string text) => status.Text = string.Join('\n', ControlPanelMode.WordWrap(text, StatusWidth).Take(2));
+        // Two lines, wrapped to the window's width, with any file path shortened ("~" for the home
+        // folder, the middle elided): a full path used to fill both lines and cut off the rest -
+        // "Opened 'C:\...\tests\De" - including the file name itself.
+        var status = new Label { X = 0, Y = 1, Width = Dim.Fill(), Height = 2, HotKeySpecifier = (Rune)0xFFFF };
+        void ShowStatus(string text) => status.Text = StatusText(text, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 2, 20));
         ShowStatus(editor.StatusMessage);
 
         const int OutlineWidth = 30;

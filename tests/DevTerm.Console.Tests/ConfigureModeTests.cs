@@ -264,6 +264,78 @@ public sealed class ConfigureModeTests
     }
 
     [TestMethod]
+    public void CtrlQ_QuitsLikeTheQuitButton_AskingFirstWhenThereAreUnsavedChanges()
+    {
+        // The title says "Ctrl+Q to quit", but nothing handled it here: checked in a real console,
+        // Ctrl+Q did nothing in the startup editor. RaiseKeyDownEvent, not the key injector - see
+        // TuiModeTests.CtrlQ_RequestsStop for why.
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            RunHeadless(new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" }, null, new ConnectionProfileStore(directory), parts =>
+            {
+                var app = TuiTestRunner.CurrentApp;
+                var runnable = (IRunnable)parts.Window;
+                var asked = 0;
+                parts.ViewModel.ConfirmDiscardChanges = () => { asked++; return false; };
+                parts.HostField.Text = "192.168.0.108";
+                parts.Result = new CliOptions();
+
+                app.Keyboard.RaiseKeyDownEvent(Key.Q.WithCtrl);
+
+                Assert.AreEqual(1, asked, "An edited form asks before quitting, as the Quit button does.");
+                Assert.IsFalse(runnable.StopRequested, "Declining keeps the editor open.");
+                Assert.IsNotNull(parts.Result);
+
+                parts.ViewModel.ConfirmDiscardChanges = () => true;
+                app.Keyboard.RaiseKeyDownEvent(Key.Q.WithCtrl);
+
+                Assert.IsTrue(runnable.StopRequested, "Confirming closes it.");
+                Assert.IsNull(parts.Result, "...without a connection to open.");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Enter_InAFormField_PressesConnect_ButInTheProfileListLoadsInstead()
+    {
+        // Enter in a text field presses the default (Connect) button - checked in a real console
+        // too (Enter in Product ID closed the editor and opened the main window). A direct
+        // InvokeCommand(Command.Accept) on the field does not show this: only a real key goes through
+        // the default-button routing, so this raises one (RaiseKeyDownEvent - see CtrlQ above).
+        var directory = CreateTempProfilesDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("saved", new CliOptions { Transport = "tcp", Host = "10.0.0.2", Port = "23" });
+            RunHeadless(new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23" }, null, store, parts =>
+            {
+                var app = TuiTestRunner.CurrentApp;
+                parts.ProfilesList.SetFocus();
+                parts.ProfilesList.SelectedItem = 0;
+                app.Keyboard.RaiseKeyDownEvent(Key.Enter);
+                Assert.IsNull(parts.Result, "Enter on a saved profile loads it rather than connecting.");
+                Assert.AreEqual("10.0.0.2", parts.HostField.Text);
+
+                parts.HostField.SetFocus();
+                app.Keyboard.RaiseKeyDownEvent(Key.Enter);
+
+                Assert.IsNotNull(parts.Result, "Enter in a field connected.");
+                Assert.AreEqual("10.0.0.2", parts.Result.Host);
+                Assert.IsTrue(((IRunnable)parts.Window).StopRequested);
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Quit_WhenDirty_AsksConfirmDiscardChangesAndHonorsTheAnswer()
     {
         var directory = CreateTempProfilesDirectory();

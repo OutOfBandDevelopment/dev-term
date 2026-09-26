@@ -51,13 +51,13 @@ internal static class ManifestPanelMode
     internal static string? Pick(IApplication app, IReadOnlyList<ManifestEntry> entries)
     {
         string? picked = null;
-        var dialog = new Dialog { Title = "Open Device Manifest", Width = 72, Height = Math.Clamp(entries.Count + 8, 10, 22) };
+        var dialog = new Dialog { Title = "Open Device Manifest", Width = 72, Height = Math.Clamp(entries.Count + 9, 11, 23) };
         var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(4) };
         listView.SetSource(new ObservableCollection<string>(entries.Count > 0
             ? entries.Select(e => e.DisplayName)
             : [$"(no manifests in {DevTermUserDataPaths.UserManifestsDirectory})"]));
-        var pathLabel = new Label { X = 0, Y = Pos.AnchorEnd(3), Text = "Or a path (file, folder, .zip):" };
-        var pathField = new TextField { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill() };
+        var pathLabel = new Label { X = 0, Y = Pos.AnchorEnd(4), Text = "Or a path (file, folder, .zip):" };
+        var pathField = new TextField { X = 0, Y = Pos.AnchorEnd(3), Width = Dim.Fill() };
 
         void Choose()
         {
@@ -83,13 +83,13 @@ internal static class ManifestPanelMode
             e.Handled = true;
             Choose();
         };
-        var openButton = new Button { X = 0, Y = Pos.AnchorEnd(1), Text = "Open", IsDefault = true };
+        var openButton = new Button { X = 0, Y = Pos.AnchorEnd(2), Text = "Open", IsDefault = true };
         openButton.Accepting += (_, e) =>
         {
             e.Handled = true;
             Choose();
         };
-        var cancelButton = new Button { X = Pos.Right(openButton) + 1, Y = Pos.AnchorEnd(1), Text = "Cancel" };
+        var cancelButton = new Button { X = Pos.Right(openButton) + 1, Y = Pos.AnchorEnd(2), Text = "Cancel" };
         cancelButton.Accepting += (_, e) =>
         {
             e.Handled = true;
