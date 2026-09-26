@@ -75,8 +75,10 @@ to resize the window to reach them):
 
 The chosen color is remembered only while the app is running, not across restarts.
 
-Both only make sense connected to that actual device over HID — opening either panel against an
-unrelated connection just won't do anything useful.
+Both only make sense connected to that actual device over HID, so their **Device** menu items are
+greyed out otherwise. The K8055 item needs vendor `10CF`, products `5500`–`5503`; the Busylight item
+needs `04D8:F848` or a Plenom `27BB` device. **SCPI Instrument...** is available on any connection
+except HID. All three are greyed out while disconnected.
 
 ## SCPI instruments: pick a profile first
 
@@ -90,9 +92,16 @@ instruments, so it needs to know which one you're talking to before it can build
 - Otherwise, a small picker appears listing every built-in instrument profile plus two extra
   choices:
   - **Auto-detect (*IDN?)** — sends the standard SCPI `*IDN?` identification query and matches the
-    reply against each profile automatically. This is a real round-trip to the device (up to a
-    few seconds); if nothing matches (or nothing answers in time), you get the Generic panel
-    instead.
+    reply against each profile automatically. This is a real round-trip to the device. While it
+    waits, the main window's output shows
+    `Auto-detecting the SCPI instrument: sent *IDN?, waiting up to 3 s…` (WPF also shows a busy
+    cursor). Afterward it says what happened:
+    - `Detected {profile} (*IDN? replied "…")`
+    - `No loaded SCPI profile recognizes *IDN? reply "…" — opening the Generic panel.`
+    - `No *IDN? reply within 3 s — opening the Generic panel.`
+
+    In the last two cases you get the Generic panel. The wait is 3 s unless the connection sets
+    `--scpiautodetecttimeoutms` (100–60000); a slow instrument may need longer.
   - **Generic (manual)** — a minimal panel (`*IDN?`, `*RST`, `*CLS`, `*OPC?`) that works against any
     SCPI device, curated profile or not.
 

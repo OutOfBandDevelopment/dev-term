@@ -16,9 +16,17 @@ session is connected. Three menu items use it today:
   whichever `DevTerm.Devices.Scpi.ScpiInstrumentProfile` was chosen
   (`ScpiUiDefinitionBuilder.Build`/`ScpiControlSurface`).
 
-The menu item itself doesn't check the connected transport/presenter against the device — picking
-K8055 Control Panel against a TCP connection to something else just won't do anything useful; nothing
-stops you from opening it. See [`docs/design/ui-definitions.md`](../design/ui-definitions.md) and
+Each menu item is **enabled only when the current connection could be that device**
+(`DevTerm.Configuration.DevicePanels.IsAvailable`), and all three are disabled while disconnected:
+
+| Item | Enabled when connected over |
+|---|---|
+| K8055 Control Panel... | HID, vendor `0x10CF`, product `0x5500`–`0x5503` (the four board-address jumper settings) |
+| Busylight Control Panel... | HID, `0x04D8:0xF848` (the bench unit, real-hardware confirmed) or any Plenom `0x27BB` device |
+| SCPI Instrument... | any transport except HID (SCPI is text over a byte stream; HID is fixed-size binary reports) |
+
+The items follow the connection live: they're recomputed on every connect, disconnect, self-disconnect
+and profile switch, the same pass that refreshes the main window's title and status bar. See [`docs/design/ui-definitions.md`](../design/ui-definitions.md) and
 [`docs/design/device-control-modules.md`](../design/device-control-modules.md) for the design intent
 behind this being generic, and
 [`docs/design/features/scpi-instrument-control.md`](../design/features/scpi-instrument-control.md)
@@ -169,9 +177,17 @@ Choosing a named profile opens the panel immediately. Choosing **Generic (manual
 built from `ScpiProfileCatalog.Generic` (`*IDN?`, `*RST`, `*CLS`, `*OPC?`, plus the always-present
 Custom Command section — see below). Choosing **Auto-detect (*IDN?)** sends `*IDN?` over the live
 session and regex-matches the reply against every loaded profile's `IdnPattern`
-(`ScpiProfileCatalog.TryMatchByIdn`); this is a real async round-trip (up to a 3-second wait), so it
-can't finish synchronously inside the menu click — the panel opens once a reply arrives or the
-3-second wait elapses with no match, falling back to `Generic` in that case. Correlating the reply
+(`ScpiProfileCatalog.TryMatchByIdn`, via the shared `DevTerm.Devices.Scpi.ScpiAutoDetect`). This is a
+real async round-trip, so it can't finish synchronously inside the menu click. The wait is
+`CliOptions.ScpiAutoDetectTimeoutMs`: 3000 ms by default, 100–60000, `--scpiautodetecttimeoutms`, saved
+in a profile only when changed. Progress is shown while it waits:
+- The main window's output gets `Auto-detecting the SCPI instrument: sent *IDN?, waiting up to 3 s…`
+  (WPF also shows a wait cursor).
+- Afterward it names the outcome: `Detected {profile} (*IDN? replied "…")`,
+  `No loaded SCPI profile recognizes *IDN? reply "…" — opening the Generic panel.`, or
+  `No *IDN? reply within 3 s — opening the Generic panel.`
+
+The panel opens once a reply arrives or the wait elapses, falling back to `Generic` when nothing matched. Correlating the reply
 needs the `scpi` presenter active in the session's pipeline; opening **SCPI Instrument...** always
 binds it in first (`Session.AddPresenter`, see Actions above) regardless of whether it was selected
 when the connection was made, so auto-detect (and every command's reply afterward) works either way.
@@ -245,11 +261,6 @@ any command not in the curated list.
 
 ## Open items
 
-- **No menu-item state check against the actual connection** — the three Device menu items are always
-  enabled and don't verify the connected transport/presenter actually matches the device before
-  opening.
-- **SCPI auto-detect's 3-second wait is fixed**, not configurable, and not visibly indicated as
-  in-progress in either front end.
 - **The TUI's Notes wrap once, at the screen width the panel opened at** — resizing the terminal
   afterwards doesn't re-wrap them.
 - **Long TUI rows can run past the right edge** (e.g. the 34401A's "Configure 4-Wire Resistance

@@ -11,7 +11,8 @@ menu — the WPF equivalent of the TUI's main screen.
 
 | Field | Type | Notes |
 |---|---|---|
-| `OutputList` | `ListBox`, fills the window above the send row | Every incoming decoded message is appended as `[{presenterName}] {text}`; status lines (Connected/Disconnected/errors) are appended the same way, indistinguishable from real device output except by text |
+| `OutputList` | `ListBox` of `OutputLine(Text, Kind)` records, fills the window above the send row | Every incoming decoded message is appended as `[{presenterName}] {text}` (kind `Device`, normal text). App status lines (connected, disconnected, switched, auto-detect progress) are kind `Status`, shown dimmed and italic; errors (failed connects, lost connections, rejected input) are kind `Error`, dark red and semibold, styled by a `DataTemplate` trigger. `OutputLine.ToString()` is the text, so copying or reading the list as strings is unaffected |
+| Status bar | `StatusBar` docked at the bottom: a colored dot (`ConnectionStatusDot`) and text (`ConnectionStatusText`) | `Connected — tcp://192.168.0.107:23` with a green dot, `Connecting — …` amber, `Disconnected — …` red (`ConnectionDescription.StatusText`) |
 | `SendBox` | Editable `ComboBox` (`IsEditable`, `IsTextSearchEnabled="False"`), fills the remaining width next to the Send button | `IsEnabled` only when the session is open (every text presenter can encode input, so there's no per-presenter check any more); `ItemsSource` is bound directly to a shared `SendHistory.Items` (100 entries, in-memory only), so its drop-down doubles as the history list; Up/Down also recall without opening the drop-down; a line identical to the one just before it isn't recorded again |
 | `ParserBox` | `ComboBox` labelled "Send as:", docked right of the Send button | One item per presenter that can encode typed text; starts as the profile's `Parser` (its first presenter if none is saved); selecting one changes the send format for every line typed afterward and refreshes the title |
 
@@ -36,9 +37,14 @@ menu — the WPF equivalent of the TUI's main screen.
 - **Title bar**, like the TUI's, is `dev-term — {subject} ({presenters}; send as {parser})` — the
   saved profile's name when the running connection is exactly a saved profile, otherwise its
   connection definition (`tcp://192.168.0.110:23`, `serial://COM3:4800,8,n,1`,
-  `hid://1915.AFDA.{serial}`); see the TUI spec for the exact matching rule. It's refreshed on
-  connect, profile switch, and a `Send as:` change (only while the session is open), but does not
-  update on Disconnect — see Open items.
+  `hid://1915.AFDA.{serial}`); see the TUI spec for the exact matching rule. ` — disconnected` is
+  appended while the connection is closed. It's refreshed on every `Send as:` change and connection-state
+  change.
+- **`RefreshConnectionUi`** derives the File menu header, `SendBox.IsEnabled`, the title, the status bar and
+  the **Device** menu items' `IsEnabled` (see [`device-control-panel.md`](device-control-panel.md)) from
+  `Session.State` in one pass. It runs from the constructor and after every connect, disconnect,
+  self-disconnect and profile switch. While a connect is in flight it's called with
+  `ConnectionState.Opening` to show "Connecting", which the transport never announces to the window.
 
 ## Errors
 
@@ -67,20 +73,15 @@ window stays usable:
 - **Ctrl+Q needs an explicit `PreviewKeyDown` handler** — `MenuItem.InputGestureText` only labels
   the shortcut in the menu, the same "display-only" gap as Terminal.Gui's `MenuItem.Key` (see
   `CLAUDE.md`).
-- **`Closing`'s cancel-then-async-cleanup-then-reclose pattern is real, but fragile under test
-  automation**: calling `Window.Close()` on a window driven by a single manually-pumped
-  `DispatcherFrame` (as `DevTerm.Wpf.Tests.StaTestRunner` does) can throw "Cannot ... Close ... while
-  a Window is closing" — found while building automated screenshot tests, which now deliberately
-  never call `Close()` at all (see `WpfScreenshot`'s doc comment). Not confirmed to be a problem in
-  the real, interactively-driven app (a real Win32 message loop, not one manually-pumped frame).
+- **`Closing` cancels the first close, awaits the session's cleanup, `await Dispatcher.Yield()`s, then
+  closes for real.** Without the yield, a session that was already closed made the awaits complete
+  synchronously, so the second `Close()` ran inside the first one's `Closing` and threw "Cannot ... Close
+  ... while a Window is closing". That was once blamed on test automation, but it was the app's own
+  reentrancy bug. It's fixed and covered for constructed windows (`MainWindowTests.Close_*`) and, since
+  2026-09-25, for a really-shown, auto-connected one
+  (`MainWindowConnectionStateTests.AReallyShownWindow_ClosesCleanly`).
 
 ## Open items
 
-- **The title bar doesn't reflect Connect/Disconnect state**, same gap as the TUI's main screen.
-- **No visual indicator of connection state** beyond `SendBox.IsEnabled` and the menu header.
-- **`OutputList` mixes device output and status/error lines** with no visual distinction — same as
-  the TUI's output pane.
 - **Only one session per window.** Presenters are no longer the blocker: they've been per-session since 2026-09-25
   (see `docs/design/presenters.md`). Nothing builds a multi-session UI yet.
-- **The `Closing` reentrancy edge case above** hasn't been root-caused or fixed — only worked around
-  in test automation by not exercising it.
