@@ -117,7 +117,7 @@ public static class PlaybackMode
         var output = new Editor
         {
             X = 0,
-            Y = 3,
+            Y = Pos.Bottom(availableLabel),
             Width = Dim.Fill(),
             Height = Dim.Fill(3),
             ReadOnly = true,

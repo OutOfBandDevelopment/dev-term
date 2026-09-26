@@ -22,6 +22,13 @@ Completed work is logged by date under `docs/changes/`.
   `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware&TestCategory=Radex_One"`
   against the COM8 device to confirm it now replies — the actual point of this fix, not yet
   empirically confirmed.
+  - **Update, 2026-09-26**: added a fifth command, Reset Accumulated (`0x0803`), from a
+    user-captured trace not in the original source doc (see
+    `docs/design/proposals/radex-one-protocol.md`'s "Trace Examples"/Status). Checksum-verified
+    byte-for-byte against the new trace, both directions; wired end-to-end (`RadexOneCommand`,
+    `RadexOneExtensionCodec.BuildQuery`'s new `word` parameter, decoder ack, control-surface
+    action/preview, UI button) with 5 new unit tests (27 total). Not yet run against the COM8
+    device — folds into the same pending real-hardware re-run above.
 - **BLE transport (`DevTerm.Transports.Ble` + Windows backend) needs real-hardware verification.**
   Built and wired end-to-end 2026-09-25 (see `docs/changes/2026-09-25.md`): `IBleAdapter`/
   `IBleAdapterFactory`/`IBleDeviceDiscovery` contract, a `Windows.Devices.Bluetooth`-backed

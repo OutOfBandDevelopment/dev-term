@@ -344,8 +344,8 @@ public sealed class DeviceProfilesWindowTests
 
                 Assert.AreSame(window.ViewModel.SerialPortOptions, window.DetectedPortsBox.ItemsSource);
 
-                Assert.AreEqual("Display", window.DetectedPortsBox.DisplayMemberPath,
-                    "The picker shows each port's description-bearing Display text...");
+                Assert.IsNotNull(window.DetectedPortsBox.ItemTemplate,
+                    "The picker shows each port's description-bearing Display text, trimmed via an ItemTemplate rather than DisplayMemberPath (a long real-hardware description would otherwise clip the ComboBox — see CLAUDE.md).");
                 Assert.AreEqual("Name", window.DetectedPortsBox.SelectedValuePath,
                     "...while the value it binds to SelectedSerialPort (and so Port) is the short Name.");
 
