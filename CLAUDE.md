@@ -463,6 +463,28 @@ file only points there, it doesn't restate them.**
   transcripts.
 - **`DateTimeOffset.AddSeconds(1.2)` lands one tick short and prints as `00:01.199`.** Use
   `AddMilliseconds` for exact timestamps in tests.
+- **WPF Fluent `ThemeMode` is still `[Experimental("WPF0001")]` on .NET 10.** Any use fails the build under
+  TreatWarningsAsErrors. It also re-templates every control with much larger metrics, and Dark's window
+  background is transparent (Mica), so a `RenderTargetBitmap` capture comes out white on white. dev-term themes
+  the stock templates itself (`WpfTheme`) instead.
+- **The stock WPF control chrome is hard-coded light.** Overriding `SystemColors` keys only fixes controls whose
+  styles read them (TextBox, menus, status bar). Button hover/pressed, the ComboBox toggle and editable box, the
+  MenuItem drop-down popup (`#F0F0F0`) and the ListBox background stayed light under light dark-theme text, and
+  needed replacement templates (`DarkControls.xaml`).
+- **Terminal.Gui v2.5.0's built-in "Dark"/"Light" themes don't set a background.** `Base` stays `None` (the
+  terminal's own), so each is unreadable on the opposite-colored terminal.
+- **`SchemeManager.AddScheme` overrides are process-wide, not per `IApplication`.** They survive
+  `Application.Init` and later `ThemeManager.Theme` switches. A test that applies a theme must call
+  `TuiTheme.Restore()` and `ActiveTheme.Reset()`, and run `[DoNotParallelize]`.
+- **A static-event subscription made in `TuiMode.BuildWindow` outlives the test that built the window.**
+  Headless tests never dispose their windows, so `Disposing` never fires, and a later `ActiveTheme.Select` from
+  another test's thread hit the stale handler: "Call from invalid thread". Marshal with `app.Invoke` when not on
+  the UI thread, and unsubscribe once `app.Driver is null`.
+- **An XSHD highlighting definition's colors are fixed once loaded.** A live theme switch has to swap
+  `Editor.HighlightingDefinition` for a new definition (`OutputHighlighting.For(theme)`, cached per theme).
+- **Windows PowerShell 5's `Get-Content`/`Set-Content` corrupt non-ASCII characters in UTF-8 source** ("●" came
+  back as three garbage characters) and add a BOM and CRLF. Use `[IO.File]::ReadAllText`/`WriteAllText` with
+  `UTF8Encoding($false)`, or the Edit tool.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

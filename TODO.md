@@ -26,7 +26,7 @@ has landed in `docs/changes/`.
 
 **Phase 1 — done** (2026-09-25): Stream Monitor, panels (leftovers, chart controls, live manifest panels) and logger/playback all landed; see `docs/changes/2026-09-25.md`.
 
-**Phase 2 — next:**
+**Phase 2 — in progress** (theming landed 2026-09-25, see `docs/changes/2026-09-25.md`; the forms engine + manifest editor branch is still running):
 
 - **Forms from one definition** (was a low-priority `BACKLOG.md` item):
   - Attributes on a model's properties plus a reflection-based generator that turns an annotated
@@ -38,13 +38,6 @@ has landed in `docs/changes/`.
     under the render engine or is subsumed by it.
 - **Device manifest editor:** at least a default render for request/response messages, ideally a
   presentation editor. It builds on the forms engine above.
-- **Theming** (was a low-priority `BACKLOG.md` item): light/dark mode plus custom, user-defined theme
-  profiles for both front ends. Investigate first:
-  - WPF: .NET's Fluent `ThemeMode` on `net10.0-windows`.
-  - TUI: Terminal.Gui v2.5.0's own `Scheme`s.
-
-  The colors hard-coded today (status bar, output styling, swatches) must move onto the theme.
-
 **Phase 3 — queued (last; it restructures both main windows):**
 
 - **Multiple sessions per window** (from the TUI/WPF main-window specs' Open items). Presenters stopped
