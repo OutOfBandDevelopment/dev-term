@@ -336,6 +336,78 @@ public sealed class ConnectionProfileStoreTests
         }
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    [DataRow("..\\escaped")]
+    [DataRow("a:b")]
+    [DataRow("CON")]
+    public void Save_WithAnInvalidProfileName_ThrowsInsteadOfWritingIt(string name)
+    {
+        // Regression test for bug 012: "..\..\Desktop\x" escaped the profiles directory, "a:b" became
+        // an NTFS alternate data stream on a file named "a" (List() never shows it, so the saved
+        // profile silently vanishes), and reserved device names like "CON" fail on Windows. See
+        // docs/bugs/012-profile-names-not-validated.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+
+            Assert.ThrowsExactly<ArgumentException>(() => store.Save(name, new CliOptions { Transport = "tcp", Host = "h", Port = "1" }));
+            Assert.IsEmpty(store.List());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ImportZip_WithAnInvalidEntryName_SkipsItInsteadOfWritingIt()
+    {
+        // Regression test for bug 012: a zip entry named e.g. "a?b" is legal on Linux (where it could
+        // have been exported) but invalid on Windows; ImportZip used to write it anyway.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var zip = WriteZip(directory, ("a?b.json", "{ \"Transport\": \"tcp\" }"), ("good.json", "{ \"Transport\": \"tcp\" }"));
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+
+            var result = store.ImportZip(zip);
+
+            Assert.AreEqual(1, result.Imported);
+            Assert.AreEqual(1, result.Skipped);
+            Assert.AreSequenceEqual(["good"], [.. store.List()]);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ReadZip_WithAnEntryNameInvalidOnWindows_ThrowsSoReplaceAllRefusesBeforeDeletingAnything()
+    {
+        // Regression test for bug 012: ReadZip used to only check JSON syntax, not names, so a zip
+        // exported on Linux with a name invalid on Windows (e.g. "a?b") made ReplaceAll delete every
+        // existing profile and only then fail writing the bad entry, losing the originals for nothing.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("keep-me", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
+            var zip = WriteZip(directory, ("a?b.json", "{ \"Transport\": \"tcp\" }"));
+
+            Assert.ThrowsExactly<InvalidDataException>(() => ConnectionProfileStore.ReadZip(zip));
+            Assert.AreSequenceEqual(["keep-me"], [.. store.List()]);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-profile-tests", Path.GetRandomFileName());

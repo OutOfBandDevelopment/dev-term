@@ -94,6 +94,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
     public void Save(string name, CliOptions options)
     {
+        ProfileName.ThrowIfInvalid(name);
         Directory.CreateDirectory(_profilesDirectory);
         File.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
     }
@@ -170,6 +171,12 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
         {
             var name = Path.GetFileNameWithoutExtension(entry.Name);
+            if (!ProfileName.IsValid(name))
+            {
+                skipped++;
+                continue;
+            }
+
             var targetName = name;
 
             if (existing.Contains(name))
@@ -214,6 +221,11 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
         {
             var name = Path.GetFileNameWithoutExtension(entry.Name);
+            if (!ProfileName.IsValid(name))
+            {
+                throw new InvalidDataException($"'{entry.FullName}' in the zip has a name ('{name}') that isn't valid on this system.");
+            }
+
             using var reader = new StreamReader(entry.Open());
             var json = reader.ReadToEnd();
             try
