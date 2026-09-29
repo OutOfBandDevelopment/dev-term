@@ -93,6 +93,6 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 056 | [TCP listen mode rejects hostnames and is IPv4-only](fixed/056-tcp-listen-rejects-hostnames.md) | DevTerm.Transports.Tcp | Fixed |
 | 057 | [A serial read may never notice an unplugged adapter](fixed/057-serial-unplug-not-detected.md) | DevTerm.Transports.Serial | Fixed |
 | 058 | [Two close requests during a slow cleanup run OnClosing twice](fixed/058-wpf-onclosing-reentry.md) | WPF (MainWindow) | Fixed |
-| 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Open |
+| 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](fixed/059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Fixed |
 | 060 | [A TUI profile switch can close/reassign the wrong session under overlap](060-tui-profile-switch-session-race.md) | TUI (Console) | Open |
 
