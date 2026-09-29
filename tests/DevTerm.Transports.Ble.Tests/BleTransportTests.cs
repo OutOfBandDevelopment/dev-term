@@ -130,6 +130,46 @@ public sealed class BleTransportTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task NotificationArrivingWhileAPriorWriteIsStillFlushing_DoesNotLoseData()
+    {
+        // Regression test for bug 053: each notification starts a fire-and-forget WriteToPipeAsync
+        // with no synchronization between calls. PipeWriter is single-writer - a second WriteAsync
+        // while a first is still flushing (blocked on the pipe's backpressure threshold, since
+        // nothing is reading yet) throws InvalidOperationException, which WriteToPipeAsync's catch
+        // swallows, silently losing that notification's bytes. See
+        // docs/bugs/fixed/053-ble-pipe-writes-unsynchronized.md.
+        var adapter = new Mock<IBleAdapter>();
+        var factory = new Mock<IBleAdapterFactory>();
+        factory.Setup(f => f.Create(It.IsAny<BleTransportOptions>())).Returns(adapter.Object);
+
+        var transport = new BleTransport(factory.Object, Options());
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        // Exceeds the pipe's default 64 KiB pause-writer threshold with nothing reading yet, so this
+        // first write's flush doesn't complete synchronously - it's still "in flight" when the second
+        // notification arrives immediately after.
+        var first = new byte[100_000];
+        Array.Fill(first, (byte)0xAA);
+        var second = new byte[] { 0x01, 0x02, 0x03 };
+
+        adapter.Raise(a => a.NotificationReceived += null, adapter.Object, new ReadOnlyMemory<byte>(first));
+        adapter.Raise(a => a.NotificationReceived += null, adapter.Object, new ReadOnlyMemory<byte>(second));
+
+        var total = new List<byte>();
+        while (total.Count < first.Length + second.Length)
+        {
+            var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+            total.AddRange(result.Buffer.ToArray());
+            transport.Input.AdvanceTo(result.Buffer.End);
+        }
+
+        Assert.AreSequenceEqual(first.Concat(second).ToArray(), total.ToArray());
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task IncomingNotification_IsAvailableThroughInput()
     {
         var adapter = new Mock<IBleAdapter>();
