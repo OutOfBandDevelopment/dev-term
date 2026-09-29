@@ -170,6 +170,24 @@ public sealed class ChartControlsTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void StripChart_HistoryLengthAboveTheHardMaximum_IsClampedRatherThanUnbounded()
+    {
+        // Regression test for bug 050: HistoryLength came straight from the manifest with no upper
+        // bound, so a manifest could make the chart's per-sample queue grow without limit. See
+        // docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        var state = new StripChartState(new StripChartControl
+        {
+            Id = "s",
+            Label = "S",
+            HistoryLength = StripChartState.MaxCapacity + 1000,
+            Channels = [new ChartChannel { Id = "a" }],
+        });
+
+        Assert.AreEqual(StripChartState.MaxCapacity, state.Capacity);
+    }
+
+    [TestMethod]
     public void StripChart_Scale_UsesDeclaredBounds_AndAutoScalesTheRest()
     {
         var state = new StripChartState((StripChartControl)BuildChartsPanel().Sections[0].Controls[1]);

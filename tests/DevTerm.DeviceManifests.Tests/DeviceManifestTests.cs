@@ -403,6 +403,40 @@ public sealed class DeviceManifestTests
         Assert.Contains("KaitaiFile", string.Join(" ", result.Errors));
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_StripChartHistoryLengthAboveTheHardMaximum_Warns()
+    {
+        // Regression test for bug 050: StripChartControl.HistoryLength came straight from the
+        // manifest with no upper bound, so a manifest could make the chart's per-sample queue grow
+        // without limit. See docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections =
+            [
+                new UiSection
+                {
+                    Controls =
+                    [
+                        new StripChartControl
+                        {
+                            Id = "trace",
+                            Label = "Trace",
+                            HistoryLength = StripChartState.MaxCapacity + 1,
+                            Channels = [new ChartChannel { Id = "value" }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid, "An excessive history length is clamped, not rejected.");
+        Assert.Contains($"Trace' declares a history length of {StripChartState.MaxCapacity + 1}", string.Join(" ", result.Warnings));
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-manifest-tests", Path.GetRandomFileName());
