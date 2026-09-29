@@ -63,6 +63,13 @@ public sealed class ManifestControlSurfaceTests
                 Template = "A={a} B={b}",
                 Parameters = [new CommandParameter { Name = "a" }, new CommandParameter { Name = "b" }],
             },
+            new OutboundCommand
+            {
+                Id = "trim",
+                Name = "Trim",
+                Template = "TRIM{amount}",
+                Parameters = [new CommandParameter { Name = "amount", Type = "integer", Maximum = 10.5 }],
+            },
         ],
         Ui = new UiDefinition
         {
@@ -117,6 +124,39 @@ public sealed class ManifestControlSurfaceTests
         Assert.AreEqual("CH3:HIGH\n", Sent(transport, 4), "Comma-joined values fill the parameters in order; an integer rounds.");
         Assert.AreEqual("CH4:LOW\n", Sent(transport, 5), "A missing second value falls back to its default.");
         Assert.AreEqual("OUT1\n", Sent(transport, 6), "A parameterless template's {value} takes the control's value.");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_NonFiniteNumericValue_DoesNotSendNaNOrInfinityLiterally()
+    {
+        // Regression test for bug 046: double.TryParse happily accepts "NaN"/"Infinity"/"-Infinity" as
+        // literal text regardless of NumberStyles, and Math.Clamp passes NaN through unchanged (every
+        // comparison against NaN is false), so a non-finite value reached the wire verbatim instead of
+        // being rejected. See docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        await panel.Surface.InvokeAsync("vset", "NaN", TestContext.CancellationToken);
+
+        Assert.AreEqual("VSET1:05.00\n", Sent(transport, 0), "A non-finite value falls back to the parameter's default, not NaN itself.");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_IntegerParameterRoundingToAFractionalMaximum_IsStillClampedToIt()
+    {
+        // Regression test for bug 046: rounding happened after clamping, so an already-in-range value
+        // could round past a fractional Maximum (Max 10.5, value 10.5 -> rounds to 11 > 10.5). See
+        // docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        await panel.Surface.InvokeAsync("trim", "10.5", TestContext.CancellationToken);
+
+        Assert.AreEqual("TRIM10.5\n", Sent(transport, 0), "Clamped to the fractional maximum after rounding, not rounded past it.");
     }
 
     [TestMethod]

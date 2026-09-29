@@ -80,7 +80,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 043 | [A typed value containing {OtherParam} is itself substituted](fixed/043-template-substitution-not-single-pass.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Fixed |
 | 044 | [A profile's numeric parameter limits can throw or force every value to 0](fixed/044-scpi-clamp-bad-limits.md) | DevTerm.Devices.Scpi (ScpiControlSurface) | Fixed |
 | 045 | [Device control surfaces parse numbers with throwing Parse](fixed/045-control-surface-parse-throws.md) | DevTerm.Devices.Busylight, K8055, RadexOne | Fixed |
-| 046 | [Manifest numbers can go out as NaN, or rounded past Max](046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Open |
+| 046 | [Manifest numbers can go out as NaN, or rounded past Max](fixed/046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Fixed |
 | 047 | [The Radex One panel describes the device as USB HID](047-radexone-description-says-hid.md) | DevTerm.Devices.RadexOne (RadexOneUiDefinition) | Open |
 | 048 | [SCPI *IDN? matching runs profile regexes with no timeout](048-scpi-idn-regex-no-timeout.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Open |
 | 049 | [UI definition XML is parsed without prohibiting DTDs](049-uidefinition-xml-dtd.md) | DevTerm.UiDefinitions (UiDefinitionSerializer) | Open |
