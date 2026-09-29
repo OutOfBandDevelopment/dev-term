@@ -8,9 +8,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ### Connection Editor
 
-- **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
-  fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
-  just annotating the view-model properties (and adding the view-model properties where missing).
 - **Detected-device/-characteristic pickers should be searchable/filterable, not a plain list or
   non-editable combo box.** Requested directly ("they should be combo boxes so I can search/filter
   the results") for the BLE device picker, and applies equally to the BLE write/notify characteristic
