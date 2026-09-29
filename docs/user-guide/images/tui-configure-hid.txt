@@ -6,20 +6,20 @@
 │                        ☐ Show as hex                                        ░│
 │  Detected HID devices: ⟦ Detect HID... ⟧▖                                   ░│
 │                        ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   ░│
-│                        (not found — no connected device matches this        ░│
+│                        (not found — no connected device matches this        █│
 │                        vendor/product/serial)                               █│
 │                                                                             █│
 │── Presentation ──                                                           █│
-│  Presenters:  ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary ☐ k8055       █│
-│               ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n ☐ de5000 ☐ nmea       █│
-│  Send as:     ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal  ○ binary          █│
-│               ○ k8055  ○ busylight  ○ scpi  ○ radexone  ○ zoomh4n           █│
-│               ○ de5000  ○ nmea                                              █│
-│  Line ending: ◉ None  ○ Cr  ○ Lf  ○ CrLf                                    █│
-│                                                                             █│
-│Save as profile named:                      ⟦ Save Profile ⟧▖                █│
-│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                ░│
-│Import/export file path:                                                     ░│
+│  Presenters:            ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary     █│
+│                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     █│
+│                         ☐ de5000 ☐ nmea                                     █│
+│  Send as:               ○ ascii  ○ utf8  ◉ hex  ○ decimal  ○ octal          █│
+│                         ○ binary  ○ k8055  ○ busylight  ○ scpi  ○ radexone  █│
+│                         ○ zoomh4n  ○ de5000  ○ nmea                         █│
+│  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          █│
+│  ASCII max line length: 4096                                                ░│
 │                                                                             ░│
-│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      ▼│
+│Save as profile named:                      ⟦ Save Profile ⟧▖                ░│
+│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                ░│
+│Import/export file path:                                                     ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

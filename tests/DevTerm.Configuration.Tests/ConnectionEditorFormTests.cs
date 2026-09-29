@@ -51,13 +51,13 @@ public sealed class ConnectionEditorFormTests
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
             Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
-                ["Port", "Detected ports", "", "Baud", "Data bits", "Parity", "Stop bits", "Handshake"],
+                ["Port", "Detected ports", "", "Baud", "Data bits", "Parity", "Stop bits", "Handshake", "DTR", "RTS", "Write timeout (ms)", "Read timeout (ms)"],
                 [.. definition.Sections[1].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(["Host", "Port", "Listen (server mode)"], [.. definition.Sections[2].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
                 ["Vendor ID", "Product ID", "Serial number", "Show as hex", "Detected HID devices", "Detected USBTMC devices", ""],
                 [.. definition.Sections[3].Controls.Select(c => c.Label)]);
-            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "Send as", "Line ending"], [.. definition.Sections[6].Controls.Select(c => c.Label)]);
+            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "Send as", "Line ending", "ASCII max line length"], [.. definition.Sections[6].Controls.Select(c => c.Label)]);
 
             var transport = (ChoiceControl)definition.Sections[0].Controls[0];
             Assert.AreSequenceEqual(viewModel.TransportOptions, transport.Options);

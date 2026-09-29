@@ -23,7 +23,7 @@ group", instead of one per front end. See
 
 | Part | Generated or hand-built | Why |
 |---|---|---|
-| Transport, Description, every Serial/TCP/USB Device/Loopback field, the "not found" hints, the loopback note, Presenters, SCPI profile, Send as, Line ending | **Generated** (`FormDefinition`) | Plain fields bound to view-model properties — exactly what the form vocabulary covers |
+| Transport, Description, every Serial/TCP/USB Device/Loopback field, the "not found" hints, the loopback note, Presenters, SCPI profile, Send as, Line ending, ASCII max line length | **Generated** (`FormDefinition`) | Plain fields bound to view-model properties — exactly what the form vocabulary covers |
 | The "Detected ports" / "Detected HID devices" / "Detected USBTMC devices" rows | **Generated row, hand-built widget** (`TuiFormOptions`/`WpfFormOptions.CustomWidgets`) | The form places, labels and shows/hides the row with its transport; the widget needs the view model's rich device objects (a description-bearing `Display` over a short `Name`, a live-filtered list whose selection survives filtering), which a `ChoiceControl`'s plain option strings can't carry. WPF: the same bound `ComboBox`es as before; TUI: the same `Detect...` buttons and pick list |
 | Saved-profiles list and its buttons, Save as profile, the import/export path and its buttons, Connect/Close/Quit | **Hand-built** | Commands and list management (multi-select, double-click, native file dialogs), not fields of a model |
 
@@ -49,6 +49,10 @@ Shown in two situations:
 | Data bits (serial) | integer, typed as text | `8` | Declared `Integer`, 5 to 8 (same inline message); same parse behavior as Baud | |
 | Parity (serial) | one of `None`/`Odd`/`Even`/`Mark`/`Space` | `None` | n/a (fixed set) | |
 | Stop bits (serial) | one of `None`/`One`/`Two`/`OnePointFive` | `One` | n/a (fixed set) | |
+| DTR (serial) | boolean | on | n/a | `SerialPort` itself defaults this to `false`, unlike most terminal tools; dev-term defaults it `true` since plenty of devices stay silent without it asserted (see `CLAUDE.md`'s constraints list) |
+| RTS (serial) | boolean | on | n/a | Same rationale/default as DTR |
+| Write timeout (ms) (serial) | integer, typed as text | `5000` | Declared `Integer`, at least -1 (same inline-message behavior as Baud) | `-1` means indefinite |
+| Read timeout (ms) (serial) | integer, typed as text | `1000` | Declared `Integer`, at least 0 (same inline-message behavior as Baud) | |
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` (declared `Integer` 0–65535 for the inline message) | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
@@ -65,6 +69,7 @@ Shown in two situations:
 | SCPI profile | one of the SCPI profile choices (Auto-detect, Generic, every bundled instrument), or empty | empty (always ask) | n/a | Shown only while the `scpi` presenter is checked (`IsScpiPresenterSelected`). Preselects the Device > SCPI Instrument... choice |
 | Send as | one of the presenters above | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
+| ASCII max line length | integer, typed as text | `4096` (`AsciiPresenter.DefaultMaxLineLength`) | Declared `Integer`, at least 0 (same inline-message behavior as Baud) | How long a line the ASCII presenter buffers before flushing anyway, in case a terminator never arrives; `0` means unbounded |
 | Save as profile named | free text | empty | Must be non-empty to save | Auto-filled with the loaded profile's name after Load (see Actions) |
 | Import/export file path | free text, or picked via "Browse..." (existing file) / "Save As..." (new or existing file), both front ends | empty | Must be non-empty to import/export | A single-profile JSON path for Import/Export, or a `.zip` path (detected by extension) for Import/Export Selected/Export All — see Actions |
 | Saved profiles | list, one name per saved profile, multi-select | populated from `ConnectionProfileStore.List()` at construction | n/a | Double-clicking a row loads it — same as selecting it and pressing Load, not a separate action. Multiple rows can be marked/selected at once — see Export Selected below — independent of the single-item selection Load/Delete use |
@@ -73,7 +78,7 @@ Shown in two situations:
 
 | Action | Behavior | Preconditions | On failure |
 |---|---|---|---|
-| **Connect** (also **Enter** in a field, in both front ends: it is the default button; in the TUI, Enter in the saved-profiles list loads instead) | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`Dtr`, `Rts`, `WriteTimeoutMs`/`ReadTimeoutMs`, `AsciiMaxLineLength`, `ManifestName`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
+| **Connect** (also **Enter** in a field, in both front ends: it is the default button; in the TUI, Enter in the saved-profiles list loads instead) | Validates the current fields (`CliOptionsValidator`); on success sets `Result`, clears the dirty flag, and raises `CloseRequested`. Settings a saved profile holds but this form doesn't show (`ManifestName`, `ScpiAutoDetectTimeoutMs`) are carried over from whatever was loaded, not reset to defaults. The presenter order is kept as loaded unless the presenter selection itself was changed. As a result, Load then Connect produces exactly the saved profile, so the window title can name it (it used to lose the name, and silently reset, for example, a profile's DTR-off setting) | None | Shows the validation failure message; `Result` stays `null`, window stays open |
 | **Close** (WPF) / **Quit** or **Ctrl+Q** (TUI) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) discards changes and `Result` stays `null` | None | Declining the confirmation leaves the editor open, untouched |
 | **Load** (button, or double-clicking the row) | If fields have unsaved edits, asks for confirmation first; otherwise (or once confirmed) loads the selected saved profile's fields into the editor and sets "Save as profile named" to that profile's name | A profile must be selected in the list | "Select a profile first." / "Load cancelled — you have unsaved changes." if declined / the underlying `IOException`'s message if the file can't be read |
 | **Save** | Validates the current fields; if the name already matches an existing profile, asks for confirmation first (a native dialog per front end); saves, refreshes the list, clears the name field | Name must be non-empty; fields must validate | Validation message, or "Not saved — '{name}' already exists." if overwrite is declined |
@@ -215,18 +220,27 @@ Shown in two situations:
   display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the plain decimal the field
   actually stores. Each is its own generated row ("Detected ports:"/"Detected HID devices:"/
   "Detected USBTMC devices:"/"Detected BLE devices:"), only the row matching the selected transport
-  visible, with a hand-built widget: WPF a non-editable `ComboBox` (BLE's is paired with its own
-  "Detect BLE..." button in one row, since — unlike the other three, which discover eagerly and fast
-  at construction — a BLE scan is slow (~4s) and only available via the runtime-loaded Windows
-  backend, so nothing populates the combobox until that button's clicked); the TUI a "Detect..." /
-  "Detect HID..." / "Detect USBTMC..." / "Detect BLE..." button that opens a small modal picker
-  (`FormRenderer.PickFromList`, a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
-  Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
-  v2.5.0 package); the BLE button runs its scan synchronously first (blocking, like every other TUI
-  Accepting handler), the WPF one runs it on a background thread (`Task.Run`) so the window stays
-  responsive. Before the form was generated, the TUI showed both USB Detect buttons side by side on
-  the Vendor/Product row. All are empty (not an error) if nothing's detected or discovery itself
-  fails.
+  visible, with a hand-built widget: WPF an **editable, filter-as-you-type** `ComboBox` (BLE's is
+  paired with its own "Detect BLE..." button in one row, since — unlike the other three, which
+  discover eagerly and fast at construction — a BLE scan is slow (~4s) and only available via the
+  runtime-loaded Windows backend, so nothing populates the combobox until that button's clicked); the
+  TUI a "Detect..." / "Detect HID..." / "Detect USBTMC..." / "Detect BLE..." button that opens a small
+  modal picker with its own filter box (`FormRenderer.PickFromList`, a `Dialog` + `TextField` +
+  `ListView`, `Application.Run(dialog)` — Terminal.Gui has no built-in combobox widget, confirmed via
+  reflection against the installed v2.5.0 package); the BLE button runs its scan synchronously first
+  (blocking, like every other TUI Accepting handler), the WPF one runs it on a background thread
+  (`Task.Run`) so the window stays responsive. Before the form was generated, the TUI showed both USB
+  Detect buttons side by side on the Vendor/Product row. All are empty (not an error) if nothing's
+  detected or discovery itself fails.
+  **Both are searchable/filterable** (2026-09-29, requested directly — "they should be combo boxes so
+  I can search/filter the results"): WPF's `ComboBox`es are `IsEditable` with `IsTextSearchEnabled`
+  false and an `Items.Filter` predicate (`DeviceProfilesWindow.Matches`, case-insensitive substring
+  against the item's `Display`) set by a shared `MakeFilterable` helper — typing narrows the dropdown
+  without replacing `ItemsSource`, so a still-matching `SelectedItem`/binding survives. The TUI's
+  `PickFromList` modal gained a `TextField` above its `ListView`; typing calls a directly-testable
+  `FormRenderer.FilterIndices` helper and rebuilds the list's source from the filtered subset, while
+  Select/Enter maps the filtered position back through the retained index list to the original item —
+  picking row 2 of a filtered-down list still returns the right index into the full, unfiltered list.
 - **BLE GATT characteristic pickers are one level down from the device picker, sharing one scan
   across two independent selections**: `SelectedBleWriteCharacteristic`/`SelectedBleNotifyCharacteristic`
   (2026-09-29) bind against `BleCharacteristicOptions` — a flattened, one-row-per-characteristic list
@@ -381,14 +395,16 @@ Shown in two situations:
 ## Open items
 
 - The generated form shows only the fields the view model declares; the saved-profile settings the
-  editor never exposed (`Dtr`, `Rts`, the timeouts, `AsciiMaxLineLength`, `ManifestName`,
-  `ScpiAutoDetectTimeoutMs`) are still carried over untouched rather than shown. Exposing them is now
-  a matter of annotating view-model properties for them (the form would render them with no front-end
-  change), not of hand-building two more field groups.
+  editor still never exposes (`ManifestName`, `ScpiAutoDetectTimeoutMs`) are still carried over
+  untouched rather than shown. Exposing them is now a matter of annotating view-model properties for
+  them (the form would render them with no front-end change), not of hand-building two more field
+  groups.
 
 Everything requested 2026-09-16 has landed: the presenter picker and per-input-line parser on
 2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, BLE's field group on 2026-09-25,
 its live "Detect BLE..." picker on 2026-09-29, and the generated form (which also fixed the TUI's
-gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor follow-ups live in
-`BACKLOG.md`.
+gap under a hidden transport group) on 2026-09-25. DTR/RTS, the read/write timeouts, and the ASCII
+max line length (previously carried over silently, never shown) became real fields on 2026-09-29.
+The detected-device/-characteristic pickers became searchable/filterable in both front ends on
+2026-09-29. Remaining Connection Editor follow-ups live in `BACKLOG.md`.
 

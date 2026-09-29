@@ -57,6 +57,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _parityText = "None";
     private string _stopBitsText = "One";
     private string _handshakeText = "None";
+    private bool _dtr = true;
+    private bool _rts = true;
+    private string _writeTimeoutMs = "5000";
+    private string _readTimeoutMs = "1000";
+    private string _asciiMaxLineLength = DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength.ToString(CultureInfo.InvariantCulture);
     private string _scpiProfile = string.Empty;
     private string _host = string.Empty;
     private string _tcpPort = "0";
@@ -663,6 +668,30 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [FormField(Order = 7, OptionsFrom = nameof(HandshakeOptions))]
     public string HandshakeText { get => _handshakeText; set => SetField(ref _handshakeText, value); }
 
+    /// <summary>See <see cref="CliOptions.Dtr"/>. Previously hard-carried from whatever profile was loaded rather than exposed in this form — see docs/changes and BACKLOG.md's "Show the hidden connection settings".</summary>
+    [Category("Serial")]
+    [DisplayName("DTR")]
+    [FormField(Order = 8)]
+    public bool Dtr { get => _dtr; set => SetField(ref _dtr, value); }
+
+    /// <summary>See <see cref="CliOptions.Rts"/>.</summary>
+    [Category("Serial")]
+    [DisplayName("RTS")]
+    [FormField(Order = 9)]
+    public bool Rts { get => _rts; set => SetField(ref _rts, value); }
+
+    /// <summary>See <see cref="CliOptions.WriteTimeoutMs"/>. -1 waits indefinitely.</summary>
+    [Category("Serial")]
+    [DisplayName("Write timeout (ms)")]
+    [FormField(Order = 10, ValueKind = ValueKind.Integer, Minimum = -1)]
+    public string WriteTimeoutMs { get => _writeTimeoutMs; set => SetField(ref _writeTimeoutMs, value); }
+
+    /// <summary>See <see cref="CliOptions.ReadTimeoutMs"/>.</summary>
+    [Category("Serial")]
+    [DisplayName("Read timeout (ms)")]
+    [FormField(Order = 11, ValueKind = ValueKind.Integer, Minimum = 0)]
+    public string ReadTimeoutMs { get => _readTimeoutMs; set => SetField(ref _readTimeoutMs, value); }
+
     /// <summary>
     /// Bound to the SCPI-profile picker row, shown only when <see cref="IsScpiPresenterSelected"/> —
     /// see <see cref="ScpiProfileOptions"/> for the valid values and <see cref="CliOptions.ScpiProfile"/>
@@ -1043,6 +1072,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [FormField(Order = 3, OptionsFrom = nameof(LineEndingOptions))]
     public string LineEndingText { get => _lineEndingText; set => SetField(ref _lineEndingText, value); }
 
+    /// <summary>See <see cref="CliOptions.AsciiMaxLineLength"/>. 0 means unbounded (wait for a line terminator only).</summary>
+    [Category("Presentation")]
+    [DisplayName("ASCII max line length")]
+    [FormField(Order = 4, ValueKind = ValueKind.Integer, Minimum = 0)]
+    public string AsciiMaxLineLength { get => _asciiMaxLineLength; set => SetField(ref _asciiMaxLineLength, value); }
+
     [Category("General")]
     [DisplayName("Description")]
     [FormField(Order = 1)]
@@ -1133,6 +1168,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         ParityText = options.Parity.ToString();
         StopBitsText = options.StopBits.ToString();
         HandshakeText = options.Handshake.ToString();
+        Dtr = options.Dtr;
+        Rts = options.Rts;
+        WriteTimeoutMs = options.WriteTimeoutMs.ToString(CultureInfo.InvariantCulture);
+        ReadTimeoutMs = options.ReadTimeoutMs.ToString(CultureInfo.InvariantCulture);
+        AsciiMaxLineLength = options.AsciiMaxLineLength.ToString(CultureInfo.InvariantCulture);
         ScpiProfile = options.ScpiProfile ?? string.Empty;
         Host = options.Host ?? string.Empty;
         TcpPort = options.Port ?? "0";
@@ -1185,16 +1225,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Listen = Listen,
             Presenter = [.. OrderLikeLoaded(SelectedPresenters, _loadedOptions.EffectivePresenters)],
 
-            // Settings this form doesn't expose, carried over from whatever was loaded rather than
-            // reset to CliOptions' defaults. Without this, loading a saved profile and pressing
-            // Connect silently changed the connection (a profile saved with DTR off came back with
-            // it on) and the result no longer matched the saved profile, which is how the window
-            // title identifies it - so the title lost the profile's name.
-            Dtr = _loadedOptions.Dtr,
-            Rts = _loadedOptions.Rts,
-            WriteTimeoutMs = _loadedOptions.WriteTimeoutMs,
-            ReadTimeoutMs = _loadedOptions.ReadTimeoutMs,
-            AsciiMaxLineLength = _loadedOptions.AsciiMaxLineLength,
+            Dtr = Dtr,
+            Rts = Rts,
+
+            // Settings this form still doesn't expose, carried over from whatever was loaded rather
+            // than reset to CliOptions' defaults.
             ManifestName = _loadedOptions.ManifestName,
             ScpiAutoDetectTimeoutMs = _loadedOptions.ScpiAutoDetectTimeoutMs,
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
@@ -1231,6 +1266,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (Enum.TryParse<Handshake>(HandshakeText, ignoreCase: true, out var handshake))
         {
             options.Handshake = handshake;
+        }
+
+        if (int.TryParse(WriteTimeoutMs, out var writeTimeoutMs))
+        {
+            options.WriteTimeoutMs = writeTimeoutMs;
+        }
+
+        if (int.TryParse(ReadTimeoutMs, out var readTimeoutMs))
+        {
+            options.ReadTimeoutMs = readTimeoutMs;
+        }
+
+        if (int.TryParse(AsciiMaxLineLength, out var asciiMaxLineLength))
+        {
+            options.AsciiMaxLineLength = asciiMaxLineLength;
         }
 
         if (int.TryParse(VendorId, out var vendorId))
@@ -1275,6 +1325,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (!int.TryParse(DataBits, out _))
         {
             return ValidateOptionsResult.Fail($"'{DataBits}' isn't a valid data bits value.");
+        }
+
+        if (!int.TryParse(WriteTimeoutMs, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{WriteTimeoutMs}' isn't a valid write timeout.");
+        }
+
+        if (!int.TryParse(ReadTimeoutMs, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{ReadTimeoutMs}' isn't a valid read timeout.");
+        }
+
+        if (!int.TryParse(AsciiMaxLineLength, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{AsciiMaxLineLength}' isn't a valid ASCII max line length.");
         }
 
         if (!int.TryParse(VendorId, out _))

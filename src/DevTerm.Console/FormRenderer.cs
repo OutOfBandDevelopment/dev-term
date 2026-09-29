@@ -4,6 +4,7 @@ using System.Text;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
 using Terminal.Gui.App;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -111,19 +112,57 @@ internal static class FormRenderer
         }
 
         int? picked = null;
-        var dialog = new Dialog { Title = title, Width = ListDialogWidth(app, items), Height = Math.Min(items.Count + 5, 20) };
-        var listView = new ListView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2) };
+        var filtered = Enumerable.Range(0, items.Count).ToList();
+        var dialog = new Dialog { Title = title, Width = ListDialogWidth(app, items), Height = Math.Min(items.Count + 6, 20) };
+        var filterField = new TextField { X = 0, Y = 0, Width = Dim.Fill() };
+        var listView = new ListView { X = 0, Y = Pos.Bottom(filterField), Width = Dim.Fill(), Height = Dim.Fill(2) };
         listView.SetSource(new ObservableCollection<string>(items));
+
+        void ApplyFilter()
+        {
+            filtered = FilterIndices(items, filterField.Text);
+            listView.SetSource(new ObservableCollection<string>(filtered.Select(i => items[i])));
+            if (filtered.Count > 0)
+            {
+                listView.SelectedItem = 0;
+            }
+        }
 
         void Choose()
         {
-            if (listView.SelectedItem is int index && index >= 0 && index < items.Count)
+            if (listView.SelectedItem is int index && index >= 0 && index < filtered.Count)
             {
-                picked = index;
+                picked = filtered[index];
             }
 
             app.RequestStop();
         }
+
+        filterField.TextChanged += (_, _) => ApplyFilter();
+        filterField.KeyDown += (_, key) =>
+        {
+            if (key == Key.CursorUp)
+            {
+                key.Handled = true;
+                var current = listView.SelectedItem is int idx ? idx : 0;
+                if (filtered.Count > 0)
+                {
+                    listView.SelectedItem = Math.Max(0, current - 1);
+                }
+
+                return;
+            }
+
+            if (key == Key.CursorDown)
+            {
+                key.Handled = true;
+                var current = listView.SelectedItem is int idx ? idx : 0;
+                if (filtered.Count > 0)
+                {
+                    listView.SelectedItem = Math.Min(filtered.Count - 1, current + 1);
+                }
+            }
+        };
 
         listView.Accepting += (_, e) =>
         {
@@ -142,10 +181,20 @@ internal static class FormRenderer
             e.Handled = true;
             app.RequestStop();
         };
-        dialog.Add(listView, selectButton, cancelButton);
+        dialog.Add(filterField, listView, selectButton, cancelButton);
         app.Run(dialog);
         return picked;
     }
+
+    /// <summary>
+    /// <see cref="PickFromList"/>'s filter box, as a case-insensitive substring match: the original
+    /// indices into <paramref name="items"/> whose text contains <paramref name="filterText"/>, in
+    /// their original order, or every index (also in original order) when the filter is empty.
+    /// </summary>
+    internal static List<int> FilterIndices(IReadOnlyList<string> items, string filterText) =>
+        string.IsNullOrEmpty(filterText)
+            ? Enumerable.Range(0, items.Count).ToList()
+            : Enumerable.Range(0, items.Count).Where(i => items[i].Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
 
     /// <summary>
     /// A list picker's width: wide enough for its longest item (the SCPI profile names ran past a
