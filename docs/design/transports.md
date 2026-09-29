@@ -68,10 +68,20 @@ macOS backends remain not-yet-built (see below).
 Every front end can select `ble` as a transport (`--transport ble --bledeviceid <id>` on the CLI,
 the TUI Configure screen's transport selector, and WPF's Device Profiles window), configuring the
 device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART Service
-defaults below), and `--listbledevices true` lists already-*paired* peripherals (see
-`WindowsBleDeviceDiscovery`'s own doc comment for why paired-only, not a live advertisement scan).
-There's no live "Detect..." device picker yet in either front end (unlike HID/USBTMC) — the device
-id is typed by hand, copied from a `--listbledevices` run; see BACKLOG.md.
+defaults below), and `--listbledevices true` lists nearby peripherals from a live ~4s advertisement
+scan (`BluetoothLEAdvertisementWatcher`), not Windows' paired-devices list — pairing isn't required
+to connect, and plenty of cheap BLE UART clones use "Just Works" pairing that Windows' Settings page
+can show as "Paired" without a real LE bond ever completing, which left them unlistable under the
+prior paired-only selector (see `WindowsBleDeviceDiscovery`'s own doc comment).
+
+Both the TUI and WPF have a live "Detect..." device picker for BLE now, the same idea as HID/USBTMC's
+(`ConnectionEditorViewModel.SelectedBleDevice`/`BleDeviceOptions`, populated by a front end calling
+`SetBleDeviceOptions` after its own `BleDeviceScanner.Scan()`) — unlike HID/USBTMC's fast, eager
+enumeration, a BLE scan is slow (~4s) and only available via the runtime-loaded Windows backend, so
+it can't run eagerly from the shared view model's constructor and instead runs on demand: the TUI's
+"Detect BLE..." button blocks for the scan's duration like its other pickers do, and WPF's runs the
+scan on a background thread (`Task.Run`) so the window stays responsive. The device id field stays
+directly typable either way.
 
 None of the non-Windows backends ship yet; the adapter seam exists so each can land independently
 (including as a community/self-contributed adapter) without touching the transport's public shape

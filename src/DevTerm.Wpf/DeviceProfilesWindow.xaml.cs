@@ -81,6 +81,16 @@ public partial class DeviceProfilesWindow : Window
 
     internal ComboBox DetectedUsbtmcDevicesBox { get; }
 
+    internal ComboBox DetectedBleDevicesBox { get; }
+
+    internal Button DetectBleButton { get; }
+
+    internal ComboBox DetectedBleWriteCharacteristicBox { get; }
+
+    internal ComboBox DetectedBleNotifyCharacteristicBox { get; }
+
+    internal Button DetectBleCharacteristicsButton { get; }
+
     public DeviceProfilesWindow(ConnectionProfileStore store, CliOptions initial, string? statusText = null)
     {
         InitializeComponent();
@@ -106,10 +116,47 @@ public partial class DeviceProfilesWindow : Window
         DetectedUsbtmcDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.UsbtmcDeviceOptions)));
         DetectedUsbtmcDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)));
 
+        // Unlike the boxes above, this one starts empty: BLE discovery is a live several-second
+        // radio scan (see BleDeviceScanner.Scan), not the fast, eager enumeration HidDeviceOptions/
+        // UsbtmcDeviceOptions run at construction, so a "Detect BLE..." button (docked beside the
+        // combobox in one row, rather than a separate custom-widget slot the generated form has no
+        // room for) triggers it on demand instead.
+        DetectedBleDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleDeviceOption.Display)) };
+        DetectedBleDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleDeviceOptions)));
+        DetectedBleDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleDevice)));
+        DetectBleButton = new Button { Content = "Detect BLE...", Margin = new Thickness(4, 0, 0, 0) };
+        DetectBleButton.Click += DetectBle_Click;
+        var bleRow = new DockPanel();
+        DockPanel.SetDock(DetectBleButton, Dock.Right);
+        bleRow.Children.Add(DetectBleButton);
+        bleRow.Children.Add(DetectedBleDevicesBox);
+
+        // Same on-demand-scan reasoning as the device box above, one level down: a device's GATT
+        // profile is only enumerated once a device is actually picked, via "Detect characteristics..."
+        // (BleDeviceScanner.ExploreCharacteristics), and both the write and notify pickers share the
+        // one resulting list - a peripheral's write and notify characteristics are sometimes the same
+        // UUID (see SelectedBleWriteCharacteristic's doc comment), so this is deliberately two
+        // independent pickers over one shared source list, not a single combined picker.
+        DetectedBleWriteCharacteristicBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleCharacteristicOption.Display)) };
+        DetectedBleWriteCharacteristicBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleCharacteristicOptions)));
+        DetectedBleWriteCharacteristicBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)));
+        DetectedBleNotifyCharacteristicBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleCharacteristicOption.Display)) };
+        DetectedBleNotifyCharacteristicBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleCharacteristicOptions)));
+        DetectedBleNotifyCharacteristicBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)));
+        DetectBleCharacteristicsButton = new Button { Content = "Detect characteristics...", Margin = new Thickness(4, 0, 0, 0) };
+        DetectBleCharacteristicsButton.Click += DetectBleCharacteristics_Click;
+        var bleWriteCharacteristicRow = new DockPanel();
+        DockPanel.SetDock(DetectBleCharacteristicsButton, Dock.Right);
+        bleWriteCharacteristicRow.Children.Add(DetectBleCharacteristicsButton);
+        bleWriteCharacteristicRow.Children.Add(DetectedBleWriteCharacteristicBox);
+
         var options = new WpfFormOptions();
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => DetectedPortsBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => DetectedHidDevicesBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => DetectedUsbtmcDevicesBox;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleDevice)] = _ => bleRow;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)] = _ => bleWriteCharacteristicRow;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)] = _ => DetectedBleNotifyCharacteristicBox;
         var binding = new FormBinding(ViewModel);
         Form = FormRenderer.Build(ViewModel.FormDefinition, binding, options);
         ConnectionFormHost.Content = Form.Root;
@@ -238,6 +285,48 @@ public partial class DeviceProfilesWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             ViewModel.ImportExportPath = dialog.FileName;
+        }
+    }
+
+    // Runs the several-second BLE radio scan (see BleDeviceScanner.Scan) off the UI thread, unlike
+    // the TUI's equivalent button which blocks - WPF has an established async convention elsewhere
+    // in this window's own front end (MainWindow.ConnectAsync/ToggleConnectionAsync) for exactly
+    // this kind of real I/O, so the picker follows it instead of freezing the window for the scan's
+    // duration.
+    private async void DetectBle_Click(object sender, RoutedEventArgs e)
+    {
+        DetectBleButton.IsEnabled = false;
+        try
+        {
+            var devices = await Task.Run(BleDeviceScanner.Scan);
+            ViewModel.SetBleDeviceOptions(devices);
+        }
+        finally
+        {
+            DetectBleButton.IsEnabled = true;
+        }
+    }
+
+    // Same reasoning as DetectBle_Click, one level down: enumerates the already-picked BleDeviceId's
+    // GATT services/characteristics off the UI thread.
+    private async void DetectBleCharacteristics_Click(object sender, RoutedEventArgs e)
+    {
+        var deviceId = ViewModel.BleDeviceId;
+        if (string.IsNullOrWhiteSpace(deviceId))
+        {
+            MessageBox.Show(this, "Pick a BLE device first.", "dev-term", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        DetectBleCharacteristicsButton.IsEnabled = false;
+        try
+        {
+            var services = await Task.Run(() => BleDeviceScanner.ExploreCharacteristics(deviceId));
+            ViewModel.SetBleCharacteristicOptions(services);
+        }
+        finally
+        {
+            DetectBleCharacteristicsButton.IsEnabled = true;
         }
     }
 

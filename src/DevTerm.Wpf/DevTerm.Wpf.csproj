@@ -2,7 +2,16 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!--
+      Versioned to match DevTerm.Transports.Ble.Windows.csproj's own TargetFramework exactly - a
+      ProjectReference from an unversioned net10.0-windows project to a net10.0-windows10.0.19041.0
+      one still fails the SDK's TFM-compatibility check, the same way a plain net10.0 project can
+      never reference any Windows-specific TFM (see DevTerm.Configuration.BlePlatformAdapterLoader's
+      doc comment). Unlike DevTerm.Console, DevTerm.Wpf is already Windows-only, so there's no
+      cross-platform reason to go through that loader's reflection/runtime-copy path here - a
+      real ProjectReference gets the DLL into the output directory the normal way.
+    -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -12,6 +21,8 @@
     <ProjectReference Include="..\DevTerm.Configuration\DevTerm.Configuration.csproj" />
     <ProjectReference Include="..\DevTerm.Devices.K8055\DevTerm.Devices.K8055.csproj" />
     <ProjectReference Include="..\DevTerm.UiDefinitions\DevTerm.UiDefinitions.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Ble.Windows\DevTerm.Transports.Ble.Windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

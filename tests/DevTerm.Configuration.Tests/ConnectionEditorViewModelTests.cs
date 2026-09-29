@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using DevTerm.Devices.Scpi;
 using DevTerm.Test.Utilities;
+using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 
@@ -1702,6 +1703,139 @@ public sealed class ConnectionEditorViewModelTests
             Assert.AreEqual(0x046D.ToString(), vm.VendorId);
             Assert.AreEqual(0xC08B.ToString(), vm.ProductId);
             Assert.AreEqual("SN123", vm.SerialNumber);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void BleDeviceOptions_StartsEmpty_AndSetBleDeviceOptionsReplacesIt()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            Assert.AreEqual(0, vm.BleDeviceOptions.Count, "Unlike HidDeviceOptions/UsbtmcDeviceOptions, nothing runs eagerly at construction.");
+
+            var devices = new[]
+            {
+                new BleDeviceOption("Radex BLE  (AA:BB:CC:DD:EE:FF)", "AA:BB:CC:DD:EE:FF", "Radex BLE"),
+                new BleDeviceOption("11223344-5566-7788-99aa-bbccddeeff00", "11223344-5566-7788-99aa-bbccddeeff00", null),
+            };
+
+            vm.SetBleDeviceOptions(devices);
+
+            Assert.AreSequenceEqual(devices, vm.BleDeviceOptions);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedBleDevice_FillsBleDeviceId_AndIsNotItselfADirtyingEdit()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var device = new BleDeviceOption("Radex BLE  (AA:BB:CC:DD:EE:FF)", "AA:BB:CC:DD:EE:FF", "Radex BLE");
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            vm.SetBleDeviceOptions([device]);
+            Assert.IsFalse(vm.IsDirty, "Populating the options from a scan is not itself an edit.");
+
+            vm.SelectedBleDevice = device;
+
+            Assert.AreEqual("AA:BB:CC:DD:EE:FF", vm.BleDeviceId);
+            Assert.IsTrue(vm.IsDirty, "Picking a device fills in BleDeviceId, which is a real edit.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void BleCharacteristicOptions_StartsEmpty_AndSetBleCharacteristicOptionsFlattensServices()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            Assert.AreEqual(0, vm.BleCharacteristicOptions.Count, "Nothing to enumerate until a device is picked and scanned.");
+
+            var services = new[]
+            {
+                new BleGattServiceDescriptor(
+                    "0000ffe0-0000-1000-8000-00805f9b34fb",
+                    null,
+                    [new BleGattCharacteristicDescriptor("0000ffe1-0000-1000-8000-00805f9b34fb", null, CanRead: true, CanWrite: false, CanWriteWithoutResponse: true, CanNotify: true, CanIndicate: false)]),
+            };
+
+            vm.SetBleCharacteristicOptions(services);
+
+            Assert.AreEqual(1, vm.BleCharacteristicOptions.Count);
+            var option = vm.BleCharacteristicOptions[0];
+            Assert.AreEqual("0000ffe0-0000-1000-8000-00805f9b34fb", option.ServiceUuid);
+            Assert.AreEqual("0000ffe1-0000-1000-8000-00805f9b34fb", option.CharacteristicUuid);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SetBleCharacteristicOptions_ClearsAnyPreviouslySelectedCharacteristics()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            vm.SetBleCharacteristicOptions([new BleGattServiceDescriptor("0000ffe0-...", null, [new BleGattCharacteristicDescriptor("0000ffe1-...", null, true, true, false, false, false)])]);
+            vm.SelectedBleWriteCharacteristic = vm.BleCharacteristicOptions[0];
+            vm.SelectedBleNotifyCharacteristic = vm.BleCharacteristicOptions[0];
+
+            vm.SetBleCharacteristicOptions([]);
+
+            Assert.IsNull(vm.SelectedBleWriteCharacteristic, "A previous device's characteristics don't apply once the list is replaced.");
+            Assert.IsNull(vm.SelectedBleNotifyCharacteristic);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SelectedBleWriteCharacteristic_FillsServiceAndWriteUuid_AndIsIndependentOfNotify()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            var services = new[]
+            {
+                new BleGattServiceDescriptor(
+                    "0000ffe0-0000-1000-8000-00805f9b34fb",
+                    null,
+                    [new BleGattCharacteristicDescriptor("0000ffe1-0000-1000-8000-00805f9b34fb", null, CanRead: true, CanWrite: false, CanWriteWithoutResponse: true, CanNotify: true, CanIndicate: false)]),
+            };
+            vm.SetBleCharacteristicOptions(services);
+            var characteristic = vm.BleCharacteristicOptions[0];
+            Assert.IsFalse(vm.IsDirty, "Populating the options from a scan is not itself an edit.");
+
+            // The SH-HC-08 family exposes the same UUID as both its write and notify characteristic -
+            // picking it for one role must not clobber whatever's already picked for the other.
+            vm.SelectedBleNotifyCharacteristic = characteristic;
+            vm.SelectedBleWriteCharacteristic = characteristic;
+
+            Assert.AreEqual("0000ffe0-0000-1000-8000-00805f9b34fb", vm.BleServiceUuid);
+            Assert.AreEqual("0000ffe1-0000-1000-8000-00805f9b34fb", vm.BleWriteCharacteristicUuid);
+            Assert.AreEqual("0000ffe1-0000-1000-8000-00805f9b34fb", vm.BleNotifyCharacteristicUuid);
+            Assert.IsTrue(vm.IsDirty, "Picking a characteristic fills in real fields, which is a real edit.");
         }
         finally
         {

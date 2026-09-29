@@ -16,13 +16,15 @@ the rest.
 
 - **BLE transport landed 2026-09-25** (`DevTerm.Transports.Ble` + Windows backend
   `DevTerm.Transports.Ble.Windows`, wired through `DevTerm.Configuration`/CLI/TUI/WPF) — see
-  `docs/design/transports.md`'s BLE section and `docs/changes/2026-09-25.md`. Unverified against
-  real hardware yet (see `TODO.md`). Still open, not gated on any further transport work:
+  `docs/design/transports.md`'s BLE section and `docs/changes/2026-09-25.md`. Verified against a
+  real SH-HC-08 BLE-to-serial bridge 2026-09-29 (connect, GATT enumeration, BLE-to-serial byte
+  round-trip); a reconnect-reliability issue found during that pass is still open (see `TODO.md`).
+  GATT service/characteristic enumeration and a picker for both the write and notify
+  characteristics landed the same day in both front ends (`docs/changes/2026-09-29.md`), so device
+  selection and its data-stream (characteristic) selection are both live now, not just the device
+  picker. Still open, not gated on any further transport work:
   - Linux (BlueZ/D-Bus) and macOS (CoreBluetooth) backends — the adapter seam supports adding
     either independently; neither has been started.
-  - **Live BLE device picker.** Both front ends only take a typed device id today (copied by hand
-    from a `--listbledevices` run) — unlike HID/USBTMC's "Detect..." pickers, neither the TUI nor
-    WPF has one for BLE yet (promised by `ConnectionEditorViewModel.BleDeviceId`'s doc comment).
   - Which GATT profile the DE-5000's custom IR-to-BLE adapter actually exposes (NUS or custom) is
     still unconfirmed — needed before `DevTerm.Devices.De5000` (landed 2026-09-25, see "Device
     control modules & hardware profiles" below) can be verified against real hardware.
@@ -95,6 +97,15 @@ the rest.
 - **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
   fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
   just annotating the view-model properties (and adding the view-model properties where missing).
+- **Detected-device/-characteristic pickers should be searchable/filterable, not a plain list or
+  non-editable combo box.** Requested directly ("they should be combo boxes so I can search/filter
+  the results") for the BLE device picker, and applies equally to the BLE write/notify characteristic
+  pickers added 2026-09-29 (`docs/changes/2026-09-29.md`) and, for consistency, the existing HID/
+  USBTMC/serial-port pickers — none of the five is filterable today. WPF: today's `ComboBox`es are
+  bound but not `IsEditable`; an editable, text-filtered `ComboBox` (or a small custom filter-as-you-
+  type popup, since `IsEditable` alone doesn't filter the dropdown) covers all of them the same way.
+  TUI: `FormRenderer.PickFromList`'s modal `Dialog`/`ListView` has no text-filter box; needs one added
+  once, shared by every "Detect..."/"Pick..." button that calls it.
 
 ### WPF layout review follow-ups (from 2026-09-25)
 

@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddOptions<BleTransportOptions>().ValidateDataAnnotations().ValidateOnStart();
         services.TryAddSingleton<IBleAdapterFactory, UnsupportedPlatformBleAdapterFactory>();
         services.TryAddSingleton<IBleDeviceDiscovery, UnsupportedPlatformBleDeviceDiscovery>();
+        services.TryAddSingleton<IBleGattProfileExplorer, UnsupportedPlatformBleGattProfileExplorer>();
         services.AddTransient<ITransport, BleTransport>();
         return services;
     }
