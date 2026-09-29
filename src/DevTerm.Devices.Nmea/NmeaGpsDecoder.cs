@@ -240,6 +240,16 @@ public sealed class NmeaGpsDecoder : IPresenter, IStructuredPresenter
         Dictionary<string, string>? changed = null;
         foreach (var (id, value) in values)
         {
+            // An empty string here means this sentence had no data for that field (no fix yet, a
+            // blank NMEA field), not a real decoded value of "" - leave whatever a previous sentence
+            // already showed alone rather than blanking it. A sentence type only ever contributes a
+            // subset of indicator ids to begin with (see the Decode* methods); this is the same
+            // "don't touch what wasn't actually decoded" rule applied within one sentence's own dict.
+            if (value.Length == 0)
+            {
+                continue;
+            }
+
             if (!_lastValues.TryGetValue(id, out var previous) || previous != value)
             {
                 (changed ??= [])[id] = value;
