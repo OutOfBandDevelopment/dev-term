@@ -220,18 +220,27 @@ Shown in two situations:
   display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the plain decimal the field
   actually stores. Each is its own generated row ("Detected ports:"/"Detected HID devices:"/
   "Detected USBTMC devices:"/"Detected BLE devices:"), only the row matching the selected transport
-  visible, with a hand-built widget: WPF a non-editable `ComboBox` (BLE's is paired with its own
-  "Detect BLE..." button in one row, since — unlike the other three, which discover eagerly and fast
-  at construction — a BLE scan is slow (~4s) and only available via the runtime-loaded Windows
-  backend, so nothing populates the combobox until that button's clicked); the TUI a "Detect..." /
-  "Detect HID..." / "Detect USBTMC..." / "Detect BLE..." button that opens a small modal picker
-  (`FormRenderer.PickFromList`, a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
-  Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
-  v2.5.0 package); the BLE button runs its scan synchronously first (blocking, like every other TUI
-  Accepting handler), the WPF one runs it on a background thread (`Task.Run`) so the window stays
-  responsive. Before the form was generated, the TUI showed both USB Detect buttons side by side on
-  the Vendor/Product row. All are empty (not an error) if nothing's detected or discovery itself
-  fails.
+  visible, with a hand-built widget: WPF an **editable, filter-as-you-type** `ComboBox` (BLE's is
+  paired with its own "Detect BLE..." button in one row, since — unlike the other three, which
+  discover eagerly and fast at construction — a BLE scan is slow (~4s) and only available via the
+  runtime-loaded Windows backend, so nothing populates the combobox until that button's clicked); the
+  TUI a "Detect..." / "Detect HID..." / "Detect USBTMC..." / "Detect BLE..." button that opens a small
+  modal picker with its own filter box (`FormRenderer.PickFromList`, a `Dialog` + `TextField` +
+  `ListView`, `Application.Run(dialog)` — Terminal.Gui has no built-in combobox widget, confirmed via
+  reflection against the installed v2.5.0 package); the BLE button runs its scan synchronously first
+  (blocking, like every other TUI Accepting handler), the WPF one runs it on a background thread
+  (`Task.Run`) so the window stays responsive. Before the form was generated, the TUI showed both USB
+  Detect buttons side by side on the Vendor/Product row. All are empty (not an error) if nothing's
+  detected or discovery itself fails.
+  **Both are searchable/filterable** (2026-09-29, requested directly — "they should be combo boxes so
+  I can search/filter the results"): WPF's `ComboBox`es are `IsEditable` with `IsTextSearchEnabled`
+  false and an `Items.Filter` predicate (`DeviceProfilesWindow.Matches`, case-insensitive substring
+  against the item's `Display`) set by a shared `MakeFilterable` helper — typing narrows the dropdown
+  without replacing `ItemsSource`, so a still-matching `SelectedItem`/binding survives. The TUI's
+  `PickFromList` modal gained a `TextField` above its `ListView`; typing calls a directly-testable
+  `FormRenderer.FilterIndices` helper and rebuilds the list's source from the filtered subset, while
+  Select/Enter maps the filtered position back through the retained index list to the original item —
+  picking row 2 of a filtered-down list still returns the right index into the full, unfiltered list.
 - **BLE GATT characteristic pickers are one level down from the device picker, sharing one scan
   across two independent selections**: `SelectedBleWriteCharacteristic`/`SelectedBleNotifyCharacteristic`
   (2026-09-29) bind against `BleCharacteristicOptions` — a flattened, one-row-per-characteristic list
@@ -396,5 +405,6 @@ Everything requested 2026-09-16 has landed: the presenter picker and per-input-l
 its live "Detect BLE..." picker on 2026-09-29, and the generated form (which also fixed the TUI's
 gap under a hidden transport group) on 2026-09-25. DTR/RTS, the read/write timeouts, and the ASCII
 max line length (previously carried over silently, never shown) became real fields on 2026-09-29.
-Remaining Connection Editor follow-ups live in `BACKLOG.md`.
+The detected-device/-characteristic pickers became searchable/filterable in both front ends on
+2026-09-29. Remaining Connection Editor follow-ups live in `BACKLOG.md`.
 

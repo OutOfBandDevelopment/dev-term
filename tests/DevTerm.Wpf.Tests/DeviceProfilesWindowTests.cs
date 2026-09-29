@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using DevTerm.Configuration;
 using DevTerm.Test.Utilities;
@@ -361,6 +362,42 @@ public sealed class DeviceProfilesWindowTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [TestMethod]
+    public void DetectedPortsComboBox_IsEditableForTypeToFilter()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions()) { ShowInTaskbar = false };
+                StaTestRunner.DoEvents();
+
+                Assert.IsTrue(window.DetectedPortsBox.IsEditable, "An editable ComboBox is what lets the user type to search/filter the detected ports.");
+                Assert.IsFalse(window.DetectedPortsBox.IsTextSearchEnabled, "Text search is replaced by the custom Items.Filter predicate, not the built-in type-ahead.");
+                Assert.AreEqual("Display", TextSearch.GetTextPath(window.DetectedPortsBox),
+                    "Picking an item should show its Display text in the editable box, not a raw ToString().");
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void FilterMatches_MatchesTheDisplayPropertyCaseInsensitively()
+    {
+        var korad = new SerialPortOption("COM8", "COM8 - Korad KA3005P");
+        var prolific = new SerialPortOption("COM3", "COM3 - Prolific USB-to-Serial");
+
+        Assert.IsTrue(DeviceProfilesWindow.Matches(string.Empty, korad, nameof(SerialPortOption.Display)), "An empty filter matches everything.");
+        Assert.IsTrue(DeviceProfilesWindow.Matches("korad", korad, nameof(SerialPortOption.Display)), "Matching should be case-insensitive.");
+        Assert.IsFalse(DeviceProfilesWindow.Matches("korad", prolific, nameof(SerialPortOption.Display)), "A non-matching item should be filtered out.");
     }
 
     [TestMethod]

@@ -169,4 +169,59 @@ public sealed class FormRendererTests
             Assert.IsTrue(parts.IsRowVisible(nameof(Model.Secret)));
         });
     }
+
+    [TestMethod]
+    public void FilterIndices_EmptyFilter_ReturnsEveryIndexInOrder() =>
+        CollectionAssert.AreEqual(new[] { 0, 1, 2 }, FormRenderer.FilterIndices(["Alpha", "Beta", "Gamma"], string.Empty));
+
+    [TestMethod]
+    public void FilterIndices_MatchesSubstringCaseInsensitively() =>
+        CollectionAssert.AreEqual(
+            new[] { 0, 2 },
+            FormRenderer.FilterIndices(["Velleman K8055 board 0", "Kuando Busylight Omega", "Velleman K8055 board 1"], "velleman"));
+
+    [TestMethod]
+    public void FilterIndices_NoMatch_ReturnsEmpty() =>
+        Assert.AreEqual(0, FormRenderer.FilterIndices(["Alpha", "Beta"], "zzz").Count);
+
+    /// <summary>
+    /// <see cref="FormRenderer.PickFromList"/>'s filter <c>TextField</c> end-to-end: typing narrows
+    /// the <c>ListView</c>'s source, and the index returned on Select maps back through the filter to
+    /// the original, unfiltered list — not the filtered position.
+    /// </summary>
+    [TestMethod]
+    public void PickFromList_TypingAFilter_NarrowsTheListAndSelectsTheOriginalIndex()
+    {
+        int? picked = null;
+        var items = new[] { "Velleman K8055 board 0", "Kuando Busylight Omega", "Velleman K8055 board 1" };
+
+        TuiTestRunner.RunWithLoopApp(
+            app => app.Driver!.SetScreenSize(80, 25),
+            app => new Window { Width = Dim.Fill(), Height = Dim.Fill() },
+            (app, _) => TuiTestRunner.InvokeOnLoop(() =>
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    if (app.TopRunnableView is not Dialog dialog)
+                    {
+                        return true;
+                    }
+
+                    var filterField = (TextField)dialog.SubViews.First(v => v is TextField);
+                    var listView = (ListView)dialog.SubViews.First(v => v is ListView);
+
+                    filterField.Text = "busylight";
+                    Assert.AreEqual(1, listView.Source?.Count, "Typing a filter narrows the list source.");
+
+                    listView.SelectedItem = 0;
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+                    return false;
+                });
+
+                picked = FormRenderer.PickFromList(app, "Detected devices", items);
+                return true;
+            }));
+
+        Assert.AreEqual(1, picked, "The picked index is into the original list, not the filtered one.");
+    }
 }

@@ -109,12 +109,15 @@ public partial class DeviceProfilesWindow : Window
         DetectedPortsBox = new ComboBox { SelectedValuePath = nameof(SerialPortOption.Name), ItemTemplate = TrimmedDisplayTemplate(nameof(SerialPortOption.Display)) };
         DetectedPortsBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.SerialPortOptions)));
         DetectedPortsBox.SetBinding(Selector.SelectedValueProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedSerialPort)));
+        MakeFilterable(DetectedPortsBox, nameof(SerialPortOption.Display));
         DetectedHidDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(HidDeviceOption.Display)) };
         DetectedHidDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.HidDeviceOptions)));
         DetectedHidDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedHidDevice)));
+        MakeFilterable(DetectedHidDevicesBox, nameof(HidDeviceOption.Display));
         DetectedUsbtmcDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(UsbtmcDeviceOption.Display)) };
         DetectedUsbtmcDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.UsbtmcDeviceOptions)));
         DetectedUsbtmcDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)));
+        MakeFilterable(DetectedUsbtmcDevicesBox, nameof(UsbtmcDeviceOption.Display));
 
         // Unlike the boxes above, this one starts empty: BLE discovery is a live several-second
         // radio scan (see BleDeviceScanner.Scan), not the fast, eager enumeration HidDeviceOptions/
@@ -124,6 +127,7 @@ public partial class DeviceProfilesWindow : Window
         DetectedBleDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleDeviceOption.Display)) };
         DetectedBleDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleDeviceOptions)));
         DetectedBleDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleDevice)));
+        MakeFilterable(DetectedBleDevicesBox, nameof(BleDeviceOption.Display));
         DetectBleButton = new Button { Content = "Detect BLE...", Margin = new Thickness(4, 0, 0, 0) };
         DetectBleButton.Click += DetectBle_Click;
         var bleRow = new DockPanel();
@@ -140,9 +144,11 @@ public partial class DeviceProfilesWindow : Window
         DetectedBleWriteCharacteristicBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleCharacteristicOption.Display)) };
         DetectedBleWriteCharacteristicBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleCharacteristicOptions)));
         DetectedBleWriteCharacteristicBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)));
+        MakeFilterable(DetectedBleWriteCharacteristicBox, nameof(BleCharacteristicOption.Display));
         DetectedBleNotifyCharacteristicBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(BleCharacteristicOption.Display)) };
         DetectedBleNotifyCharacteristicBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.BleCharacteristicOptions)));
         DetectedBleNotifyCharacteristicBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)));
+        MakeFilterable(DetectedBleNotifyCharacteristicBox, nameof(BleCharacteristicOption.Display));
         DetectBleCharacteristicsButton = new Button { Content = "Detect characteristics...", Margin = new Thickness(4, 0, 0, 0) };
         DetectBleCharacteristicsButton.Click += DetectBleCharacteristics_Click;
         var bleWriteCharacteristicRow = new DockPanel();
@@ -338,5 +344,48 @@ public partial class DeviceProfilesWindow : Window
         text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
         text.SetBinding(TextBlock.ToolTipProperty, binding);
         return new DataTemplate { VisualTree = text };
+    }
+
+    /// <summary>
+    /// Turns a detected-device picker into a live text filter over its own bound list - the WPF half
+    /// of TODO.md's "searchable/filterable pickers" item (<c>FormRenderer.PickFromList</c>'s own filter
+    /// field, in the TUI project of the same name, is the other half). <see cref="ComboBox.IsEditable"/>
+    /// makes the box a text box that still drops down; <see cref="TextSearch.TextPath"/> is what makes
+    /// picking an item show its Display text in the edit box afterwards, instead of the item's own
+    /// <c>ToString()</c>. Filtering goes through the box's own <c>Items.Filter</c>, not a substituted
+    /// <see cref="CollectionViewSource"/>, so <see cref="ComboBox.ItemsSource"/> stays literally the list
+    /// instance the view model bound (<c>DeviceProfilesWindowTests</c> asserts that identity) - a list
+    /// refresh (HidDeviceOptions/UsbtmcDeviceOptions re-filtering themselves as VendorId/ProductId
+    /// change) replaces <c>ItemsSource</c> wholesale either way and drops any filter along with it, so
+    /// nothing is lost by picking the simpler of the two mechanisms.
+    /// </summary>
+    private static void MakeFilterable(ComboBox box, string displayPropertyName)
+    {
+        box.IsEditable = true;
+        box.IsTextSearchEnabled = false;
+        TextSearch.SetTextPath(box, displayPropertyName);
+        box.AddHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler((_, _) =>
+        {
+            if (box.Items.CanFilter)
+            {
+                box.Items.Filter = item => Matches(box.Text, item, displayPropertyName);
+            }
+
+            if (!box.IsDropDownOpen && box.Text.Length > 0)
+            {
+                box.IsDropDownOpen = true;
+            }
+        }));
+    }
+
+    internal static bool Matches(string filter, object item, string displayPropertyName)
+    {
+        if (string.IsNullOrEmpty(filter))
+        {
+            return true;
+        }
+
+        var display = item?.GetType().GetProperty(displayPropertyName)?.GetValue(item) as string;
+        return display is not null && display.Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -6,18 +6,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-### Connection Editor
-
-- **Detected-device/-characteristic pickers should be searchable/filterable, not a plain list or
-  non-editable combo box.** Requested directly ("they should be combo boxes so I can search/filter
-  the results") for the BLE device picker, and applies equally to the BLE write/notify characteristic
-  pickers added 2026-09-29 (`docs/changes/2026-09-29.md`) and, for consistency, the existing HID/
-  USBTMC/serial-port pickers — none of the five is filterable today. WPF: today's `ComboBox`es are
-  bound but not `IsEditable`; an editable, text-filtered `ComboBox` (or a small custom filter-as-you-
-  type popup, since `IsEditable` alone doesn't filter the dropdown) covers all of them the same way.
-  TUI: `FormRenderer.PickFromList`'s modal `Dialog`/`ListView` has no text-filter box; needs one added
-  once, shared by every "Detect..."/"Pick..." button that calls it.
-
 ### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
 - **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
