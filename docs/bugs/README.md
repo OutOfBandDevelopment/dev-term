@@ -90,7 +90,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 053 | [BLE pipe writes from Bluetooth threads aren't synchronized](fixed/053-ble-pipe-writes-unsynchronized.md) | DevTerm.Transports.Ble | Fixed |
 | 054 | [A cancelled BLE connect leaves its ValueChanged handler attached](fixed/054-ble-cancelled-connect-handler-leak.md) | DevTerm.Transports.Ble.Windows | Fixed |
 | 055 | [HID read thread can crash the process; Close blocks the calling thread](fixed/055-hid-read-thread-and-close-blocking.md) | DevTerm.Transports.Hid | Fixed |
-| 056 | [TCP listen mode rejects hostnames and is IPv4-only](056-tcp-listen-rejects-hostnames.md) | DevTerm.Transports.Tcp | Open |
+| 056 | [TCP listen mode rejects hostnames and is IPv4-only](fixed/056-tcp-listen-rejects-hostnames.md) | DevTerm.Transports.Tcp | Fixed |
 | 057 | [A serial read may never notice an unplugged adapter](057-serial-unplug-not-detected.md) | DevTerm.Transports.Serial | Open |
 | 058 | [Two close requests during a slow cleanup run OnClosing twice](058-wpf-onclosing-reentry.md) | WPF (MainWindow) | Open |
 | 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Open |
