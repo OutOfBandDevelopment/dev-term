@@ -154,7 +154,7 @@ public sealed class RadexOneControlSurface : IControlSurface, ICommandPreview
 
     private static ushort ParseUInt16(string? value)
     {
-        var number = double.Parse(value ?? "0", CultureInfo.InvariantCulture);
+        var number = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
         return (ushort)Math.Clamp(number, 0, ushort.MaxValue);
     }
 }

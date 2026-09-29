@@ -171,13 +171,42 @@ public sealed class K8055ControlSurfaceTests
     }
 
     [TestMethod]
-    public void PreviewCommand_UnknownCommandOrBadValue_IsNull()
+    public void PreviewCommand_UnknownCommand_IsNull()
     {
         var (session, _) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
         Assert.IsNull(surface.PreviewCommand("notARealCommand", null));
-        Assert.IsNull(surface.PreviewCommand("analogOut1", "abc"));
+    }
+
+    [TestMethod]
+    public void PreviewCommand_NonNumericValue_FallsBackToZeroRatherThanNull()
+    {
+        // Since bug 045's fix, ParseByte no longer throws for unparsable text, so this (unlike an
+        // actually-unknown command id) is no longer an error path for PreviewCommand either — it
+        // matches InvokeAsync's own fallback. See docs/bugs/fixed/045-control-surface-parse-throws.md.
+        var (session, _) = CreateSurfaceSession();
+        var surface = new K8055ControlSurface(session);
+
+        Assert.AreEqual("00 05 00 00 00 00 00 00 00", surface.PreviewCommand("analogOut1", "abc"));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_AnalogOutWithNonNumericValue_DoesNotThrow_AndFallsBackToZero()
+    {
+        // Regression test for bug 045: ParseByte used a throwing double.Parse, so bad text reaching
+        // InvokeAsync (unlike PreviewCommand, which already catches this in its own try/catch around
+        // the shared Plan method) threw an unhandled FormatException straight out of InvokeAsync. See
+        // docs/bugs/fixed/045-control-surface-parse-throws.md.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new K8055ControlSurface(session);
+
+        await surface.InvokeAsync("analogOut1", "not-a-number", TestContext.CancellationToken);
+
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })),
+            It.IsAny<CancellationToken>()));
     }
 
     public required TestContext TestContext { get; set; }
