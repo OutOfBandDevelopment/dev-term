@@ -14,9 +14,9 @@ namespace DevTerm.Core.Presenters;
 /// patterns, say) and chooses whether the line also renders as ordinary output text.
 /// </summary>
 /// <remarks>
-/// CR, LF, or CRLF all count as one line terminator (real-hardware-confirmed: a Tektronix TDS2024
-/// terminates replies with a bare CR). A device whose replies have no terminator at all (a Korad
-/// KA3005P/KA6003P) is handled by <see cref="ConfigureTerminator"/> with an empty terminator:
+/// CR, LF, CRLF, or LFCR all count as one line terminator (real-hardware-confirmed: a Tektronix
+/// TDS2024 terminates replies with a bare CR). A device whose replies have no terminator at all (a
+/// Korad KA3005P/KA6003P) is handled by <see cref="ConfigureTerminator"/> with an empty terminator:
 /// whatever arrived in one <see cref="Render"/> call then counts as one complete line.
 /// </remarks>
 public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IReplyTracker, IResettablePresenter
@@ -32,6 +32,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     private readonly List<byte> _buffer = [];
     private readonly ConcurrentQueue<string> _pendingReplyIds = new();
     private bool _pendingCr;
+    private bool _pendingLf;
     private bool _terminatorless;
 
     public abstract string Name { get; }
@@ -74,6 +75,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     {
         _buffer.Clear();
         _pendingCr = false;
+        _pendingLf = false;
         _pendingReplyIds.Clear();
     }
 
@@ -98,18 +100,28 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
                     }
 
                     Complete(lines);
+                    _pendingLf = true;
                     continue;
                 }
 
-                _pendingCr = false;
-
                 if (b == _carriageReturn)
                 {
+                    if (_pendingLf)
+                    {
+                        // The second half of an LF CR pair already flushed by the LF — swallow it,
+                        // or it counts as a spurious extra empty line and consumes the next pending
+                        // query's reply id. See docs/bugs/fixed/051-line-reply-lf-cr-two-lines.md.
+                        _pendingLf = false;
+                        continue;
+                    }
+
                     Complete(lines);
                     _pendingCr = true;
                     continue;
                 }
 
+                _pendingCr = false;
+                _pendingLf = false;
                 _buffer.Add(b);
                 if (_buffer.Count >= _maxBufferLength)
                 {
