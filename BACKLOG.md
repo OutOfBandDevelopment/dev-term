@@ -14,21 +14,10 @@ the rest.
 
 ### Transports
 
-- **BLE transport landed 2026-09-25** (`DevTerm.Transports.Ble` + Windows backend
-  `DevTerm.Transports.Ble.Windows`, wired through `DevTerm.Configuration`/CLI/TUI/WPF) — see
-  `docs/design/transports.md`'s BLE section and `docs/changes/2026-09-25.md`. Verified against a
-  real SH-HC-08 BLE-to-serial bridge 2026-09-29 (connect, GATT enumeration, BLE-to-serial byte
-  round-trip); a reconnect-reliability issue found during that pass was root-caused to the
-  peripheral itself, not dev-term — see `docs/design/transports.md`'s "Known limitation" note
-  under BLE. GATT service/characteristic enumeration and a picker for both the write and notify
-  characteristics landed the same day in both front ends (`docs/changes/2026-09-29.md`), so device
-  selection and its data-stream (characteristic) selection are both live now, not just the device
-  picker. Still open, not gated on any further transport work:
-  - Linux (BlueZ/D-Bus) and macOS (CoreBluetooth) backends — the adapter seam supports adding
-    either independently; neither has been started.
-  - Which GATT profile the DE-5000's custom IR-to-BLE adapter actually exposes (NUS or custom) is
-    still unconfirmed — needed before `DevTerm.Devices.De5000` (landed 2026-09-25, see "Device
-    control modules & hardware profiles" below) can be verified against real hardware.
+- **BLE transport — Linux (BlueZ/D-Bus) and macOS (CoreBluetooth) backends.** Windows landed
+  2026-09-25 and is real-hardware verified (`docs/design/transports.md`'s BLE section,
+  `docs/changes/2026-09-25.md`/`2026-09-29.md`). The adapter seam supports adding either platform
+  independently; neither has been started.
 - RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
   `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
   `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
@@ -64,11 +53,6 @@ the rest.
   hardware — the custom IR-to-BLE adapter's GATT profile (NUS or custom) is still unconfirmed. Run
   `RealHardwareDe5000Tests` once the adapter is on the bench and `devterm.runsettings` has its
   device id/UUIDs filled in.
-  - [Radex One](docs/design/proposals/radex-one-protocol.md) landed 2026-09-25 (`DevTerm.Devices.RadexOne`,
-  see `docs/changes/2026-09-25.md`); a real device on COM8 never replied, traced to two protocol bugs
-  (outer header's Type field, checksum formula) since fixed and checksum-verified against the source
-  doc's real traces. Still needs a real-hardware re-run to confirm the device replies now — see
-  `TODO.md`.
 
 ### Tektronix TDS2024
 
