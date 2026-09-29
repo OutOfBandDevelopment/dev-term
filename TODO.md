@@ -6,10 +6,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **Re-run the real-hardware suites once devices are attached.** `ReplyCollector` (multi-chunk replies) and the
-  USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
-  - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
-  - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
 - **DE-5000 LCR meter (`DevTerm.Devices.De5000`) needs real-hardware verification.** Built and
   unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): `De5000Framer`/`De5000Decoder` (stream-
   buffering around the fixed 17-byte ES51919 packet), a deliberately no-op `De5000ControlSurface`

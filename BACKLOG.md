@@ -91,7 +91,10 @@ the rest.
   wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
   padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
   The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
-  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report).
+  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report). A
+  2026-09-29 manual attempt (`docs/test/2026-09-29-18-06-54.md`) got a real long/RAW-mode reply (8192 data bytes,
+  8202 total) but that still isn't a multiple of 64 or 512 — still not reproduced; needs finer control over the
+  exact point count to actually land on the boundary.
 
 ### Connection Editor
 
