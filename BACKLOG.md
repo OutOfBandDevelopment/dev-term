@@ -30,6 +30,18 @@ the rest.
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
   resolving against a fresh capture before implementing, not just the existing notes.
 
+### USBTMC
+
+- **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
+  device omits the terminating zero-length packet when a reply ends exactly on a 64-byte boundary. The rework would
+  wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
+  padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
+  The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
+  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report). A
+  2026-09-29 manual attempt (`docs/test/2026-09-29-18-06-54.md`) got a real long/RAW-mode reply (8192 data bytes,
+  8202 total) but that still isn't a multiple of 64 or 512 — still not reproduced; needs finer control over the
+  exact point count to actually land on the boundary.
+
 ### Plugin architecture, decoders & presenters
 
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
