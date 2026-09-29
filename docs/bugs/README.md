@@ -82,7 +82,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 045 | [Device control surfaces parse numbers with throwing Parse](fixed/045-control-surface-parse-throws.md) | DevTerm.Devices.Busylight, K8055, RadexOne | Fixed |
 | 046 | [Manifest numbers can go out as NaN, or rounded past Max](fixed/046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Fixed |
 | 047 | [The Radex One panel describes the device as USB HID](fixed/047-radexone-description-says-hid.md) | DevTerm.Devices.RadexOne (RadexOneUiDefinition) | Fixed |
-| 048 | [SCPI *IDN? matching runs profile regexes with no timeout](048-scpi-idn-regex-no-timeout.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Open |
+| 048 | [SCPI *IDN? matching runs profile regexes with no timeout](fixed/048-scpi-idn-regex-no-timeout.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Fixed |
 | 049 | [UI definition XML is parsed without prohibiting DTDs](049-uidefinition-xml-dtd.md) | DevTerm.UiDefinitions (UiDefinitionSerializer) | Open |
 | 050 | [A manifest can make strip-chart history grow without limit](050-strip-chart-history-unbounded.md) | DevTerm.UiDefinitions / DeviceManifests (LiveDisplayState) | Open |
 | 051 | [LF followed by CR counts as two lines](051-line-reply-lf-cr-two-lines.md) | DevTerm.Core (LineReplyPresenter) | Open |

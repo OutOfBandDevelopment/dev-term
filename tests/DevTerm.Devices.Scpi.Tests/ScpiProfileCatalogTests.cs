@@ -214,6 +214,24 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    [Timeout(1000)]
+    public void TryMatchByIdn_CatastrophicBacktrackingPattern_CompletesWithinTheRegexTimeoutBudget()
+    {
+        // Regression test for bug 048: TryMatchByIdn ran a profile-supplied IdnPattern with
+        // Regex.IsMatch and no timeout, so a catastrophic-backtracking pattern in a user profile could
+        // hang auto-detect for a very long time. See docs/bugs/fixed/048-scpi-idn-regex-no-timeout.md.
+        // The [Timeout] attribute fails the test (rather than actually hanging the run) if the fix's
+        // 250 ms regex timeout isn't honored.
+        var evil = new ScpiInstrumentProfile { Name = "Evil", IdnPattern = "^(a+)+$" };
+        var idnReply = new string('a', 32) + "!";
+
+        var matched = ScpiProfileCatalog.TryMatchByIdn(idnReply, [evil]);
+
+        Assert.IsNull(matched, "A timed-out pattern must be treated as a non-match, not surfaced as a match.");
+    }
+
+    [TestMethod]
     public void All_BundledProfiles_AreAllLoaded()
     {
         var names = ScpiProfileCatalog.All.Select(p => p.Name).ToArray();
