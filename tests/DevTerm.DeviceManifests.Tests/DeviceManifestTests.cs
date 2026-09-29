@@ -89,6 +89,23 @@ public sealed class DeviceManifestTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void FromXml_DocumentWithAnInternalDtdEntity_DoesNotExpandIt()
+    {
+        // Regression test for bug 049: a manifest's device.xml is untrusted input, and
+        // XmlSerializer.Deserialize(TextReader) applied no DtdProcessing restriction, so an
+        // internal-entity DOCTYPE (billion-laughs style) could expand into the deserialized model.
+        // See docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        const string maliciousXml = """
+            <?xml version="1.0"?>
+            <!DOCTYPE DeviceManifest [<!ENTITY evil "expanded">]>
+            <DeviceManifest><Name>&evil;</Name></DeviceManifest>
+            """;
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestSerializer.FromXml(maliciousXml));
+    }
+
+    [TestMethod]
     public void ToXml_ThenFromXml_PreservesEverythingIncludingInlineUi()
     {
         var original = BuildKoradManifest(inlineUi: BuildKoradUi());
