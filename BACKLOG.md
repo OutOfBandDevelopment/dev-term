@@ -18,8 +18,9 @@ the rest.
   `DevTerm.Transports.Ble.Windows`, wired through `DevTerm.Configuration`/CLI/TUI/WPF) — see
   `docs/design/transports.md`'s BLE section and `docs/changes/2026-09-25.md`. Verified against a
   real SH-HC-08 BLE-to-serial bridge 2026-09-29 (connect, GATT enumeration, BLE-to-serial byte
-  round-trip); a reconnect-reliability issue found during that pass is still open (see `TODO.md`).
-  GATT service/characteristic enumeration and a picker for both the write and notify
+  round-trip); a reconnect-reliability issue found during that pass was root-caused to the
+  peripheral itself, not dev-term — see `docs/design/transports.md`'s "Known limitation" note
+  under BLE. GATT service/characteristic enumeration and a picker for both the write and notify
   characteristics landed the same day in both front ends (`docs/changes/2026-09-29.md`), so device
   selection and its data-stream (characteristic) selection are both live now, not just the device
   picker. Still open, not gated on any further transport work:

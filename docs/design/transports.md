@@ -92,6 +92,25 @@ cross-platform reach already matters.
 
 **BLE Serial** is the common special case worth naming explicitly: many hobbyist/embedded BLE devices don't expose a bespoke GATT profile at all — they emulate a UART over two characteristics (one for host→device writes, one for device→host notifications), most commonly following the de facto [Nordic UART Service](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrfxlib/nrf_ble/doc/service.html) UUIDs (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E` service, `...002` RX/write, `...003` TX/notify). `BleTransportOptions` defaults its three UUIDs to these — a BLE Serial transport mode stays configurable per device, since not every device that "acts like serial over BLE" actually uses NUS — worth confirming per device (e.g., via a BLE scanner app) before assuming the default applies, same caution as every other vendor-protocol-claim in this project.
 
+**Known limitation — HC-08/SH-HC-08-family BLE-to-serial bridges may refuse to reconnect until reset.**
+Verified against a real SH-HC-08 bridge module 2026-09-29 (`docs/test/2026-09-29-17-12-20.md`): the
+first connection each power-on works fine (including a full BLE-to-serial byte round-trip), but a
+reconnect after a clean disconnect can fail every time with a generic "operation was canceled"
+cancellation, unless the peripheral's TTL-serial side is reset first. Root-caused to the peripheral,
+not dev-term: `WindowsBleAdapter.Cleanup()` already disposes/unsubscribes cleanly on every close, and
+the module's own manufacturer manual (HC-08 V3.1 User Manual, hc01.com) rules out both AT-tunable
+candidates checked directly against the hardware — `AT+MODE?` reported the module already in
+full-power/always-advertising mode (not a power-saving mode that would need a wake sequence), and
+`AT+CTOUT` isn't implemented by this module's firmware (`AT+VERSION` identifies it as `SH-V1.251`, an
+"SH"-vendor fork, not stock hc01.com firmware) — no response, unlike `AT+MODE?` over the same link.
+The manual also confirms AT command mode only works while the module has *no* active BLE connection
+at all ("Connection after entering serial transparent transmission mode"); there is no escape
+sequence back into AT mode while connected, so any further AT-based workaround (e.g. issuing
+`AT+RESET` as a software-triggered equivalent of the physical reset) has to happen in the gap between
+a disconnect and the next reconnect attempt, never while something is connected. Treated as an
+inherent limitation of this device class rather than a dev-term defect — no code change planned
+unless a software-issuable fix is found.
+
 ### Loopback
 
 A zero-configuration, in-process fake device — `DevTerm.Transports.Loopback` — for exercising the
