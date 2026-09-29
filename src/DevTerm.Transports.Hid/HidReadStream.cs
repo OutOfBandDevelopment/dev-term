@@ -47,10 +47,10 @@ internal sealed class HidReadStream : Stream
 
     private void ReadLoop()
     {
-        var buffer = new byte[_stream.Device.GetMaxInputReportLength()];
-
         try
         {
+            var buffer = new byte[_stream.Device.GetMaxInputReportLength()];
+
             while (!_stopRequested)
             {
                 int count;
@@ -81,6 +81,13 @@ internal sealed class HidReadStream : Stream
                     break;
                 }
             }
+        }
+        catch (Exception)
+        {
+            // This runs on a raw background Thread (see the class remarks), not a Task - anything
+            // unhandled here, including GetMaxInputReportLength() itself (which used to run outside
+            // this try), would otherwise crash the whole process instead of surfacing as an ordinary
+            // connection failure. See docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
         }
         finally
         {
