@@ -646,10 +646,28 @@ public static class TuiMode
 
             var mySession = built.Session;
 
-            session.Output -= OnSessionOutput;
-            session.Disconnected -= OnSessionDisconnected;
-            await session.CloseAsync();
-            await session.DisposeAsync();
+            // Captured now, before any await: a second, overlapping switch reassigns the shared
+            // session variable below (once its own build/close/dispose completes) while this call
+            // is still suspended closing/disposing its OWN old session. Reading session again
+            // after that await - instead of this local - would tear down whatever the OTHER call
+            // had already installed there (possibly its brand-new, just-opened session) rather
+            // than the session this call actually meant to replace.
+            var oldSession = session;
+
+            oldSession.Output -= OnSessionOutput;
+            oldSession.Disconnected -= OnSessionDisconnected;
+            await oldSession.CloseAsync();
+            await oldSession.DisposeAsync();
+
+            if (!ReferenceEquals(switchCts, cts))
+            {
+                // Superseded while closing the old session, before ever adopting mySession as
+                // current - a newer switch has already moved session on (possibly to its own,
+                // by-now-open session). Never having been subscribed or assigned to session,
+                // mySession just needs disposing.
+                await mySession.DisposeAsync();
+                return false;
+            }
 
             session = mySession;
             catalog = built.Catalog;

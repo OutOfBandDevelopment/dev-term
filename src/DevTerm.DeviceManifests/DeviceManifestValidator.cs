@@ -161,6 +161,9 @@ public static partial class DeviceManifestValidator
 
             switch (control)
             {
+                case StripChartControl { HistoryLength: > StripChartState.MaxCapacity } strip:
+                    warnings.Add($"'{strip.Label}' declares a history length of {strip.HistoryLength}, which is clamped to {StripChartState.MaxCapacity}.");
+                    break;
                 case ButtonControl { ColorPickerTargetCommandId: { } target } when !commandIds.Contains(target):
                     warnings.Add($"Button '{control.Label}' sends its color to '{target}', which no command declares.");
                     break;

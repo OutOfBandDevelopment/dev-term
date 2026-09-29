@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Confirmed |
 | **Area** | TUI (Console) |
 | **Created** | 2026-09-26 |
@@ -55,3 +55,35 @@ first switch's eventual (cancelled) resolution.
 
 ## Related
 - [017](fixed/017-wpf-profile-switch-no-supersede.md) - the WPF analog of this exact bug, fixed first; this report exists because the TUI code it was ported from turned out to share both gaps.
+
+## Resolution
+Fixed on 2026-09-29 in `src/DevTerm.Console/TuiMode.cs`'s `SwitchProfileAsync`, porting bug 017's WPF
+fix verbatim: `var oldSession = session;` is now captured immediately after `var mySession =
+built.Session;`, before any `await`, and that local (not the shared `session` field) is what gets
+unsubscribed/closed/disposed as the outgoing session; the `session = mySession;` reassignment (and
+the subscribe/UI-adoption that follows it) is now guarded by `ReferenceEquals(switchCts, cts)`,
+disposing `mySession` without adopting it when a newer switch has already superseded this one.
+
+**Regression test**: `TuiModeSwitchProfileTests.SwitchProfileAsync_SupersededByAnotherSwitchBeforeItResolves_DoesNotStompTheNewerOne`
+(the test this report's "Tests to add" section named, now tagged `BugRegression`) continues to pass
+with the fix applied and exercises the same supersede scenario the fix targets.
+
+**Testability constraint on a more exact test**: that test alone does not distinguish pre-fix from
+post-fix code - it was run against both (via a temporary `git stash` of the fix) and passed either
+way, because it only exercises the later `OpenAsync`-catch-block supersede guard, which was already
+correct before this fix. The actual defect fixed here is a narrower window: `Session._lifecycleLock`
+(a `SemaphoreSlim(1,1)` in `src/DevTerm.Core/Sessions/Session.cs`) serializes `OpenAsync`/`CloseAsync`
+per `Session` instance, and `StopAsync` unconditionally calls `_transport.CloseAsync()` on every
+`CloseAsync()`/`DisposeAsync()` invocation - so tearing down one old session during a switch acquires
+and releases that lock twice (once via `CloseAsync()`, once via the following `DisposeAsync()`), with
+a real gap between the two where a second, already-queued switch's own close/open on that same old
+session could interleave. A test built to force this window by gating the old session's
+`FakeTransport.CloseAsync()` and starting a second overlapping switch was attempted and reliably
+deadlocked instead of reproducing a race: both switches target the same not-yet-reassigned old
+`Session` object, so the second switch's own teardown call blocks on `_lifecycleLock` behind the
+first (held at the artificial gate), a circular wait with no way out short of adding test-only hooks
+into `Session.cs` production code - disproportionate for this fix. No such test was added; the fix's
+correctness instead rests on the same code-level reasoning that confirmed the bug (structural
+equivalence to bug 017's WPF fix, independently verified there against a deterministic test in a
+codebase where the old/new sessions are two genuinely distinct objects with no shared lock), plus the
+full `TestCategory=Unit` suite (1291 tests) passing unchanged with the fix applied.

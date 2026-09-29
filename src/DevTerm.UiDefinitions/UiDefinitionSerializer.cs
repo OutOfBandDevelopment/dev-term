@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace DevTerm.UiDefinitions;
@@ -26,8 +27,12 @@ public static class UiDefinitionSerializer
 
     public static UiDefinition FromXml(string xml)
     {
-        using var reader = new StringReader(xml);
-        return (UiDefinition?)_xmlSerializerInstance.Deserialize(reader)
+        using var stringReader = new StringReader(xml);
+        // A manifest's UiFile .xml is untrusted input — prohibit DTDs so an internal-entity
+        // DOCTYPE (billion-laughs style) can't expand into the deserialized model. See
+        // docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+        return (UiDefinition?)_xmlSerializerInstance.Deserialize(xmlReader)
             ?? throw new InvalidOperationException("Deserialized UI definition was null.");
     }
 }

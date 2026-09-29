@@ -152,8 +152,16 @@ public sealed class StripChartState : LiveDisplayState
 
     public override IReadOnlyList<string> ValueIds { get; }
 
-    /// <summary>At least one sample is kept, whatever the definition says.</summary>
-    public int Capacity => Math.Max(Control.HistoryLength, 1);
+    /// <summary>
+    /// Hard ceiling on <see cref="Capacity"/>, regardless of what a manifest's
+    /// <see cref="StripChartControl.HistoryLength"/> declares — protects against an
+    /// unbounded-memory manifest (a per-sample <c>double</c> queue with no upper bound). See
+    /// docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+    /// </summary>
+    public const int MaxCapacity = 10_000;
+
+    /// <summary>At least one sample is kept, and at most <see cref="MaxCapacity"/>, whatever the definition says.</summary>
+    public int Capacity => Math.Clamp(Control.HistoryLength, 1, MaxCapacity);
 
     /// <summary>The channel's samples, oldest first (at most <see cref="Capacity"/>).</summary>
     public IReadOnlyList<double> SamplesOf(string channelId) =>

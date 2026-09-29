@@ -136,6 +136,30 @@ public sealed class RadexOneControlSurfaceTests
         Assert.IsNull(surface.PreviewCommand("threshold", "300"));
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_ThresholdWithNonNumericValue_DoesNotThrow_AndFallsBackToZero()
+    {
+        // Regression test for bug 045: ParseUInt16 used a throwing double.Parse, so bad text in
+        // "threshold" (bypassing the renderer's normal validation) threw an unhandled
+        // FormatException straight out of InvokeAsync. See
+        // docs/bugs/fixed/045-control-surface-parse-throws.md.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new RadexOneControlSurface(session);
+        await surface.InvokeAsync("threshold", "not-a-number", TestContext.CancellationToken);
+
+        await surface.InvokeAsync("writeSettings", null, TestContext.CancellationToken);
+
+        transport.Verify(
+            t => t.WriteAsync(
+                It.Is<ReadOnlyMemory<byte>>(b => ThresholdInReport(b.ToArray()) == 0),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+    }
+
+    private static ushort ThresholdInReport(byte[] report) =>
+        System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(report.AsSpan(RadexOneFramer.HeaderLength + 9, 2));
+
     private static bool IsWellFormedQuery(byte[] report, ushort expectedCommandCode) =>
         report.Length >= RadexOneFramer.HeaderLength + 2
         && report[0] == 0x7B && report[1] == 0xFF // outbound framer prefix

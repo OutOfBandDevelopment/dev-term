@@ -79,20 +79,20 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 042 | [A hinted #0 indefinite-length block keeps its header bytes in the capture](fixed/042-stream-watcher-indefinite-block.md) | DevTerm.Core (StreamContentSniffer, StreamContentWatcher) | Fixed |
 | 043 | [A typed value containing {OtherParam} is itself substituted](fixed/043-template-substitution-not-single-pass.md) | DevTerm.Devices.Scpi, DevTerm.DeviceManifests (control surfaces) | Fixed |
 | 044 | [A profile's numeric parameter limits can throw or force every value to 0](fixed/044-scpi-clamp-bad-limits.md) | DevTerm.Devices.Scpi (ScpiControlSurface) | Fixed |
-| 045 | [Device control surfaces parse numbers with throwing Parse](045-control-surface-parse-throws.md) | DevTerm.Devices.Busylight, K8055, RadexOne | Open |
-| 046 | [Manifest numbers can go out as NaN, or rounded past Max](046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Open |
-| 047 | [The Radex One panel describes the device as USB HID](047-radexone-description-says-hid.md) | DevTerm.Devices.RadexOne (RadexOneUiDefinition) | Open |
-| 048 | [SCPI *IDN? matching runs profile regexes with no timeout](048-scpi-idn-regex-no-timeout.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Open |
-| 049 | [UI definition XML is parsed without prohibiting DTDs](049-uidefinition-xml-dtd.md) | DevTerm.UiDefinitions (UiDefinitionSerializer) | Open |
-| 050 | [A manifest can make strip-chart history grow without limit](050-strip-chart-history-unbounded.md) | DevTerm.UiDefinitions / DeviceManifests (LiveDisplayState) | Open |
-| 051 | [LF followed by CR counts as two lines](051-line-reply-lf-cr-two-lines.md) | DevTerm.Core (LineReplyPresenter) | Open |
-| 052 | [BLE notifications arriving right after subscribe are dropped](052-ble-notifications-before-pipe.md) | DevTerm.Transports.Ble | Open |
-| 053 | [BLE pipe writes from Bluetooth threads aren't synchronized](053-ble-pipe-writes-unsynchronized.md) | DevTerm.Transports.Ble | Open |
-| 054 | [A cancelled BLE connect leaves its ValueChanged handler attached](054-ble-cancelled-connect-handler-leak.md) | DevTerm.Transports.Ble.Windows | Open |
-| 055 | [HID read thread can crash the process; Close blocks the calling thread](055-hid-read-thread-and-close-blocking.md) | DevTerm.Transports.Hid | Open |
-| 056 | [TCP listen mode rejects hostnames and is IPv4-only](056-tcp-listen-rejects-hostnames.md) | DevTerm.Transports.Tcp | Open |
-| 057 | [A serial read may never notice an unplugged adapter](057-serial-unplug-not-detected.md) | DevTerm.Transports.Serial | Open |
-| 058 | [Two close requests during a slow cleanup run OnClosing twice](058-wpf-onclosing-reentry.md) | WPF (MainWindow) | Open |
-| 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Open |
-| 060 | [A TUI profile switch can close/reassign the wrong session under overlap](060-tui-profile-switch-session-race.md) | TUI (Console) | Open |
+| 045 | [Device control surfaces parse numbers with throwing Parse](fixed/045-control-surface-parse-throws.md) | DevTerm.Devices.Busylight, K8055, RadexOne | Fixed |
+| 046 | [Manifest numbers can go out as NaN, or rounded past Max](fixed/046-manifest-formatnumber-nan.md) | DevTerm.DeviceManifests (ManifestControlSurface) | Fixed |
+| 047 | [The Radex One panel describes the device as USB HID](fixed/047-radexone-description-says-hid.md) | DevTerm.Devices.RadexOne (RadexOneUiDefinition) | Fixed |
+| 048 | [SCPI *IDN? matching runs profile regexes with no timeout](fixed/048-scpi-idn-regex-no-timeout.md) | DevTerm.Devices.Scpi (ScpiProfileCatalog) | Fixed |
+| 049 | [UI definition XML is parsed without prohibiting DTDs](fixed/049-uidefinition-xml-dtd.md) | DevTerm.UiDefinitions (UiDefinitionSerializer) | Fixed |
+| 050 | [A manifest can make strip-chart history grow without limit](fixed/050-strip-chart-history-unbounded.md) | DevTerm.UiDefinitions / DeviceManifests (LiveDisplayState) | Fixed |
+| 051 | [LF followed by CR counts as two lines](fixed/051-line-reply-lf-cr-two-lines.md) | DevTerm.Core (LineReplyPresenter) | Fixed |
+| 052 | [BLE notifications arriving right after subscribe are dropped](fixed/052-ble-notifications-before-pipe.md) | DevTerm.Transports.Ble | Fixed |
+| 053 | [BLE pipe writes from Bluetooth threads aren't synchronized](fixed/053-ble-pipe-writes-unsynchronized.md) | DevTerm.Transports.Ble | Fixed |
+| 054 | [A cancelled BLE connect leaves its ValueChanged handler attached](fixed/054-ble-cancelled-connect-handler-leak.md) | DevTerm.Transports.Ble.Windows | Fixed |
+| 055 | [HID read thread can crash the process; Close blocks the calling thread](fixed/055-hid-read-thread-and-close-blocking.md) | DevTerm.Transports.Hid | Fixed |
+| 056 | [TCP listen mode rejects hostnames and is IPv4-only](fixed/056-tcp-listen-rejects-hostnames.md) | DevTerm.Transports.Tcp | Fixed |
+| 057 | [A serial read may never notice an unplugged adapter](fixed/057-serial-unplug-not-detected.md) | DevTerm.Transports.Serial | Fixed |
+| 058 | [Two close requests during a slow cleanup run OnClosing twice](fixed/058-wpf-onclosing-reentry.md) | WPF (MainWindow) | Fixed |
+| 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](fixed/059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Fixed |
+| 060 | [A TUI profile switch can close/reassign the wrong session under overlap](fixed/060-tui-profile-switch-session-race.md) | TUI (Console) | Fixed |
 

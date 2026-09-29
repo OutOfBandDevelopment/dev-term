@@ -336,4 +336,37 @@ public sealed class MainWindowTests
             Assert.IsTrue(StaTestRunner.PumpUntil(() => closed, _pumpTimeout));
         });
     }
+
+    // Regression test for bug 058: a second close request (Ctrl+Q, Alt+F4, the Exit menu item)
+    // arriving while the first request's async cleanup was still running re-entered OnClosing
+    // before _closeConfirmed was set, running the stream monitor dispose/session close/Close()
+    // sequence a second time (confirmed deterministically, 30/30 runs, against the pre-fix code
+    // before this test was updated to assert on it - the extra run didn't actually throw there,
+    // since every step it repeated happened to already be idempotent, but it was genuine,
+    // unintended re-entrancy nonetheless). See docs/bugs/fixed/058-wpf-onclosing-reentry.md.
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Close_CalledAgainWhileTheFirstCloseIsStillCleaningUp_ClosesOnceWithoutThrowing()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow();
+            await window.ConnectAsync();
+            var closedCount = 0;
+            window.Closed += (_, _) => closedCount++;
+
+            // Both calls happen synchronously, back to back, before any dispatcher pump: the first
+            // Close() raises Closing synchronously, which runs OnClosing up to its first genuine
+            // await (Session.CloseAsync awaiting the real read loop's Task.Run, which can't
+            // complete synchronously) and returns here with the close cancelled - the window is
+            // still open, so the second call below is a real, independent close request racing the
+            // first one's cleanup, not a nested call within it.
+            window.Close();
+            window.Close();
+
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => closedCount > 0, _pumpTimeout));
+            Assert.AreEqual(1, closedCount, "The window should only finish closing once.");
+            Assert.AreEqual(1, window.ClosingCleanupRunCount, "OnClosing's cleanup re-entered and ran more than once.");
+        });
+    }
 }

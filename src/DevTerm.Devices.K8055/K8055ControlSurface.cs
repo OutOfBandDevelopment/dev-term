@@ -138,7 +138,7 @@ public sealed class K8055ControlSurface : IControlSurface, ICommandPreview
 
     private static byte ParseByte(string? value)
     {
-        var number = double.Parse(value ?? "0", CultureInfo.InvariantCulture);
+        var number = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
         return (byte)Math.Clamp(number, 0, 255);
     }
 

@@ -171,5 +171,23 @@ public sealed class BusylightControlSurfaceTests
         Assert.IsNull(surface.PreviewCommand("customColor", null));
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_OnMsWithNonNumericValue_DoesNotThrow_AndFallsBackToZero()
+    {
+        // Regression test for bug 045: ParseByte used a throwing double.Parse, so bad text in "onMs"
+        // (bypassing the renderer's normal validation) threw an unhandled FormatException straight
+        // out of InvokeAsync. See docs/bugs/fixed/045-control-surface-parse-throws.md.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new BusylightControlSurface(session);
+
+        await surface.InvokeAsync("onMs", "not-a-number", TestContext.CancellationToken);
+        await surface.InvokeAsync("apply", null, TestContext.CancellationToken);
+
+        transport.Verify(t => t.WriteAsync(
+            It.Is<ReadOnlyMemory<byte>>(b => b.ToArray().SequenceEqual(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80 })),
+            It.IsAny<CancellationToken>()));
+    }
+
     public required TestContext TestContext { get; set; }
 }

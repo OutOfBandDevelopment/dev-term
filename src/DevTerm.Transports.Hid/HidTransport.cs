@@ -46,11 +46,11 @@ public sealed class HidTransport : ITransport
 
     public PipeReader Input => _pipe?.Reader ?? throw new InvalidOperationException("The HID transport has not been opened.");
 
-    public Task OpenAsync(CancellationToken cancellationToken = default)
+    public async Task OpenAsync(CancellationToken cancellationToken = default)
     {
         if (State is ConnectionState.Open or ConnectionState.Opening)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         State = ConnectionState.Opening;
@@ -59,7 +59,14 @@ public sealed class HidTransport : ITransport
 
         try
         {
-            device.Open();
+            // HidSharp has no async open - Open() enumerates and claims the device synchronously.
+            // Run it on a pool thread so a caller that awaits this (often the UI thread) isn't
+            // blocked on it. CancellationToken.None, not the caller's token: passing a token that's
+            // already cancelled by the time the pool thread starts would make Task.Run yield a
+            // Canceled task WITHOUT ever calling Open() at all - Open() itself has no way to accept
+            // cancellation, so skipping it isn't a real cancellation, just a silent no-open. See
+            // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+            await Task.Run(device.Open, CancellationToken.None).ConfigureAwait(false);
         }
         catch
         {
@@ -89,7 +96,6 @@ public sealed class HidTransport : ITransport
             TaskScheduler.Default);
 
         State = ConnectionState.Open;
-        return Task.CompletedTask;
     }
 
     public async Task CloseAsync(CancellationToken cancellationToken = default)
@@ -121,9 +127,19 @@ public sealed class HidTransport : ITransport
             _pumpTask = null;
             _pipe = null;
 
-            _device.Close();
-            _device.Dispose();
+            var device = _device;
             _device = null;
+
+            // Close() blocks on HidReadStream.Stop()'s bounded thread Join (up to ReadTimeoutMs +
+            // 1s). If _pumpTask above was already complete by the time this finally block runs
+            // (e.g. the device had already disconnected), awaiting it continued synchronously on
+            // this method's own caller's thread even under ConfigureAwait(false) - that only
+            // affects where a continuation resumes when a real suspension happens, not an
+            // already-completed await. Running Close() through Task.Run keeps that caller (often
+            // the UI thread) from blocking on the Join either way. See
+            // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+            await Task.Run(device.Close, CancellationToken.None).ConfigureAwait(false);
+            device.Dispose();
 
             State = ConnectionState.Closed;
         }

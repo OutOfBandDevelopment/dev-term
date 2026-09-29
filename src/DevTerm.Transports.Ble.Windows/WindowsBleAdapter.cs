@@ -33,6 +33,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
             ?? throw new InvalidOperationException($"No BLE device found for id '{_options.DeviceId}'.");
 
         GattDeviceService? service = null;
+        GattCharacteristic? notifyCharacteristic = null;
         try
         {
             var serviceUuid = Guid.Parse(_options.ServiceUuid);
@@ -60,7 +61,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
             }
 
             var writeCharacteristic = writeResult.Characteristics[0];
-            var notifyCharacteristic = notifyResult.Characteristics[0];
+            notifyCharacteristic = notifyResult.Characteristics[0];
 
             notifyCharacteristic.ValueChanged += OnValueChanged;
             var notifyStatus = await notifyCharacteristic
@@ -69,7 +70,6 @@ public sealed class WindowsBleAdapter : IBleAdapter
                 .ConfigureAwait(false);
             if (notifyStatus != GattCommunicationStatus.Success)
             {
-                notifyCharacteristic.ValueChanged -= OnValueChanged;
                 throw new InvalidOperationException($"Failed to subscribe to the BLE notify characteristic: {notifyStatus}.");
             }
 
@@ -81,6 +81,16 @@ public sealed class WindowsBleAdapter : IBleAdapter
         }
         catch
         {
+            // Unsubscribe here too, not just in the explicit notifyStatus-failure branch above - a
+            // cancellation or a WinRT exception thrown out of WriteClientCharacteristicConfigurationDescriptorAsync
+            // itself skips that branch entirely and used to leave ValueChanged attached to a
+            // characteristic whose device is about to be disposed. See
+            // docs/bugs/fixed/054-ble-cancelled-connect-handler-leak.md.
+            if (notifyCharacteristic is not null)
+            {
+                notifyCharacteristic.ValueChanged -= OnValueChanged;
+            }
+
             service?.Dispose();
             device.Dispose();
             throw;

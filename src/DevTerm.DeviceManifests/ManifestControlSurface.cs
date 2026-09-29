@@ -176,21 +176,36 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
 
     private static string FormatNumber(string raw, CommandParameter parameter)
     {
-        if (!double.TryParse(raw.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+        if (!TryParseFinite(raw.Trim(), out var number) && !TryParseFinite(parameter.DefaultValue, out number))
         {
-            number = double.TryParse(parameter.DefaultValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var fallback) ? fallback : 0;
+            number = 0;
         }
 
-        number = Math.Clamp(number, parameter.Minimum ?? double.NegativeInfinity, parameter.Maximum ?? double.PositiveInfinity);
+        // Round before clamping, not after: rounding an already-in-range value (e.g. Max 10.5, value
+        // 10.5) can push it past a fractional bound (11 > 10.5) — see
+        // docs/bugs/fixed/046-manifest-formatnumber-nan.md.
         if (parameter.IsInteger)
         {
             number = Math.Round(number, MidpointRounding.AwayFromZero);
         }
 
+        number = Math.Clamp(number, parameter.Minimum ?? double.NegativeInfinity, parameter.Maximum ?? double.PositiveInfinity);
+
         return string.IsNullOrEmpty(parameter.Format)
             ? number.ToString(CultureInfo.InvariantCulture)
             : number.ToString(parameter.Format, CultureInfo.InvariantCulture);
     }
+
+    /// <summary>
+    /// <see cref="double.TryParse(string?, NumberStyles, IFormatProvider?, out double)"/>, but also
+    /// rejecting <c>NaN</c>/<c>Infinity</c>/<c>-Infinity</c> (which it otherwise happily parses as
+    /// literal text regardless of <see cref="NumberStyles"/>) — a non-finite value must never reach
+    /// <see cref="Math.Clamp(double, double, double)"/>, which passes <c>NaN</c> through unchanged
+    /// rather than clamping it (every comparison against <c>NaN</c> is false). See
+    /// docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+    /// </summary>
+    private static bool TryParseFinite(string? raw, out double number) =>
+        double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out number) && double.IsFinite(number);
 
     [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
     private static partial Regex TemplatePlaceholder();

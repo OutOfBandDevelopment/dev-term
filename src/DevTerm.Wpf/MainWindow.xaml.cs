@@ -38,6 +38,16 @@ public partial class MainWindow : Window
     private readonly ConnectionProfileStore _profileStore;
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
+    private bool _closing;
+
+    /// <summary>
+    /// How many times <see cref="OnClosing"/>'s cleanup (stream monitor dispose, session close,
+    /// logging stop) has actually run - exposed only so
+    /// <c>MainWindowTests.Close_CalledAgainWhileTheFirstCloseIsStillCleaningUp...</c> can tell a
+    /// genuinely re-entrant second run apart from the harmless, expected extra `Closing` events a
+    /// cancelled close still raises. See docs/bugs/fixed/058-wpf-onclosing-reentry.md.
+    /// </summary>
+    internal int ClosingCleanupRunCount { get; private set; }
 
     // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on the OS
     // connect timeout) can still be pending when the user switches to a *different* profile; without
@@ -809,6 +819,20 @@ public partial class MainWindow : Window
         // Session.CloseAsync/DisposeAsync must be awaited before the window actually closes, so
         // cancel the first close request, do the async cleanup, then close for real.
         e.Cancel = true;
+
+        if (_closing)
+        {
+            // A second close request (Ctrl+Q, Alt+F4, File > Exit) arrived while the first
+            // request's cleanup below is still running - _closeConfirmed isn't set until that
+            // cleanup finishes, so without this guard a second request re-entered here and ran the
+            // whole sequence (stream monitor dispose, session close, Close()) a second time
+            // concurrently with the first. Just cancel this one too and let the first request's own
+            // continuation finish the job once. See docs/bugs/fixed/058-wpf-onclosing-reentry.md.
+            return;
+        }
+
+        _closing = true;
+        ClosingCleanupRunCount++;
         _streamMonitor?.Dispose();
         _session.Output -= OnSessionOutput;
         _session.Disconnected -= OnSessionDisconnected;

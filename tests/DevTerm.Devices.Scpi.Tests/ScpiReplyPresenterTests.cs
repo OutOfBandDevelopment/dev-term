@@ -110,6 +110,29 @@ public sealed class ScpiReplyPresenterTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_LfThenCr_CountsAsOneLine_NotAnExtraEmptyOne()
+    {
+        // Regression test for bug 051: LF CR (unlike the already-handled CR LF) was treated as two
+        // separate terminators, so a device ending lines in LF CR produced a spurious extra empty
+        // line that consumed the next pending query's reply id (see
+        // docs/bugs/fixed/006-reply-queue-desync.md). See docs/bugs/fixed/051-line-reply-lf-cr-two-lines.md.
+        var presenter = new ScpiReplyPresenter();
+        var received = new List<KeyValuePair<string, string>>();
+        presenter.ValuesChanged += (_, values) => received.Add(values.Single());
+        presenter.QuerySent("first.reply");
+        presenter.QuerySent("second.reply");
+
+        presenter.Render(Bytes("ONE\n\rTWO\n\r"));
+
+        Assert.HasCount(2, received);
+        Assert.AreEqual("first.reply", received[0].Key);
+        Assert.AreEqual("ONE", received[0].Value);
+        Assert.AreEqual("second.reply", received[1].Key);
+        Assert.AreEqual("TWO", received[1].Value);
+    }
+
+    [TestMethod]
     public void Render_TwoQueriesThenTwoReplies_CorrelatesFifoOrder()
     {
         var presenter = new ScpiReplyPresenter();

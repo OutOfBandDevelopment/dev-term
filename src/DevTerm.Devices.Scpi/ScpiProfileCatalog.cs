@@ -68,15 +68,34 @@ public static class ScpiProfileCatalog
     /// only regex-matches a <c>*IDN?</c> reply against each loaded profile's <see cref="ScpiInstrumentProfile.IdnPattern"/>,
     /// returning the first match or null (callers fall back to <see cref="Generic"/>).
     /// </summary>
-    public static ScpiInstrumentProfile? TryMatchByIdn(string idnReply)
+    public static ScpiInstrumentProfile? TryMatchByIdn(string idnReply) => TryMatchByIdn(idnReply, All);
+
+    /// <summary>Same as <see cref="TryMatchByIdn(string)"/>, but against an explicit profile list rather than <see cref="All"/> — lets a test exercise matching without relying on the process's real loaded profiles.</summary>
+    internal static ScpiInstrumentProfile? TryMatchByIdn(string idnReply, IEnumerable<ScpiInstrumentProfile> profiles)
     {
         ArgumentNullException.ThrowIfNull(idnReply);
 
-        foreach (var profile in All)
+        foreach (var profile in profiles)
         {
-            if (!string.IsNullOrEmpty(profile.IdnPattern) && Regex.IsMatch(idnReply, profile.IdnPattern, RegexOptions.IgnoreCase))
+            if (string.IsNullOrEmpty(profile.IdnPattern))
             {
-                return profile;
+                continue;
+            }
+
+            try
+            {
+                if (Regex.IsMatch(idnReply, profile.IdnPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)))
+                {
+                    return profile;
+                }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // A profile-supplied pattern with catastrophic backtracking must not hang auto-detect
+                // (or, here, the whole loop) — treat a timed-out match as "this profile doesn't match"
+                // and keep checking the rest, mirroring ManifestReplyPresenter.AddLineValues. See
+                // docs/bugs/fixed/048-scpi-idn-regex-no-timeout.md.
+                continue;
             }
         }
 

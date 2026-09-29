@@ -73,6 +73,7 @@ public sealed class TuiModeSwitchProfileTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
     public async Task SwitchProfileAsync_SupersededByAnotherSwitchBeforeItResolves_DoesNotStompTheNewerOne()
     {
         // Reproduces "I tried connecting to 192.168.0.108 and it failed, so I tried 192.168.0.107
@@ -81,6 +82,12 @@ public sealed class TuiModeSwitchProfileTests
         // refuses - the real case was an unreachable LAN IP sitting on the OS connect timeout) must
         // not have its eventual failure/cancellation reset connectMenuItem.Title/sendField.Enabled/
         // output after a second, newer switch has already established its own, real connection.
+        //
+        // Also the test named by bug 060's "Tests to add" section (the TUI analog of the WPF test
+        // this was ported from, for bug 017). It exercises the same supersede scenario the bug 060
+        // fix targets and passes with that fix applied; it does not, however, deterministically
+        // force the fix's own narrow race window (see bug 060's Resolution section for why no test
+        // that does was added).
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Presenter = ["ascii"] };

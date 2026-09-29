@@ -18,6 +18,13 @@ public sealed class BleTransport : ITransport
     private ConnectionState _state = ConnectionState.Closed;
     private Pipe? _pipe;
 
+    // Serializes every PipeWriter access - each notification starts a fire-and-forget write, and
+    // OnAdapterDisconnected/CloseAsync complete the writer from other threads. PipeWriter is
+    // single-writer: a second WriteAsync while a first is still flushing (blocked on backpressure)
+    // doesn't just throw - it corrupts the Pipe's internal state badly enough that even the reader
+    // side stops working afterward. See docs/bugs/fixed/053-ble-pipe-writes-unsynchronized.md.
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+
     public BleTransport(IBleAdapterFactory adapterFactory, IOptions<BleTransportOptions> options)
     {
         ArgumentNullException.ThrowIfNull(adapterFactory);
@@ -60,6 +67,13 @@ public sealed class BleTransport : ITransport
         adapter.NotificationReceived += OnNotificationReceived;
         adapter.Disconnected += OnAdapterDisconnected;
 
+        // Created before ConnectAsync, not after: some devices send a greeting the instant
+        // notifications are enabled, which happens inside ConnectAsync - a notification arriving
+        // that early needs somewhere to land rather than being silently dropped by
+        // OnNotificationReceived's _pipe-is-null guard. See
+        // docs/bugs/fixed/052-ble-notifications-before-pipe.md.
+        _pipe = new Pipe();
+
         try
         {
             await RunWithTimeoutAsync(
@@ -73,12 +87,12 @@ public sealed class BleTransport : ITransport
             adapter.NotificationReceived -= OnNotificationReceived;
             adapter.Disconnected -= OnAdapterDisconnected;
             await adapter.DisposeAsync().ConfigureAwait(false);
+            _pipe = null;
             State = ConnectionState.Faulted;
             throw;
         }
 
         _adapter = adapter;
-        _pipe = new Pipe();
         State = ConnectionState.Open;
     }
 
@@ -99,7 +113,7 @@ public sealed class BleTransport : ITransport
         await adapter.DisconnectAsync(cancellationToken).ConfigureAwait(false);
         await adapter.DisposeAsync().ConfigureAwait(false);
 
-        _pipe?.Writer.Complete();
+        CompleteWriter();
         _pipe = null;
 
         State = ConnectionState.Closed;
@@ -161,8 +175,9 @@ public sealed class BleTransport : ITransport
         _ = WriteToPipeAsync(pipe.Writer, data);
     }
 
-    private static async Task WriteToPipeAsync(PipeWriter writer, ReadOnlyMemory<byte> data)
+    private async Task WriteToPipeAsync(PipeWriter writer, ReadOnlyMemory<byte> data)
     {
+        await _writeGate.WaitAsync().ConfigureAwait(false);
         try
         {
             await writer.WriteAsync(data).ConfigureAwait(false);
@@ -171,6 +186,10 @@ public sealed class BleTransport : ITransport
         {
             // The pipe was already completed (transport closing/closed) - the notification arrived
             // too late to matter.
+        }
+        finally
+        {
+            _writeGate.Release();
         }
     }
 
@@ -181,7 +200,21 @@ public sealed class BleTransport : ITransport
             return;
         }
 
-        _pipe?.Writer.Complete();
+        CompleteWriter();
         State = ConnectionState.Closed;
+    }
+
+    /// <summary>Completes <see cref="_pipe"/>'s writer under the same gate as every <see cref="WriteToPipeAsync"/> call, so completion can't race an in-flight write.</summary>
+    private void CompleteWriter()
+    {
+        _writeGate.Wait();
+        try
+        {
+            _pipe?.Writer.Complete();
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.IO.Pipelines;
 using DevTerm.Core.Transports;
 using DevTerm.Test.Utilities;
@@ -78,6 +79,38 @@ public sealed class HidTransportTests
         await Assert.ThrowsExactlyAsync<IOException>(() => transport.OpenAsync(TestContext.CancellationToken));
         Assert.AreEqual(ConnectionState.Faulted, transport.State);
         device.Verify(d => d.Dispose(), Times.Once);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task OpenAsync_DoesNotBlockTheCallingThreadOnTheDevicesSynchronousOpen()
+    {
+        // Regression test for bug 055: OpenAsync used to call device.Open() directly in its own
+        // synchronous body (no Task.Run), so the call expression itself didn't return a Task until
+        // Open() returned - blocking whatever thread called OpenAsync (often the UI thread) for
+        // however long the real, synchronous HidSharp open takes. See
+        // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+        var (device, _) = CreateDevice();
+        using var openGate = new ManualResetEventSlim(false);
+        device.Setup(d => d.Open()).Callback(() => openGate.Wait(TimeSpan.FromSeconds(5)));
+        var factory = new Mock<IHidDeviceFactory>();
+        factory.Setup(f => f.Create(It.IsAny<HidTransportOptions>())).Returns(device.Object);
+
+        var transport = new HidTransport(factory.Object, Options());
+
+        var stopwatch = Stopwatch.StartNew();
+        var openTask = transport.OpenAsync(TestContext.CancellationToken);
+        stopwatch.Stop();
+
+        Assert.IsTrue(
+            stopwatch.ElapsedMilliseconds < 1000,
+            $"OpenAsync blocked its caller for {stopwatch.ElapsedMilliseconds} ms waiting on the device's synchronous Open().");
+
+        openGate.Set();
+        await openTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreEqual(ConnectionState.Open, transport.State);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     [TestMethod]

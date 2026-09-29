@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace DevTerm.DeviceManifests;
@@ -26,8 +27,12 @@ public static class DeviceManifestSerializer
 
     public static DeviceManifest FromXml(string xml)
     {
-        using var reader = new StringReader(xml);
-        return (DeviceManifest?)_xmlSerializerInstance.Deserialize(reader)
+        using var stringReader = new StringReader(xml);
+        // A device.xml manifest is untrusted input — prohibit DTDs so an internal-entity DOCTYPE
+        // (billion-laughs style) can't expand into the deserialized model. See
+        // docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+        return (DeviceManifest?)_xmlSerializerInstance.Deserialize(xmlReader)
             ?? throw new InvalidOperationException("Deserialized device manifest was null.");
     }
 }

@@ -124,6 +124,23 @@ public sealed class UiDefinitionSerializerTests
         Assert.Contains("<Slider>", xml);
     }
 
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void FromXml_DocumentWithAnInternalDtdEntity_DoesNotExpandIt()
+    {
+        // Regression test for bug 049: a manifest's UiFile .xml is untrusted input, and
+        // XmlSerializer.Deserialize(TextReader) applied no DtdProcessing restriction, so an
+        // internal-entity DOCTYPE (billion-laughs style) could expand into the deserialized model.
+        // See docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        const string maliciousXml = """
+            <?xml version="1.0"?>
+            <!DOCTYPE UiDefinition [<!ENTITY evil "expanded">]>
+            <UiDefinition><Name>&evil;</Name></UiDefinition>
+            """;
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => UiDefinitionSerializer.FromXml(maliciousXml));
+    }
+
     private static void AssertEquivalent(UiDefinition expected, UiDefinition actual)
     {
         Assert.AreEqual(expected.Name, actual.Name);

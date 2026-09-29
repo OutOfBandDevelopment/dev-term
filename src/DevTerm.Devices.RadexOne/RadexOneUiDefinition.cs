@@ -15,7 +15,7 @@ public static class RadexOneUiDefinition
     public static UiDefinition Build() => new()
     {
         Name = "Radex One",
-        Description = "USB HID geiger counter — read live data, serial/version, and alarm settings.",
+        Description = "Geiger counter over serial — read live data, serial/version, and alarm settings.",
         Sections =
         [
             new UiSection

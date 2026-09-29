@@ -26,7 +26,17 @@ public static class CliMode
         RunAsync(session, catalog, cliOptions, System.Console.In, System.Console.Out, System.Console.Error);
 
     /// <summary>The same loop over explicit readers/writers, so tests can drive it without a real console.</summary>
-    internal static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, TextReader stdin, TextWriter stdout, TextWriter stderr)
+    internal static Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, TextReader stdin, TextWriter stdout, TextWriter stderr) =>
+        RunAsync(session, catalog, cliOptions, stdin, stdout, stderr, new CancellationTokenSource());
+
+    /// <summary>
+    /// Same as the six-argument overload, but with the Ctrl+C cancellation source itself
+    /// injectable - production callers get a fresh one wired to the real
+    /// <see cref="System.Console.CancelKeyPress"/>; a test can supply its own and call
+    /// <see cref="CancellationTokenSource.Cancel()"/> directly to simulate Ctrl+C without needing
+    /// the real (internally-constructed) console event.
+    /// </summary>
+    internal static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, TextReader stdin, TextWriter stdout, TextWriter stderr, CancellationTokenSource shutdownRequested)
     {
         var parser = cliOptions.EffectiveParser;
         if (!catalog.TryGetInput(parser, out var input))
@@ -57,7 +67,7 @@ public static class CliMode
         stdout.WriteLine($"Connected to {ConnectionDescription.For(cliOptions)} using '{string.Join(", ", cliOptions.EffectivePresenters)}' (send as '{parser}').");
         stdout.WriteLine("Type a line and press Enter to send; Ctrl+C to exit.");
 
-        using var cts = new CancellationTokenSource();
+        using var cts = shutdownRequested;
         ConsoleCancelEventHandler onCancel = (_, e) =>
         {
             e.Cancel = true;
@@ -72,10 +82,25 @@ public static class CliMode
                 string? line;
                 try
                 {
-                    // A plain Console.ReadLine() blocks on the OS read and ignores cts entirely, so
-                    // Ctrl+C would set the flag but never unblock the loop; ReadLineAsync(CancellationToken)
-                    // actually interrupts a pending interactive console read.
-                    line = await stdin.ReadLineAsync(cts.Token);
+                    // stdin.ReadLineAsync(cts.Token) does not reliably observe cts here: Console.In is
+                    // a SyncTextReader, whose ReadLineAsync(CancellationToken) only checks the token
+                    // once before starting a plain synchronous read - once that read is blocked waiting
+                    // for a line, cts.Cancel() from Ctrl+C above has no way to unblock it (confirmed on
+                    // real Linux: the CancelKeyPress handler fires immediately, but the pending read
+                    // stays blocked until Enter is actually pressed). Racing it against a genuinely
+                    // cancellable Task.Delay lets this loop react to Ctrl+C immediately regardless -
+                    // the real read task, if still pending, is simply abandoned (a background
+                    // thread-pool wait that doesn't block process exit), the same tradeoff already
+                    // accepted for SerialPort/HidStream's own uncancellable blocking reads elsewhere in
+                    // this codebase.
+                    var readTask = stdin.ReadLineAsync(cts.Token).AsTask();
+                    var cancelTask = Task.Delay(Timeout.Infinite, cts.Token);
+                    if (await Task.WhenAny(readTask, cancelTask) == cancelTask)
+                    {
+                        break;
+                    }
+
+                    line = await readTask;
                 }
                 catch (OperationCanceledException)
                 {

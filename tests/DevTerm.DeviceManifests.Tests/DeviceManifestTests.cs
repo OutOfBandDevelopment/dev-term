@@ -89,6 +89,23 @@ public sealed class DeviceManifestTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void FromXml_DocumentWithAnInternalDtdEntity_DoesNotExpandIt()
+    {
+        // Regression test for bug 049: a manifest's device.xml is untrusted input, and
+        // XmlSerializer.Deserialize(TextReader) applied no DtdProcessing restriction, so an
+        // internal-entity DOCTYPE (billion-laughs style) could expand into the deserialized model.
+        // See docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        const string maliciousXml = """
+            <?xml version="1.0"?>
+            <!DOCTYPE DeviceManifest [<!ENTITY evil "expanded">]>
+            <DeviceManifest><Name>&evil;</Name></DeviceManifest>
+            """;
+
+        Assert.ThrowsExactly<InvalidOperationException>(() => DeviceManifestSerializer.FromXml(maliciousXml));
+    }
+
+    [TestMethod]
     public void ToXml_ThenFromXml_PreservesEverythingIncludingInlineUi()
     {
         var original = BuildKoradManifest(inlineUi: BuildKoradUi());
@@ -384,6 +401,40 @@ public sealed class DeviceManifestTests
         Assert.IsFalse(result.IsValid);
         Assert.Contains("UiFile", string.Join(" ", result.Errors));
         Assert.Contains("KaitaiFile", string.Join(" ", result.Errors));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Validate_StripChartHistoryLengthAboveTheHardMaximum_Warns()
+    {
+        // Regression test for bug 050: StripChartControl.HistoryLength came straight from the
+        // manifest with no upper bound, so a manifest could make the chart's per-sample queue grow
+        // without limit. See docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections =
+            [
+                new UiSection
+                {
+                    Controls =
+                    [
+                        new StripChartControl
+                        {
+                            Id = "trace",
+                            Label = "Trace",
+                            HistoryLength = StripChartState.MaxCapacity + 1,
+                            Channels = [new ChartChannel { Id = "value" }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid, "An excessive history length is clamped, not rejected.");
+        Assert.Contains($"Trace' declares a history length of {StripChartState.MaxCapacity + 1}", string.Join(" ", result.Warnings));
     }
 
     private static string CreateTempDirectory()
