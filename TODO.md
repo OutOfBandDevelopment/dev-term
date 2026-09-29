@@ -17,20 +17,6 @@ Completed work is logged by date under `docs/changes/`.
 - `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section
   in `docs/design/device-control-modules.md`. Not started.
 
-### Tektronix TDS2024
-
-- **Every `TRIGger:...?` query hangs (never replies) against this specific real TDS2024 unit** —
-  real-hardware confirmed 2026-09-25 (`docs/test/2026-09-25-18-57-22.md`): `TRIGger:MAIn:FREQuency?`
-  and `TRIGger:STATE?` (a much cheaper status query, ruling out "expensive measurement" as the
-  cause) both hung the full step timeout, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`,
-  `CH2?`) answered normally, including as the 3rd command in a sequence (ruling out a simple
-  "3rd command" positional issue). `tektronix-tds2024.json`'s own `Name` field notes this unit is
-  specifically "NOT the TDS2024B" — unconfirmed hypothesis that the `TRIGger` query family needs
-  that variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family
-  for now (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a
-  known-working `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare
-  framing, similar to the USBTMC framing bugs below.
-
 ### WPF layout review follow-ups (from 2026-09-25)
 
 - **Light theme Accent/Warning are below 4.5:1 as text colors** (4.1:1 and 3.3:1; Playback's `[tx]` and
