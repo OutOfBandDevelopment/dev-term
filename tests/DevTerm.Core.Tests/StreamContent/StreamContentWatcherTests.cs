@@ -203,6 +203,56 @@ public sealed class StreamContentWatcherTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void DeclaredImage_InAnIndefiniteLengthBlock_IsCapturedByItsOwnStructuralEndWithNoHeaderBytes()
+    {
+        // Regression test for bug 042: a hinted "#0" indefinite-length block used to be treated as
+        // NotABlock, so the "#0" header bytes were left in front of the payload and captured as part
+        // of it instead of being stripped. See docs/bugs/fixed/042-stream-watcher-indefinite-block.md.
+        var (watcher, _, captures) = Create();
+        var png = StreamContentSamples.Png();
+
+        watcher.ExpectResponse(StreamContentFormat.Image);
+        Feed(watcher, [.. StreamContentSamples.ScpiIndefiniteBlock(png), (byte)'\n'], chunkSize: 1);
+
+        Assert.HasCount(1, captures);
+        Assert.AreEqual(StreamContentKind.Png, captures[0].Kind);
+        Assert.IsTrue(captures[0].WasDeclared);
+        Assert.AreEqual(StreamCaptureEnd.Complete, captures[0].EndReason);
+        CollectionAssert.AreEqual(png, captures[0].Data);
+    }
+
+    [TestMethod]
+    public void DeclaredImage_InAnIndefiniteLengthBlockWithUnrecognizedBytes_EndsOnIdleTimeout()
+    {
+        var (watcher, time, captures) = Create();
+        byte[] payload = [1, 2, 3, 4, 5, 6];
+
+        watcher.ExpectResponse(StreamContentFormat.Image);
+        Feed(watcher, StreamContentSamples.ScpiIndefiniteBlock(payload));
+        time.Advance(_idle);
+
+        Assert.HasCount(1, captures);
+        Assert.AreEqual(StreamContentKind.UnknownImage, captures[0].Kind);
+        Assert.AreEqual(StreamCaptureEnd.IdleTimeout, captures[0].EndReason);
+        CollectionAssert.AreEqual(payload, captures[0].Data);
+    }
+
+    [TestMethod]
+    public void UndeclaredIndefiniteLengthBlockWrappingAnImage_CapturesExactlyThePayload()
+    {
+        var (watcher, _, captures) = Create();
+        var png = StreamContentSamples.Png();
+
+        Feed(watcher, [.. StreamContentSamples.ScpiIndefiniteBlock(png), (byte)'\n'], chunkSize: 7);
+
+        Assert.HasCount(1, captures);
+        Assert.AreEqual(StreamContentKind.Png, captures[0].Kind);
+        Assert.IsFalse(captures[0].WasDeclared);
+        CollectionAssert.AreEqual(png, captures[0].Data);
+    }
+
+    [TestMethod]
     public void DeclaredBinary_WithoutABlock_RunsUntilIdle()
     {
         var (watcher, time, captures) = Create();

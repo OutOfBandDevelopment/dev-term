@@ -74,7 +74,7 @@ public static class PlaybackText
 
     public static string FormatOffset(TimeSpan offset) =>
         offset.TotalHours >= 1
-            ? offset.ToString(@"h\:mm\:ss\.fff", CultureInfo.InvariantCulture)
+            ? $"{((int)offset.TotalHours).ToString(CultureInfo.InvariantCulture)}:{offset.ToString(@"mm\:ss\.fff", CultureInfo.InvariantCulture)}"
             : offset.ToString(@"mm\:ss\.fff", CultureInfo.InvariantCulture);
 
     /// <summary>

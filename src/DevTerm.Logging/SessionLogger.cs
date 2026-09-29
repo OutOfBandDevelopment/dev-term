@@ -19,7 +19,6 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
     private readonly DateTimeOffset _start;
     private readonly long _startTimestamp;
     private readonly Lock _gate = new();
-    private long _sequence;
     private IDisposable? _registration;
     private bool _disposed;
 
@@ -48,10 +47,12 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
     /// <summary>The file being written, when started by <see cref="Start"/>.</summary>
     public string? Path => _writer.Path;
 
-    /// <summary>How many captured records have been written so far.</summary>
-    public long RecordCount => Interlocked.Read(ref _sequence);
+    /// <summary>How many captured records have actually reached the log file so far.</summary>
+    public long RecordCount => _writer.RecordCount;
 
-    public bool IsActive => !_disposed;
+    /// <summary>False once disposed, or once a write to the underlying log file has failed (e.g. a
+    /// full disk) — see <see cref="SessionLogWriter.IsFaulted"/>.</summary>
+    public bool IsActive => !_disposed && !_writer.IsFaulted;
 
     /// <summary>
     /// Starts following <paramref name="session"/> (detaching from whichever one it followed
@@ -128,13 +129,15 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
                 return;
             }
 
-            // Sequence number and timestamp are taken under the same lock the line is written
-            // under, so file order, sequence order, and timestamp order always agree.
-            _writer.Write(() => new SessionLogRecord
+            // The timestamp is captured now, when the event actually happened; the sequence
+            // number is assigned by the writer once it's this record's turn to actually be
+            // written, so it never runs ahead of what's really reached the file.
+            var timestamp = _start + _clock.GetElapsedTime(_startTimestamp);
+            _writer.Write(sequence => new SessionLogRecord
             {
                 Kind = kind,
-                Sequence = Interlocked.Increment(ref _sequence),
-                Timestamp = _start + _clock.GetElapsedTime(_startTimestamp),
+                Sequence = sequence,
+                Timestamp = timestamp,
                 Data = data,
                 Text = text,
                 Connection = connection,

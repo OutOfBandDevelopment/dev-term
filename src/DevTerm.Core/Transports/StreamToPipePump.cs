@@ -24,6 +24,7 @@ public static class StreamToPipePump
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(writer);
 
+        Exception? error = null;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -35,8 +36,17 @@ public static class StreamToPipePump
                 {
                     bytesRead = await source.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException)
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
                 {
+                    // Expected: the transport is deliberately closing and cancelled the read.
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // A real read failure (TCP reset, USB-serial unplug) - the writer completes
+                    // with this exception so Session.PumpAsync's ReadAsync surfaces it instead of
+                    // reporting a clean, error-less hang-up.
+                    error = ex;
                     break;
                 }
 
@@ -47,7 +57,18 @@ public static class StreamToPipePump
 
                 writer.Advance(bytesRead);
 
-                var flushResult = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                FlushResult flushResult;
+                try
+                {
+                    flushResult = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Expected: a paused pipe (backpressure) blocks FlushAsync until either a
+                    // reader catches up or the transport deliberately closes and cancels us.
+                    break;
+                }
+
                 if (flushResult.IsCompleted || flushResult.IsCanceled)
                 {
                     break;
@@ -56,7 +77,7 @@ public static class StreamToPipePump
         }
         finally
         {
-            await writer.CompleteAsync().ConfigureAwait(false);
+            await writer.CompleteAsync(error).ConfigureAwait(false);
         }
     }
 }

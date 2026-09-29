@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -55,7 +56,22 @@ public partial class App : Application
         DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
         var cliOptions = new CliOptions();
         var layeredConfig = earlyConfigBuilder.Build();
-        DevTermConfiguration.Bind(layeredConfig, cliOptions);
+
+        // A bad value on the command line, in an environment variable, or in a corrupt/truncated
+        // saved profile (e.g. --baud fast) throws from inside the configuration binder before
+        // validation ever runs - see docs/bugs/fixed/032-startup-bind-failure-crash.md. cliOptions is
+        // reset to a clean default so it doesn't carry whatever partial state a failed Bind left
+        // behind into the Device Profiles editor below.
+        string? bindError = null;
+        try
+        {
+            DevTermConfiguration.Bind(layeredConfig, cliOptions);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or FormatException or InvalidDataException)
+        {
+            cliOptions = new CliOptions();
+            bindError = ex.Message;
+        }
 
         // The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this
         // run, else the saved View > Theme choice, else "system" - applied before the first window
@@ -72,10 +88,18 @@ public partial class App : Application
             }
         };
 
-        var validation = new CliOptionsValidator().Validate(null, cliOptions);
-        if (validation.Failed)
+        if (bindError is null)
         {
-            var editor = new DeviceProfilesWindow(new ConnectionProfileStore(), cliOptions, string.Join(" ", validation.Failures));
+            var validation = new CliOptionsValidator().Validate(null, cliOptions);
+            if (validation.Failed)
+            {
+                bindError = string.Join(" ", validation.Failures);
+            }
+        }
+
+        if (bindError is not null)
+        {
+            var editor = new DeviceProfilesWindow(new ConnectionProfileStore(), cliOptions, bindError);
             var accepted = editor.ShowDialog();
             if (accepted != true || editor.Result is null)
             {

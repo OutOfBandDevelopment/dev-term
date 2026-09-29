@@ -108,8 +108,15 @@ public static class De5000Framer
 
         var secondaryQuantityCode = frame[10];
         var secondaryQuantity = LookUp(_secondaryQuantities, secondaryQuantityCode);
-        var secondaryValue = (frame[11] * 0x100 + frame[12]) * Math.Pow(10, -(frame[13] & 0b0000_0111));
         var secondaryUnit = LookUp(_units, (byte)((frame[13] & 0b1111_1000) >> 3));
+
+        // theta (deg) and % are the only secondary units that can go negative (a capacitor's phase
+        // angle, for one) - the reference implementation sign-extends the raw 16-bit word only for
+        // those two, so an unsigned D/Q/ESR reading isn't misread as negative. See
+        // docs/bugs/fixed/005-de5000-negative-secondary.md.
+        var secondaryRaw = frame[11] * 0x100 + frame[12];
+        double secondaryMagnitude = secondaryUnit is "%" or "deg" ? (short)secondaryRaw : secondaryRaw;
+        var secondaryValue = secondaryMagnitude * Math.Pow(10, -(frame[13] & 0b0000_0111));
         var secondaryStatus = LookUp(_status, (byte)(frame[14] & 0b0000_0111));
 
         parsed = new De5000Frame(

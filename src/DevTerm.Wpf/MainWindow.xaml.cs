@@ -39,10 +39,27 @@ public partial class MainWindow : Window
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
 
+    // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on the OS
+    // connect timeout) can still be pending when the user switches to a *different* profile; without
+    // this, the earlier attempt's failure handler ran anyway once it finally resolved - using the
+    // by-then-stale _cliOptions - and stomped the UI back over whatever the newer attempt had already
+    // set. Ports the TUI's switchCts (see docs/bugs/017-wpf-profile-switch-no-supersede.md).
+    private CancellationTokenSource? _switchCts;
+
     // Device > Stream Monitor...: created on first use, then kept (and moved along on every profile
     // switch) for this window's lifetime - see EnsureStreamMonitor.
     private StreamMonitor? _streamMonitor;
     private StreamMonitorWindow? _streamMonitorWindow;
+
+    // Every open control panel (K8055, Busylight, RadexOne, ZoomH4n, De5000, SCPI, a device manifest
+    // panel) holds an IControlSurface built against _session and, for most of them, a structured
+    // presenter from _catalog - both go stale the moment SwitchProfileAsync disposes the old session,
+    // so every panel gets closed there instead of being left to fail silently against a dead
+    // transport. See docs/bugs/016-wpf-panels-bound-to-old-session.md.
+    private readonly List<Window> _openControlPanels = [];
+
+    /// <summary>Every currently open control panel window, for tests to assert against.</summary>
+    internal IReadOnlyList<Window> OpenControlPanels => _openControlPanels;
 
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
@@ -339,10 +356,26 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Tracks a just-created control panel window (K8055/Busylight/RadexOne/ZoomH4n/De5000/SCPI/a
+    /// device manifest panel) so <see cref="SwitchProfileAsync"/> can close it — its
+    /// <see cref="IControlSurface"/> and structured presenter are both bound to the session/catalog
+    /// active when it was opened, and go stale the moment those are replaced. Removed from
+    /// <see cref="_openControlPanels"/> as soon as the window closes for any other reason too.
+    /// </summary>
+    private void TrackControlPanel(Window window)
+    {
+        _openControlPanels.Add(window);
+        window.Closed += (_, _) => _openControlPanels.Remove(window);
+    }
+
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
     // -open _session rather than opening a second competing connection to the same physical device.
-    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e)
+    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e) => OpenK8055ControlPanel();
+
+    /// <summary>Split from the click handler so tests can drive it and assert against <see cref="OpenControlPanels"/> without simulating a menu click.</summary>
+    internal ControlPanelWindow OpenK8055ControlPanel()
     {
         var structuredSource = _catalog.TryGet("k8055", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
@@ -352,7 +385,9 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
+        return window;
     }
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
@@ -368,6 +403,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -384,6 +420,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -400,6 +437,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -418,6 +456,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -448,7 +487,7 @@ public partial class MainWindow : Window
         var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
         if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
         {
-            ManifestPickerWindow.OpenPanel(this, _session, manifest);
+            TrackControlPanel(ManifestPickerWindow.OpenPanel(this, _session, manifest));
         }
     }
 
@@ -540,8 +579,14 @@ public partial class MainWindow : Window
     // this can't finish before the click handler returns - fire-and-forget (observed). Shares its
     // detect logic with the TUI (ScpiAutoDetect); reports progress while it waits (a wait cursor and
     // a status line) and what it found afterward, using the connection's configured timeout.
-    private async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
+    /// <summary>internal so a test can drive the auto-detect-during-a-profile-switch race directly.</summary>
+    internal async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
+        // Captured so that if SwitchProfileAsync replaces _session/_catalog while this detection is
+        // in flight, the completion below can tell and not open a panel pairing the NEW _session with
+        // structuredSource from the OLD catalog - part of bug 016, see
+        // docs/bugs/016-wpf-panels-bound-to-old-session.md's "Related" note.
+        var sessionAtStart = _session;
         var timeout = TimeSpan.FromMilliseconds(_cliOptions.ScpiAutoDetectTimeoutMs);
         AppendOutput(ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);
 
@@ -550,7 +595,7 @@ public partial class MainWindow : Window
         Cursor = System.Windows.Input.Cursors.Wait;
         try
         {
-            result = await ScpiAutoDetect.DetectAsync(_session, structuredSource, timeout);
+            result = await ScpiAutoDetect.DetectAsync(sessionAtStart, structuredSource, timeout);
         }
         catch (Exception ex)
         {
@@ -562,6 +607,13 @@ public partial class MainWindow : Window
         finally
         {
             Cursor = previousCursor;
+        }
+
+        if (!ReferenceEquals(_session, sessionAtStart))
+        {
+            // The profile changed while auto-detect was waiting; the detected profile belongs to a
+            // connection that's already closed, so there's nothing live to open a panel against.
+            return;
         }
 
         AppendOutput(result.Describe(timeout), OutputKind.Status);
@@ -585,6 +637,7 @@ public partial class MainWindow : Window
         {
             Owner = this,
         };
+        TrackControlPanel(window);
         window.Show();
     }
 
@@ -637,6 +690,10 @@ public partial class MainWindow : Window
     /// <returns><see langword="true"/> if the new connection opened successfully.</returns>
     internal async Task<bool> SwitchProfileAsync(CliOptions newOptions)
     {
+        _switchCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _switchCts = cts;
+
         DevTermSessionBuilder.Result built;
         try
         {
@@ -648,18 +705,47 @@ public partial class MainWindow : Window
             return false;
         }
 
-        _session.Output -= OnSessionOutput;
-        _session.Disconnected -= OnSessionDisconnected;
-        await _session.CloseAsync();
-        await _session.DisposeAsync();
+        var mySession = built.Session;
 
-        _session = built.Session;
+        // Captured now, before any await: a second, overlapping switch reassigns the _session
+        // field below (once its own build/close/dispose completes) while this call is still
+        // suspended closing/disposing its OWN old session. Reading _session again after that
+        // await - instead of this local - would tear down whatever the OTHER call had already
+        // installed there (possibly its brand-new, just-opened session) rather than the session
+        // this call actually meant to replace.
+        var oldSession = _session;
+
+        // Every open control panel's IControlSurface (and, for most, its structured presenter) is
+        // bound to the session/catalog being replaced below - closing them here, rather than leaving
+        // them open against a disposed session, is what fixes bug 016. ToArray: Closed removes each
+        // one from _openControlPanels as it fires, which would otherwise mutate the list mid-iteration.
+        foreach (var panel in _openControlPanels.ToArray())
+        {
+            panel.Close();
+        }
+
+        oldSession.Output -= OnSessionOutput;
+        oldSession.Disconnected -= OnSessionDisconnected;
+        await oldSession.CloseAsync();
+        await oldSession.DisposeAsync();
+
+        if (!ReferenceEquals(_switchCts, cts))
+        {
+            // Superseded while closing the old session, before ever adopting mySession as current -
+            // a newer switch has already moved _session on (possibly to its own, by-now-open
+            // session). Never having been subscribed or assigned to _session, mySession just needs
+            // disposing.
+            await mySession.DisposeAsync();
+            return false;
+        }
+
+        _session = mySession;
         _catalog = built.Catalog;
         _cliOptions = newOptions;
-        _streamMonitor?.SetSession(_session, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
+        _streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
         ParserBox.SelectedItem = newOptions.EffectiveParser;
-        _session.Output += OnSessionOutput;
-        _session.Disconnected += OnSessionDisconnected;
+        mySession.Output += OnSessionOutput;
+        mySession.Disconnected += OnSessionDisconnected;
         FollowLogging();
 
         // A different profile means a different device/connection - clearing prior output avoids
@@ -673,12 +759,36 @@ public partial class MainWindow : Window
         RefreshConnectionUi(ConnectionState.Opening);
         try
         {
-            await _session.OpenAsync();
+            await mySession.OpenAsync(cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // Superseded by a newer switch before this one finished connecting - that newer attempt
+            // owns the UI now, so this stale one reports nothing.
+            return false;
         }
         catch (Exception ex)
         {
+            if (!ReferenceEquals(_switchCts, cts))
+            {
+                // Superseded between the failure and this catch running - don't stomp the newer
+                // attempt's state with a stale one.
+                return false;
+            }
+
             AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
             RefreshConnectionUi();
+            return false;
+        }
+
+        if (!ReferenceEquals(_switchCts, cts))
+        {
+            // Connected, but superseded in the meantime - close it rather than adopting a stray
+            // connection as current.
+            mySession.Output -= OnSessionOutput;
+            mySession.Disconnected -= OnSessionDisconnected;
+            await mySession.CloseAsync();
+            await mySession.DisposeAsync();
             return false;
         }
 

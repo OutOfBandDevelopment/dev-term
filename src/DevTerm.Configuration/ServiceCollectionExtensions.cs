@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
                 o.Mode = cliOptions.Listen ? TcpTransportMode.Listener : TcpTransportMode.Client;
                 o.Host = cliOptions.Host;
                 o.Port = int.TryParse(cliOptions.Port, out var tcpPort) ? tcpPort : 0;
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
@@ -83,6 +84,8 @@ public static class ServiceCollectionExtensions
                 {
                     o.NotifyCharacteristicUuid = notifyUuid;
                 }
+
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
             });
 
             // Must come after AddBleTransport() - see BlePlatformAdapterLoader's doc comment for why

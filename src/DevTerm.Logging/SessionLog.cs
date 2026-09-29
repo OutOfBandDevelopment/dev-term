@@ -25,8 +25,28 @@ public sealed class SessionLog
     /// <summary>Problems tolerated while loading (a torn final line from a capture that was cut short), for a front end to mention.</summary>
     public IReadOnlyList<string> Warnings { get; private init; } = [];
 
-    /// <summary>The time every playback offset is measured from: the first record's timestamp, or the header's <see cref="SessionLogHeader.Created"/> for an empty log.</summary>
-    public DateTimeOffset Start => _records.Count > 0 ? _records[0].Timestamp : Header.Created;
+    /// <summary>
+    /// The time every playback offset is measured from: the first record with a real timestamp, or
+    /// the header's <see cref="SessionLogHeader.Created"/> if the log is empty or every record is an
+    /// <see cref="SessionLogRecordKind.Unknown"/> one with no <c>"t"</c> field (which parses as
+    /// <see cref="DateTimeOffset.MinValue"/> - using that as <see cref="Start"/> would make every
+    /// later record's offset come out as billions of seconds).
+    /// </summary>
+    public DateTimeOffset Start
+    {
+        get
+        {
+            foreach (var record in _records)
+            {
+                if (record.Kind != SessionLogRecordKind.Unknown || record.Timestamp != DateTimeOffset.MinValue)
+                {
+                    return record.Timestamp;
+                }
+            }
+
+            return Header.Created;
+        }
+    }
 
     /// <summary>How far into the log <paramref name="index"/>'s record is — never negative, even if a hand-edited file's timestamps go backwards.</summary>
     public TimeSpan OffsetOf(int index)

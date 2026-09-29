@@ -32,6 +32,14 @@ public static class ScpiProfileCatalog
         Converters = { new JsonStringEnumConverter() },
     };
 
+    private static readonly List<ScpiInstrumentProfile> _all;
+    private static readonly List<string> _loadErrors;
+
+    static ScpiProfileCatalog()
+    {
+        _all = Load(AppContext.BaseDirectory, out _loadErrors);
+    }
+
     /// <summary>
     /// Every profile loaded from the bundled <c>Profiles/</c> folder, the drop-in <c>ScpiProfiles/</c>
     /// folder next to the executable, and a per-user <c>~/.dev-term/scpi-profiles</c> folder, in that
@@ -39,7 +47,15 @@ public static class ScpiProfileCatalog
     /// device manifests/connection profiles, computed locally here rather than shared from
     /// <c>DevTerm.Configuration</c> (which references this project, not the other way around).
     /// </summary>
-    public static IReadOnlyList<ScpiInstrumentProfile> All { get; } = Load(AppContext.BaseDirectory);
+    public static IReadOnlyList<ScpiInstrumentProfile> All => _all;
+
+    /// <summary>
+    /// One entry per profile file that failed to load (bad JSON, unreadable file), skipped rather
+    /// than left to fail the whole catalog — see
+    /// docs/bugs/fixed/023-scpi-profile-catalog-bad-file.md. A picker/settings screen can surface
+    /// this; nothing does yet.
+    /// </summary>
+    public static IReadOnlyList<string> LoadErrors => _loadErrors;
 
     /// <summary>
     /// Never auto-selected (<see cref="ScpiInstrumentProfile.IdnPattern"/> is null) — the "Generic
@@ -67,12 +83,19 @@ public static class ScpiProfileCatalog
         return null;
     }
 
-    internal static List<ScpiInstrumentProfile> Load(string baseDirectory)
+    internal static List<ScpiInstrumentProfile> Load(string baseDirectory) => Load(baseDirectory, out _);
+
+    /// <summary>
+    /// Same as <see cref="Load(string)"/>, but also reports which files (if any) failed to load
+    /// instead of throwing — see <see cref="LoadFrom"/>.
+    /// </summary>
+    internal static List<ScpiInstrumentProfile> Load(string baseDirectory, out List<string> errors)
     {
         var profiles = new List<ScpiInstrumentProfile>();
-        LoadFrom(Path.Combine(baseDirectory, "Profiles"), profiles);
-        LoadFrom(Path.Combine(baseDirectory, _dropInFolderName), profiles);
-        LoadFrom(UserProfilesDirectory, profiles);
+        errors = [];
+        LoadFrom(Path.Combine(baseDirectory, "Profiles"), profiles, errors);
+        LoadFrom(Path.Combine(baseDirectory, _dropInFolderName), profiles, errors);
+        LoadFrom(UserProfilesDirectory, profiles, errors);
         return profiles;
     }
 
@@ -85,7 +108,7 @@ public static class ScpiProfileCatalog
     internal static string UserProfilesDirectory { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dev-term", "scpi-profiles");
 
-    private static void LoadFrom(string directory, List<ScpiInstrumentProfile> profiles)
+    private static void LoadFrom(string directory, List<ScpiInstrumentProfile> profiles, List<string> errors)
     {
         if (!Directory.Exists(directory))
         {
@@ -94,14 +117,42 @@ public static class ScpiProfileCatalog
 
         foreach (var file in Directory.EnumerateFiles(directory, "*.json").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
-            var json = File.ReadAllText(file);
-            var profile = JsonSerializer.Deserialize<ScpiInstrumentProfile>(json, _serializerOptions);
-            if (profile is not null)
+            try
             {
+                var json = File.ReadAllText(file);
+                var profile = JsonSerializer.Deserialize<ScpiInstrumentProfile>(json, _serializerOptions);
+                if (profile is null)
+                {
+                    continue;
+                }
+
+                if (FindBadNumericLimits(profile) is { } badParameter)
+                {
+                    errors.Add($"{Path.GetFileName(file)}: parameter '{badParameter.Name}' has Minimum ({badParameter.Minimum}) greater than Maximum ({badParameter.Maximum}).");
+                    continue;
+                }
+
                 profiles.Add(profile);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                errors.Add($"{Path.GetFileName(file)}: {ex.Message}");
             }
         }
     }
+
+    /// <summary>
+    /// The first <see cref="ScpiParameterKind.Numeric"/> parameter, across every command, whose
+    /// <see cref="ScpiParameterDefinition.Minimum"/> and <see cref="ScpiParameterDefinition.Maximum"/>
+    /// are both set with <c>Minimum &gt; Maximum</c> — <c>Math.Clamp</c> throws
+    /// <see cref="ArgumentException"/> for that combination, so a profile like this is rejected here
+    /// rather than reaching a live control panel invocation. See
+    /// docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+    /// </summary>
+    private static ScpiParameterDefinition? FindBadNumericLimits(ScpiInstrumentProfile profile) =>
+        profile.Commands
+            .SelectMany(command => command.Parameters)
+            .FirstOrDefault(parameter => parameter is { Kind: ScpiParameterKind.Numeric, Minimum: { } min, Maximum: { } max } && min > max);
 
     private static ScpiInstrumentProfile BuildGenericProfile() => new()
     {

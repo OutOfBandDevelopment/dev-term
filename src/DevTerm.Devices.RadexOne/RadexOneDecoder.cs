@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using DevTerm.Core.Presenters;
@@ -11,8 +10,9 @@ namespace DevTerm.Devices.RadexOne;
 /// however many transport reads a reply happens to arrive in — a real serial connection can split
 /// even a single short reply across more than one <c>Session.Output</c> event (see CLAUDE.md's
 /// "RawPresenter is only trustworthy for a genuinely terminatorless device" note: the device is a
-/// plain virtual COM port, 2400 8N1, real-hardware confirmed 2026-09-25, not the USB HID device an
-/// earlier draft of the proposal wrongly assumed, so there is no fixed-size report to rely on to
+/// plain virtual COM port, 9600 8N1, real-hardware confirmed 2026-09-26 (correcting an earlier,
+/// unverified "2400 baud" claim - see docs/bugs/fixed/061-radexone-wrong-baud-rate.md), not the USB
+/// HID device an earlier draft of the proposal wrongly assumed, so there is no fixed-size report to rely on to
 /// mark a reply's boundary) — then parses each complete framer packet (see
 /// <see cref="RadexOneFramer"/>) once enough bytes have arrived. A byte sequence that can't start a
 /// valid reply (wrong prefix, or a checksum mismatch once a full candidate packet is buffered) is
@@ -58,7 +58,14 @@ public sealed class RadexOneDecoder : IPresenter
             }
 
             var header = CollectionsMarshal.AsSpan(_buffer)[..RadexOneFramer.HeaderLength];
-            var extensionLength = BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(4, 2));
+
+            if (!RadexOneFramer.TryValidateHeader(header, out var extensionLength))
+            {
+                (results ??= []).Add("RADEX-ONE: unrecognized reply (header checksum mismatch or wrong prefix)");
+                _buffer.RemoveAt(0);
+                continue;
+            }
+
             var totalLength = RadexOneFramer.HeaderLength + extensionLength;
 
             if (_buffer.Count < totalLength)
@@ -96,8 +103,10 @@ public sealed class RadexOneDecoder : IPresenter
             RadexOneCommand.ReadSerialVersion => $"RADEX-ONE: {DecodeAscii(RadexOneExtensionCodec.ReadSerialVersionPayload(extension))}",
             RadexOneCommand.ReadSettings when RadexOneExtensionCodec.TryParseReadSettings(extension, out var alarmMode, out var threshold) =>
                 FormatSettings(alarmMode, threshold),
-            RadexOneCommand.WriteSettings => "RADEX-ONE: write settings acknowledged",
-            RadexOneCommand.ResetAccumulated => "RADEX-ONE: reset accumulated acknowledged",
+            RadexOneCommand.WriteSettings when RadexOneExtensionCodec.TryVerifyWriteSettingsAck(extension) =>
+                "RADEX-ONE: write settings acknowledged",
+            RadexOneCommand.ResetAccumulated when RadexOneExtensionCodec.TryVerifyWriteSettingsAck(extension) =>
+                "RADEX-ONE: reset accumulated acknowledged",
             _ => $"RADEX-ONE: reply command 0x{commandCode:X4}, {extension.Length} byte(s)",
         };
     }

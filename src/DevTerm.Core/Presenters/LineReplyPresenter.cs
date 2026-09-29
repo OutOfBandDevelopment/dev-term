@@ -19,10 +19,15 @@ namespace DevTerm.Core.Presenters;
 /// KA3005P/KA6003P) is handled by <see cref="ConfigureTerminator"/> with an empty terminator:
 /// whatever arrived in one <see cref="Render"/> call then counts as one complete line.
 /// </remarks>
-public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IReplyTracker
+public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IReplyTracker, IResettablePresenter
 {
     private const byte _lineFeed = (byte)'\n';
     private const byte _carriageReturn = (byte)'\r';
+
+    // Matches AsciiPresenter.DefaultMaxLineLength - an unbounded buffer let a hinted binary block (a
+    // screen dump with no CR/LF in it) or a wedged device grow this list forever. See
+    // docs/bugs/fixed/006-reply-queue-desync.md.
+    private const int _maxBufferLength = 4096;
 
     private readonly List<byte> _buffer = [];
     private readonly ConcurrentQueue<string> _pendingReplyIds = new();
@@ -37,6 +42,40 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     protected virtual bool RendersLines => true;
 
     public void QuerySent(string replyIndicatorId) => _pendingReplyIds.Enqueue(replyIndicatorId);
+
+    public void Cancel(string replyIndicatorId)
+    {
+        // Removes the most recently registered occurrence of this id - the one QuerySent just
+        // added - rather than the oldest, since a caller cancels the query it just sent, not
+        // necessarily an older one still legitimately pending ahead of it.
+        var items = _pendingReplyIds.ToArray();
+        for (var i = items.Length - 1; i >= 0; i--)
+        {
+            if (items[i] != replyIndicatorId)
+            {
+                continue;
+            }
+
+            _pendingReplyIds.Clear();
+            for (var j = 0; j < items.Length; j++)
+            {
+                if (j != i)
+                {
+                    _pendingReplyIds.Enqueue(items[j]);
+                }
+            }
+
+            return;
+        }
+    }
+
+    /// <summary>Clears the pending-reply queue and any partial line — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    public void Reset()
+    {
+        _buffer.Clear();
+        _pendingCr = false;
+        _pendingReplyIds.Clear();
+    }
 
     /// <summary>Whether the device's replies will ever contain a CR/LF terminator at all — an empty <paramref name="terminator"/> switches to one-line-per-read mode (see remarks).</summary>
     public void ConfigureTerminator(string terminator) => _terminatorless = string.IsNullOrEmpty(terminator);
@@ -72,6 +111,10 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
                 }
 
                 _buffer.Add(b);
+                if (_buffer.Count >= _maxBufferLength)
+                {
+                    Complete(lines);
+                }
             }
         }
 

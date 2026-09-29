@@ -66,7 +66,7 @@ public static class DevTermConfiguration
 
     /// <summary>Overwrites the untracked default profile (<see cref="LocalSettingsFileName"/>) with the connection-relevant subset of <paramref name="options"/> — see <see cref="ToProfileJson"/>.</summary>
     public static void SaveLocalProfile(CliOptions options) =>
-        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, LocalSettingsFileName), ToProfileJson(options));
+        AtomicFile.WriteAllText(Path.Combine(AppContext.BaseDirectory, LocalSettingsFileName), ToProfileJson(options));
 
     /// <summary>
     /// Projects the connection-relevant subset of <paramref name="options"/> — transport settings,

@@ -48,9 +48,10 @@ public static class RadexOneCommand
 /// packets (Read Data, Read Settings, Write Settings, both directions) byte-for-byte against this
 /// exact formula — every one matched, including the one that requires the modulo to wrap.</para>
 ///
-/// <para>The device is a plain virtual COM port (2400 8N1, real-hardware confirmed 2026-09-25), not a
-/// USB HID device as an earlier draft of the proposal wrongly claimed, so there is no report wrapping
-/// to account for here.</para>
+/// <para>The device is a plain virtual COM port (9600 8N1, real-hardware confirmed 2026-09-26,
+/// correcting an earlier, unverified "2400 baud" claim - see
+/// docs/bugs/fixed/061-radexone-wrong-baud-rate.md), not a USB HID device as an earlier draft of the
+/// proposal wrongly claimed, so there is no report wrapping to account for here.</para>
 /// </summary>
 public static class RadexOneFramer
 {
@@ -99,6 +100,40 @@ public static class RadexOneFramer
         BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(_checksumOffset), ComputeChecksum(packet.AsSpan(0, _checksumCoveredLength)));
         extension.CopyTo(packet.AsSpan(_extensionOffset));
         return packet;
+    }
+
+    /// <summary>
+    /// Validates just the fixed-size header (prefix, type marker, header checksum) as soon as
+    /// <see cref="HeaderLength"/> bytes are buffered, without waiting for the full
+    /// <paramref name="header"/>'s declared <c>ExtensionLength</c> worth of bytes to arrive first —
+    /// a stream-buffering reader (see <see cref="RadexOneDecoder"/>) needs to reject a bogus header
+    /// (e.g. line noise that happens to start with the prefix bytes, with a garbage length up to
+    /// 65,535) immediately rather than stalling until that many bytes accumulate (see
+    /// docs/bugs/fixed/022-radexone-false-header-stall.md). Returns the declared
+    /// <paramref name="extensionLength"/> on success so the caller knows how many more bytes to wait
+    /// for before the extension itself can be parsed.
+    /// </summary>
+    public static bool TryValidateHeader(ReadOnlySpan<byte> header, out ushort extensionLength)
+    {
+        extensionLength = 0;
+
+        if (header.Length < HeaderLength || header[0] != _inboundPrefix0 || header[1] != _inboundPrefix1)
+        {
+            return false;
+        }
+
+        if (BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(2, 2)) != _inboundTypeMarker)
+        {
+            return false;
+        }
+
+        if (BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(_checksumOffset, 2)) != ComputeChecksum(header[.._checksumCoveredLength]))
+        {
+            return false;
+        }
+
+        extensionLength = BinaryPrimitives.ReadUInt16LittleEndian(header.Slice(4, 2));
+        return true;
     }
 
     /// <summary>

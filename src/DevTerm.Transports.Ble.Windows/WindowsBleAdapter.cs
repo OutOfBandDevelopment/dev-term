@@ -13,6 +13,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
 {
     private readonly BleTransportOptions _options;
     private BluetoothLEDevice? _device;
+    private GattDeviceService? _service;
     private GattCharacteristic? _writeCharacteristic;
     private GattCharacteristic? _notifyCharacteristic;
 
@@ -31,6 +32,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
         var device = await BluetoothLEDevice.FromIdAsync(_options.DeviceId).AsTask(cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"No BLE device found for id '{_options.DeviceId}'.");
 
+        GattDeviceService? service = null;
         try
         {
             var serviceUuid = Guid.Parse(_options.ServiceUuid);
@@ -43,7 +45,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
                 throw new InvalidOperationException($"BLE service '{_options.ServiceUuid}' was not found on device '{_options.DeviceId}'.");
             }
 
-            var service = servicesResult.Services[0];
+            service = servicesResult.Services[0];
 
             var writeResult = await service.GetCharacteristicsForUuidAsync(writeUuid).AsTask(cancellationToken).ConfigureAwait(false);
             if (writeResult.Status != GattCommunicationStatus.Success || writeResult.Characteristics.Count == 0)
@@ -75,9 +77,11 @@ public sealed class WindowsBleAdapter : IBleAdapter
             _notifyCharacteristic = notifyCharacteristic;
             device.ConnectionStatusChanged += OnConnectionStatusChanged;
             _device = device;
+            _service = service;
         }
         catch
         {
+            service?.Dispose();
             device.Dispose();
             throw;
         }
@@ -97,14 +101,19 @@ public sealed class WindowsBleAdapter : IBleAdapter
             ? GattWriteOption.WriteWithoutResponse
             : GattWriteOption.WriteWithResponse;
 
-        var status = await _writeCharacteristic
-            .WriteValueAsync(data.ToArray().AsBuffer(), writeOption)
-            .AsTask(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (status != GattCommunicationStatus.Success)
+        // A without-response write is limited to one ATT packet - split anything larger instead of
+        // letting the stack fail or silently truncate it. See docs/bugs/fixed/026-ble-writes-not-mtu-chunked.md.
+        foreach (var chunk in BleWriteChunker.Chunk(data, _options.MaxWriteChunkSize))
         {
-            throw new IOException($"BLE write failed: {status}.");
+            var status = await _writeCharacteristic
+                .WriteValueAsync(chunk.ToArray().AsBuffer(), writeOption)
+                .AsTask(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (status != GattCommunicationStatus.Success)
+            {
+                throw new IOException($"BLE write failed: {status}.");
+            }
         }
     }
 
@@ -141,6 +150,12 @@ public sealed class WindowsBleAdapter : IBleAdapter
         }
 
         _writeCharacteristic = null;
+
+        if (_service is not null)
+        {
+            _service.Dispose();
+            _service = null;
+        }
 
         if (_device is not null)
         {

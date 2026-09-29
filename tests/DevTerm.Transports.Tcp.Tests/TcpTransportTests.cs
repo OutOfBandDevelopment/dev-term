@@ -12,8 +12,8 @@ namespace DevTerm.Transports.Tcp.Tests;
 [TestClass]
 public sealed class TcpTransportTests
 {
-    private static IOptions<TcpTransportOptions> Options(TcpTransportMode mode, string? host = "device.local", int port = 502) =>
-        Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = mode, Host = host, Port = port });
+    private static IOptions<TcpTransportOptions> Options(TcpTransportMode mode, string? host = "device.local", int port = 502, int writeTimeoutMs = 5000) =>
+        Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = mode, Host = host, Port = port, WriteTimeoutMs = writeTimeoutMs });
 
     /// <summary>
     /// A connection double whose <see cref="ITcpConnection.Stream"/> is backed by a real
@@ -120,7 +120,26 @@ public sealed class TcpTransportTests
         var payload = new byte[] { 0x01, 0x02, 0x03 };
         await transport.WriteAsync(payload, TestContext.CancellationToken);
 
-        connection.Verify(c => c.Write(payload, 0, payload.Length), Times.Once);
+        connection.Verify(c => c.WriteAsync(payload, It.IsAny<CancellationToken>()), Times.Once);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task WriteAsync_ConnectionNeverDrains_ThrowsTimeoutExceptionAfterWriteTimeoutMs()
+    {
+        var (connection, _) = CreateConnection();
+        connection.Setup(c => c.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .Returns<ReadOnlyMemory<byte>, CancellationToken>((_, ct) => Task.Delay(Timeout.Infinite, ct));
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, writeTimeoutMs: 50));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => transport.WriteAsync(new byte[] { 1 }, TestContext.CancellationToken));
 
         await transport.CloseAsync(TestContext.CancellationToken);
     }

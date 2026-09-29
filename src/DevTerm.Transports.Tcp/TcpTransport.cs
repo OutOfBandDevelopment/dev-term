@@ -103,32 +103,50 @@ public sealed class TcpTransport : ITransport
         State = ConnectionState.Closing;
 
         _pumpCts?.Cancel();
-        if (_pumpTask is not null)
+        try
         {
-            await _pumpTask.ConfigureAwait(false);
+            if (_pumpTask is not null)
+            {
+                await _pumpTask.ConfigureAwait(false);
+            }
         }
+        catch (OperationCanceledException)
+        {
+            // Expected: cancelling the pump while it's blocked flushing into a paused pipe can
+            // surface as the pump task itself completing Canceled rather than completing normally.
+        }
+        finally
+        {
+            _pumpCts?.Dispose();
+            _pumpCts = null;
+            _pumpTask = null;
+            _pipe = null;
 
-        _pumpCts?.Dispose();
-        _pumpCts = null;
-        _pumpTask = null;
-        _pipe = null;
+            _connection.Dispose();
+            _connection = null;
 
-        _connection.Dispose();
-        _connection = null;
-
-        State = ConnectionState.Closed;
+            State = ConnectionState.Closed;
+        }
     }
 
-    public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
+    public async Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (_connection is null || State != ConnectionState.Open)
         {
             throw new InvalidOperationException("The TCP transport is not open.");
         }
 
-        var buffer = data.ToArray();
-        _connection.Write(buffer, 0, buffer.Length);
-        return Task.CompletedTask;
+        using var timeoutCts = new CancellationTokenSource(_options.Value.WriteTimeoutMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Writing to the TCP connection timed out after {_options.Value.WriteTimeoutMs} ms.");
+        }
     }
 
     public async ValueTask DisposeAsync()

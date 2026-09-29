@@ -8,10 +8,11 @@ using Microsoft.Extensions.Options;
 namespace DevTerm.Devices.RadexOne.Tests;
 
 /// <summary>
-/// Opt-in test against a real Radex One over its virtual COM port (2400 8-N-1, no handshake — real-
-/// hardware confirmed 2026-09-25 on COM8; see docs/design/proposals/radex-one-protocol.md). Same
-/// in-process pattern as <c>DevTerm.Devices.ZoomH4n.Tests.RealHardwareZoomH4nTests</c>: constructs a
-/// real <see cref="SerialTransport"/> directly, parameterized entirely via
+/// Opt-in test against a real Radex One over its virtual COM port (9600 8-N-1, no handshake — real-
+/// hardware confirmed 2026-09-26 on COM8, correcting an earlier, unverified "2400 baud" claim; see
+/// docs/bugs/fixed/061-radexone-wrong-baud-rate.md and docs/design/proposals/radex-one-protocol.md).
+/// Same in-process pattern as <c>DevTerm.Devices.ZoomH4n.Tests.RealHardwareZoomH4nTests</c>: constructs
+/// a real <see cref="SerialTransport"/> directly, parameterized entirely via
 /// <c>devterm.runsettings</c> so a COM port reassignment doesn't require a code change.
 ///
 /// <para>An earlier draft of this module was built on a wrong "confirmed directly... USB HID device"
@@ -56,7 +57,7 @@ public sealed class RealHardwareRadexOneTests
         var options = Options.Create(new SerialTransportOptions
         {
             PortName = port,
-            BaudRate = 2400,
+            BaudRate = 9600,
             DataBits = 8,
             Parity = Parity.None,
             StopBits = StopBits.One,

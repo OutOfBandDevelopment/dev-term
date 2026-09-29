@@ -56,9 +56,10 @@ public static class TuiMode
 
         var app = Application.Create().Init();
         TuiTheme.Apply(ActiveTheme.Current);
+        TuiWindowParts parts;
         try
         {
-            var parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -69,13 +70,29 @@ public static class TuiMode
             // debugger can break on the original exception.
             app.Run(parts.Window, OnUnhandledException);
             parts.Logging.Stop();
+
+            // window.Disposing never fires once Run returns (the window is never disposed here -
+            // see app.Dispose() below, which only tears down the driver), so a capture still in
+            // progress must be flushed/saved explicitly rather than relying on that event.
+            parts.CurrentStreamMonitor()?.Dispose();
         }
         finally
         {
             app.Dispose();
         }
 
-        await session.CloseAsync();
+        // A profile switch replaces `session` with a new one (see BuildWindow's own `session`
+        // parameter, reassigned by its closed-over SwitchProfileAsync) without this method ever
+        // seeing it - closing/disposing this method's own (by-then-stale, already-closed-by-the-
+        // switch) `session` parameter here would leave whichever session is actually current never
+        // closed or disposed. CurrentSession always names the real one.
+        var currentSession = parts.CurrentSession();
+        await currentSession.CloseAsync();
+        if (!ReferenceEquals(currentSession, session))
+        {
+            await currentSession.DisposeAsync();
+        }
+
         return 0;
 
         bool OnUnhandledException(Exception ex)
@@ -123,6 +140,7 @@ public static class TuiMode
         MenuItem? de5000MenuItem = null;
         MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
+        MenuItem? streamMonitorMenuItem = null;
 
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
         // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
@@ -206,20 +224,25 @@ public static class TuiMode
         // DevTerm.Wpf.MainWindow's editable ComboBox for the WPF equivalent of the same history.
         var sendHistory = new SendHistory();
 
-        void AppendOutput(string line)
+        // Coalesces a burst of lines into a single pending app.Invoke, instead of queuing one
+        // marshal-to-UI-thread closure per line - see docs/bugs/fixed/031-tui-output-no-backpressure.md.
+        // Declared then assigned (not `var = new(...)` in one step) because the constructor's own
+        // callback closes over this same variable to schedule its drain.
+        BatchedOutputQueue outputQueue = null!;
+        outputQueue = new BatchedOutputQueue(() => app.Invoke(() => outputQueue.Drain(lines =>
         {
-            app.Invoke(() =>
+            outputLines.AddRange(lines);
+            var excess = outputLines.Count - _maxOutputLines;
+            if (excess > 0)
             {
-                outputLines.Add(line);
-                if (outputLines.Count > _maxOutputLines)
-                {
-                    outputLines.RemoveAt(0);
-                }
+                outputLines.RemoveRange(0, excess);
+            }
 
-                output.Text = string.Join('\n', outputLines);
-                output.CaretOffset = output.Text.Length;
-            });
-        }
+            output.Text = string.Join('\n', outputLines);
+            output.CaretOffset = output.Text.Length;
+        })));
+
+        void AppendOutput(string line) => outputQueue.Enqueue(line);
 
         // The output pane is one plain-text Editor (no per-line colors), so status and error lines
         // are told apart from device output by a source tag, the same "[source] text" shape device
@@ -323,7 +346,14 @@ public static class TuiMode
                 new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
                     var configureParts = ConfigureMode.BuildWindow(app, cliOptions, null, profileStore);
-                    app.Run(configureParts.Window);
+                    try
+                    {
+                        app.Run(configureParts.Window);
+                    }
+                    finally
+                    {
+                        configureParts.Window.Dispose();
+                    }
 
                     if (configureParts.Result is { } chosen)
                     {
@@ -354,7 +384,14 @@ public static class TuiMode
                         new K8055ControlSurface(session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
                 {
@@ -365,7 +402,14 @@ public static class TuiMode
                         new BusylightControlSurface(session),
                         structuredSource,
                         "dev-term — Busylight Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
                 {
@@ -376,7 +420,14 @@ public static class TuiMode
                         new RadexOneControlSurface(session),
                         structuredSource,
                         "dev-term — Radex One Control Panel");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
                 {
@@ -387,7 +438,14 @@ public static class TuiMode
                         new ZoomH4nControlSurface(session),
                         structuredSource,
                         "dev-term — Zoom H4n Remote");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
                 {
@@ -398,7 +456,14 @@ public static class TuiMode
                         new De5000ControlSurface(),
                         structuredSource,
                         "dev-term — DE-5000 LCR Meter");
-                    app.Run(panelParts.Window);
+                    try
+                    {
+                        app.Run(panelParts.Window);
+                    }
+                    finally
+                    {
+                        panelParts.Window.Dispose();
+                    }
                 })),
                 nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
                 {
@@ -443,7 +508,7 @@ public static class TuiMode
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
-                new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
+                streamMonitorMenuItem = new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
             themeMenu.MenuBarItem,
         ]);
@@ -660,7 +725,6 @@ public static class TuiMode
             {
                 var monitor = new StreamMonitor();
                 monitor.CaptureAdded += (_, capture) => AppendStatus(capture.Describe());
-                window.Disposing += (_, _) => monitor.Dispose();
                 streamMonitor = monitor;
             }
 
@@ -738,7 +802,7 @@ public static class TuiMode
             StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
         }
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => session, streamMonitorMenuItem!, () => streamMonitor);
     }
 
     /// <summary>
@@ -941,7 +1005,14 @@ public static class TuiMode
             new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
             structuredSource,
             $"dev-term — {profile.Name}");
-        app.Run(panelParts.Window);
+        try
+        {
+            app.Run(panelParts.Window);
+        }
+        finally
+        {
+            panelParts.Window.Dispose();
+        }
     }
 
     /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
@@ -993,10 +1064,18 @@ public static class TuiMode
             app.RequestStop();
         };
         dialog.Add(listView, selectButton, cancelButton);
-        app.Run(dialog);
+        try
+        {
+            app.Run(dialog);
+        }
+        finally
+        {
+            dialog.Dispose();
+        }
+
         return picked;
     }
 }
 
 /// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu);
+internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu, Func<Session> CurrentSession, MenuItem StreamMonitorMenuItem, Func<StreamMonitor?> CurrentStreamMonitor);

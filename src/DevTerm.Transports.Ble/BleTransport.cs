@@ -62,7 +62,11 @@ public sealed class BleTransport : ITransport
 
         try
         {
-            await adapter.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            await RunWithTimeoutAsync(
+                adapter.ConnectAsync,
+                _options.Value.ConnectTimeoutMs,
+                $"Connecting to the BLE peripheral timed out after {_options.Value.ConnectTimeoutMs} ms.",
+                cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -108,7 +112,36 @@ public sealed class BleTransport : ITransport
             throw new InvalidOperationException("The BLE transport is not open.");
         }
 
-        return _adapter.WriteAsync(data, cancellationToken);
+        return RunWithTimeoutAsync(
+            ct => _adapter.WriteAsync(data, ct),
+            _options.Value.WriteTimeoutMs,
+            $"Writing to the BLE peripheral timed out after {_options.Value.WriteTimeoutMs} ms.",
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> under a linked token cancelled after <paramref name="timeoutMs"/>,
+    /// converting the resulting <see cref="OperationCanceledException"/> into a <see cref="TimeoutException"/>
+    /// only when the timeout (not the caller's own <paramref name="cancellationToken"/>) fired - see
+    /// docs/bugs/fixed/027-ble-timeouts-unused.md.
+    /// </summary>
+    private static async Task RunWithTimeoutAsync(
+        Func<CancellationToken, Task> operation,
+        int timeoutMs,
+        string timeoutMessage,
+        CancellationToken cancellationToken)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeoutMs);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            await operation(linkedCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(timeoutMessage);
+        }
     }
 
     public async ValueTask DisposeAsync()

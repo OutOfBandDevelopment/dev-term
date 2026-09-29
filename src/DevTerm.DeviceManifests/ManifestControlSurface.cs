@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -17,7 +18,7 @@ namespace DevTerm.DeviceManifests;
 /// and sends the ASCII bytes. A query registers its reply id with the <see cref="IReplyTracker"/>
 /// first, so the next complete line lands in that indicator. See docs/design/device-manifests.md.
 /// </summary>
-public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
+public sealed partial class ManifestControlSurface : IControlSurface, ICommandPreview
 {
     private readonly Session? _session;
     private readonly DeviceManifest _manifest;
@@ -94,7 +95,30 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             _tracker?.QuerySent(replyId);
         }
 
-        return _session.SendAsync(Encoding.ASCII.GetBytes(resolved.WireText), cancellationToken);
+        return SendAsync(Encoding.ASCII.GetBytes(resolved.WireText), resolved.ReplyId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends the resolved bytes, cancelling the reply id <see cref="InvokeAsync"/> just registered
+    /// via <see cref="IReplyTracker.QuerySent"/> if the send itself fails — otherwise that id stays
+    /// queued forever waiting for a reply that will never arrive, shifting every later reply onto
+    /// the wrong field. See docs/bugs/fixed/006-reply-queue-desync.md.
+    /// </summary>
+    private async Task SendAsync(byte[] bytes, string? replyIndicatorId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _session!.SendAsync(bytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (replyIndicatorId is not null)
+            {
+                _tracker?.Cancel(replyIndicatorId);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>The exact text <see cref="InvokeAsync"/> would send, control characters escaped (<c>MEAS?\n</c>); null for a passive id or an unknown command.</summary>
@@ -133,15 +157,21 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             return text.Replace("{value}", value ?? string.Empty, StringComparison.Ordinal);
         }
 
-        var values = command.Parameters.Count == 1 ? [value ?? string.Empty] : (value ?? string.Empty).Split(',');
+        var values = ParameterValueList.Split(value);
+        var substitutions = new Dictionary<string, string>(command.Parameters.Count, StringComparer.Ordinal);
         for (var i = 0; i < command.Parameters.Count; i++)
         {
             var parameter = command.Parameters[i];
             var raw = i < values.Length && values[i].Length > 0 ? values[i] : parameter.DefaultValue ?? string.Empty;
-            text = text.Replace("{" + parameter.Name + "}", parameter.IsNumeric ? FormatNumber(raw, parameter) : raw, StringComparison.Ordinal);
+            substitutions[parameter.Name] = parameter.IsNumeric ? FormatNumber(raw, parameter) : raw;
         }
 
-        return text;
+        // A single pass over the original template: a parameter's own substituted value is never
+        // re-scanned for further "{name}" tokens, so a value that itself contains another
+        // parameter's placeholder text is inserted verbatim instead of being substituted again
+        // (see docs/bugs/fixed/043-template-substitution-not-single-pass.md).
+        return TemplatePlaceholder().Replace(text, match =>
+            substitutions.TryGetValue(match.Groups[1].Value, out var substituted) ? substituted : match.Value);
     }
 
     private static string FormatNumber(string raw, CommandParameter parameter)
@@ -161,4 +191,7 @@ public sealed class ManifestControlSurface : IControlSurface, ICommandPreview
             ? number.ToString(CultureInfo.InvariantCulture)
             : number.ToString(parameter.Format, CultureInfo.InvariantCulture);
     }
+
+    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
+    private static partial Regex TemplatePlaceholder();
 }

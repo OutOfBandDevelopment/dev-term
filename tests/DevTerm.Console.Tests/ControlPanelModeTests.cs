@@ -45,6 +45,15 @@ public sealed class ControlPanelModeTests
         public void Fire(IReadOnlyDictionary<string, string> values) => ValuesChanged?.Invoke(this, values);
     }
 
+    private sealed class FakeDisposableControlSurface : IControlSurface, IDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void Dispose() => Disposed = true;
+    }
+
     private static UiDefinition BuildSampleDefinition() => new()
     {
         Name = "Sample Device",
@@ -250,6 +259,22 @@ public sealed class ControlPanelModeTests
                 () => parts.IndicatorLabels["indicator1"].Text.ToString() == "42",
                 TimeSpan.FromSeconds(5));
             Assert.IsTrue(updated, "The indicator label was never updated from ValuesChanged.");
+        });
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void WindowDispose_DisposesADisposableSurface()
+    {
+        // Regression test for bug 020: a surface that binds something into the session's live
+        // pipeline for the panel's lifetime (ZoomH4nControlSurface's wake watcher) needs the same
+        // Disposing-driven teardown ValuesChanged already gets above, or reopening its panel stacks
+        // up another leaked subscription each time. See docs/bugs/020-zoomh4n-wake-watcher-leak.md.
+        var surface = new FakeDisposableControlSurface();
+        RunHeadless(surface, null, parts =>
+        {
+            parts.Window.Dispose();
+            Assert.IsTrue(surface.Disposed);
         });
     }
 

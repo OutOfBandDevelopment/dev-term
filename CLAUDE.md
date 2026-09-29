@@ -119,7 +119,7 @@ the doc tree and how to keep it in sync.
 
 ## Documentation
 
-Six kinds of doc, each with a distinct job — don't blend them:
+Seven kinds of doc, each with a distinct job — don't blend them:
 
 - **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
   left stale) as work completes. A finished entry is **deleted outright, not replaced with a "done,
@@ -153,6 +153,12 @@ Six kinds of doc, each with a distinct job — don't blend them:
   this file. The full detail lives here, not in `docs/changes/`; only add a `docs/changes/` entry if
   the session led to an actual code/doc change, cross-referencing the `docs/test/` file rather than
   repeating its content.
+
+- **[`docs/bugs/`](docs/bugs/README.md)** — one file per known bug (`NNN-short-slug.md`): severity, status,
+  confidence, the date and full git commit it was found at, location, failure scenario, suggested fix, tests to
+  add. File and update them with the `bug-report` skill (`.claude/skills/bug-report/SKILL.md`). When a fix lands, set its Status to `Fixed`
+  with a `## Resolution` section (commit + regression test) and update its row in `docs/bugs/README.md` in the same
+  change; the fix's detail still goes in `docs/changes/`. Keep fixed reports (numbers aren't reused).
 
 **Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
 a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has
@@ -288,6 +294,28 @@ file only points there, it doesn't restate them.**
   not a live symptom — worth rechecking after *any* future "forward the CancellationToken parameter"
   cleanup pass near `Task.Run`/`Task.Factory.StartNew`, since the analyzer can't tell the two tokens
   apart.
+- **`Task.Run(Func<Task>)`'s returned `Task`'s `Id` is not the `Id` of the async method actually
+  executing** — `Task.Run` schedules an outer "runner," then unwraps it into a separate proxy `Task`
+  (the one you get back and store) that completes when the inner async state machine's own `Task`
+  does; the two are different `Task` objects with different `Id`s. A `Session.StopAsync` reentrancy
+  check that compared `Task.CurrentId == _readLoopTask.Id` (`_readLoopTask` being the field set from
+  `Task.Run(() => PumpAsync(...))`) never matched even when genuinely called back from inside
+  `PumpAsync`'s own call stack (a synchronous `Output` handler invoking `SendAsync`), so the deadlock
+  it was meant to catch reproduced identically. Fixed with an `AsyncLocal<bool>` set at the top of
+  `PumpAsync` instead — see the next point and
+  [039](docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md).
+- **An `AsyncLocal<T>` set inside a method stays visible to everything that method calls — sync or
+  async — until that method returns, but never to a separate, concurrent caller on the same object**,
+  which is exactly the distinction `Session` needs to detect "`SendAsync` was called synchronously
+  from within the read loop's own `Output` handler" (must fail fast — awaiting the read loop from
+  there deadlocks on itself) without misfiring on an unrelated, legitimately concurrent `CloseAsync`
+  while the read loop is merely still blocked in a read (must await normally). `PumpAsync` sets its
+  instance's `_onReadLoop.Value = true` at entry; `StopAsync` checks it before awaiting the read-loop
+  task. The one exception that must *not* inherit `true`: `PumpAsync`'s own tail `_ = Task.Run(() =>
+  FaultAsync(...))` for a naturally-ended loop (peer closed, read failed) is a deliberate
+  fire-and-forget to a *different* logical chain, not reentrancy, and needs `StopAsync` to await it
+  normally — wrap that specific `Task.Run` call in `using (ExecutionContext.SuppressFlow())` or the
+  spawned task inherits the ambient `true` and false-positives.
 - **A `PipeReader.ReadAsync` in a test blocks forever against a genuinely, correctly empty reply** —
   it has no signal for "confirmed nothing's coming," only "no data yet": a writer that flushes zero
   bytes without ever calling `Advance` or completing the pipe never unblocks a pending `ReadAsync`.

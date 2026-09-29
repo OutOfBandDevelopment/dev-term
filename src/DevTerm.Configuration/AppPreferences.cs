@@ -53,7 +53,7 @@ public sealed class AppPreferencesStore(string? path = null)
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-            File.WriteAllText(Path, JsonSerializer.Serialize(preferences, _jsonOptions));
+            AtomicFile.WriteAllText(Path, JsonSerializer.Serialize(preferences, _jsonOptions));
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

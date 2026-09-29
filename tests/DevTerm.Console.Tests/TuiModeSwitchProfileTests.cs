@@ -121,6 +121,45 @@ public sealed class TuiModeSwitchProfileTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task CurrentSession_AfterASwitch_IsTheSwitchedToSessionNotTheOriginal()
+    {
+        // Regression test for bug 018: TuiMode.RunAsync closes/disposes its own `session` parameter
+        // when the loop ends, which SwitchProfileAsync already closed/disposed as the *old* session
+        // during the switch - leaving whatever session is actually current (the switched-to one)
+        // never closed or disposed. TuiWindowParts.CurrentSession is what RunAsync must use instead.
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "1", Presenter = ["ascii"] };
+
+        Session? currentSession = null;
+        TcpClient? client = null;
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var acceptTask = listener.AcceptTcpClientAsync(TestContext.CancellationToken);
+
+            var switched = parts.SwitchProfileAsync(new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = port.ToString(), Presenter = ["ascii"] })
+                .GetAwaiter().GetResult();
+            Assert.IsTrue(switched);
+            client = acceptTask.GetAwaiter().GetResult();
+
+            currentSession = parts.CurrentSession();
+        });
+
+        Assert.IsFalse(ReferenceEquals(currentSession, session), "The current session after a switch must be the switched-to one, not the original.");
+        Assert.AreEqual(ConnectionState.Open, currentSession!.State, "The switched-to session should still be open - RunAsync (not this test) is what closes it.");
+
+        // What RunAsync now does once the loop ends: close/dispose whichever session is CURRENT.
+        await currentSession.CloseAsync(TestContext.CancellationToken);
+        await currentSession.DisposeAsync();
+        Assert.AreEqual(ConnectionState.Closed, currentSession.State);
+        client?.Dispose();
+    }
+
+    [TestMethod]
     public async Task SwitchProfileAsync_WithAnUnknownPresenter_ReportsAndKeepsTheOldSessionUnaffected()
     {
         var (session, _, presenter) = CreateSession();

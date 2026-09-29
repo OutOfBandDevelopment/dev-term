@@ -108,7 +108,7 @@ public static class ScpiUiDefinitionBuilder
         var id = ParameterFieldId(command, parameter);
         var defaultNumber = double.TryParse(parameter.DefaultValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedDefault)
             ? parsedDefault
-            : parameter.Minimum;
+            : parameter.Minimum ?? 0;
 
         return EffectiveControl(parameter) switch
         {
@@ -116,8 +116,8 @@ public static class ScpiUiDefinitionBuilder
             {
                 Id = id,
                 Label = parameter.Name,
-                Minimum = parameter.Minimum,
-                Maximum = parameter.Maximum,
+                Minimum = parameter.Minimum ?? 0,
+                Maximum = parameter.Maximum ?? 0,
                 DefaultValue = defaultNumber,
                 Unit = parameter.Unit,
             },
@@ -125,8 +125,8 @@ public static class ScpiUiDefinitionBuilder
             {
                 Id = id,
                 Label = parameter.Name,
-                Minimum = parameter.Minimum,
-                Maximum = parameter.Maximum,
+                Minimum = parameter.Minimum ?? 0,
+                Maximum = parameter.Maximum ?? 0,
                 Step = parameter.DecimalPlaces is { } decimalPlaces ? Math.Pow(10, -decimalPlaces) : 1,
                 DefaultValue = defaultNumber,
                 Unit = parameter.Unit,

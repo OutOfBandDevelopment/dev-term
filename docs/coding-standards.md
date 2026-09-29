@@ -123,6 +123,11 @@ standard below gets declared that StyleCop already knows how to check.
   assembly and fails if a class is missing one, uses an unrecognized value, or (checking what MSTest
   actually resolves per test, class-level plus method-level combined) a method ends up with no
   effective category at all.
+- **`TestCategories.BugRegression` is the one method-level exception** — added alongside a test
+  method's own class-level `Unit`/`Integration` category, never in place of it, for a regression
+  test written from a `docs/bugs/NNN-*.md` report. Marks just that method (not the whole class,
+  which usually has other, unrelated tests too), so `dotnet test --filter
+  TestCategory=BugRegression` runs every bug-report regression test across the solution.
 - **A real-hardware `Integration` test preflights that its device actually exists/is reachable,
   with a short, bounded timeout, before touching it, and reports `Assert.Inconclusive` (never a
   failure or a hang) when it doesn't** — a device intentionally offline is an expected bench state,

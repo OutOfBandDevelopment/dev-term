@@ -73,7 +73,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
                     return name;
                 }
             }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException or InvalidOperationException)
             {
             }
         }
@@ -94,8 +94,9 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
     public void Save(string name, CliOptions options)
     {
+        ProfileName.ThrowIfInvalid(name);
         Directory.CreateDirectory(_profilesDirectory);
-        File.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
+        AtomicFile.WriteAllText(GetPath(name), DevTermConfiguration.ToProfileJson(options));
     }
 
     /// <summary>
@@ -118,7 +119,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
     /// <summary>Writes <paramref name="options"/> to <paramref name="path"/> as a standalone JSON file, the same shape <see cref="Save"/> writes under a profile name — for exporting/sharing a profile outside <see cref="DevTermUserDataPaths.ProfilesDirectory"/>.</summary>
     public static void ExportToFile(string path, CliOptions options) =>
-        File.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
+        AtomicFile.WriteAllText(path, DevTermConfiguration.ToProfileJson(options));
 
     /// <summary>
     /// Writes several saved profiles to a single zip file at <paramref name="zipPath"/>, one
@@ -129,16 +130,9 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
     /// </summary>
     public void ExportZip(string zipPath, IEnumerable<string> names)
     {
-        if (File.Exists(zipPath))
-        {
-            // ZipFile.Open(..., Create) throws if the file already exists - Export/Save As already
-            // let the user pick an existing filename to overwrite, same as the single-profile
-            // ExportToFile above (a plain unconditional File.WriteAllText).
-            File.Delete(zipPath);
-        }
-
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        foreach (var name in names)
+        var resolvedNames = names is ICollection<string> collection ? collection : [..names];
+        var paths = new List<(string Name, string Path)>(resolvedNames.Count);
+        foreach (var name in resolvedNames)
         {
             var path = GetPath(name);
             if (!File.Exists(path))
@@ -146,8 +140,24 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
                 throw new FileNotFoundException($"No connection profile named '{name}' was found.", path);
             }
 
-            archive.CreateEntryFromFile(path, $"{name}.json");
+            paths.Add((name, path));
         }
+
+        // Build in a temp file first, then move it into place - an existing zip at zipPath (which
+        // Export/Save As already let the user pick to overwrite) must never be deleted/truncated
+        // unless the new archive fully succeeded. See
+        // docs/bugs/fixed/034-exportzip-deletes-target-first.md.
+        var temporary = $"{zipPath}.tmp";
+        File.Delete(temporary);
+        using (var archive = ZipFile.Open(temporary, ZipArchiveMode.Create))
+        {
+            foreach (var (name, path) in paths)
+            {
+                archive.CreateEntryFromFile(path, $"{name}.json");
+            }
+        }
+
+        File.Move(temporary, zipPath, overwrite: true);
     }
 
     /// <summary>
@@ -170,6 +180,12 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
         {
             var name = Path.GetFileNameWithoutExtension(entry.Name);
+            if (!ProfileName.IsValid(name))
+            {
+                skipped++;
+                continue;
+            }
+
             var targetName = name;
 
             if (existing.Contains(name))
@@ -189,7 +205,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
             }
 
             using var reader = new StreamReader(entry.Open());
-            File.WriteAllText(GetPath(targetName), reader.ReadToEnd());
+            AtomicFile.WriteAllText(GetPath(targetName), reader.ReadToEnd());
             existing.Add(targetName);
             imported++;
         }
@@ -214,6 +230,11 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         foreach (var entry in archive.Entries.Where(e => e.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
         {
             var name = Path.GetFileNameWithoutExtension(entry.Name);
+            if (!ProfileName.IsValid(name))
+            {
+                throw new InvalidDataException($"'{entry.FullName}' in the zip has a name ('{name}') that isn't valid on this system.");
+            }
+
             using var reader = new StreamReader(entry.Open());
             var json = reader.ReadToEnd();
             try
@@ -255,7 +276,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
 
         foreach (var profile in profiles)
         {
-            File.WriteAllText(GetPath(profile.Name), profile.Json);
+            AtomicFile.WriteAllText(GetPath(profile.Name), profile.Json);
         }
 
         return removed;

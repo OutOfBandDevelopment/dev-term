@@ -134,9 +134,14 @@ var earlyConfigBuilder = new ConfigurationBuilder();
 DevTermConfiguration.Configure(earlyConfigBuilder, args, Environments.Production);
 var cliOptions = new CliOptions();
 var layeredConfig = earlyConfigBuilder.Build();
-DevTermConfiguration.Bind(layeredConfig, cliOptions);
 
-var useTui = cliOptions.Tui && !cliOptions.Cli;
+// A bad value on the command line, in an environment variable, or in a corrupt/truncated saved
+// profile (e.g. --baud fast) throws from inside the configuration binder before validation ever
+// runs - see docs/bugs/fixed/032-startup-bind-failure-crash.md. Tui/Cli are read from the raw
+// config rather than cliOptions, since a failed Bind may have left cliOptions only partially
+// populated; cliOptions itself is reset to a clean default so it doesn't carry that partial state
+// into ConfigureMode/the CLI error path below.
+var useTui = (layeredConfig.GetValue<bool?>(nameof(CliOptions.Tui)) ?? true) && !(layeredConfig.GetValue<bool?>(nameof(CliOptions.Cli)) ?? false);
 
 // The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this run,
 // else the saved View > Theme choice (~/.dev-term/preferences.json), else "system". Applied before
@@ -147,21 +152,40 @@ if (useTui)
     ActiveTheme.Initialize(layeredConfig);
     TuiTheme.Apply(ActiveTheme.Current);
 }
-var validation = new CliOptionsValidator().Validate(null, cliOptions);
-if (validation.Failed)
+
+string? bindError = null;
+try
+{
+    DevTermConfiguration.Bind(layeredConfig, cliOptions);
+}
+catch (Exception ex) when (ex is InvalidOperationException or FormatException or InvalidDataException)
+{
+    // cliOptions is reset to a clean default so it doesn't carry whatever partial state a failed
+    // Bind left behind into ConfigureMode/the CLI error path below - see
+    // docs/bugs/fixed/032-startup-bind-failure-crash.md.
+    cliOptions = new CliOptions();
+    bindError = ex.Message;
+}
+
+if (bindError is null)
+{
+    var validation = new CliOptionsValidator().Validate(null, cliOptions);
+    if (validation.Failed)
+    {
+        bindError = string.Join(" ", validation.Failures);
+    }
+}
+
+if (bindError is not null)
 {
     if (!useTui)
     {
-        foreach (var failure in validation.Failures)
-        {
-            Console.Error.WriteLine(failure);
-        }
-
+        Console.Error.WriteLine(bindError);
         Console.Error.WriteLine(Usage);
         return 1;
     }
 
-    var configured = ConfigureMode.Run(cliOptions, string.Join(" ", validation.Failures));
+    var configured = ConfigureMode.Run(cliOptions, bindError);
     if (configured is null)
     {
         return 0;

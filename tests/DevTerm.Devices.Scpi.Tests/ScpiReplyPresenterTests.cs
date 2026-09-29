@@ -169,6 +169,78 @@ public sealed class ScpiReplyPresenterTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void QuerySent_ThenCancel_TheNextLineIsUnsolicitedInstead()
+    {
+        // Regression test for bug 006: a query whose send fails (or that timed out with no reply)
+        // left its id pending forever, so the *next* query's reply landed on that stale id instead
+        // of its own. Cancel removes it, so the next line goes back to being unsolicited. See
+        // docs/bugs/fixed/006-reply-queue-desync.md.
+        var presenter = new ScpiReplyPresenter();
+        var raised = false;
+        presenter.ValuesChanged += (_, _) => raised = true;
+        presenter.QuerySent("stale.reply");
+
+        presenter.Cancel("stale.reply");
+        var lines = presenter.Render(Bytes("UNSOLICITED\n"));
+
+        Assert.AreSequenceEqual(["UNSOLICITED"], [.. lines]);
+        Assert.IsFalse(raised);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void QuerySent_ThenCancel_LeavesAnEarlierStillPendingQueryInPlace()
+    {
+        // Cancel must remove only the id it was asked to remove - not the whole queue - so a real,
+        // still-legitimately-pending query ahead of the cancelled one still correlates correctly.
+        var presenter = new ScpiReplyPresenter();
+        var received = new List<KeyValuePair<string, string>>();
+        presenter.ValuesChanged += (_, values) => received.AddRange(values);
+        presenter.QuerySent("first.reply");
+        presenter.QuerySent("second.reply");
+
+        presenter.Cancel("second.reply");
+        presenter.Render(Bytes("ONE\n"));
+
+        Assert.HasCount(1, received);
+        Assert.AreEqual("first.reply", received[0].Key);
+        Assert.AreEqual("ONE", received[0].Value);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Cancel_WithNoMatchingPendingId_IsANoOp()
+    {
+        var presenter = new ScpiReplyPresenter();
+
+        presenter.Cancel("nothing.pending");
+        var lines = presenter.Render(Bytes("HELLO\n"));
+
+        Assert.AreSequenceEqual(["HELLO"], [.. lines]);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Reset_ClearsAPendingQueryAndAPartialLine()
+    {
+        // Regression test for bug 006: a stale pending id and a half-received line both used to
+        // carry over into a reopened connection on the same Session (Session.OpenAsync now calls
+        // Reset via IResettablePresenter). See docs/bugs/fixed/006-reply-queue-desync.md.
+        var presenter = new ScpiReplyPresenter();
+        var received = new List<KeyValuePair<string, string>>();
+        presenter.ValuesChanged += (_, values) => received.AddRange(values);
+        presenter.QuerySent("stale.reply");
+        presenter.Render(Bytes("PART")); // No terminator yet - stays buffered.
+
+        presenter.Reset();
+        var lines = presenter.Render(Bytes("FRESH\n"));
+
+        Assert.AreSequenceEqual(["FRESH"], [.. lines]);
+        Assert.IsEmpty(received);
+    }
+
+    [TestMethod]
     public void Name_IsScpi()
     {
         var presenter = new ScpiReplyPresenter();

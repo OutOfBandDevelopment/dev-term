@@ -93,6 +93,50 @@ public sealed class AsciiPresenterTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_LineExactlyAtMaxLengthWithCrLf_IsNotFollowedByASpuriousEmptyLine()
+    {
+        var presenter = Create(maxLineLength: 4);
+
+        var result = presenter.Render(Of("ABCD\r\n"u8.ToArray()));
+
+        Assert.AreSequenceEqual(["ABCD"], [.. result], "The CRLF right after a length-triggered flush terminates that same line - it shouldn't also start a new, empty one.");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_LineExactlyAtMaxLengthWithLf_IsNotFollowedByASpuriousEmptyLine()
+    {
+        var presenter = Create(maxLineLength: 4);
+
+        var result = presenter.Render(Of("ABCD\n"u8.ToArray()));
+
+        Assert.AreSequenceEqual(["ABCD"], [.. result]);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_LineExactlyAtMaxLengthWithCr_IsNotFollowedByASpuriousEmptyLine()
+    {
+        var presenter = Create(maxLineLength: 4);
+
+        var result = presenter.Render(Of("ABCD\r"u8.ToArray()));
+
+        Assert.AreSequenceEqual(["ABCD"], [.. result]);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Render_LengthTriggeredFlushFollowedByAnIntentionalBlankLine_StillReturnsThatBlankLine()
+    {
+        var presenter = Create(maxLineLength: 4);
+
+        var result = presenter.Render(Of("ABCD\r\n\r\n"u8.ToArray()));
+
+        Assert.AreSequenceEqual(["ABCD", ""], [.. result], "Only the terminator immediately after the length flush is swallowed - a second, genuinely empty line right after must still come through.");
+    }
+
+    [TestMethod]
     public void Render_MaxLineLengthZero_IsUnboundedAndWaitsForTerminator()
     {
         var presenter = Create(maxLineLength: 0);

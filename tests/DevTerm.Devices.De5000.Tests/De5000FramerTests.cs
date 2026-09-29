@@ -128,6 +128,47 @@ public sealed class De5000FramerTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void TryParse_NegativeSecondaryDegrees_DecodesAsANegativeValue()
+    {
+        // Regression test for bug 005: the secondary 16-bit value was never sign-extended, so
+        // theta = -45.0 deg (raw 0xFE3E) decoded as a huge positive (6508.6) instead. See
+        // docs/bugs/fixed/005-de5000-negative-secondary.md.
+        var bad = (byte[])_validFrame.Clone();
+        bad[10] = 0x04; // Secondary quantity code 4 -> Theta.
+        bad[11] = 0xFE;
+        bad[12] = 0x3E;
+        bad[13] = 0x71; // Unit nibble 14 (deg) << 3, multiplier 1 (one decimal place).
+
+        var result = De5000Framer.TryParse(bad, out var frame);
+
+        Assert.IsTrue(result);
+        Assert.AreEqual("Theta", frame.SecondaryQuantity);
+        Assert.AreEqual("deg", frame.SecondaryUnit);
+        Assert.AreEqual(-45.0, frame.SecondaryValue, 1e-9);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void TryParse_NegativeSecondaryPercent_DecodesAsANegativeValue()
+    {
+        // Same defect as the degrees case above, for the other secondary unit the reference
+        // implementation sign-extends: '%'. See docs/bugs/fixed/005-de5000-negative-secondary.md.
+        var bad = (byte[])_validFrame.Clone();
+        bad[10] = 0x01; // Secondary quantity code 1 -> D.
+        bad[11] = 0xFF;
+        bad[12] = 0xF4; // Raw 0xFFF4 = -12 sign-extended.
+        bad[13] = 0x69; // Unit nibble 13 (%) << 3, multiplier 1 (one decimal place).
+
+        var result = De5000Framer.TryParse(bad, out var frame);
+
+        Assert.IsTrue(result);
+        Assert.AreEqual("D", frame.SecondaryQuantity);
+        Assert.AreEqual("%", frame.SecondaryUnit);
+        Assert.AreEqual(-1.2, frame.SecondaryValue, 1e-9);
+    }
+
+    [TestMethod]
     public void TryParse_UnusedFrequencyCode_ReturnsNull()
     {
         var bad = (byte[])_validFrame.Clone();

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Test.Utilities;
@@ -55,6 +56,13 @@ public sealed class ManifestControlSurfaceTests
                 ],
             },
             new OutboundCommand { Id = "out", Name = "Output", Template = "OUT{value}" },
+            new OutboundCommand
+            {
+                Id = "echo",
+                Name = "Echo",
+                Template = "A={a} B={b}",
+                Parameters = [new CommandParameter { Name = "a" }, new CommandParameter { Name = "b" }],
+            },
         ],
         Ui = new UiDefinition
         {
@@ -112,6 +120,43 @@ public sealed class ManifestControlSurfaceTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact()
+    {
+        // Regression test for bug 024: a text parameter's literal comma used to be mistaken for the
+        // separator between parameter values, truncating that parameter and shifting every later one
+        // onto the wrong token. See docs/bugs/fixed/024-comma-in-text-parameter.md. The joined string
+        // here is exactly what ControlPanelMode/ControlPanelWindow's TryReadParameters now produce via
+        // ParameterValueList.Join.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        var joined = ParameterValueList.Join(["3", "HIGH,extra"]);
+        await panel.Surface.InvokeAsync("ch", joined, TestContext.CancellationToken);
+
+        Assert.AreEqual("CH3:HIGH,extra\n", Sent(transport, 0));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted()
+    {
+        // Regression test for bug 043: parameters used to be substituted one after another with
+        // Replace, so a value typed into an earlier parameter that contains "{Later}" was itself
+        // replaced by the later parameter's value. See
+        // docs/bugs/fixed/043-template-substitution-not-single-pass.md.
+        var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
+        await using var _ = session;
+        using var __ = panel;
+
+        var joined = ParameterValueList.Join(["{b}", "X"]);
+        await panel.Surface.InvokeAsync("echo", joined, TestContext.CancellationToken);
+
+        Assert.AreEqual("A={b} B=X\n", Sent(transport, 0));
+    }
+
+    [TestMethod]
     public async Task PreviewCommand_MatchesWhatWouldBeSent_WithControlCharactersEscaped()
     {
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
@@ -138,6 +183,35 @@ public sealed class ManifestControlSurfaceTests
         Assert.IsEmpty(transport.WrittenPayloads);
 
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => panel.Surface.InvokeAsync("nope", null, TestContext.CancellationToken));
+    }
+
+    /// <summary>Records every <see cref="Cancel"/> call — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    private sealed class RecordingReplyTracker : IReplyTracker
+    {
+        public List<string> Cancelled { get; } = [];
+
+        public void QuerySent(string replyIndicatorId)
+        {
+        }
+
+        public void Cancel(string replyIndicatorId) => Cancelled.Add(replyIndicatorId);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_QueryCommand_WhenSendFails_CancelsTheReplyIndicatorAndRethrows()
+    {
+        // Regression test for bug 006: a failed send used to leave the reply id InvokeAsync just
+        // registered pending forever, shifting the *next* query's reply onto the wrong field. See
+        // docs/bugs/fixed/006-reply-queue-desync.md.
+        var transport = new FakeTransport { FailWritesWith = new IOException("write failed") };
+        var session = new Session(transport, new Pipeline([]));
+        var tracker = new RecordingReplyTracker();
+        var surface = new ManifestControlSurface(session, BuildPowerSupply(), tracker);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("read", null, TestContext.CancellationToken));
+
+        Assert.AreSequenceEqual(["read.reply"], tracker.Cancelled.ToArray());
     }
 
     [TestMethod]

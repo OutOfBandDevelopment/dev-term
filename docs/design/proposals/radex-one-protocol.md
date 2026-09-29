@@ -10,16 +10,21 @@ as prior art:
 - [`shared/projects/radex-one-protocol-reverse-engineering/README.md`](https://github.com/mwwhited-notes/shared/tree/main/projects/radex-one-protocol-reverse-engineering) — complete, finished protocol reverse-engineering writeup (status: **Completed**)
 
 This source project is a finished reverse-engineering effort with a fully documented binary
-framing, checksum, and four command types (a fifth, Reset Accumulated, turned up later in a
+framing, checksum, and five command types (a fifth, Reset Accumulated, turned up later in a
 separate user-captured trace — see "Trace Examples" below). **2026-09-25: confirmed against a real device on
-COM8 that the source doc's original transport claim (a plain virtual COM port, 2400 8-N-1) was
-right all along** — see "Device" below for how an earlier draft of this doc got that backwards.
+COM8 that the source doc's original transport claim (a plain virtual COM port) was right all
+along** — see "Device" below for how an earlier draft of this doc got that backwards. The same
+2026-09-25 pass also guessed the wrong baud rate (2400); **2026-09-26: corrected to 9600, the
+device's actual real-hardware-confirmed baud** — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md).
 
 ## Device
 
 [Radex One](https://quartarad.com/product/radex-one/) — a portable USB geiger counter from
-Quarta. It enumerates as a **plain virtual COM port** (2400 baud, 8 data bits, no parity, 1 stop
-bit, no handshake) — real-hardware confirmed 2026-09-25 on COM8. An earlier draft of this doc
+Quarta. It enumerates as a **plain virtual COM port** (9600 baud, 8 data bits, no parity, 1 stop
+bit, no handshake) — real-hardware confirmed 2026-09-26 on COM8 (correcting an earlier, unverified
+"2400 baud" guess from 2026-09-25 — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md)). An earlier draft of this doc
 claimed it was "confirmed directly" as a USB HID device instead and built the whole module (HID
 transport, a `RadexOneHidFraming` report wrapper) around that claim; that claim was never actually
 checked against a real device and turned out to be wrong. Once a real unit turned up as a COM
@@ -124,8 +129,10 @@ trace except where noted:
   `[0x7a, 0x00]`" instead of `0xFF`, and "`_C00`" instead of "`0C00`"). Rather than guess at the
   exact reserved-byte layout, `RadexOneExtensionCodec.ReadSerialVersionPayload` extracts the
   payload leniently (skip the first 4 bytes, drop the trailing 2-byte checksum) without
-  re-validating this one extension's own inner checksum — the outer framer's checksum already
-  guarantees the packet arrived intact.
+  re-validating this one extension's own inner checksum — unlike Read Data, Read Settings and the
+  Write Settings ack, which now do
+  (`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`); the outer framer's checksum
+  only guarantees the outer header arrived intact, not this extension's own payload.
 
 ## Proposed shape
 
@@ -147,7 +154,7 @@ package "Radex One Device Control Module (plugin)" {
 }
 
 [Session / Transport] <<ITransport>> as transport
-note right of transport : Plain serial (2400 8N1, no handshake)\nreal-hardware confirmed 2026-09-25
+note right of transport : Plain serial (9600 8N1, no handshake)\nreal-hardware confirmed 2026-09-26
 
 user --> surface : Invokes command\n(e.g. Read Data, Set Threshold)
 surface --> framer : Builds request packet
@@ -160,7 +167,7 @@ decoder --> user : Human-readable text baseline\n(e.g. "CPM=15 Ambient=18 Accum=
 
 - **Framer is shared, not duplicated per command** — request/response packets share one
   prefix+type+length+packetnum+reserved+checksum shape; a single internal framer parses/builds
-  that envelope, with each of the four command types supplying just its own extension
+  that envelope, with each of the five command types supplying just its own extension
   layout — this is the same "shared envelope, per-message extension" shape a lot of binary device
   protocols have, so it's a reasonable candidate for whatever generic binary-framing helper
   emerges in `DevTerm.Core` as more decoders are added (currently none exists — decoders haven't
@@ -191,14 +198,28 @@ list. Once a real device turned up enumerated as a COM port (not HID), the whole
 corrected: `RadexOneHidFraming` was deleted, the transport assumption fixed, and the framer/codec
 rewritten and checksum-verified byte-for-byte against several of the source doc's real trace
 examples (Read Data, Read Settings, Write Settings, both directions) — every one matched, including
-one that requires the checksum's modulo to actually wrap. `RealHardwareRadexOneTests` was fixed to
-use 2400 baud (was 9600) to match the device's real serial settings.
+one that requires the checksum's modulo to actually wrap. `RealHardwareRadexOneTests` was changed to
+use 2400 baud (was 9600) that same day, based on the source doc's prose rather than a real-hardware
+check of the baud rate specifically — this later turned out to be wrong (see below).
 
 Unit-tested (`tests/DevTerm.Devices.RadexOne.Tests`, 22 tests, including two that assert exact bytes
 against the source doc's own real-hardware trace examples) — full solution builds clean and the
-whole `TestCategory=Unit` suite passes. **Still pending: a fresh `RealHardwareRadexOneTests` run
-against the actual device on COM8** to confirm it now replies, now that both the transport and the
-packet-layout bugs are fixed.
+whole `TestCategory=Unit` suite passes.
+
+**2026-09-26: `RealHardwareRadexOneTests` run against the real device on COM8 at 2400 baud received
+zero bytes** — the transport and packet-layout fixes above were correct, but the 2400 baud setting
+adopted the same day was never itself checked against real hardware. Trying alternate baud rates
+found the device answers at **9600 baud**, not 2400 — see
+[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md). Every code/doc location claiming "2400
+baud, real-hardware confirmed 2026-09-25" was corrected to 9600, and the real-hardware test now
+passes end to end, decoding a real reading (`RADEX-ONE: CPM=15 Ambient=10 Accum=259`).
+
+`RadexOneExtensionCodec.TryParseReadData`/`TryParseReadSettings`/`TryVerifyWriteSettingsAck` now also
+verify each extension's own trailing checksum, not just the framer's outer header checksum
+(`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`) — a corrupted extension payload is
+rejected (falls back to the generic "reply command 0x..." line) rather than shown as a valid reading.
+Read Serial/Version deliberately still doesn't re-validate its own inner checksum; see "Open
+questions" below.
 
 **2026-09-26: added the fifth command, Reset Accumulated (`0x0803`)**, from a user-captured trace
 (see "Trace Examples" below) that wasn't in the original source doc — `RadexOneCommand.ResetAccumulated`,
@@ -218,8 +239,9 @@ hardware.
   an interval to behave like a live telemetry stream for a future rendering presenter/plot — the
   device itself doesn't push data unsolicited, so any "live" view means dev-term driving the polling.
 - The Read Serial/Version reply's exact reserved-byte layout past its first 4 bytes — see the
-  "Command extensions" section above; deliberately not re-validated against its own inner checksum,
-  relying on the outer framer's checksum for transport integrity instead.
+  "Command extensions" section above; deliberately not re-validated against its own inner checksum
+  (unlike Read Data/Read Settings/the Write Settings ack, which now are), since the source trace's
+  reserved-byte content doesn't fully reconcile against the doc's own prose field list.
 
 ## Trace Examples
 

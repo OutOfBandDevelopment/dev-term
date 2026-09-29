@@ -262,6 +262,36 @@ public sealed class ConnectionProfileStoreTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ExportZip_WhenOneOfTheNamesIsMissing_LeavesAnExistingZipAtThatPathUntouched()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("alpha", BuildSerialOptions());
+            store.Save("gamma", BuildSerialOptions());
+            var zipPath = Path.Combine(directory, "export.zip");
+            store.ExportZip(zipPath, ["alpha", "gamma"]);
+
+            // "beta" doesn't exist - simulates another process deleting a profile between the user
+            // picking names to export and the export actually running (the watcher refresh is
+            // asynchronous, per the bug report). Without the fix, the existing 2-entry zip is
+            // deleted before "beta" is found missing, and a truncated 1-entry (alpha-only) zip is
+            // left in its place.
+            Assert.ThrowsExactly<FileNotFoundException>(() => store.ExportZip(zipPath, ["alpha", "beta"]));
+
+            Assert.IsTrue(File.Exists(zipPath));
+            using var archive = ZipFile.OpenRead(zipPath);
+            Assert.AreEqual(2, archive.Entries.Count);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void ImportZip_ConflictingName_DefaultsToReplaceWhenNoResolverGiven()
     {
         var directory = CreateTempDirectory();
@@ -329,6 +359,78 @@ public sealed class ConnectionProfileStoreTests
             Assert.AreEqual(1, result.Renamed);
             Assert.AreSequenceEqual(["tek2230", "tek2230 (2)"], [.. store.List()]);
             Assert.AreEqual("COM9", store.Load("tek2230 (2)").Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    [DataRow("..\\escaped")]
+    [DataRow("a:b")]
+    [DataRow("CON")]
+    public void Save_WithAnInvalidProfileName_ThrowsInsteadOfWritingIt(string name)
+    {
+        // Regression test for bug 012: "..\..\Desktop\x" escaped the profiles directory, "a:b" became
+        // an NTFS alternate data stream on a file named "a" (List() never shows it, so the saved
+        // profile silently vanishes), and reserved device names like "CON" fail on Windows. See
+        // docs/bugs/012-profile-names-not-validated.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+
+            Assert.ThrowsExactly<ArgumentException>(() => store.Save(name, new CliOptions { Transport = "tcp", Host = "h", Port = "1" }));
+            Assert.IsEmpty(store.List());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ImportZip_WithAnInvalidEntryName_SkipsItInsteadOfWritingIt()
+    {
+        // Regression test for bug 012: a zip entry named e.g. "a?b" is legal on Linux (where it could
+        // have been exported) but invalid on Windows; ImportZip used to write it anyway.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var zip = WriteZip(directory, ("a?b.json", "{ \"Transport\": \"tcp\" }"), ("good.json", "{ \"Transport\": \"tcp\" }"));
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+
+            var result = store.ImportZip(zip);
+
+            Assert.AreEqual(1, result.Imported);
+            Assert.AreEqual(1, result.Skipped);
+            Assert.AreSequenceEqual(["good"], [.. store.List()]);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void ReadZip_WithAnEntryNameInvalidOnWindows_ThrowsSoReplaceAllRefusesBeforeDeletingAnything()
+    {
+        // Regression test for bug 012: ReadZip used to only check JSON syntax, not names, so a zip
+        // exported on Linux with a name invalid on Windows (e.g. "a?b") made ReplaceAll delete every
+        // existing profile and only then fail writing the bad entry, losing the originals for nothing.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(Path.Combine(directory, "profiles"));
+            store.Save("keep-me", new CliOptions { Transport = "tcp", Host = "10.0.0.1", Port = "23" });
+            var zip = WriteZip(directory, ("a?b.json", "{ \"Transport\": \"tcp\" }"));
+
+            Assert.ThrowsExactly<InvalidDataException>(() => ConnectionProfileStore.ReadZip(zip));
+            Assert.AreSequenceEqual(["keep-me"], [.. store.List()]);
         }
         finally
         {
@@ -410,6 +512,31 @@ public sealed class ConnectionProfileStoreTests
             var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" };
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "a-broken.json"), "{ not json");
+            store.Save("b-good", options);
+
+            Assert.AreEqual("b-good", store.FindName(options));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void FindName_SkipsAProfileWithAValueThatFailsToConvert_AndKeepsLooking()
+    {
+        // Regression test for bug 004: a profile value that fails ConfigurationBinder.Bind (e.g. a
+        // non-numeric Baud) throws InvalidOperationException, which FindName's catch filter didn't
+        // list - the exception used to propagate out and crash the TUI/WPF title lookup instead of
+        // being skipped like other unreadable profiles. See docs/bugs/fixed/004-bad-profile-value-crashes-title.md.
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "serial", Port = "COM3", Baud = 4800 };
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "a-bad-baud.json"), "{ \"Transport\": \"serial\", \"Port\": \"COM3\", \"Baud\": \"fast\" }");
             store.Save("b-good", options);
 
             Assert.AreEqual("b-good", store.FindName(options));

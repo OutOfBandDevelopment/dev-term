@@ -206,8 +206,17 @@ public sealed class PlaybackController
     public PlaybackBatch AddNote(string text)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        var trimmed = text.Trim();
         var index = Engine.Position;
-        var batch = Engine.AddNote(text.Trim());
+
+        // Save a trial copy first: if the save fails (e.g. an active SessionLogger still has Path open -
+        // see docs/bugs/fixed/030-playback-addnote-live-log.md), the note must not appear added in memory,
+        // or a retry after fixing the conflict would insert it a second time.
+        var trial = new SessionLog(Log.Header, Log.Records);
+        trial.InsertNote(index, trimmed);
+        trial.Save(Path);
+
+        var batch = Engine.AddNote(trimmed);
 
         // The note is a new record at index: selection bounds past it move with the records they mark.
         if (SelectionEnd >= index)
@@ -220,7 +229,6 @@ public sealed class PlaybackController
             SelectionStart++;
         }
 
-        Log.Save(Path);
         return batch;
     }
 

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Pipelines;
 using System.Text;
 using DevTerm.Core.Presenters;
@@ -88,6 +89,28 @@ public sealed class ScpiAutoDetectTests
     [TestMethod]
     public void ProgressMessage_SaysWhatItsWaitingForAndHowLong() =>
         Assert.AreEqual("Auto-detecting the SCPI instrument: sent *IDN?, waiting up to 8 s…", ScpiAutoDetect.ProgressMessage(TimeSpan.FromSeconds(8)));
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task DetectAsync_AfterNoReply_ALaterQueryStillCorrelatesCorrectly()
+    {
+        // Regression test for bug 006: DetectAsync's own pending id ("scpiAutoDetect.reply") used
+        // to stay queued forever after a NoReply timeout, so the *next* query's reply landed on
+        // that stale id instead of its own. See docs/bugs/fixed/006-reply-queue-desync.md.
+        var (session, presenter) = await OpenAsync(idnReply: null);
+        await using var _ = session;
+
+        var result = await ScpiAutoDetect.DetectAsync(session, presenter, TimeSpan.FromMilliseconds(250));
+        Assert.AreEqual(ScpiAutoDetectOutcome.NoReply, result.Outcome);
+
+        IReadOnlyDictionary<string, string>? received = null;
+        presenter.ValuesChanged += (_, values) => received = values;
+        presenter.QuerySent("next.reply");
+        presenter.Render(new ReadOnlySequence<byte>(Encoding.ASCII.GetBytes("ACTUAL_REPLY\n")));
+
+        Assert.IsNotNull(received);
+        Assert.AreEqual("ACTUAL_REPLY", received!["next.reply"]);
+    }
 
     [TestMethod]
     public async Task NoScpiPresenter_SendsNothing()

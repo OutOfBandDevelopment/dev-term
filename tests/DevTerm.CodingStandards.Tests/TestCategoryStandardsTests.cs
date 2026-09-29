@@ -34,6 +34,7 @@ public sealed class TestCategoryStandardsTests
         TestCategories.Loopback,
         TestCategories.Scpi,
         TestCategories.Logging,
+        TestCategories.BugRegression,
         TestCategories.Tektronix_2230,
         TestCategories.Tektronix_Tds2024,
         TestCategories.Korad_Ka3005p,

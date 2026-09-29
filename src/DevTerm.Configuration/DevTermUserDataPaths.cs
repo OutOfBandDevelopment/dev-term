@@ -58,6 +58,11 @@ public static class DevTermUserDataPaths
     /// </summary>
     public static string? ResolveManifestDirectory(string deviceName)
     {
+        if (!ProfileName.IsValid(deviceName))
+        {
+            return null;
+        }
+
         var userPath = Path.Combine(UserManifestsDirectory, deviceName);
         if (Directory.Exists(userPath))
         {

@@ -26,6 +26,14 @@ public sealed class Session : IAsyncDisposable
     private CancellationTokenSource? _readLoopCts;
     private Task? _readLoopTask;
 
+    // True for the entire logical call chain descending from PumpAsync (including a synchronous
+    // Output handler that calls SendAsync inline) - false for every unrelated caller, even one
+    // running concurrently while PumpAsync is itself still blocked in a read. AsyncLocal, not a
+    // plain field, is what makes that distinction possible: ambient flow follows only the call
+    // chain that was actually spawned from inside PumpAsync, never a separate caller on the same
+    // Session. See StopAsync's use of this - docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+    private readonly AsyncLocal<bool> _onReadLoop = new();
+
     // Bumped on every open and close. A fault captured under one generation is ignored once the
     // connection it belonged to is gone (already closed or reopened) - so a late fault from a
     // previous connection can never tear down, or be reported against, a newer one.
@@ -116,7 +124,24 @@ public sealed class Session : IAsyncDisposable
         await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (_readLoopTask is not null)
+            {
+                // Already open (or opening) under this same lock - a second call (e.g. a slow
+                // connect racing a second Connect click) must not start a second read loop on the
+                // same PipeReader. See docs/bugs/fixed/001-session-double-open.md.
+                return;
+            }
+
             await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+            // A presenter (a pending SCPI/manifest reply queue, a partial ASCII line) survives
+            // Close/OpenAsync on this same Session instance - without this, a stale pending id or a
+            // half-received line from the previous connection carried into the new one. See
+            // docs/bugs/fixed/006-reply-queue-desync.md.
+            foreach (var presenter in _pipeline.Presenters.OfType<IResettablePresenter>())
+            {
+                presenter.Reset();
+            }
 
             // Before the read loop starts, so an observer always sees "opened" ahead of the first
             // received chunk.
@@ -192,6 +217,7 @@ public sealed class Session : IAsyncDisposable
 
     private async Task PumpAsync(int generation, CancellationToken cancellationToken)
     {
+        _onReadLoop.Value = true;
         Exception? error = null;
         try
         {
@@ -238,8 +264,14 @@ public sealed class Session : IAsyncDisposable
             error = ex;
         }
 
-        // Not awaited: FaultAsync closes the session, which awaits this very read loop.
-        _ = Task.Run(() => FaultAsync(generation, error), CancellationToken.None);
+        // Not awaited: FaultAsync closes the session, which awaits this very read loop. Suppress
+        // ambient flow so the spawned task doesn't inherit _onReadLoop=true from this method's own
+        // scope - it's a genuinely separate call, not a synchronous reentry, and StopAsync must
+        // await it normally rather than treating it as the deadlock case.
+        using (ExecutionContext.SuppressFlow())
+        {
+            _ = Task.Run(() => FaultAsync(generation, error), CancellationToken.None);
+        }
     }
 
     private async Task FaultAsync(int generation, Exception? error)
@@ -283,6 +315,19 @@ public sealed class Session : IAsyncDisposable
         {
             _readLoopTask = null;
 
+            if (_onReadLoop.Value)
+            {
+                // A caller (e.g. an Output handler reacting to received data) invoked SendAsync
+                // synchronously from within the read loop's own call stack, and the send failed -
+                // awaiting the read loop here would deadlock, since it can't complete until this
+                // very call returns. Fail fast instead of hanging forever. See
+                // docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+                throw new InvalidOperationException(
+                    "Session: SendAsync was called synchronously from within the read loop (e.g. a " +
+                    "Session.Output handler) and the send failed. Reply asynchronously (e.g. via " +
+                    "Task.Run) instead of blocking on SendAsync's Task from that handler.");
+            }
+
             // PumpAsync catches everything itself; this can only be a pending cancellation.
             try
             {
@@ -300,8 +345,10 @@ public sealed class Session : IAsyncDisposable
         {
             await _transport.CloseAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
+            // A transport-internal cancellation (its own pump task, not this call's own token)
+            // must not escape CloseAsync's "never throws" contract.
             Debug.WriteLine($"Session: closing the transport failed: {ex}");
         }
 

@@ -20,6 +20,13 @@ public enum BlockHeaderStatus
 
     /// <summary>A complete, valid block header.</summary>
     Complete,
+
+    /// <summary>
+    /// A valid indefinite-length block header (<c>#0</c>) - IEEE 488.2 doesn't give this block a
+    /// declared length; its end has to be found some other way (the wrapped content's own
+    /// structural end, or failing that, an idle timeout).
+    /// </summary>
+    Indefinite,
 }
 
 /// <summary>
@@ -81,12 +88,21 @@ public static class StreamContentSniffer
         for (var i = 0; i < data.Length; i++)
         {
             var rest = data[i..];
-            if (rest[0] == (byte)'#'
-                && ParseBlockHeader(rest, out var headerLength, out var payloadLength) == BlockHeaderStatus.Complete
-                && payloadLength > 0
-                && IdentifyAt(rest[headerLength..], allowHpgl: true) is { } wrapped)
+            if (rest[0] == (byte)'#')
             {
-                return new StreamContentMatch(wrapped, i, headerLength, payloadLength);
+                var blockStatus = ParseBlockHeader(rest, out var headerLength, out var payloadLength);
+                if (blockStatus == BlockHeaderStatus.Complete
+                    && payloadLength > 0
+                    && IdentifyAt(rest[headerLength..], allowHpgl: true) is { } wrapped)
+                {
+                    return new StreamContentMatch(wrapped, i, headerLength, payloadLength);
+                }
+
+                if (blockStatus == BlockHeaderStatus.Indefinite
+                    && IdentifyAt(rest[headerLength..], allowHpgl: true) is { } wrappedIndefinite)
+                {
+                    return new StreamContentMatch(wrappedIndefinite, i, headerLength, null);
+                }
             }
 
             var atBoundary = i == 0 ? startIsBoundary : data[i - 1] is (byte)'\r' or (byte)'\n';
@@ -120,6 +136,12 @@ public static class StreamContentSniffer
         }
 
         var digitCount = data[1] - '0';
+        if (digitCount == 0)
+        {
+            headerLength = 2;
+            return BlockHeaderStatus.Indefinite;
+        }
+
         if (digitCount is < 1 or > 9)
         {
             return BlockHeaderStatus.NotABlock;

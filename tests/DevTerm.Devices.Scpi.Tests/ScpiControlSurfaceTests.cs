@@ -1,4 +1,5 @@
 using System.Text;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.StreamContent;
@@ -97,6 +98,55 @@ public sealed class ScpiControlSurfaceTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact()
+    {
+        // Regression test for bug 024: a text parameter's literal comma used to be mistaken for the
+        // separator between parameter values, truncating that parameter and shifting every later one
+        // onto the wrong token. See docs/bugs/fixed/024-comma-in-text-parameter.md. The joined string
+        // here is exactly what ControlPanelMode.TryReadParameters/ControlPanelWindow.TryReadParameters
+        // now produce via ParameterValueList.Join.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        var joined = ParameterValueList.Join(["VOLT:AC,extra", "10"]);
+        await surface.InvokeAsync("conf", joined, TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:VOLT:AC,extra 10\n");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EmptySecondValue_FallsBackToDefault()
+    {
+        // Secondary defect from bug 024: an empty (but present) split segment must fall back to the
+        // parameter's own DefaultValue, matching ManifestControlSurface.FormatTemplate's existing behavior.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        await surface.InvokeAsync("conf", "VOLT:AC,", TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:VOLT:AC AUTO\n");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted()
+    {
+        // Regression test for bug 043: parameters used to be substituted one after another with
+        // Replace, so a value typed into an earlier parameter that contains "{Later}" was itself
+        // replaced by the later parameter's value. See
+        // docs/bugs/fixed/043-template-substitution-not-single-pass.md.
+        var (session, transport) = CreateSurfaceSession();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker: null);
+
+        var joined = ParameterValueList.Join(["{Range}", "10"]);
+        await surface.InvokeAsync("conf", joined, TestContext.CancellationToken);
+
+        VerifySent(transport, "CONF:{Range} 10\n");
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_NumericParameterOutOfRange_ClampsToBounds()
     {
         var (session, transport) = CreateSurfaceSession();
@@ -105,6 +155,36 @@ public sealed class ScpiControlSurfaceTests
         await surface.InvokeAsync("freq", "5000", TestContext.CancellationToken);
 
         VerifySent(transport, "SOUR1:FREQ 1000\n");
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_NumericParameterWithNoLimitsSet_IsNotForcedToZero()
+    {
+        // Regression test for bug 044: Minimum/Maximum used to be non-nullable double, so a
+        // parameter that (legitimately) omits both defaulted to 0/0 and Math.Clamp forced every
+        // value to 0. See docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+        var (session, transport) = CreateSurfaceSession();
+        var profile = new ScpiInstrumentProfile
+        {
+            Name = "Test Instrument",
+            Terminator = "\n",
+            Commands =
+            [
+                new ScpiCommandDefinition
+                {
+                    Id = "gain",
+                    Label = "Set Gain",
+                    Template = "GAIN {Value}",
+                    Parameters = [new ScpiParameterDefinition { Name = "Value", Kind = ScpiParameterKind.Numeric }],
+                },
+            ],
+        };
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+
+        await surface.InvokeAsync("gain", "12345", TestContext.CancellationToken);
+
+        VerifySent(transport, "GAIN 12345\n");
     }
 
     [TestMethod]
@@ -150,6 +230,24 @@ public sealed class ScpiControlSurfaceTests
         await surface.InvokeAsync("idn", null, TestContext.CancellationToken);
 
         tracker.Verify(t => t.QuerySent("idn.reply"), Times.Once);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_QueryCommand_WhenSendFails_CancelsTheReplyIndicatorAndRethrows()
+    {
+        // Regression test for bug 006: a failed send used to leave the reply id QuerySent just
+        // registered pending forever, shifting the *next* query's reply onto the wrong field. See
+        // docs/bugs/fixed/006-reply-queue-desync.md.
+        var (session, transport) = CreateSurfaceSession();
+        transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("write failed"));
+        var tracker = new Mock<IScpiReplyTracker>();
+        var surface = new ScpiControlSurface(session, BuildProfile(), tracker.Object);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("idn", null, TestContext.CancellationToken));
+
+        tracker.Verify(t => t.Cancel("idn.reply"), Times.Once);
     }
 
     [TestMethod]

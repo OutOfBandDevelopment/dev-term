@@ -10,5 +10,5 @@ public interface ITcpConnection : IDisposable
     /// <summary>The connection's byte stream, pumped into a pipe (see <see cref="DevTerm.Core.Transports.StreamToPipePump"/>).</summary>
     Stream Stream { get; }
 
-    void Write(byte[] buffer, int offset, int count);
+    Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken);
 }
