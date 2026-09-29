@@ -33,6 +33,16 @@ internal static class StaTestRunner
 
             var frame = new DispatcherFrame();
 
+            // An async void event handler (e.g. Window.OnClosing) can't propagate its exception to
+            // an awaiter - without this, it would instead escape Dispatcher.PushFrame below
+            // unhandled and crash this whole test process rather than just failing the test. Mark
+            // it handled so the dispatcher loop below keeps running instead of tearing down.
+            dispatcher.UnhandledException += (_, args) =>
+            {
+                exception ??= args.Exception;
+                args.Handled = true;
+            };
+
             async Task RunAndSignal()
             {
                 try
