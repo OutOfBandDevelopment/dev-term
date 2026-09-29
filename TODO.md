@@ -10,25 +10,6 @@ Completed work is logged by date under `docs/changes/`.
   USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
   - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
   - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
-- **Radex One (`DevTerm.Devices.RadexOne`) needs a real-hardware re-run after a protocol fix.** A
-  real device turned up on COM8 (2400 8N1 serial, not HID as an earlier draft wrongly assumed) but
-  never replied to queries. Root-caused and fixed 2026-09-25 (see `docs/changes/2026-09-25.md`): the
-  outer header's Type field was assumed to be a per-command code when it's actually a constant
-  marker (the real command code lives in the Extension's own first word), and the checksum was a
-  byte-sum instead of the real word-sum with a required modulo. Framer, a new
-  `RadexOneExtensionCodec`, decoder, and control surface were all rewritten and checksum-verified
-  byte-for-byte against the source doc's real trace examples; `RealHardwareRadexOneTests`' baud rate
-  was also fixed (was 9600, device is 2400). Run
-  `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware&TestCategory=Radex_One"`
-  against the COM8 device to confirm it now replies — the actual point of this fix, not yet
-  empirically confirmed.
-  - **Update, 2026-09-26**: added a fifth command, Reset Accumulated (`0x0803`), from a
-    user-captured trace not in the original source doc (see
-    `docs/design/proposals/radex-one-protocol.md`'s "Trace Examples"/Status). Checksum-verified
-    byte-for-byte against the new trace, both directions; wired end-to-end (`RadexOneCommand`,
-    `RadexOneExtensionCodec.BuildQuery`'s new `word` parameter, decoder ack, control-surface
-    action/preview, UI button) with 5 new unit tests (27 total). Not yet run against the COM8
-    device — folds into the same pending real-hardware re-run above.
 - **BLE transport (`DevTerm.Transports.Ble` + Windows backend) needs real-hardware verification.**
   Built and wired end-to-end 2026-09-25 (see `docs/changes/2026-09-25.md`): `IBleAdapter`/
   `IBleAdapterFactory`/`IBleDeviceDiscovery` contract, a `Windows.Devices.Bluetooth`-backed
