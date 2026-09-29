@@ -60,6 +60,13 @@ public sealed class BleTransport : ITransport
         adapter.NotificationReceived += OnNotificationReceived;
         adapter.Disconnected += OnAdapterDisconnected;
 
+        // Created before ConnectAsync, not after: some devices send a greeting the instant
+        // notifications are enabled, which happens inside ConnectAsync - a notification arriving
+        // that early needs somewhere to land rather than being silently dropped by
+        // OnNotificationReceived's _pipe-is-null guard. See
+        // docs/bugs/fixed/052-ble-notifications-before-pipe.md.
+        _pipe = new Pipe();
+
         try
         {
             await RunWithTimeoutAsync(
@@ -73,12 +80,12 @@ public sealed class BleTransport : ITransport
             adapter.NotificationReceived -= OnNotificationReceived;
             adapter.Disconnected -= OnAdapterDisconnected;
             await adapter.DisposeAsync().ConfigureAwait(false);
+            _pipe = null;
             State = ConnectionState.Faulted;
             throw;
         }
 
         _adapter = adapter;
-        _pipe = new Pipe();
         State = ConnectionState.Open;
     }
 

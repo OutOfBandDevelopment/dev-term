@@ -86,7 +86,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 049 | [UI definition XML is parsed without prohibiting DTDs](fixed/049-uidefinition-xml-dtd.md) | DevTerm.UiDefinitions (UiDefinitionSerializer) | Fixed |
 | 050 | [A manifest can make strip-chart history grow without limit](fixed/050-strip-chart-history-unbounded.md) | DevTerm.UiDefinitions / DeviceManifests (LiveDisplayState) | Fixed |
 | 051 | [LF followed by CR counts as two lines](fixed/051-line-reply-lf-cr-two-lines.md) | DevTerm.Core (LineReplyPresenter) | Fixed |
-| 052 | [BLE notifications arriving right after subscribe are dropped](052-ble-notifications-before-pipe.md) | DevTerm.Transports.Ble | Open |
+| 052 | [BLE notifications arriving right after subscribe are dropped](fixed/052-ble-notifications-before-pipe.md) | DevTerm.Transports.Ble | Fixed |
 | 053 | [BLE pipe writes from Bluetooth threads aren't synchronized](053-ble-pipe-writes-unsynchronized.md) | DevTerm.Transports.Ble | Open |
 | 054 | [A cancelled BLE connect leaves its ValueChanged handler attached](054-ble-cancelled-connect-handler-leak.md) | DevTerm.Transports.Ble.Windows | Open |
 | 055 | [HID read thread can crash the process; Close blocks the calling thread](055-hid-read-thread-and-close-blocking.md) | DevTerm.Transports.Hid | Open |

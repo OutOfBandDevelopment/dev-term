@@ -100,6 +100,36 @@ public sealed class BleTransportTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task NotificationArrivingDuringConnectAsync_IsNotDropped()
+    {
+        // Regression test for bug 052: some devices send a greeting the instant notifications are
+        // enabled, which happens inside adapter.ConnectAsync — but _pipe was only created after
+        // ConnectAsync returned, so OnNotificationReceived silently dropped a notification arriving
+        // that early. See docs/bugs/fixed/052-ble-notifications-before-pipe.md.
+        var adapter = new Mock<IBleAdapter>();
+        var payload = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
+        adapter.Setup(a => a.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(_ =>
+            {
+                adapter.Raise(a => a.NotificationReceived += null, adapter.Object, new ReadOnlyMemory<byte>(payload));
+                return Task.CompletedTask;
+            });
+        var factory = new Mock<IBleAdapterFactory>();
+        factory.Setup(f => f.Create(It.IsAny<BleTransportOptions>())).Returns(adapter.Object);
+
+        var transport = new BleTransport(factory.Object, Options());
+
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(payload, result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task IncomingNotification_IsAvailableThroughInput()
     {
         var adapter = new Mock<IBleAdapter>();
