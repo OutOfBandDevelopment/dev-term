@@ -151,6 +151,37 @@ public sealed class ScpiProfileCatalogTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public void Load_WithANumericParameterWhereMinimumExceedsMaximum_SkipsThatProfileAndReportsIt()
+    {
+        // Regression test for bug 044: Math.Clamp(number, Min, Max) throws ArgumentException when
+        // Min > Max, which used to reach a live control panel invocation with no warning at load
+        // time. See docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+        var baseDirectory = CreateTempDirectory();
+        try
+        {
+            var profilesDir = Path.Combine(baseDirectory, "Profiles");
+            Directory.CreateDirectory(profilesDir);
+            File.WriteAllText(Path.Combine(profilesDir, "good.json"), _minimalProfileJson);
+            var badLimitsJson = _minimalProfileJson
+                .Replace("Synthetic Instrument", "BadLimits")
+                .Replace("\"Minimum\": 0, \"Maximum\": 100", "\"Minimum\": 100, \"Maximum\": 0");
+            File.WriteAllText(Path.Combine(profilesDir, "bad-limits.json"), badLimitsJson);
+
+            var profiles = ScpiProfileCatalog.Load(baseDirectory, out var errors);
+
+            Assert.HasCount(1, profiles);
+            Assert.AreEqual("Synthetic Instrument", profiles[0].Name);
+            Assert.HasCount(1, errors);
+            StringAssert.Contains(errors[0], "bad-limits.json");
+        }
+        finally
+        {
+            Directory.Delete(baseDirectory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Generic_HasNoIdnPatternAndBaselineCommonCommands()
     {
         var generic = ScpiProfileCatalog.Generic;

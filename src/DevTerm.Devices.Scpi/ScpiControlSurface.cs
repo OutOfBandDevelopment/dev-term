@@ -189,7 +189,7 @@ public sealed partial class ScpiControlSurface : IControlSurface, ICommandPrevie
             number = double.TryParse(parameter.DefaultValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var fallback) ? fallback : 0;
         }
 
-        var clamped = Math.Clamp(number, parameter.Minimum, parameter.Maximum);
+        var clamped = Math.Clamp(number, parameter.Minimum ?? double.NegativeInfinity, parameter.Maximum ?? double.PositiveInfinity);
         if (parameter.DecimalPlaces is not { } decimalPlaces)
         {
             return clamped.ToString(CultureInfo.InvariantCulture);

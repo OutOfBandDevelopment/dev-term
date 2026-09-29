@@ -121,10 +121,18 @@ public static class ScpiProfileCatalog
             {
                 var json = File.ReadAllText(file);
                 var profile = JsonSerializer.Deserialize<ScpiInstrumentProfile>(json, _serializerOptions);
-                if (profile is not null)
+                if (profile is null)
                 {
-                    profiles.Add(profile);
+                    continue;
                 }
+
+                if (FindBadNumericLimits(profile) is { } badParameter)
+                {
+                    errors.Add($"{Path.GetFileName(file)}: parameter '{badParameter.Name}' has Minimum ({badParameter.Minimum}) greater than Maximum ({badParameter.Maximum}).");
+                    continue;
+                }
+
+                profiles.Add(profile);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
             {
@@ -132,6 +140,19 @@ public static class ScpiProfileCatalog
             }
         }
     }
+
+    /// <summary>
+    /// The first <see cref="ScpiParameterKind.Numeric"/> parameter, across every command, whose
+    /// <see cref="ScpiParameterDefinition.Minimum"/> and <see cref="ScpiParameterDefinition.Maximum"/>
+    /// are both set with <c>Minimum &gt; Maximum</c> — <c>Math.Clamp</c> throws
+    /// <see cref="ArgumentException"/> for that combination, so a profile like this is rejected here
+    /// rather than reaching a live control panel invocation. See
+    /// docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+    /// </summary>
+    private static ScpiParameterDefinition? FindBadNumericLimits(ScpiInstrumentProfile profile) =>
+        profile.Commands
+            .SelectMany(command => command.Parameters)
+            .FirstOrDefault(parameter => parameter is { Kind: ScpiParameterKind.Numeric, Minimum: { } min, Maximum: { } max } && min > max);
 
     private static ScpiInstrumentProfile BuildGenericProfile() => new()
     {

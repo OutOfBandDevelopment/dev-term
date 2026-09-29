@@ -18,11 +18,11 @@ public sealed class ScpiParameterDefinition
     /// </summary>
     public ScpiParameterControl? Control { get; set; }
 
-    /// <summary><see cref="ScpiParameterKind.Numeric"/> only.</summary>
-    public double Minimum { get; set; }
+    /// <summary><see cref="ScpiParameterKind.Numeric"/> only. Null (the default) is unbounded.</summary>
+    public double? Minimum { get; set; }
 
-    /// <summary><see cref="ScpiParameterKind.Numeric"/> only.</summary>
-    public double Maximum { get; set; }
+    /// <summary><see cref="ScpiParameterKind.Numeric"/> only. Null (the default) is unbounded.</summary>
+    public double? Maximum { get; set; }
 
     /// <summary><see cref="ScpiParameterKind.Numeric"/> only.</summary>
     public string? Unit { get; set; }

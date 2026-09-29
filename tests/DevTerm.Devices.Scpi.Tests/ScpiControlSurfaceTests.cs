@@ -158,6 +158,36 @@ public sealed class ScpiControlSurfaceTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.BugRegression)]
+    public async Task InvokeAsync_NumericParameterWithNoLimitsSet_IsNotForcedToZero()
+    {
+        // Regression test for bug 044: Minimum/Maximum used to be non-nullable double, so a
+        // parameter that (legitimately) omits both defaulted to 0/0 and Math.Clamp forced every
+        // value to 0. See docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+        var (session, transport) = CreateSurfaceSession();
+        var profile = new ScpiInstrumentProfile
+        {
+            Name = "Test Instrument",
+            Terminator = "\n",
+            Commands =
+            [
+                new ScpiCommandDefinition
+                {
+                    Id = "gain",
+                    Label = "Set Gain",
+                    Template = "GAIN {Value}",
+                    Parameters = [new ScpiParameterDefinition { Name = "Value", Kind = ScpiParameterKind.Numeric }],
+                },
+            ],
+        };
+        var surface = new ScpiControlSurface(session, profile, tracker: null);
+
+        await surface.InvokeAsync("gain", "12345", TestContext.CancellationToken);
+
+        VerifySent(transport, "GAIN 12345\n");
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_MissingParameterValue_FallsBackToDefault()
     {
         var (session, transport) = CreateSurfaceSession();
