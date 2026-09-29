@@ -35,6 +35,7 @@ const string Usage =
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
     + "\n   or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]"
     + "\n   or: dev-term --listbledevices true"
+    + "\n   or: dev-term --listblecharacteristics <deviceid>"
     + "\nThe full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead"
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nAdd --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any"
@@ -112,6 +113,32 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
     foreach (var device in bleProvider.GetRequiredService<IBleDeviceDiscovery>().GetDevices())
     {
         Console.WriteLine($"{device.DeviceId}  {device.Name ?? "(unknown)"}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig[nameof(CliOptions.ListBleCharacteristics)] is { Length: > 0 } bleDeviceId)
+{
+    var bleProfileServices = new ServiceCollection();
+    bleProfileServices.AddBleTransport();
+    BlePlatformAdapterLoader.TryRegisterPlatformAdapter(bleProfileServices);
+    using var bleProfileProvider = bleProfileServices.BuildServiceProvider();
+    foreach (var service in bleProfileProvider.GetRequiredService<IBleGattProfileExplorer>().GetServices(bleDeviceId))
+    {
+        Console.WriteLine($"Service {service.Uuid}");
+        foreach (var characteristic in service.Characteristics)
+        {
+            var flags = string.Join(",", new[]
+            {
+                characteristic.CanRead ? "Read" : null,
+                characteristic.CanWrite ? "Write" : null,
+                characteristic.CanWriteWithoutResponse ? "WriteWithoutResponse" : null,
+                characteristic.CanNotify ? "Notify" : null,
+                characteristic.CanIndicate ? "Indicate" : null,
+            }.Where(f => f is not null));
+            Console.WriteLine($"  Characteristic {characteristic.Uuid}  [{flags}]{(characteristic.Name is null ? string.Empty : $"  {characteristic.Name}")}");
+        }
     }
 
     return 0;

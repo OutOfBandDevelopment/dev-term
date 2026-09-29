@@ -54,10 +54,12 @@ Shown in two situations:
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
 | Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
-| BLE device ID (ble) | free text | empty | Required when Transport is `ble` | Platform-specific peripheral identifier (Windows: a `BluetoothLEDevice` id string, not a MAC address) — typed by hand, copied from a `--listbledevices true` run; no live "Detect..." picker yet (see BACKLOG.md) |
+| BLE device ID (ble) | free text | empty | Required when Transport is `ble` | Platform-specific peripheral identifier (Windows: a `BluetoothLEDevice` id string, not a MAC address) — typed by hand, or picked via the "Detect BLE..." picker (same idea as HID/USBTMC's, see below) |
 | Service UUID (ble) | free text | empty (Nordic UART Service default applied by the transport) | none | Blank means the transport's own Nordic UART Service default; set explicitly for a device with a custom GATT profile |
-| Write characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
-| Notify characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID |
+| Write characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID; can also be filled by the "Detect characteristics..." picker below (writes Service UUID too) |
+| Notify characteristic UUID (ble) | free text | empty (NUS default) | none | Same blank-means-default behavior as Service UUID; can also be filled by the "Pick..." notify picker below (writes Service UUID too) |
+| Detected characteristics (write) (ble) | picked from a "Detect characteristics..." list, via `SelectedBleWriteCharacteristic` | empty | none | Enumerates BLE device ID's actual GATT services/characteristics (`IBleGattProfileExplorer.GetServices`) and lets picking one fill Service UUID + Write characteristic UUID together. Requires BLE device ID to be filled in first (both front ends show a message and do nothing if it's blank). Independent of the notify picker below — some peripherals (e.g. the SH-HC-08 family) expose the very same UUID as both their write and notify characteristic, so picking a row here doesn't touch Notify characteristic UUID |
+| Detected characteristics (notify) (ble) | picked from the same already-scanned list, via `SelectedBleNotifyCharacteristic` | empty | none | Same source list as the write picker (no separate rescan — the write picker's "Detect characteristics..." button populates it); picking a row fills Service UUID + Notify characteristic UUID together, independent of the write picker |
 | Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary`/`k8055`/`busylight`/`scpi`/`radexone`/`zoomh4n`/`de5000` (a row of checkboxes, a `ChoiceStyle.CheckList` bound to `PresentersText`, the checked names comma-joined) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set — the six generic text presenters `AddTextPresenters` registers, plus one per device module that registers its own `IPresenter`) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as. `ConnectionEditorViewModel.PresenterOptions` is a hardcoded list, not resolved from the live `PresenterCatalog` (see that property's doc comment) — a new device module's presenter must be added there by hand or it silently won't appear in this picker, as happened with `radexone`/`zoomh4n`/`de5000` until 2026-09-25 |
 | SCPI profile | one of the SCPI profile choices (Auto-detect, Generic, every bundled instrument), or empty | empty (always ask) | n/a | Shown only while the `scpi` presenter is checked (`IsScpiPresenterSelected`). Preselects the Device > SCPI Instrument... choice |
@@ -205,20 +207,46 @@ Shown in two situations:
   hooks so the view model itself has no UI dependency. Single-profile **Delete** doesn't confirm.
 - **Detected-hardware pickers fill fields rather than binding directly to them**: `Port` and the
   shared `VendorId`/`ProductId` stay plain, freely-typable fields; a separate `SelectedSerialPort`/
-  `SelectedHidDevice`/`SelectedUsbtmcDevice` property on the view model is what a picker actually
+  `SelectedHidDevice`/`SelectedUsbtmcDevice`/`SelectedBleDevice` property on the view model is what a picker actually
   binds to, and setting it copies the choice into the real field(s) (`SelectedHidDevice`/
   `SelectedUsbtmcDevice` each set both Vendor and Product ID together, since they identify one
   device). Deliberately not the same property, both to keep typing a custom value simple and because
   a WPF editable `ComboBox`'s `Text` and `SelectedItem` don't share one format cleanly once the
   display string (`"046D:C08B  G502 HERO Gaming Mouse"`) differs from the plain decimal the field
   actually stores. Each is its own generated row ("Detected ports:"/"Detected HID devices:"/
-  "Detected USBTMC devices:"), only the row matching the selected transport visible, with a
-  hand-built widget: WPF a non-editable `ComboBox`; the TUI a "Detect..." / "Detect HID..." /
-  "Detect USBTMC..." button that opens a small modal picker (`FormRenderer.PickFromList`, a plain
-  `Dialog` + `ListView`, `Application.Run(dialog)` — Terminal.Gui has no built-in combobox widget,
-  confirmed via reflection against the installed v2.5.0 package). Before the form was generated, the
-  TUI showed both USB Detect buttons side by side on the Vendor/Product row. Both are empty (not an
-  error) if nothing's detected or discovery itself fails.
+  "Detected USBTMC devices:"/"Detected BLE devices:"), only the row matching the selected transport
+  visible, with a hand-built widget: WPF a non-editable `ComboBox` (BLE's is paired with its own
+  "Detect BLE..." button in one row, since — unlike the other three, which discover eagerly and fast
+  at construction — a BLE scan is slow (~4s) and only available via the runtime-loaded Windows
+  backend, so nothing populates the combobox until that button's clicked); the TUI a "Detect..." /
+  "Detect HID..." / "Detect USBTMC..." / "Detect BLE..." button that opens a small modal picker
+  (`FormRenderer.PickFromList`, a plain `Dialog` + `ListView`, `Application.Run(dialog)` —
+  Terminal.Gui has no built-in combobox widget, confirmed via reflection against the installed
+  v2.5.0 package); the BLE button runs its scan synchronously first (blocking, like every other TUI
+  Accepting handler), the WPF one runs it on a background thread (`Task.Run`) so the window stays
+  responsive. Before the form was generated, the TUI showed both USB Detect buttons side by side on
+  the Vendor/Product row. All are empty (not an error) if nothing's detected or discovery itself
+  fails.
+- **BLE GATT characteristic pickers are one level down from the device picker, sharing one scan
+  across two independent selections**: `SelectedBleWriteCharacteristic`/`SelectedBleNotifyCharacteristic`
+  (2026-09-29) bind against `BleCharacteristicOptions` — a flattened, one-row-per-characteristic list
+  built by `BleCharacteristicOption.FromServices` from `IBleGattProfileExplorer.GetServices(deviceId)`
+  (`BleDeviceScanner.ExploreCharacteristics`), each row labeled with its UUID, capability flags
+  (`[Read,WriteWithoutResponse,Notify]`, etc.), optional name, and parent service UUID. Only the
+  write-role picker's button ("Detect characteristics..." in both front ends) actually runs the scan
+  (`SetBleCharacteristicOptions`, which also clears whatever was previously picked for either role,
+  since a previous device's characteristics don't apply to a newly enumerated one); the notify-role
+  picker reuses that same list — in the TUI, its own "Pick..." button just reopens
+  `FormRenderer.PickFromList` against the already-populated `BleCharacteristicOptions` (showing "Run
+  Detect characteristics first." if it's still empty); in WPF, it's a second `ComboBox` bound to the
+  same `BleCharacteristicOptions` with no button of its own. Requires `BleDeviceId` to already be
+  filled in — picking a device only sets an id string, it doesn't scan its GATT profile automatically
+  (a fresh GATT session per keystroke would be needless overhead); both front ends show a message and
+  no-op if the write-role button is pressed with `BleDeviceId` blank. The two pickers are deliberately
+  independent rather than one combined "pick a characteristic pair" control, since some peripherals
+  (confirmed on a real SH-HC-08 BLE-to-serial bridge, `docs/changes/2026-09-29.md`) expose the exact
+  same UUID as both their write and notify characteristic, unlike Nordic UART Service's separate
+  RX/TX pair — assuming the two always differ would make that device unpickable.
 - **A detected serial port's description is a separate lookup, not part of the port list.**
   `ISerialPortDiscovery` keeps `GetPortNames()` as-is (the `--listports` and `SerialPort` contract)
   and gains a default-interface-method `GetPortDescriptions()` returning `port name → description`
@@ -359,8 +387,8 @@ Shown in two situations:
   change), not of hand-building two more field groups.
 
 Everything requested 2026-09-16 has landed: the presenter picker and per-input-line parser on
-2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, BLE's field group (also
-2026-09-25 — no live "Detect..." picker yet, see BACKLOG.md), and the generated form (which also
-fixed the TUI's gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor
-follow-ups live in `BACKLOG.md`.
+2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, BLE's field group on 2026-09-25,
+its live "Detect BLE..." picker on 2026-09-29, and the generated form (which also fixed the TUI's
+gap under a hidden transport group) on 2026-09-25. Remaining Connection Editor follow-ups live in
+`BACKLOG.md`.
 

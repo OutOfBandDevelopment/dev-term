@@ -6,59 +6,90 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-- **Re-run the real-hardware suites once devices are attached.** `ReplyCollector` (multi-chunk replies) and the
-  USBTMC `DevicePath` location landed 2026-09-25 with no hardware attached.
-  - Run `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware"`.
-  - Confirm `--listusbtmcdevices` prints a real `at usb:…` location for each Rigol.
-- **Radex One (`DevTerm.Devices.RadexOne`) needs a real-hardware re-run after a protocol fix.** A
-  real device turned up on COM8 (2400 8N1 serial, not HID as an earlier draft wrongly assumed) but
-  never replied to queries. Root-caused and fixed 2026-09-25 (see `docs/changes/2026-09-25.md`): the
-  outer header's Type field was assumed to be a per-command code when it's actually a constant
-  marker (the real command code lives in the Extension's own first word), and the checksum was a
-  byte-sum instead of the real word-sum with a required modulo. Framer, a new
-  `RadexOneExtensionCodec`, decoder, and control surface were all rewritten and checksum-verified
-  byte-for-byte against the source doc's real trace examples; `RealHardwareRadexOneTests`' baud rate
-  was also fixed (was 9600, device is 2400). Run
-  `dotnet test --settings devterm.runsettings --filter "TestCategory=Hardware&TestCategory=Radex_One"`
-  against the COM8 device to confirm it now replies — the actual point of this fix, not yet
-  empirically confirmed.
-  - **Update, 2026-09-26**: added a fifth command, Reset Accumulated (`0x0803`), from a
-    user-captured trace not in the original source doc (see
-    `docs/design/proposals/radex-one-protocol.md`'s "Trace Examples"/Status). Checksum-verified
-    byte-for-byte against the new trace, both directions; wired end-to-end (`RadexOneCommand`,
-    `RadexOneExtensionCodec.BuildQuery`'s new `word` parameter, decoder ack, control-surface
-    action/preview, UI button) with 5 new unit tests (27 total). Not yet run against the COM8
-    device — folds into the same pending real-hardware re-run above.
-- **BLE transport (`DevTerm.Transports.Ble` + Windows backend) needs real-hardware verification.**
-  Built and wired end-to-end 2026-09-25 (see `docs/changes/2026-09-25.md`): `IBleAdapter`/
-  `IBleAdapterFactory`/`IBleDeviceDiscovery` contract, a `Windows.Devices.Bluetooth`-backed
-  implementation loaded at runtime via `BlePlatformAdapterLoader`, and full field wiring through
-  `CliOptions`/CLI validation, the TUI Configure screen, and WPF's Device Profiles window, plus a
-  `--listbledevices` CLI action. No BLE peripheral was paired/exercised this session — everything
-  was verified by build + unit test only. Once a BLE peripheral (the DE-5000's custom IR-to-BLE
-  adapter, or any NUS-speaking device) is paired: run `--listbledevices true` to confirm it lists,
-  then connect with `--transport ble --bledeviceid <id>` and confirm read/write/notify actually
-  round-trip real bytes.
-- **DE-5000 LCR meter (`DevTerm.Devices.De5000`) needs real-hardware verification.** Built and
-  unit-tested 2026-09-25 (see `docs/changes/2026-09-25.md`): `De5000Framer`/`De5000Decoder` (stream-
-  buffering around the fixed 17-byte ES51919 packet), a deliberately no-op `De5000ControlSurface`
-  (the meter has no writable commands), `De5000UiDefinition`, and menu wiring in both front ends,
-  gated on "any BLE connection". No custom IR-to-BLE adapter was paired this session — its GATT
-  profile (Nordic UART Service or custom) is still unconfirmed, per the BLE transport entry above.
-  Once the adapter is paired: fill in `devterm.runsettings`' blank `RealBleDe5000DeviceId` (and the
-  `RealBleDe5000*CharacteristicUuid` overrides if it turns out not to speak NUS), then run
-  `RealHardwareDe5000Tests` (`TestCategory=Hardware`).
-- **NMEA 0183 GPS decoder (`DevTerm.Devices.Nmea`) needs real-hardware verification.** Built and
-  unit-tested 2026-09-26 (see `docs/changes/2026-09-26.md` and
-  `docs/design/proposals/nmea-gps-protocol.md`): a generic NMEA 0183 sentence decoder
-  (GGA/RMC/GSA/GSV/VTG), a deliberately no-op `NmeaGpsControlSurface` (a GPS receiver has no
-  writable commands), `NmeaGpsUiDefinition`, and menu wiring in both front ends as "NMEA 0183...",
-  gated on the one confirmed-compatible unit's VID/PID (DeLorme Earthmate GPS BT-20,
-  `DevicePanels.Nmea0183`). No unit was on the bench this session — the exact HID report framing
-  (report length, report-ID byte) is a reasoned assumption (strip every `0x00` byte before
-  line-buffering), not a confirmed fact. Once the device is attached: fill in
-  `devterm.runsettings`' `RealHidEarthmateBt20-VendorId`/`-ProductId`/`-DevicePath`, then run
-  `RealHardwareEarthmateBt20Tests` (`TestCategory=Hardware`).
+### Connection Editor
+
+- **Show the hidden connection settings** (DTR, RTS, read/write timeouts, ASCII max line length). The
+  fields are generated from `ConnectionEditorViewModel`'s annotations since 2026-09-25, so this is now
+  just annotating the view-model properties (and adding the view-model properties where missing).
+- **Detected-device/-characteristic pickers should be searchable/filterable, not a plain list or
+  non-editable combo box.** Requested directly ("they should be combo boxes so I can search/filter
+  the results") for the BLE device picker, and applies equally to the BLE write/notify characteristic
+  pickers added 2026-09-29 (`docs/changes/2026-09-29.md`) and, for consistency, the existing HID/
+  USBTMC/serial-port pickers — none of the five is filterable today. WPF: today's `ComboBox`es are
+  bound but not `IsEditable`; an editable, text-filtered `ComboBox` (or a small custom filter-as-you-
+  type popup, since `IsEditable` alone doesn't filter the dropdown) covers all of them the same way.
+  TUI: `FormRenderer.PickFromList`'s modal `Dialog`/`ListView` has no text-filter box; needs one added
+  once, shared by every "Detect..."/"Pick..." button that calls it.
+
+### Forms engine and manifest editor (follow-ups from 2026-09-25)
+
+- **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
+  dropdown); only the form renderers handle both.
+- **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
+
+### Binary layout formats
+
+- `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section
+  in `docs/design/device-control-modules.md`. Not started.
+
+### Tektronix TDS2024
+
+- **Every `TRIGger:...?` query hangs (never replies) against this specific real TDS2024 unit** —
+  real-hardware confirmed 2026-09-25 (`docs/test/2026-09-25-18-57-22.md`): `TRIGger:MAIn:FREQuency?`
+  and `TRIGger:STATE?` (a much cheaper status query, ruling out "expensive measurement" as the
+  cause) both hung the full step timeout, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`,
+  `CH2?`) answered normally, including as the 3rd command in a sequence (ruling out a simple
+  "3rd command" positional issue). `tektronix-tds2024.json`'s own `Name` field notes this unit is
+  specifically "NOT the TDS2024B" — unconfirmed hypothesis that the `TRIGger` query family needs
+  that variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family
+  for now (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a
+  known-working `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare
+  framing, similar to the USBTMC framing bugs below.
+
+### USBTMC
+
+- **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
+  device omits the terminating zero-length packet when a reply ends exactly on a 64-byte boundary. The rework would
+  wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
+  padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
+  The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
+  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report). A
+  2026-09-29 manual attempt (`docs/test/2026-09-29-18-06-54.md`) got a real long/RAW-mode reply (8192 data bytes,
+  8202 total) but that still isn't a multiple of 64 or 512 — still not reproduced; needs finer control over the
+  exact point count to actually land on the boundary.
+
+### WPF layout review follow-ups (from 2026-09-25)
+
+- **Light theme Accent/Warning are below 4.5:1 as text colors** (4.1:1 and 3.3:1; Playback's `[tx]` and
+  `[note]` lines). Needs a palette decision covering both front ends and `docs/design/theming.md`; allow-listed
+  in `UiLayoutReviewTests` until then.
+- **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
+  charts shrink to the column would fix it.
+- **Cap field widths on wide windows.** At 1600px, text boxes and combos in Device Profiles and the
+  manifest editor stretch across the whole window.
+- **The Manifest picker's empty error area leaves ~24px of blank space** above the buttons.
+- **Busylight's unlabeled Apply row isn't aligned** with the section label columns above it.
+- **The Manifest Editor's pane title repeats its first section header** ("Identity" / "Identity").
+- **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
+- **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
+  Generic, most manifest-editor node kinds, and the menus in the second theme.
+
+### TUI layout review follow-ups (from 2026-09-25)
+
+- **Control-panel button rows repeat their label** ("Apply: [Apply]", "Custom...: [Custom...]"). It's how
+  the label column lines up; a design call.
+- **Ctrl+Q in a nested TUI panel or dialog closes that window** rather than quitting the app. Decide which
+  it should be.
+- **The layout matrix made `DevTerm.Console.Tests` ~2 min** (was ~16 s). Reuse one app per class, or trim
+  the matrix to 80x25 plus 200x60.
+- **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
+- **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
+  invisible field backgrounds, faint focus).
+- **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
+  structured source; check whether that message suits an output-only device.
+- **Not reviewed yet:** the Terminal.Gui file dialogs (Browse, Save As); the manifest editor's New/empty
+  state and its "Create panel from commands" hint; Playback, the Stream Monitor and the SCPI panels in Dark;
+  the K8055 with live data; the main window's menus while disconnected.
 
 ### UI batch (started 2026-09-25)
 

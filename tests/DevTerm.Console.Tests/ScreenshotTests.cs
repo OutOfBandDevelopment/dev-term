@@ -171,7 +171,9 @@ public sealed class ScreenshotTests
     {
         // Same below-the-fold reasoning as ConfigureMode_HidTransport_IsCaptured - the BLE field
         // group sits even further down, after Serial/TCP/USB, so a plain unscrolled capture would
-        // miss it entirely.
+        // miss it entirely. Scrolled to the section header's exact row (as the HID test does)
+        // rather than a fixed PageDown, since a PageDown's fixed page height no longer lands on
+        // the same fields once the "Detected BLE devices" picker row grew the BLE section.
         var directory = CreateTempProfilesDirectory();
         try
         {
@@ -187,7 +189,8 @@ public sealed class ScreenshotTests
                 try
                 {
                     parts.DescriptionField.SetFocus();
-                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
+                    var header = parts.Form.SectionHeaderLabels["BLE"];
+                    parts.FormContent.Viewport = parts.FormContent.Viewport with { Y = parts.Form.Root.Frame.Y + header.Frame.Y };
                     app.LayoutAndDraw(true);
 
                     dump = TuiTestRunner.DumpBuffer();

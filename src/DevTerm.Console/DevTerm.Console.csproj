@@ -34,4 +34,31 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!--
+    DevTerm.Console stays plain net10.0 (cross-platform by design), so it can't take a
+    ProjectReference on DevTerm.Transports.Ble.Windows (net10.0-windows10.0.19041.0) - the SDK
+    refuses that at restore time regardless of version matching. DevTerm.Configuration.
+    BlePlatformAdapterLoader instead loads that assembly at runtime via reflection, if present
+    next to this app's own output - this target is what makes it present: it publishes the
+    Windows BLE backend as a side build (not a ProjectReference, so the TFM check never applies)
+    and copies the result alongside this project's own output, on Windows only. Publish, not
+    Build: a class library's own bin output never carries its runtime dependency closure
+    (CopyLocalLockFileAssemblies defaults to false for a library - confirmed empirically, its
+    own bin folder has neither the WinRT projection assemblies Windows.Devices.Bluetooth needs
+    at runtime - Microsoft.Windows.SDK.NET.dll, WinRT.Runtime.dll - nor anything else it
+    transitively depends on); only Publish forces that full closure into one folder to copy.
+    See DevTerm.Wpf.csproj for the same DLL reached the ordinary way, since WPF's own project is
+    an exe (which does get CopyLocalLockFileAssemblies=true by default) and has no cross-platform
+    constraint to work around in the first place.
+  -->
+  <Target Name="CopyWindowsBleBackend" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <MSBuild Projects="..\DevTerm.Transports.Ble.Windows\DevTerm.Transports.Ble.Windows.csproj"
+             Targets="Publish"
+             Properties="Configuration=$(Configuration)" />
+    <ItemGroup>
+      <_BleWindowsBackendOutput Include="..\DevTerm.Transports.Ble.Windows\bin\$(Configuration)\net10.0-windows10.0.19041.0\publish\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_BleWindowsBackendOutput)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

@@ -153,10 +153,16 @@ public static class ConfigureMode
         var detectPortButton = new Button { Text = "Detect..." };
         var detectHidButton = new Button { Text = "Detect HID..." };
         var detectUsbtmcButton = new Button { Text = "Detect USBTMC..." };
+        var detectBleButton = new Button { Text = "Detect BLE..." };
+        var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics..." };
+        var pickBleNotifyCharacteristicButton = new Button { Text = "Pick..." };
         var formOptions = new TuiFormOptions();
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => new TuiCustomWidget(detectUsbtmcButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleDevice)] = _ => new TuiCustomWidget(detectBleButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)] = _ => new TuiCustomWidget(detectBleCharacteristicsButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)] = _ => new TuiCustomWidget(pickBleNotifyCharacteristicButton, 2);
 
         var binding = new FormBinding(viewModel);
         var form = FormRenderer.Build(app, viewModel.FormDefinition, binding, formOptions);
@@ -218,9 +224,12 @@ public static class ConfigureMode
             UsbNotFoundLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.UsbDeviceNotFoundHint)],
             IdsShowHexCheckBox = (CheckBox)form.ControlViews[nameof(ConnectionEditorViewModel.IdsShowHex)],
             BleDeviceIdField = Field(nameof(ConnectionEditorViewModel.BleDeviceId)),
+            DetectBleButton = detectBleButton,
             BleServiceUuidField = Field(nameof(ConnectionEditorViewModel.BleServiceUuid)),
             BleWriteUuidField = Field(nameof(ConnectionEditorViewModel.BleWriteCharacteristicUuid)),
             BleNotifyUuidField = Field(nameof(ConnectionEditorViewModel.BleNotifyCharacteristicUuid)),
+            DetectBleCharacteristicsButton = detectBleCharacteristicsButton,
+            PickBleNotifyCharacteristicButton = pickBleNotifyCharacteristicButton,
             LoopbackInfoLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.LoopbackInfo)],
             PresenterCheckBoxes = form.CheckLists[nameof(ConnectionEditorViewModel.PresentersText)],
             ScpiProfileSelector = form.Choices[nameof(ConnectionEditorViewModel.ScpiProfile)],
@@ -459,6 +468,59 @@ public static class ConfigureMode
             if (index is int i)
             {
                 viewModel.SelectedUsbtmcDevice = devices[i];
+            }
+
+            e.Handled = true;
+        };
+
+        // Unlike the port/HID/USBTMC pickers above, there's no list already sitting in the view
+        // model to show - BLE discovery is a live several-second radio scan (see
+        // BleDeviceScanner.Scan), run synchronously here since the TUI has no established pattern
+        // for an async button handler anywhere else in this file; the button just blocks for the
+        // scan's duration like every other Accepting handler blocks for its own work.
+        detectBleButton.Accepting += (_, e) =>
+        {
+            viewModel.SetBleDeviceOptions(BleDeviceScanner.Scan());
+            var devices = viewModel.BleDeviceOptions;
+            if (FormRenderer.PickFromList(app, "Detected BLE devices", [.. devices.Select(d => d.Display)], "Nothing was detected.") is int i)
+            {
+                viewModel.SelectedBleDevice = devices[i];
+            }
+
+            e.Handled = true;
+        };
+
+        // One level down from detectBleButton: enumerates the already-picked BleDeviceId's GATT
+        // services/characteristics and offers the write-role pick. The notify-role picker
+        // (pickBleNotifyCharacteristicButton below) shares the same scanned list rather than
+        // rescanning, since a peripheral's write and notify characteristics are sometimes the same
+        // UUID (see SelectedBleWriteCharacteristic's doc comment) and the user picks each
+        // independently from one enumeration.
+        detectBleCharacteristicsButton.Accepting += (_, e) =>
+        {
+            if (string.IsNullOrWhiteSpace(viewModel.BleDeviceId))
+            {
+                MessageBox.Query(app, "dev-term", "Pick a BLE device first.", ["OK"]);
+                e.Handled = true;
+                return;
+            }
+
+            viewModel.SetBleCharacteristicOptions(BleDeviceScanner.ExploreCharacteristics(viewModel.BleDeviceId));
+            var characteristics = viewModel.BleCharacteristicOptions;
+            if (FormRenderer.PickFromList(app, "Detected characteristics (write)", [.. characteristics.Select(c => c.Display)], "Nothing was detected.") is int i)
+            {
+                viewModel.SelectedBleWriteCharacteristic = characteristics[i];
+            }
+
+            e.Handled = true;
+        };
+
+        pickBleNotifyCharacteristicButton.Accepting += (_, e) =>
+        {
+            var characteristics = viewModel.BleCharacteristicOptions;
+            if (FormRenderer.PickFromList(app, "Detected characteristics (notify)", [.. characteristics.Select(c => c.Display)], "Run Detect characteristics first.") is int i)
+            {
+                viewModel.SelectedBleNotifyCharacteristic = characteristics[i];
             }
 
             e.Handled = true;
@@ -726,12 +788,21 @@ internal sealed class ConfigureWindowParts
     /// <summary>Platform-specific BLE peripheral identifier — see <see cref="ConnectionEditorViewModel.BleDeviceId"/>.</summary>
     public required TextField BleDeviceIdField { get; init; }
 
+    /// <summary>Runs a fresh BLE scan and offers the result via a picker — see <see cref="ConnectionEditorViewModel.SelectedBleDevice"/>.</summary>
+    public required Button DetectBleButton { get; init; }
+
     /// <summary>Blank uses the transport's own default — see <see cref="ConnectionEditorViewModel.BleServiceUuid"/>.</summary>
     public required TextField BleServiceUuidField { get; init; }
 
     public required TextField BleWriteUuidField { get; init; }
 
     public required TextField BleNotifyUuidField { get; init; }
+
+    /// <summary>Runs a fresh GATT enumeration of <see cref="ConnectionEditorViewModel.BleDeviceId"/> and offers the write-role pick — see <see cref="ConnectionEditorViewModel.SelectedBleWriteCharacteristic"/>.</summary>
+    public required Button DetectBleCharacteristicsButton { get; init; }
+
+    /// <summary>Offers the notify-role pick from the same already-scanned list <see cref="DetectBleCharacteristicsButton"/> populated — see <see cref="ConnectionEditorViewModel.SelectedBleNotifyCharacteristic"/>.</summary>
+    public required Button PickBleNotifyCharacteristicButton { get; init; }
 
     /// <summary>Shown only when the loopback transport is selected — it takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

@@ -68,10 +68,20 @@ macOS backends remain not-yet-built (see below).
 Every front end can select `ble` as a transport (`--transport ble --bledeviceid <id>` on the CLI,
 the TUI Configure screen's transport selector, and WPF's Device Profiles window), configuring the
 device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART Service
-defaults below), and `--listbledevices true` lists already-*paired* peripherals (see
-`WindowsBleDeviceDiscovery`'s own doc comment for why paired-only, not a live advertisement scan).
-There's no live "Detect..." device picker yet in either front end (unlike HID/USBTMC) — the device
-id is typed by hand, copied from a `--listbledevices` run; see BACKLOG.md.
+defaults below), and `--listbledevices true` lists nearby peripherals from a live ~4s advertisement
+scan (`BluetoothLEAdvertisementWatcher`), not Windows' paired-devices list — pairing isn't required
+to connect, and plenty of cheap BLE UART clones use "Just Works" pairing that Windows' Settings page
+can show as "Paired" without a real LE bond ever completing, which left them unlistable under the
+prior paired-only selector (see `WindowsBleDeviceDiscovery`'s own doc comment).
+
+Both the TUI and WPF have a live "Detect..." device picker for BLE now, the same idea as HID/USBTMC's
+(`ConnectionEditorViewModel.SelectedBleDevice`/`BleDeviceOptions`, populated by a front end calling
+`SetBleDeviceOptions` after its own `BleDeviceScanner.Scan()`) — unlike HID/USBTMC's fast, eager
+enumeration, a BLE scan is slow (~4s) and only available via the runtime-loaded Windows backend, so
+it can't run eagerly from the shared view model's constructor and instead runs on demand: the TUI's
+"Detect BLE..." button blocks for the scan's duration like its other pickers do, and WPF's runs the
+scan on a background thread (`Task.Run`) so the window stays responsive. The device id field stays
+directly typable either way.
 
 None of the non-Windows backends ship yet; the adapter seam exists so each can land independently
 (including as a community/self-contributed adapter) without touching the transport's public shape
@@ -81,6 +91,25 @@ deliberate choice over the easier Windows-only path, given for the console app (
 cross-platform reach already matters.
 
 **BLE Serial** is the common special case worth naming explicitly: many hobbyist/embedded BLE devices don't expose a bespoke GATT profile at all — they emulate a UART over two characteristics (one for host→device writes, one for device→host notifications), most commonly following the de facto [Nordic UART Service](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrfxlib/nrf_ble/doc/service.html) UUIDs (`6E400001-B5A3-F393-E0A9-E50E24DCCA9E` service, `...002` RX/write, `...003` TX/notify). `BleTransportOptions` defaults its three UUIDs to these — a BLE Serial transport mode stays configurable per device, since not every device that "acts like serial over BLE" actually uses NUS — worth confirming per device (e.g., via a BLE scanner app) before assuming the default applies, same caution as every other vendor-protocol-claim in this project.
+
+**Known limitation — HC-08/SH-HC-08-family BLE-to-serial bridges may refuse to reconnect until reset.**
+Verified against a real SH-HC-08 bridge module 2026-09-29 (`docs/test/2026-09-29-17-12-20.md`): the
+first connection each power-on works fine (including a full BLE-to-serial byte round-trip), but a
+reconnect after a clean disconnect can fail every time with a generic "operation was canceled"
+cancellation, unless the peripheral's TTL-serial side is reset first. Root-caused to the peripheral,
+not dev-term: `WindowsBleAdapter.Cleanup()` already disposes/unsubscribes cleanly on every close, and
+the module's own manufacturer manual (HC-08 V3.1 User Manual, hc01.com) rules out both AT-tunable
+candidates checked directly against the hardware — `AT+MODE?` reported the module already in
+full-power/always-advertising mode (not a power-saving mode that would need a wake sequence), and
+`AT+CTOUT` isn't implemented by this module's firmware (`AT+VERSION` identifies it as `SH-V1.251`, an
+"SH"-vendor fork, not stock hc01.com firmware) — no response, unlike `AT+MODE?` over the same link.
+The manual also confirms AT command mode only works while the module has *no* active BLE connection
+at all ("Connection after entering serial transparent transmission mode"); there is no escape
+sequence back into AT mode while connected, so any further AT-based workaround (e.g. issuing
+`AT+RESET` as a software-triggered equivalent of the physical reset) has to happen in the gap between
+a disconnect and the next reconnect attempt, never while something is connected. Treated as an
+inherent limitation of this device class rather than a dev-term defect — no code change planned
+unless a software-issuable fix is found.
 
 ### Loopback
 

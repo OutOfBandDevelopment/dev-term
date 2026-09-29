@@ -227,6 +227,13 @@ public sealed class CliOptions
     public bool ListBleDevices { get; set; }
 
     /// <summary>
+    /// List a specific BLE device's GATT services/characteristics (by the same device id
+    /// <see cref="ListBleDevices"/> prints) and exit, skipping normal validation/connection entirely.
+    /// </summary>
+    [Category("Mode")]
+    public string? ListBleCharacteristics { get; set; }
+
+    /// <summary>
     /// Names a device manifest to load alongside this connection — <b>a name, not a path</b>;
     /// resolves to <c>~/.dev-term/manifests/{ManifestName}</c> or this app's own
     /// <c>./manifests/{ManifestName}</c> (see <see cref="DevTermUserDataPaths.ResolveManifestDirectory"/>),

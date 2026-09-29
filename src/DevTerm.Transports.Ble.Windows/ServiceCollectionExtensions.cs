@@ -1,3 +1,4 @@
+using DevTerm.Transports.Ble;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DevTerm.Transports.Ble.Windows;
@@ -15,6 +16,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IBleAdapterFactory, WindowsBleAdapterFactory>();
         services.AddSingleton<IBleDeviceDiscovery, WindowsBleDeviceDiscovery>();
+        services.AddSingleton<IBleGattProfileExplorer, WindowsBleGattProfileExplorer>();
         return services;
     }
 }

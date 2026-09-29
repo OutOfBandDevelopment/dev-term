@@ -6,6 +6,7 @@ using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using DevTerm.Devices.Scpi;
+using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Usbtmc;
@@ -86,6 +87,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private UsbtmcDeviceOption? _selectedUsbtmcDevice;
     private IReadOnlyList<UsbtmcDeviceOption> _detectedUsbtmcDevices = [];
     private readonly ObservableCollection<UsbtmcDeviceOption> _usbtmcDeviceOptions = [];
+    private BleDeviceOption? _selectedBleDevice;
+    private readonly ObservableCollection<BleDeviceOption> _bleDeviceOptions = [];
+    private BleCharacteristicOption? _selectedBleWriteCharacteristic;
+    private BleCharacteristicOption? _selectedBleNotifyCharacteristic;
+    private readonly ObservableCollection<BleCharacteristicOption> _bleCharacteristicOptions = [];
     private bool _idsShowHex;
     private UiDefinition? _formDefinition;
 
@@ -108,6 +114,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
         nameof(SelectedUsbtmcDevice),
+        nameof(SelectedBleDevice),
+        nameof(BleDeviceOptions),
+        nameof(SelectedBleWriteCharacteristic),
+        nameof(SelectedBleNotifyCharacteristic),
+        nameof(BleCharacteristicOptions),
         nameof(IdsShowHex),
         nameof(VendorIdDisplay),
         nameof(ProductIdDisplay),
@@ -488,6 +499,28 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>Same idea as <see cref="HidDevicesHiddenByFilter"/>, for <see cref="UsbtmcDeviceOptions"/>.</summary>
     public bool UsbtmcDevicesHiddenByFilter => _usbtmcDeviceOptions.Count < _detectedUsbtmcDevices.Count;
 
+    /// <summary>
+    /// Peripherals found by a front end's own BLE scan (see <see cref="SetBleDeviceOptions"/>), for a
+    /// "pick from what's nearby" combobox next to <see cref="BleDeviceId"/> via
+    /// <see cref="SelectedBleDevice"/> — the same picker idea as <see cref="HidDeviceOptions"/>, except
+    /// nothing populates it until a front end actually runs a scan: unlike HID/USBTMC, there's no
+    /// vendor/product id to filter on, and the real <c>IBleDeviceDiscovery</c> is a Windows-only
+    /// backend loaded at runtime that takes several seconds per scan, both of which rule out this view
+    /// model running one eagerly at construction the way <see cref="HidDeviceOptions"/> does. Starts empty.
+    /// </summary>
+    public IReadOnlyList<BleDeviceOption> BleDeviceOptions => _bleDeviceOptions;
+
+    /// <summary>
+    /// The GATT services/characteristics ("sub-device" UUIDs) found by a front end's own scan of
+    /// <see cref="BleDeviceId"/> (see <see cref="SetBleCharacteristicOptions"/>), one flattened entry
+    /// per characteristic across every service — same reasoning as <see cref="BleDeviceOptions"/> for
+    /// why this view model can't run the scan itself. Starts empty; a front end re-populates it (and
+    /// should clear it first, via an empty <see cref="SetBleCharacteristicOptions"/> call) whenever
+    /// <see cref="BleDeviceId"/> changes, since a previous device's characteristics don't apply to a
+    /// newly picked one.
+    /// </summary>
+    public IReadOnlyList<BleCharacteristicOption> BleCharacteristicOptions => _bleCharacteristicOptions;
+
     [Category("General")]
     [DisplayName("Transport")]
     [FormField(Order = 0, OptionsFrom = nameof(TransportOptions))]
@@ -799,11 +832,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     /// <summary>
     /// The BLE peripheral to connect to — a platform-specific device identifier (on Windows, the
-    /// WinRT <c>DeviceInformation.Id</c> a <c>--listbledevices</c> run reports), typed by hand since
-    /// there's no cross-platform default <c>DevTerm.Transports.Ble.IBleDeviceDiscovery</c> instance
-    /// this shared, front-end-agnostic view model could construct itself (the real one only exists
-    /// in the Windows-only backend, loaded at runtime — see <see cref="BlePlatformAdapterLoader"/>).
-    /// A live "Detect..." picker is deferred; see BACKLOG.md.
+    /// WinRT <c>DeviceInformation.Id</c> a <c>--listbledevices</c> run reports). Can be typed by hand,
+    /// or set by picking from <see cref="SelectedBleDevice"/> once a front end has populated
+    /// <see cref="BleDeviceOptions"/> from its own scan (see <see cref="SetBleDeviceOptions"/> — this
+    /// view model can't run that scan itself, the same reason <see cref="SelectedBleDevice"/>'s own
+    /// doc comment gives).
     /// </summary>
     [Category("BLE")]
     [DisplayName("Device ID")]
@@ -827,6 +860,72 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [DisplayName("Notify characteristic UUID")]
     [FormField(Order = 3)]
     public string BleNotifyCharacteristicUuid { get => _bleNotifyCharacteristicUuid; set => SetField(ref _bleNotifyCharacteristicUuid, value); }
+
+    /// <summary>
+    /// Same idea as <see cref="SelectedHidDevice"/>, for a BLE peripheral found by a front end's own
+    /// scan — writes straight into <see cref="BleDeviceId"/>. Unlike HID/USBTMC, this view model can't
+    /// run the scan itself (see <see cref="BleDeviceOptions"/>'s doc comment), so a front end must call
+    /// <see cref="SetBleDeviceOptions"/> before this field has anything to pick from.
+    /// </summary>
+    [Category("BLE")]
+    [DisplayName("Detected BLE devices")]
+    [FormField(Order = 4, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsBleTransport))]
+    public BleDeviceOption? SelectedBleDevice
+    {
+        get => _selectedBleDevice;
+        set
+        {
+            SetField(ref _selectedBleDevice, value);
+            if (value is not null)
+            {
+                BleDeviceId = value.DeviceId;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Picking a characteristic here fills in both <see cref="BleServiceUuid"/> and
+    /// <see cref="BleWriteCharacteristicUuid"/> from the same row — a peripheral's write and notify
+    /// characteristics are sometimes the same UUID (e.g. the SH-HC-08 family: a single Read+
+    /// WriteWithoutResponse+Notify characteristic serves both roles, unlike Nordic UART Service's
+    /// separate RX/TX pair), so this is deliberately independent of <see cref="SelectedBleNotifyCharacteristic"/>
+    /// rather than assuming the two always differ. Nothing to pick from until a front end calls
+    /// <see cref="SetBleCharacteristicOptions"/> after scanning <see cref="BleDeviceId"/>.
+    /// </summary>
+    [Category("BLE")]
+    [DisplayName("Detected characteristics (write)")]
+    [FormField(Order = 5, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsBleTransport))]
+    public BleCharacteristicOption? SelectedBleWriteCharacteristic
+    {
+        get => _selectedBleWriteCharacteristic;
+        set
+        {
+            SetField(ref _selectedBleWriteCharacteristic, value);
+            if (value is not null)
+            {
+                BleServiceUuid = value.ServiceUuid;
+                BleWriteCharacteristicUuid = value.CharacteristicUuid;
+            }
+        }
+    }
+
+    /// <summary>Same idea as <see cref="SelectedBleWriteCharacteristic"/>, filling in <see cref="BleNotifyCharacteristicUuid"/> instead.</summary>
+    [Category("BLE")]
+    [DisplayName("Detected characteristics (notify)")]
+    [FormField(Order = 6, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsBleTransport))]
+    public BleCharacteristicOption? SelectedBleNotifyCharacteristic
+    {
+        get => _selectedBleNotifyCharacteristic;
+        set
+        {
+            SetField(ref _selectedBleNotifyCharacteristic, value);
+            if (value is not null)
+            {
+                BleServiceUuid = value.ServiceUuid;
+                BleNotifyCharacteristicUuid = value.CharacteristicUuid;
+            }
+        }
+    }
 
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
@@ -1485,6 +1584,44 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         {
             StatusMessage = $"Could not export to '{path}': {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Replaces <see cref="BleDeviceOptions"/> with the result of a front end's own BLE scan (see
+    /// <c>DevTerm.Configuration.BleDeviceScanner.Scan</c>) — this view model has no BLE discovery of
+    /// its own to run eagerly (see <see cref="BleDeviceOptions"/>'s doc comment), so a front end calls
+    /// this once its scan completes.
+    /// </summary>
+    public void SetBleDeviceOptions(IReadOnlyList<BleDeviceOption> devices)
+    {
+        _bleDeviceOptions.Clear();
+        foreach (var device in devices)
+        {
+            _bleDeviceOptions.Add(device);
+        }
+
+        OnPropertyChanged(nameof(BleDeviceOptions));
+    }
+
+    /// <summary>
+    /// Replaces <see cref="BleCharacteristicOptions"/> with the result of a front end's own GATT
+    /// enumeration of <see cref="BleDeviceId"/> (see <c>DevTerm.Configuration.BleDeviceScanner.ExploreCharacteristics</c>)
+    /// — this view model has no GATT explorer of its own to run eagerly, same reasoning as
+    /// <see cref="SetBleDeviceOptions"/>. Also clears whatever was previously picked
+    /// (<see cref="SelectedBleWriteCharacteristic"/>/<see cref="SelectedBleNotifyCharacteristic"/>),
+    /// since a previous device's characteristics don't apply to a newly enumerated one.
+    /// </summary>
+    public void SetBleCharacteristicOptions(IReadOnlyList<BleGattServiceDescriptor> services)
+    {
+        _bleCharacteristicOptions.Clear();
+        foreach (var characteristic in BleCharacteristicOption.FromServices(services))
+        {
+            _bleCharacteristicOptions.Add(characteristic);
+        }
+
+        SetField(ref _selectedBleWriteCharacteristic, null, nameof(SelectedBleWriteCharacteristic));
+        SetField(ref _selectedBleNotifyCharacteristic, null, nameof(SelectedBleNotifyCharacteristic));
+        OnPropertyChanged(nameof(BleCharacteristicOptions));
     }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

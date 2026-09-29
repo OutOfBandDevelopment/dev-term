@@ -183,4 +183,29 @@ public sealed class NmeaGpsDecoderTests
 
         Assert.AreEqual(1, publishCount);
     }
+
+    [TestMethod]
+    public void Render_GgaWithBlankFieldsAfterFix_DoesNotOverwritePreviouslyPublishedValues()
+    {
+        var decoder = new NmeaGpsDecoder();
+        decoder.Render(Bytes(_validGga));
+
+        IReadOnlyDictionary<string, string>? published = null;
+        decoder.ValuesChanged += (_, values) => published = values;
+
+        // Same shape as _validGga but with no fix: lat/lon/hdop/altitude are blank raw NMEA fields,
+        // which NmeaSentence's helpers turn into "" - those must not blank out the real values GGA
+        // already published above. fixQuality/satellitesUsed/utcTime do have new data, so those
+        // should still update.
+        decoder.Render(Bytes("$GPGGA,000000,,,,,0,00,,,M,,M,,*00\r\n"));
+
+        Assert.IsNotNull(published);
+        Assert.IsFalse(published!.ContainsKey("latitude"));
+        Assert.IsFalse(published.ContainsKey("longitude"));
+        Assert.IsFalse(published.ContainsKey("hdop"));
+        Assert.IsFalse(published.ContainsKey("altitude"));
+        Assert.AreEqual("No fix", published["fixQuality"]);
+        Assert.AreEqual("00", published["satellitesUsed"]);
+        Assert.AreEqual("00:00:00 UTC", published["utcTime"]);
+    }
 }
