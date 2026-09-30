@@ -109,26 +109,20 @@ the rest.
 
 ### Proposed Ideas
 
-- Have a theme builder
-  - include color pickers 
-  - have ability to save/export/import
-  - store / enumerate from the ~/.dev-term/themes folder
-- for the manifest editor create an expression builder
-  - expressions should be setable fields allows for data values to be mapped to parameters for controls.
-- for the loopback device
-  - add a parameter for setting the sample rate to control how fast stream samples are generated.
-- for the stream monitor
-  - add the ability to call raster tool
-    - something like ghostscript where path to the tool and arguments can be mapped
-    - or use a web service like Apache Tika by configuring a web request for conversion
-  - also support internal conversion tools like a simple HP/GL to SVG tool
-- Create a host service that makes the tunnels accessible over web-sockets with a blazor based web front end.  
-- LXI support
-- Add MQTT, AMQP, STOMP protocol support 
-  - this should enable the abilit to receive route outbound messaages but also have the ability to trigger outbound events on the to extenal services
-- Z-Wave supoprt 
-  - ZStick 
-  - ZWave RPi hat
+- [Theme builder](docs/design/proposals/theme-builder.md) — color pickers, save/export/import,
+  enumerate from `~/.dev-term/themes`.
+- [Manifest editor expression builder](docs/design/proposals/manifest-editor-expression-builder.md) —
+  settable expression fields mapping data values to control parameters.
+- [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter
+  controlling how fast the loopback device generates stream samples.
+- [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)
+  — call an external raster tool (Ghostscript-style path+args mapping), or a web service (e.g. Apache
+  Tika) via a configured request, or an internal HP/GL-to-SVG converter.
+- [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
+- [LXI support](docs/design/proposals/lxi-support.md).
+- [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
+  route inbound messages and trigger outbound events to external services.
+- [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 
 ## Research (not backlog-ready)
 

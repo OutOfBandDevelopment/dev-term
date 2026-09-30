@@ -107,6 +107,54 @@ work, already backlogged in presenters.md §3 and `BACKLOG.md`, not rushed here)
 - A manual "Convert/Rasterize to PNG at DPI N" export action wrapping that presenter's own
   `IExportable` implementation, once it exists — for TUI too, as a non-graphical "export the last
   N captures to PNG" command even though it can't preview them.
+- Three conversion mechanisms (see "Raster/convert tool integration" below), any of which can back
+  the export action above without depending on each other.
+
+## Raster/convert tool integration (proposed 2026-09-30)
+
+Sourced from `BACKLOG.md`'s "Proposed Ideas" section: "for the stream monitor, add the ability to
+call [a] raster tool — something like ghostscript where path to the tool and arguments can be
+mapped, or use a web service like Apache Tika by configuring a web request for conversion — also
+support internal conversion tools like a simple HP/GL to SVG tool."
+
+This extends Phase 2's "Convert/Rasterize" export action above with a concrete mechanism — the
+`IExportable` interface it's proposed against still doesn't exist, so this section only fixes what
+the export action calls into once it does, not when Phase 2 starts. Three mechanisms, offered as
+alternatives (a capture can be converted by whichever is configured/available, not all three at
+once):
+
+1. **External tool invocation** (Ghostscript-style). A new `ExternalConverterOptions` (a per-format
+   or a single generic entry — path to the executable, an argument template with placeholders for
+   input path/output path/DPI, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`) run as a child
+   process (`System.Diagnostics.Process`) against the capture's already-saved file under
+   `~/.dev-term/exports`. dev-term never bundles Ghostscript (or any converter) itself — the user
+   points at their own install, the same way this project has consistently avoided bundling external
+   binaries (USBTMC/HID both implement their protocols directly rather than depending on a vendor
+   runtime, per CLAUDE.md's USBTMC note). This is a real command-execution surface — the argument
+   template must be built from a fixed placeholder-substitution scheme, never raw user/device data
+   concatenated into a shell string, to avoid command injection from a captured file name or a
+   device-supplied value.
+2. **Web-service conversion** (Apache-Tika-style). A configured HTTP endpoint + method the capture's
+   bytes are POSTed to, with the converted result read back from the response. Needs explicit
+   per-profile opt-in (this sends a capture's raw bytes to an external, user-configured host — no
+   default endpoint, ever), and reuses whatever HTTP client/timeout/retry conventions the rest of
+   the configuration layer already follows (`Microsoft.Extensions.Http`-based, not a bespoke client).
+3. **Internal HP/GL-to-SVG converter.** A small, dev-term-owned HP-GL instruction interpreter
+   (`PU`/`PD`/`PA`/`PR`/`SP`/`IN` and a handful of the most common plotter commands) emitting SVG
+   `<path>` elements directly — no external dependency, no network call, and (unlike the general
+   HPGL/PostScript/PCL rendering presenter from presenters.md §3, which aims at a live on-screen
+   preview) this only needs to produce a static SVG file for export. This is a real subset of the
+   same parsing work the rendering presenter eventually needs, so it's worth deliberately building
+   the HP-GL grammar as a shared, presenter-independent piece from the start rather than duplicating
+   it later — the export-only converter and the live-preview presenter both consume the same parsed
+   instruction list, just render it differently (one to a static SVG string, one to a canvas).
+   PostScript/PCL have no equivalent internal-converter path proposed here (both are materially
+   larger grammars); those stay dependent on the external-tool or web-service paths, or on the full
+   rendering presenter once it exists.
+
+Configuration for all three lives alongside the existing Stream Monitor settings
+(`DevTermUserDataPaths`-rooted, per-profile override the same way `CliOptions.EffectiveExportDirectory`
+already is) rather than a new top-level settings surface.
 
 ## Open questions
 
@@ -126,6 +174,10 @@ work, already backlogged in presenters.md §3 and `BACKLOG.md`, not rushed here)
   usually a deliberate, single, waited-for action, unlike telemetry streaming).
 - Retention/cleanup policy for `~/.dev-term/captures/` — nothing today prunes old files there
   automatically; low priority until real usage shows it matters.
+- Whether the external-tool and web-service converters are worth building at all before the internal
+  HP/GL-to-SVG converter and the rendering presenter exist — they only ever operate on an
+  already-saved capture file, so they have no dependency on Phase 2's harder rendering work and could
+  ship independently, ahead of everything else in Phase 2, if that's a more useful order.
 
 ## Status
 
@@ -183,4 +235,6 @@ What was built, and where it differs from the text above:
   No retention/cleanup.
 
 **Phase 2 (still ahead):** HP-GL/PostScript/PCL preview and a rasterize/convert export, gated on the
-rendering presenter from [presenters.md](../presenters.md) §3.
+rendering presenter from [presenters.md](../presenters.md) §3. The export action's conversion
+mechanism (external tool invocation, web-service conversion, or an internal HP/GL-to-SVG converter)
+is proposed above (2026-09-30) but not yet built either.
