@@ -19,8 +19,6 @@ Completed work is logged by date under `docs/changes/`.
 - **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
   charts shrink to the column would fix it.
 - **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
-- **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
-  Generic, most manifest-editor node kinds, and the menus in the second theme.
 
 ### TUI layout review follow-ups (from 2026-09-25)
 
