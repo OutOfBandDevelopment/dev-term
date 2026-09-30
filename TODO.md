@@ -11,11 +11,6 @@ Completed work is logged by date under `docs/changes/`.
 - `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section
   in `docs/design/device-control-modules.md`. Not started.
 
-### WPF layout review follow-ups (from 2026-09-25)
-
-- **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
-  charts shrink to the column would fix it.
-
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
