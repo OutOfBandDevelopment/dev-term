@@ -25,8 +25,10 @@ namespace DevTerm.Console;
 /// <see cref="Session"/> the CLI uses. See docs/design/frontends.md.
 /// </summary>
 /// <remarks>
-/// A first stub, not the full design (no session switching, no live plugin selection, no
-/// rendering-presenter graphics) — see docs/design/frontends.md's TUI section for the target.
+/// A first stub, not the full design (no live plugin selection, no rendering-presenter graphics) -
+/// see docs/design/frontends.md's TUI section for the target. Multiple sessions are supported via
+/// <see cref="Terminal.Gui.Views.Tabs"/> (see docs/design/multi-session-ui.md) - each open tab wraps
+/// its own <see cref="DevTerm.Configuration.SessionTab"/> in a <see cref="TuiWindowTab"/>.
 /// </remarks>
 public static class TuiMode
 {
@@ -35,9 +37,39 @@ public static class TuiMode
     /// a long-running session doesn't grow it without bound — but shorter than WPF's 1000, since this
     /// pane is a single concatenated <see cref="Editor.Text"/> string rebuilt on every trim, not a
     /// virtualized items list; keeping it smaller keeps that rebuild cheap. Oldest lines are dropped
-    /// first.
+    /// first. Applies per tab (see <see cref="TuiWindowTab.OutputLines"/>), not to the window overall.
     /// </summary>
     private const int _maxOutputLines = 300;
+
+    /// <summary>
+    /// One open tab's UI-side state — the <see cref="Terminal.Gui.Views.Tabs"/> equivalent of WPF's
+    /// own private <c>WindowTab</c> (<c>MainWindow.xaml.cs</c>). <see cref="Output"/> IS the view
+    /// inserted into the window's <see cref="Terminal.Gui.Views.Tabs"/> control (its <c>Title</c> is
+    /// the tab header, and its <c>Data</c> points back to this instance so <c>ActiveTab()</c> can
+    /// resolve it from <c>Tabs.Value</c>) — there's no separate header/content split the way WPF's
+    /// <c>TabItem</c>/<c>ListBox</c> pair needed, since a plain <see cref="Editor"/> already serves
+    /// both roles. <see cref="OutputHandler"/>/<see cref="DisconnectedHandler"/> are named (not inline
+    /// lambdas) so a profile switch or a tab close can unsubscribe the exact right delegate from the
+    /// exact right <see cref="Session"/>. <see cref="SwitchCts"/> replaces the old window-level
+    /// <c>switchCts</c> field — one profile-switch attempt per tab can be in flight at a time, not one
+    /// per window.
+    /// </summary>
+    private sealed class TuiWindowTab
+    {
+        public required SessionTab Tab { get; init; }
+
+        public required Editor Output { get; init; }
+
+        public List<string> OutputLines { get; } = [];
+
+        public BatchedOutputQueue? OutputQueue { get; set; }
+
+        public EventHandler<PresenterOutput>? OutputHandler { get; set; }
+
+        public EventHandler<SessionDisconnectedEventArgs>? DisconnectedHandler { get; set; }
+
+        public CancellationTokenSource? SwitchCts { get; set; }
+    }
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
@@ -81,16 +113,18 @@ public static class TuiMode
             app.Dispose();
         }
 
-        // A profile switch replaces `session` with a new one (see BuildWindow's own `session`
-        // parameter, reassigned by its closed-over SwitchProfileAsync) without this method ever
-        // seeing it - closing/disposing this method's own (by-then-stale, already-closed-by-the-
-        // switch) `session` parameter here would leave whichever session is actually current never
-        // closed or disposed. CurrentSession always names the real one.
-        var currentSession = parts.CurrentSession();
-        await currentSession.CloseAsync();
-        if (!ReferenceEquals(currentSession, session))
+        // A profile switch (or File > New Session) replaces/adds sessions this method never saw
+        // directly - closing/disposing only this method's own (by-then-stale, possibly already-closed)
+        // `session` parameter here would leave every other tab's session never closed or disposed.
+        // TuiWindowParts.AllSessions always names every tab's current one, mirroring MainWindow's
+        // OnClosing loop over every WindowTab.
+        foreach (var currentSession in parts.AllSessions())
         {
-            await currentSession.DisposeAsync();
+            await currentSession.CloseAsync();
+            if (!ReferenceEquals(currentSession, session))
+            {
+                await currentSession.DisposeAsync();
+            }
         }
 
         return 0;
@@ -107,35 +141,28 @@ public static class TuiMode
     }
 
     /// <summary>
-    /// Builds the window and wires it to <paramref name="session"/>, without touching
-    /// <c>Application.Init</c>/<c>Run</c>/<c>Shutdown</c> — split out so tests can drive the same
-    /// production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
+    /// Builds the window and wires it to <paramref name="session"/> as its first tab, without
+    /// touching <c>Application.Init</c>/<c>Run</c>/<c>Shutdown</c> — split out so tests can drive the
+    /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
     internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null)
     {
-        // Also what "is this connection a saved profile?" (the title) is answered against, and what the
-        // Device Profiles screen edits - a test passes an isolated one rather than the real user folder.
+        // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
+        // and what the Device Profiles screen edits - a test passes an isolated one rather than the
+        // real user folder.
         profileStore ??= new ConnectionProfileStore();
 
-        // Bundles this window's per-connection state - Session, PresenterCatalog, CliOptions, and
-        // the current send-format Parser - that SwitchProfileAsync below reassigns together on a
-        // live profile switch. `tab` itself is never reassigned, only its properties are, so every
-        // closure that captures `tab` (menu item actions, sendField.KeyDown, RefreshConnectionUi,
-        // ...) sees a switch automatically via ordinary closure-over-a-shared-variable semantics -
-        // the same thing the four separate session/catalog/cliOptions/parser variables this
-        // replaced did. See DevTerm.Configuration.SessionTab.
         var tab = new SessionTab(session, catalog, cliOptions);
 
-        // Cancels and replaces the in-flight profile-switch attempt's token on every
-        // SwitchProfileAsync call - declared up here (not next to SwitchProfileAsync itself) purely
-        // so the "_Device Profiles..." menu item below, which calls SwitchProfileAsync before its
-        // own declaration appears in this method, doesn't hit a definite-assignment error over a
-        // variable a local function closes over.
-        CancellationTokenSource? switchCts = null;
+        // Every open tab, in strip order - resolved back from Tabs.Value via ActiveTab() below, the
+        // same way MainWindow.xaml.cs's own _tabs/ActiveWindowTab work for WPF.
+        var tabs = new List<TuiWindowTab>();
 
-        // The Device menu items RefreshConnectionUi enables/disables - assigned when the menu is built
-        // below, declared up here for the same definite-assignment reason as switchCts.
+        // The Device menu items RefreshConnectionUi enables/disables, plus the Close Session item
+        // UpdateCloseSessionAvailability enables/disables - assigned once the menu is built below,
+        // declared up here so a closure (AddTab, which can run before the menu exists) can safely read
+        // them as still-null rather than hit a definite-assignment error.
         MenuItem? k8055MenuItem = null;
         MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
@@ -145,71 +172,169 @@ public static class TuiMode
         MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
+        MenuItem? newSessionMenuItem = null;
+        MenuItem? closeSessionMenuItem = null;
 
         // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
-        // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
+        // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below. Stays a
+        // single, window-level instance that follows whichever tab was active when it was first
+        // opened, not one per tab (docs/design/multi-session-ui.md's Open questions, narrowed the same
+        // way WPF's Step 2 narrowed it).
         StreamMonitor? streamMonitor = null;
 
-        // Logger mode (File > Start Logging... / Stop Logging): the logger follows `tab.Session` across
-        // a profile switch (see SwitchProfileAsync). State and menu item live in TuiLogging; declared
-        // up here because RefreshConnectionUi reads it (same definite-assignment reason as above).
+        // Logger mode (File > Start Logging... / Stop Logging): stays a single, window-level instance
+        // (TuiLogging) that follows whichever tab was active when it was started, the same narrowing as
+        // streamMonitor above - not one logger per tab.
         var logging = new TuiLogging();
-
-        string TitleFor() => ConnectionDescription.WindowTitle(tab.CliOptions, tab.Parser, profileStore, tab.Session.State == ConnectionState.Open);
 
         var window = new Window
         {
-            Title = TitleFor(),
+            Title = tab.Title(profileStore),
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(),
         };
 
-        var outputLines = new List<string>();
-        if (ManifestNameWarning.For(tab.CliOptions) is { } startupWarning)
-        {
-            outputLines.Add(StatusLine(startupWarning));
-        }
-
-        // Bad theme files, an unknown --theme, an unreadable preferences file - reported, never fatal.
-        outputLines.AddRange(ActiveTheme.StartupProblems.Select(StatusLine));
-
-        if (initialMessage is not null)
-        {
-            outputLines.Add(ErrorLine(initialMessage));
-        }
-
-        var output = new Editor
+        // Replaces the old single output Editor in the same region (X=0, Y=1, below the menu bar,
+        // Height=Dim.Fill(2) to leave room for the Send: row and the status line) - each tab's own
+        // Editor (see AddTab) is inserted as one of its child views.
+        var tabsView = new Tabs
         {
             X = 0,
             Y = 1,
             Width = Dim.Fill(),
             Height = Dim.Fill(2),
-            ReadOnly = true,
-            Text = string.Join('\n', outputLines),
-
-            // Soft-wrapped: a long reply or error line used to run off the right edge, and moving the
-            // caret to the end after each append scrolled the whole pane sideways to that line's end,
-            // hiding the start of every line (the "[source]" tags included).
-            WordWrap = true,
-
-            // Colors [error]/[dev-term] lines apart from device output - see OutputHighlighting.
-            HighlightingDefinition = OutputHighlighting.Definition,
         };
+
+        // Mirrors MainWindow's ActiveWindowTab - View.Data (set in AddTab) is this TUI's equivalent of
+        // WPF's TabItem.Tag.
+        TuiWindowTab ActiveTab() => (TuiWindowTab)tabsView.Value!.Data!;
+
+        // Tagged by tab (not a single window-level queue) so a fast-arriving background tab's output
+        // can't block or get dropped by the active tab's own coalescing - see BatchedOutputQueue and
+        // docs/bugs/fixed/031-tui-output-no-backpressure.md (the single-tab bug this originally fixed).
+        void AppendOutput(TuiWindowTab windowTab, string line) => windowTab.OutputQueue!.Enqueue(line);
+
+        // The output pane is one plain-text Editor (no per-line colors), so status and error lines
+        // are told apart from device output by a source tag, the same "[source] text" shape device
+        // lines already use ("[ascii] ...").
+        void AppendStatus(TuiWindowTab windowTab, string text) => AppendOutput(windowTab, StatusLine(text));
+        void AppendError(TuiWindowTab windowTab, string text) => AppendOutput(windowTab, ErrorLine(text));
+
+        void UpdateCloseSessionAvailability()
+        {
+            if (closeSessionMenuItem is not null)
+            {
+                closeSessionMenuItem.Enabled = tabs.Count > 1;
+            }
+        }
+
+        // Builds one tab's Editor/state and inserts it into tabsView, making it the active tab -
+        // directly modeled on MainWindow.xaml.cs's own AddTab. Called once for the startup connection
+        // (from the bottom of this method, once every other control it might touch already exists) and
+        // once per File > New Session... Never called before the rest of the window's chrome
+        // (connectMenuItem, sendField, statusLabel, the Device menu items) has been built - RefreshConnectionUi,
+        // which every AddTab call can reach (via tabsView.ValueChanged, or via StartLoggingForTab for
+        // --log), reads all of them.
+        TuiWindowTab AddTab(SessionTab sessionTab, string? startupMessage = null)
+        {
+            var outputLines = new List<string>();
+            if (ManifestNameWarning.For(sessionTab.CliOptions) is { } startupWarning)
+            {
+                outputLines.Add(StatusLine(startupWarning));
+            }
+
+            if (tabs.Count == 0)
+            {
+                // Bad theme files, an unknown --theme, an unreadable preferences file - reported once,
+                // against the very first tab, never fatal.
+                outputLines.AddRange(ActiveTheme.StartupProblems.Select(StatusLine));
+            }
+
+            if (startupMessage is not null)
+            {
+                outputLines.Add(ErrorLine(startupMessage));
+            }
+
+            var editor = new Editor
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(),
+                Height = Dim.Fill(),
+                ReadOnly = true,
+                Text = string.Join('\n', outputLines),
+
+                // Soft-wrapped: a long reply or error line used to run off the right edge, and moving
+                // the caret to the end after each append scrolled the whole pane sideways to that
+                // line's end, hiding the start of every line (the "[source]" tags included).
+                WordWrap = true,
+
+                // Colors [error]/[dev-term] lines apart from device output - see OutputHighlighting.
+                HighlightingDefinition = OutputHighlighting.Definition,
+
+                // The tab strip's own label for this tab - see ConnectionDescription.Subject.
+                Title = ConnectionDescription.Subject(sessionTab.CliOptions, profileStore),
+            };
+
+            var windowTab = new TuiWindowTab { Tab = sessionTab, Output = editor };
+            windowTab.OutputLines.AddRange(outputLines);
+            editor.Data = windowTab;
+
+            // Declared then assigned (not `var = new(...)` in one step) because the constructor's own
+            // callback closes over this same variable to schedule its drain.
+            windowTab.OutputQueue = new BatchedOutputQueue(() => app.Invoke(() => windowTab.OutputQueue!.Drain(lines =>
+            {
+                windowTab.OutputLines.AddRange(lines);
+                var excess = windowTab.OutputLines.Count - _maxOutputLines;
+                if (excess > 0)
+                {
+                    windowTab.OutputLines.RemoveRange(0, excess);
+                }
+
+                windowTab.Output.Text = string.Join('\n', windowTab.OutputLines);
+                windowTab.Output.CaretOffset = windowTab.Output.Text.Length;
+            })));
+
+            // Named (not inline), closing over this specific windowTab (never ActiveTab()) so a
+            // profile switch or Close Session can unsubscribe the exact right delegate later.
+            windowTab.OutputHandler = (_, presenterOutput) => AppendOutput(windowTab, $"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
+            windowTab.DisconnectedHandler = (_, e) =>
+            {
+                AppendError(windowTab, $"{ConnectionErrorMessages.ForDisconnect(windowTab.Tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
+                app.Invoke(() => RefreshConnectionUi(windowTab));
+            };
+            sessionTab.Session.Output += windowTab.OutputHandler;
+            sessionTab.Session.Disconnected += windowTab.DisconnectedHandler;
+
+            tabs.Add(windowTab);
+            tabsView.InsertTab(tabsView.TabCollection.Count(), editor);
+            tabsView.Value = editor;
+            UpdateCloseSessionAvailability();
+
+            // --log starts logging straight away (the session may already be open - the log's first
+            // record says so) for whichever tab it's set on, startup or a later File > New Session.
+            if (sessionTab.CliOptions.Log is { Length: > 0 } logOption)
+            {
+                StartLoggingForTab(windowTab, SessionLogging.ResolveLogPath(logOption, sessionTab.CliOptions, profileStore.FindName(sessionTab.CliOptions), DateTimeOffset.Now));
+            }
+
+            return windowTab;
+        }
 
         var sendLabel = new Label
         {
             Text = "Send:",
             X = 0,
-            Y = Pos.Bottom(output),
+            Y = Pos.Bottom(tabsView),
             Width = 6,
         };
 
         var sendField = new TextField
         {
             X = Pos.Right(sendLabel),
-            Y = Pos.Bottom(output),
+            Y = Pos.Bottom(tabsView),
             Width = Dim.Fill(),
             Enabled = tab.Session.State == ConnectionState.Open,
         };
@@ -223,49 +348,19 @@ public static class TuiMode
             Width = Dim.Fill(),
         };
 
-        // Terminal.Gui 2.5.0 has no combo box, so Up/Down recall is implemented directly on
-        // sendField's own KeyDown handler below rather than a dropdown widget - see
-        // DevTerm.Wpf.MainWindow's editable ComboBox for the WPF equivalent of the same history.
-        var sendHistory = new SendHistory();
-
-        // Coalesces a burst of lines into a single pending app.Invoke, instead of queuing one
-        // marshal-to-UI-thread closure per line - see docs/bugs/fixed/031-tui-output-no-backpressure.md.
-        // Declared then assigned (not `var = new(...)` in one step) because the constructor's own
-        // callback closes over this same variable to schedule its drain.
-        BatchedOutputQueue outputQueue = null!;
-        outputQueue = new BatchedOutputQueue(() => app.Invoke(() => outputQueue.Drain(lines =>
-        {
-            outputLines.AddRange(lines);
-            var excess = outputLines.Count - _maxOutputLines;
-            if (excess > 0)
-            {
-                outputLines.RemoveRange(0, excess);
-            }
-
-            output.Text = string.Join('\n', outputLines);
-            output.CaretOffset = output.Text.Length;
-        })));
-
-        void AppendOutput(string line) => outputQueue.Enqueue(line);
-
-        // The output pane is one plain-text Editor (no per-line colors), so status and error lines
-        // are told apart from device output by a source tag, the same "[source] text" shape device
-        // lines already use ("[ascii] ...").
-        void AppendStatus(string text) => AppendOutput(StatusLine(text));
-        void AppendError(string text) => AppendOutput(ErrorLine(text));
-
 #pragma warning disable IDE0017 // Simplify object initialization
         var connectMenuItem = new MenuItem(
             tab.Session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
-        connectMenuItem.Action = () => Observe(ToggleAndRefreshAsync(), AppendOutput);
+        connectMenuItem.Action = () => Observe(ToggleAndRefreshAsync(), line => AppendOutput(ActiveTab(), line));
 #pragma warning restore IDE0017 // Simplify object initialization
 
         async Task ToggleAndRefreshAsync()
         {
-            await ToggleConnectionAsync(app, tab.Session, tab.CliOptions, connectMenuItem, sendField, AppendOutput);
-            app.Invoke(RefreshConnectionUi);
+            var windowTab = ActiveTab();
+            await ToggleConnectionAsync(app, windowTab.Tab.Session, windowTab.Tab.CliOptions, connectMenuItem, sendField, line => AppendOutput(windowTab, line));
+            app.Invoke(() => RefreshConnectionUi(windowTab));
         }
 
         // A menu action that throws would otherwise escape into Application.Run - which only
@@ -282,52 +377,48 @@ public static class TuiMode
             }
         };
 
-        // The session (this one, or whichever SwitchProfileAsync swaps in) closed itself because
-        // the connection ended - report why and flip the UI to "disconnected", ready to reconnect.
-        void OnSessionDisconnected(object? _, SessionDisconnectedEventArgs e)
-        {
-            AppendError($"{ConnectionErrorMessages.ForDisconnect(tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
-            app.Invoke(RefreshConnectionUi);
-        }
-
-        tab.Session.Disconnected += OnSessionDisconnected;
-
-        bool StartLogging(string path)
+        bool StartLoggingForTab(TuiWindowTab windowTab, string path)
         {
             try
             {
-                logging.Start(path, tab.Session, tab.CliOptions, tab.Parser, profileStore.FindName(tab.CliOptions));
+                logging.Start(path, windowTab.Tab.Session, windowTab.Tab.CliOptions, windowTab.Tab.Parser, profileStore.FindName(windowTab.Tab.CliOptions));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
-                AppendError($"Could not start logging to '{path}': {ex.Message}");
+                AppendError(windowTab, $"Could not start logging to '{path}': {ex.Message}");
                 return false;
             }
 
-            AppendStatus($"Logging to {SessionLogging.DisplayPath(logging.Logger!.Path!)}.");
-            RefreshConnectionUi();
+            AppendStatus(windowTab, $"Logging to {SessionLogging.DisplayPath(logging.Logger!.Path!)}.");
+            RefreshConnectionUi(windowTab);
             return true;
         }
 
-        void StopLogging()
+        void StopLoggingForTab(TuiWindowTab windowTab)
         {
             if (logging.Logger?.Path is { } path)
             {
                 logging.Stop();
-                AppendStatus($"Stopped logging to {SessionLogging.DisplayPath(path)}.");
-                RefreshConnectionUi();
+                AppendStatus(windowTab, $"Stopped logging to {SessionLogging.DisplayPath(path)}.");
+                RefreshConnectionUi(windowTab);
             }
         }
 
+        // TuiWindowParts.Logging exposes these two with no tab parameter (its shape predates multi-tab
+        // and stays the same) - they act on whichever tab is active at the moment they're called.
+        bool StartLogging(string path) => StartLoggingForTab(ActiveTab(), path);
+        void StopLogging() => StopLoggingForTab(ActiveTab());
+
         logging.MenuItem.Action = Guarded(() =>
         {
+            var windowTab = ActiveTab();
             if (logging.Logger is not null)
             {
-                StopLogging();
+                StopLoggingForTab(windowTab);
             }
-            else if (TuiLogging.PromptForPath(app, tab.CliOptions, profileStore.FindName(tab.CliOptions)) is { } path)
+            else if (TuiLogging.PromptForPath(app, windowTab.Tab.CliOptions, profileStore.FindName(windowTab.Tab.CliOptions)) is { } path)
             {
-                StartLogging(path);
+                StartLoggingForTab(windowTab, path);
             }
         });
 
@@ -335,12 +426,13 @@ public static class TuiMode
         {
             // Called from a menu item's action, already on the UI thread - no Application.Invoke
             // needed (and it would never flush under a headless test without a real run loop).
-            tab.Parser = name;
-            window.Title = TitleFor();
+            var windowTab = ActiveTab();
+            windowTab.Tab.Parser = name;
+            window.Title = windowTab.Tab.Title(profileStore);
         }
 
         // View > Theme: switching re-applies live through OnThemeChanged below.
-        var themeMenu = new TuiThemeMenu(AppendStatus);
+        var themeMenu = new TuiThemeMenu(text => AppendStatus(ActiveTab(), text));
 
         var menuBar = new MenuBar(
         [
@@ -349,7 +441,8 @@ public static class TuiMode
                 connectMenuItem,
                 new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
-                    var configureParts = ConfigureMode.BuildWindow(app, tab.CliOptions, null, profileStore);
+                    var windowTab = ActiveTab();
+                    var configureParts = ConfigureMode.BuildWindow(app, windowTab.Tab.CliOptions, null, profileStore);
                     try
                     {
                         app.Run(configureParts.Window);
@@ -362,31 +455,72 @@ public static class TuiMode
                     if (configureParts.Result is { } chosen)
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
-                        Observe(SwitchProfileAsync(chosen), AppendOutput);
+                        Observe(SwitchProfileAsync(chosen), line => AppendOutput(windowTab, line));
                     }
                 })),
+                newSessionMenuItem = new MenuItem("_New Session...", string.Empty, Guarded(() =>
+                {
+                    var activeTab = ActiveTab();
+                    var configureParts = ConfigureMode.BuildWindow(app, activeTab.Tab.CliOptions, null, profileStore);
+                    try
+                    {
+                        app.Run(configureParts.Window);
+                    }
+                    finally
+                    {
+                        configureParts.Window.Dispose();
+                    }
+
+                    if (configureParts.Result is not { } chosen)
+                    {
+                        return;
+                    }
+
+                    DevTermConfiguration.SaveLocalProfile(chosen);
+                    SessionTab newSessionTab;
+                    try
+                    {
+                        newSessionTab = SessionTab.Build(chosen);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendError(activeTab, $"Could not open a new session: {ex.Message}");
+                        return;
+                    }
+
+                    var newTab = AddTab(newSessionTab);
+                    Observe(ConnectNewTabAsync(newTab), line => AppendOutput(newTab, line));
+                })),
+                closeSessionMenuItem = new MenuItem("_Close Session", string.Empty, () =>
+                {
+                    var tabToClose = ActiveTab();
+                    Observe(CloseTabAsync(tabToClose), line => AppendOutput(ActiveTab(), line));
+                }),
                 logging.MenuItem,
-                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, tab.CliOptions))),
+                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, ActiveTab().Tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
-            // line typed on (the title bar shows which is current). Built from the catalog as of
-            // startup - a profile switch never changes which presenters are registered.
+            // line typed on (the title bar shows which is current). Built once, from whichever tab is
+            // active at window-build time (the presenter set is the same across every tab a session
+            // could realistically use here) rather than rebuilt live on every tab switch - Terminal.Gui
+            // has no live-item-replacement story for a MenuBarItem the way WPF's ComboBox.ItemsSource
+            // binding does.
             new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
             new MenuBarItem("_Device",
             [
                 // Reuses the current, already-open session/connection rather than opening a second
-                // competing one to the same physical device - reads the live `tab.Session`/`tab.Catalog`
-                // properties, which SwitchProfileAsync above reassigns on a profile switch; every
-                // closure that captures `tab` (not `tab` itself) sees the switch, the same way the
-                // "_Device Profiles..." item above reads the live `tab.CliOptions`.
+                // competing one to the same physical device - reads the live ActiveTab() tab's
+                // Session/Catalog, which SwitchProfileAsync reassigns on a profile switch and which
+                // changes altogether on a tab switch.
                 k8055MenuItem = new MenuItem("_K8055 Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         K8055UiDefinition.Build(),
-                        new K8055ControlSurface(tab.Session),
+                        new K8055ControlSurface(windowTab.Tab.Session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
                     try
@@ -400,11 +534,12 @@ public static class TuiMode
                 })),
                 busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         BusylightUiDefinition.Build(),
-                        new BusylightControlSurface(tab.Session),
+                        new BusylightControlSurface(windowTab.Tab.Session),
                         structuredSource,
                         "dev-term — Busylight Control Panel");
                     try
@@ -418,11 +553,12 @@ public static class TuiMode
                 })),
                 radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         RadexOneUiDefinition.Build(),
-                        new RadexOneControlSurface(tab.Session),
+                        new RadexOneControlSurface(windowTab.Tab.Session),
                         structuredSource,
                         "dev-term — Radex One Control Panel");
                     try
@@ -436,11 +572,12 @@ public static class TuiMode
                 })),
                 zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         ZoomH4nUiDefinition.Build(),
-                        new ZoomH4nControlSurface(tab.Session),
+                        new ZoomH4nControlSurface(windowTab.Tab.Session),
                         structuredSource,
                         "dev-term — Zoom H4n Remote");
                     try
@@ -454,7 +591,8 @@ public static class TuiMode
                 })),
                 de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         De5000UiDefinition.Build(),
@@ -472,7 +610,8 @@ public static class TuiMode
                 })),
                 nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
+                    var windowTab = ActiveTab();
+                    var structuredSource = windowTab.Tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         NmeaGpsUiDefinition.Build(),
@@ -486,8 +625,9 @@ public static class TuiMode
                 // instrument is a dropped-in JSON file, not a new menu item.
                 scpiMenuItem = new MenuItem("_SCPI Instrument...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = ResolveActiveScpiPresenter(tab.Session, tab.Catalog);
-                    var picked = ResolveSavedScpiProfileChoice(tab.CliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
+                    var windowTab = ActiveTab();
+                    var structuredSource = ResolveActiveScpiPresenter(windowTab.Tab.Session, windowTab.Tab.Catalog);
+                    var picked = ResolveSavedScpiProfileChoice(windowTab.Tab.CliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
                     if (picked is null)
                     {
                         return;
@@ -500,16 +640,16 @@ public static class TuiMode
                         // forget with the eventual window open marshaled back via Application.Invoke,
                         // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
                         // reason (real async I/O resumes off the UI thread).
-                        Observe(DetectAndOpenScpiInstrumentAsync(app, tab.Session, structuredSource, tab.CliOptions.ScpiAutoDetectTimeoutMs, AppendStatus, AppendError), AppendOutput);
+                        Observe(DetectAndOpenScpiInstrumentAsync(app, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text)), line => AppendOutput(windowTab, line));
                         return;
                     }
 
                     var profile = picked == _scpiGenericChoice
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
-                    OpenScpiInstrumentWindow(app, tab.Session, structuredSource, profile);
+                    OpenScpiInstrumentWindow(app, windowTab.Tab.Session, structuredSource, profile);
                 })),
-                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, tab.Session))),
+                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, ActiveTab().Tab.Session))),
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
@@ -519,8 +659,8 @@ public static class TuiMode
         ]);
 
         // A theme switch (View > Theme, from this window or any other) re-applies everything themed:
-        // Terminal.Gui's schemes, the output pane's highlighting (XSHD colors are fixed per
-        // definition, so it's swapped for the new theme's), and the status line. Raised on the thread
+        // Terminal.Gui's schemes, every open tab's output pane highlighting (XSHD colors are fixed per
+        // definition, so each is swapped for the new theme's), and the status line. Raised on the thread
         // that selected - the UI thread, from a menu action - so no app.Invoke (which would never
         // flush under a headless test). Selected from any other thread, it's marshaled over instead;
         // a window whose application has already shut down just unsubscribes.
@@ -545,48 +685,61 @@ public static class TuiMode
         void ReapplyTheme()
         {
             TuiTheme.Apply(ActiveTheme.Current);
-            output.HighlightingDefinition = OutputHighlighting.Definition;
+            foreach (var windowTab in tabs)
+            {
+                windowTab.Output.HighlightingDefinition = OutputHighlighting.Definition;
+            }
+
             themeMenu.Refresh();
-            RefreshConnectionUi();
+            RefreshConnectionUi(ActiveTab());
             window.SetNeedsDraw();
         }
 
         ActiveTheme.Changed += OnThemeChanged;
         window.Disposing += (_, _) => ActiveTheme.Changed -= OnThemeChanged;
 
-        // Everything that depends on the connection state, derived from tab.Session.State in one
-        // place: the File menu label, the send field, the title (" — disconnected" when closed), the
-        // status line, and which Device panels make sense (DevicePanels). Called on the UI thread -
-        // directly while building, via app.Invoke after any connect/disconnect/fault/profile switch.
-        void RefreshConnectionUi()
+        // Everything that depends on one tab's connection state: its own tab header, and - only if
+        // it's still the active tab by the time this runs - the shared chrome that follows the active
+        // tab (the File menu label, the send field, the window title, the status line, and which
+        // Device panels make sense). Called on the UI thread - directly while building, via app.Invoke
+        // after any connect/disconnect/fault/profile switch, or via tabsView.ValueChanged on a tab
+        // switch. Mirrors MainWindow.xaml.cs's own two-purpose RefreshConnectionUi(WindowTab, ...).
+        void RefreshConnectionUi(TuiWindowTab windowTab)
         {
-            var state = tab.Session.State;
+            var state = windowTab.Tab.Session.State;
             var connected = state == ConnectionState.Open;
+
+            windowTab.Output.Title = ConnectionDescription.Subject(windowTab.Tab.CliOptions, profileStore);
+
+            if (!ReferenceEquals(windowTab, ActiveTab()))
+            {
+                return;
+            }
 
             connectMenuItem.Title = connected ? "_Disconnect" : "_Connect";
             sendField.Enabled = connected;
-            window.Title = TitleFor();
+            window.Title = windowTab.Tab.Title(profileStore);
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(tab.CliOptions, state)}{logging.StatusSuffix}";
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{logging.StatusSuffix}";
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
 
-            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, tab.CliOptions, connected);
-            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, tab.CliOptions, connected);
-            scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.CliOptions, connected);
-            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, tab.CliOptions, connected);
-            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, tab.CliOptions, connected);
-            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, tab.CliOptions, connected);
-            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, tab.CliOptions, connected);
-            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.CliOptions, connected);
+            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
+            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
+            scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, windowTab.Tab.CliOptions, connected);
+            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, windowTab.Tab.CliOptions, connected);
+            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, windowTab.Tab.CliOptions, connected);
+            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, windowTab.Tab.CliOptions, connected);
+            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, windowTab.Tab.CliOptions, connected);
+            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, windowTab.Tab.CliOptions, connected);
         }
 
         // Quitting the whole app (as opposed to Ctrl+Q/Escape just closing a nested panel - see
-        // quitOnCtrlQ below) confirms first, but only when there's a live connection to lose; an
-        // already-disconnected session has nothing worth confirming.
+        // quitOnCtrlQ below) confirms first, but only when some tab has a live connection to lose; if
+        // every tab is already disconnected, there's nothing worth confirming.
         void Quit()
         {
             if (app.TopRunnableView == window
-                && tab.Session.State == ConnectionState.Open
+                && tabs.Any(t => t.Tab.Session.State == ConnectionState.Open)
                 && MessageBox.Query(app, "dev-term", "Quit dev-term? This closes the current connection.", ["Yes", "No"]) != 0)
             {
                 return;
@@ -614,8 +767,8 @@ public static class TuiMode
         // actually about to end the app.
         void quitOnCtrlQ(object? _, Key key)
         {
-            // The Connection Editor (File > Device Profiles...) quits itself on Ctrl+Q, with its
-            // unsaved-changes prompt; stopping it from here would skip that prompt.
+            // The Connection Editor (File > Device Profiles.../New Session...) quits itself on Ctrl+Q,
+            // with its unsaved-changes prompt; stopping it from here would skip that prompt.
             if (key != Key.Q.WithCtrl || key.Handled || ConfigureMode.OwnsQuitKey(app.TopRunnableView))
             {
                 return;
@@ -628,36 +781,28 @@ public static class TuiMode
         app.Keyboard.KeyDown += quitOnCtrlQ;
         window.Disposing += (_, _) => app.Keyboard.KeyDown -= quitOnCtrlQ;
 
-        // A named handler, not an inline lambda, so SwitchProfileAsync below can unsubscribe it
-        // from the old session before subscribing it to the new one.
-        void OnSessionOutput(object? _, PresenterOutput presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
-        tab.Session.Output += OnSessionOutput;
-
-        // Tears down the current session/transport and opens a new one composed from
+        // Tears down the active tab's current session/transport and opens a new one composed from
         // newOptions - live, without restarting the app, unlike the save-as-default-and-ask-for-a-
-        // restart this replaced. Reassigns `tab`'s Session/Catalog/CliOptions/Parser properties
-        // directly (`tab` itself is never replaced) - every other closure in this method
-        // (sendField.KeyDown, connectMenuItem.Action, this same menu handler on a later invocation)
-        // captures the same `tab` reference, so C#'s normal closure-over-a-shared-variable semantics
-        // means they all see the switch without needing to be individually re-wired. Must run under a
-        // real Application.Run() loop (RunWithLoop in tests, never RunHeadless) - it calls
-        // Application.Invoke like ToggleConnectionAsync below, which silently never flushes
-        // otherwise (see CLAUDE.md).
+        // restart this replaced. Reassigns the active TuiWindowTab's Session/Catalog/CliOptions/Parser
+        // properties directly (the TuiWindowTab itself is never replaced, only its Tab's properties) -
+        // every other closure that resolves ActiveTab() afresh sees the switch without needing to be
+        // individually re-wired. Must run under a real Application.Run() loop (RunWithLoop in tests,
+        // never RunHeadless) - it calls Application.Invoke like ToggleConnectionAsync above, which
+        // silently never flushes otherwise (see CLAUDE.md).
         // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on
         // the OS connect timeout) can still be pending when the user switches to a *different*
-        // host, and without switchCts, the earlier attempt's success/failure handler ran anyway
-        // once it finally resolved - using the by-then-stale tab.CliOptions - and stomped
+        // host, and without windowTab.SwitchCts, the earlier attempt's success/failure handler ran
+        // anyway once it finally resolved - using the by-then-stale CliOptions - and stomped
         // connectMenuItem.Title/sendField.Enabled/output back over whatever the newer attempt had
-        // already set. Reported as "I tried connecting to 192.168.0.108 and it failed, so I tried
-        // 192.168.0.107 and it won't even try to connect now" - .107 *did* try, but .108's late
-        // failure silently reverted the UI afterward. Real TCP connects honor cancellation (unlike
-        // SerialPort/HidStream - see CLAUDE.md), so the superseded attempt now fails fast instead
-        // of leaking a connect in the background.
+        // already set. Real TCP connects honor cancellation (unlike SerialPort/HidStream - see
+        // CLAUDE.md), so the superseded attempt now fails fast instead of leaking a connect in the
+        // background.
         async Task<bool> SwitchProfileAsync(CliOptions newOptions)
         {
-            switchCts?.Cancel();
+            var windowTab = ActiveTab();
+            windowTab.SwitchCts?.Cancel();
             var cts = new CancellationTokenSource();
-            switchCts = cts;
+            windowTab.SwitchCts = cts;
 
             DevTermSessionBuilder.Result built;
             try
@@ -666,57 +811,57 @@ public static class TuiMode
             }
             catch (Exception ex)
             {
-                AppendError($"Could not switch profile: {ex.Message}");
+                AppendError(windowTab, $"Could not switch profile: {ex.Message}");
                 return false;
             }
 
             var mySession = built.Session;
 
-            // Captured now, before any await: a second, overlapping switch reassigns the shared
-            // tab.Session property below (once its own build/close/dispose completes) while this call
-            // is still suspended closing/disposing its OWN old session. Reading tab.Session again
-            // after that await - instead of this local - would tear down whatever the OTHER call
-            // had already installed there (possibly its brand-new, just-opened session) rather
+            // Captured now, before any await: a second, overlapping switch on this same tab reassigns
+            // windowTab.Tab.Session below (once its own build/close/dispose completes) while this call
+            // is still suspended closing/disposing its OWN old session. Reading windowTab.Tab.Session
+            // again after that await - instead of this local - would tear down whatever the OTHER
+            // call had already installed there (possibly its brand-new, just-opened session) rather
             // than the session this call actually meant to replace.
-            var oldSession = tab.Session;
+            var oldSession = windowTab.Tab.Session;
 
-            oldSession.Output -= OnSessionOutput;
-            oldSession.Disconnected -= OnSessionDisconnected;
+            oldSession.Output -= windowTab.OutputHandler;
+            oldSession.Disconnected -= windowTab.DisconnectedHandler;
             await oldSession.CloseAsync();
             await oldSession.DisposeAsync();
 
-            if (!ReferenceEquals(switchCts, cts))
+            if (!ReferenceEquals(windowTab.SwitchCts, cts))
             {
                 // Superseded while closing the old session, before ever adopting mySession as
-                // current - a newer switch has already moved tab.Session on (possibly to its own,
-                // by-now-open session). Never having been subscribed or assigned to tab.Session,
-                // mySession just needs disposing.
+                // current - a newer switch on this tab has already moved it on (possibly to its own,
+                // by-now-open session). Never having been subscribed or assigned to the tab, mySession
+                // just needs disposing.
                 await mySession.DisposeAsync();
                 return false;
             }
 
-            tab.Session = mySession;
-            tab.Catalog = built.Catalog;
-            tab.CliOptions = newOptions;
-            tab.Parser = newOptions.EffectiveParser;
+            windowTab.Tab.Session = mySession;
+            windowTab.Tab.Catalog = built.Catalog;
+            windowTab.Tab.CliOptions = newOptions;
+            windowTab.Tab.Parser = newOptions.EffectiveParser;
             streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
-            mySession.Output += OnSessionOutput;
-            mySession.Disconnected += OnSessionDisconnected;
+            mySession.Output += windowTab.OutputHandler;
+            mySession.Disconnected += windowTab.DisconnectedHandler;
             logging.Follow(mySession, newOptions, profileStore.FindName(newOptions));
 
             app.Invoke(() =>
             {
-                // Clear the backing list too - clearing only output.Text brought the previous
+                // Clear the backing list too - clearing only Output.Text brought the previous
                 // connection's lines straight back on the next AppendOutput, which rebuilds the text
                 // from the list.
-                outputLines.Clear();
-                output.Text = string.Empty;
-                RefreshConnectionUi();
+                windowTab.OutputLines.Clear();
+                windowTab.Output.Text = string.Empty;
+                RefreshConnectionUi(windowTab);
             });
 
-            if (ManifestNameWarning.For(tab.CliOptions) is { } manifestWarning)
+            if (ManifestNameWarning.For(windowTab.Tab.CliOptions) is { } manifestWarning)
             {
-                AppendStatus(manifestWarning);
+                AppendStatus(windowTab, manifestWarning);
             }
 
             try
@@ -731,48 +876,109 @@ public static class TuiMode
             }
             catch (Exception ex)
             {
-                if (!ReferenceEquals(switchCts, cts))
+                if (!ReferenceEquals(windowTab.SwitchCts, cts))
                 {
                     // Superseded between the failure and this catch running - don't stomp the
                     // newer attempt's state with a stale one.
                     return false;
                 }
 
-                AppendError(ConnectionErrorMessages.For(tab.CliOptions.Transport, ex));
-                app.Invoke(RefreshConnectionUi);
+                AppendError(windowTab, ConnectionErrorMessages.For(windowTab.Tab.CliOptions.Transport, ex));
+                app.Invoke(() => RefreshConnectionUi(windowTab));
                 return false;
             }
 
-            if (!ReferenceEquals(switchCts, cts))
+            if (!ReferenceEquals(windowTab.SwitchCts, cts))
             {
                 // Connected, but superseded in the meantime - close it rather than adopting a
                 // stray connection as current.
-                mySession.Output -= OnSessionOutput;
-                mySession.Disconnected -= OnSessionDisconnected;
+                mySession.Output -= windowTab.OutputHandler;
+                mySession.Disconnected -= windowTab.DisconnectedHandler;
                 await mySession.CloseAsync();
                 await mySession.DisposeAsync();
                 return false;
             }
 
-            app.Invoke(RefreshConnectionUi);
-            AppendStatus($"Switched to {ConnectionDescription.For(tab.CliOptions)}.");
+            app.Invoke(() => RefreshConnectionUi(windowTab));
+            AppendStatus(windowTab, $"Switched to {ConnectionDescription.For(windowTab.Tab.CliOptions)}.");
             return true;
         }
 
-        // Device > Stream Monitor...: opening it starts monitoring the current session (that's what
-        // opening it is for); its Stop button stops it. The monitor outlives the modal window so
-        // captures keep being auto-saved - each reported as a status line here - while the user is
-        // back in this window sending commands. SwitchProfileAsync moves it to the new session.
+        // File > New Session... has already built and added the tab (AddTab, so the tab strip/output
+        // pane exist immediately) by the time this runs - it only needs to actually open the
+        // connection, mirroring what MainWindow.xaml.cs's NewSession_Click gets for free from
+        // ConnectAsync() (already wired to WPF's Loaded event pre-multi-tab), which TUI has no
+        // equivalent of since RunAsync opens the startup session before BuildWindow is ever called.
+        async Task ConnectNewTabAsync(TuiWindowTab windowTab)
+        {
+            try
+            {
+                await windowTab.Tab.Session.OpenAsync();
+            }
+            catch (Exception ex)
+            {
+                AppendError(windowTab, ConnectionErrorMessages.For(windowTab.Tab.CliOptions.Transport, ex));
+                app.Invoke(() => RefreshConnectionUi(windowTab));
+                return;
+            }
+
+            AppendStatus(windowTab, $"Connected to {ConnectionDescription.For(windowTab.Tab.CliOptions)}.");
+            app.Invoke(() => RefreshConnectionUi(windowTab));
+        }
+
+        // File > Close Session: a no-op with only one tab left, mirroring MainWindow.xaml.cs's own
+        // Step 2 narrowing (docs/design/multi-session-ui.md's Open questions recommend the window
+        // staying open with zero tabs; true zero-tab support is deferred to Step 4, same as WPF).
+        // Unlike WPF, there's no _openControlPanels-equivalent tracking to close here: a TUI device
+        // control panel is opened via a nested, blocking app.Run(panelParts.Window) from within a menu
+        // action, so it's structurally modal to the whole app loop and can never outlive the Close
+        // Session action running concurrently with it.
+        async Task CloseTabAsync(TuiWindowTab windowTab)
+        {
+            if (tabs.Count <= 1 || !tabs.Contains(windowTab))
+            {
+                return;
+            }
+
+            windowTab.Tab.Session.Output -= windowTab.OutputHandler;
+            windowTab.Tab.Session.Disconnected -= windowTab.DisconnectedHandler;
+            try
+            {
+                await windowTab.Tab.Session.CloseAsync();
+                await windowTab.Tab.Session.DisposeAsync();
+            }
+            catch (Exception)
+            {
+            }
+
+            tabs.Remove(windowTab);
+            tabsView.Remove(windowTab.Output);
+            if (tabs.Count > 0)
+            {
+                tabsView.Value = tabs[0].Output;
+            }
+
+            windowTab.Output.Dispose();
+            UpdateCloseSessionAvailability();
+        }
+
+        // Device > Stream Monitor...: opening it starts monitoring the active tab's session (that's
+        // what opening it is for); its Stop button stops it. The monitor outlives the modal window so
+        // captures keep being auto-saved - each reported as a status line here, against whichever tab
+        // was active the first time this ran - while the user is back in this window sending commands,
+        // possibly on a different tab by then. A later profile switch on that same tab moves it via
+        // SwitchProfileAsync's own streamMonitor.SetSession call.
         void OpenStreamMonitor()
         {
+            var windowTab = ActiveTab();
             if (streamMonitor is null)
             {
                 var monitor = new StreamMonitor();
-                monitor.CaptureAdded += (_, capture) => AppendStatus(capture.Describe());
+                monitor.CaptureAdded += (_, capture) => AppendStatus(windowTab, capture.Describe());
                 streamMonitor = monitor;
             }
 
-            streamMonitor.SetSession(tab.Session, StreamMonitor.DeviceNameFor(tab.CliOptions, profileStore), tab.CliOptions.EffectiveExportDirectory);
+            streamMonitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
             streamMonitor.Start();
 
             var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor);
@@ -782,10 +988,12 @@ public static class TuiMode
 
         sendField.KeyDown += (_, key) =>
         {
+            var windowTab = ActiveTab();
+
             if (key == Key.CursorUp)
             {
                 key.Handled = true;
-                if (sendHistory.Previous() is { } older)
+                if (windowTab.Tab.SendHistory.Previous() is { } older)
                 {
                     sendField.Text = older;
                     sendField.MoveEnd();
@@ -797,7 +1005,7 @@ public static class TuiMode
             if (key == Key.CursorDown)
             {
                 key.Handled = true;
-                if (sendHistory.Next() is { } newer)
+                if (windowTab.Tab.SendHistory.Next() is { } newer)
                 {
                     sendField.Text = newer;
                     sendField.MoveEnd();
@@ -814,39 +1022,67 @@ public static class TuiMode
             key.Handled = true;
             var line = sendField.Text;
             sendField.Text = string.Empty;
-            sendHistory.Add(line);
+            windowTab.Tab.SendHistory.Add(line);
 
             if (line.Length == 0)
             {
                 return;
             }
 
-            if (tab.Session.State != ConnectionState.Open)
+            if (windowTab.Tab.Session.State != ConnectionState.Open)
             {
-                AppendError("Not connected — use File > Connect.");
+                AppendError(windowTab, "Not connected — use File > Connect.");
                 return;
             }
 
-            if (!tab.Catalog.TryGetInput(tab.Parser, out var input))
+            if (!windowTab.Tab.Catalog.TryGetInput(windowTab.Tab.Parser, out var input))
             {
-                AppendError($"Parser '{tab.Parser}' does not support sending.");
+                AppendError(windowTab, $"Parser '{windowTab.Tab.Parser}' does not support sending.");
                 return;
             }
 
-            Observe(SendAsync(tab.Session, tab.CliOptions, input, line, AppendOutput, tab.Parser), AppendOutput);
+            Observe(SendAsync(windowTab.Tab.Session, windowTab.Tab.CliOptions, input, line, l => AppendOutput(windowTab, l), windowTab.Tab.Parser), l => AppendOutput(windowTab, l));
         };
 
-        window.Add(menuBar, output, sendLabel, sendField, statusLabel);
-        RefreshConnectionUi();
-
-        // --log starts logging straight away (the session may already be open - the log's first
-        // record says so). RunAsync stops it when the loop ends.
-        if (tab.CliOptions.Log is { Length: > 0 } logOption)
+        // Shared chrome (the File menu label, the send field, the window title, the status line, the
+        // Device menu) rebinds to the newly active tab - mirrors MainWindow.xaml.cs's own
+        // SessionTabs_SelectionChanged, simplified since there's no ParserBox/combobox to rebind here
+        // (the "_Send as" menu is intentionally not rebuilt per tab - see its own comment above).
+        tabsView.ValueChanged += (_, _) =>
         {
-            StartLogging(SessionLogging.ResolveLogPath(logOption, tab.CliOptions, profileStore.FindName(tab.CliOptions), DateTimeOffset.Now));
-        }
+            sendField.Text = string.Empty;
+            RefreshConnectionUi(ActiveTab());
+        };
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => tab.Session, streamMonitorMenuItem!, () => streamMonitor);
+        window.Add(menuBar, tabsView, sendLabel, sendField, statusLabel);
+
+        // Everything AddTab might synchronously touch (RefreshConnectionUi, StartLoggingForTab) now
+        // exists, so the startup connection can become the first tab, wrapped identically to every
+        // other tab File > New Session... adds later.
+        var firstTab = AddTab(tab, initialMessage);
+        RefreshConnectionUi(firstTab);
+
+        return new TuiWindowParts(
+            window,
+            firstTab.Output,
+            sendField,
+            connectMenuItem,
+            SwitchProfileAsync,
+            SetParser,
+            statusLabel,
+            k8055MenuItem!,
+            busylightMenuItem!,
+            scpiMenuItem!,
+            ToggleAndRefreshAsync,
+            new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger),
+            themeMenu,
+            () => ActiveTab().Tab.Session,
+            streamMonitorMenuItem!,
+            () => streamMonitor,
+            tabsView,
+            newSessionMenuItem!,
+            closeSessionMenuItem!,
+            () => tabs.Select(t => t.Tab.Session).ToList());
     }
 
     /// <summary>
@@ -1121,5 +1357,39 @@ public static class TuiMode
     }
 }
 
-/// <summary>The controls a test needs to drive the TUI headlessly: inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>, drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the "File &gt; Device Profiles..." menu item calls), or switch the send format via <see cref="SetParser"/> (what a "Send as" menu item calls); plus the connection-state status line, the three Device menu items, and <see cref="ToggleConnectionAsync"/> - exactly what File ; plus the connection-state status line and the three Device menu items, to check they follow the connection.</summary>gt; Connect/Disconnect runs, including refreshing everything that follows the connection state.</summary>
-internal sealed record TuiWindowParts(Window Window, Editor Output, TextField SendField, MenuItem ConnectMenuItem, Func<CliOptions, Task<bool>> SwitchProfileAsync, Action<string> SetParser, Label StatusLabel, MenuItem K8055MenuItem, MenuItem BusylightMenuItem, MenuItem ScpiMenuItem, Func<Task> ToggleConnectionAsync, TuiLoggingParts Logging, TuiThemeMenu ThemeMenu, Func<Session> CurrentSession, MenuItem StreamMonitorMenuItem, Func<StreamMonitor?> CurrentStreamMonitor);
+/// <summary>
+/// The controls a test needs to drive the TUI headlessly. <see cref="Output"/> is the startup tab's
+/// output <see cref="Editor"/> (every pre-multi-tab test drives exactly one tab, so this stays a
+/// stable reference rather than a delegate); <see cref="TabsView"/> gives a multi-tab test access to
+/// the tab strip itself (tab count, headers, and switching the active tab via its <c>Value</c>
+/// setter). Inject keys into <see cref="SendField"/>, read rendered text back from <see cref="Output"/>,
+/// drive a live profile switch directly via <see cref="SwitchProfileAsync"/> (the same delegate the
+/// "File &gt; Device Profiles..." menu item calls, acting on whichever tab is active), switch the send
+/// format via <see cref="SetParser"/> (what a "Send as" menu item calls), or drive
+/// <see cref="NewSessionMenuItem"/>/<see cref="CloseSessionMenuItem"/> directly; plus the
+/// connection-state status line, the three Device menu items, <see cref="ToggleConnectionAsync"/> -
+/// exactly what File &gt; Connect/Disconnect runs, including refreshing everything that follows the
+/// connection state - and <see cref="AllSessions"/>, which <see cref="TuiMode.RunAsync"/> uses to
+/// close every open tab's session when the loop ends.
+/// </summary>
+internal sealed record TuiWindowParts(
+    Window Window,
+    Editor Output,
+    TextField SendField,
+    MenuItem ConnectMenuItem,
+    Func<CliOptions, Task<bool>> SwitchProfileAsync,
+    Action<string> SetParser,
+    Label StatusLabel,
+    MenuItem K8055MenuItem,
+    MenuItem BusylightMenuItem,
+    MenuItem ScpiMenuItem,
+    Func<Task> ToggleConnectionAsync,
+    TuiLoggingParts Logging,
+    TuiThemeMenu ThemeMenu,
+    Func<Session> CurrentSession,
+    MenuItem StreamMonitorMenuItem,
+    Func<StreamMonitor?> CurrentStreamMonitor,
+    Tabs TabsView,
+    MenuItem NewSessionMenuItem,
+    MenuItem CloseSessionMenuItem,
+    Func<IReadOnlyList<Session>> AllSessions);

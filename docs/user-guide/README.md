@@ -33,6 +33,8 @@ test class's own doc comment.
   connected, across all three front ends.
 - [Connecting and disconnecting without restarting](connect-disconnect.md) — the **File >
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
+- [Running multiple sessions at once](multiple-sessions.md) — **File > New Session...**/**File >
+  Close Session** in TUI/WPF, each session in its own tab.
 - [Logging and playing back a session](logging-and-playback.md) — recording everything sent and
   received (`--log`, **File > Start Logging...**) and replaying it through any presenters, with
   transport controls, trimming and notes (`--playback`, **File > Open Log for Playback...**).

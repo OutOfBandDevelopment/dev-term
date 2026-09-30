@@ -118,8 +118,8 @@ public sealed class TuiThemeTests
 
                 Assert.AreEqual(name, ActiveTheme.Selection);
                 Assert.AreEqual(Tg(theme, ThemeRole.Background), buffer.Contents![0, 0].Attribute!.Value.Background, $"{name}: the window border repaints in the theme's background.");
-                Assert.AreEqual(Tg(theme, ThemeRole.OutputError), buffer.Contents[2, 3].Attribute!.Value.Foreground, $"{name}: [error] lines use the theme's outputError.");
-                Assert.AreEqual(Tg(theme, ThemeRole.OutputStatus), buffer.Contents[3, 3].Attribute!.Value.Foreground, $"{name}: [dev-term] lines use the theme's outputStatus.");
+                Assert.AreEqual(Tg(theme, ThemeRole.OutputError), buffer.Contents[5, 3].Attribute!.Value.Foreground, $"{name}: [error] lines use the theme's outputError.");
+                Assert.AreEqual(Tg(theme, ThemeRole.OutputStatus), buffer.Contents[6, 3].Attribute!.Value.Foreground, $"{name}: [dev-term] lines use the theme's outputStatus.");
 
                 var statusCell = FindCell(buffer, "●");
                 Assert.AreEqual(Tg(theme, ThemeRole.StatusDisconnected), statusCell.Background, $"{name}: the (disconnected) status line uses the theme's statusDisconnected.");

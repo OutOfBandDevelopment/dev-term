@@ -35,12 +35,13 @@ public sealed class OutputHighlightingTests
             {
                 var buffer = app.Driver!.GetOutputBuffer();
 
-                // The output pane's first three rows (below the menu bar) hold the three lines; col 3
-                // is inside each line's leading tag. Row 0 is the window border, row 1 the menu bar.
+                // The output pane's three lines land on rows 5-7; col 3 is inside each line's leading
+                // tag. Row 0 is the window border, row 1 the menu bar, rows 2-4 the Tabs strip's own
+                // border/title/frame above its active tab's content.
                 Terminal.Gui.Drawing.Color ForegroundAt(int row) => buffer.Contents![row, 3].Attribute!.Value.Foreground;
-                var error = ForegroundAt(2);
-                var status = ForegroundAt(3);
-                var device = ForegroundAt(4);
+                var error = ForegroundAt(5);
+                var status = ForegroundAt(6);
+                var device = ForegroundAt(7);
 
                 Assert.AreEqual(TuiTheme.ToColor(ActiveTheme.Current[ThemeRole.OutputError]), error, "[error] lines use the theme's outputError.");
                 Assert.AreEqual(TuiTheme.ToColor(ActiveTheme.Current[ThemeRole.OutputStatus]), status, "[dev-term] lines use the theme's outputStatus.");

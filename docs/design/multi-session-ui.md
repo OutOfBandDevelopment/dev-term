@@ -223,16 +223,42 @@ stock Aero2 chrome was hard-coded light, same class of gap as every other stock 
 there) — required for `UiLayoutReviewTests`' dark-theme cases to stay green with the new tab strip.
 Verified: full solution build + full Unit test suite, 0 failures.
 
-Steps 3-5 below are not started. Recommended implementation order, each step independently testable:
+**Step 3 done.** `TuiMode` now holds a list of `TuiWindowTab` (a `SessionTab` plus its own `Editor`
+output pane, `TextField` `SendField`, and per-tab `SendHistory`) instead of one; a
+`Terminal.Gui.Views.Tabs` control replaces the old window-level `output` `Editor`, with each tab's
+`Session.Output`/`Disconnected` routed to that tab's own output pane rather than "whichever tab is
+active." File > New Session... opens `ConfigureMode`'s nested dialog and adds a tab via
+`SessionTab.Build`; File > Close Session (enabled only when more than one tab is open) closes the
+active tab, unsubscribes its handlers, and reassigns `Tabs.Value` to a remaining tab. Shared chrome
+(status line, Device menu items, connection state) rebinds to whichever tab is active via
+`RefreshConnectionUi(TuiWindowTab)`/`ActiveTab()`. Deliberately narrowed for this step, matching
+Step 2's own narrowing and deferred to Step 4 below rather than resolved here: closing the last tab
+is a no-op (can't reach zero tabs yet); session logging and the Stream Monitor both stay single,
+window-level instances that follow "whichever tab was active when started/opened," not yet
+one-per-tab; the "Send as" parser menu is built once rather than rebuilt per tab switch. No
+`MainWindow`-style `Window.Tag`-tracked-control-panels equivalent was needed — TUI control panels
+(K8055/Busylight/SCPI) are modal via a nested `app.Run`, so they block the tab they were opened
+from and need no separate per-tab bookkeeping to close alongside their tab. `TuiWindowParts` gained
+`TabsView`, `NewSessionMenuItem`, `CloseSessionMenuItem`, and `AllSessions` (a
+`Func<IReadOnlyList<Session>>`, mirroring how `RunAsync` closes every open tab's session at
+shutdown). New test coverage (`TuiModeMultiSessionTests`) drives the real menu actions end-to-end —
+opening the nested `ConfigureMode` dialog via `app.Run` and clicking its Connect button, the same
+nested-modal-driving technique already established for the K8055 control panel's own tests — rather
+than a copy of the menu items' logic; no equivalent WPF Step 2 test file existed to model it after
+(`git show --stat 447ebab` shows only `ConnectionDescriptionTests.cs` was added for that step), so
+this test shape was designed independently, grounded in this codebase's own conventions. Verified:
+full solution build + full Unit test suite, 0 failures.
+
+Step 4 below is not started. Recommended implementation order, each step independently testable:
 
 1. ~~Extract `SessionTab` in `DevTerm.Configuration`, with `TuiMode`/`MainWindow` each still using
    exactly one (a pure refactor — behavior unchanged, but proves the extraction is clean before the
    harder multi-tab UI work).~~ Done.
 2. ~~WPF: wrap the single `SessionTab` in a one-`TabItem` `TabControl`, then wire File > New Session
    to add a second. WPF's `TabControl` is a known, low-risk quantity.~~ Done.
-3. TUI: same shape using `Terminal.Gui.Views.Tabs`, once WPF has proven the `SessionTab`
+3. ~~TUI: same shape using `Terminal.Gui.Views.Tabs`, once WPF has proven the `SessionTab`
    extraction is solid — this is the front end where the tab control itself is the less-proven part,
-   so sequencing it second reduces risk.
+   so sequencing it second reduces risk.~~ Done.
 4. Resolve the Open questions above (SendHistory scope, logging scope, Stream Monitor scope,
    zero-tab behavior, shortcuts) as part of implementing New/Close Session, not before — each is
    small enough to decide in its own step rather than blocking the whole feature on a
