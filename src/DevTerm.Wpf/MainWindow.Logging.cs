@@ -32,7 +32,7 @@ public partial class MainWindow
         StopLogging(report: false);
         try
         {
-            _logger = SessionLogging.Start(path, _session, _cliOptions, CurrentParser, _profileStore.FindName(_cliOptions), "wpf");
+            _logger = SessionLogging.Start(path, _tab.Session, _tab.CliOptions, CurrentParser, _profileStore.FindName(_tab.CliOptions), "wpf");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -68,9 +68,9 @@ public partial class MainWindow
     // --log: start straight away (before the Loaded-triggered connect, so the connect is in the log).
     private void StartLoggingFromOptions()
     {
-        if (_cliOptions.Log is { Length: > 0 } logOption)
+        if (_tab.CliOptions.Log is { Length: > 0 } logOption)
         {
-            StartLogging(SessionLogging.ResolveLogPath(logOption, _cliOptions, _profileStore.FindName(_cliOptions), DateTimeOffset.Now));
+            StartLogging(SessionLogging.ResolveLogPath(logOption, _tab.CliOptions, _profileStore.FindName(_tab.CliOptions), DateTimeOffset.Now));
         }
         else
         {
@@ -79,7 +79,7 @@ public partial class MainWindow
     }
 
     // A live profile switch: the same log continues with the new session.
-    private void FollowLogging() => SessionLogging.Follow(_logger, _session, _cliOptions, _profileStore.FindName(_cliOptions));
+    private void FollowLogging() => SessionLogging.Follow(_logger, _tab.Session, _tab.CliOptions, _profileStore.FindName(_tab.CliOptions));
 
     private void RefreshLoggingUi()
     {
@@ -98,7 +98,7 @@ public partial class MainWindow
             return;
         }
 
-        var suggested = SessionLogging.DefaultLogPath(_cliOptions, _profileStore.FindName(_cliOptions), DateTimeOffset.Now);
+        var suggested = SessionLogging.DefaultLogPath(_tab.CliOptions, _profileStore.FindName(_tab.CliOptions), DateTimeOffset.Now);
         Directory.CreateDirectory(Path.GetDirectoryName(suggested)!);
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
@@ -135,7 +135,7 @@ public partial class MainWindow
         Logging.Playback.PlaybackController controller;
         try
         {
-            controller = new PlaybackPresenters(_cliOptions).Open(path, clock);
+            controller = new PlaybackPresenters(_tab.CliOptions).Open(path, clock);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SessionLogFormatException or ArgumentException or NotSupportedException)
         {

@@ -32,9 +32,7 @@ public partial class MainWindow : Window
     /// </summary>
     private const int _maxOutputLines = 1000;
 
-    private Session _session;
-    private PresenterCatalog _catalog;
-    private CliOptions _cliOptions;
+    private SessionTab _tab;
     private readonly ConnectionProfileStore _profileStore;
     private readonly SendHistory _sendHistory = new();
     private bool _closeConfirmed;
@@ -52,7 +50,7 @@ public partial class MainWindow : Window
     // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on the OS
     // connect timeout) can still be pending when the user switches to a *different* profile; without
     // this, the earlier attempt's failure handler ran anyway once it finally resolved - using the
-    // by-then-stale _cliOptions - and stomped the UI back over whatever the newer attempt had already
+    // by-then-stale _tab.CliOptions - and stomped the UI back over whatever the newer attempt had already
     // set. Ports the TUI's switchCts (see docs/bugs/017-wpf-profile-switch-no-supersede.md).
     private CancellationTokenSource? _switchCts;
 
@@ -62,8 +60,8 @@ public partial class MainWindow : Window
     private StreamMonitorWindow? _streamMonitorWindow;
 
     // Every open control panel (K8055, Busylight, RadexOne, ZoomH4n, De5000, SCPI, a device manifest
-    // panel) holds an IControlSurface built against _session and, for most of them, a structured
-    // presenter from _catalog - both go stale the moment SwitchProfileAsync disposes the old session,
+    // panel) holds an IControlSurface built against _tab.Session and, for most of them, a structured
+    // presenter from _tab.Catalog - both go stale the moment SwitchProfileAsync disposes the old session,
     // so every panel gets closed there instead of being left to fail silently against a dead
     // transport. See docs/bugs/016-wpf-panels-bound-to-old-session.md.
     private readonly List<Window> _openControlPanels = [];
@@ -78,9 +76,7 @@ public partial class MainWindow : Window
         WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
 
-        _session = session;
-        _catalog = catalog;
-        _cliOptions = cliOptions;
+        _tab = new SessionTab(session, catalog, cliOptions);
 
         ParserBox.ItemsSource = catalog.InputNames;
         ParserBox.SelectedItem = cliOptions.EffectiveParser;
@@ -94,8 +90,8 @@ public partial class MainWindow : Window
         // View > Theme, and any problems loading themes/preferences at startup - MainWindow.Theme.cs.
         BuildThemeMenu();
 
-        _session.Output += OnSessionOutput;
-        _session.Disconnected += OnSessionDisconnected;
+        _tab.Session.Output += OnSessionOutput;
+        _tab.Session.Disconnected += OnSessionDisconnected;
         Loaded += OnLoaded;
         Closing += OnClosing;
         RefreshConnectionUi();
@@ -115,9 +111,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The send format (parser) currently encoding typed lines — the "Send as" box's selection, starting as the profile's.</summary>
-    internal string CurrentParser => ParserBox.SelectedItem as string ?? _cliOptions.EffectiveParser;
+    internal string CurrentParser => ParserBox.SelectedItem as string ?? _tab.CliOptions.EffectiveParser;
 
-    private string TitleText => ConnectionDescription.WindowTitle(_cliOptions, CurrentParser, _profileStore, _session.State == ConnectionState.Open);
+    private string TitleText => ConnectionDescription.WindowTitle(_tab.CliOptions, CurrentParser, _profileStore, _tab.Session.State == ConnectionState.Open);
 
     private void ParserBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => Title = TitleText;
 
@@ -138,11 +134,11 @@ public partial class MainWindow : Window
         RefreshConnectionUi(ConnectionState.Opening);
         try
         {
-            await _session.OpenAsync();
+            await _tab.Session.OpenAsync();
         }
         catch (Exception ex)
         {
-            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
+            AppendOutput($"{ConnectionErrorMessages.For(_tab.CliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
             RefreshConnectionUi();
             return;
         }
@@ -161,26 +157,26 @@ public partial class MainWindow : Window
     /// <param name="showState">Overrides the displayed state - <see cref="ConnectionState.Opening"/> while a connect is in flight, which the transport never announces to this window.</param>
     private void RefreshConnectionUi(ConnectionState? showState = null)
     {
-        var state = showState ?? _session.State;
+        var state = showState ?? _tab.Session.State;
         var connected = state == ConnectionState.Open;
 
         ConnectMenuItem.Header = connected ? "_Disconnect" : "_Connect";
         SendBox.IsEnabled = connected;
         Title = TitleText;
 
-        ConnectionStatusText.Text = ConnectionDescription.StatusText(_cliOptions, state);
+        ConnectionStatusText.Text = ConnectionDescription.StatusText(_tab.CliOptions, state);
         ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(connected
             ? ThemeRole.StatusConnected
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
-        K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _cliOptions, connected);
-        BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _cliOptions, connected);
-        ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _cliOptions, connected);
-        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _cliOptions, connected);
-        ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, _cliOptions, connected);
-        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, _cliOptions, connected);
-        Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, _cliOptions, connected);
-        ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _cliOptions, connected);
+        K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, _tab.CliOptions, connected);
+        BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, _tab.CliOptions, connected);
+        ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, _tab.CliOptions, connected);
+        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, _tab.CliOptions, connected);
+        ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, _tab.CliOptions, connected);
+        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, _tab.CliOptions, connected);
+        Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, _tab.CliOptions, connected);
+        ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, _tab.CliOptions, connected);
     }
 
     // Raised on a background thread after the session closed itself (a read/send failure, or the
@@ -188,7 +184,7 @@ public partial class MainWindow : Window
     private void OnSessionDisconnected(object? sender, SessionDisconnectedEventArgs e) =>
         Dispatcher.BeginInvoke(() =>
         {
-            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(_cliOptions.Transport, e.Error)} Use File > Connect to reconnect.", OutputKind.Error);
+            AppendOutput($"{ConnectionErrorMessages.ForDisconnect(_tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.", OutputKind.Error);
             RefreshConnectionUi();
         });
 
@@ -210,9 +206,9 @@ public partial class MainWindow : Window
     /// </summary>
     internal async Task ToggleConnectionAsync()
     {
-        if (_session.State == ConnectionState.Open)
+        if (_tab.Session.State == ConnectionState.Open)
         {
-            await _session.CloseAsync();
+            await _tab.Session.CloseAsync();
             RefreshConnectionUi();
             AppendOutput("Disconnected.", OutputKind.Status);
             return;
@@ -221,11 +217,11 @@ public partial class MainWindow : Window
         RefreshConnectionUi(ConnectionState.Opening);
         try
         {
-            await _session.OpenAsync();
+            await _tab.Session.OpenAsync();
         }
         catch (Exception ex)
         {
-            AppendOutput(ConnectionErrorMessages.For(_cliOptions.Transport, ex), OutputKind.Error);
+            AppendOutput(ConnectionErrorMessages.For(_tab.CliOptions.Transport, ex), OutputKind.Error);
 
             // This reuses the same session/transport across retries - the menu label/send box
             // still need to reflect "not connected" on a failed *retry*. Same asymmetry found and
@@ -235,7 +231,7 @@ public partial class MainWindow : Window
         }
 
         RefreshConnectionUi();
-        AppendOutput($"Connected to {ConnectionDescription.For(_cliOptions)}.", OutputKind.Status);
+        AppendOutput($"Connected to {ConnectionDescription.For(_tab.CliOptions)}.", OutputKind.Status);
     }
 
     private void ConnectMenuItem_Click(object sender, RoutedEventArgs e) => Observe(ToggleConnectionAsync());
@@ -319,12 +315,12 @@ public partial class MainWindow : Window
         SendBox.Text = string.Empty;
         _sendHistory.Add(line);
 
-        if (line.Length == 0 || !_catalog.TryGetInput(CurrentParser, out var input))
+        if (line.Length == 0 || !_tab.Catalog.TryGetInput(CurrentParser, out var input))
         {
             return;
         }
 
-        if (!TypedInput.TryEncode(input, CurrentParser, line, _cliOptions.LineEnding, out var payload, out var error))
+        if (!TypedInput.TryEncode(input, CurrentParser, line, _tab.CliOptions.LineEnding, out var payload, out var error))
         {
             AppendOutput(error!, OutputKind.Error);
             return;
@@ -335,7 +331,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_session.State != ConnectionState.Open)
+        if (_tab.Session.State != ConnectionState.Open)
         {
             AppendOutput("Not connected — use File > Connect.", OutputKind.Error);
             return;
@@ -343,11 +339,11 @@ public partial class MainWindow : Window
 
         try
         {
-            await _session.SendAsync(payload);
+            await _tab.Session.SendAsync(payload);
         }
         catch (Exception ex)
         {
-            if (_session.State == ConnectionState.Open)
+            if (_tab.Session.State == ConnectionState.Open)
             {
                 AppendOutput($"Send failed: {ex.Message}", OutputKind.Error);
             }
@@ -356,7 +352,7 @@ public partial class MainWindow : Window
 
     private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
     {
-        var window = new DeviceProfilesWindow(_profileStore, _cliOptions) { Owner = this };
+        var window = new DeviceProfilesWindow(_profileStore, _tab.CliOptions) { Owner = this };
         window.ShowDialog();
 
         if (window.Result is { } chosen)
@@ -381,16 +377,16 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     private void K8055ControlPanel_Click(object sender, RoutedEventArgs e) => OpenK8055ControlPanel();
 
     /// <summary>Split from the click handler so tests can drive it and assert against <see cref="OpenControlPanels"/> without simulating a menu click.</summary>
     internal ControlPanelWindow OpenK8055ControlPanel()
     {
-        var structuredSource = _catalog.TryGet("k8055", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             K8055UiDefinition.Build(),
-            new K8055ControlSurface(_session),
+            new K8055ControlSurface(_tab.Session),
             structuredSource)
         {
             Owner = this,
@@ -402,13 +398,13 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     private void BusylightControlPanel_Click(object sender, RoutedEventArgs e)
     {
-        var structuredSource = _catalog.TryGet("busylight", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             BusylightUiDefinition.Build(),
-            new BusylightControlSurface(_session),
+            new BusylightControlSurface(_tab.Session),
             structuredSource)
         {
             Owner = this,
@@ -419,13 +415,13 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     private void RadexOneControlPanel_Click(object sender, RoutedEventArgs e)
     {
-        var structuredSource = _catalog.TryGet("radexone", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             RadexOneUiDefinition.Build(),
-            new RadexOneControlSurface(_session),
+            new RadexOneControlSurface(_tab.Session),
             structuredSource)
         {
             Owner = this,
@@ -436,13 +432,13 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     private void ZoomH4nControlPanel_Click(object sender, RoutedEventArgs e)
     {
-        var structuredSource = _catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             ZoomH4nUiDefinition.Build(),
-            new ZoomH4nControlSurface(_session),
+            new ZoomH4nControlSurface(_tab.Session),
             structuredSource)
         {
             Owner = this,
@@ -453,12 +449,12 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     // Passes no session to the control surface itself (De5000ControlSurface takes none) - the DE-5000
     // has no writable commands, only live indicators driven by the structured presenter below.
     private void De5000ControlPanel_Click(object sender, RoutedEventArgs e)
     {
-        var structuredSource = _catalog.TryGet("de5000", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             De5000UiDefinition.Build(),
             new De5000ControlSurface(),
@@ -477,7 +473,7 @@ public partial class MainWindow : Window
     // this menu item's gate (DevicePanels.Nmea0183) is tied to that device's VID/PID.
     private void Nmea0183ControlPanel_Click(object sender, RoutedEventArgs e)
     {
-        var structuredSource = _catalog.TryGet("nmea", out var presenter) ? presenter : null;
+        var structuredSource = _tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
         var window = new ControlPanelWindow(
             NmeaGpsUiDefinition.Build(),
             new NmeaGpsControlSurface(),
@@ -497,7 +493,7 @@ public partial class MainWindow : Window
         var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
         if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
         {
-            TrackControlPanel(ManifestPickerWindow.OpenPanel(this, _session, manifest));
+            TrackControlPanel(ManifestPickerWindow.OpenPanel(this, _tab.Session, manifest));
         }
     }
 
@@ -512,7 +508,7 @@ public partial class MainWindow : Window
 
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
-        var chosen = ResolveSavedScpiProfileChoice(_cliOptions.ScpiProfile);
+        var chosen = ResolveSavedScpiProfileChoice(_tab.CliOptions.ScpiProfile);
         if (chosen is null)
         {
             var picker = new ScpiInstrumentPickerWindow { Owner = this };
@@ -553,12 +549,12 @@ public partial class MainWindow : Window
     /// </summary>
     private IPresenter? ResolveActiveScpiPresenter()
     {
-        if (!_catalog.TryGet("scpi", out var presenter))
+        if (!_tab.Catalog.TryGet("scpi", out var presenter))
         {
             return null;
         }
 
-        _session.AddPresenter(presenter);
+        _tab.Session.AddPresenter(presenter);
         return presenter;
     }
 
@@ -592,12 +588,12 @@ public partial class MainWindow : Window
     /// <summary>internal so a test can drive the auto-detect-during-a-profile-switch race directly.</summary>
     internal async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
-        // Captured so that if SwitchProfileAsync replaces _session/_catalog while this detection is
-        // in flight, the completion below can tell and not open a panel pairing the NEW _session with
+        // Captured so that if SwitchProfileAsync replaces _tab.Session/_tab.Catalog while this detection is
+        // in flight, the completion below can tell and not open a panel pairing the NEW _tab.Session with
         // structuredSource from the OLD catalog - part of bug 016, see
         // docs/bugs/016-wpf-panels-bound-to-old-session.md's "Related" note.
-        var sessionAtStart = _session;
-        var timeout = TimeSpan.FromMilliseconds(_cliOptions.ScpiAutoDetectTimeoutMs);
+        var sessionAtStart = _tab.Session;
+        var timeout = TimeSpan.FromMilliseconds(_tab.CliOptions.ScpiAutoDetectTimeoutMs);
         AppendOutput(ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);
 
         ScpiAutoDetectResult result;
@@ -619,7 +615,7 @@ public partial class MainWindow : Window
             Cursor = previousCursor;
         }
 
-        if (!ReferenceEquals(_session, sessionAtStart))
+        if (!ReferenceEquals(_tab.Session, sessionAtStart))
         {
             // The profile changed while auto-detect was waiting; the detected profile belongs to a
             // connection that's already closed, so there's nothing live to open a panel against.
@@ -632,7 +628,7 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open _session rather than opening a second competing connection to the same physical device.
+    // -open session rather than opening a second competing connection to the same physical device.
     private void OpenScpiInstrumentWindow(IPresenter? structuredSource, ScpiInstrumentProfile profile)
     {
         if (structuredSource is ScpiReplyPresenter replyPresenter)
@@ -642,7 +638,7 @@ public partial class MainWindow : Window
 
         var window = new ControlPanelWindow(
             ScpiUiDefinitionBuilder.Build(profile),
-            new ScpiControlSurface(_session, profile, structuredSource as IScpiReplyTracker),
+            new ScpiControlSurface(_tab.Session, profile, structuredSource as IScpiReplyTracker),
             structuredSource)
         {
             Owner = this,
@@ -666,7 +662,7 @@ public partial class MainWindow : Window
             _streamMonitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(capture.Describe(), OutputKind.Status));
         }
 
-        _streamMonitor.SetSession(_session, StreamMonitor.DeviceNameFor(_cliOptions, _profileStore), _cliOptions.EffectiveExportDirectory);
+        _streamMonitor.SetSession(_tab.Session, StreamMonitor.DeviceNameFor(_tab.CliOptions, _profileStore), _tab.CliOptions.EffectiveExportDirectory);
         _streamMonitor.Start();
         return _streamMonitor;
     }
@@ -717,13 +713,13 @@ public partial class MainWindow : Window
 
         var mySession = built.Session;
 
-        // Captured now, before any await: a second, overlapping switch reassigns the _session
+        // Captured now, before any await: a second, overlapping switch reassigns the _tab.Session
         // field below (once its own build/close/dispose completes) while this call is still
-        // suspended closing/disposing its OWN old session. Reading _session again after that
+        // suspended closing/disposing its OWN old session. Reading _tab.Session again after that
         // await - instead of this local - would tear down whatever the OTHER call had already
         // installed there (possibly its brand-new, just-opened session) rather than the session
         // this call actually meant to replace.
-        var oldSession = _session;
+        var oldSession = _tab.Session;
 
         // Every open control panel's IControlSurface (and, for most, its structured presenter) is
         // bound to the session/catalog being replaced below - closing them here, rather than leaving
@@ -742,16 +738,16 @@ public partial class MainWindow : Window
         if (!ReferenceEquals(_switchCts, cts))
         {
             // Superseded while closing the old session, before ever adopting mySession as current -
-            // a newer switch has already moved _session on (possibly to its own, by-now-open
-            // session). Never having been subscribed or assigned to _session, mySession just needs
+            // a newer switch has already moved _tab.Session on (possibly to its own, by-now-open
+            // session). Never having been subscribed or assigned to _tab.Session, mySession just needs
             // disposing.
             await mySession.DisposeAsync();
             return false;
         }
 
-        _session = mySession;
-        _catalog = built.Catalog;
-        _cliOptions = newOptions;
+        _tab.Session = mySession;
+        _tab.Catalog = built.Catalog;
+        _tab.CliOptions = newOptions;
         _streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
         ParserBox.SelectedItem = newOptions.EffectiveParser;
         mySession.Output += OnSessionOutput;
@@ -786,7 +782,7 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            AppendOutput($"{ConnectionErrorMessages.For(_cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
+            AppendOutput($"{ConnectionErrorMessages.For(_tab.CliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.", OutputKind.Error);
             RefreshConnectionUi();
             return false;
         }
@@ -803,7 +799,7 @@ public partial class MainWindow : Window
         }
 
         RefreshConnectionUi();
-        AppendOutput($"Switched to {ConnectionDescription.For(_cliOptions)}.", OutputKind.Status);
+        AppendOutput($"Switched to {ConnectionDescription.For(_tab.CliOptions)}.", OutputKind.Status);
         return true;
     }
 
@@ -834,12 +830,12 @@ public partial class MainWindow : Window
         _closing = true;
         ClosingCleanupRunCount++;
         _streamMonitor?.Dispose();
-        _session.Output -= OnSessionOutput;
-        _session.Disconnected -= OnSessionDisconnected;
+        _tab.Session.Output -= OnSessionOutput;
+        _tab.Session.Disconnected -= OnSessionDisconnected;
         try
         {
-            await _session.CloseAsync();
-            await _session.DisposeAsync();
+            await _tab.Session.CloseAsync();
+            await _tab.Session.DisposeAsync();
         }
         catch (Exception)
         {
