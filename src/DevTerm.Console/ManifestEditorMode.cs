@@ -105,11 +105,15 @@ internal static class ManifestEditorMode
         var removeButton = ToolButton("Remove");
         var upButton = ToolButton("Up");
         var downButton = ToolButton("Down");
+        var undoButton = ToolButton("Undo");
+        var redoButton = ToolButton("Redo");
         addButton.X = 0;
         removeButton.X = Pos.Right(addButton) + 1;
         upButton.X = Pos.Right(removeButton) + 1;
         downButton.X = Pos.Right(upButton) + 1;
-        foreach (var button in new[] { addButton, removeButton, upButton, downButton })
+        undoButton.X = Pos.Right(downButton) + 2;
+        redoButton.X = Pos.Right(undoButton) + 1;
+        foreach (var button in new[] { addButton, removeButton, upButton, downButton, undoButton, redoButton })
         {
             button.Y = Pos.AnchorEnd(1);
         }
@@ -134,6 +138,8 @@ internal static class ManifestEditorMode
             RemoveButton = removeButton,
             UpButton = upButton,
             DownButton = downButton,
+            UndoButton = undoButton,
+            RedoButton = redoButton,
         };
 
         FormBinding? binding = null;
@@ -167,6 +173,8 @@ internal static class ManifestEditorMode
             addButton.Enabled = editor.AddLabel is not null;
             removeButton.Enabled = editor.CanRemove;
             upButton.Enabled = downButton.Enabled = editor.CanMove;
+            undoButton.Enabled = editor.CanUndo;
+            redoButton.Enabled = editor.CanRedo;
         }
 
         void ShowSelection()
@@ -200,9 +208,15 @@ internal static class ManifestEditorMode
             }
 
             // The selected part's form: generated from its form model, rendered like any other form,
-            // inside a view that scrolls when the form is taller than the pane.
+            // inside a view that scrolls when the form is taller than the pane. The extra "-1" always
+            // reserves the vertical scrollbar's column even when it turns out not to be needed: whether
+            // scrolling is needed depends on the row count FormRenderer.Build itself produces, so it
+            // can't be known before this call, but the scrollbar (once it appears) narrows the real
+            // viewport by one column with no horizontal scroll to fall back on — this pane, unlike
+            // ControlPanelMode's, never had one. A tall kind (Vector) tipping into needing the
+            // scrollbar for the first time (adding the "Visibility" section) is what surfaced this.
             binding = new FormBinding(form);
-            var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, new TuiFormOptions { AvailableWidth = Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - OutlineWidth - 4, 30) });
+            var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, new TuiFormOptions { AvailableWidth = Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - OutlineWidth - 4 - 1, 30) });
             var scroller = new View { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), CanFocus = true };
             scroller.ViewportSettings |= ViewportSettingsFlags.HasVerticalScrollBar;
             scroller.Add(formParts.Root);
@@ -284,6 +298,8 @@ internal static class ManifestEditorMode
             {
                 RefreshOutline();
             }
+
+            RefreshButtons();
         };
         editor.StatusChanged += (_, _) => ShowStatus(editor.StatusMessage);
 
@@ -352,8 +368,35 @@ internal static class ManifestEditorMode
         OnClick(removeButton, editor.Remove);
         OnClick(upButton, editor.MoveUp);
         OnClick(downButton, editor.MoveDown);
+        OnClick(undoButton, editor.Undo);
+        OnClick(redoButton, editor.Redo);
 
-        window.Add(newButton, openButton, saveButton, saveAsButton, validateButton, previewButton, closeButton, status, outlineFrame, pane, addButton, removeButton, upButton, downButton);
+        // Global, not window.KeyDown: a per-view handler doesn't reliably see keys already routed
+        // to a focused child first (the outline or a form field normally has focus) - same reason
+        // TuiMode's Ctrl+Q handler above the main window uses Application.KeyDown instead.
+        void undoRedoOnCtrlKeys(object? _, Key key)
+        {
+            if (key.Handled || app.TopRunnableView != window)
+            {
+                return;
+            }
+
+            if (key == Key.Z.WithCtrl)
+            {
+                key.Handled = true;
+                editor.Undo();
+            }
+            else if (key == Key.Y.WithCtrl)
+            {
+                key.Handled = true;
+                editor.Redo();
+            }
+        }
+
+        app.Keyboard.KeyDown += undoRedoOnCtrlKeys;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= undoRedoOnCtrlKeys;
+
+        window.Add(newButton, openButton, saveButton, saveAsButton, validateButton, previewButton, closeButton, status, outlineFrame, pane, addButton, removeButton, upButton, downButton, undoButton, redoButton);
         window.Disposing += (_, _) => ClearPane();
 
         RefreshOutline();
@@ -397,6 +440,10 @@ internal sealed class ManifestEditorParts
     public required Button UpButton { get; init; }
 
     public required Button DownButton { get; init; }
+
+    public required Button UndoButton { get; init; }
+
+    public required Button RedoButton { get; init; }
 
     /// <summary>The selected part's rendered form, while one is shown.</summary>
     public TuiFormParts? Form { get; set; }

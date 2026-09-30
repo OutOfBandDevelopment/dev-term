@@ -7,7 +7,7 @@ from a different personal project — a local binary-protocol-decoder library:
 
 - `C:\repo\oobdev\dotex\Incoming\BinaryDecoders\src\OoBDev.EByteElectronicTechnology\e810dturs485_notes.txt` —
   raw reverse-engineering notes (UDP packet captures + a hand-annotated field table), not a
-  finished writeup like [Radex One](radex-one-protocol.md)'s source — treat the field table below
+  finished writeup like [Radex One](../features/radex-one-protocol.md)'s source — treat the field table below
   as a working hypothesis to verify against a fresh capture, not a settled spec (see "Open
   questions" — a byte-count check against the notes' own example already turned up a discrepancy).
 

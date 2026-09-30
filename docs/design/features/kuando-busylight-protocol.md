@@ -106,7 +106,7 @@ codec --> user : Human-readable text baseline
   path.
 - **Two report shapes for one device** (single-command vs. batch-program) is a smaller-scale
   version of the same "one envelope, multiple message shapes" pattern already noted for
-  [Radex One](radex-one-protocol.md) and the [EByte proposal](ebyte-e810-dtu-config-protocol.md).
+  [Radex One](radex-one-protocol.md) and the [EByte proposal](../proposals/ebyte-e810-dtu-config-protocol.md).
 
 A status light is one of the few devices in this batch where a real GUI control genuinely beats a
 text baseline — picking a color by typing R/G/B bytes is exactly the kind of thing a color swatch

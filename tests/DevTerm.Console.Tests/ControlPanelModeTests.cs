@@ -242,6 +242,30 @@ public sealed class ControlPanelModeTests
         });
     }
 
+    /// <summary>
+    /// An output-only device (no <see cref="IndicatorControl"/>/<see cref="BarGraphControl"/>/
+    /// <see cref="StripChartControl"/>/<see cref="VectorControl"/> anywhere - Busylight is the real
+    /// example) has nothing a structured presenter could ever decode, so the warning is just noise -
+    /// see TODO.md's 2026-09-25 TUI layout review follow-up. The WPF half of the same fix is
+    /// <c>ControlPanelWindowTests.NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine</c>.
+    /// </summary>
+    [TestMethod]
+    public void NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine()
+    {
+        var surface = new FakeControlSurface();
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Output Only Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            ControlPanelMode.BuildWindow(app, definition, surface, null, "Output Only Device");
+
+            Assert.DoesNotContain("Not decoding", TuiTestRunner.DumpBuffer());
+        });
+    }
+
     [TestMethod]
     public void ValuesChanged_UpdatesTheMatchingIndicatorLabel()
     {
@@ -445,6 +469,28 @@ public sealed class ControlPanelModeTests
         });
     }
 
+    /// <summary>
+    /// A button already shows its own text ("Apply") as the button itself; a row label would repeat
+    /// it ("Apply: [ Apply ]") - see TODO.md's 2026-09-25 TUI layout review follow-up. The WPF half of
+    /// the same fix is <c>ControlPanelWindowTests.ButtonRow_HasNoLeadingLabel</c>.
+    /// </summary>
+    [TestMethod]
+    public void ButtonRow_HasNoLeadingLabel()
+    {
+        var surface = new FakeControlSurface();
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Sample Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            ControlPanelMode.BuildWindow(app, definition, surface, null, "Sample Device");
+
+            Assert.IsFalse(TuiTestRunner.DumpBuffer().Contains("Apply:", StringComparison.Ordinal), "A button row shouldn't get a separate leading label.");
+        });
+    }
+
     /// <summary>The TUI half of the Busylight "Custom" radio - see the WPF test of the same name.</summary>
     [TestMethod]
     public void BusylightCustomRadio_AfterAPreset_ReappliesTheRememberedCustomColor()
@@ -470,5 +516,114 @@ public sealed class ControlPanelModeTests
         {
             DevTerm.Configuration.LastPickedColors.Forget("customColor");
         }
+    }
+
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, control-only half: a control-level
+    /// VisibleWhen (see docs/design/ui-definitions.md) hides its row entirely — no gap — while unmet,
+    /// then reappears (and pushes the row after it back down) once the referenced sibling's value
+    /// satisfies it. The WPF side of the same fix is <c>ControlPanelWindowTests</c>.
+    /// </summary>
+    [TestMethod]
+    public void Control_VisibleWhen_HiddenUntilConditionMet_ThenShownAndRowsShift()
+    {
+        var definition = new UiDefinition
+        {
+            Name = "Conditional Device",
+            Sections =
+            [
+                new UiSection
+                {
+                    Label = "Section",
+                    Controls =
+                    [
+                        new ToggleControl { Id = "enable", Label = "Enable", DefaultValue = false },
+                        new TextFieldControl
+                        {
+                            Id = "conditional",
+                            Label = "Conditional",
+                            DefaultValue = "x",
+                            VisibleWhen = new UiCondition { Id = "enable", Values = ["1"] },
+                        },
+                        new ButtonControl { Id = "after", Label = "After" },
+                    ],
+                },
+            ],
+        };
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, new FakeControlSurface(), null, "Conditional");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+
+            var conditional = parts.ControlViews["conditional"];
+            var after = parts.ControlViews["after"];
+            var enable = (CheckBox)parts.ControlViews["enable"];
+
+            Assert.IsFalse(conditional.Visible, "Hidden while its condition is unmet.");
+            var afterYWhileHidden = after.Frame.Y;
+
+            enable.Value = CheckState.Checked;
+            app.LayoutAndDraw(true);
+
+            Assert.IsTrue(conditional.Visible, "Shown once its condition is met.");
+            Assert.IsTrue(after.Frame.Y > afterYWhileHidden, "The row after it shifts down to make room.");
+
+            app.End(token);
+        });
+    }
+
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, section-only half: a whole section
+    /// (header + body) with its own VisibleWhen collapses to no rows at all while unmet — matching
+    /// what the form renderers already do for a section's VisibleWhen — and reappears (pushing any
+    /// section after it back down) once its referenced control's value satisfies it.
+    /// </summary>
+    [TestMethod]
+    public void Section_VisibleWhen_HiddenUntilConditionMet_ThenShownAndFollowingSectionsShift()
+    {
+        var definition = new UiDefinition
+        {
+            Name = "Conditional Sections",
+            Sections =
+            [
+                new UiSection
+                {
+                    Label = "Mode",
+                    Controls = [new ChoiceControl { Id = "mode", Label = "Mode", Options = ["basic", "advanced"], DefaultValue = "basic" }],
+                },
+                new UiSection
+                {
+                    Label = "Advanced",
+                    VisibleWhen = new UiCondition { Id = "mode", Values = ["advanced"] },
+                    Controls = [new ButtonControl { Id = "advancedButton", Label = "Advanced Button" }],
+                },
+                new UiSection
+                {
+                    Label = "After",
+                    Controls = [new ButtonControl { Id = "afterButton", Label = "After Button" }],
+                },
+            ],
+        };
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, new FakeControlSurface(), null, "Conditional Sections");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+
+            Assert.IsFalse(parts.SectionHeaders["Advanced"].Visible, "Hidden while its condition is unmet.");
+            Assert.IsFalse(parts.SectionBodies["Advanced"].Visible);
+            var afterHeaderYWhileHidden = parts.SectionHeaders["After"].Frame.Y;
+
+            ((OptionSelector)parts.ControlViews["mode"]).Value = 1; // "advanced"
+            app.LayoutAndDraw(true);
+
+            Assert.IsTrue(parts.SectionHeaders["Advanced"].Visible, "Shown once its condition is met.");
+            Assert.IsTrue(parts.SectionHeaders["After"].Frame.Y > afterHeaderYWhileHidden, "The section after it shifts down to make room.");
+
+            app.End(token);
+        });
     }
 }

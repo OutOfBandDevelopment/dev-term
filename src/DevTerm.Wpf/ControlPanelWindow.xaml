@@ -8,7 +8,10 @@
              wider than the window at its minimum width. The Notes text wraps to the visible width
              (ControlPanelWindow.xaml.cs). -->
         <ScrollViewer x:Name="SectionsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-            <StackPanel x:Name="SectionsPanel" />
+            <!-- IsSharedSizeGroup scopes every section's label column (BuildSectionGrid) to one
+                 shared width, so a headerless section's row (e.g. Busylight's lone Apply button)
+                 lines up with the sections above it instead of sizing to its own, shorter label. -->
+            <StackPanel x:Name="SectionsPanel" Grid.IsSharedSizeScope="True" />
         </ScrollViewer>
     </DockPanel>
 </Window>

@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\1jl2etjx.qav\loopback-sensor-demo.                                        │
+│~\…\ynzcqlsh.sbe\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Stream Samples├──────────────────────────────╮│
 ││Identity                    ││  Name:     Stream Samples                    ││
 ││Commands (3)                ││  Id:       samples                           ││
@@ -21,5 +21,5 @@
 ││    indicator: Hello Reply  ││                                              ││
 ││  [Levels]                  ││                                              ││
 │╰────────────────────────────╯╰──────────────────────────────────────────────╯│
-│⟦ Add parameter ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧                               │
+│⟦ Add parameter ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧   ⟦ Undo ⟧  ⟦ Redo ⟧          │
 └──────────────────────────────────────────────────────────────────────────────┘

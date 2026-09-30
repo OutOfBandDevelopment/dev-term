@@ -87,6 +87,7 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | Pattern | Name, Regex | `ResponsePattern` | **Try it**: a *Sample line* (not saved) and **Publishes** — the values a match would publish (`name=… chA=…`), `no match`, or the regex error |
 | Panel | Panel name, Notes | `Ui.Name`, `Ui.Description` | |
 | Section | Label | `UiSection.Label` | Blank: a headerless, always-open section |
+| | Visible when, Visible values | `UiSection.VisibleWhen`'s `Id`, `Values` (comma-separated) | "Visible values" shown only once "Visible when" is set |
 | Control | Kind | the control's type (`button`, `toggle`, `slider`, `numeric`, `choice`, `textField`, `indicator`, `barGraph`, `stripChart`, `vector`) | Changing it replaces the control with one of the new kind, keeping Id, Label and Help |
 | | Id, Label, Help | `Id`, `Label`, `Description` | |
 | | Command id, Parameter fields, Color picker target | a button's `CommandId`, `ParameterFieldIds` (comma-separated), `ColorPickerTargetCommandId` | button only |
@@ -97,9 +98,13 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | | Channels | a chart's `Channels` as `id[:label[:#RRGGBB]], ...` | bar graph/strip chart |
 | | History length | `HistoryLength` | strip chart |
 | | Coordinates, X/Y/Z/Radius/Angle value ids, Angle unit, Range, Trail length, Hue/Saturation/Brightness value ids | the vector's fields | vector; X/Y for XY/XYZ, Z for XYZ, Radius/Angle/unit for Polar |
+| | Visible when, Visible values | `Control.VisibleWhen`'s `Id`, `Values` (comma-separated) | "Visible values" shown only once "Visible when" is set |
 
 Every "shown only for" is a generated visibility condition (`[FormField(VisibleWhen = ...)]`), the
-same mechanism that shows the Connection Editor's Serial fields only for the serial transport.
+same mechanism that shows the Connection Editor's Serial fields only for the serial transport. A
+section's or control's own **Visible when**/**Visible values** fields edit that same condition on the
+part itself — the condition a live control panel and the preview evaluate — and are unrelated to
+`[FormField(VisibleWhen = ...)]`, which only ever hides/shows a field within this editor's own form.
 
 ## Actions
 
@@ -113,6 +118,7 @@ same mechanism that shows the Connection Editor's Serial fields only for the ser
 | **Add** (label follows the selection) | Adds the entry the Outline table names, and selects it | — |
 | **Remove** | Removes the selected entry; on **Panel**, removes the declared panel (the generated one is used again) | Disabled on Identity and the headings |
 | **Up** / **Down** | Moves the selected entry within its list | Disabled on Identity and the headings |
+| **Undo** / **Redo** (Ctrl+Z / Ctrl+Y) | Reverts/reapplies the last change — a field edit or an Add/Remove/Up/Down/Create-panel-from-commands — and re-selects the part it happened on | Disabled with nothing to undo/redo |
 | **Create panel from commands** | For a manifest with no declared panel: declares the one it would get from its commands, to edit from there | — |
 | **Preview** (TUI; WPF always shows it) | Shows the panel as it would open, drawn by the control-panel renderer against a surface that sends nothing: invoking a control shows *what it would send* in the status line (TUI) / under the preview (WPF), and the ⓘ/(i) command previews work as on a live panel. The TUI's button toggles back to the form (**Edit**) | — |
 | **Close** | Closes (asks first if there are unsaved edits) | Declining keeps it open |
@@ -121,6 +127,10 @@ same mechanism that shows the Connection Editor's Serial fields only for the ser
 
 - **Unsaved edits** (`IsDirty`): any field change, add, remove or move; the title ends in ` *`.
   Cleared by a successful Save, New, or Open.
+- **Undo/Redo**: a coalescing checkpoint — a burst of edits to the same field (e.g. typing in a
+  TextField) undoes as one step; selecting a different part or making a structural change (Add,
+  Remove, Up, Down, Create panel from commands) starts a new one. Any new edit clears the redo stack.
+  Not cleared by Save; cleared by New or Open (a fresh editor has nothing to undo into).
 - **Validation**: *errors* (a blank name; a command with no name or template; two commands with the
   same id; a parameter with no name or a duplicate one; a response pattern with no name, no regex, or
   a regex that doesn't compile; a panel control with no id) block Save and make the loader reject the
@@ -141,7 +151,7 @@ same mechanism that shows the Connection Editor's Serial fields only for the ser
 
 - **Layout**: WPF shows outline, form and preview at once, in proportional columns (5:7:8, at least 160/290/260px - the outline used to be a fixed 280px, which pushed the preview past the right edge at the window's 820px minimum). WPF themes the editor like every other window (it had been left out of View > Theme and stayed light under Dark). The TUI (80×24 by default) shows outline
   plus one pane, switching the pane between form and preview. The TUI's toolbar buttons have no
-  shadow so all seven fit on one line of an 80-column terminal.
+  shadow so they all fit on one line of an 80-column terminal.
 - **The preview is the real renderer in both**: the TUI adds the `Window` `ControlPanelMode.BuildWindow`
   returns as a subview of its pane (a Terminal.Gui `Window` embeds like any view; its PageUp/PageDown
   handler is unhooked when the preview is replaced, since disposing the window does that). WPF builds
@@ -155,9 +165,7 @@ same mechanism that shows the Connection Editor's Serial fields only for the ser
 
 ## Open items
 
-- No undo; Close/New/Open ask before discarding unsaved edits instead.
-- A control's own `VisibleWhen` (honored by the form renderers, not by control panels) isn't editable
-  here, and neither is a panel's XML file form — a manifest whose Panel file is `.xml` is written back
+- A panel's XML file form isn't editable here — a manifest whose Panel file is `.xml` is written back
   as XML, but edited like any other.
 - The editor edits the text-protocol schema; a binary manifest's `.ksy` layout is referenced, not
   edited.

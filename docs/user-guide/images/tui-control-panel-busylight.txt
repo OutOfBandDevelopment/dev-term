@@ -1,7 +1,7 @@
 ┌┤dev-term — Busylight Control Panel├──────────────────────────────────────────┐
 │[-] Color                                                                     │
 │  Color:     ○ Red  ○ Green  ○ Blue  ○ Yellow  ○ Custom  ◉ Off                │
-│  Custom...: ⟦ Custom... ⟧                                                    │
+│             ⟦ Custom... ⟧                                                    │
 │                                                                              │
 │[-] Blink                                                                     │
 │  Blink:                  ◉ Solid  ○ Slow  ○ Fast                             │
@@ -13,13 +13,13 @@
 │  Track:  ◉ Funky  ○ Nordic  ○ Quiet  ○ Open Office  ○ Kuando                 │
 │  Volume: 0          [0-7]                                                    │
 │                                                                              │
-│  Apply: ⟦ Apply ⟧  (i)                                                       │
+│         ⟦ Apply ⟧  (i)                                                       │
 │                                                                              │
 │[-] Notes                                                                     │
 │  USB HID status light — color, blink timing, and sound, sent as a            │
 │  single-command frame on Apply.                                              │
 │                                                                              │
-│Not decoding — connect with the matching --presenter to see live values.      │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

@@ -82,8 +82,20 @@ public sealed class ManifestEditorViewModel
 {
     private readonly string _userManifestsDirectory;
     private readonly string? _installedManifestsDirectory;
+    private readonly Stack<string> _undoStack = new();
+    private readonly Stack<string> _redoStack = new();
     private string _statusMessage = string.Empty;
     private string? _folderName;
+
+    /// <summary>
+    /// The manifest as it stood before whatever's been edited since the last checkpoint was taken —
+    /// armed (see <see cref="ArmCheckpoint"/>) as soon as a node is selected, so field edits to that
+    /// node (each firing <see cref="MarkEdited"/> through <see cref="EditorForm.Changed"/>, which
+    /// mutates before it notifies — there's no earlier hook to snapshot from) all coalesce into the one
+    /// undo step captured here, committed by the first of them. Null once committed, or when nothing's
+    /// been armed yet.
+    /// </summary>
+    private string? _pendingCheckpoint;
 
     public ManifestEditorViewModel(string userManifestsDirectory, string? installedManifestsDirectory = null)
     {
@@ -109,6 +121,12 @@ public sealed class ManifestEditorViewModel
     public string SaveTarget => SavePath ?? Path.Combine(_userManifestsDirectory, _folderName ?? FolderNameFor(Manifest.Name));
 
     public bool IsDirty { get; private set; }
+
+    /// <summary>Whether <see cref="Undo"/> has a checkpoint to restore.</summary>
+    public bool CanUndo => _undoStack.Count > 0;
+
+    /// <summary>Whether <see cref="Redo"/> has an undone checkpoint to restore.</summary>
+    public bool CanRedo => _redoStack.Count > 0;
 
     public string StatusMessage
     {
@@ -151,6 +169,10 @@ public sealed class ManifestEditorViewModel
         }
 
         SelectedNode = node;
+
+        // Arms a checkpoint of the manifest as it stands now, before whatever's about to be edited on
+        // this node - the first edit's MarkEdited commits it (see ArmCheckpoint's remarks).
+        ArmCheckpoint();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -170,6 +192,7 @@ public sealed class ManifestEditorViewModel
         SavePath = null;
         _folderName = null;
         IsDirty = false;
+        ClearHistory();
         Rebuild(select: 0);
         StatusMessage = "New manifest.";
         Edited?.Invoke(this, EventArgs.Empty);
@@ -209,6 +232,7 @@ public sealed class ManifestEditorViewModel
             : Path.GetFileNameWithoutExtension(full);
         SavePath = isZip || IsUnder(full, _installedManifestsDirectory) ? null : full;
         IsDirty = false;
+        ClearHistory();
         Rebuild(select: 0);
         var warnings = DeviceManifestValidator.Validate(manifest);
         StatusMessage = $"Opened '{full}'." + Summary(warnings) + (SavePath is null ? $" Saving writes your own copy to {SaveTarget}." : string.Empty);
@@ -301,6 +325,7 @@ public sealed class ManifestEditorViewModel
     /// <summary>Adds a new entry of the kind <see cref="AddLabel"/> names, and selects it.</summary>
     public void AddChild()
     {
+        ArmCheckpoint();
         var node = SelectedNode;
         object? added = null;
         switch (node?.Kind)
@@ -345,6 +370,7 @@ public sealed class ManifestEditorViewModel
             return;
         }
 
+        ArmCheckpoint();
         var index = Nodes.IndexOf(node);
         if (node.Kind == ManifestNodeKind.Panel)
         {
@@ -372,6 +398,7 @@ public sealed class ManifestEditorViewModel
             return;
         }
 
+        ArmCheckpoint();
         var generated = ManifestUiBuilder.Build(Clone(Manifest));
         generated.Description = null;
         Manifest.Ui = generated;
@@ -491,6 +518,7 @@ public sealed class ManifestEditorViewModel
             return;
         }
 
+        ArmCheckpoint();
         list.RemoveAt(index);
         list.Insert(target, item);
         MarkEdited();
@@ -499,8 +527,73 @@ public sealed class ManifestEditorViewModel
         StructureChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Undoes the most recent checkpoint (an add/remove/move, or every edit made to one node since it was selected).</summary>
+    public void Undo()
+    {
+        if (!CanUndo)
+        {
+            return;
+        }
+
+        _redoStack.Push(DeviceManifestSerializer.ToJson(Manifest));
+        Restore(_undoStack.Pop());
+        StatusMessage = "Undone.";
+    }
+
+    /// <summary>Re-applies the most recently undone checkpoint.</summary>
+    public void Redo()
+    {
+        if (!CanRedo)
+        {
+            return;
+        }
+
+        _undoStack.Push(DeviceManifestSerializer.ToJson(Manifest));
+        Restore(_redoStack.Pop());
+        StatusMessage = "Redone.";
+    }
+
+    private void Restore(string json)
+    {
+        Manifest = DeviceManifestSerializer.FromJson(json);
+        _pendingCheckpoint = null;
+        IsDirty = true;
+
+        // Rebuild's own trailing Select(...) re-arms a checkpoint against this just-restored state
+        // (a new SelectedNode, always - Nodes were just rebuilt from scratch), so an edit right after
+        // Undo/Redo checkpoints correctly instead of reusing whatever was pending before the jump.
+        Rebuild(0);
+        Edited?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Captures the manifest's current state as the "before" snapshot for whatever edit is about to
+    /// happen, unless one's already pending (see <see cref="_pendingCheckpoint"/>'s remarks) — a no-op
+    /// then, since that earlier snapshot is still the correct "before".
+    /// </summary>
+    private void ArmCheckpoint() => _pendingCheckpoint ??= DeviceManifestSerializer.ToJson(Manifest);
+
+    /// <summary>Drops all undo/redo history — a different document (<see cref="New"/>/<see cref="Open"/>) makes the old one meaningless.</summary>
+    private void ClearHistory()
+    {
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _pendingCheckpoint = null;
+    }
+
+    private void CommitCheckpoint()
+    {
+        if (_pendingCheckpoint is { } json)
+        {
+            _undoStack.Push(json);
+            _redoStack.Clear();
+            _pendingCheckpoint = null;
+        }
+    }
+
     private void MarkEdited()
     {
+        CommitCheckpoint();
         IsDirty = true;
         foreach (var node in Nodes)
         {

@@ -132,10 +132,11 @@ public sealed class TuiModeTests
     }
 
     [TestMethod]
-    public async Task CtrlQ_RequestsStop()
+    public async Task CtrlQ_WhileDisconnected_RequestsStopImmediately()
     {
         var (session, _, presenter) = CreateSession();
         await session.OpenAsync(TestContext.CancellationToken);
+        await session.CloseAsync(TestContext.CancellationToken);
         var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
 
         TuiTestRunner.RunHeadless(session, presenter, cliOptions, parts =>
@@ -154,12 +155,90 @@ public sealed class TuiModeTests
             // Init/Shutdown cycles had already run earlier in the same test process (this test
             // passed reliably alone, then failed once run after the others in this class) -
             // RaiseKeyDownEvent dispatches directly and didn't show the same degradation.
+            //
+            // No live connection - RunHeadless (no real Application.Run loop) is safe here only
+            // because Quit() skips the confirmation dialog entirely in this case; the connected
+            // case below needs RunWithLoop instead, since a real MessageBox.Query is a nested
+            // Application.Run that needs a real loop pumping to interact with (see TuiReview.Modal).
             var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
             Assert.IsFalse(runnable.StopRequested);
 
             TuiTestRunner.CurrentApp.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
 
-            Assert.IsTrue(runnable.StopRequested, "Ctrl+Q should call Application.RequestStop(), setting the window's StopRequested.");
+            Assert.IsTrue(runnable.StopRequested, "Ctrl+Q with no live connection should call Application.RequestStop() immediately, with no confirmation.");
+        });
+    }
+
+    [TestMethod]
+    public async Task CtrlQ_WhileConnected_AsksFirst_AndStopsWhenConfirmed()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
+
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+            var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
+
+            // Ctrl+Q opens the confirmation dialog as a nested Application.Run, which blocks the
+            // outer RaiseKeyDownEvent(Ctrl+Q) call until the dialog closes - an AddTimeout
+            // registered ahead of it is what fires while that nested loop is pumping (same
+            // technique as TuiModeTests.K8055MenuItem_.../TuiReview.Modal). The dialog defaults
+            // focus to "No" (checked directly via TuiTestRunner.DumpBuffer), so reaching "Yes"
+            // needs one CursorLeft before Enter. Both flags are read from inside the same
+            // Invoke callback that raised Ctrl+Q, on the loop thread, before returning - once
+            // Quit() actually calls RequestStop() the loop stops pumping, and a later app.Invoke
+            // (e.g. WaitUntilOnLoop, tried first) then queues forever and times out instead of
+            // ever running (CLAUDE.md: Application.Invoke needs an active Run() loop).
+            var (stillRunningWhenDialogOpened, stoppedAfterConfirming) = TuiTestRunner.InvokeOnLoop(() =>
+            {
+                var stillRunning = false;
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    stillRunning = !runnable.StopRequested;
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.CursorLeft);
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+                    return false;
+                });
+
+                app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
+                return (stillRunning, runnable.StopRequested);
+            });
+
+            Assert.IsTrue(stillRunningWhenDialogOpened, "Expected Ctrl+Q with a live connection to show a confirmation dialog rather than stopping immediately.");
+            Assert.IsTrue(stoppedAfterConfirming, "Expected confirming the dialog (\"Yes\") to quit.");
+        });
+    }
+
+    [TestMethod]
+    public async Task CtrlQ_WhileConnected_DoesNotStopIfDeclined()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = "23" };
+
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+            var runnable = (Terminal.Gui.App.IRunnable)parts.Window;
+
+            // Escape is the confirmation MessageBox.Query's cancel gesture (returns -1, not the
+            // "Yes" button's index 0) - same nested-Run-plus-AddTimeout technique as the test above.
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Esc);
+                    return false;
+                });
+
+                app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Q.WithCtrl);
+                return true;
+            });
+
+            Assert.IsFalse(runnable.StopRequested, "Declining the confirmation should leave the app running.");
+            Assert.AreEqual(ConnectionState.Open, TuiTestRunner.InvokeOnLoop(() => session.State), "The connection should be untouched by a declined quit.");
         });
 
         await session.CloseAsync(TestContext.CancellationToken);

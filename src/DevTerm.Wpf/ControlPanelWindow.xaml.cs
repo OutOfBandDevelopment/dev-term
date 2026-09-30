@@ -64,10 +64,17 @@ public partial class ControlPanelWindow : Window
     private readonly string _definitionName;
     private bool _showingValidationError;
 
+    // VisibleWhen support (see docs/design/ui-definitions.md): a row's label + content collapse
+    // together (an Auto Grid row with every child collapsed takes no space, so no manual reflow is
+    // needed the way the TUI renderer needs one), and a section's whole Expander/Grid collapses the
+    // same way. Recomputed on every value change, not just once at open.
+    private readonly List<(UiCondition Condition, FrameworkElement[] Elements)> _controlVisibilityRules = [];
+    private readonly List<(UiCondition Condition, FrameworkElement Element)> _sectionVisibilityRules = [];
+
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
 
-    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting labels stay on one line in an aligned column (see <see cref="BuildSectionGrid"/>).</summary>
+    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting labels stay on one line in an aligned column (see <see cref="BuildSectionGrid"/>). A <see cref="ButtonControl"/>'s row has no entry: its button already shows the same text.</summary>
     internal IReadOnlyDictionary<string, TextBlock> ControlLabels => _controlLabels;
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
@@ -103,18 +110,27 @@ public partial class ControlPanelWindow : Window
         foreach (var section in definition.Sections)
         {
             var grid = BuildSectionGrid(section);
+            FrameworkElement sectionElement;
             if (string.IsNullOrWhiteSpace(section.Label))
             {
                 // Nothing to name a header with (e.g. Busylight's lone Apply button) — always shown,
                 // indented to line up with the expanded sections' own rows.
                 grid.Margin = new Thickness(18, 0, 0, 8);
-                SectionsPanel.Children.Add(grid);
+                sectionElement = grid;
             }
             else
             {
-                SectionsPanel.Children.Add(BuildExpander(section.Label, grid));
+                sectionElement = BuildExpander(section.Label, grid);
+            }
+
+            SectionsPanel.Children.Add(sectionElement);
+            if (section.VisibleWhen is { } sectionCondition)
+            {
+                _sectionVisibilityRules.Add((sectionCondition, sectionElement));
             }
         }
+
+        RecomputeVisibility();
 
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
@@ -133,7 +149,7 @@ public partial class ControlPanelWindow : Window
             };
         }
 
-        _baseStatus = structuredSource is IStructuredPresenter
+        _baseStatus = structuredSource is IStructuredPresenter || !HasDecodedValueControls(definition)
             ? string.Empty
             : "Not decoding — connect with the matching --presenter to see live values.";
         StatusText.Text = _baseStatus;
@@ -183,10 +199,13 @@ public partial class ControlPanelWindow : Window
         return expander;
     }
 
+    // Shares every section's label column width (see ControlPanelWindow.xaml's SectionsPanel).
+    private const string _labelColumnSharedSizeGroup = "ControlLabel";
+
     private Grid BuildSectionGrid(UiSection section)
     {
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = _labelColumnSharedSizeGroup });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         for (var row = 0; row < section.Controls.Count; row++)
@@ -196,19 +215,27 @@ public partial class ControlPanelWindow : Window
 
             // No wrapping: the Auto column grows to the section's longest label, so every control
             // in the section starts at the same x instead of a long label wrapping onto two lines.
-            var label = new TextBlock
+            // A button already shows its own label as its own text ("Apply", "Custom...") - a row
+            // label here too would repeat it ("Apply: [Apply]"), so buttons skip it; the shared
+            // Auto column still lines every control up, since other rows' labels (if any) set the
+            // column's width regardless of whether this particular row has one.
+            TextBlock? label = null;
+            if (control is not ButtonControl)
             {
-                Text = control.Label + ":",
-                TextWrapping = TextWrapping.NoWrap,
+                label = new TextBlock
+                {
+                    Text = control.Label + ":",
+                    TextWrapping = TextWrapping.NoWrap,
 
-                // A chart's label sits at its top, not beside its middle.
-                VerticalAlignment = control is BarGraphControl or StripChartControl or VectorControl ? VerticalAlignment.Top : VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 4),
-            };
-            Grid.SetRow(label, row);
-            Grid.SetColumn(label, 0);
-            grid.Children.Add(label);
-            _controlLabels[control.Id] = label;
+                    // A chart's label sits at its top, not beside its middle.
+                    VerticalAlignment = control is BarGraphControl or StripChartControl or VectorControl ? VerticalAlignment.Top : VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 4),
+                };
+                Grid.SetRow(label, row);
+                Grid.SetColumn(label, 0);
+                grid.Children.Add(label);
+                _controlLabels[control.Id] = label;
+            }
 
             var content = BuildRowContent(control);
             content.Margin = new Thickness(0, 0, 0, 4);
@@ -218,6 +245,11 @@ public partial class ControlPanelWindow : Window
             Grid.SetRow(content, row);
             Grid.SetColumn(content, 1);
             grid.Children.Add(content);
+
+            if (control.VisibleWhen is { } visibleWhen)
+            {
+                _controlVisibilityRules.Add((visibleWhen, label is null ? [content] : [label, content]));
+            }
         }
 
         return grid;
@@ -286,7 +318,36 @@ public partial class ControlPanelWindow : Window
             {
                 display.Apply(values);
             }
+
+            RecomputeVisibility();
         });
+    }
+
+    /// <summary>Whether <paramref name="condition"/>'s referenced control's current value satisfies it — null (no such control tracked yet) never matches a value list, only "is true" with none given.</summary>
+    private bool IsConditionMet(UiCondition condition) =>
+        condition.IsMetBy(_controlViews.TryGetValue(condition.Id, out var view) ? GetCurrentValue(view) : null);
+
+    /// <summary>
+    /// Re-evaluates every <c>VisibleWhen</c> against the panel's current values and collapses/shows
+    /// the affected rows and sections. Called once after the panel is built and again on every value
+    /// change (a toggle, a choice, a committed text/numeric field, or a live structured-presenter
+    /// update) — a control panel has no single bound model to observe, unlike the form renderers.
+    /// </summary>
+    private void RecomputeVisibility()
+    {
+        foreach (var (condition, elements) in _controlVisibilityRules)
+        {
+            var visibility = IsConditionMet(condition) ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var element in elements)
+            {
+                element.Visibility = visibility;
+            }
+        }
+
+        foreach (var (condition, element) in _sectionVisibilityRules)
+        {
+            element.Visibility = IsConditionMet(condition) ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private (FrameworkElement RowContent, FrameworkElement Tracked, Func<string?>? Preview, (string CommandId, string? Value)? Probe) BuildWidget(UiControl control)
@@ -364,8 +425,8 @@ public partial class ControlPanelWindow : Window
             case ToggleControl toggle:
                 {
                     var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
-                    view.Checked += (_, _) => Invoke(toggle.Id, "1");
-                    view.Unchecked += (_, _) => Invoke(toggle.Id, "0");
+                    view.Checked += (_, _) => { Invoke(toggle.Id, "1"); RecomputeVisibility(); };
+                    view.Unchecked += (_, _) => { Invoke(toggle.Id, "0"); RecomputeVisibility(); };
 
                     // What toggling it would send — the next state, not the current one.
                     return (view, view, () => SendsText(toggle.Id, view.IsChecked == true ? "0" : "1"), (toggle.Id, toggle.DefaultValue ? "0" : "1"));
@@ -388,6 +449,7 @@ public partial class ControlPanelWindow : Window
                     {
                         valueLabel.Text = FormatUnit(e.NewValue, slider.Unit);
                         Invoke(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
+                        RecomputeVisibility();
                     };
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     panel.Children.Add(view);
@@ -426,6 +488,7 @@ public partial class ControlPanelWindow : Window
                         var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
                         radio.Checked += (_, _) =>
                         {
+                            RecomputeVisibility();
                             if (_suppressChoiceSend)
                             {
                                 return;
@@ -456,6 +519,8 @@ public partial class ControlPanelWindow : Window
                         {
                             Invoke(choice.Id, selected);
                         }
+
+                        RecomputeVisibility();
                     };
                     return (view, view, () => SendsText(choice.Id, GetCurrentValue(view)), (choice.Id, GetCurrentValue(view)));
                 }
@@ -636,6 +701,7 @@ public partial class ControlPanelWindow : Window
         ClearValidationError();
         field.Text = result.Value;
         Invoke(control.Id, result.Value);
+        RecomputeVisibility();
     }
 
     /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); fails on the first invalid one.</summary>
@@ -678,6 +744,16 @@ public partial class ControlPanelWindow : Window
     }
 
     private static string FormatUnit(double value, string? unit) => $"{value:0.#}{unit}";
+
+    /// <summary>
+    /// Whether <paramref name="definition"/> declares any control that shows a decoded/live value
+    /// (<see cref="IndicatorControl"/>, <see cref="BarGraphControl"/>, <see cref="StripChartControl"/>,
+    /// <see cref="VectorControl"/>) — an output-only device (e.g. Busylight: buttons/choices/sliders
+    /// only, nothing to decode) has none, so the "Not decoding" warning would never apply to it even
+    /// with a matching structured presenter, and is just noise.
+    /// </summary>
+    private static bool HasDecodedValueControls(UiDefinition definition) =>
+        definition.Sections.SelectMany(s => s.Controls).Any(c => c is IndicatorControl or BarGraphControl or StripChartControl or VectorControl);
 
     /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
     private static string GetCurrentValue(FrameworkElement view) => view switch

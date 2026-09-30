@@ -43,7 +43,7 @@ Because UDP preserves datagram boundaries, each received datagram is delivered t
 
 ### USB HID
 
-Report-based I/O against a specific VID/PID (and usage page/usage where needed) — useful for devices that expose a HID interface for control/debug rather than a serial port. Direction: [HidSharp](https://www.nuget.org/packages/HidSharp) — cross-platform (Windows/Linux/macOS), no vendor driver install required since HID already has a generic OS-level class driver everywhere (unlike raw USB device classes, which is exactly why HID was ruled out for USBTMC-class instruments — see the note under "Extensibility" below). Not a fit for report-based protocols alone; a device that turns out to actually be a different USB class entirely (as [Radex One](proposals/radex-one-protocol.md) initially seemed but wasn't confirmed to be until checked directly) needs re-verifying before assuming this transport applies.
+Report-based I/O against a specific VID/PID (and usage page/usage where needed) — useful for devices that expose a HID interface for control/debug rather than a serial port. Direction: [HidSharp](https://www.nuget.org/packages/HidSharp) — cross-platform (Windows/Linux/macOS), no vendor driver install required since HID already has a generic OS-level class driver everywhere (unlike raw USB device classes, which is exactly why HID was ruled out for USBTMC-class instruments — see the note under "Extensibility" below). Not a fit for report-based protocols alone; a device that turns out to actually be a different USB class entirely (as [Radex One](features/radex-one-protocol.md) initially seemed but wasn't confirmed to be until checked directly) needs re-verifying before assuming this transport applies.
 
 ### BLE
 

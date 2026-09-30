@@ -108,6 +108,33 @@ public sealed class ManifestEditorWindowTests
     }
 
     [TestMethod]
+    public void UndoButton_RevertsTheLastEdit_AndRedoButtonReappliesIt()
+    {
+        Run(async (window, _) =>
+        {
+            Assert.IsFalse(window.UndoButton.IsEnabled);
+            Assert.IsFalse(window.RedoButton.IsEnabled);
+
+            window.Form!.TextBoxes[nameof(ManifestIdentityForm.Name)].Text = "Renamed";
+            StaTestRunner.DoEvents();
+            Assert.IsTrue(window.UndoButton.IsEnabled);
+
+            window.UndoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            StaTestRunner.DoEvents();
+            Assert.AreEqual("Loopback Sensor Demo", window.Editor.Manifest.Name);
+            Assert.IsFalse(window.UndoButton.IsEnabled);
+            Assert.IsTrue(window.RedoButton.IsEnabled);
+
+            window.RedoButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            StaTestRunner.DoEvents();
+            Assert.AreEqual("Renamed", window.Editor.Manifest.Name);
+            Assert.IsFalse(window.RedoButton.IsEnabled);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void Save_WritesTheUsersOwnCopy_WhichLoadsBack()
     {
         Run(async (window, userDirectory) =>

@@ -63,6 +63,12 @@ public sealed class TuiPanelLayoutTests
         from size in TuiReview.Sizes
         select new object[] { profile.Name, size.Width, size.Height };
 
+    public static IEnumerable<object[]> ProfilesSizesAndThemes =>
+        from profile in Profiles
+        from theme in new[] { "light", "dark" }
+        from size in TuiReview.Sizes
+        select new object[] { profile.Name, size.Width, size.Height, theme };
+
     private static string Slug(string name) => new([.. name.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '-')]);
 
     [TestMethod]
@@ -74,6 +80,49 @@ public sealed class TuiPanelLayoutTests
         TuiReview.Screen("panel-k8055-top", width, height, theme, build);
         TuiReview.Screen("panel-k8055-bottom", width, height, theme, build, ScrollToBottom);
     }
+
+    /// <summary>The K8055 panel with a real decoded input frame reflected in its indicators — every other
+    /// K8055 review capture above is static (a fresh decoder, never fed a frame).</summary>
+    [TestMethod]
+    [DynamicData(nameof(SizesAndThemes))]
+    public void K8055_WithLiveData(int width, int height, string theme)
+    {
+        var transport = new FakeTransport();
+        var decoder = new K8055Decoder();
+        var session = new Session(transport, new Pipeline([decoder]));
+        session.OpenAsync(TestContext.CancellationToken).GetAwaiter().GetResult();
+        var build = Panel(K8055UiDefinition.Build(), new K8055ControlSurface(session), decoder, "dev-term — K8055 Control Panel");
+
+        TuiReview.UseTheme(theme);
+        string? failure = null;
+        try
+        {
+            TuiTestRunner.RunWithLoopApp(
+                app => app.Driver!.SetScreenSize(width, height),
+                build,
+                (app, root) =>
+                {
+                    // A real 9-byte K8055 input report - see K8055Decoder's doc comment for the layout:
+                    // [reportId, digitalInRaw, 0x03, analogIn1, analogIn2, counter1Lo, counter1Hi, counter2Lo, counter2Hi].
+                    transport.PushIncomingAsync([0x00, 0x05, 0x03, 42, 80, 5, 0, 10, 0]).GetAwaiter().GetResult();
+                    Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => _parts!.IndicatorLabels["analogIn1"].Text == "42", TimeSpan.FromSeconds(5)), "Expected the Analog In 1 indicator to reflect the decoded frame.");
+                    failure = TuiTestRunner.InvokeOnLoop(() =>
+                    {
+                        app.LayoutAndDraw(true);
+                        return TuiReview.Check(app, root, "panel-k8055-live", theme);
+                    });
+                });
+        }
+        finally
+        {
+            session.CloseAsync(TestContext.CancellationToken).GetAwaiter().GetResult();
+            TuiReview.ResetTheme();
+        }
+
+        Assert.IsNull(failure, failure);
+    }
+
+    public required TestContext TestContext { get; set; }
 
     [TestMethod]
     [DynamicData(nameof(Sizes))]
@@ -94,14 +143,14 @@ public sealed class TuiPanelLayoutTests
     }
 
     [TestMethod]
-    [DynamicData(nameof(ProfilesAndSizes))]
-    public void EachScpiProfile(string profileName, int width, int height)
+    [DynamicData(nameof(ProfilesSizesAndThemes))]
+    public void EachScpiProfile(string profileName, int width, int height, string theme)
     {
         var profile = Profiles.Single(p => p.Name == profileName);
         var presenter = new ScpiReplyPresenter();
         var build = Panel(ScpiUiDefinitionBuilder.Build(profile), new ScpiControlSurface(NewSession(), profile, presenter), presenter, $"dev-term — {profile.Name}");
-        TuiReview.Screen($"panel-scpi-{Slug(profile.Name)}-top", width, height, "light", build);
-        TuiReview.Screen($"panel-scpi-{Slug(profile.Name)}-bottom", width, height, "light", build, ScrollToBottom);
+        TuiReview.Screen($"panel-scpi-{Slug(profile.Name)}-top", width, height, theme, build);
+        TuiReview.Screen($"panel-scpi-{Slug(profile.Name)}-bottom", width, height, theme, build, ScrollToBottom);
     }
 
     [TestMethod]

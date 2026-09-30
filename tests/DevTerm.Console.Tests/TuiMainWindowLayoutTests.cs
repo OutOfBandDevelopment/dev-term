@@ -13,8 +13,9 @@ namespace DevTerm.Console.Tests;
 /// <summary>
 /// Layout regression tests (see <see cref="TuiLayoutAssert"/>) for the TUI main window
 /// (<see cref="TuiMode"/>) at the minimum, a common and a large terminal size, in both themes -
-/// connected, disconnected with a startup error, with a long reply, logging, and with each menu open.
-/// Each also saves a review PNG under <c>artifacts/ui-review/tui/</c> (see <see cref="TuiReview"/>).
+/// connected, disconnected with a startup error, with a long reply, logging, and with each menu open
+/// (both connected and, for File/Device, disconnected). Each also saves a review PNG under
+/// <c>artifacts/ui-review/tui/</c> (see <see cref="TuiReview"/>).
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
@@ -119,6 +120,21 @@ public sealed class TuiMainWindowLayoutTests
             await session.OpenAsync(TestContext.CancellationToken);
             TuiReview.Screen($"main-menu-{menu.Replace(' ', '-').ToLowerInvariant()}", width, height, "light", MainWindow(session, catalog, options), (app, window) => OpenMenu(window, menu), OverMenu);
             await session.CloseAsync(TestContext.CancellationToken);
+        }
+    }
+
+    /// <summary>The main window's menus while disconnected (a startup connect failure), never reviewed
+    /// alongside <see cref="WithAMenuOpen"/>'s connected captures.</summary>
+    [TestMethod]
+    [DataRow("File")]
+    [DataRow("Device")]
+    public void WithAMenuOpen_Disconnected(string menu)
+    {
+        foreach (var (width, height) in TuiReview.Sizes)
+        {
+            var (session, catalog, options) = Create();
+            var error = $"{ConnectionErrorMessages.For("tcp", new System.Net.Sockets.SocketException(10061))} Use File > Connect to retry, or File > Device Profiles... to choose another connection.";
+            TuiReview.Screen($"main-menu-{menu.ToLowerInvariant()}-disconnected", width, height, "light", MainWindow(session, catalog, options, error), (app, window) => OpenMenu(window, menu), OverMenu);
         }
     }
 

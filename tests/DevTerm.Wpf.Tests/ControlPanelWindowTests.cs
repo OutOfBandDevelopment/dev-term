@@ -117,6 +117,32 @@ public sealed class ControlPanelWindowTests
         });
     }
 
+    /// <summary>
+    /// An output-only device (no <see cref="IndicatorControl"/>/<see cref="BarGraphControl"/>/
+    /// <see cref="StripChartControl"/>/<see cref="VectorControl"/> anywhere - Busylight is the real
+    /// example) has nothing a structured presenter could ever decode, so the warning is just noise -
+    /// see TODO.md's 2026-09-25 TUI layout review follow-up. The TUI half of the same fix is
+    /// <c>ControlPanelModeTests.NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine</c>.
+    /// </summary>
+    [TestMethod]
+    public void NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Output Only Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(string.Empty, window.StatusText.Text);
+
+            await Task.CompletedTask;
+        });
+    }
+
     [TestMethod]
     public void Button_WhenClicked_InvokesItsIdWithNoValue()
     {
@@ -310,8 +336,8 @@ public sealed class ControlPanelWindowTests
                         Label = "Configure",
                         Controls =
                         [
-                            new ButtonControl { Id = "longLabel", Label = "Configure DC Voltage Range" },
-                            new ButtonControl { Id = "short", Label = "Go" },
+                            new TextFieldControl { Id = "longLabel", Label = "Configure DC Voltage Range" },
+                            new TextFieldControl { Id = "short", Label = "Go" },
                         ],
                     },
                 ],
@@ -332,6 +358,30 @@ public sealed class ControlPanelWindowTests
             var shortX = window.ControlViews["short"].TranslatePoint(default, grid).X;
             Assert.IsGreaterThanOrEqualTo(labelRight, longX, "The control starts past its label, not over it.");
             Assert.AreEqual(longX, shortX, 0.5, "Every control in a section starts in the same column.");
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void ButtonRow_HasNoLeadingLabel()
+    {
+        // A button already shows its own text ("Apply") as the button itself; a row label would
+        // repeat it ("Apply: [Apply]") - see TODO.md's 2026-09-25 TUI layout review follow-up.
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Sample Device",
+                Sections =
+                [
+                    new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.IsFalse(window.ControlLabels.ContainsKey("apply"), "A button row shouldn't get a separate leading label.");
 
             await Task.CompletedTask;
         });
@@ -453,6 +503,98 @@ public sealed class ControlPanelWindowTests
             {
                 DevTerm.Configuration.LastPickedColors.Forget("customColor");
             }
+
+            await Task.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, control-only half: a control-level
+    /// VisibleWhen (see docs/design/ui-definitions.md) collapses its label+content together while
+    /// unmet (a WPF Auto Grid row with every child collapsed takes no space on its own), then
+    /// reappears once the referenced sibling's value satisfies it. The TUI side of the same fix is
+    /// <c>ControlPanelModeTests</c>.
+    /// </summary>
+    [TestMethod]
+    public void Control_VisibleWhen_HiddenUntilConditionMet_ThenShown()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Conditional Device",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Section",
+                        Controls =
+                        [
+                            new ToggleControl { Id = "enable", Label = "Enable", DefaultValue = false },
+                            new TextFieldControl
+                            {
+                                Id = "conditional",
+                                Label = "Conditional",
+                                DefaultValue = "x",
+                                VisibleWhen = new UiCondition { Id = "enable", Values = ["1"] },
+                            },
+                        ],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.ControlViews["conditional"].Visibility, "Hidden while its condition is unmet.");
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.ControlLabels["conditional"].Visibility);
+
+            ((CheckBox)window.ControlViews["enable"]).IsChecked = true;
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.ControlViews["conditional"].Visibility, "Shown once its condition is met.");
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.ControlLabels["conditional"].Visibility);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, section-only half: a whole section's
+    /// Expander collapses entirely while its own VisibleWhen is unmet, then reappears once its
+    /// referenced control's value satisfies it.
+    /// </summary>
+    [TestMethod]
+    public void Section_VisibleWhen_HiddenUntilConditionMet_ThenShown()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Conditional Sections",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Mode",
+                        Controls = [new ChoiceControl { Id = "mode", Label = "Mode", Options = ["basic", "advanced"], DefaultValue = "basic" }],
+                    },
+                    new UiSection
+                    {
+                        Label = "Advanced",
+                        VisibleWhen = new UiCondition { Id = "mode", Values = ["advanced"] },
+                        Controls = [new ButtonControl { Id = "advancedButton", Label = "Advanced Button" }],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.SectionExpanders["Advanced"].Visibility, "Hidden while its condition is unmet.");
+
+            ((ComboBox)window.ControlViews["mode"]).SelectedItem = "advanced";
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.SectionExpanders["Advanced"].Visibility, "Shown once its condition is met.");
 
             await Task.CompletedTask;
         });

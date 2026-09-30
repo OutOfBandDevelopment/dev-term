@@ -11,8 +11,10 @@ namespace DevTerm.Console.Tests;
 /// for real (a nested <c>Application.Run</c> under a real run loop - see <see cref="TuiReview.Modal"/>)
 /// over a plain window: the SCPI instrument picker, the detected-device list picker (and its "nothing
 /// detected" message), the manifest picker, the custom color picker, the one-line prompt (log path,
-/// note), and the error/confirmation message boxes, at each review size and in both themes. Each also
-/// saves a review PNG under <c>artifacts/ui-review/tui/</c>.
+/// note), the error/confirmation message boxes, and Terminal.Gui's own built-in file dialogs (Browse's
+/// <c>OpenDialog</c>, Save As's <c>SaveDialog</c> - see <c>ConfigureMode</c>/<c>ManifestEditorMode</c>),
+/// at each review size and in both themes. Each also saves a review PNG under
+/// <c>artifacts/ui-review/tui/</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
@@ -88,6 +90,16 @@ public sealed class TuiDialogLayoutTests
             "dev-term — unexpected error",
             "An unexpected error occurred and has been ignored so dev-term can keep running:\n\nSystem.InvalidOperationException: Sequence contains no matching element\n   at System.Linq.ThrowHelper.ThrowNoMatchException()",
             "Ok"));
+
+    [TestMethod]
+    [DynamicData(nameof(SizesAndThemes))]
+    public void BrowseFileDialog(int width, int height, string theme) =>
+        TuiReview.Modal("dialog-browse", width, height, theme, Background, app => app.Run(new OpenDialog { Path = AppContext.BaseDirectory }));
+
+    [TestMethod]
+    [DynamicData(nameof(SizesAndThemes))]
+    public void SaveAsFileDialog(int width, int height, string theme) =>
+        TuiReview.Modal("dialog-save-as", width, height, theme, Background, app => app.Run(new SaveDialog { Path = Path.Combine(AppContext.BaseDirectory, "device.json") }));
 
     [TestMethod]
     [DynamicData(nameof(SizesAndThemes))]

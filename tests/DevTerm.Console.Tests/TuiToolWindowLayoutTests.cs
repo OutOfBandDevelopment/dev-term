@@ -10,10 +10,10 @@ namespace DevTerm.Console.Tests;
 
 /// <summary>
 /// Layout regression tests (see <see cref="TuiLayoutAssert"/>) for the TUI's tool windows: the
-/// device manifest editor (<see cref="ManifestEditorMode"/>, one outline node of every kind, and the
-/// live preview), Playback (<see cref="PlaybackMode"/>) and the Stream Monitor
-/// (<see cref="StreamMonitorMode"/>), at each review size, the editor in both themes. Each also saves a
-/// review PNG under <c>artifacts/ui-review/tui/</c>.
+/// device manifest editor (<see cref="ManifestEditorMode"/> — one outline node of every kind, the live
+/// preview, and a brand-new manifest's empty Panel node), Playback (<see cref="PlaybackMode"/>) and the
+/// Stream Monitor (<see cref="StreamMonitorMode"/>), at each review size and in both themes. Each also
+/// saves a review PNG under <c>artifacts/ui-review/tui/</c>.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
@@ -48,12 +48,18 @@ public sealed class TuiToolWindowLayoutTests
         from size in TuiReview.Sizes
         select new object[] { size.Width, size.Height, theme };
 
-    public static IEnumerable<object[]> Sizes => TuiReview.Sizes.Select(s => new object[] { s.Width, s.Height });
-
     private static Func<IApplication, View> Editor() => app =>
     {
         var editor = new ManifestEditorViewModel(Path.Combine(_directory, "user-manifests"), Path.Combine(AppContext.BaseDirectory, "manifests"));
         Assert.IsTrue(editor.Open(_bundled), editor.StatusMessage);
+        _editor = ManifestEditorMode.BuildWindow(app, editor);
+        return _editor.Window;
+    };
+
+    private static Func<IApplication, View> NewManifestEditor() => app =>
+    {
+        var editor = new ManifestEditorViewModel(Path.Combine(_directory, "user-manifests"), Path.Combine(AppContext.BaseDirectory, "manifests"));
+        editor.New();
         _editor = ManifestEditorMode.BuildWindow(app, editor);
         return _editor.Window;
     };
@@ -96,13 +102,25 @@ public sealed class TuiToolWindowLayoutTests
     public void ManifestEditor_Preview(int width, int height, string theme) =>
         TuiReview.Screen("manifest-editor-preview", width, height, theme, Editor(), (app, _) => _editor!.ShowPreview());
 
+    /// <summary>A brand-new manifest's Panel node has no form yet: the hint text plus the "Create panel
+    /// from commands" button, not reviewed by eye before now.</summary>
     [TestMethod]
-    [DynamicData(nameof(Sizes))]
-    public void Playback_PartWayThroughWithANote(int width, int height)
+    [DynamicData(nameof(SizesAndThemes))]
+    public void ManifestEditor_NewManifest_ShowsCreatePanelHint(int width, int height, string theme) =>
+        TuiReview.Screen("manifest-editor-new", width, height, theme, NewManifestEditor(), (app, _) =>
+        {
+            var panelIndex = _editor!.ViewModel.Nodes.ToList().FindIndex(n => n.Kind == ManifestNodeKind.Panel);
+            Assert.IsGreaterThanOrEqualTo(0, panelIndex, "A new manifest should still have a Panel outline node.");
+            _editor.Outline.SelectedItem = panelIndex;
+        });
+
+    [TestMethod]
+    [DynamicData(nameof(SizesAndThemes))]
+    public void Playback_PartWayThroughWithANote(int width, int height, string theme)
     {
-        var controller = new PlaybackPresenters().Open(PlaybackModeTests.WriteSampleLog(_directory, $"layout-{width}x{height}.jsonl"), new ManualTimeProvider());
+        var controller = new PlaybackPresenters().Open(PlaybackModeTests.WriteSampleLog(_directory, $"layout-{width}x{height}-{theme}.jsonl"), new ManualTimeProvider());
         PlaybackWindowParts? parts = null;
-        TuiReview.Screen("playback", width, height, "light", app =>
+        TuiReview.Screen("playback", width, height, theme, app =>
         {
             parts = PlaybackMode.BuildWindow(app, controller);
             return parts.Window;
@@ -117,14 +135,14 @@ public sealed class TuiToolWindowLayoutTests
     }
 
     [TestMethod]
-    [DynamicData(nameof(Sizes))]
-    public async Task StreamMonitor_WithCaptures(int width, int height)
+    [DynamicData(nameof(SizesAndThemes))]
+    public async Task StreamMonitor_WithCaptures(int width, int height, string theme)
     {
         await using var bench = await StreamMonitorBench.StartAsync("Rigol DG1062Z", Path.Combine(_directory, "exports"));
         await bench.CaptureAsync(StreamContentSamples.Png());
         bench.Time.Advance(TimeSpan.FromSeconds(41));
         await bench.CaptureAsync(StreamContentSamples.Hpgl());
 
-        TuiReview.Screen("stream-monitor", width, height, "light", app => StreamMonitorMode.BuildWindow(app, bench.Monitor).Window);
+        TuiReview.Screen("stream-monitor", width, height, theme, app => StreamMonitorMode.BuildWindow(app, bench.Monitor).Window);
     }
 }
