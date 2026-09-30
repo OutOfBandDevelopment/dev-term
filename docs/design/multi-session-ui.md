@@ -2,12 +2,12 @@
 
 Both front ends' main windows now hold a tab strip of `Session`s instead of exactly one — see
 [`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md) and
-[`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md) for the shipped behavior (Steps 1-3
-below). This doc designed the change: opening more than one connection at once, side by side, in the
-same window, in both front ends. Queued last in `TODO.md`'s UI batch on purpose — it restructures
-both main windows and touches more shared front-end code than any single item before it. What
-remains (Step 4) is the Open questions below that were deliberately deferred rather than resolved up
-front — see **Status**.
+[`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md) for the shipped behavior. This doc
+designed the change: opening more than one connection at once, side by side, in the same window, in
+both front ends. Queued last in `TODO.md`'s UI batch on purpose — it restructures both main windows
+and touches more shared front-end code than any single item before it. All four implementation steps,
+including the Open questions below (deliberately deferred to Step 4 rather than resolved up front),
+are complete — see **Status**.
 
 ## Why this was blocked until now
 
@@ -251,7 +251,44 @@ than a copy of the menu items' logic; no equivalent WPF Step 2 test file existed
 this test shape was designed independently, grounded in this codebase's own conventions. Verified:
 full solution build + full Unit test suite, 0 failures.
 
-Step 4 below is not started. Recommended implementation order, each step independently testable:
+**Step 4 done** (2026-09-30), in both front ends. Every Open question above is resolved:
+
+- **Session logging and Stream Monitor are per-tab**, not window-level. WPF: `WindowTab.Logger`/
+  `WindowTab.Monitor`; TUI: `TuiWindowTab.Logger`/`TuiWindowTab.Monitor`. Two tabs can log to two
+  different files, or run two Stream Monitors, at once; closing one tab's log/monitor never touches
+  another's. `TuiLogging` was rewritten from an instance-based class holding one running logger to a
+  static class of pure helpers (`StatusSuffixFor(SessionLogger?)`, `PromptForPath`) that any tab can
+  call; `MainWindow.Logging.cs` already took the per-tab shape reading `ActiveWindowTabOrNull?.Logger`.
+- **Zero tabs is reachable and the window stays open**, per the recommended resolution. Close Session
+  is enabled at any tab count ≥ 1 (was: only > 1), and closing the last tab leaves the window in a
+  disabled, neutral state rather than exiting or crashing: connection/device menu items disabled, the
+  send field disabled and cleared, window title reset, status line reading "No sessions open — use
+  File > New Session... to start one." File > New Session... remains available and reachable from
+  this state (seeded from the last-closed tab's `CliOptions`, tracked as `_lastCliOptions`/
+  `lastCliOptions`) — it's the only way back to one tab. WPF: `MainWindow.HandleZeroTabs()`. TUI:
+  `TuiMode.HandleZeroTabs()`, gated on the existing `ActiveTabOrNull()`/`ActiveTab()` split (the
+  latter still throws when genuinely called with no tab active, matching `ActiveWindowTab`'s WPF
+  counterpart).
+- **Keyboard shortcuts**: Ctrl+T (new session), Ctrl+W (close active tab), Ctrl+Tab/Ctrl+Shift+Tab
+  (next/previous tab, wrapping, no-op below two tabs) — the same bindings in both front ends, matching
+  the browser-tab convention this doc's Open questions section called out for WPF and extending it to
+  TUI too, since there was no existing TUI precedent to conflict with. Each needed an explicit handler
+  beyond the menu item's own label (`MenuItem.InputGestureText` in WPF, a Terminal.Gui `MenuItem`'s
+  `Key` argument in TUI — neither registers a live accelerator by itself, the same gotcha noted
+  elsewhere for Ctrl+Q). WPF: `MainWindow.HandleGlobalKeyDown`, wired off `PreviewKeyDown`. TUI: a
+  `sessionShortcuts` handler on `Application.KeyDown`, gated on `app.TopRunnableView == window` so it
+  doesn't fire while a nested dialog (New Session's `ConfigureMode`, a control panel) is on top —
+  mirrors the existing `quitOnCtrlQ` handler's own pattern exactly, including unsubscribing on
+  `window.Disposing`.
+- **SendHistory and the starting tab** were already resolved and unchanged by Step 4: SendHistory has
+  been per-tab since Steps 2/3, and the startup connection becomes the first tab exactly as designed,
+  with no remaining ambiguity.
+
+Verified: full solution build + full Unit test suite in both `DevTerm.Console.Tests` and
+`DevTerm.Wpf.Tests`, 0 failures. `docs/specs/tui-main-screen.md` and `docs/specs/wpf-main-window.md`
+no longer carry the Step-4-deferred Open items — both are fully implemented now.
+
+Recommended implementation order, each step independently testable (all done):
 
 1. ~~Extract `SessionTab` in `DevTerm.Configuration`, with `TuiMode`/`MainWindow` each still using
    exactly one (a pure refactor — behavior unchanged, but proves the extraction is clean before the
@@ -261,12 +298,12 @@ Step 4 below is not started. Recommended implementation order, each step indepen
 3. ~~TUI: same shape using `Terminal.Gui.Views.Tabs`, once WPF has proven the `SessionTab`
    extraction is solid — this is the front end where the tab control itself is the less-proven part,
    so sequencing it second reduces risk.~~ Done.
-4. Resolve the Open questions above (SendHistory scope, logging scope, Stream Monitor scope,
+4. ~~Resolve the Open questions above (SendHistory scope, logging scope, Stream Monitor scope,
    zero-tab behavior, shortcuts) as part of implementing New/Close Session, not before — each is
    small enough to decide in its own step rather than blocking the whole feature on a
-   design-doc-only decision.
+   design-doc-only decision.~~ Done.
 5. ~~Update `docs/specs/tui-main-screen.md` and `docs/specs/wpf-main-window.md`'s **Open items**
    sections and add the new Fields/Actions/States entries for tab-related UI, in the same change that
    implements each piece — not deferred to the end.~~ Done (2026-09-30): both specs now document the
-   tab strip in full; each still lists the same two Step-4-deferred Open items (session logging/Stream
-   Monitor staying window-level, zero-tab behavior).
+   tab strip in full, including Step 4's per-tab logging/monitor, zero-tab state, and keyboard
+   shortcuts.

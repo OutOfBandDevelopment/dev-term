@@ -117,7 +117,7 @@ public sealed class ChartControlsTests
         var vector = (VectorControl)UiDefinitionSerializer.FromJson(json).Sections[0].Controls[0];
 
         Assert.AreEqual(CoordinateSystem.XYZ, vector.Coordinates);
-        Assert.AreSequenceEqual(new[] { "x", "y", "z" }, vector.ValueIds().ToArray());
+        Assert.AreSequenceEqual(["x", "y", "z"], [.. vector.ValueIds()]);
     }
 
     [TestMethod]
@@ -166,7 +166,7 @@ public sealed class ChartControlsTests
             state.Apply("a", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        Assert.AreSequenceEqual(new[] { 3.0, 4, 5, 6, 7 }, state.SamplesOf("a").ToArray());
+        Assert.AreSequenceEqual([3.0, 4, 5, 6, 7], [.. state.SamplesOf("a")]);
     }
 
     [TestMethod]

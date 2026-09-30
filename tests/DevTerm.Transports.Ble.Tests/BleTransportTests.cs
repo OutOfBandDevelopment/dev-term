@@ -164,7 +164,7 @@ public sealed class BleTransportTests
             transport.Input.AdvanceTo(result.Buffer.End);
         }
 
-        Assert.AreSequenceEqual(first.Concat(second).ToArray(), total.ToArray());
+        Assert.AreSequenceEqual([.. first, .. second], [.. total]);
 
         await transport.CloseAsync(TestContext.CancellationToken);
     }

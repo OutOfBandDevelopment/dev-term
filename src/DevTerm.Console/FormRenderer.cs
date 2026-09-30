@@ -193,8 +193,8 @@ internal static class FormRenderer
     /// </summary>
     internal static List<int> FilterIndices(IReadOnlyList<string> items, string filterText) =>
         string.IsNullOrEmpty(filterText)
-            ? Enumerable.Range(0, items.Count).ToList()
-            : Enumerable.Range(0, items.Count).Where(i => items[i].Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
+            ? [.. Enumerable.Range(0, items.Count)]
+            : [.. Enumerable.Range(0, items.Count).Where(i => items[i].Contains(filterText, StringComparison.OrdinalIgnoreCase))];
 
     /// <summary>
     /// A list picker's width: wide enough for its longest item (the SCPI profile names ran past a

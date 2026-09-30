@@ -1,0 +1,6 @@
+{
+  "_comment": "ManifestEditorViewModel's status text shows the per-test-run random user-profile temp directory name, not a real content change.",
+  "regions": [
+    {"x": 160, "y": 615, "w": 220, "h": 30, "note": "randomized temp directory name in the status line"}
+  ]
+}

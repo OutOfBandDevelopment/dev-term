@@ -27,13 +27,13 @@ and send line, sharing one `File` menu and one status line for whichever tab is 
 | **File > Connect/Disconnect** | A single menu item whose label flips; toggles the same `Session`/transport open or closed without touching which profile is loaded | None | `ConnectionErrorMessages.For` text in the output pane; stays disconnected, ready to retry |
 | **File > Device Profiles...** | Opens `ConfigureMode` as a nested modal (`Application.Run` on top of the current window) | None | n/a |
 | **File > New Session...** | Opens `ConfigureMode` as a nested modal; picking a connection there (rather than cancelling) adds it as a **new tab** (`SessionTab.Build`) after the current one, switches the tab strip to it, and connects it — the active tab at the time this was chosen is untouched | None | A connection that fails to build (bad options) is reported with `Could not open a new session: …` on the **previously active** tab's output pane, and no tab is added; a connect failure after the tab is added is reported on the new tab's own pane, same as a normal failed connect |
-| **File > Close Session** | Closes the **active** tab: closes its session, removes its output pane and tab header, and switches the tab strip to a remaining tab | More than one tab open (disabled, and a no-op if invoked anyway, with exactly one) | n/a — closing a session's transport itself never throws out to this action |
-| **File > Start Logging...** / **Stop Logging** | One item whose title flips. Start prompts for a path (default `~/.dev-term/logs/{yyyyMMdd-HHmmss}_{profile or connection}.jsonl`) and records the session there (`TuiLogging`, `SessionLogger`): a `session` record first (with the connection and whether it's already open), then every `tx`/`rx`/`open`/`close`/`disconnect`. It adds `[dev-term] Logging to ~\….` and the status line's `● REC`. Stop closes the file (`[dev-term] Stopped logging to ….`). The log **follows a live profile switch**: a new `session` record, same file. Quitting ends the log. `--log <path>` (or `--log true` for the default path) starts it when the window opens. See [`docs/design/session-logging.md`](../design/session-logging.md) | None (logging a closed connection records its later connect) | `[error] Could not start logging to '…': …`, and it stays stopped |
+| **File > Close Session** | Closes the **active** tab: closes its session, removes its output pane and tab header, and switches the tab strip to a remaining tab — or, if it was the last tab, leaves the window open with zero tabs (see **States**) | At least one tab open (always true once the window exists) | n/a — closing a session's transport itself never throws out to this action |
+| **File > Start Logging...** / **Stop Logging** | One item whose title flips, reflecting the **active tab's own** logger (`TuiWindowTab.Logger`) — logging is per-tab, so two tabs can log to two different files at once, and closing one tab's log never touches another's. Start prompts for a path (default `~/.dev-term/logs/{yyyyMMdd-HHmmss}_{profile or connection}.jsonl`) and records that tab's session there (`TuiLogging`, `SessionLogger`): a `session` record first (with the connection and whether it's already open), then every `tx`/`rx`/`open`/`close`/`disconnect`. It adds `[dev-term] Logging to ~\….` and the status line's `● REC` (shown only while that tab is active). Stop closes the file (`[dev-term] Stopped logging to ….`). The log **follows a live profile switch on that tab**: a new `session` record, same file. Closing a tab stops its own log, if running; quitting ends every tab's log. `--log <path>` (or `--log true` for the default path) starts logging on the startup tab when the window opens. See [`docs/design/session-logging.md`](../design/session-logging.md) | None (logging a closed connection records its later connect) | `[error] Could not start logging to '…': …`, and it stays stopped |
 | **File > Open Log for Playback...** | Prompts for a log path (default: the newest log in `~/.dev-term/logs`) and opens the [Playback window](playback-window.md) as a nested modal. Never touches this window's connection | None | An error dialog for a file that isn't a session log |
 | **File > Quit** / **Ctrl+Q** | Stops the application loop | None | n/a |
 | **Device > K8055/Busylight/SCPI Instrument/Device Manifest...** | Opens a generic control-panel screen for that device — see [`docs/specs/device-control-panel.md`](device-control-panel.md), a separate spec since it's shared with WPF and data-driven rather than a fixed set of fields | None checked | n/a |
 | **Device > Edit Device Manifest...** | Opens the manifest editor (a nested screen) to create, open, edit and save a device manifest with a live panel preview — see [`docs/specs/manifest-editor.md`](manifest-editor.md). Always enabled: it needs no connection | None | n/a |
-| **Device > Stream Monitor...** | Starts watching the current session for images/HP-GL/PostScript/PCL (auto-saving each capture) and opens its modal window; monitoring continues after the window closes, each capture adding a `[dev-term] Captured …` status line here, and follows a profile switch — see [`docs/specs/stream-monitor.md`](stream-monitor.md) | None (always enabled) | A failed save is reported on the capture/status line, never thrown |
+| **Device > Stream Monitor...** | Starts watching the **active tab's** session for images/HP-GL/PostScript/PCL (auto-saving each capture) and opens its modal window; the monitor belongs to that tab (`TuiWindowTab.Monitor`) — monitoring continues after the window closes and after switching to another tab, each capture adding a `[dev-term] Captured …` status line to the tab it belongs to, and follows a profile switch on that same tab. Closing the tab disposes its monitor. Opening it again from a different tab starts a separate monitor for that tab — see [`docs/specs/stream-monitor.md`](stream-monitor.md) | None (always enabled with a tab active) | A failed save is reported on the capture/status line, never thrown |
 | **View > Theme** | A submenu: **Light**, **Dark**, **System (follow the OS)**, then one item per valid user theme file in `~/.dev-term/themes` (by its `name`). The current selection is marked `●`. Picking one switches this window (and any window opened afterwards) live, with no restart: Terminal.Gui's schemes, the output highlighting, the status line and chart colors all follow. It's saved as the app preference in `~/.dev-term/preferences.json`, never in a connection profile. `--theme <light|dark|system|name>` (or `DEVTERM_THEME`) overrides it for one run without saving. See [`docs/design/theming.md`](../design/theming.md) | None | Problems loading theme files or the preferences file, an unknown `--theme`, or a preference that couldn't be saved: a `[dev-term] …` status line; the theme falls back to `system` and nothing throws |
 
 ## States
@@ -60,8 +60,17 @@ and send line, sharing one `File` menu and one status line for whichever tab is 
   runs at startup and after every connect, disconnect, self-disconnect, profile switch, and **tab
   switch**, so they can't drift apart. File > Connect/Disconnect runs it too;
   `TuiWindowParts.ToggleConnectionAsync` is that exact action for tests.
-- **File > Close Session is enabled only with more than one tab open**, refreshed after every New
-  Session/Close Session so it can't be invoked down to zero tabs.
+- **File > Close Session is enabled with any tab open (including the last one)**, refreshed after
+  every New Session/Close Session. Closing the last tab reaches the **zero-tab state** below rather
+  than being blocked.
+- **Zero-tab state**: once the last tab closes, the window stays open rather than exiting. The File >
+  Device Profiles/Stream Monitor/Send as menu items and every Device menu item disable; `Send:` is
+  cleared and disabled; the window title resets to `dev-term`; the status line reads
+  ` ○ No sessions open — use File > New Session... to start one.` File > New Session... (and Quit)
+  remain available — New Session is the only way back to one tab, seeded from whichever tab's
+  `CliOptions` were last active (`lastCliOptions`) rather than a blank form. Reaching a tab again
+  (New Session, or reopening a second tab) re-enables everything via the normal
+  `RefreshConnectionUi` pass.
 - Each tab's incoming bytes arrive via **that tab's own** `Session.Output`, marshaled onto the UI
   thread with `Application.Invoke` — this only works because a real `Application.Run()` loop is
   actively pumping; see `CLAUDE.md`'s constraint on `Application.Invoke` silently queuing forever
@@ -102,14 +111,13 @@ points:
   live-switches this window's own session to it immediately (`DevTermSessionBuilder`, a
   `SwitchProfileAsync` local function inside `BuildWindow` exposed via `TuiWindowParts`), no
   restart — see [`docs/design/connection-profiles.md`](../design/connection-profiles.md).
+- **Session-tab keyboard shortcuts** — Ctrl+T (File > New Session...), Ctrl+W (File > Close Session,
+  the active tab), Ctrl+Tab / Ctrl+Shift+Tab (next/previous tab, wrapping; a no-op below two tabs) —
+  wired via a dedicated handler on the global `Application.KeyDown` event (same reasoning as Ctrl+Q
+  above), gated on `app.TopRunnableView == window` so a nested dialog (New Session's own
+  `ConfigureMode`, a control panel) gets the keys instead while one is open.
 
 ## Open items
 
-- **Session logging and the Stream Monitor stay window-level, not per-tab.** Both follow "whichever
-  tab was active when started/opened" rather than the tab that's currently active — deferred to
-  multi-session-ui Step 4 (`docs/design/multi-session-ui.md`).
 - **The "Send as" parser menu is built once, not rebuilt per tab.** Switching tabs does not change
-  which parser is selected for the newly active tab's `Send:` field — also deferred to Step 4.
-- **Closing the last tab is not possible** (File > Close Session is disabled/a no-op with only one
-  tab) — the window always has at least one session open for its lifetime; there's no "no sessions"
-  state to design for yet.
+  which parser is selected for the newly active tab's `Send:` field.

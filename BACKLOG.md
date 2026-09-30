@@ -94,13 +94,6 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-### WPF UI review
-
-- **Manifest Editor: no review yet at 125%/150% Windows display scaling, and no keyboard-focus-visual
-  review.** Raised in the 2026-09-25 WPF layout review; deliberately deprioritized (2026-09-29) rather
-  than fixed alongside that review's other follow-ups — no known defect driving it, just an area that
-  hasn't been looked at yet.
-
 ### TUI theming
 
 - **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest

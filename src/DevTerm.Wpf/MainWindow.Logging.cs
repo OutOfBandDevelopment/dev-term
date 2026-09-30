@@ -9,10 +9,10 @@ namespace DevTerm.Wpf;
 /// Logger mode (File &gt; Start Logging... / Stop Logging, and <c>--log</c>) and File &gt; Open Log
 /// for Playback... — kept in their own partial file so the main window's code only calls in at three
 /// points: the constructor (<see cref="StartLoggingFromOptions"/>), a profile switch
-/// (<see cref="FollowLogging"/>) and closing (<see cref="StopLogging"/>). One log follows whichever
-/// tab is active when logging is started or when <see cref="RefreshLoggingUi"/> next runs — not yet
-/// per-tab (docs/design/multi-session-ui.md's Open questions defers that to Step 4) — so only one tab
-/// at a time can be logged from this window. See docs/specs/wpf-main-window.md and
+/// (<see cref="FollowLogging"/>) and closing/tab-close (<see cref="StopLogging(WindowTab, bool)"/>).
+/// Per-tab (docs/design/multi-session-ui.md's Step 4): each <see cref="WindowTab"/> owns its own
+/// <see cref="WindowTab.Logger"/>, so two tabs can be logged to two different files at once, and
+/// closing one tab's log doesn't touch another's. See docs/specs/wpf-main-window.md and
 /// docs/design/session-logging.md.
 /// </summary>
 public partial class MainWindow
@@ -20,54 +20,62 @@ public partial class MainWindow
     internal const string StartLoggingHeader = "Start _Logging...";
     internal const string StopLoggingHeader = "Stop _Logging";
 
-    private SessionLogger? _logger;
-
-    /// <summary>The running logger, or <see langword="null"/> when not logging.</summary>
-    internal SessionLogger? Logger => _logger;
+    /// <summary>The active tab's running logger, or <see langword="null"/> when not logging (or no tab is active).</summary>
+    internal SessionLogger? Logger => ActiveWindowTabOrNull?.Logger;
 
     /// <summary>
     /// Starts logging the active tab's session to <paramref name="path"/> (replacing any file
-    /// there), stopping any log already running. A failure is reported in the output list, not
-    /// thrown.
+    /// there), stopping any log already running on that tab. A failure is reported in the output
+    /// list, not thrown. No-ops (returns <see langword="false"/>) with no tab active.
     /// </summary>
     /// <returns>Whether logging started.</returns>
-    internal bool StartLogging(string path)
+    internal bool StartLogging(string path) => ActiveWindowTabOrNull is { } tab && StartLogging(tab, path);
+
+    private bool StartLogging(WindowTab tab, string path)
     {
-        StopLogging(report: false);
-        var tab = ActiveWindowTab.Tab;
+        StopLogging(tab, report: false);
         try
         {
-            _logger = SessionLogging.Start(path, tab.Session, tab.CliOptions, CurrentParser, _profileStore.FindName(tab.CliOptions), "wpf");
+            tab.Logger = SessionLogging.Start(path, tab.Tab.Session, tab.Tab.CliOptions, CurrentParser, _profileStore.FindName(tab.Tab.CliOptions), "wpf");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            AppendOutput($"Could not start logging to '{path}': {ex.Message}", OutputKind.Error);
-            RefreshLoggingUi();
+            AppendOutput(tab, $"Could not start logging to '{path}': {ex.Message}", OutputKind.Error);
+            RefreshLoggingUiForActiveTab();
             return false;
         }
 
-        AppendOutput($"Logging to {SessionLogging.DisplayPath(_logger.Path!)}.", OutputKind.Status);
-        RefreshLoggingUi();
+        AppendOutput(tab, $"Logging to {SessionLogging.DisplayPath(tab.Logger.Path!)}.", OutputKind.Status);
+        RefreshLoggingUiForActiveTab();
         return true;
     }
 
-    /// <summary>Stops logging, if it's running.</summary>
+    /// <summary>Stops logging on the active tab, if it's running. A no-op with no tab active.</summary>
     internal void StopLogging(bool report = true)
     {
-        if (_logger is null)
+        if (ActiveWindowTabOrNull is { } tab)
+        {
+            StopLogging(tab, report);
+        }
+    }
+
+    /// <summary>Stops logging on <paramref name="tab"/> specifically, if it's running — used when closing that tab (or the window) so another tab's log is never touched.</summary>
+    private void StopLogging(WindowTab tab, bool report = true)
+    {
+        if (tab.Logger is null)
         {
             return;
         }
 
-        var path = _logger.Path;
-        _logger.Dispose();
-        _logger = null;
+        var path = tab.Logger.Path;
+        tab.Logger.Dispose();
+        tab.Logger = null;
         if (report)
         {
-            AppendOutput($"Stopped logging to {(path is null ? "the log" : SessionLogging.DisplayPath(path))}.", OutputKind.Status);
+            AppendOutput(tab, $"Stopped logging to {(path is null ? "the log" : SessionLogging.DisplayPath(path))}.", OutputKind.Status);
         }
 
-        RefreshLoggingUi();
+        RefreshLoggingUiForActiveTab();
     }
 
     // --log: start straight away (before the Loaded-triggered connect, so the connect is in the log).
@@ -77,37 +85,48 @@ public partial class MainWindow
     {
         if (tab.Tab.CliOptions.Log is { Length: > 0 } logOption)
         {
-            StartLogging(SessionLogging.ResolveLogPath(logOption, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions), DateTimeOffset.Now));
+            StartLogging(tab, SessionLogging.ResolveLogPath(logOption, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions), DateTimeOffset.Now));
         }
         else
         {
-            RefreshLoggingUi();
+            RefreshLoggingUiForActiveTab();
         }
     }
 
     // A live profile switch on `tab`: the same log continues with the new session, provided `tab` is
     // the one currently being logged - takes an explicit tab rather than reading ActiveWindowTab
     // because SwitchProfileAsync can run for a tab that isn't the active one.
-    private void FollowLogging(WindowTab tab) => SessionLogging.Follow(_logger, tab.Tab.Session, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions));
+    private void FollowLogging(WindowTab tab) => SessionLogging.Follow(tab.Logger, tab.Tab.Session, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions));
 
-    private void RefreshLoggingUi()
+    /// <summary>
+    /// Reflects the active tab's own logging state into the menu item and status bar. Safe with no
+    /// tab active (zero tabs): disables the menu item and clears the status text.
+    /// </summary>
+    private void RefreshLoggingUiForActiveTab()
     {
-        LoggingMenuItem.Header = _logger is null ? StartLoggingHeader : StopLoggingHeader;
-        LoggingStatusText.Text = _logger?.Path is { } path ? $"● REC {Path.GetFileName(path)}" : string.Empty;
+        var logger = ActiveWindowTabOrNull?.Logger;
+        LoggingMenuItem.IsEnabled = ActiveWindowTabOrNull is not null;
+        LoggingMenuItem.Header = logger is null ? StartLoggingHeader : StopLoggingHeader;
+        LoggingStatusText.Text = logger?.Path is { } path ? $"● REC {Path.GetFileName(path)}" : string.Empty;
 
         // The file name trims to the status bar's width; the tooltip has the whole path.
-        LoggingStatusText.ToolTip = _logger?.Path;
+        LoggingStatusText.ToolTip = logger?.Path;
     }
 
     private void LoggingMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_logger is not null)
+        if (ActiveWindowTabOrNull is not { } activeTab)
+        {
+            return;
+        }
+
+        if (activeTab.Logger is not null)
         {
             StopLogging();
             return;
         }
 
-        var tabOptions = ActiveWindowTab.Tab.CliOptions;
+        var tabOptions = activeTab.Tab.CliOptions;
         var suggested = SessionLogging.DefaultLogPath(tabOptions, _profileStore.FindName(tabOptions), DateTimeOffset.Now);
         Directory.CreateDirectory(Path.GetDirectoryName(suggested)!);
         var dialog = new Microsoft.Win32.SaveFileDialog
@@ -145,7 +164,7 @@ public partial class MainWindow
         Logging.Playback.PlaybackController controller;
         try
         {
-            controller = new PlaybackPresenters(ActiveWindowTab.Tab.CliOptions).Open(path, clock);
+            controller = new PlaybackPresenters(ActiveWindowTabOrNull?.Tab.CliOptions ?? _lastCliOptions).Open(path, clock);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SessionLogFormatException or ArgumentException or NotSupportedException)
         {

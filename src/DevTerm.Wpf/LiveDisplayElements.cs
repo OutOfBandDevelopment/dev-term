@@ -263,7 +263,7 @@ internal sealed class VectorElement : LiveDisplayElement
         if (Vector.HasPoint)
         {
             var point = Project(Vector.Point);
-            Brush brush = Vector.Color is { } c
+            var brush = Vector.Color is { } c
                 ? new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B))
                 : BrushFor(ChartPalette.SlotsFor(DarkPalette)[0]);
             if (control.Coordinates == CoordinateSystem.Polar)

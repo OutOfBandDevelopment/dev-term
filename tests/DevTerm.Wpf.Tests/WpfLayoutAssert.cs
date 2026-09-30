@@ -308,7 +308,7 @@ internal static class WpfLayoutAssert
     internal static Color? EffectiveBackground(DependencyObject element)
     {
         var layers = new List<(Color Color, double Opacity)>();
-        for (DependencyObject? current = element; current is not null; current = Parent(current))
+        for (var current = element; current is not null; current = Parent(current))
         {
             var brush = current is FrameworkElement fe ? OwnBackground(fe) : null;
             if (brush is null)

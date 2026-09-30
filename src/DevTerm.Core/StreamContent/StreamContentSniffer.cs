@@ -51,7 +51,7 @@ public static class StreamContentSniffer
 
     private static readonly byte[] _pngSignature = [0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A];
     private static readonly byte[] _binaryEpsSignature = [0xC5, 0xD0, 0xD3, 0xC6];
-    private static readonly byte[] _pjlUel ="\u001b%-12345X"u8.ToArray();
+    private static readonly byte[] _pjlUel = "\u001b%-12345X"u8.ToArray();
 
     // The HP-GL/HP-GL/2 instructions a real plot stream is made of - a two-uppercase-letter pair is
     // only counted as an instruction if it's one of these, which is what keeps ordinary uppercase

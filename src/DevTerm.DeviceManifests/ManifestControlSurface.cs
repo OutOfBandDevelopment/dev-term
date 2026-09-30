@@ -58,7 +58,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
                 _passiveIds.UnionWith(fieldIds.Where(id => !_commandsById.ContainsKey(id)));
             }
 
-            if (control is (IndicatorControl or BarGraphControl or StripChartControl or VectorControl) &&!_commandsById.ContainsKey(control.Id))
+            if (control is (IndicatorControl or BarGraphControl or StripChartControl or VectorControl) && !_commandsById.ContainsKey(control.Id))
             {
                 _passiveIds.Add(control.Id);
             }

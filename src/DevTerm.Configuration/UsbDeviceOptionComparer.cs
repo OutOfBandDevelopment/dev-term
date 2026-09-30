@@ -17,7 +17,7 @@ public sealed class UsbDeviceOptionComparer : IComparer<IUsbDeviceOption>
         cmp = x.ProductId.CompareTo(y.ProductId);
         if (cmp != 0) return cmp;
 
-        cmp= CompareSerial(x.SerialNumber, y.SerialNumber);
+        cmp = CompareSerial(x.SerialNumber, y.SerialNumber);
         if (cmp != 0) return cmp;
 
         return CompareSerial(x.DevicePath, y.DevicePath);

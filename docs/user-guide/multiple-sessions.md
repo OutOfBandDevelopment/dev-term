@@ -22,10 +22,10 @@ Each tab keeps its own output pane, its own `Send:` field and history, and its o
 — the shared status line, title bar, and Device menu always describe whichever tab is currently
 active, switching the instant you click a different tab or move focus to it.
 
-**File > Close Session** closes the active tab: its connection closes, its output pane and tab
-header disappear, and the tab strip switches to a remaining tab. It's disabled (and does nothing if
-invoked anyway) when only one tab is open — there's always at least one session while the window is
-open.
+**File > Close Session** closes the active tab: its connection closes (along with that tab's own
+logging and Stream Monitor, if either was running), its output pane and tab header disappear, and
+the tab strip switches to a remaining tab. Closing the last tab doesn't exit dev-term — the window
+stays open with no tabs at all (see [Zero tabs](#zero-tabs) below).
 
 ## WPF
 
@@ -35,14 +35,32 @@ over a `TabControl`, added alongside the TUI's in the same feature (see
 with its own output list, send box and history, and the window's shared chrome follows whichever tab
 is active, the same way.
 
-## What doesn't (yet) follow the active tab
+## Keyboard shortcuts
 
-Two things are deliberately window-level rather than per-tab for now (see
-[`docs/design/multi-session-ui.md`](../design/multi-session-ui.md)'s Step 4):
+Both front ends bind the same four shortcuts: **Ctrl+T** opens New Session, **Ctrl+W** closes the
+active tab (File > Close Session), and **Ctrl+Tab** / **Ctrl+Shift+Tab** switch to the next/previous
+tab, wrapping around at either end (a no-op with fewer than two tabs open).
 
-- **Session logging** ([Logging and playing back a session](logging-and-playback.md)) and the
-  **[Stream Monitor](stream-monitor.md)** both keep following whichever tab was active when they
-  were started or opened, not whichever tab is active right now.
-- The **Send as** parser choice is set on whichever tab is active at the time you pick it, but the
-  menu itself isn't rebuilt per tab — switching tabs doesn't show you the newly active tab's own
-  parser selection.
+## Logging and the Stream Monitor are per-tab
+
+**Session logging** ([Logging and playing back a session](logging-and-playback.md)) and the
+**[Stream Monitor](stream-monitor.md)** each belong to the tab that was active when you started or
+opened them. Two tabs can log to two different files, or have two Stream Monitor windows open, at
+the same time, independently — switching tabs switches which log/monitor the File/Device menu items
+say is running, and closing a tab stops that tab's own log/monitor without touching any other tab's.
+
+## Zero tabs
+
+Closing the last open tab (File > Close Session, or its "✕") leaves the window open rather than
+exiting dev-term. Everything connection- and device-dependent disables — the `Send:` field, Device
+Profiles, Stream Monitor, every Device menu item — and the status line reads something like "No
+sessions open — use File > New Session... to start one." **File > New Session...** is the only way
+back to a tab; it reopens the Connection Editor seeded from whichever tab's connection was last
+active, rather than a blank form. Once a tab exists again, everything re-enables the normal way.
+
+## One thing that doesn't (yet) follow the active tab
+
+The TUI's **Send as** parser choice is set on whichever tab is active at the time you pick it, but
+the menu itself isn't rebuilt per tab — switching tabs in the TUI doesn't show you the newly active
+tab's own parser selection. (The WPF front end doesn't have this gap — its parser picker already
+updates per tab.)
