@@ -19,8 +19,6 @@ Completed work is logged by date under `docs/changes/`.
 ### TUI layout review follow-ups (from 2026-09-25)
 
 - **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
-- **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
-  invisible field backgrounds, faint focus).
 
 ### UI batch (started 2026-09-25)
 

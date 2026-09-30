@@ -50,6 +50,15 @@ public static class BuiltInThemes
         [ThemeRole.ChartMuted] = "#8A8984",
     });
 
+    /// <summary>
+    /// <see cref="ThemeRole.SelectionBackground"/> (<c>#2A66C2</c>) was brightened from the original
+    /// VS-Code-style <c>#264F78</c> on 2026-09-30: under Terminal.Gui's legacy-conhost 16-color downgrade
+    /// (see docs/design/theming.md), the old value's nearest ANSI-16 color was the same "DarkGray" that
+    /// <see cref="ThemeRole.FieldBackground"/>/<see cref="ThemeRole.ControlHoverBackground"/> also snap to,
+    /// so a focused field rendered the same background as a merely-editable one - "faint focus". The new
+    /// value's nearest ANSI-16 color is "BrightBlue" instead, verified by
+    /// <c>DevTerm.Console.Tests.LegacyConsole16ColorTests</c>.
+    /// </summary>
     public static DevTermTheme Dark { get; } = Build(DarkName, ChartPaletteVariant.Dark, new()
     {
         [ThemeRole.Background] = "#1E1E1E",
@@ -60,7 +69,7 @@ public static class BuiltInThemes
         [ThemeRole.ControlBorder] = "#5A5A5A",
         [ThemeRole.FieldBackground] = "#3C3C3C",
         [ThemeRole.ControlHoverBackground] = "#3A3D41",
-        [ThemeRole.SelectionBackground] = "#264F78",
+        [ThemeRole.SelectionBackground] = "#2A66C2",
         [ThemeRole.SelectionForeground] = "#FFFFFF",
         [ThemeRole.MenuBackground] = "#252526",
         [ThemeRole.MenuForeground] = "#E6E6E6",

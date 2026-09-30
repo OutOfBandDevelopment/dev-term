@@ -96,6 +96,17 @@ the rest.
   than fixed alongside that review's other follow-ups — no known defect driving it, just an area that
   hasn't been looked at yet.
 
+### TUI theming
+
+- **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
+  ANSI-16 color ("White") under Terminal.Gui's legacy-conhost 16-color downgrade** — worse than the
+  `dark` theme's equivalent collision fixed 2026-09-30 (see `docs/design/theming.md`'s "TUI" section),
+  since all three roles collapse here, not just two. Not fixed yet: `light`'s field/selection colors
+  are deliberately close to white for the WPF app's look, and darkening them enough to separate under
+  16-color legacy conhost would change that look too, for a narrower case (a legacy black-background
+  console running the *light* theme, rather than `dark`, dev-term's default). Needs a decision on
+  whether to accept a WPF-visible palette change, or scope a TUI-only override instead.
+
 ### Proposed Ideas
 
 - Have a theme builder
