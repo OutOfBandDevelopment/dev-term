@@ -206,14 +206,30 @@ W -> W : add tab to Tabs/TabControl, make it active
 **Step 1 done.** `SessionTab` (`src/DevTerm.Configuration/SessionTab.cs`) is extracted and both
 `TuiMode.BuildWindow` and `MainWindow` hold exactly one `SessionTab` (`tab`/`_tab`) instead of
 separate `Session`/`PresenterCatalog`/`CliOptions` fields — a pure, behavior-preserving refactor
-(verified: full solution build + full Unit test suite, 0 failures, both before and after). Steps
-2-5 below are not started. Recommended implementation order, each step independently testable:
+(verified: full solution build + full Unit test suite, 0 failures, both before and after).
+
+**Step 2 done.** `MainWindow` now holds a list of `WindowTab` (a `SessionTab` plus its own `TabItem`,
+output `ListBox`, header `TextBlock`, and event-handler delegates) instead of one; `SessionTabs`
+(`TabControl`) replaces the old window-level `OutputList`, with each tab's `Session.Output`/
+`Disconnected` routed to that tab's own output list rather than "whichever tab is active." File >
+New Session opens the Connection Editor and adds a tab via `DevTermSessionBuilder.Build`; File >
+Close Session (enabled only when more than one tab is open) closes the active tab, its session, and
+any control panels it owns (tracked via `Window.Tag`). `SendHistory`/`ParserBox` are per-tab, as
+recommended above. Deliberately narrowed for this step, deferred to Step 4 below rather than fully
+resolved: closing the last tab is a no-op (can't reach zero tabs yet); session logging and the
+Stream Monitor both stay single, window-level instances that follow "whichever tab was active when
+started/opened," not yet one-per-tab. `DarkControls.xaml` gained `TabControl`/`TabItem` styles (the
+stock Aero2 chrome was hard-coded light, same class of gap as every other stock control themed
+there) — required for `UiLayoutReviewTests`' dark-theme cases to stay green with the new tab strip.
+Verified: full solution build + full Unit test suite, 0 failures.
+
+Steps 3-5 below are not started. Recommended implementation order, each step independently testable:
 
 1. ~~Extract `SessionTab` in `DevTerm.Configuration`, with `TuiMode`/`MainWindow` each still using
    exactly one (a pure refactor — behavior unchanged, but proves the extraction is clean before the
    harder multi-tab UI work).~~ Done.
-2. WPF: wrap the single `SessionTab` in a one-`TabItem` `TabControl`, then wire File > New Session to
-   add a second. WPF's `TabControl` is a known, low-risk quantity.
+2. ~~WPF: wrap the single `SessionTab` in a one-`TabItem` `TabControl`, then wire File > New Session
+   to add a second. WPF's `TabControl` is a known, low-risk quantity.~~ Done.
 3. TUI: same shape using `Terminal.Gui.Views.Tabs`, once WPF has proven the `SessionTab`
    extraction is solid — this is the front end where the tab control itself is the less-proven part,
    so sequencing it second reduces risk.

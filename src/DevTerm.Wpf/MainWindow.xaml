@@ -6,11 +6,35 @@
         xmlns:local="clr-namespace:DevTerm.Wpf"
         mc:Ignorable="d"
         Title="dev-term" Height="480" Width="720" MinHeight="300" MinWidth="480">
+    <Window.Resources>
+        <!-- Applied to each session tab's own output ListBox, built in code-behind
+             (MainWindow.xaml.cs's CreateWindowTab) - one per SessionTab, not a single window-level
+             control, so each tab keeps its own scrollback. Items are OutputLine records: device
+             output in the normal color, app status lines dimmed and italic, errors in the error
+             color (theme roles OutputStatus/OutputError, WpfTheme) - so they can't be mistaken for
+             each other. -->
+        <DataTemplate x:Key="OutputLineTemplate" DataType="{x:Type local:OutputLine}">
+            <TextBlock x:Name="LineText" Text="{Binding Text}" />
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Status}">
+                    <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputStatus}" />
+                    <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Error}">
+                    <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
+                    <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
                 <MenuItem Header="_Device Profiles..." Click="DeviceProfiles_Click" />
+                <Separator />
+                <MenuItem Header="_New Session..." Click="NewSession_Click" />
+                <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" Click="CloseSession_Click" />
                 <Separator />
                 <!-- Logger mode and playback: MainWindow.Logging.cs. -->
                 <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
@@ -61,25 +85,10 @@
                 <ComboBox x:Name="SendBox" IsEditable="True" IsTextSearchEnabled="False"
                           VerticalContentAlignment="Center" PreviewKeyDown="SendBox_PreviewKeyDown" />
             </DockPanel>
-            <!-- Items are OutputLine records: device output in the normal color, app status lines
-                 dimmed and italic, errors in the error color (theme roles OutputStatus/OutputError, WpfTheme) - so they can't be mistaken for each other. -->
-            <ListBox x:Name="OutputList" FontFamily="Consolas" ScrollViewer.HorizontalScrollBarVisibility="Auto">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type local:OutputLine}">
-                        <TextBlock x:Name="LineText" Text="{Binding Text}" />
-                        <DataTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Status}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputStatus}" />
-                                <Setter TargetName="LineText" Property="FontStyle" Value="Italic" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Error}">
-                                <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
-                                <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
-                            </DataTrigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <!-- One TabItem per open SessionTab, built in code-behind (MainWindow.xaml.cs's
+                 CreateWindowTab) - see docs/design/multi-session-ui.md. Starts with exactly one tab,
+                 same as before multi-session support; File > New Session adds another. -->
+            <TabControl x:Name="SessionTabs" SelectionChanged="SessionTabs_SelectionChanged" />
         </DockPanel>
     </DockPanel>
 </Window>

@@ -118,6 +118,33 @@ public sealed class ConnectionDescriptionTests
     }
 
     [TestMethod]
+    public void Subject_ForANonSavedConnection_IsTheDefinition()
+    {
+        var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
+        var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" };
+
+        Assert.AreEqual("tcp://192.168.0.110:23", ConnectionDescription.Subject(options, store));
+    }
+
+    [TestMethod]
+    public void Subject_ForASavedProfile_IsTheProfileName()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}");
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var options = new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" };
+            store.Save("tek2230", options);
+
+            Assert.AreEqual("tek2230", ConnectionDescription.Subject(options, store));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void WindowTitle_ForANonSavedConnection_UsesTheDefinitionAndTheFormats()
     {
         var store = new ConnectionProfileStore(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
