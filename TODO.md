@@ -20,7 +20,6 @@ Completed work is logged by date under `docs/changes/`.
   charts shrink to the column would fix it.
 - **Cap field widths on wide windows.** At 1600px, text boxes and combos in Device Profiles and the
   manifest editor stretch across the whole window.
-- **The Manifest Editor's pane title repeats its first section header** ("Identity" / "Identity").
 - **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
 - **Not every review PNG was opened by eye:** most large-size captures, SCPI panels other than DS1102E and
   Generic, most manifest-editor node kinds, and the menus in the second theme.

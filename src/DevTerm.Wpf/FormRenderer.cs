@@ -50,7 +50,15 @@ internal static class FormRenderer
             var panel = new StackPanel();
             if (!string.IsNullOrWhiteSpace(section.Label))
             {
-                panel.Children.Add(new TextBlock { Text = section.Label, FontWeight = FontWeights.Bold, Margin = new Thickness(0, first ? 0 : 8, 0, 2) });
+                // Suppressed for the first section when its label just repeats a title the host already
+                // shows above the whole form (e.g. the manifest editor's PaneTitle) — otherwise a
+                // single-category form (ManifestIdentityForm) reads "Identity" / "Identity".
+                var repeatsHostTitle = first && string.Equals(section.Label, options.HideFirstSectionHeaderIfEquals, StringComparison.Ordinal);
+                if (!repeatsHostTitle)
+                {
+                    panel.Children.Add(new TextBlock { Text = section.Label, FontWeight = FontWeights.Bold, Margin = new Thickness(0, first ? 0 : 8, 0, 2) });
+                }
+
                 parts.SectionPanels[section.Label] = panel;
             }
 
@@ -307,6 +315,9 @@ internal sealed class WpfFormOptions
 
     /// <summary>The label column's minimum width - it grows, across the whole form, to fit the longest label; null sizes each row's own label column to its label.</summary>
     public double? LabelColumnWidth { get; set; } = 140;
+
+    /// <summary>When the form's first section's label equals this (ordinal), that section's own bold header is left off — the host already shows this text as the form's title.</summary>
+    public string? HideFirstSectionHeaderIfEquals { get; set; }
 }
 
 /// <summary>One rendered WPF form: its root element plus the lookups a host or test needs, keyed by <see cref="UiControl.Id"/>.</summary>

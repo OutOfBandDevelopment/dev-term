@@ -144,7 +144,7 @@ public partial class ManifestEditorWindow : Window
         }
 
         _binding = new FormBinding(form);
-        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, new WpfFormOptions { LabelColumnWidth = 130 });
+        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, new WpfFormOptions { LabelColumnWidth = 130, HideFirstSectionHeaderIfEquals = PaneTitle.Text });
         FormHost.Content = Form.Root;
     }
 
