@@ -4,12 +4,12 @@
 │  Service UUID:                                                              ░│
 │  Write characteristic UUID:                                                 ░│
 │  Notify characteristic UUID:                                                ░│
-│  Detected BLE devices:              ⟦ Detect BLE... ⟧▖                      ░│
-│                                     ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                      ░│
-│  Detected characteristics (write):  ⟦ Detect characteristics... ⟧▖          █│
-│                                     ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘          █│
-│  Detected characteristics (notify): ⟦ Pick... ⟧▖                            █│
-│                                     ▝▀▀▀▀▀▀▀▀▀▀▘                            █│
+│  Detected BLE devices:              ⟦ Detect BLE... ⟧                       ░│
+│                                                                             ░│
+│  Detected characteristics (write):  ⟦ Detect characteristics... ⟧           █│
+│                                                                             █│
+│  Detected characteristics (notify): ⟦ Pick... ⟧                             █│
+│                                                                             █│
 │                                                                             █│
 │── Presentation ──                                                           █│
 │  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     █│
@@ -21,5 +21,5 @@
 │  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          ░│
 │  ASCII max line length: 4096                                                ░│
 │                                                                             ░│
-│Save as profile named:                      ⟦ Save Profile ⟧▖                ▼│
+│Save as profile named:                      ⟦ Save Profile ⟧                 ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

@@ -1,13 +1,13 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │                                                                             ▲│
 │Saved profiles:                                                              █│
-│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖            █│
-│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘            █│
+│                               ⟦ Load ⟧  ⟦ Delete ⟧  ⟦ Refresh ⟧             █│
 │                                                                             █│
 │                                                                             █│
 │                                                                             █│
-│⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
+│                                                                             █│
+│⟦ Export Selected ⟧  ⟦ Export All ⟧  ⟦ Delete Selected ⟧                     █│
+│                                                                             █│
 │                                                                             █│
 │  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ loopback           █│
 │  Description: Tektronix 2230 bench scope                                    █│

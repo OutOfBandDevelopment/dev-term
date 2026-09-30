@@ -16,10 +16,6 @@ Completed work is logged by date under `docs/changes/`.
 - **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
   charts shrink to the column would fix it.
 
-### TUI layout review follow-ups (from 2026-09-25)
-
-- **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
-
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
