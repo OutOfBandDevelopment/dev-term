@@ -37,11 +37,18 @@ overly broad mask.
 
 ## Commands
 
-    python scripts/image-diff/image_diff.py [diff] [--ref HEAD] [--save-diff DIR] [--tolerance N] [file ...]
+    python scripts/image-diff/image_diff.py [diff] [--ref HEAD] [--save-diff DIR] [--tolerance N]
+                                             [--no-restore] [file ...]
         Diff mode (default). With no file arguments, diffs every changed-or-new
         docs/user-guide/images/*.png (per `git status`) against --ref. Exit code 0 if every change is
         fully covered by that file's mask sidecar (or there's no change at all), 1 if any file has a
         diff pixel outside its mask.
+
+        When a file's diff is fully covered by its mask (nothing to actually review), the working-tree
+        PNG - and its paired `.txt` sidecar, if one exists (e.g. TuiTestRunner.DumpBuffer() dumps) - is
+        restored to --ref by default, so a screenshot that only re-rendered masked noise (a randomized
+        temp path, say) doesn't churn a new binary into git for no reason. Pass --no-restore to only
+        report instead.
 
     python scripts/image-diff/image_diff.py render-masks [--out-dir artifacts/image-diff-preview] [file ...]
         Draws each image's declared mask rects (outlined + translucent fill, numbered) onto a copy of
@@ -116,7 +123,23 @@ def rect_mask_image(size: tuple[int, int], regions: list[dict]) -> Image.Image:
     return mask
 
 
-def diff_one(path: str, ref: str, tolerance: int, save_diff_dir: Path | None) -> bool:
+def restore_to_baseline(image_path: Path, ref: str) -> None:
+    """Checks out image_path (and its paired .txt sidecar, if any) from ref, undoing a
+    regeneration whose only diff was inside a declared mask region."""
+    paths = [image_path]
+    txt_path = image_path.with_suffix(".txt")
+    if txt_path.exists():
+        paths.append(txt_path)
+
+    for p in paths:
+        result = subprocess.run(["git", "checkout", ref, "--", str(p)], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"      restored {p} to {ref} (masked diff only, no real content change)")
+        else:
+            print(f"      WARN: could not restore {p}: {result.stderr.strip()}")
+
+
+def diff_one(path: str, ref: str, tolerance: int, save_diff_dir: Path | None, restore: bool) -> bool:
     """Returns True if the file is clean (no unmasked diff)."""
     working_path = Path(path)
     if not working_path.exists():
@@ -153,6 +176,8 @@ def diff_one(path: str, ref: str, tolerance: int, save_diff_dir: Path | None) ->
 
     if bbox is None:
         print(f"OK*   {path}: diff fully covered by {mask_sidecar_path(working_path).name} ({len(regions)} region(s))")
+        if restore:
+            restore_to_baseline(working_path, ref)
         return True
 
     diff_pixels = sum(diff_gray.histogram()[1:])
@@ -177,10 +202,11 @@ def run_diff(args: argparse.Namespace) -> int:
         return 0
 
     save_diff_dir = Path(args.save_diff) if args.save_diff else None
+    restore = not args.no_restore
 
     all_clean = True
     for path in files:
-        clean = diff_one(path, args.ref, args.tolerance, save_diff_dir)
+        clean = diff_one(path, args.ref, args.tolerance, save_diff_dir, restore)
         all_clean = all_clean and clean
 
     return 0 if all_clean else 1
@@ -242,6 +268,7 @@ def main() -> int:
     diff_parser.add_argument("--ref", default="HEAD", help="git ref to diff against (default: HEAD)")
     diff_parser.add_argument("--save-diff", metavar="DIR", help="write an amplified diff PNG for each unmasked-diff file into DIR")
     diff_parser.add_argument("--tolerance", type=int, default=0, help="per-channel delta to ignore before masking (default: 0 - renders are proven deterministic)")
+    diff_parser.add_argument("--no-restore", action="store_true", help="only report fully-masked diffs instead of checking the file back out to --ref")
     diff_parser.set_defaults(func=run_diff)
 
     render_parser = subparsers.add_parser("render-masks", help="render each image's declared mask rects onto a copy, for visual review")
