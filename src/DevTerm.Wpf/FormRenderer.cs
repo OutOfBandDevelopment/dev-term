@@ -36,6 +36,9 @@ internal static class FormRenderer
 
     private const string _labelSizeGroup = "FormLabel";
 
+    /// <summary>Caps a text box/combo's stretch so a wide window (1600px+) doesn't stretch a short value across it.</summary>
+    private const double _fieldMaxWidth = 420;
+
     public static WpfFormParts Build(UiDefinition definition, FormBinding binding, WpfFormOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -182,7 +185,7 @@ internal static class FormRenderer
 
             case ChoiceControl choice:
                 {
-                    var box = new ComboBox { ItemsSource = choice.Options, VerticalAlignment = VerticalAlignment.Center };
+                    var box = new ComboBox { ItemsSource = choice.Options, VerticalAlignment = VerticalAlignment.Center, MaxWidth = _fieldMaxWidth };
                     box.SelectionChanged += (_, _) =>
                     {
                         if (box.SelectedItem is string selected)
@@ -284,7 +287,7 @@ internal static class FormRenderer
         };
         parts.TextBoxes[control.Id] = box;
 
-        var stack = new StackPanel();
+        var stack = new StackPanel { MaxWidth = _fieldMaxWidth };
         if (control is NumericControl numeric && numeric.Minimum > double.MinValue / 2 && numeric.Maximum < double.MaxValue / 2)
         {
             var line = new DockPanel();
