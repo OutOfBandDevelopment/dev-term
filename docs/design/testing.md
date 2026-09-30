@@ -215,3 +215,18 @@ confirmed empirically that a `Window` only ever `Measure`d/`Arrange`d (never sho
 renders as a blank image, so `WpfScreenshot.ShowOffScreen` moves the window off any real monitor and
 calls `Show()` rather than skipping it. See `.claude/skills/docs-sync/SKILL.md` for the "screenshots
 are tests, not manual chores" workflow this implies.
+
+Both capture paths are fully deterministic — no live clock, no unseeded `Random` anywhere in the
+render path (`DevTerm.Transports.Loopback`'s demo generators are explicitly documented deterministic)
+— confirmed by running the same screenshot test twice in a row and comparing SHA-256 hashes
+(byte-identical; see `docs/changes/2026-09-30.md`). So after running the test suites, every changed
+`docs/user-guide/images/*.png` reflects a real code change, never re-encoding noise, however small
+its binary diff looks. `scripts/image-diff/image_diff.py` pixel-diffs each changed screenshot against
+a git ref and reports whether the diff falls inside a region declared "expected" for the current edit
+in that image's own mask sidecar (`<image-name>.mask.json`, co-located next to the PNG under
+`docs/user-guide/images/` — one file per image, since a given edit's expected-change regions are
+specific to that image) — use it instead of opening every regenerated PNG by eye before deciding what
+to keep and what to `git checkout --` back to its baseline. `image_diff.py render-masks` draws a
+sidecar's declared rects onto a copy of its image (written to `artifacts/image-diff-preview/`,
+untracked, same convention as the TUI/WPF layout-review screenshots) so a mask's placement can be
+checked visually instead of by reading raw coordinates.
