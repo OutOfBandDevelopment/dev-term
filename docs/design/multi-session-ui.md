@@ -1,11 +1,13 @@
 # Multiple sessions per window
 
-Both front ends' main windows still hold exactly one `Session` (see [`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md)
-and [`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md), each still listing "Only one
-session per window" under Open items). This doc designs the change: opening more than one
-connection at once, side by side, in the same window, in both front ends. Queued last in `TODO.md`'s
-UI batch on purpose — it restructures both main windows and touches more shared front-end code than
-any single item before it.
+Both front ends' main windows now hold a tab strip of `Session`s instead of exactly one — see
+[`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md) and
+[`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md) for the shipped behavior (Steps 1-3
+below). This doc designed the change: opening more than one connection at once, side by side, in the
+same window, in both front ends. Queued last in `TODO.md`'s UI batch on purpose — it restructures
+both main windows and touches more shared front-end code than any single item before it. What
+remains (Step 4) is the Open questions below that were deliberately deferred rather than resolved up
+front — see **Status**.
 
 ## Why this was blocked until now
 
@@ -263,6 +265,8 @@ Step 4 below is not started. Recommended implementation order, each step indepen
    zero-tab behavior, shortcuts) as part of implementing New/Close Session, not before — each is
    small enough to decide in its own step rather than blocking the whole feature on a
    design-doc-only decision.
-5. Update `docs/specs/tui-main-screen.md` and `docs/specs/wpf-main-window.md`'s **Open items**
+5. ~~Update `docs/specs/tui-main-screen.md` and `docs/specs/wpf-main-window.md`'s **Open items**
    sections and add the new Fields/Actions/States entries for tab-related UI, in the same change that
-   implements each piece — not deferred to the end.
+   implements each piece — not deferred to the end.~~ Done (2026-09-30): both specs now document the
+   tab strip in full; each still lists the same two Step-4-deferred Open items (session logging/Stream
+   Monitor staying window-level, zero-tab behavior).
