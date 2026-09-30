@@ -15,6 +15,7 @@ using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
+using DevTerm.Logging;
 
 namespace DevTerm.Wpf;
 
@@ -54,6 +55,14 @@ public partial class MainWindow : Window
         // the earlier attempt's failure handler would stomp the newer one's UI once it finally
         // resolved. See docs/bugs/017-wpf-profile-switch-no-supersede.md.
         public CancellationTokenSource? SwitchCts { get; set; }
+
+        // Per-tab logging/Stream Monitor (docs/design/multi-session-ui.md's Step 4) - each tab owns
+        // its own logger and monitor rather than the window sharing one across every tab.
+        public SessionLogger? Logger { get; set; }
+
+        public StreamMonitor? Monitor { get; set; }
+
+        public StreamMonitorWindow? MonitorWindow { get; set; }
     }
 
     private readonly List<WindowTab> _tabs = [];
@@ -70,13 +79,6 @@ public partial class MainWindow : Window
     /// </summary>
     internal int ClosingCleanupRunCount { get; private set; }
 
-    // Device > Stream Monitor...: created on first use, then kept (and moved along on every profile
-    // switch) for this window's lifetime - see EnsureStreamMonitor. Not yet per-tab (docs/design/
-    // multi-session-ui.md's Open questions defers that to Step 4); it follows whichever tab was
-    // active when it was opened/last pointed at a session.
-    private StreamMonitor? _streamMonitor;
-    private StreamMonitorWindow? _streamMonitorWindow;
-
     // Every open control panel (K8055, Busylight, RadexOne, ZoomH4n, De5000, SCPI, a device manifest
     // panel) holds an IControlSurface built against one tab's Session and, for most of them, a
     // structured presenter from that tab's Catalog - both go stale the moment that tab's session is
@@ -88,12 +90,18 @@ public partial class MainWindow : Window
     /// <summary>Every currently open control panel window, for tests to assert against.</summary>
     internal IReadOnlyList<Window> OpenControlPanels => _openControlPanels;
 
+    // The most recently active tab's CliOptions, kept around as a seed for File > New Session... /
+    // Open Log for Playback... once the window has zero tabs open (Step 4's zero-tab support - see
+    // docs/design/multi-session-ui.md) and there's no ActiveWindowTab left to read it from.
+    private CliOptions _lastCliOptions;
+
     /// <param name="profileStore">What the title checks "is this connection a saved profile?" against, and what the Device Profiles window edits — defaults to the user's real profiles folder; a test passes an isolated one.</param>
     public MainWindow(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
     {
         InitializeComponent();
         WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
+        _lastCliOptions = cliOptions;
 
         var tab = AddTab(new SessionTab(session, catalog, cliOptions));
 
@@ -111,18 +119,79 @@ public partial class MainWindow : Window
 
         // MenuItem.InputGestureText only labels the shortcut in the menu - it doesn't register a
         // live accelerator by itself (same gotcha found for Terminal.Gui's MenuItem.Key building
-        // the TUI's own menu - see TuiMode.BuildWindow), so Ctrl+Q needs an explicit handler too.
+        // the TUI's own menu - see TuiMode.BuildWindow), so every shortcut below needs an explicit
+        // handler too.
         PreviewKeyDown += (_, e) =>
         {
-            if (e.Key == Key.Q && Keyboard.Modifiers == ModifierKeys.Control)
+            if (HandleGlobalKeyDown(e.Key, Keyboard.Modifiers))
             {
                 e.Handled = true;
-                Close();
             }
         };
     }
 
-    private WindowTab ActiveWindowTab => (WindowTab)((TabItem)SessionTabs.SelectedItem).Tag;
+    /// <summary>
+    /// The window-wide keyboard shortcuts (Ctrl+Q exit, Ctrl+T new session, Ctrl+W close session,
+    /// Ctrl+Tab/Ctrl+Shift+Tab next/previous tab) - split out from the <c>PreviewKeyDown</c> handler
+    /// so tests can drive it directly, the same reasoning as <see cref="HandleSendBoxKey"/>. Returns
+    /// whether the key was handled.
+    /// </summary>
+    internal bool HandleGlobalKeyDown(Key key, ModifierKeys modifiers)
+    {
+        if (modifiers == ModifierKeys.Control)
+        {
+            switch (key)
+            {
+                case Key.Q:
+                    Close();
+                    return true;
+
+                case Key.T:
+                    NewSession_Click(this, new RoutedEventArgs());
+                    return true;
+
+                case Key.W:
+                    if (ActiveWindowTabOrNull is { } tab)
+                    {
+                        Observe(CloseTabAsync(tab));
+                    }
+
+                    return true;
+
+                case Key.Tab:
+                    SelectAdjacentTab(1);
+                    return true;
+            }
+        }
+        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.Tab)
+        {
+            SelectAdjacentTab(-1);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Moves <see cref="SessionTabs"/>'s selection by <paramref name="direction"/> tabs, wrapping around. A no-op with fewer than two tabs.</summary>
+    private void SelectAdjacentTab(int direction)
+    {
+        if (_tabs.Count < 2)
+        {
+            return;
+        }
+
+        var currentIndex = SessionTabs.SelectedIndex;
+        if (currentIndex < 0)
+        {
+            return;
+        }
+
+        SessionTabs.SelectedIndex = (currentIndex + direction + _tabs.Count) % _tabs.Count;
+    }
+
+    private WindowTab? ActiveWindowTabOrNull => SessionTabs.SelectedItem is TabItem { Tag: WindowTab tab } ? tab : null;
+
+    private WindowTab ActiveWindowTab => ActiveWindowTabOrNull ?? throw new InvalidOperationException("No session tabs are open.");
 
     /// <summary>The active tab's own output list — kept as a same-named, same-accessibility property (not a field) so every existing single-tab test call site (<c>window.OutputList...</c>) keeps working unchanged.</summary>
     internal ListBox OutputList => ActiveWindowTab.OutputList;
@@ -134,9 +203,14 @@ public partial class MainWindow : Window
 
     private void ParserBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return;
+        }
+
         if (ParserBox.SelectedItem is string parser)
         {
-            ActiveWindowTab.Tab.Parser = parser;
+            tab.Tab.Parser = parser;
         }
 
         Title = TitleText;
@@ -207,16 +281,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        _lastCliOptions = tab.Tab.CliOptions;
         ParserBox.ItemsSource = tab.Tab.Catalog.InputNames;
         ParserBox.SelectedItem = tab.Tab.Parser;
         SendBox.ItemsSource = tab.Tab.SendHistory.Items;
         SendBox.Text = string.Empty;
         RefreshConnectionUi(tab);
+        RefreshLoggingUiForActiveTab();
     }
 
     private void NewSession_Click(object sender, RoutedEventArgs e)
     {
-        var window = new DeviceProfilesWindow(_profileStore, ActiveWindowTab.Tab.CliOptions) { Owner = this };
+        var seedOptions = ActiveWindowTabOrNull?.Tab.CliOptions ?? _lastCliOptions;
+        var window = new DeviceProfilesWindow(_profileStore, seedOptions) { Owner = this };
         window.ShowDialog();
 
         if (window.Result is not { } chosen)
@@ -232,7 +309,15 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            AppendOutput($"Could not open a new session: {ex.Message}", OutputKind.Error);
+            if (ActiveWindowTabOrNull is { } activeTab)
+            {
+                AppendOutput(activeTab, $"Could not open a new session: {ex.Message}", OutputKind.Error);
+            }
+            else
+            {
+                MessageBox.Show(this, $"Could not open a new session: {ex.Message}", "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
             return;
         }
 
@@ -241,17 +326,23 @@ public partial class MainWindow : Window
         Observe(ConnectAsync());
     }
 
-    private void CloseSession_Click(object sender, RoutedEventArgs e) => Observe(CloseTabAsync(ActiveWindowTab));
+    private void CloseSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveWindowTabOrNull is { } tab)
+        {
+            Observe(CloseTabAsync(tab));
+        }
+    }
 
     /// <summary>
-    /// Closes one tab's session and removes it — the window always keeps at least one tab open
-    /// (closing the last one is a no-op; "zero-tab window" behavior is deferred to Step 4 of
-    /// docs/design/multi-session-ui.md, along with this MenuItem being disabled while only one tab
-    /// remains).
+    /// Closes one tab's session, its Stream Monitor/logger, and any control panels opened from it,
+    /// then removes it. Closing the last remaining tab is allowed (Step 4 of
+    /// docs/design/multi-session-ui.md) — the window stays open with zero tabs, disabled down to
+    /// File > New Session.../Exit/View, via <see cref="HandleZeroTabs"/>.
     /// </summary>
     private async Task CloseTabAsync(WindowTab tab)
     {
-        if (_tabs.Count <= 1 || !_tabs.Contains(tab))
+        if (!_tabs.Contains(tab))
         {
             return;
         }
@@ -260,6 +351,10 @@ public partial class MainWindow : Window
         {
             panel.Close();
         }
+
+        tab.MonitorWindow?.Close();
+        tab.Monitor?.Dispose();
+        StopLogging(tab, report: false);
 
         tab.Tab.Session.Output -= tab.OutputHandler;
         tab.Tab.Session.Disconnected -= tab.DisconnectedHandler;
@@ -274,12 +369,51 @@ public partial class MainWindow : Window
             // worth reporting once its whole tab is going away.
         }
 
+        _lastCliOptions = tab.Tab.CliOptions;
         _tabs.Remove(tab);
         SessionTabs.Items.Remove(tab.Item);
         UpdateCloseSessionAvailability();
+        if (_tabs.Count == 0)
+        {
+            HandleZeroTabs();
+        }
     }
 
-    private void UpdateCloseSessionAvailability() => CloseSessionMenuItem.IsEnabled = _tabs.Count > 1;
+    private void UpdateCloseSessionAvailability() => CloseSessionMenuItem.IsEnabled = _tabs.Count > 0;
+
+    /// <summary>
+    /// Disables everything that needs an active tab (connect, device panels, send row, Stream
+    /// Monitor, logging) once the last one has closed, and shows a neutral "no sessions" status —
+    /// see docs/design/multi-session-ui.md's Step 4 zero-tab behavior. Reversed automatically by
+    /// <see cref="AddTab"/> making the new tab active, which re-enables everything via
+    /// <see cref="RefreshConnectionUi(WindowTab, ConnectionState?)"/>/<see cref="RefreshLoggingUiForActiveTab"/>.
+    /// </summary>
+    private void HandleZeroTabs()
+    {
+        ConnectMenuItem.Header = "_Connect";
+        ConnectMenuItem.IsEnabled = false;
+        DeviceProfilesMenuItem.IsEnabled = false;
+        StreamMonitorMenuItem.IsEnabled = false;
+        K8055MenuItem.IsEnabled = false;
+        BusylightMenuItem.IsEnabled = false;
+        ScpiMenuItem.IsEnabled = false;
+        RadexOneMenuItem.IsEnabled = false;
+        ZoomH4nMenuItem.IsEnabled = false;
+        De5000MenuItem.IsEnabled = false;
+        Nmea0183MenuItem.IsEnabled = false;
+        ManifestMenuItem.IsEnabled = false;
+
+        SendBox.IsEnabled = false;
+        SendBox.Text = string.Empty;
+        SendBox.ItemsSource = null;
+        ParserBox.ItemsSource = null;
+        ParserBox.SelectedItem = null;
+
+        Title = "dev-term";
+        ConnectionStatusText.Text = "No sessions open — File > New Session... to start one.";
+        ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(ThemeRole.StatusDisconnected));
+        RefreshLoggingUiForActiveTab();
+    }
 
     private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
 
@@ -295,7 +429,11 @@ public partial class MainWindow : Window
     /// </remarks>
     internal async Task ConnectAsync()
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return;
+        }
+
         RefreshConnectionUi(tab, ConnectionState.Opening);
         try
         {
@@ -328,12 +466,15 @@ public partial class MainWindow : Window
 
         tab.HeaderText.Text = ConnectionDescription.Subject(tab.Tab.CliOptions, _profileStore);
 
-        if (!ReferenceEquals(tab, ActiveWindowTab))
+        if (!ReferenceEquals(tab, ActiveWindowTabOrNull))
         {
             return;
         }
 
         ConnectMenuItem.Header = connected ? "_Disconnect" : "_Connect";
+        ConnectMenuItem.IsEnabled = true;
+        DeviceProfilesMenuItem.IsEnabled = true;
+        StreamMonitorMenuItem.IsEnabled = true;
         SendBox.IsEnabled = connected;
         Title = TitleText;
 
@@ -352,7 +493,13 @@ public partial class MainWindow : Window
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.Tab.CliOptions, connected);
     }
 
-    private void RefreshConnectionUi(ConnectionState? showState = null) => RefreshConnectionUi(ActiveWindowTab, showState);
+    private void RefreshConnectionUi(ConnectionState? showState = null)
+    {
+        if (ActiveWindowTabOrNull is { } tab)
+        {
+            RefreshConnectionUi(tab, showState);
+        }
+    }
 
     /// <summary>
     /// Observes a fire-and-forget task (an event handler can't await): anything it throws is
@@ -373,7 +520,11 @@ public partial class MainWindow : Window
     /// </summary>
     internal async Task ToggleConnectionAsync()
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return;
+        }
+
         if (tab.Tab.Session.State == ConnectionState.Open)
         {
             await tab.Tab.Session.CloseAsync();
@@ -418,7 +569,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AppendOutput(string line, OutputKind kind = OutputKind.Device) => AppendOutput(ActiveWindowTab, line, kind);
+    private void AppendOutput(string line, OutputKind kind = OutputKind.Device)
+    {
+        // No-ops with zero tabs open - there's no output list left to show it in; see
+        // docs/design/multi-session-ui.md's Step 4 zero-tab behavior.
+        if (ActiveWindowTabOrNull is { } tab)
+        {
+            AppendOutput(tab, line, kind);
+        }
+    }
 
     private void SendBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -441,7 +600,11 @@ public partial class MainWindow : Window
     /// </summary>
     internal bool HandleSendBoxKey(Key key)
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return false;
+        }
+
         switch (key)
         {
             case Key.Enter:
@@ -481,7 +644,11 @@ public partial class MainWindow : Window
     /// </summary>
     internal async Task SendCurrentInputAsync()
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return;
+        }
+
         var line = SendBox.Text;
         SendBox.Text = string.Empty;
         tab.Tab.SendHistory.Add(line);
@@ -773,7 +940,10 @@ public partial class MainWindow : Window
     /// <summary>internal so a test can drive the auto-detect-during-a-profile-switch race directly.</summary>
     internal async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return;
+        }
 
         // Captured so that if SwitchProfileAsync replaces this tab's Session/Catalog while this
         // detection is in flight, the completion below can tell and not open a panel pairing the NEW
@@ -835,33 +1005,36 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Device > Stream Monitor...'s monitor, pointed at the active tab's session and started —
-    /// opening the window is asking to watch. Created on first use and kept for this window's
-    /// lifetime (not yet per-tab — see the class-level field's doc comment), so monitoring (and a
-    /// status line per capture, appended to whichever tab is active at the time) carries on after its
-    /// window closes; <see cref="SwitchProfileAsync"/> moves it along with that tab's session. Split
-    /// from the click handler so tests can drive it without showing a window.
+    /// The active tab's own Stream Monitor, pointed at its session and started — opening the window
+    /// is asking to watch. Created on first use and kept for that tab's lifetime, scoped per-tab
+    /// (docs/design/multi-session-ui.md's Step 4) so one tab's captures never land in another's
+    /// output list; <see cref="CloseTabAsync"/> disposes it when the tab closes and
+    /// <see cref="SwitchProfileAsync"/> moves it along with that tab's session. Split from the click
+    /// handler so tests can drive it without showing a window.
     /// </summary>
-    internal StreamMonitor EnsureStreamMonitor()
+    internal StreamMonitor EnsureStreamMonitor() => EnsureStreamMonitor(ActiveWindowTab);
+
+    private StreamMonitor EnsureStreamMonitor(WindowTab tab)
     {
-        var tab = ActiveWindowTab;
-        if (_streamMonitor is null)
+        if (tab.Monitor is null)
         {
-            _streamMonitor = new StreamMonitor();
-            _streamMonitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(capture.Describe(), OutputKind.Status));
+            var monitor = new StreamMonitor();
+            monitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(tab, capture.Describe(), OutputKind.Status));
+            tab.Monitor = monitor;
         }
 
-        _streamMonitor.SetSession(tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
-        _streamMonitor.Start();
-        return _streamMonitor;
+        tab.Monitor.SetSession(tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
+        tab.Monitor.Start();
+        return tab.Monitor;
     }
 
     // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
     // alongside this window. A second click brings the already-open one forward.
     private void StreamMonitor_Click(object sender, RoutedEventArgs e)
     {
-        var monitor = EnsureStreamMonitor();
-        if (_streamMonitorWindow is { } open)
+        var tab = ActiveWindowTab;
+        var monitor = EnsureStreamMonitor(tab);
+        if (tab.MonitorWindow is { } open)
         {
             open.RefreshState();
             open.Activate();
@@ -869,8 +1042,8 @@ public partial class MainWindow : Window
         }
 
         var window = new StreamMonitorWindow(monitor) { Owner = this };
-        window.Closed += (_, _) => _streamMonitorWindow = null;
-        _streamMonitorWindow = window;
+        window.Closed += (_, _) => tab.MonitorWindow = null;
+        tab.MonitorWindow = window;
         window.Show();
     }
 
@@ -885,7 +1058,11 @@ public partial class MainWindow : Window
     /// <returns><see langword="true"/> if the new connection opened successfully.</returns>
     internal async Task<bool> SwitchProfileAsync(CliOptions newOptions)
     {
-        var tab = ActiveWindowTab;
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            return false;
+        }
+
         tab.SwitchCts?.Cancel();
         var cts = new CancellationTokenSource();
         tab.SwitchCts = cts;
@@ -940,8 +1117,8 @@ public partial class MainWindow : Window
         tab.Tab.Catalog = built.Catalog;
         tab.Tab.CliOptions = newOptions;
         tab.Tab.Parser = newOptions.EffectiveParser;
-        _streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
-        if (ReferenceEquals(tab, ActiveWindowTab))
+        tab.Monitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
+        if (ReferenceEquals(tab, ActiveWindowTabOrNull))
         {
             ParserBox.ItemsSource = built.Catalog.InputNames;
             ParserBox.SelectedItem = newOptions.EffectiveParser;
@@ -1026,9 +1203,11 @@ public partial class MainWindow : Window
 
         _closing = true;
         ClosingCleanupRunCount++;
-        _streamMonitor?.Dispose();
         foreach (var tab in _tabs)
         {
+            tab.MonitorWindow?.Close();
+            tab.Monitor?.Dispose();
+            StopLogging(tab, report: false);
             tab.Tab.Session.Output -= tab.OutputHandler;
             tab.Tab.Session.Disconnected -= tab.DisconnectedHandler;
             try
@@ -1043,7 +1222,6 @@ public partial class MainWindow : Window
             }
         }
 
-        StopLogging(report: false);
         _closeConfirmed = true;
 
         // Never call Close() from inside this Closing event's own call stack: when every tab's

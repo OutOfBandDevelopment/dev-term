@@ -31,10 +31,10 @@
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
-                <MenuItem Header="_Device Profiles..." Click="DeviceProfiles_Click" />
+                <MenuItem x:Name="DeviceProfilesMenuItem" Header="_Device Profiles..." Click="DeviceProfiles_Click" />
                 <Separator />
-                <MenuItem Header="_New Session..." Click="NewSession_Click" />
-                <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" Click="CloseSession_Click" />
+                <MenuItem Header="_New Session..." InputGestureText="Ctrl+T" Click="NewSession_Click" />
+                <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" InputGestureText="Ctrl+W" Click="CloseSession_Click" />
                 <Separator />
                 <!-- Logger mode and playback: MainWindow.Logging.cs. -->
                 <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
@@ -53,7 +53,7 @@
                 <MenuItem x:Name="ManifestMenuItem" Header="Device _Manifest..." Click="DeviceManifest_Click" />
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />
-                <MenuItem Header="S_tream Monitor..." Click="StreamMonitor_Click" />
+                <MenuItem x:Name="StreamMonitorMenuItem" Header="S_tream Monitor..." Click="StreamMonitor_Click" />
             </MenuItem>
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">

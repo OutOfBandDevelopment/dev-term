@@ -32,10 +32,7 @@ public sealed class FormBinding : IDisposable
         ArgumentNullException.ThrowIfNull(source);
         Source = source;
         _notifying = source as INotifyPropertyChanged;
-        if (_notifying is not null)
-        {
-            _notifying.PropertyChanged += OnSourcePropertyChanged;
-        }
+        _notifying?.PropertyChanged += OnSourcePropertyChanged;
     }
 
     /// <summary>The bound model.</summary>
@@ -46,10 +43,7 @@ public sealed class FormBinding : IDisposable
 
     public void Dispose()
     {
-        if (_notifying is not null)
-        {
-            _notifying.PropertyChanged -= OnSourcePropertyChanged;
-        }
+        _notifying?.PropertyChanged -= OnSourcePropertyChanged;
     }
 
     /// <summary>Whether the model has a readable property named <paramref name="id"/>.</summary>

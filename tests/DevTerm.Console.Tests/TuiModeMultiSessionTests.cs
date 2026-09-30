@@ -106,7 +106,7 @@ public sealed class TuiModeMultiSessionTests
             var app = TuiTestRunner.CurrentApp;
 
             Assert.AreEqual(1, TuiTestRunner.InvokeOnLoop(() => parts.AllSessions().Count), "Only the startup tab exists yet.");
-            Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.CloseSessionMenuItem.Enabled), "Close Session is disabled with only one tab.");
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.CloseSessionMenuItem.Enabled), "Close Session is enabled even with only one tab, so the window can reach zero tabs (Step 4).");
 
             OpenNewSessionWithDefaults(app, parts);
 
@@ -151,7 +151,7 @@ public sealed class TuiModeMultiSessionTests
             var closedBackToOne = TuiTestRunner.WaitUntilOnLoop(() => parts.AllSessions().Count == 1, _waitTimeout);
             Assert.IsTrue(closedBackToOne, "Expected Close Session to remove the active (new) tab.");
             Assert.AreEqual(1, TuiTestRunner.InvokeOnLoop(() => parts.TabsView.TabCollection.Count()));
-            Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.CloseSessionMenuItem.Enabled), "Close Session should disable itself again once only one tab remains.");
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.CloseSessionMenuItem.Enabled), "Close Session stays enabled with one tab remaining, so the window can reach zero tabs (Step 4).");
             Assert.AreSame(session, TuiTestRunner.InvokeOnLoop(() => parts.AllSessions()[0]), "The original (startup) tab's session should be the one left open, not the closed one.");
             Assert.AreEqual(ConnectionState.Open, session.State, "Closing the other tab must not touch the remaining tab's own session.");
         });
@@ -160,7 +160,7 @@ public sealed class TuiModeMultiSessionTests
     }
 
     [TestMethod]
-    public async Task CloseSessionMenuItem_WithOnlyOneTab_IsANoOp()
+    public async Task CloseSessionMenuItem_WithOnlyOneTab_ReachesTheZeroTabState()
     {
         var (session, _, presenter) = CreateLoopbackSession();
         await session.OpenAsync(TestContext.CancellationToken);
@@ -174,9 +174,16 @@ public sealed class TuiModeMultiSessionTests
                 return true;
             });
 
-            Assert.AreEqual(1, TuiTestRunner.InvokeOnLoop(() => parts.AllSessions().Count), "Close Session must be a no-op with only one tab.");
-            Assert.AreEqual(1, TuiTestRunner.InvokeOnLoop(() => parts.TabsView.TabCollection.Count()));
-            Assert.AreEqual(ConnectionState.Open, session.State, "The sole remaining tab's session must be untouched.");
+            var reachedZeroTabs = TuiTestRunner.WaitUntilOnLoop(() => parts.AllSessions().Count == 0, _waitTimeout);
+            Assert.IsTrue(reachedZeroTabs, "Closing the only tab should leave the window open with zero tabs (Step 4), not be a no-op.");
+            Assert.AreEqual(0, TuiTestRunner.InvokeOnLoop(() => parts.TabsView.TabCollection.Count()));
+            Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.CloseSessionMenuItem.Enabled), "Close Session should disable itself once there are no tabs left to close.");
+            Assert.IsFalse(TuiTestRunner.InvokeOnLoop(() => parts.SendField.Enabled), "The send field should be disabled with no active tab.");
+            Assert.AreEqual(string.Empty, TuiTestRunner.InvokeOnLoop(() => parts.SendField.Text.ToString()), "The send field should be cleared with no active tab.");
+            Assert.AreEqual("dev-term", TuiTestRunner.InvokeOnLoop(() => parts.Window.Title.ToString()), "The window title should reset once there are no tabs left.");
+            Assert.IsTrue(
+                TuiTestRunner.InvokeOnLoop(() => parts.StatusLabel.Text.ToString()).Contains("No sessions open", StringComparison.Ordinal),
+                "The status line should say no sessions are open.");
         });
 
         await session.CloseAsync(TestContext.CancellationToken);

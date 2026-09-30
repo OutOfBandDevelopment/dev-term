@@ -64,7 +64,7 @@ public sealed class NmeaGpsDecoder : IPresenter, IStructuredPresenter
                 continue;
             }
 
-            (lines ??= []).Add(DecodeLine(Encoding.ASCII.GetString(lineBytes.ToArray())));
+            (lines ??= []).Add(DecodeLine(Encoding.ASCII.GetString([.. lineBytes])));
         }
 
         return lines ?? [];

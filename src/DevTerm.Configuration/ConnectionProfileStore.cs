@@ -130,7 +130,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
     /// </summary>
     public void ExportZip(string zipPath, IEnumerable<string> names)
     {
-        var resolvedNames = names is ICollection<string> collection ? collection : [..names];
+        var resolvedNames = names is ICollection<string> collection ? collection : [.. names];
         var paths = new List<(string Name, string Path)>(resolvedNames.Count);
         foreach (var name in resolvedNames)
         {

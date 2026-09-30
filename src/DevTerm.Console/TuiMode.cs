@@ -12,6 +12,7 @@ using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
+using DevTerm.Logging;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
@@ -69,6 +70,12 @@ public static class TuiMode
         public EventHandler<SessionDisconnectedEventArgs>? DisconnectedHandler { get; set; }
 
         public CancellationTokenSource? SwitchCts { get; set; }
+
+        /// <summary>This tab's own running log, if any (docs/design/multi-session-ui.md's Step 4) — not a single window-level logger.</summary>
+        public SessionLogger? Logger { get; set; }
+
+        /// <summary>This tab's own Stream Monitor, if Device &gt; Stream Monitor... has been opened for it — not a single window-level monitor.</summary>
+        public StreamMonitor? Monitor { get; set; }
     }
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
@@ -101,12 +108,13 @@ public static class TuiMode
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
             app.Run(parts.Window, OnUnhandledException);
-            parts.Logging.Stop();
 
             // window.Disposing never fires once Run returns (the window is never disposed here -
-            // see app.Dispose() below, which only tears down the driver), so a capture still in
-            // progress must be flushed/saved explicitly rather than relying on that event.
-            parts.CurrentStreamMonitor()?.Dispose();
+            // see app.Dispose() below, which only tears down the driver), so every tab's own logger
+            // and Stream Monitor (Step 4: per-tab, not window-level) must be stopped/flushed
+            // explicitly here rather than relying on that event. Mirrors MainWindow.OnClosing's own
+            // per-tab cleanup loop.
+            parts.CleanupAllTabs();
         }
         finally
         {
@@ -174,18 +182,19 @@ public static class TuiMode
         MenuItem? streamMonitorMenuItem = null;
         MenuItem? newSessionMenuItem = null;
         MenuItem? closeSessionMenuItem = null;
+        MenuItem? deviceProfilesMenuItem = null;
+        MenuBarItem? sendAsMenuBarItem = null;
 
-        // Created on first use of Device > Stream Monitor..., then kept for the window's lifetime so
-        // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below. Stays a
-        // single, window-level instance that follows whichever tab was active when it was first
-        // opened, not one per tab (docs/design/multi-session-ui.md's Open questions, narrowed the same
-        // way WPF's Step 2 narrowed it).
-        StreamMonitor? streamMonitor = null;
+        // The File menu's Start/Stop Logging item - one shared piece of UI chrome whose Title flips to
+        // reflect whichever tab is active (see RefreshConnectionUi), the same way connectMenuItem does.
+        // The running SessionLogger itself is per-tab (TuiWindowTab.Logger, Step 4) - two tabs can log
+        // to two different files at once, and closing one tab's log never touches another's.
+        var loggingMenuItem = new MenuItem(TuiLogging.StartTitle, string.Empty, () => { });
 
-        // Logger mode (File > Start Logging... / Stop Logging): stays a single, window-level instance
-        // (TuiLogging) that follows whichever tab was active when it was started, the same narrowing as
-        // streamMonitor above - not one logger per tab.
-        var logging = new TuiLogging();
+        // Seeds File > New Session... with a starting point once the window has zero tabs open (no
+        // active tab's CliOptions to read) - kept up to date in CloseTabAsync right before a tab is
+        // removed. Mirrors MainWindow.xaml.cs's own _lastCliOptions.
+        var lastCliOptions = cliOptions;
 
         var window = new Window
         {
@@ -207,9 +216,12 @@ public static class TuiMode
             Height = Dim.Fill(2),
         };
 
-        // Mirrors MainWindow's ActiveWindowTab - View.Data (set in AddTab) is this TUI's equivalent of
-        // WPF's TabItem.Tag.
-        TuiWindowTab ActiveTab() => (TuiWindowTab)tabsView.Value!.Data!;
+        // Mirrors MainWindow's ActiveWindowTabOrNull/ActiveWindowTab - View.Data (set in AddTab) is this
+        // TUI's equivalent of WPF's TabItem.Tag. Null with zero tabs open (Step 4); ActiveTab() is the
+        // throwing form for call sites that can only ever run with a tab active (they're disabled or
+        // unreachable otherwise), ActiveTabOrNull() for the few reachable at zero tabs too.
+        TuiWindowTab? ActiveTabOrNull() => tabsView.Value?.Data as TuiWindowTab;
+        TuiWindowTab ActiveTab() => ActiveTabOrNull() ?? throw new InvalidOperationException("No session tabs are open.");
 
         // Tagged by tab (not a single window-level queue) so a fast-arriving background tab's output
         // can't block or get dropped by the active tab's own coalescing - see BatchedOutputQueue and
@@ -224,10 +236,7 @@ public static class TuiMode
 
         void UpdateCloseSessionAvailability()
         {
-            if (closeSessionMenuItem is not null)
-            {
-                closeSessionMenuItem.Enabled = tabs.Count > 1;
-            }
+            closeSessionMenuItem?.Enabled = tabs.Count > 0;
         }
 
         // Builds one tab's Editor/state and inserts it into tabsView, making it the active tab -
@@ -377,31 +386,43 @@ public static class TuiMode
             }
         };
 
+        // Each tab owns its own SessionLogger (TuiWindowTab.Logger, Step 4) - starting a log on tab B
+        // never touches whatever tab A is already logging to.
         bool StartLoggingForTab(TuiWindowTab windowTab, string path)
         {
+            StopLoggingForTab(windowTab, report: false);
             try
             {
-                logging.Start(path, windowTab.Tab.Session, windowTab.Tab.CliOptions, windowTab.Tab.Parser, profileStore.FindName(windowTab.Tab.CliOptions));
+                windowTab.Logger = SessionLogging.Start(path, windowTab.Tab.Session, windowTab.Tab.CliOptions, windowTab.Tab.Parser, profileStore.FindName(windowTab.Tab.CliOptions), "tui");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
                 AppendError(windowTab, $"Could not start logging to '{path}': {ex.Message}");
+                RefreshConnectionUi(windowTab);
                 return false;
             }
 
-            AppendStatus(windowTab, $"Logging to {SessionLogging.DisplayPath(logging.Logger!.Path!)}.");
+            AppendStatus(windowTab, $"Logging to {SessionLogging.DisplayPath(windowTab.Logger.Path!)}.");
             RefreshConnectionUi(windowTab);
             return true;
         }
 
-        void StopLoggingForTab(TuiWindowTab windowTab)
+        void StopLoggingForTab(TuiWindowTab windowTab, bool report = true)
         {
-            if (logging.Logger?.Path is { } path)
+            if (windowTab.Logger is null)
             {
-                logging.Stop();
-                AppendStatus(windowTab, $"Stopped logging to {SessionLogging.DisplayPath(path)}.");
-                RefreshConnectionUi(windowTab);
+                return;
             }
+
+            var path = windowTab.Logger.Path;
+            windowTab.Logger.Dispose();
+            windowTab.Logger = null;
+            if (report)
+            {
+                AppendStatus(windowTab, $"Stopped logging to {(path is null ? "the log" : SessionLogging.DisplayPath(path))}.");
+            }
+
+            RefreshConnectionUi(windowTab);
         }
 
         // TuiWindowParts.Logging exposes these two with no tab parameter (its shape predates multi-tab
@@ -409,10 +430,10 @@ public static class TuiMode
         bool StartLogging(string path) => StartLoggingForTab(ActiveTab(), path);
         void StopLogging() => StopLoggingForTab(ActiveTab());
 
-        logging.MenuItem.Action = Guarded(() =>
+        loggingMenuItem.Action = Guarded(() =>
         {
             var windowTab = ActiveTab();
-            if (logging.Logger is not null)
+            if (windowTab.Logger is not null)
             {
                 StopLoggingForTab(windowTab);
             }
@@ -439,7 +460,7 @@ public static class TuiMode
             new MenuBarItem("_File",
             [
                 connectMenuItem,
-                new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
+                deviceProfilesMenuItem = new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
                     var windowTab = ActiveTab();
                     var configureParts = ConfigureMode.BuildWindow(app, windowTab.Tab.CliOptions, null, profileStore);
@@ -460,8 +481,12 @@ public static class TuiMode
                 })),
                 newSessionMenuItem = new MenuItem("_New Session...", string.Empty, Guarded(() =>
                 {
-                    var activeTab = ActiveTab();
-                    var configureParts = ConfigureMode.BuildWindow(app, activeTab.Tab.CliOptions, null, profileStore);
+                    // Reachable with zero tabs open (Step 4) - seeds from the active tab's options if
+                    // there is one, otherwise from whatever the last tab to close was (lastCliOptions),
+                    // mirroring MainWindow.xaml.cs's own NewSession_Click.
+                    var activeTab = ActiveTabOrNull();
+                    var seedOptions = activeTab?.Tab.CliOptions ?? lastCliOptions;
+                    var configureParts = ConfigureMode.BuildWindow(app, seedOptions, null, profileStore);
                     try
                     {
                         app.Run(configureParts.Window);
@@ -484,7 +509,11 @@ public static class TuiMode
                     }
                     catch (Exception ex)
                     {
-                        AppendError(activeTab, $"Could not open a new session: {ex.Message}");
+                        if (activeTab is not null)
+                        {
+                            AppendError(activeTab, $"Could not open a new session: {ex.Message}");
+                        }
+
                         return;
                     }
 
@@ -494,9 +523,9 @@ public static class TuiMode
                 closeSessionMenuItem = new MenuItem("_Close Session", string.Empty, () =>
                 {
                     var tabToClose = ActiveTab();
-                    Observe(CloseTabAsync(tabToClose), line => AppendOutput(ActiveTab(), line));
+                    Observe(CloseTabAsync(tabToClose), line => AppendOutput(tabToClose, line));
                 }),
-                logging.MenuItem,
+                loggingMenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, ActiveTab().Tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
             ]),
@@ -506,7 +535,7 @@ public static class TuiMode
             // could realistically use here) rather than rebuilt live on every tab switch - Terminal.Gui
             // has no live-item-replacement story for a MenuBarItem the way WPF's ComboBox.ItemsSource
             // binding does.
-            new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
+            sendAsMenuBarItem = new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
             new MenuBarItem("_Device",
             [
                 // Reuses the current, already-open session/connection rather than opening a second
@@ -719,9 +748,16 @@ public static class TuiMode
             connectMenuItem.Title = connected ? "_Disconnect" : "_Connect";
             sendField.Enabled = connected;
             window.Title = windowTab.Tab.Title(profileStore);
+            loggingMenuItem.Title = windowTab.Logger is null ? TuiLogging.StartTitle : TuiLogging.StopTitle;
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{logging.StatusSuffix}";
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{TuiLogging.StatusSuffixFor(windowTab.Logger)}";
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
+
+            // Re-enables chrome HandleZeroTabs disabled, for whenever a tab becomes active again
+            // after the window was briefly empty (Step 4).
+            deviceProfilesMenuItem!.Enabled = true;
+            streamMonitorMenuItem!.Enabled = true;
+            sendAsMenuBarItem!.Enabled = true;
 
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
@@ -844,10 +880,10 @@ public static class TuiMode
             windowTab.Tab.Catalog = built.Catalog;
             windowTab.Tab.CliOptions = newOptions;
             windowTab.Tab.Parser = newOptions.EffectiveParser;
-            streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
+            windowTab.Monitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
             mySession.Output += windowTab.OutputHandler;
             mySession.Disconnected += windowTab.DisconnectedHandler;
-            logging.Follow(mySession, newOptions, profileStore.FindName(newOptions));
+            SessionLogging.Follow(windowTab.Logger, mySession, newOptions, profileStore.FindName(newOptions));
 
             app.Invoke(() =>
             {
@@ -935,11 +971,13 @@ public static class TuiMode
         // Session action running concurrently with it.
         async Task CloseTabAsync(TuiWindowTab windowTab)
         {
-            if (tabs.Count <= 1 || !tabs.Contains(windowTab))
+            if (!tabs.Contains(windowTab))
             {
                 return;
             }
 
+            StopLoggingForTab(windowTab, report: false);
+            windowTab.Monitor?.Dispose();
             windowTab.Tab.Session.Output -= windowTab.OutputHandler;
             windowTab.Tab.Session.Disconnected -= windowTab.DisconnectedHandler;
             try
@@ -951,6 +989,10 @@ public static class TuiMode
             {
             }
 
+            // Kept as File > New Session...'s seed once this was the last tab open - see its own
+            // comment above (mirrors MainWindow.xaml.cs's own _lastCliOptions).
+            lastCliOptions = windowTab.Tab.CliOptions;
+
             tabs.Remove(windowTab);
             tabsView.Remove(windowTab.Output);
             if (tabs.Count > 0)
@@ -960,28 +1002,59 @@ public static class TuiMode
 
             windowTab.Output.Dispose();
             UpdateCloseSessionAvailability();
+
+            if (tabs.Count == 0)
+            {
+                HandleZeroTabs();
+            }
+        }
+
+        // Step 4: the window stays open with zero tabs rather than exiting or crashing - every piece
+        // of chrome that assumes an active tab (ActiveTab(), not ActiveTabOrNull()) gets disabled here,
+        // mirroring what MainWindow.xaml.cs's own zero-tab state does for WPF (RefreshConnectionUi's
+        // WPF equivalent no-ops, disabling the same set of controls).
+        void HandleZeroTabs()
+        {
+            connectMenuItem.Title = "_Connect";
+            deviceProfilesMenuItem!.Enabled = false;
+            streamMonitorMenuItem!.Enabled = false;
+            k8055MenuItem!.Enabled = false;
+            busylightMenuItem!.Enabled = false;
+            scpiMenuItem!.Enabled = false;
+            radexOneMenuItem!.Enabled = false;
+            zoomH4nMenuItem!.Enabled = false;
+            de5000MenuItem!.Enabled = false;
+            nmea0183MenuItem!.Enabled = false;
+            manifestMenuItem!.Enabled = false;
+            sendAsMenuBarItem!.Enabled = false;
+            loggingMenuItem.Title = TuiLogging.StartTitle;
+            sendField.Text = string.Empty;
+            sendField.Enabled = false;
+            window.Title = "dev-term";
+            statusLabel.Text = " ○ No sessions open — use File > New Session... to start one.";
+            statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, ConnectionState.Closed)));
         }
 
         // Device > Stream Monitor...: opening it starts monitoring the active tab's session (that's
-        // what opening it is for); its Stop button stops it. The monitor outlives the modal window so
-        // captures keep being auto-saved - each reported as a status line here, against whichever tab
-        // was active the first time this ran - while the user is back in this window sending commands,
-        // possibly on a different tab by then. A later profile switch on that same tab moves it via
-        // SwitchProfileAsync's own streamMonitor.SetSession call.
+        // what opening it is for); its Stop button stops it. The monitor is per-tab (TuiWindowTab.Monitor,
+        // Step 4) and outlives the modal window so captures keep being auto-saved - each reported as a
+        // status line here, against the tab it belongs to - while the user is back in this window
+        // sending commands, possibly on a different tab by then. A later profile switch on that same
+        // tab moves it via SwitchProfileAsync's own windowTab.Monitor.SetSession call.
         void OpenStreamMonitor()
         {
             var windowTab = ActiveTab();
-            if (streamMonitor is null)
+            if (windowTab.Monitor is null)
             {
                 var monitor = new StreamMonitor();
                 monitor.CaptureAdded += (_, capture) => AppendStatus(windowTab, capture.Describe());
-                streamMonitor = monitor;
+                windowTab.Monitor = monitor;
             }
 
-            streamMonitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
-            streamMonitor.Start();
+            windowTab.Monitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
+            windowTab.Monitor.Start();
 
-            var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor);
+            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor);
             app.Run(monitorParts.Window);
             monitorParts.Window.Dispose();
         }
@@ -1051,8 +1124,70 @@ public static class TuiMode
         tabsView.ValueChanged += (_, _) =>
         {
             sendField.Text = string.Empty;
-            RefreshConnectionUi(ActiveTab());
+            if (ActiveTabOrNull() is { } activeTab)
+            {
+                RefreshConnectionUi(activeTab);
+            }
         };
+
+        // Ctrl+Tab/Ctrl+Shift+Tab cycle the active tab; a no-op below two tabs.
+        void SelectAdjacentTab(int direction)
+        {
+            if (tabs.Count < 2 || ActiveTabOrNull() is not { } activeTab)
+            {
+                return;
+            }
+
+            var currentIndex = tabs.IndexOf(activeTab);
+            var nextIndex = ((currentIndex + direction) % tabs.Count + tabs.Count) % tabs.Count;
+            tabsView.Value = tabs[nextIndex].Output;
+        }
+
+        // Ctrl+T/Ctrl+W/Ctrl+Tab/Ctrl+Shift+Tab (Step 4) - same Application.KeyDown pattern as
+        // quitOnCtrlQ above (a per-view KeyDown handler on the window doesn't reliably see a key
+        // already routed to the focused sendField first), gated the same way on this being the
+        // topmost run loop so a nested device panel/dialog isn't hijacked by these shortcuts.
+        void sessionShortcuts(object? _, Key key)
+        {
+            if (app.TopRunnableView != window || key.Handled)
+            {
+                return;
+            }
+
+            if (key == Key.T.WithCtrl)
+            {
+                key.Handled = true;
+                newSessionMenuItem!.Action!.Invoke();
+                return;
+            }
+
+            if (key == Key.W.WithCtrl)
+            {
+                if (ActiveTabOrNull() is { } activeTab)
+                {
+                    key.Handled = true;
+                    Observe(CloseTabAsync(activeTab), line => AppendOutput(activeTab, line));
+                }
+
+                return;
+            }
+
+            if (key == Key.Tab.WithCtrl)
+            {
+                key.Handled = true;
+                SelectAdjacentTab(1);
+                return;
+            }
+
+            if (key == Key.Tab.WithCtrl.WithShift)
+            {
+                key.Handled = true;
+                SelectAdjacentTab(-1);
+            }
+        }
+
+        app.Keyboard.KeyDown += sessionShortcuts;
+        window.Disposing += (_, _) => app.Keyboard.KeyDown -= sessionShortcuts;
 
         window.Add(menuBar, tabsView, sendLabel, sendField, statusLabel);
 
@@ -1074,15 +1209,23 @@ public static class TuiMode
             busylightMenuItem!,
             scpiMenuItem!,
             ToggleAndRefreshAsync,
-            new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger),
+            new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger),
             themeMenu,
             () => ActiveTab().Tab.Session,
             streamMonitorMenuItem!,
-            () => streamMonitor,
+            () => ActiveTabOrNull()?.Monitor,
             tabsView,
             newSessionMenuItem!,
             closeSessionMenuItem!,
-            () => tabs.Select(t => t.Tab.Session).ToList());
+            () => tabs.Select(t => t.Tab.Session).ToList(),
+            () =>
+            {
+                foreach (var t in tabs)
+                {
+                    t.Logger?.Dispose();
+                    t.Monitor?.Dispose();
+                }
+            });
     }
 
     /// <summary>
@@ -1392,4 +1535,5 @@ internal sealed record TuiWindowParts(
     Tabs TabsView,
     MenuItem NewSessionMenuItem,
     MenuItem CloseSessionMenuItem,
-    Func<IReadOnlyList<Session>> AllSessions);
+    Func<IReadOnlyList<Session>> AllSessions,
+    Action CleanupAllTabs);

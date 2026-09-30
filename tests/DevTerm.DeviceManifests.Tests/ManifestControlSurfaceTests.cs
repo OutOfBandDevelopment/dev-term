@@ -251,7 +251,7 @@ public sealed class ManifestControlSurfaceTests
 
         await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("read", null, TestContext.CancellationToken));
 
-        Assert.AreSequenceEqual(["read.reply"], tracker.Cancelled.ToArray());
+        Assert.AreSequenceEqual(["read.reply"], [.. tracker.Cancelled]);
     }
 
     [TestMethod]
@@ -311,7 +311,7 @@ public sealed class ManifestControlSurfaceTests
         Assert.AreEqual(30, field.Constraint.Maximum);
         var button = (ButtonControl)controls.Single(c => c.Id == "vset.send");
         Assert.AreEqual("vset", button.CommandId);
-        Assert.AreSequenceEqual(new[] { "vset.volts" }, button.ParameterFieldIds!.ToArray());
+        Assert.AreSequenceEqual(["vset.volts"], [.. button.ParameterFieldIds!]);
         Assert.IsInstanceOfType<IndicatorControl>(controls.Single(c => c.Id == "read.reply"));
         Assert.IsNull(((ButtonControl)controls.Single(c => c.Id == "read.send")).ParameterFieldIds);
     }
@@ -333,8 +333,8 @@ public sealed class ManifestControlSurfaceTests
             var entries = ManifestCatalog.Discover((root, "user"), (Path.Combine(root, "missing"), "installed"));
 
             Assert.AreSequenceEqual(
-                new[] { "Test Supply (user)", "broken (user)", "packed (user)", "Single File (user)" },
-                entries.Select(e => e.DisplayName).ToArray());
+                ["Test Supply (user)", "broken (user)", "packed (user)", "Single File (user)"],
+                [.. entries.Select(e => e.DisplayName)]);
             Assert.AreEqual(folder, entries[0].Path);
         }
         finally

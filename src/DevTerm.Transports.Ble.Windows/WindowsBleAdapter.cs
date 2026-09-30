@@ -86,10 +86,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
             // itself skips that branch entirely and used to leave ValueChanged attached to a
             // characteristic whose device is about to be disposed. See
             // docs/bugs/fixed/054-ble-cancelled-connect-handler-leak.md.
-            if (notifyCharacteristic is not null)
-            {
-                notifyCharacteristic.ValueChanged -= OnValueChanged;
-            }
+            notifyCharacteristic?.ValueChanged -= OnValueChanged;
 
             service?.Dispose();
             device.Dispose();
@@ -153,19 +150,12 @@ public sealed class WindowsBleAdapter : IBleAdapter
 
     private void Cleanup()
     {
-        if (_notifyCharacteristic is not null)
-        {
-            _notifyCharacteristic.ValueChanged -= OnValueChanged;
-            _notifyCharacteristic = null;
-        }
+        _notifyCharacteristic?.ValueChanged -= OnValueChanged;
+        _notifyCharacteristic = null;
 
         _writeCharacteristic = null;
-
-        if (_service is not null)
-        {
-            _service.Dispose();
-            _service = null;
-        }
+        _service?.Dispose();
+        _service = null;
 
         if (_device is not null)
         {

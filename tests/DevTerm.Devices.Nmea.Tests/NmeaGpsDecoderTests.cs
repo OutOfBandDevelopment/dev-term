@@ -78,7 +78,7 @@ public sealed class NmeaGpsDecoderTests
         withNuls.AddRange(Encoding.ASCII.GetBytes(_validGga));
         withNuls.Add(0x00);
 
-        var lines = decoder.Render(new ReadOnlySequence<byte>(withNuls.ToArray()));
+        var lines = decoder.Render(new ReadOnlySequence<byte>([.. withNuls]));
 
         Assert.HasCount(1, lines);
         StringAssert.StartsWith(lines[0], "GGA:");

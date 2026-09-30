@@ -497,7 +497,7 @@ public sealed class ControlPanelWindowTests
                 radios["Custom"].IsChecked = true;
                 StaTestRunner.DoEvents();
 
-                Assert.AreSequenceEqual(new[] { ("color", (string?)"Red"), ("color", (string?)"10,20,30") }, surface.Invocations);
+                Assert.AreSequenceEqual([("color", (string?)"Red"), ("color", (string?)"10,20,30")], surface.Invocations);
             }
             finally
             {
