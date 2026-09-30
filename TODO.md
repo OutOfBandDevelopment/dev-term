@@ -33,10 +33,6 @@ Completed work is logged by date under `docs/changes/`.
   invisible field backgrounds, faint focus).
 - **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
   structured source; check whether that message suits an output-only device.
-- **Not reviewed yet:** the Terminal.Gui file dialogs (Browse, Save As); the manifest editor's New/empty
-  state and its "Create panel from commands" hint; Playback, the Stream Monitor and the SCPI panels in Dark;
-  the K8055 with live data; the main window's menus while disconnected.
-
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
