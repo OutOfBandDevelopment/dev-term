@@ -33,6 +33,7 @@ Completed work is logged by date under `docs/changes/`.
   invisible field backgrounds, faint focus).
 - **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
   structured source; check whether that message suits an output-only device.
+
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
