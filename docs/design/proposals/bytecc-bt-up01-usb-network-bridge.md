@@ -83,3 +83,10 @@ needed OS, or the goal is specifically to avoid depending on it.
   happens — this looks architecturally closer to "a new kind of thing" than "another `ITransport`,"
   and is worth a dedicated design discussion (not attempted in this document) rather than assuming
   it slots into the existing transport contract unchanged.
+
+## Status
+
+**Not started — research only, low priority by choice (2026-09-15, see `BACKLOG.md`'s Research
+section).** No code exists, and none of the Open questions above have been checked yet (not even the
+five-minute `usbip`-compatibility one) — nothing to act on until a real capture or a confirmed answer
+on Option A exists. Deliberately not pursued ahead of everything else in `BACKLOG.md`.

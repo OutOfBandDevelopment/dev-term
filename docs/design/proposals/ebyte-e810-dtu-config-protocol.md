@@ -169,3 +169,11 @@ plus a settings form reads far better than a CLI flag dump:
   slice; treat write support as needing the unresolved fields nailed down first.
 - Whether RS-422 variants of the E810-DTU family share this exact config format (the notes only
   cover the RS485 model) — worth checking if/when an RS-422 unit is in hand.
+
+## Status
+
+**Not started — design only.** No code exists yet, and it's gated on the not-yet-built UDP transport
+(`docs/design/transports.md`; see `BACKLOG.md`'s Transports section). The byte-count discrepancy and
+the `FD00`/`FD01` ambiguity above need resolving against a fresh capture before implementation, not
+just the existing source notes — this is flagged as a blocker, not a nice-to-have, since a config
+protocol has real, immediate consequences on real hardware if a write uses a wrong field.
