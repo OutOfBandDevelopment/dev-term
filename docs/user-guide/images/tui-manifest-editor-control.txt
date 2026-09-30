@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\wnyw5xt0.kla\loopback-sensor-demo.                                        │
+│~\…\ynzcqlsh.sbe\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤barGraph: Channels├──────────────────────────╮│
 ││Commands (3)                ││  Kind:  barGraph                ⟦ Pick... ⟧▖ ││
 ││  Measure                   ││                                 ▝▀▀▀▀▀▀▀▀▀▀▘ ││

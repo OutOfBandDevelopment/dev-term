@@ -12,8 +12,13 @@ namespace DevTerm.Console.Tests;
 /// </summary>
 internal static class TuiReview
 {
-    /// <summary>The terminal sizes every screen is checked at: the minimum supported, a common one, and a large one.</summary>
-    public static readonly (int Width, int Height)[] Sizes = [(80, 25), (120, 30), (200, 60)];
+    /// <summary>
+    /// The terminal sizes every screen is checked at: the minimum supported and a large one. Used to be
+    /// three sizes (adding a common 120x30) until that grew `DevTerm.Console.Tests` from ~16s to ~2min
+    /// with no defect ever found only at that middle size - trimmed back to two per the 2026-09-25 TUI
+    /// layout review's own follow-up note.
+    /// </summary>
+    public static readonly (int Width, int Height)[] Sizes = [(80, 25), (200, 60)];
 
     public static readonly string Directory = Path.Combine(FindRepoRoot(), "artifacts", "ui-review", "tui");
 

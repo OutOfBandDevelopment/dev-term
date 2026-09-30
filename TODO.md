@@ -22,8 +22,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ### TUI layout review follow-ups (from 2026-09-25)
 
-- **The layout matrix made `DevTerm.Console.Tests` ~2 min** (was ~16 s). Reuse one app per class, or trim
-  the matrix to 80x25 plus 200x60.
 - **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
 - **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
   invisible field backgrounds, faint focus).
