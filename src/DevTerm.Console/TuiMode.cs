@@ -118,10 +118,14 @@ public static class TuiMode
         // Device Profiles screen edits - a test passes an isolated one rather than the real user folder.
         profileStore ??= new ConnectionProfileStore();
 
-        // The parser (send format) currently encoding typed lines - starts as the profile's, and
-        // the "Send as" menu switches it for every line typed afterward. Captured/reassigned by the
-        // closures below like session/cliOptions are (see SwitchProfileAsync's comment).
-        var parser = cliOptions.EffectiveParser;
+        // Bundles this window's per-connection state - Session, PresenterCatalog, CliOptions, and
+        // the current send-format Parser - that SwitchProfileAsync below reassigns together on a
+        // live profile switch. `tab` itself is never reassigned, only its properties are, so every
+        // closure that captures `tab` (menu item actions, sendField.KeyDown, RefreshConnectionUi,
+        // ...) sees a switch automatically via ordinary closure-over-a-shared-variable semantics -
+        // the same thing the four separate session/catalog/cliOptions/parser variables this
+        // replaced did. See DevTerm.Configuration.SessionTab.
+        var tab = new SessionTab(session, catalog, cliOptions);
 
         // Cancels and replaces the in-flight profile-switch attempt's token on every
         // SwitchProfileAsync call - declared up here (not next to SwitchProfileAsync itself) purely
@@ -146,12 +150,12 @@ public static class TuiMode
         // monitoring carries on after its (modal) window closes - see OpenStreamMonitor below.
         StreamMonitor? streamMonitor = null;
 
-        // Logger mode (File > Start Logging... / Stop Logging): the logger follows `session` across
+        // Logger mode (File > Start Logging... / Stop Logging): the logger follows `tab.Session` across
         // a profile switch (see SwitchProfileAsync). State and menu item live in TuiLogging; declared
         // up here because RefreshConnectionUi reads it (same definite-assignment reason as above).
         var logging = new TuiLogging();
 
-        string TitleFor() => ConnectionDescription.WindowTitle(cliOptions, parser, profileStore, session.State == ConnectionState.Open);
+        string TitleFor() => ConnectionDescription.WindowTitle(tab.CliOptions, tab.Parser, profileStore, tab.Session.State == ConnectionState.Open);
 
         var window = new Window
         {
@@ -163,7 +167,7 @@ public static class TuiMode
         };
 
         var outputLines = new List<string>();
-        if (ManifestNameWarning.For(cliOptions) is { } startupWarning)
+        if (ManifestNameWarning.For(tab.CliOptions) is { } startupWarning)
         {
             outputLines.Add(StatusLine(startupWarning));
         }
@@ -207,7 +211,7 @@ public static class TuiMode
             X = Pos.Right(sendLabel),
             Y = Pos.Bottom(output),
             Width = Dim.Fill(),
-            Enabled = session.State == ConnectionState.Open,
+            Enabled = tab.Session.State == ConnectionState.Open,
         };
 
         // The connection-state indicator: a full-width colored line under the send row (see
@@ -252,7 +256,7 @@ public static class TuiMode
 
 #pragma warning disable IDE0017 // Simplify object initialization
         var connectMenuItem = new MenuItem(
-            session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
+            tab.Session.State == ConnectionState.Open ? "_Disconnect" : "_Connect",
             string.Empty,
             () => { });
         connectMenuItem.Action = () => Observe(ToggleAndRefreshAsync(), AppendOutput);
@@ -260,7 +264,7 @@ public static class TuiMode
 
         async Task ToggleAndRefreshAsync()
         {
-            await ToggleConnectionAsync(app, session, cliOptions, connectMenuItem, sendField, AppendOutput);
+            await ToggleConnectionAsync(app, tab.Session, tab.CliOptions, connectMenuItem, sendField, AppendOutput);
             app.Invoke(RefreshConnectionUi);
         }
 
@@ -282,17 +286,17 @@ public static class TuiMode
         // the connection ended - report why and flip the UI to "disconnected", ready to reconnect.
         void OnSessionDisconnected(object? _, SessionDisconnectedEventArgs e)
         {
-            AppendError($"{ConnectionErrorMessages.ForDisconnect(cliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
+            AppendError($"{ConnectionErrorMessages.ForDisconnect(tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
             app.Invoke(RefreshConnectionUi);
         }
 
-        session.Disconnected += OnSessionDisconnected;
+        tab.Session.Disconnected += OnSessionDisconnected;
 
         bool StartLogging(string path)
         {
             try
             {
-                logging.Start(path, session, cliOptions, parser, profileStore.FindName(cliOptions));
+                logging.Start(path, tab.Session, tab.CliOptions, tab.Parser, profileStore.FindName(tab.CliOptions));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
@@ -321,7 +325,7 @@ public static class TuiMode
             {
                 StopLogging();
             }
-            else if (TuiLogging.PromptForPath(app, cliOptions, profileStore.FindName(cliOptions)) is { } path)
+            else if (TuiLogging.PromptForPath(app, tab.CliOptions, profileStore.FindName(tab.CliOptions)) is { } path)
             {
                 StartLogging(path);
             }
@@ -331,7 +335,7 @@ public static class TuiMode
         {
             // Called from a menu item's action, already on the UI thread - no Application.Invoke
             // needed (and it would never flush under a headless test without a real run loop).
-            parser = name;
+            tab.Parser = name;
             window.Title = TitleFor();
         }
 
@@ -345,7 +349,7 @@ public static class TuiMode
                 connectMenuItem,
                 new MenuItem("_Device Profiles...", string.Empty, Guarded(() =>
                 {
-                    var configureParts = ConfigureMode.BuildWindow(app, cliOptions, null, profileStore);
+                    var configureParts = ConfigureMode.BuildWindow(app, tab.CliOptions, null, profileStore);
                     try
                     {
                         app.Run(configureParts.Window);
@@ -362,26 +366,27 @@ public static class TuiMode
                     }
                 })),
                 logging.MenuItem,
-                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, cliOptions))),
+                new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
             // line typed on (the title bar shows which is current). Built from the catalog as of
             // startup - a profile switch never changes which presenters are registered.
-            new MenuBarItem("_Send as", [.. catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
+            new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
             new MenuBarItem("_Device",
             [
                 // Reuses the current, already-open session/connection rather than opening a second
-                // competing one to the same physical device - reads the live "session"/"catalog"
-                // closure variables, which SwitchProfileAsync above reassigns on a profile switch,
-                // the same way the "_Device Profiles..." item above reads the live "cliOptions".
+                // competing one to the same physical device - reads the live `tab.Session`/`tab.Catalog`
+                // properties, which SwitchProfileAsync above reassigns on a profile switch; every
+                // closure that captures `tab` (not `tab` itself) sees the switch, the same way the
+                // "_Device Profiles..." item above reads the live `tab.CliOptions`.
                 k8055MenuItem = new MenuItem("_K8055 Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("k8055", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         K8055UiDefinition.Build(),
-                        new K8055ControlSurface(session),
+                        new K8055ControlSurface(tab.Session),
                         structuredSource,
                         "dev-term — K8055 Control Panel");
                     try
@@ -395,11 +400,11 @@ public static class TuiMode
                 })),
                 busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("busylight", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         BusylightUiDefinition.Build(),
-                        new BusylightControlSurface(session),
+                        new BusylightControlSurface(tab.Session),
                         structuredSource,
                         "dev-term — Busylight Control Panel");
                     try
@@ -413,11 +418,11 @@ public static class TuiMode
                 })),
                 radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("radexone", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         RadexOneUiDefinition.Build(),
-                        new RadexOneControlSurface(session),
+                        new RadexOneControlSurface(tab.Session),
                         structuredSource,
                         "dev-term — Radex One Control Panel");
                     try
@@ -431,11 +436,11 @@ public static class TuiMode
                 })),
                 zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         ZoomH4nUiDefinition.Build(),
-                        new ZoomH4nControlSurface(session),
+                        new ZoomH4nControlSurface(tab.Session),
                         structuredSource,
                         "dev-term — Zoom H4n Remote");
                     try
@@ -449,7 +454,7 @@ public static class TuiMode
                 })),
                 de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("de5000", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         De5000UiDefinition.Build(),
@@ -467,7 +472,7 @@ public static class TuiMode
                 })),
                 nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = catalog.TryGet("nmea", out var presenter) ? presenter : null;
+                    var structuredSource = tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
                     var panelParts = ControlPanelMode.BuildWindow(
                         app,
                         NmeaGpsUiDefinition.Build(),
@@ -481,8 +486,8 @@ public static class TuiMode
                 // instrument is a dropped-in JSON file, not a new menu item.
                 scpiMenuItem = new MenuItem("_SCPI Instrument...", string.Empty, Guarded(() =>
                 {
-                    var structuredSource = ResolveActiveScpiPresenter(session, catalog);
-                    var picked = ResolveSavedScpiProfileChoice(cliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
+                    var structuredSource = ResolveActiveScpiPresenter(tab.Session, tab.Catalog);
+                    var picked = ResolveSavedScpiProfileChoice(tab.CliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
                     if (picked is null)
                     {
                         return;
@@ -495,16 +500,16 @@ public static class TuiMode
                         // forget with the eventual window open marshaled back via Application.Invoke,
                         // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
                         // reason (real async I/O resumes off the UI thread).
-                        Observe(DetectAndOpenScpiInstrumentAsync(app, session, structuredSource, cliOptions.ScpiAutoDetectTimeoutMs, AppendStatus, AppendError), AppendOutput);
+                        Observe(DetectAndOpenScpiInstrumentAsync(app, tab.Session, structuredSource, tab.CliOptions.ScpiAutoDetectTimeoutMs, AppendStatus, AppendError), AppendOutput);
                         return;
                     }
 
                     var profile = picked == _scpiGenericChoice
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
-                    OpenScpiInstrumentWindow(app, session, structuredSource, profile);
+                    OpenScpiInstrumentWindow(app, tab.Session, structuredSource, profile);
                 })),
-                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, session))),
+                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, tab.Session))),
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
@@ -549,30 +554,30 @@ public static class TuiMode
         ActiveTheme.Changed += OnThemeChanged;
         window.Disposing += (_, _) => ActiveTheme.Changed -= OnThemeChanged;
 
-        // Everything that depends on the connection state, derived from session.State in one
+        // Everything that depends on the connection state, derived from tab.Session.State in one
         // place: the File menu label, the send field, the title (" — disconnected" when closed), the
         // status line, and which Device panels make sense (DevicePanels). Called on the UI thread -
         // directly while building, via app.Invoke after any connect/disconnect/fault/profile switch.
         void RefreshConnectionUi()
         {
-            var state = session.State;
+            var state = tab.Session.State;
             var connected = state == ConnectionState.Open;
 
             connectMenuItem.Title = connected ? "_Disconnect" : "_Connect";
             sendField.Enabled = connected;
             window.Title = TitleFor();
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(cliOptions, state)}{logging.StatusSuffix}";
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(tab.CliOptions, state)}{logging.StatusSuffix}";
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
 
-            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, cliOptions, connected);
-            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, cliOptions, connected);
-            scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, cliOptions, connected);
-            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, cliOptions, connected);
-            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, cliOptions, connected);
-            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, cliOptions, connected);
-            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, cliOptions, connected);
-            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
+            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, tab.CliOptions, connected);
+            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, tab.CliOptions, connected);
+            scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.CliOptions, connected);
+            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, tab.CliOptions, connected);
+            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, tab.CliOptions, connected);
+            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, tab.CliOptions, connected);
+            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, tab.CliOptions, connected);
+            manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.CliOptions, connected);
         }
 
         // Quitting the whole app (as opposed to Ctrl+Q/Escape just closing a nested panel - see
@@ -581,7 +586,7 @@ public static class TuiMode
         void Quit()
         {
             if (app.TopRunnableView == window
-                && session.State == ConnectionState.Open
+                && tab.Session.State == ConnectionState.Open
                 && MessageBox.Query(app, "dev-term", "Quit dev-term? This closes the current connection.", ["Yes", "No"]) != 0)
             {
                 return;
@@ -626,22 +631,22 @@ public static class TuiMode
         // A named handler, not an inline lambda, so SwitchProfileAsync below can unsubscribe it
         // from the old session before subscribing it to the new one.
         void OnSessionOutput(object? _, PresenterOutput presenterOutput) => AppendOutput($"[{presenterOutput.PresenterName}] {presenterOutput.Text}");
-        session.Output += OnSessionOutput;
+        tab.Session.Output += OnSessionOutput;
 
         // Tears down the current session/transport and opens a new one composed from
         // newOptions - live, without restarting the app, unlike the save-as-default-and-ask-for-a-
-        // restart this replaced. Reassigns the session/presenter/cliOptions *parameters* directly
-        // (not a wrapper object) - every other closure in this method (sendField.KeyDown,
-        // connectMenuItem.Action, this same menu handler on a later invocation) reads those same
-        // captured parameters, so C#'s normal closure-over-a-shared-variable semantics means they
-        // all see the switch without needing to be individually re-wired. Must run under a real
-        // Application.Run() loop (RunWithLoop in tests, never RunHeadless) - it calls
+        // restart this replaced. Reassigns `tab`'s Session/Catalog/CliOptions/Parser properties
+        // directly (`tab` itself is never replaced) - every other closure in this method
+        // (sendField.KeyDown, connectMenuItem.Action, this same menu handler on a later invocation)
+        // captures the same `tab` reference, so C#'s normal closure-over-a-shared-variable semantics
+        // means they all see the switch without needing to be individually re-wired. Must run under a
+        // real Application.Run() loop (RunWithLoop in tests, never RunHeadless) - it calls
         // Application.Invoke like ToggleConnectionAsync below, which silently never flushes
         // otherwise (see CLAUDE.md).
         // A slow-to-fail connect (an unreachable host that never actively refuses, so it sits on
         // the OS connect timeout) can still be pending when the user switches to a *different*
         // host, and without switchCts, the earlier attempt's success/failure handler ran anyway
-        // once it finally resolved - using the by-then-stale cliOptions - and stomped
+        // once it finally resolved - using the by-then-stale tab.CliOptions - and stomped
         // connectMenuItem.Title/sendField.Enabled/output back over whatever the newer attempt had
         // already set. Reported as "I tried connecting to 192.168.0.108 and it failed, so I tried
         // 192.168.0.107 and it won't even try to connect now" - .107 *did* try, but .108's late
@@ -668,12 +673,12 @@ public static class TuiMode
             var mySession = built.Session;
 
             // Captured now, before any await: a second, overlapping switch reassigns the shared
-            // session variable below (once its own build/close/dispose completes) while this call
-            // is still suspended closing/disposing its OWN old session. Reading session again
+            // tab.Session property below (once its own build/close/dispose completes) while this call
+            // is still suspended closing/disposing its OWN old session. Reading tab.Session again
             // after that await - instead of this local - would tear down whatever the OTHER call
             // had already installed there (possibly its brand-new, just-opened session) rather
             // than the session this call actually meant to replace.
-            var oldSession = session;
+            var oldSession = tab.Session;
 
             oldSession.Output -= OnSessionOutput;
             oldSession.Disconnected -= OnSessionDisconnected;
@@ -683,17 +688,17 @@ public static class TuiMode
             if (!ReferenceEquals(switchCts, cts))
             {
                 // Superseded while closing the old session, before ever adopting mySession as
-                // current - a newer switch has already moved session on (possibly to its own,
-                // by-now-open session). Never having been subscribed or assigned to session,
+                // current - a newer switch has already moved tab.Session on (possibly to its own,
+                // by-now-open session). Never having been subscribed or assigned to tab.Session,
                 // mySession just needs disposing.
                 await mySession.DisposeAsync();
                 return false;
             }
 
-            session = mySession;
-            catalog = built.Catalog;
-            cliOptions = newOptions;
-            parser = newOptions.EffectiveParser;
+            tab.Session = mySession;
+            tab.Catalog = built.Catalog;
+            tab.CliOptions = newOptions;
+            tab.Parser = newOptions.EffectiveParser;
             streamMonitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
             mySession.Output += OnSessionOutput;
             mySession.Disconnected += OnSessionDisconnected;
@@ -709,7 +714,7 @@ public static class TuiMode
                 RefreshConnectionUi();
             });
 
-            if (ManifestNameWarning.For(cliOptions) is { } manifestWarning)
+            if (ManifestNameWarning.For(tab.CliOptions) is { } manifestWarning)
             {
                 AppendStatus(manifestWarning);
             }
@@ -733,7 +738,7 @@ public static class TuiMode
                     return false;
                 }
 
-                AppendError(ConnectionErrorMessages.For(cliOptions.Transport, ex));
+                AppendError(ConnectionErrorMessages.For(tab.CliOptions.Transport, ex));
                 app.Invoke(RefreshConnectionUi);
                 return false;
             }
@@ -750,7 +755,7 @@ public static class TuiMode
             }
 
             app.Invoke(RefreshConnectionUi);
-            AppendStatus($"Switched to {ConnectionDescription.For(cliOptions)}.");
+            AppendStatus($"Switched to {ConnectionDescription.For(tab.CliOptions)}.");
             return true;
         }
 
@@ -767,7 +772,7 @@ public static class TuiMode
                 streamMonitor = monitor;
             }
 
-            streamMonitor.SetSession(session, StreamMonitor.DeviceNameFor(cliOptions, profileStore), cliOptions.EffectiveExportDirectory);
+            streamMonitor.SetSession(tab.Session, StreamMonitor.DeviceNameFor(tab.CliOptions, profileStore), tab.CliOptions.EffectiveExportDirectory);
             streamMonitor.Start();
 
             var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor);
@@ -816,19 +821,19 @@ public static class TuiMode
                 return;
             }
 
-            if (session.State != ConnectionState.Open)
+            if (tab.Session.State != ConnectionState.Open)
             {
                 AppendError("Not connected — use File > Connect.");
                 return;
             }
 
-            if (!catalog.TryGetInput(parser, out var input))
+            if (!tab.Catalog.TryGetInput(tab.Parser, out var input))
             {
-                AppendError($"Parser '{parser}' does not support sending.");
+                AppendError($"Parser '{tab.Parser}' does not support sending.");
                 return;
             }
 
-            Observe(SendAsync(session, cliOptions, input, line, AppendOutput, parser), AppendOutput);
+            Observe(SendAsync(tab.Session, tab.CliOptions, input, line, AppendOutput, tab.Parser), AppendOutput);
         };
 
         window.Add(menuBar, output, sendLabel, sendField, statusLabel);
@@ -836,12 +841,12 @@ public static class TuiMode
 
         // --log starts logging straight away (the session may already be open - the log's first
         // record says so). RunAsync stops it when the loop ends.
-        if (cliOptions.Log is { Length: > 0 } logOption)
+        if (tab.CliOptions.Log is { Length: > 0 } logOption)
         {
-            StartLogging(SessionLogging.ResolveLogPath(logOption, cliOptions, profileStore.FindName(cliOptions), DateTimeOffset.Now));
+            StartLogging(SessionLogging.ResolveLogPath(logOption, tab.CliOptions, profileStore.FindName(tab.CliOptions), DateTimeOffset.Now));
         }
 
-        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => session, streamMonitorMenuItem!, () => streamMonitor);
+        return new TuiWindowParts(window, output, sendField, connectMenuItem, SwitchProfileAsync, SetParser, statusLabel, k8055MenuItem!, busylightMenuItem!, scpiMenuItem!, ToggleAndRefreshAsync, new TuiLoggingParts(logging.MenuItem, StartLogging, StopLogging, () => logging.Logger), themeMenu, () => tab.Session, streamMonitorMenuItem!, () => streamMonitor);
     }
 
     /// <summary>
