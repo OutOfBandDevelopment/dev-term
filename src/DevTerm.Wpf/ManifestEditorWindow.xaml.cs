@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using DevTerm.Configuration;
 using DevTerm.DeviceManifests.Editing;
@@ -43,7 +44,30 @@ public partial class ManifestEditorWindow : Window
         editor.Edited += (_, _) =>
         {
             Title = editor.Title;
+            RefreshUndoRedo();
             QueuePreview();
+        };
+
+        // MenuItem.InputGestureText/ToolTip only labels the shortcut - it doesn't register a live
+        // accelerator by itself (same gotcha as MainWindow's Ctrl+Q), so Ctrl+Z/Ctrl+Y need an
+        // explicit handler too.
+        PreviewKeyDown += (_, e) =>
+        {
+            if (Keyboard.Modifiers != ModifierKeys.Control)
+            {
+                return;
+            }
+
+            if (e.Key == Key.Z)
+            {
+                e.Handled = true;
+                Editor.Undo();
+            }
+            else if (e.Key == Key.Y)
+            {
+                e.Handled = true;
+                Editor.Redo();
+            }
         };
 
         Closing += (_, e) =>
@@ -62,7 +86,14 @@ public partial class ManifestEditorWindow : Window
         Title = editor.Title;
         StatusText.Text = editor.StatusMessage;
         ShowSelection();
+        RefreshUndoRedo();
         RefreshPreview();
+    }
+
+    private void RefreshUndoRedo()
+    {
+        UndoButton.IsEnabled = Editor.CanUndo;
+        RedoButton.IsEnabled = Editor.CanRedo;
     }
 
     /// <summary>Opens the editor with the user's and installed manifest folders, optionally on <paramref name="path"/>.</summary>
@@ -188,6 +219,10 @@ public partial class ManifestEditorWindow : Window
     }
 
     private void Validate_Click(object sender, RoutedEventArgs e) => Editor.Validate();
+
+    private void Undo_Click(object sender, RoutedEventArgs e) => Editor.Undo();
+
+    private void Redo_Click(object sender, RoutedEventArgs e) => Editor.Redo();
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 

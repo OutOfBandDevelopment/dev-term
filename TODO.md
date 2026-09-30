@@ -6,10 +6,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-### Forms engine and manifest editor (follow-ups from 2026-09-25)
-
-- **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
-
 ### Binary layout formats
 
 - `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section

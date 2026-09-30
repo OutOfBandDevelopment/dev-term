@@ -320,6 +320,161 @@ public sealed class ManifestEditorTests
         Assert.AreEqual(expected, ManifestEditorViewModel.FolderNameFor(name));
 
     [TestMethod]
+    public void ControlForm_EditsVisibleWhen_AndClearingIdClearsTheWholeCondition()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Panel));
+        editor.AddChild();
+        editor.AddChild();
+        var form = (ControlForm)editor.SelectedNode!.Form!;
+
+        Assert.IsFalse(form.HasVisibleWhenId);
+        Assert.IsEmpty(form.VisibleWhenValues);
+
+        form.VisibleWhenId = "mode";
+        form.VisibleWhenValues = "auto, manual";
+
+        Assert.IsTrue(form.HasVisibleWhenId);
+        Assert.AreEqual("mode", form.Control.VisibleWhen!.Id);
+        Assert.AreSequenceEqual(["auto", "manual"], form.Control.VisibleWhen.Values);
+        Assert.AreEqual("auto, manual", form.VisibleWhenValues);
+
+        form.VisibleWhenId = string.Empty;
+        Assert.IsFalse(form.HasVisibleWhenId);
+        Assert.IsNull(form.Control.VisibleWhen);
+    }
+
+    [TestMethod]
+    public void SectionForm_EditsVisibleWhen_AndClearingIdClearsTheWholeCondition()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Panel));
+        editor.AddChild();
+        var form = (SectionForm)editor.SelectedNode!.Form!;
+
+        Assert.IsFalse(form.HasVisibleWhenId);
+
+        form.VisibleWhenId = "advanced";
+        Assert.IsTrue(form.HasVisibleWhenId);
+        Assert.AreEqual("advanced", form.Section.VisibleWhen!.Id);
+        Assert.IsEmpty(form.Section.VisibleWhen.Values);
+
+        form.VisibleWhenValues = "true";
+        Assert.AreSequenceEqual(["true"], form.Section.VisibleWhen.Values);
+
+        form.VisibleWhenId = null;
+        Assert.IsNull(form.Section.VisibleWhen);
+    }
+
+    [TestMethod]
+    public void UndoRedo_CoalescesFieldEditsToOneNodeIntoOneStep()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        var identity = (ManifestIdentityForm)editor.Nodes[0].Form!;
+        Assert.IsFalse(editor.CanUndo);
+
+        identity.Name = "First";
+        identity.Name = "Second";
+        identity.Name = "Third";
+        Assert.AreEqual("Third", editor.Manifest.Name);
+        Assert.IsTrue(editor.CanUndo);
+
+        editor.Undo();
+        Assert.AreEqual("New Device", editor.Manifest.Name, "All three keystrokes undo as a single step.");
+        Assert.IsFalse(editor.CanUndo);
+        Assert.IsTrue(editor.CanRedo);
+
+        editor.Redo();
+        Assert.AreEqual("Third", editor.Manifest.Name);
+        Assert.IsFalse(editor.CanRedo);
+    }
+
+    [TestMethod]
+    public void UndoRedo_SelectingADifferentNodeStartsANewCheckpoint()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        var identity = (ManifestIdentityForm)editor.Nodes[0].Form!;
+        identity.Name = "Renamed";
+
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Commands));
+        editor.AddChild();
+        Assert.AreEqual("New command", editor.Manifest.OutboundCommands.Single().Name);
+
+        editor.Undo();
+        Assert.IsEmpty(editor.Manifest.OutboundCommands, "The add is its own step, undone first.");
+        Assert.AreEqual("Renamed", editor.Manifest.Name, "The earlier rename is untouched.");
+
+        editor.Undo();
+        Assert.AreEqual("New Device", editor.Manifest.Name);
+        Assert.IsFalse(editor.CanUndo);
+    }
+
+    [TestMethod]
+    public void UndoRedo_StructuralEditsAreEachTheirOwnStep()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Commands));
+        editor.AddChild();
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Commands));
+        editor.AddChild();
+        Assert.AreSequenceEqual(["New command", "New command 1"], [.. editor.Manifest.OutboundCommands.Select(c => c.Name)]);
+
+        editor.Undo();
+        Assert.AreSequenceEqual(["New command"], [.. editor.Manifest.OutboundCommands.Select(c => c.Name)]);
+
+        editor.Undo();
+        Assert.IsEmpty(editor.Manifest.OutboundCommands);
+        Assert.IsFalse(editor.CanUndo);
+    }
+
+    [TestMethod]
+    public void UndoRedo_NewEditAfterAnUndoClearsRedo()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        var identity = (ManifestIdentityForm)editor.Nodes[0].Form!;
+        identity.Name = "Renamed";
+        editor.Undo();
+        Assert.IsTrue(editor.CanRedo);
+
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Commands));
+        editor.AddChild();
+
+        Assert.IsFalse(editor.CanRedo, "A fresh edit invalidates whatever was undone.");
+    }
+
+    [TestMethod]
+    public void UndoRedo_NewAndOpenClearHistory()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        var identity = (ManifestIdentityForm)editor.Nodes[0].Form!;
+        identity.Name = "Renamed";
+        Assert.IsTrue(editor.CanUndo);
+
+        editor.New();
+        Assert.IsFalse(editor.CanUndo);
+        Assert.IsFalse(editor.CanRedo);
+
+        ((ManifestIdentityForm)editor.Nodes[0].Form!).Name = "Renamed again";
+        Assert.IsTrue(editor.CanUndo);
+
+        Assert.IsTrue(editor.Open(_bundled), editor.StatusMessage);
+        Assert.IsFalse(editor.CanUndo);
+        Assert.IsFalse(editor.CanRedo);
+    }
+
+    [TestMethod]
+    public void UndoRedo_WithNothingToUndoOrRedo_AreNoOps()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        var before = DeviceManifestSerializer.ToJson(editor.Manifest);
+
+        editor.Undo();
+        editor.Redo();
+
+        Assert.AreEqual(before, DeviceManifestSerializer.ToJson(editor.Manifest));
+    }
+
+    [TestMethod]
     public void EveryEditorForm_GeneratesAForm()
     {
         foreach (var type in new[] { typeof(ManifestIdentityForm), typeof(CommandForm), typeof(ParameterForm), typeof(PatternForm), typeof(PanelForm), typeof(SectionForm), typeof(ControlForm) })

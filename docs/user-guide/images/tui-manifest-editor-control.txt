@@ -1,10 +1,10 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\1jl2etjx.qav\loopback-sensor-demo.                                        │
+│~\…\ym5ykwgx.v54\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤barGraph: Channels├──────────────────────────╮│
-││Commands (3)                ││  Kind:  barGraph                 ⟦ Pick... ⟧▖││
-││  Measure                   ││                                  ▝▀▀▀▀▀▀▀▀▀▀▘││
+││Commands (3)                ││  Kind:  barGraph                ⟦ Pick... ⟧▖ ││
+││  Measure                   ││                                 ▝▀▀▀▀▀▀▀▀▀▀▘ ││
 ││  Stream Samples            ││  Id:    levels                               ││
 ││    count (integer)         ││  Label: Channels                             ││
 ││  Hello                     ││  Help:                                       ││
@@ -17,9 +17,9 @@
 ││    textField: Sample Count ││── Display ──                                 ││
 ││    button: Stream Samples  ││  Channels: chA:A, chB:B, chC:C               ││
 ││    button: Hello           ││                                              ││
-││    indicator: Hello Reply  ││                                              ││
-││  [Levels]                  ││                                              ││
+││    indicator: Hello Reply  ││── Visibility ──                              ││
+││  [Levels]                  ││  Visible when:                               ││
 ││    barGraph: Channels      ││                                              ││
 │╰────────────────────────────╯╰──────────────────────────────────────────────╯│
-│⟦ Add control ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧                                 │
+│⟦ Add control ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧   ⟦ Undo ⟧  ⟦ Redo ⟧            │
 └──────────────────────────────────────────────────────────────────────────────┘

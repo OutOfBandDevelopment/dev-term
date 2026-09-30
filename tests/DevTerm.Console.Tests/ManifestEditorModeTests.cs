@@ -109,6 +109,30 @@ public sealed class ManifestEditorModeTests
     }
 
     [TestMethod]
+    public void UndoButton_RevertsTheLastEdit_AndRedoButtonReappliesIt()
+    {
+        Run((parts, _) =>
+        {
+            Assert.IsFalse(parts.UndoButton.Enabled);
+            Assert.IsFalse(parts.RedoButton.Enabled);
+
+            var name = (TextField)parts.Form!.ControlViews[nameof(ManifestIdentityForm.Name)];
+            name.Text = "Renamed";
+            TuiTestRunner.CurrentApp.LayoutAndDraw(true);
+            Assert.IsTrue(parts.UndoButton.Enabled);
+
+            parts.UndoButton.InvokeCommand(Command.Accept);
+            Assert.AreEqual("Loopback Sensor Demo", parts.ViewModel.Manifest.Name);
+            Assert.IsFalse(parts.UndoButton.Enabled);
+            Assert.IsTrue(parts.RedoButton.Enabled);
+
+            parts.RedoButton.InvokeCommand(Command.Accept);
+            Assert.AreEqual("Renamed", parts.ViewModel.Manifest.Name);
+            Assert.IsFalse(parts.RedoButton.Enabled);
+        });
+    }
+
+    [TestMethod]
     public void Preview_DrawsThePanelLive_AndItsButtonsSendNothing()
     {
         Run((parts, _) =>

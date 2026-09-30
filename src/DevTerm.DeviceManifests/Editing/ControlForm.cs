@@ -14,6 +14,7 @@ namespace DevTerm.DeviceManifests.Editing;
 [FormSection("Control", Order = 0, Label = "")]
 [FormSection("Behavior", Order = 1)]
 [FormSection("Display", Order = 2)]
+[FormSection("Visibility", Order = 3)]
 public sealed class ControlForm : EditorForm
 {
     private const string _buttonKind = "button";
@@ -522,6 +523,40 @@ public sealed class ControlForm : EditorForm
     {
         get => (Control as VectorControl)?.BrightnessId;
         set => Set<VectorControl>(c => c.BrightnessId = NullIfBlank(value));
+    }
+
+    public bool HasVisibleWhenId => Control.VisibleWhen is not null;
+
+    [Category("Visibility")]
+    [DisplayName("Visible when")]
+    [Description("Another control's or value's id; this control is hidden unless its value matches (blank: always shown).")]
+    [FormField(Order = 0)]
+    public string? VisibleWhenId
+    {
+        get => Control.VisibleWhen?.Id;
+        set
+        {
+            var id = NullIfBlank(value);
+            Control.VisibleWhen = id is null ? null : new UiCondition { Id = id, Values = Control.VisibleWhen?.Values ?? [] };
+            Changed(null);
+        }
+    }
+
+    [Category("Visibility")]
+    [DisplayName("Visible values")]
+    [Description("Comma-separated values that satisfy \"Visible when\" (blank: the value must be true).")]
+    [FormField(Order = 1, VisibleWhen = nameof(HasVisibleWhenId))]
+    public string VisibleWhenValues
+    {
+        get => string.Join(", ", Control.VisibleWhen?.Values ?? []);
+        set
+        {
+            if (Control.VisibleWhen is { } condition)
+            {
+                condition.Values = [.. FormBinding.SplitList(value)];
+                Changed();
+            }
+        }
     }
 
     private static IEnumerable<ChartChannel> ChannelsOf(UiControl control) => control switch

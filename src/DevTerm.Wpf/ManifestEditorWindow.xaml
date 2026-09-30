@@ -11,6 +11,8 @@
             <Button Content="Save As..." Padding="10,2" Margin="0,0,6,0" Click="SaveAs_Click" />
             <Button Content="Check" Padding="10,2" Margin="0,0,6,0" Click="Validate_Click"
                     ToolTip="Run the same checks the manifest loader runs (Save runs them too)" />
+            <Button x:Name="UndoButton" Content="Undo" Padding="10,2" Margin="0,0,6,0" Click="Undo_Click" ToolTip="Ctrl+Z" />
+            <Button x:Name="RedoButton" Content="Redo" Padding="10,2" Margin="0,0,6,0" Click="Redo_Click" ToolTip="Ctrl+Y" />
             <Button Content="Close" Padding="10,2" IsCancel="True" Click="Close_Click" />
         </StackPanel>
 
