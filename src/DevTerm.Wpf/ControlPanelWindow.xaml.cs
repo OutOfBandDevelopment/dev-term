@@ -199,10 +199,13 @@ public partial class ControlPanelWindow : Window
         return expander;
     }
 
+    // Shares every section's label column width (see ControlPanelWindow.xaml's SectionsPanel).
+    private const string _labelColumnSharedSizeGroup = "ControlLabel";
+
     private Grid BuildSectionGrid(UiSection section)
     {
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = _labelColumnSharedSizeGroup });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         for (var row = 0; row < section.Controls.Count; row++)
