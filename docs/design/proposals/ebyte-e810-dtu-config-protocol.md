@@ -8,8 +8,14 @@ from a different personal project — a local binary-protocol-decoder library:
 - `C:\repo\oobdev\dotex\Incoming\BinaryDecoders\src\OoBDev.EByteElectronicTechnology\e810dturs485_notes.txt` —
   raw reverse-engineering notes (UDP packet captures + a hand-annotated field table), not a
   finished writeup like [Radex One](../features/radex-one-protocol.md)'s source — treat the field table below
-  as a working hypothesis to verify against a fresh capture, not a settled spec (see "Open
-  questions" — a byte-count check against the notes' own example already turned up a discrepancy).
+  as a working hypothesis to verify against a fresh capture, not a settled spec.
+- `C:\repo\_archives\BinaryDataDecoders\src\BinaryDataDecoders.EByteElectronicTechnology\e810dturs485_notes.txt` —
+  a second archived copy of the same raw notes (same filename, different archive path/project
+  rename), consulted 2026-09-30 to resolve the byte-count discrepancy below: it contains several
+  consecutive real captures (TCP client/server, UDP client/server, plus a run of incremental
+  field-probing edits) where the earlier archived copy apparently only had one example. Walking one
+  full 203-byte capture from this copy offset-by-offset (not just summing the field table) is what
+  actually found the error — see "Open questions."
 
 ## Device
 
@@ -64,7 +70,7 @@ Primary DNS       : 4 bytes
 Secondary DNS     : 4 bytes
 Local port        : 2 bytes
 Target type       : 1 byte   (0x00=remote IP, 0x01=DNS name)
-Target IP/name    : 60 bytes (ASCII, zero-padded)
+Target IP/name    : 64 bytes (ASCII, zero-padded) [corrected 2026-09-30 from 60 - see "Open questions"]
 Target port       : 2 bytes
 Connection type   : 1 byte   (0x00=TCP client, 0x01=TCP server, 0x02=UDP client, 0x03=UDP server)
 Serial framing    : 1 byte   (0x00=8N1, 0x01=8O1, 0x02=8E1)
@@ -155,13 +161,26 @@ plus a settings form reads far better than a CLI flag dump:
 
 ## Open questions
 
-- **Byte-count discrepancy**: summing the documented field widths above gives 197 bytes after the
-  2-byte command (199 total), but the actual captured example packet in the source notes is 203
-  bytes. Something in the field table is under-counted by 4 bytes — needs resolving against a
-  fresh, carefully-annotated capture before implementing, not guessed at.
+- ~~**Byte-count discrepancy**~~ **Resolved 2026-09-30.** Summing the field table's old widths gave
+  199 bytes total against a real 203-byte captured packet — a 4-byte shortfall. Walking a full
+  capture (the "TCP client" example, first line) offset-by-offset from the second archived notes
+  copy (see "Source") against ASCII anchors in the payload (the literal text `192.168.4.100` for a
+  DNS-name target, `regist msg`/`heart beat msg` for the two ASCII fields and their length bytes)
+  found the real field boundaries: the `Target IP/name` field is **64 bytes**, not 60 — every field
+  from there on (target port through the trailing unknown block) lines up exactly against the
+  documented order once that one width is corrected, and the corrected sum (203 bytes) matches the
+  real packet exactly. Every other field width in the table above checked out unchanged. Fixed in
+  the field table above; still worth a fresh capture to confirm before writing any code, per the
+  general caveat in "Source."
 - **`FD00` vs `FD01`**: the notes' own summary says the command is `FD00=Read` or `FE00=Write`, but
-  the captures include `FD01` too, unexplained. Possibly a third state, or a copy/paste artifact in
-  the notes — needs a fresh capture to resolve.
+  the captures include `FD01` too, still unexplained even after the 2026-09-30 pass above. In the
+  second archived notes copy, `FD01` appears in exactly two consecutive response lines out of a
+  ~15-line capture run, both immediately following an edit to the byte the field table calls "short
+  link switch" (offset 103 in the 203-byte layout) — every other line in that run uses `FD00`. That
+  correlation is circumstantial (2 data points, no explanation for *why* that field would flip the
+  command byte, and command byte 1 sits nowhere near offset 103) and could just as easily be a
+  hand-editing mistake in how the notes' author constructed that one test payload rather than real
+  device behavior. Still needs a fresh, deliberate capture to resolve — not guessed at.
 - Several fields are explicitly marked as not understood in the source notes themselves: the
   "short link switch" byte, and a trailing 6-byte "other???" block. These aren't safe to write
   blindly (a config protocol has real, immediate consequences on real hardware if a write gets an
@@ -173,7 +192,9 @@ plus a settings form reads far better than a CLI flag dump:
 ## Status
 
 **Not started — design only.** No code exists yet, and it's gated on the not-yet-built UDP transport
-(`docs/design/transports.md`; see `BACKLOG.md`'s Transports section). The byte-count discrepancy and
-the `FD00`/`FD01` ambiguity above need resolving against a fresh capture before implementation, not
-just the existing source notes — this is flagged as a blocker, not a nice-to-have, since a config
-protocol has real, immediate consequences on real hardware if a write uses a wrong field.
+(`docs/design/transports.md`; see `BACKLOG.md`'s Transports section). The byte-count discrepancy is
+resolved (2026-09-30, see "Open questions") — the field table's widths now sum correctly against a
+real captured packet. The `FD00`/`FD01` ambiguity is still open and needs resolving against a fresh,
+deliberate capture before implementation, not just the existing source notes — this remains a
+blocker, not a nice-to-have, since a config protocol has real, immediate consequences on real
+hardware if a write uses a wrong field.
