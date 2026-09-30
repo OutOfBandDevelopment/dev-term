@@ -458,6 +458,98 @@ public sealed class ControlPanelWindowTests
         });
     }
 
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, control-only half: a control-level
+    /// VisibleWhen (see docs/design/ui-definitions.md) collapses its label+content together while
+    /// unmet (a WPF Auto Grid row with every child collapsed takes no space on its own), then
+    /// reappears once the referenced sibling's value satisfies it. The TUI side of the same fix is
+    /// <c>ControlPanelModeTests</c>.
+    /// </summary>
+    [TestMethod]
+    public void Control_VisibleWhen_HiddenUntilConditionMet_ThenShown()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Conditional Device",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Section",
+                        Controls =
+                        [
+                            new ToggleControl { Id = "enable", Label = "Enable", DefaultValue = false },
+                            new TextFieldControl
+                            {
+                                Id = "conditional",
+                                Label = "Conditional",
+                                DefaultValue = "x",
+                                VisibleWhen = new UiCondition { Id = "enable", Values = ["1"] },
+                            },
+                        ],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.ControlViews["conditional"].Visibility, "Hidden while its condition is unmet.");
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.ControlLabels["conditional"].Visibility);
+
+            ((CheckBox)window.ControlViews["enable"]).IsChecked = true;
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.ControlViews["conditional"].Visibility, "Shown once its condition is met.");
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.ControlLabels["conditional"].Visibility);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    /// TODO.md's "Control panels ignore VisibleWhen" item, section-only half: a whole section's
+    /// Expander collapses entirely while its own VisibleWhen is unmet, then reappears once its
+    /// referenced control's value satisfies it.
+    /// </summary>
+    [TestMethod]
+    public void Section_VisibleWhen_HiddenUntilConditionMet_ThenShown()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Conditional Sections",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Mode",
+                        Controls = [new ChoiceControl { Id = "mode", Label = "Mode", Options = ["basic", "advanced"], DefaultValue = "basic" }],
+                    },
+                    new UiSection
+                    {
+                        Label = "Advanced",
+                        VisibleWhen = new UiCondition { Id = "mode", Values = ["advanced"] },
+                        Controls = [new ButtonControl { Id = "advancedButton", Label = "Advanced Button" }],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Collapsed, window.SectionExpanders["Advanced"].Visibility, "Hidden while its condition is unmet.");
+
+            ((ComboBox)window.ControlViews["mode"]).SelectedItem = "advanced";
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(System.Windows.Visibility.Visible, window.SectionExpanders["Advanced"].Visibility, "Shown once its condition is met.");
+
+            await Task.CompletedTask;
+        });
+    }
+
     private static Dictionary<string, RadioButton> FindRadios(System.Windows.DependencyObject root, params string[] contents)
     {
         var found = new Dictionary<string, RadioButton>();

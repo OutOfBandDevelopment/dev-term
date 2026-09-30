@@ -125,8 +125,22 @@ internal static class ControlPanelMode
             var y = 0;
             foreach (var block in blocks)
             {
+                // VisibleWhen (see docs/design/ui-definitions.md): a section whose condition isn't
+                // met takes no rows at all — no header, no body, no blank separator row.
+                if (!block.ConditionMet)
+                {
+                    if (block.Header is { } hiddenHeader)
+                    {
+                        hiddenHeader.Visible = false;
+                    }
+
+                    block.Body.Visible = false;
+                    continue;
+                }
+
                 if (block.Header is { } header)
                 {
+                    header.Visible = true;
                     header.Y = y;
                     panel.Tops[header] = y;
                     header.Text = HeaderText(block.Label, block.Expanded);
@@ -168,7 +182,78 @@ internal static class ControlPanelMode
             }
         }
 
+        // VisibleWhen (see docs/design/ui-definitions.md): a control row's views (all sharing the
+        // same absolute Y, so shifting a row is a plain re-assignment, never Pos arithmetic) collapse
+        // together, and a section's whole header+body collapse the same way (Reflow, above). Every
+        // control/choice change re-runs this; it only asks Reflow to re-run the outer layout when a
+        // section's total row count or a whole section's own visibility actually changed.
+        void RecomputeVisibility()
+        {
+            var layoutChanged = false;
+
+            foreach (var block in blocks)
+            {
+                if (block.ControlRows.Count > 0)
+                {
+                    var y = 0;
+                    foreach (var row in block.ControlRows)
+                    {
+                        var condition = row.Control.VisibleWhen;
+                        var met = IsConditionMet(panel, condition);
+                        row.ConditionMet = met;
+
+                        // Only a row with an actual VisibleWhen ever has its Visible forced here —
+                        // otherwise this would stomp a view's own unrelated Visible state (e.g. the
+                        // color swatch, hidden until a color's actually been picked, nothing to do
+                        // with VisibleWhen).
+                        if (condition is not null)
+                        {
+                            foreach (var view in row.Views)
+                            {
+                                view.Visible = met;
+                            }
+                        }
+
+                        if (met)
+                        {
+                            if (row.Y != y)
+                            {
+                                foreach (var view in row.Views)
+                                {
+                                    view.Y = y;
+                                }
+                            }
+
+                            row.Y = y;
+                            y += row.RowSpan;
+                        }
+                    }
+
+                    if (block.Rows != y)
+                    {
+                        block.Rows = y;
+                        block.Body.Height = Math.Max(y, 1);
+                        layoutChanged = true;
+                    }
+                }
+
+                var conditionMet = IsConditionMet(panel, block.VisibleWhen);
+                if (conditionMet != block.ConditionMet)
+                {
+                    block.ConditionMet = conditionMet;
+                    layoutChanged = true;
+                }
+            }
+
+            if (layoutChanged)
+            {
+                Reflow();
+            }
+        }
+
         Reflow();
+        panel.OnValueChanged = RecomputeVisibility;
+        RecomputeVisibility();
 
         // After every layout pass: re-wrap the Notes if the visible width changed (a terminal
         // resize), and re-measure the widest row so the horizontal scroll range matches it. Each
@@ -226,6 +311,8 @@ internal static class ControlPanelMode
                         {
                             display.Apply(values);
                         }
+
+                        panel.OnValueChanged?.Invoke();
                     });
                 }
                 catch (NotInitializedException)
@@ -412,9 +499,14 @@ internal static class ControlPanelMode
         // A chart takes several rows; everything else one.
         var columnX = section.Controls.Count == 0 ? 0 : section.Controls.Max(c => c.Label.Length + 1) + 1;
         var y = 0;
+        var controlRows = new List<ControlRow>();
         foreach (var control in section.Controls)
         {
-            y += AddControlRow(panel, body, y, columnX, control);
+            var before = body.SubViews.Count();
+            var rowSpan = AddControlRow(panel, body, y, columnX, control);
+            var views = body.SubViews.Skip(before).ToList();
+            controlRows.Add(new ControlRow { Control = control, Views = views, RowSpan = rowSpan, Y = y });
+            y += rowSpan;
         }
 
         body.Height = Math.Max(y, 1);
@@ -428,6 +520,8 @@ internal static class ControlPanelMode
             Header = string.IsNullOrWhiteSpace(label) ? null : CreateHeader(label),
             Body = body,
             Rows = y,
+            VisibleWhen = section.VisibleWhen,
+            ControlRows = controlRows,
         };
     }
 
@@ -482,6 +576,11 @@ internal static class ControlPanelMode
         var width = 0;
         foreach (var block in blocks)
         {
+            if (!block.ConditionMet)
+            {
+                continue;
+            }
+
             if (block.Header is not null)
             {
                 width = Math.Max(width, HeaderText(block.Label, block.Expanded).Length);
@@ -667,6 +766,7 @@ internal static class ControlPanelMode
                     {
                         Invoke(app, surface, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
                         panel.RefreshPreview();
+                        panel.OnValueChanged?.Invoke();
                     };
                     body.Add(checkBox);
                     widget = checkBox;
@@ -703,7 +803,11 @@ internal static class ControlPanelMode
 
                         e.Handled = true;
                     };
-                    field.TextChanged += (_, _) => panel.RefreshPreview();
+                    field.TextChanged += (_, _) =>
+                    {
+                        panel.RefreshPreview();
+                        panel.OnValueChanged?.Invoke();
+                    };
                     body.Add(field);
                     var hint = new Label { X = Pos.Right(field) + 1, Y = row, Text = $"[{minimum:0.#}-{maximum:0.#}]{unit}" };
                     body.Add(hint);
@@ -745,6 +849,7 @@ internal static class ControlPanelMode
                         }
 
                         panel.RefreshPreview();
+                        panel.OnValueChanged?.Invoke();
                     };
                     body.Add(selector);
                     widget = selector;
@@ -768,7 +873,11 @@ internal static class ControlPanelMode
 
                         e.Handled = true;
                     };
-                    textFieldView.TextChanged += (_, _) => panel.RefreshPreview();
+                    textFieldView.TextChanged += (_, _) =>
+                    {
+                        panel.RefreshPreview();
+                        panel.OnValueChanged?.Invoke();
+                    };
                     body.Add(textFieldView);
                     widget = textFieldView;
                     probeCommandId = textField.Id;
@@ -841,6 +950,10 @@ internal static class ControlPanelMode
 
         return 1;
     }
+
+    /// <summary>Whether <paramref name="condition"/> holds against its referenced control's current live value (null when that control has no view yet, or the condition itself is null).</summary>
+    private static bool IsConditionMet(PanelState panel, UiCondition? condition) =>
+        condition is null || condition.IsMetBy(panel.CurrentValue(condition.Id));
 
     /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
     private static string GetCurrentValue(View view) => view switch
@@ -953,6 +1066,34 @@ internal static class ControlPanelMode
 
         /// <summary>Re-wraps the section for a new visible width (the Notes); true when its row count changed, so the form must reflow.</summary>
         public Func<int, bool>? Rewrap { get; set; }
+
+        /// <summary>When set, the whole section is shown only while this condition holds — see <c>RecomputeVisibility</c>. Null for the Notes section, which has none.</summary>
+        public UiCondition? VisibleWhen { get; init; }
+
+        /// <summary>Whether <see cref="VisibleWhen"/> currently holds (always true when it's null) — read by <c>Reflow</c>/<c>MeasureContentWidth</c> to skip the block entirely.</summary>
+        public bool ConditionMet { get; set; } = true;
+
+        /// <summary>Each control's row within this section's body, for per-row <c>VisibleWhen</c>. Empty for the Notes section.</summary>
+        public List<ControlRow> ControlRows { get; init; } = [];
+    }
+
+    /// <summary>
+    /// One control's row within a section body: the views it added (all sharing one absolute Y, so
+    /// hiding/shifting the row is a plain re-assignment rather than <c>Pos</c> arithmetic), how many
+    /// rows tall it is (more than one for a chart), and its current content-relative Y and
+    /// <c>VisibleWhen</c> state — see <c>RecomputeVisibility</c>.
+    /// </summary>
+    private sealed class ControlRow
+    {
+        public required UiControl Control { get; init; }
+
+        public required List<View> Views { get; init; }
+
+        public required int RowSpan { get; init; }
+
+        public int Y { get; set; }
+
+        public bool ConditionMet { get; set; } = true;
     }
 
     /// <summary>
@@ -1018,6 +1159,12 @@ internal static class ControlPanelMode
 
         /// <summary>Scrolls a content-relative row range into view; set once the form's scrolling is wired.</summary>
         public Action<int, int>? Reveal { get; set; }
+
+        /// <summary>Re-evaluates every <c>VisibleWhen</c> condition; set once <c>BuildWindow</c> has a <c>RecomputeVisibility</c> to call. Invoked on every control value change.</summary>
+        public Action? OnValueChanged { get; set; }
+
+        /// <summary>The live current value of the control <paramref name="id"/>, for evaluating a <see cref="UiCondition"/> against it — null if it has no view (not yet built, or an unknown id).</summary>
+        public string? CurrentValue(string id) => ControlViews.TryGetValue(id, out var view) ? GetCurrentValue(view) : null;
 
         /// <summary>Each header's/section body's content row as of the last <c>Reflow</c> — used for scrolling into view instead of <c>Frame.Y</c>, which lags until the next layout pass (e.g. right after a collapse).</summary>
         public Dictionary<View, int> Tops { get; } = [];

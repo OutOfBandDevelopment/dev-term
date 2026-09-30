@@ -64,6 +64,13 @@ public partial class ControlPanelWindow : Window
     private readonly string _definitionName;
     private bool _showingValidationError;
 
+    // VisibleWhen support (see docs/design/ui-definitions.md): a row's label + content collapse
+    // together (an Auto Grid row with every child collapsed takes no space, so no manual reflow is
+    // needed the way the TUI renderer needs one), and a section's whole Expander/Grid collapses the
+    // same way. Recomputed on every value change, not just once at open.
+    private readonly List<(UiCondition Condition, FrameworkElement[] Elements)> _controlVisibilityRules = [];
+    private readonly List<(UiCondition Condition, FrameworkElement Element)> _sectionVisibilityRules = [];
+
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
 
@@ -103,18 +110,27 @@ public partial class ControlPanelWindow : Window
         foreach (var section in definition.Sections)
         {
             var grid = BuildSectionGrid(section);
+            FrameworkElement sectionElement;
             if (string.IsNullOrWhiteSpace(section.Label))
             {
                 // Nothing to name a header with (e.g. Busylight's lone Apply button) — always shown,
                 // indented to line up with the expanded sections' own rows.
                 grid.Margin = new Thickness(18, 0, 0, 8);
-                SectionsPanel.Children.Add(grid);
+                sectionElement = grid;
             }
             else
             {
-                SectionsPanel.Children.Add(BuildExpander(section.Label, grid));
+                sectionElement = BuildExpander(section.Label, grid);
+            }
+
+            SectionsPanel.Children.Add(sectionElement);
+            if (section.VisibleWhen is { } sectionCondition)
+            {
+                _sectionVisibilityRules.Add((sectionCondition, sectionElement));
             }
         }
+
+        RecomputeVisibility();
 
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
@@ -218,6 +234,11 @@ public partial class ControlPanelWindow : Window
             Grid.SetRow(content, row);
             Grid.SetColumn(content, 1);
             grid.Children.Add(content);
+
+            if (control.VisibleWhen is { } visibleWhen)
+            {
+                _controlVisibilityRules.Add((visibleWhen, [label, content]));
+            }
         }
 
         return grid;
@@ -286,7 +307,36 @@ public partial class ControlPanelWindow : Window
             {
                 display.Apply(values);
             }
+
+            RecomputeVisibility();
         });
+    }
+
+    /// <summary>Whether <paramref name="condition"/>'s referenced control's current value satisfies it — null (no such control tracked yet) never matches a value list, only "is true" with none given.</summary>
+    private bool IsConditionMet(UiCondition condition) =>
+        condition.IsMetBy(_controlViews.TryGetValue(condition.Id, out var view) ? GetCurrentValue(view) : null);
+
+    /// <summary>
+    /// Re-evaluates every <c>VisibleWhen</c> against the panel's current values and collapses/shows
+    /// the affected rows and sections. Called once after the panel is built and again on every value
+    /// change (a toggle, a choice, a committed text/numeric field, or a live structured-presenter
+    /// update) — a control panel has no single bound model to observe, unlike the form renderers.
+    /// </summary>
+    private void RecomputeVisibility()
+    {
+        foreach (var (condition, elements) in _controlVisibilityRules)
+        {
+            var visibility = IsConditionMet(condition) ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var element in elements)
+            {
+                element.Visibility = visibility;
+            }
+        }
+
+        foreach (var (condition, element) in _sectionVisibilityRules)
+        {
+            element.Visibility = IsConditionMet(condition) ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private (FrameworkElement RowContent, FrameworkElement Tracked, Func<string?>? Preview, (string CommandId, string? Value)? Probe) BuildWidget(UiControl control)
@@ -364,8 +414,8 @@ public partial class ControlPanelWindow : Window
             case ToggleControl toggle:
                 {
                     var view = new CheckBox { IsChecked = toggle.DefaultValue, VerticalAlignment = VerticalAlignment.Center };
-                    view.Checked += (_, _) => Invoke(toggle.Id, "1");
-                    view.Unchecked += (_, _) => Invoke(toggle.Id, "0");
+                    view.Checked += (_, _) => { Invoke(toggle.Id, "1"); RecomputeVisibility(); };
+                    view.Unchecked += (_, _) => { Invoke(toggle.Id, "0"); RecomputeVisibility(); };
 
                     // What toggling it would send — the next state, not the current one.
                     return (view, view, () => SendsText(toggle.Id, view.IsChecked == true ? "0" : "1"), (toggle.Id, toggle.DefaultValue ? "0" : "1"));
@@ -388,6 +438,7 @@ public partial class ControlPanelWindow : Window
                     {
                         valueLabel.Text = FormatUnit(e.NewValue, slider.Unit);
                         Invoke(slider.Id, e.NewValue.ToString(CultureInfo.InvariantCulture));
+                        RecomputeVisibility();
                     };
                     var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     panel.Children.Add(view);
@@ -426,6 +477,7 @@ public partial class ControlPanelWindow : Window
                         var radio = new RadioButton { Content = option, GroupName = groupName, Margin = new Thickness(0, 0, 8, 0), IsChecked = option == choice.DefaultValue };
                         radio.Checked += (_, _) =>
                         {
+                            RecomputeVisibility();
                             if (_suppressChoiceSend)
                             {
                                 return;
@@ -456,6 +508,8 @@ public partial class ControlPanelWindow : Window
                         {
                             Invoke(choice.Id, selected);
                         }
+
+                        RecomputeVisibility();
                     };
                     return (view, view, () => SendsText(choice.Id, GetCurrentValue(view)), (choice.Id, GetCurrentValue(view)));
                 }
@@ -636,6 +690,7 @@ public partial class ControlPanelWindow : Window
         ClearValidationError();
         field.Text = result.Value;
         Invoke(control.Id, result.Value);
+        RecomputeVisibility();
     }
 
     /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); fails on the first invalid one.</summary>

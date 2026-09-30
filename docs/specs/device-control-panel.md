@@ -49,7 +49,7 @@ The control set is data-driven (one row per `UiControl` in the definition), not 
 | `ToggleControl` | `CheckBox` | `CheckBox` | Sends `"1"`/`"0"` on every change |
 | `SliderControl` | Bounded `TextField` (no drag widget in the installed Terminal.Gui) + a `[min-max]unit` hint label | Real `Slider` + a live value label | Commits on Enter (TUI) / on every drag (WPF). TUI: validated on commit (see Validation) — a number is clamped to `[Minimum, Maximum]`, anything else is rejected and not sent |
 | `NumericControl` | Bounded `TextField` + a `[min-max]unit` hint label | `TextBox` | Commits on Enter (TUI) / on Enter or losing focus (WPF). Validated on commit in both: a number is clamped to `[Minimum, Maximum]` and written back normalized; unparsable input is rejected and not sent (it used to silently send `DefaultValue` instead) |
-| `ChoiceControl` | `OptionSelector` (horizontal) regardless of `ChoiceStyle` — no radio-group/combo-box widget in the installed Terminal.Gui | `RadioButton` group when `ChoiceStyle.RadioGroup`, otherwise `ComboBox` (including `ChoiceStyle.CheckList`, a multi-select only the form renderers draw as check boxes) | Sends the selected option string on change. A section's or control's `VisibleWhen` (a form-renderer feature, see [ui-definitions.md](../design/ui-definitions.md#forms-from-one-definition)) isn't evaluated here: panels show every control |
+| `ChoiceControl` | `OptionSelector` (horizontal) regardless of `ChoiceStyle` — no radio-group/combo-box widget in the installed Terminal.Gui | `RadioButton` group when `ChoiceStyle.RadioGroup`, otherwise `ComboBox` (including `ChoiceStyle.CheckList`, a multi-select only the form renderers draw as check boxes) | Sends the selected option string on change |
 | `TextFieldControl` | `TextField` | `TextBox` (`MaxLength` set directly when `TextFieldControl.MaxLength` is set) | Commits on Enter (TUI) / on Enter or losing focus (WPF); TUI truncates to `MaxLength` on commit. With a `Constraint` (`ValueConstraint`: `Text`/`Integer`/`Number`, optional `Minimum`/`Maximum`), the typed value is validated on commit — rejected and not sent when invalid or (by default) out of range, normalized when valid (`" 3.0 "` → `"3"`) |
 | `IndicatorControl` | Read-only `Label` | Read-only, bold `TextBlock` | Never sends anything; updated only by a live `IStructuredPresenter.ValuesChanged` event keyed by the control's id — see States |
 | `BarGraphControl` | `CellCanvasView`: one row per channel — label, a 30-cell bar of block characters (eighth-block resolution: `▏▎▍▌▋▊▉█`) in the channel's color between `▕`/`▏`, then the value and unit (`—` before any) | `BarGraphElement`: one 220 px rounded bar per channel on a light track, label left, value right | Display-only. Each channel (`ChartChannel.Id`) is a `ValuesChanged` key; the bar fills `(value − Minimum) / (Maximum − Minimum)`, clamped to [0, 1]; the value text is unclamped |
@@ -79,6 +79,14 @@ if any field is invalid, nothing is sent.
   `Name` plus the section's label (Notes included), and a panel opens each section as last left —
   expanded the first time. Shared by both front ends, kept for the life of the process, not
   persisted (the same in-process pattern as `LastPickedColors`).
+- **A section's or control's `VisibleWhen`** (see
+  [ui-definitions.md](../design/ui-definitions.md#forms-from-one-definition)) is honored here too,
+  not just by the form renderers: a hidden section has no header and takes no space (WPF: its
+  `Expander`'s row collapses to zero height automatically; TUI: it's skipped entirely during layout,
+  no header/body/separator row); a hidden control's own row disappears the same way, and every row
+  after it moves up to fill the gap. Re-evaluated on every value change of the control the condition
+  names, so ticking a checkbox or picking a choice option can reveal or hide a row/section live,
+  with everything below it reflowing immediately.
 - **Labels are aligned per section and never wrap.** WPF: a two-column `Grid` per section — an
   auto-sized, `NoWrap` label column, then the controls (a chart's label sits at its top). TUI: every
   control in a section starts at the section's longest `Label:` plus one space; a chart takes as many

@@ -8,8 +8,6 @@ Completed work is logged by date under `docs/changes/`.
 
 ### Forms engine and manifest editor (follow-ups from 2026-09-25)
 
-- **Control panels ignore `VisibleWhen`** and show a `ChoiceStyle.CheckList` as a single choice (a
-  dropdown); only the form renderers handle both.
 - **The manifest editor can't edit a control's own `VisibleWhen`, and has no undo.**
 
 ### Binary layout formats
