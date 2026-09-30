@@ -3,8 +3,11 @@ namespace DevTerm.Configuration;
 /// <summary>
 /// The themes that ship with dev-term, plus the <c>system</c> selection that picks between them.
 /// <see cref="Light"/> keeps the colors the front ends hard-coded before theming existed (WPF's
-/// stock control chrome, the green/amber/red status line), so it looks the way dev-term always has;
-/// <see cref="Dark"/> is new. See docs/design/theming.md.
+/// stock control chrome, the green/amber/red status line), so it looks the way dev-term always has -
+/// except <see cref="ThemeRole.Accent"/>/<see cref="ThemeRole.Warning"/>, whose legacy values (SteelBlue,
+/// DarkGoldenrod) read as text in Playback's sent/note lines at only 4.1:1/3.3:1, below the 4.5:1 text
+/// threshold; deepened just enough to clear it (2026-09-29, see docs/design/theming.md). <see cref="Dark"/>
+/// is new.
 /// </summary>
 public static class BuiltInThemes
 {
@@ -28,9 +31,9 @@ public static class BuiltInThemes
         [ThemeRole.SelectionForeground] = "#000000",
         [ThemeRole.MenuBackground] = "#F0F0F0",
         [ThemeRole.MenuForeground] = "#000000",
-        [ThemeRole.Accent] = "#4682B4",
+        [ThemeRole.Accent] = "#2E6DA4",
         [ThemeRole.Error] = "#8B0000",
-        [ThemeRole.Warning] = "#B8860B",
+        [ThemeRole.Warning] = "#8F6A09",
         [ThemeRole.OutputStatus] = "#696969",
         [ThemeRole.OutputError] = "#8B0000",
         [ThemeRole.StatusConnected] = "#78C878",
@@ -47,6 +50,15 @@ public static class BuiltInThemes
         [ThemeRole.ChartMuted] = "#8A8984",
     });
 
+    /// <summary>
+    /// <see cref="ThemeRole.SelectionBackground"/> (<c>#2A66C2</c>) was brightened from the original
+    /// VS-Code-style <c>#264F78</c> on 2026-09-30: under Terminal.Gui's legacy-conhost 16-color downgrade
+    /// (see docs/design/theming.md), the old value's nearest ANSI-16 color was the same "DarkGray" that
+    /// <see cref="ThemeRole.FieldBackground"/>/<see cref="ThemeRole.ControlHoverBackground"/> also snap to,
+    /// so a focused field rendered the same background as a merely-editable one - "faint focus". The new
+    /// value's nearest ANSI-16 color is "BrightBlue" instead, verified by
+    /// <c>DevTerm.Console.Tests.LegacyConsole16ColorTests</c>.
+    /// </summary>
     public static DevTermTheme Dark { get; } = Build(DarkName, ChartPaletteVariant.Dark, new()
     {
         [ThemeRole.Background] = "#1E1E1E",
@@ -57,7 +69,7 @@ public static class BuiltInThemes
         [ThemeRole.ControlBorder] = "#5A5A5A",
         [ThemeRole.FieldBackground] = "#3C3C3C",
         [ThemeRole.ControlHoverBackground] = "#3A3D41",
-        [ThemeRole.SelectionBackground] = "#264F78",
+        [ThemeRole.SelectionBackground] = "#2A66C2",
         [ThemeRole.SelectionForeground] = "#FFFFFF",
         [ThemeRole.MenuBackground] = "#252526",
         [ThemeRole.MenuForeground] = "#E6E6E6",

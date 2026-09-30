@@ -12,14 +12,14 @@
 │  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          █│
 │  ASCII max line length: 4096                                                █│
 │                                                                             █│
-│Save as profile named:                      ⟦ Save Profile ⟧▖                █│
-│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                █│
+│Save as profile named:                      ⟦ Save Profile ⟧                 █│
+│                                                                             █│
 │Import/export file path:                                                     █│
 │                                                                             █│
-│⟦ Browse... ⟧▖ ⟦ Import ⟧▖ ⟦ Export ⟧▖ ⟦ Save As... ⟧▖ ⟦ Replace All ⟧▖      █│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘      █│
+│⟦ Browse... ⟧  ⟦ Import ⟧  ⟦ Export ⟧  ⟦ Save As... ⟧  ⟦ Replace All ⟧       █│
 │                                                                             █│
-│⟦► Connect ◄⟧▖  ⟦ Quit ⟧▖                                                    █│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▘                                                    █│
+│                                                                             █│
+│⟦► Connect ◄⟧   ⟦ Quit ⟧                                                     █│
+│                                                                             █│
 │                                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

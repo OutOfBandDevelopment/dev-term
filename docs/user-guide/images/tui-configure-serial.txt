@@ -1,21 +1,21 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │                                                                             ▲│
 │Saved profiles:                                                              █│
-│                               ⟦ Load ⟧▖ ⟦ Delete ⟧▖ ⟦ Refresh ⟧▖            █│
-│                               ▝▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▘            █│
+│                               ⟦ Load ⟧  ⟦ Delete ⟧  ⟦ Refresh ⟧             █│
 │                                                                             █│
 │                                                                             █│
 │                                                                             █│
-│⟦ Export Selected ⟧▖ ⟦ Export All ⟧▖ ⟦ Delete Selected ⟧▖                    █│
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                    █│
+│                                                                             █│
+│⟦ Export Selected ⟧  ⟦ Export All ⟧  ⟦ Delete Selected ⟧                     █│
+│                                                                             █│
 │                                                                             █│
 │  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ ble  ○ loopback           ░│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
 │── Serial ──                                                                 ░│
 │  Port:               COM99                                                  ░│
-│  Detected ports:     ⟦ Detect... ⟧▖                                         ░│
-│                      ▝▀▀▀▀▀▀▀▀▀▀▀▀▘                                         ░│
+│  Detected ports:     ⟦ Detect... ⟧                                          ░│
+│                                                                             ░│
 │                      (not found — this port isn't connected right now)      ░│
 │  Baud:               9600                                                   ░│
 │  Data bits:          8                                                      ░│

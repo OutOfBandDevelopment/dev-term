@@ -176,14 +176,16 @@ public sealed class DevTermTheme
         (ThemeRole.MenuForeground, ThemeRole.MenuBackground, 4.5),
         (ThemeRole.MutedForeground, ThemeRole.Background, 3.0),
         (ThemeRole.Error, ThemeRole.Background, 4.5),
-        (ThemeRole.Warning, ThemeRole.Background, 3.0),
+        // Text, not just an indicator fill: Playback's [note] lines render Warning as full-weight text.
+        (ThemeRole.Warning, ThemeRole.Background, 4.5),
         (ThemeRole.OutputStatus, ThemeRole.ControlBackground, 3.0),
         (ThemeRole.OutputError, ThemeRole.ControlBackground, 4.5),
         (ThemeRole.StatusConnectedText, ThemeRole.StatusConnected, 4.5),
         (ThemeRole.StatusConnectingText, ThemeRole.StatusConnecting, 4.5),
         (ThemeRole.StatusDisconnectedText, ThemeRole.StatusDisconnected, 4.5),
         (ThemeRole.Recording, ThemeRole.MenuBackground, 3.0),
-        (ThemeRole.Accent, ThemeRole.Background, 3.0),
+        // Text, not just an indicator fill: Playback's [tx] lines render Accent as full-weight text.
+        (ThemeRole.Accent, ThemeRole.Background, 4.5),
         (ThemeRole.ChartText, ThemeRole.ChartSurface, 4.5),
         (ThemeRole.ChartMuted, ThemeRole.ChartSurface, 3.0),
     ];

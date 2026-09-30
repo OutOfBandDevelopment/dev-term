@@ -9,8 +9,11 @@ namespace DevTerm.Wpf;
 /// Logger mode (File &gt; Start Logging... / Stop Logging, and <c>--log</c>) and File &gt; Open Log
 /// for Playback... — kept in their own partial file so the main window's code only calls in at three
 /// points: the constructor (<see cref="StartLoggingFromOptions"/>), a profile switch
-/// (<see cref="FollowLogging"/>) and closing (<see cref="StopLogging"/>). See
-/// docs/specs/wpf-main-window.md and docs/design/session-logging.md.
+/// (<see cref="FollowLogging"/>) and closing (<see cref="StopLogging"/>). One log follows whichever
+/// tab is active when logging is started or when <see cref="RefreshLoggingUi"/> next runs — not yet
+/// per-tab (docs/design/multi-session-ui.md's Open questions defers that to Step 4) — so only one tab
+/// at a time can be logged from this window. See docs/specs/wpf-main-window.md and
+/// docs/design/session-logging.md.
 /// </summary>
 public partial class MainWindow
 {
@@ -23,16 +26,18 @@ public partial class MainWindow
     internal SessionLogger? Logger => _logger;
 
     /// <summary>
-    /// Starts logging the current session to <paramref name="path"/> (replacing any file there),
-    /// stopping any log already running. A failure is reported in the output list, not thrown.
+    /// Starts logging the active tab's session to <paramref name="path"/> (replacing any file
+    /// there), stopping any log already running. A failure is reported in the output list, not
+    /// thrown.
     /// </summary>
     /// <returns>Whether logging started.</returns>
     internal bool StartLogging(string path)
     {
         StopLogging(report: false);
+        var tab = ActiveWindowTab.Tab;
         try
         {
-            _logger = SessionLogging.Start(path, _session, _cliOptions, CurrentParser, _profileStore.FindName(_cliOptions), "wpf");
+            _logger = SessionLogging.Start(path, tab.Session, tab.CliOptions, CurrentParser, _profileStore.FindName(tab.CliOptions), "wpf");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -66,11 +71,13 @@ public partial class MainWindow
     }
 
     // --log: start straight away (before the Loaded-triggered connect, so the connect is in the log).
-    private void StartLoggingFromOptions()
+    // Takes an explicit tab (rather than reading ActiveWindowTab) because NewSession_Click calls this
+    // for a just-added tab that isn't necessarily the active one by the time it runs.
+    private void StartLoggingFromOptions(WindowTab tab)
     {
-        if (_cliOptions.Log is { Length: > 0 } logOption)
+        if (tab.Tab.CliOptions.Log is { Length: > 0 } logOption)
         {
-            StartLogging(SessionLogging.ResolveLogPath(logOption, _cliOptions, _profileStore.FindName(_cliOptions), DateTimeOffset.Now));
+            StartLogging(SessionLogging.ResolveLogPath(logOption, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions), DateTimeOffset.Now));
         }
         else
         {
@@ -78,8 +85,10 @@ public partial class MainWindow
         }
     }
 
-    // A live profile switch: the same log continues with the new session.
-    private void FollowLogging() => SessionLogging.Follow(_logger, _session, _cliOptions, _profileStore.FindName(_cliOptions));
+    // A live profile switch on `tab`: the same log continues with the new session, provided `tab` is
+    // the one currently being logged - takes an explicit tab rather than reading ActiveWindowTab
+    // because SwitchProfileAsync can run for a tab that isn't the active one.
+    private void FollowLogging(WindowTab tab) => SessionLogging.Follow(_logger, tab.Tab.Session, tab.Tab.CliOptions, _profileStore.FindName(tab.Tab.CliOptions));
 
     private void RefreshLoggingUi()
     {
@@ -98,7 +107,8 @@ public partial class MainWindow
             return;
         }
 
-        var suggested = SessionLogging.DefaultLogPath(_cliOptions, _profileStore.FindName(_cliOptions), DateTimeOffset.Now);
+        var tabOptions = ActiveWindowTab.Tab.CliOptions;
+        var suggested = SessionLogging.DefaultLogPath(tabOptions, _profileStore.FindName(tabOptions), DateTimeOffset.Now);
         Directory.CreateDirectory(Path.GetDirectoryName(suggested)!);
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
@@ -135,7 +145,7 @@ public partial class MainWindow
         Logging.Playback.PlaybackController controller;
         try
         {
-            controller = new PlaybackPresenters(_cliOptions).Open(path, clock);
+            controller = new PlaybackPresenters(ActiveWindowTab.Tab.CliOptions).Open(path, clock);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SessionLogFormatException or ArgumentException or NotSupportedException)
         {

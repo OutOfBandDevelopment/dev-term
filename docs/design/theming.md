@@ -70,8 +70,13 @@ theme model.
   3:1 for secondary text and indicator fills. Tests check the built-ins; for a user theme the
   failures are reported but not rejected.
 - **`BuiltInThemes`**: `light`, `dark`, and `system`. `light` keeps the colors the front ends
-  hard-coded before theming: WPF's DarkRed/DimGray output lines and SteelBlue info icons, and the
-  TUI's green/amber/red status line. `system` isn't a theme of its own. It resolves to `light` or
+  hard-coded before theming: WPF's DarkRed/DimGray output lines, and the TUI's green/amber/red
+  status line - except `accent` and `warning`, whose legacy values (SteelBlue `#4682B4`,
+  DarkGoldenrod `#B8860B`) read as full-weight text in Playback's sent/note lines at only 4.1:1/3.3:1
+  there, short of the 4.5:1 text threshold; deepened to `#2E6DA4`/`#8F6A09` (2026-09-29), which clear
+  it with margin while keeping the same hue. `ReadablePairs` checks both against `background` at
+  4.5:1 now, not the 3:1 "indicator fill" rate other roles like `recording` use, so a future palette
+  edit can't reopen this silently. `system` isn't a theme of its own. It resolves to `light` or
   `dark` through `SystemThemeDetector`. On Windows that reads `HKCU\…\Themes\Personalize\AppsUseLightTheme`
   (0 = dark); elsewhere it uses the terminal's `COLORFGBG` hint. Undetectable means light.
 - **`ThemeFile`**: user themes, as `*.json` under `~/.dev-term/themes`
@@ -177,6 +182,33 @@ menu) are themed too. Each attached window gets a merged `ThemeDictionary`:
   `Program.cs` applies it before any TUI screen (including the startup Connection Editor), and
   `TuiMode.RunAsync` applies it after `Init`. `TuiTheme.Restore()` puts Terminal.Gui's own schemes
   back (used by tests).
+- **Legacy Windows conhost forces every truecolor value down to one of 16 named ANSI colors, for the
+  whole session, with no way to opt back out.** Verified against Terminal.Gui v2.5.0 source
+  (`Drivers/WindowsDriver/WindowsOutput.cs`, `Drivers/Output/OutputBase.cs`): the driver's constructor
+  checks `GetConsoleMode` on the real console handle once at startup; if `ENABLE_VIRTUAL_TERMINAL_PROCESSING`
+  wasn't already on, `IsLegacyConsole` is set, whose setter forces `Force16Colors = true` - and
+  `Force16Colors`'s own setter then refuses to be unset again while `IsLegacyConsole` is true. Every
+  color then renders as `Color.GetClosestNamedColor16()`'s nearest of the 16 named colors by plain
+  Euclidean RGB distance (`Drawing/Color/Color.cs`), with no perceptual weighting. This is a real,
+  irreversible downgrade a theme's colors have to survive, not just a Windows Terminal/VT-capable-host
+  concern.
+
+  A theme role pair that's meant to stay visually distinct can collapse onto the *same* rendered color
+  this way even though their truecolor hex values look nothing alike - which is what made
+  `dark`'s original `selectionBackground` (`#264F78`, a VS-Code-style dark blue) collapse onto the same
+  nearest named color ("DarkGray") as `fieldBackground`/`controlHoverBackground`, so a focused field
+  rendered identically to a merely-editable, unfocused one under the downgrade (TODO.md's "startup
+  editor looks unthemed in legacy conhost: invisible field backgrounds, faint focus", fixed 2026-09-30).
+  `selectionBackground` was brightened to `#2A66C2`, whose nearest named color is "BrightBlue" instead -
+  see `BuiltInThemes.Dark`'s doc comment and
+  `DevTerm.Console.Tests.LegacyConsole16ColorTests`, which calls the real
+  `Color.GetClosestNamedColor16()` (not a reimplementation) to lock this in. `light`'s equivalent roles
+  have a similar, more severe collapse under the same downgrade (`background`/`fieldBackground`/
+  `selectionBackground` all land on "White" - `light`'s field/selection colors are much closer to white
+  than `dark`'s are to black) - not fixed here, since it would mean darkening `light`'s field/selection
+  colors enough to change its look in the WPF app too, and a legacy black-background console running
+  the *light* theme is a narrower case than the *dark* theme (dev-term's default) doing it. Tracked in
+  `BACKLOG.md`.
 - Colors dev-term draws itself are looked up per role where they're drawn:
   - The status line: `TuiTheme.StatusAttribute`.
   - The Stream Monitor's state line.

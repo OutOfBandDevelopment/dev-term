@@ -4,8 +4,8 @@
 │  Product ID:           63560                                                ░│
 │  Serial number:                                                             ░│
 │                        ☐ Show as hex                                        ░│
-│  Detected HID devices: ⟦ Detect HID... ⟧▖                                   ░│
-│                        ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                                   ░│
+│  Detected HID devices: ⟦ Detect HID... ⟧                                    ░│
+│                                                                             ░│
 │                        (not found — no connected device matches this        █│
 │                        vendor/product/serial)                               █│
 │                                                                             █│
@@ -19,7 +19,7 @@
 │  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          █│
 │  ASCII max line length: 4096                                                ░│
 │                                                                             ░│
-│Save as profile named:                      ⟦ Save Profile ⟧▖                ░│
-│                                            ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘                ░│
+│Save as profile named:                      ⟦ Save Profile ⟧                 ░│
+│                                                                             ░│
 │Import/export file path:                                                     ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

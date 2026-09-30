@@ -11,21 +11,6 @@ Completed work is logged by date under `docs/changes/`.
 - `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section
   in `docs/design/device-control-modules.md`. Not started.
 
-### WPF layout review follow-ups (from 2026-09-25)
-
-- **Light theme Accent/Warning are below 4.5:1 as text colors** (4.1:1 and 3.3:1; Playback's `[tx]` and
-  `[note]` lines). Needs a palette decision covering both front ends and `docs/design/theming.md`; allow-listed
-  in `UiLayoutReviewTests` until then.
-- **The Manifest Editor preview's fixed-size charts need a sideways scroll at the default 1180px.** Letting
-  charts shrink to the column would fix it.
-- **No review at 125/150% DPI,** and no keyboard-focus-visual review; the layout review runs at 96 DPI only.
-
-### TUI layout review follow-ups (from 2026-09-25)
-
-- **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
-- **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
-  invisible field backgrounds, faint focus).
-
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and

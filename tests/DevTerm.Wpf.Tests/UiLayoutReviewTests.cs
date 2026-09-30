@@ -395,25 +395,6 @@ public sealed class UiLayoutReviewTests
         ],
     };
 
-    /// <summary>
-    /// The Light theme's Accent (#4682B4, 4.1:1 on white) and Warning (#B8860B, 3.3:1) roles are
-    /// below 4.5:1 as text colors - Playback's sent lines and notes use them. That's the shared theme
-    /// palette (both front ends, docs/design/theming.md), not this window's layout, so it's left for a
-    /// palette decision rather than patched here. Only those two colors, only in playback lines.
-    /// </summary>
-    private static LayoutCheckOptions PaletteContrastAllowance => new()
-    {
-        Allowed =
-        [
-            new(
-                WpfLayoutAssert.ContrastCheck,
-                e => e is TextBlock { Name: "LineText", Foreground: System.Windows.Media.SolidColorBrush brush }
-                    && !ActiveTheme.Current.IsDark
-                    && (brush.Color == WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.Accent]) || brush.Color == WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.Warning])),
-                "Light theme Accent/Warning text contrast is a palette decision (see BACKLOG)."),
-        ],
-    };
-
     private static bool IsInsideLiveDisplay(FrameworkElement element)
     {
         for (DependencyObject? current = element; current is not null; current = System.Windows.Media.VisualTreeHelper.GetParent(current))
@@ -557,7 +538,7 @@ public sealed class UiLayoutReviewTests
                 window.AddNote();
                 window.Do(controller.Step);
 
-                ui.Review(window, "playback", PaletteContrastAllowance, sizes);
+                ui.Review(window, "playback", sizes: sizes);
                 window.Close();
                 ui.AssertClean();
                 await Task.CompletedTask;

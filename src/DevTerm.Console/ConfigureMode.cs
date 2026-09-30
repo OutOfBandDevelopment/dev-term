@@ -135,27 +135,27 @@ public static class ConfigureMode
         };
         profilesList.SetSource(new ObservableCollection<string>(viewModel.Profiles));
 
-        var loadButton = new Button { X = Pos.Right(profilesList) + 1, Y = Pos.Top(profilesList), Text = "Load" };
-        var deleteButton = new Button { X = Pos.Right(loadButton) + 1, Y = Pos.Top(profilesList), Text = "Delete" };
-        var refreshButton = new Button { X = Pos.Right(deleteButton) + 1, Y = Pos.Top(profilesList), Text = "Refresh" };
+        var loadButton = new Button { X = Pos.Right(profilesList) + 1, Y = Pos.Top(profilesList), Text = "Load", ShadowStyle = ShadowStyles.None };
+        var deleteButton = new Button { X = Pos.Right(loadButton) + 1, Y = Pos.Top(profilesList), Text = "Delete", ShadowStyle = ShadowStyles.None };
+        var refreshButton = new Button { X = Pos.Right(deleteButton) + 1, Y = Pos.Top(profilesList), Text = "Refresh", ShadowStyle = ShadowStyles.None };
 
         // Own row below the list rather than crowding onto the Load/Delete/Refresh row - the same
         // "doesn't fit an 80-column window without clipping" reasoning already applied to
         // Browse/Import/Export/Save As below.
-        var exportSelectedButton = new Button { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Export Selected" };
-        var exportAllButton = new Button { X = Pos.Right(exportSelectedButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Export All" };
-        var deleteSelectedButton = new Button { X = Pos.Right(exportAllButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Delete Selected" };
+        var exportSelectedButton = new Button { X = 0, Y = Pos.Bottom(profilesList) + 1, Text = "Export Selected", ShadowStyle = ShadowStyles.None };
+        var exportAllButton = new Button { X = Pos.Right(exportSelectedButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Export All", ShadowStyle = ShadowStyles.None };
+        var deleteSelectedButton = new Button { X = Pos.Right(exportAllButton) + 1, Y = Pos.Top(exportSelectedButton), Text = "Delete Selected", ShadowStyle = ShadowStyles.None };
 
         // The three "pick from what's attached" pickers stay hand-built (each needs the view model's
         // rich device lists and a modal list, which the generic form has no vocabulary for); the
         // generated form still places each one in its row, labels it, and shows/hides it with its
         // transport. Picking writes the view model, whose change notifications refresh the fields.
-        var detectPortButton = new Button { Text = "Detect..." };
-        var detectHidButton = new Button { Text = "Detect HID..." };
-        var detectUsbtmcButton = new Button { Text = "Detect USBTMC..." };
-        var detectBleButton = new Button { Text = "Detect BLE..." };
-        var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics..." };
-        var pickBleNotifyCharacteristicButton = new Button { Text = "Pick..." };
+        var detectPortButton = new Button { Text = "Detect...", ShadowStyle = ShadowStyles.None };
+        var detectHidButton = new Button { Text = "Detect HID...", ShadowStyle = ShadowStyles.None };
+        var detectUsbtmcButton = new Button { Text = "Detect USBTMC...", ShadowStyle = ShadowStyles.None };
+        var detectBleButton = new Button { Text = "Detect BLE...", ShadowStyle = ShadowStyles.None };
+        var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics...", ShadowStyle = ShadowStyles.None };
+        var pickBleNotifyCharacteristicButton = new Button { Text = "Pick...", ShadowStyle = ShadowStyles.None };
         var formOptions = new TuiFormOptions();
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
@@ -170,7 +170,7 @@ public static class ConfigureMode
 
         var saveNameLabel = new Label { X = 0, Y = Pos.Bottom(form.Root) + 1, Text = "Save as profile named:" };
         var saveNameField = new TextField { X = Pos.Right(saveNameLabel) + 1, Y = Pos.Top(saveNameLabel), Width = 20 };
-        var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile" };
+        var saveButton = new Button { X = Pos.Right(saveNameField) + 1, Y = Pos.Top(saveNameLabel), Text = "Save Profile", ShadowStyle = ShadowStyles.None };
 
         // Browse/Import/Export sit on their own row below the path field, not crowded onto the
         // label's row - the four widgets (path label, a usably-wide field, and three buttons)
@@ -178,14 +178,14 @@ public static class ConfigureMode
         // at a real captured screenshot after adding Browse, not assumed to fit).
         var pathLabel = new Label { X = 0, Y = Pos.Bottom(saveNameLabel) + 1, Text = "Import/export file path:" };
         var pathField = new TextField { X = Pos.Right(pathLabel) + 1, Y = Pos.Top(pathLabel), Width = 40 };
-        var browseButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Browse..." };
-        var importButton = new Button { X = Pos.Right(browseButton) + 1, Y = Pos.Top(browseButton), Text = "Import" };
-        var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(browseButton), Text = "Export" };
-        var saveAsButton = new Button { X = Pos.Right(exportButton) + 1, Y = Pos.Top(browseButton), Text = "Save As..." };
-        var replaceAllButton = new Button { X = Pos.Right(saveAsButton) + 1, Y = Pos.Top(browseButton), Text = "Replace All" };
+        var browseButton = new Button { X = 0, Y = Pos.Bottom(pathLabel) + 1, Text = "Browse...", ShadowStyle = ShadowStyles.None };
+        var importButton = new Button { X = Pos.Right(browseButton) + 1, Y = Pos.Top(browseButton), Text = "Import", ShadowStyle = ShadowStyles.None };
+        var exportButton = new Button { X = Pos.Right(importButton) + 1, Y = Pos.Top(browseButton), Text = "Export", ShadowStyle = ShadowStyles.None };
+        var saveAsButton = new Button { X = Pos.Right(exportButton) + 1, Y = Pos.Top(browseButton), Text = "Save As...", ShadowStyle = ShadowStyles.None };
+        var replaceAllButton = new Button { X = Pos.Right(saveAsButton) + 1, Y = Pos.Top(browseButton), Text = "Replace All", ShadowStyle = ShadowStyles.None };
 
-        var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true };
-        var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit" };
+        var connectButton = new Button { X = 0, Y = Pos.Bottom(browseButton) + 1, Text = "Connect", IsDefault = true, ShadowStyle = ShadowStyles.None };
+        var quitButton = new Button { X = Pos.Right(connectButton) + 2, Y = Pos.Top(connectButton), Text = "Quit", ShadowStyle = ShadowStyles.None };
 
         TextField Field(string id) => (TextField)form.ControlViews[id];
 

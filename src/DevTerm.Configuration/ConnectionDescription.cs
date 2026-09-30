@@ -101,20 +101,28 @@ public static class ConnectionDescription
     }
 
     /// <summary>
-    /// A main window's title: <c>dev-term — {name}</c> when <paramref name="cliOptions"/> is exactly a
-    /// saved profile (see <see cref="ConnectionProfileStore.FindName"/>), otherwise
-    /// <c>dev-term — {<see cref="Definition"/>}</c>, followed by <see cref="Formats"/> in parentheses.
-    /// Recomputed by each front end whenever the connection or send format changes, so it follows a
-    /// live profile switch instead of only describing whatever was launched.
+    /// The short name a window title or a multi-session tab label identifies a connection by: the
+    /// **saved profile's name** when <paramref name="cliOptions"/> is exactly a saved profile (see
+    /// <see cref="ConnectionProfileStore.FindName"/>), otherwise the <see cref="Definition"/>.
+    /// </summary>
+    public static string Subject(CliOptions cliOptions, ConnectionProfileStore profileStore)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        ArgumentNullException.ThrowIfNull(profileStore);
+        return profileStore.FindName(cliOptions) ?? Definition(cliOptions);
+    }
+
+    /// <summary>
+    /// A main window's title: <c>dev-term — {<see cref="Subject"/>}</c>, followed by
+    /// <see cref="Formats"/> in parentheses. Recomputed by each front end whenever the connection or
+    /// send format changes, so it follows a live profile switch instead of only describing whatever
+    /// was launched.
     /// </summary>
     /// <param name="connected">When false, <c> — disconnected</c> is appended, so the title reflects the connection state rather than still describing a closed connection as if it were live.</param>
     public static string WindowTitle(CliOptions cliOptions, string parser, ConnectionProfileStore profileStore, bool connected = true)
     {
-        ArgumentNullException.ThrowIfNull(cliOptions);
-        ArgumentNullException.ThrowIfNull(profileStore);
-        var subject = profileStore.FindName(cliOptions) ?? Definition(cliOptions);
         var state = connected ? string.Empty : " — disconnected";
-        return $"dev-term — {subject} ({Formats(cliOptions, parser)}){state}";
+        return $"dev-term — {Subject(cliOptions, profileStore)} ({Formats(cliOptions, parser)}){state}";
     }
 
     /// <summary>

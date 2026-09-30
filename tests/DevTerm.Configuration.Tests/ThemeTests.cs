@@ -61,13 +61,24 @@ public sealed class ThemeTests
     public void Light_KeepsThePreThemingColors()
     {
         // What the front ends hard-coded before theming: WPF's DarkRed/DimGray output styles and
-        // SteelBlue info icon, the TUI's green/amber/red status line.
+        // the TUI's green/amber/red status line.
         Assert.AreEqual("#8B0000", BuiltInThemes.Light[ThemeRole.OutputError].ToHex());
         Assert.AreEqual("#696969", BuiltInThemes.Light[ThemeRole.OutputStatus].ToHex());
-        Assert.AreEqual("#4682B4", BuiltInThemes.Light[ThemeRole.Accent].ToHex());
         Assert.AreEqual("#78C878", BuiltInThemes.Light[ThemeRole.StatusConnected].ToHex());
         Assert.AreEqual("#E6C85A", BuiltInThemes.Light[ThemeRole.StatusConnecting].ToHex());
         Assert.AreEqual("#AA2828", BuiltInThemes.Light[ThemeRole.StatusDisconnected].ToHex());
+    }
+
+    [TestMethod]
+    public void Light_AccentAndWarning_WereDeepenedForTextContrast()
+    {
+        // Unlike the other pre-theming colors, these two moved off their original legacy hex (SteelBlue
+        // #4682B4, DarkGoldenrod #B8860B): both read as text in Playback's sent/note lines at only
+        // 4.1:1/3.3:1 there, below the 4.5:1 text threshold (2026-09-29, see docs/design/theming.md).
+        Assert.AreEqual("#2E6DA4", BuiltInThemes.Light[ThemeRole.Accent].ToHex());
+        Assert.AreEqual("#8F6A09", BuiltInThemes.Light[ThemeRole.Warning].ToHex());
+        Assert.IsGreaterThanOrEqualTo(4.5, ThemeColor.ContrastRatio(BuiltInThemes.Light[ThemeRole.Accent], BuiltInThemes.Light[ThemeRole.Background]));
+        Assert.IsGreaterThanOrEqualTo(4.5, ThemeColor.ContrastRatio(BuiltInThemes.Light[ThemeRole.Warning], BuiltInThemes.Light[ThemeRole.Background]));
     }
 
     [TestMethod]

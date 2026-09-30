@@ -89,6 +89,41 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
+### WPF UI review
+
+- **Manifest Editor: no review yet at 125%/150% Windows display scaling, and no keyboard-focus-visual
+  review.** Raised in the 2026-09-25 WPF layout review; deliberately deprioritized (2026-09-29) rather
+  than fixed alongside that review's other follow-ups — no known defect driving it, just an area that
+  hasn't been looked at yet.
+
+### TUI theming
+
+- **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
+  ANSI-16 color ("White") under Terminal.Gui's legacy-conhost 16-color downgrade** — worse than the
+  `dark` theme's equivalent collision fixed 2026-09-30 (see `docs/design/theming.md`'s "TUI" section),
+  since all three roles collapse here, not just two. Not fixed yet: `light`'s field/selection colors
+  are deliberately close to white for the WPF app's look, and darkening them enough to separate under
+  16-color legacy conhost would change that look too, for a narrower case (a legacy black-background
+  console running the *light* theme, rather than `dark`, dev-term's default). Needs a decision on
+  whether to accept a WPF-visible palette change, or scope a TUI-only override instead.
+
+### Proposed Ideas
+
+- [Theme builder](docs/design/proposals/theme-builder.md) — color pickers, save/export/import,
+  enumerate from `~/.dev-term/themes`.
+- [Manifest editor expression builder](docs/design/proposals/manifest-editor-expression-builder.md) —
+  settable expression fields mapping data values to control parameters.
+- [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter
+  controlling how fast the loopback device generates stream samples.
+- [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)
+  — call an external raster tool (Ghostscript-style path+args mapping), or a web service (e.g. Apache
+  Tika) via a configured request, or an internal HP/GL-to-SVG converter.
+- [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
+- [LXI support](docs/design/proposals/lxi-support.md).
+- [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
+  route inbound messages and trigger outbound events to external services.
+- [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
+
 ## Research (not backlog-ready)
 
 - [BYTECC BT-UP01 USB-over-network bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) —
