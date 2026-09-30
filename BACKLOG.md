@@ -89,6 +89,29 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
+### Proposed Ideas
+
+- Have a theme builder
+  - include color pickers 
+  - have ability to save/export/import
+  - store / enumerate from the ~/.dev-term/themes folder
+- for the manifest editor create an expression builder
+  - expressions should be setable fields allows for data values to be mapped to parameters for controls.
+- for the loopback device
+  - add a parameter for setting the sample rate to control how fast stream samples are generated.
+- for the stream monitor
+  - add the ability to call raster tool
+    - something like ghostscript where path to the tool and arguments can be mapped
+    - or use a web service like Apache Tika by configuring a web request for conversion
+  - also support internal conversion tools like a simple HP/GL to SVG tool
+- Create a host service that makes the tunnels accessible over web-sockets with a blazor based web front end.  
+- LXI support
+- Add MQTT, AMQP, STOMP protocol support 
+  - this should enable the abilit to receive route outbound messaages but also have the ability to trigger outbound events on the to extenal services
+- Z-Wave supoprt 
+  - ZStick 
+  - ZWave RPi hat
+
 ## Research (not backlog-ready)
 
 - [BYTECC BT-UP01 USB-over-network bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) —
