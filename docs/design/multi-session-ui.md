@@ -203,12 +203,15 @@ W -> W : add tab to Tabs/TabControl, make it active
 
 ## Status
 
-**Not started — design only.** No code changes yet. Recommended implementation order, each step
-independently testable:
+**Step 1 done.** `SessionTab` (`src/DevTerm.Configuration/SessionTab.cs`) is extracted and both
+`TuiMode.BuildWindow` and `MainWindow` hold exactly one `SessionTab` (`tab`/`_tab`) instead of
+separate `Session`/`PresenterCatalog`/`CliOptions` fields — a pure, behavior-preserving refactor
+(verified: full solution build + full Unit test suite, 0 failures, both before and after). Steps
+2-5 below are not started. Recommended implementation order, each step independently testable:
 
-1. Extract `SessionTab` in `DevTerm.Configuration`, with `TuiMode`/`MainWindow` each still using
+1. ~~Extract `SessionTab` in `DevTerm.Configuration`, with `TuiMode`/`MainWindow` each still using
    exactly one (a pure refactor — behavior unchanged, but proves the extraction is clean before the
-   harder multi-tab UI work).
+   harder multi-tab UI work).~~ Done.
 2. WPF: wrap the single `SessionTab` in a one-`TabItem` `TabControl`, then wire File > New Session to
    add a second. WPF's `TabControl` is a known, low-risk quantity.
 3. TUI: same shape using `Terminal.Gui.Views.Tabs`, once WPF has proven the `SessionTab`
