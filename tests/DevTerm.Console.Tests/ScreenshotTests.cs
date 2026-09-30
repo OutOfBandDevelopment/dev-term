@@ -444,6 +444,82 @@ public sealed class ScreenshotTests
         Assert.Contains("● REC …tcp_192.168.0.107_23.jsonl", dump);
     }
 
+    /// <summary>Walks a view's subview tree for a <see cref="Terminal.Gui.Views.Button"/> with matching text — same helper as <see cref="TuiModeMultiSessionTests"/>, kept file-local since each screenshot/test file here is otherwise self-contained.</summary>
+    private static Terminal.Gui.Views.Button FindButton(Terminal.Gui.ViewBase.View root, string text)
+    {
+        foreach (var sub in root.SubViews)
+        {
+            if (sub is Terminal.Gui.Views.Button button && button.Text == text)
+            {
+                return button;
+            }
+
+            try
+            {
+                return FindButton(sub, text);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        throw new InvalidOperationException($"No button titled '{text}' found under {root}.");
+    }
+
+    [TestMethod]
+    public async Task TuiMode_MultiSession_IsCaptured()
+    {
+        // Both tabs use "loopback" (no real socket/hardware) so File > New Session's default,
+        // pre-filled-from-the-active-tab connection connects immediately and deterministically —
+        // unlike the other screenshots' tcp://192.168.0.107:23, which is never actually dialed.
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
+
+        var dump = "";
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+
+            // File > New Session..., accepting ConfigureMode's default (loopback) connection - the
+            // same nested-modal-driving technique as TuiModeMultiSessionTests.
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    if (app.TopRunnableView is not { } dialog || dialog == parts.Window)
+                    {
+                        return true;
+                    }
+
+                    FindButton(dialog, "Connect").InvokeCommand(Terminal.Gui.Input.Command.Accept);
+                    return false;
+                });
+
+                parts.NewSessionMenuItem.Action!.Invoke();
+                return true;
+            });
+
+            var addedTab = TuiTestRunner.WaitUntilOnLoop(() => parts.AllSessions().Count == 2, _waitTimeout);
+            Assert.IsTrue(addedTab, "Expected a second session tab for the screenshot.");
+
+            dump = TuiTestRunner.InvokeOnLoop(TuiTestRunner.DumpBuffer);
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-main-multi-session.png"));
+                return true;
+            });
+        });
+
+        await session.CloseAsync(TestContext.CancellationToken);
+
+        File.WriteAllText(Path.Combine(_imagesDirectory, "tui-main-multi-session.txt"), dump);
+
+        // Two tab headers should be visible, both loopback (see the comment above).
+        Assert.Contains("loopback://", dump);
+        Assert.Contains("Send:", dump);
+    }
+
     [TestMethod]
     public void PlaybackMode_PartWayThroughWithANote_IsCaptured()
     {

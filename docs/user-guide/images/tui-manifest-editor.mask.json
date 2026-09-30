@@ -1,0 +1,6 @@
+{
+  "_comment": "The 'Saving writes your own copy to ~\\...\\XXXXXXXX.XXX\\...' line shows a per-test-run random temp directory name (Path.GetTempFileName()-style 8.3 name), not a real content change.",
+  "regions": [
+    {"x": 0, "y": 45, "w": 260, "h": 26, "note": "randomized temp directory name in the 'Saving writes your own copy to' banner"}
+  ]
+}

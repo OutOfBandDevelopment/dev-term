@@ -58,6 +58,11 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
+- `.ksy` reference for binary response layouts via [Kaitai Struct](https://kaitai.io/) — see
+  `docs/design/device-control-modules.md`'s "Declarative command/response schema" section. Kaitai is
+  read/parse-only (no concept of sending a command), so it only ever covers the response half; the
+  general Kaitai-backed binary-response schema is unimplemented for genuinely binary devices (the SCPI
+  baseline below it in that doc is a separate, already-built, SCPI-specific path). Not started.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.

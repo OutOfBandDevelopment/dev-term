@@ -6,19 +6,17 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-### Binary layout formats
-
-- `.ksy` reference for binary layouts via [Kaitai Struct](https://kaitai.io/) — see the new section
-  in `docs/design/device-control-modules.md`. Not started.
-
 ### UI batch (started 2026-09-25)
 
 Built on `dev/error-handling-and-todo`, with parallel work in separate git worktrees that are merged and
 verified one at a time. Each item is deleted from this file once its detail has landed in `docs/changes/`.
 
 - **Multiple sessions per window** (queued last, since it restructures both main windows; from the TUI/WPF
-  main-window specs' Open items). Presenters stopped being the blocker on 2026-09-25, since they're
-  per-session now. Nothing builds the UI for it yet.
+  main-window specs' Open items). Steps 1-3 done 2026-09-30 (SessionTab extraction, WPF `TabControl`, TUI
+  `Terminal.Gui.Views.Tabs`; see `docs/changes/2026-09-30.md` and `docs/design/multi-session-ui.md`'s
+  Status section) — both front ends now have a working tab strip. Step 4 remains: resolve
+  `docs/design/multi-session-ui.md`'s Open questions (SendHistory/logging/Stream Monitor scope, zero-tab
+  behavior, keyboard shortcuts).
 
 ## Backlog / research
 
