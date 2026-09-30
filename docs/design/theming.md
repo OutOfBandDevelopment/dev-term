@@ -70,8 +70,13 @@ theme model.
   3:1 for secondary text and indicator fills. Tests check the built-ins; for a user theme the
   failures are reported but not rejected.
 - **`BuiltInThemes`**: `light`, `dark`, and `system`. `light` keeps the colors the front ends
-  hard-coded before theming: WPF's DarkRed/DimGray output lines and SteelBlue info icons, and the
-  TUI's green/amber/red status line. `system` isn't a theme of its own. It resolves to `light` or
+  hard-coded before theming: WPF's DarkRed/DimGray output lines, and the TUI's green/amber/red
+  status line - except `accent` and `warning`, whose legacy values (SteelBlue `#4682B4`,
+  DarkGoldenrod `#B8860B`) read as full-weight text in Playback's sent/note lines at only 4.1:1/3.3:1
+  there, short of the 4.5:1 text threshold; deepened to `#2E6DA4`/`#8F6A09` (2026-09-29), which clear
+  it with margin while keeping the same hue. `ReadablePairs` checks both against `background` at
+  4.5:1 now, not the 3:1 "indicator fill" rate other roles like `recording` use, so a future palette
+  edit can't reopen this silently. `system` isn't a theme of its own. It resolves to `light` or
   `dark` through `SystemThemeDetector`. On Windows that reads `HKCU\…\Themes\Personalize\AppsUseLightTheme`
   (0 = dark); elsewhere it uses the terminal's `COLORFGBG` hint. Undetectable means light.
 - **`ThemeFile`**: user themes, as `*.json` under `~/.dev-term/themes`
