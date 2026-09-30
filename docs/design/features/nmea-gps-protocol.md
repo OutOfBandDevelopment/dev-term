@@ -76,9 +76,14 @@ summaries plus structured values for a control panel's live indicators), `NmeaGp
 quality/type, position, speed, course, satellite counts, DOP). Wired into both front ends' Device
 menu ("NMEA 0183..."), gated on the confirmed VID/PID (`DevicePanels.Nmea0183`). Unit-tested
 (`tests/DevTerm.Devices.Nmea.Tests`) against real, independently-computed-checksum sentence
-literals; **not yet verified against the real Earthmate BT-20** — an opt-in
-`RealHardwareEarthmateBt20Tests` exists (`TestCategory=Integration,Hid,Delorme_EarthmateBt20,
-Hardware`) but no unit was available to run it this session.
+literals.
+
+**2026-09-29: verified against a real Earthmate BT-20** (`docs/test/2026-09-29-14-08-11.md`) —
+`RealHardwareEarthmateBt20Tests.Connect_AgainstRealDevice_DecodesAtLeastOneLine` decoded a real
+`$GPRMC` sentence end-to-end, confirming the HID report-framing assumption in `NmeaGpsDecoder`
+(strip every `0x00` byte before line-buffering) against the real unit for the first time — it had
+been a reasoned but unverified assumption until now. The sentence's fix status was void (no
+satellite lock, indoors), which is a correctly-decoded sentence, not a fault.
 
 ## Open questions
 

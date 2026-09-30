@@ -40,7 +40,7 @@ number) is worth adding later.
 
 This was originally proposed as the best first decoder to build, on the assumption it needed only
 the already-built serial transport. A later (incorrect) draft of this doc claimed the device was
-actually HID, deferring the work behind the USB HID transport; [SCPI](scpi-instrument-control.md)
+actually HID, deferring the work behind the USB HID transport; [SCPI](../features/scpi-instrument-control.md)
 became the first target built instead. That HID claim has since been shown wrong — the device
 really is plain serial, so the original assumption was right the whole time.
 
@@ -226,8 +226,13 @@ questions" below.
 a `word` parameter on `RadexOneExtensionCodec.BuildQuery` (defaults to `0x000C`, `0x0001` for this
 command), a decoder ack branch, a `"resetAccumulated"` control-surface action/preview, and a
 "Maintenance" UI section with a "Reset Accumulated" button. Checksum-verified byte-for-byte against
-the new trace (both directions); five more unit tests added (27 total). Not yet run against real
-hardware.
+the new trace (both directions); five more unit tests added (27 total).
+
+**2026-09-29: re-confirmed against the real device on COM8** (`docs/test/2026-09-29-11-52-14.md`) —
+`readData` still decodes a live reading end-to-end (`RADEX-ONE: CPM=33 Ambient=20 Accum=854`) at the
+now-corrected 9600 baud. Only `readData` was exercised this pass; `readSerialVersion`/`readSettings`
+(read-only) and `resetAccumulated`/`writeSettings` (state-mutating) remain unverified against real
+hardware — the mutating pair deliberately wasn't run without being explicitly asked for.
 
 ## Open questions
 
