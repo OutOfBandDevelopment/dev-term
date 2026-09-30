@@ -575,6 +575,17 @@ file only points there, it doesn't restate them.**
   buttons are shadowless.
 - **Terminal.Gui.Editor has `WordWrap` (soft wrap).** Without it, setting `CaretOffset` to the end scrolls
   the pane sideways to the last line's end, hiding every line's start.
+- **WPF's dashed focus-visual rectangle only renders when the keyboard was the most recently used
+  input device** (`KeyboardDevice.IsKeyboardMostRecentInputDevice()`, confirmed as a real symbol in
+  `PresentationFramework.dll` alongside `ShowFocusVisual`/`AlwaysShowFocusVisual`) — it tracks real
+  `InputManager` keyboard activity, not a programmatic `Keyboard.Focus(element)` call with no actual
+  key ever pressed in-process. A headless test that calls `Keyboard.Focus` directly (no real window
+  message pump) can assert `element.IsKeyboardFocused` and screenshot everything else about the
+  focused state, but will never see the dashed rectangle itself — that's a test-environment gap, not
+  evidence the focus visual is missing from the app. Found reviewing the Manifest Editor's
+  keyboard-focus-visual behavior at 2026-09-30: `DarkControls.xaml`'s custom `DevTerm.FocusVisual`
+  style (dark theme) and the stock Aero2 default (light theme) are both correctly wired to `Button`
+  per the code — confirmed by reading it, not by a screenshot that could never show it either way.
 - Verify against real hardware before trusting a fix, when hardware is available — several bugs in
   this codebase (all of the above) were only caught by testing against actual devices, not by unit
   tests alone. `docs/changes/` records what was verified this way.

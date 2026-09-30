@@ -2,6 +2,8 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -501,6 +503,129 @@ public sealed class UiLayoutReviewTests
                     window.OutlineList.SelectedItem = node;
                     UiReview.Settle(window);
                     ui.Review(window, "manifest-editor-" + kind.ToString().ToLowerInvariant(), ControlPanelOptions(window.Preview), sizes);
+                }
+
+                window.Editor.ConfirmDiscardChanges = () => true;
+                window.Close();
+                ui.AssertClean();
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(userDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The 125%/150% Windows display-scaling review the backlog flagged as never having been done
+    /// (raised in the 2026-09-25 WPF layout review, deprioritized 2026-09-29). WPF lays out in DIPs,
+    /// so a fractional scale doesn't change any Width/Height math - what it can change is pixel
+    /// snapping (borders, gridlines, ClearType hinting via PixelsPerDip), which only rounds
+    /// differently than at 100%/200% because 1.25x/1.5x aren't whole device pixels.
+    /// <see cref="VisualTreeHelper.SetRootDpi"/> is the supported way to exercise that without a
+    /// real scaled monitor.
+    /// </summary>
+    [TestMethod]
+    [DataRow("light")]
+    [DataRow("dark")]
+    public void ManifestEditorWindow_DisplayScaling(string theme)
+    {
+        var userDirectory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var ui = new UiReview(theme);
+                var installed = Path.Combine(AppContext.BaseDirectory, "manifests");
+                var editor = new ManifestEditorViewModel(userDirectory, installed);
+                Assert.IsTrue(editor.Open(Path.Combine(installed, "loopback-sensor-demo")), editor.StatusMessage);
+                var window = new ManifestEditorWindow(editor);
+                var sizes = ui.SizesFor(window);
+                UiReview.Show(window, sizes[0]);
+
+                var panelNode = window.Editor.Nodes.FirstOrDefault(n => n.Kind == ManifestNodeKind.Panel);
+                Assert.IsNotNull(panelNode, "The demo manifest has no Panel node to review.");
+                window.OutlineList.SelectedItem = panelNode;
+                UiReview.Settle(window);
+
+                // 100% is already covered by ManifestEditorWindow_EachOutlineNodeKind; this only
+                // adds the fractional scales real Windows display scaling actually uses.
+                foreach (var scale in new[] { 1.25, 1.5 })
+                {
+                    ui.Review(window, $"manifest-editor-scale-{(int)Math.Round(scale * 100)}", ControlPanelOptions(window.Preview), sizes,
+                        prepare: _ => VisualTreeHelper.SetRootDpi(window, new DpiScale(scale, scale)));
+                }
+
+                window.Editor.ConfirmDiscardChanges = () => true;
+                window.Close();
+                ui.AssertClean();
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            Directory.Delete(userDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The keyboard-focus-visual review the same backlog item flagged: every direct Tab target a
+    /// keyboard user reaches (the outline list, the save/close buttons, the selected node's first form
+    /// field) actually takes keyboard focus and isn't clipped or overlapped while focused -
+    /// <see cref="WpfLayoutAssert"/>'s usual checks run against each captured state. This can't screenshot
+    /// the dashed focus-visual rectangle itself: WPF only renders it when
+    /// <c>KeyboardDevice.IsKeyboardMostRecentInputDevice()</c> is true (confirmed present in
+    /// PresentationFramework.dll alongside <c>ShowFocusVisual</c>/<c>AlwaysShowFocusVisual</c>), which
+    /// tracks real <see cref="System.Windows.Input.InputManager"/> keyboard activity, not a
+    /// programmatic <see cref="Keyboard.Focus(System.Windows.IInputElement)"/> call with no real key
+    /// ever pressed in-process - the same class of gap as Terminal.Gui's real-vs-synthetic key
+    /// injection gotchas already documented in CLAUDE.md. The styling itself (<c>DarkControls.xaml</c>'s
+    /// <c>DevTerm.FocusVisual</c> for dark, the stock Aero2 default for light) was confirmed present and
+    /// wired to <c>Button</c> by reading the code, not by screenshot.
+    /// </summary>
+    [TestMethod]
+    [DataRow("light")]
+    [DataRow("dark")]
+    public void ManifestEditorWindow_KeyboardFocusVisuals(string theme)
+    {
+        var userDirectory = CreateTempDirectory();
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                var ui = new UiReview(theme);
+                var installed = Path.Combine(AppContext.BaseDirectory, "manifests");
+                var editor = new ManifestEditorViewModel(userDirectory, installed);
+                Assert.IsTrue(editor.Open(Path.Combine(installed, "loopback-sensor-demo")), editor.StatusMessage);
+                var window = new ManifestEditorWindow(editor);
+                var sizes = ui.SizesFor(window);
+                UiReview.Show(window, sizes[0]);
+
+                var panelNode = window.Editor.Nodes.FirstOrDefault(n => n.Kind == ManifestNodeKind.Panel);
+                Assert.IsNotNull(panelNode, "The demo manifest has no Panel node to review.");
+                window.OutlineList.SelectedItem = panelNode;
+                UiReview.Settle(window);
+
+                // Undo/Redo start disabled (nothing to undo yet) and a disabled control can't take
+                // keyboard focus - that's correct, so they're not in this list; these three are
+                // enabled unconditionally regardless of editor state.
+                var targets = new List<(string Name, FrameworkElement Element)>
+                {
+                    ("outline-list", window.OutlineList),
+                    ("save-button", window.SaveButton),
+                    ("close-button", window.CloseButton),
+                };
+                if (WpfLayoutAssert.Descendants(window.FormHost).FirstOrDefault(e => e is Control { IsTabStop: true, Focusable: true }) is { } firstField)
+                {
+                    targets.Add(("form-field", firstField));
+                }
+
+                foreach (var (name, element) in targets)
+                {
+                    ui.Review(window, $"manifest-editor-focus-{name}", ControlPanelOptions(window.Preview), sizes: [sizes[0]],
+                        prepare: _ => Keyboard.Focus(element));
+                    Assert.IsTrue(element.IsKeyboardFocused, $"{name} did not take keyboard focus.");
                 }
 
                 window.Editor.ConfirmDiscardChanges = () => true;

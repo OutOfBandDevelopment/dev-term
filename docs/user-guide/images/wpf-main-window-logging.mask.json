@@ -1,0 +1,6 @@
+{
+  "_comment": "The log file path shown includes a per-test-run random temp directory name, not a real content change.",
+  "regions": [
+    {"x": 380, "y": 48, "w": 160, "h": 30, "note": "randomized temp directory name in the log file path"}
+  ]
+}
