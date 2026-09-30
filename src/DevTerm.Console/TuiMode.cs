@@ -363,7 +363,7 @@ public static class TuiMode
                 })),
                 logging.MenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, cliOptions))),
-                new MenuItem("_Quit", string.Empty, () => app.RequestStop(), Key.Q.WithCtrl),
+                new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
             ]),
             // One entry per presenter that can encode typed text; picking one applies from the next
             // line typed on (the title bar shows which is current). Built from the catalog as of
@@ -575,6 +575,21 @@ public static class TuiMode
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, cliOptions, connected);
         }
 
+        // Quitting the whole app (as opposed to Ctrl+Q/Escape just closing a nested panel - see
+        // quitOnCtrlQ below) confirms first, but only when there's a live connection to lose; an
+        // already-disconnected session has nothing worth confirming.
+        void Quit()
+        {
+            if (app.TopRunnableView == window
+                && session.State == ConnectionState.Open
+                && MessageBox.Query(app, "dev-term", "Quit dev-term? This closes the current connection.", ["Yes", "No"]) != 0)
+            {
+                return;
+            }
+
+            app.RequestStop();
+        }
+
         // The Quit MenuItem's own "Ctrl+Q" Key argument only labels the shortcut in the menu's
         // display text - it doesn't register a live, always-active key binding by itself (checked
         // directly: after building this exact menu, neither the Window's nor the MenuBar's own
@@ -586,6 +601,12 @@ public static class TuiMode
         // child first (sendField has focus in normal use) - checked directly, Ctrl+Q reached
         // window.KeyDown when nothing else had focus but not once sendField did. Application.KeyDown
         // fires ahead of per-view focus routing, so it works regardless of what's currently focused.
+        //
+        // app.RequestStop() with no argument only ever stops whatever run loop is currently
+        // topmost - a nested app.Run(nestedWindow) for a device control panel, say - so Ctrl+Q
+        // already behaves like Escape for those (closes just that panel) with no extra handling
+        // here; Quit() only prompts once TopRunnableView is this main window, i.e. Ctrl+Q is
+        // actually about to end the app.
         void quitOnCtrlQ(object? _, Key key)
         {
             // The Connection Editor (File > Device Profiles...) quits itself on Ctrl+Q, with its
@@ -596,7 +617,7 @@ public static class TuiMode
             }
 
             key.Handled = true;
-            app.RequestStop();
+            Quit();
         }
 
         app.Keyboard.KeyDown += quitOnCtrlQ;

@@ -74,7 +74,7 @@ public partial class ControlPanelWindow : Window
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
 
-    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting labels stay on one line in an aligned column (see <see cref="BuildSectionGrid"/>).</summary>
+    /// <summary>Each row's left-hand label <see cref="TextBlock"/> (the <c>control.Label + ":"</c> caption), keyed by <c>UiControl.Id</c> — for tests asserting labels stay on one line in an aligned column (see <see cref="BuildSectionGrid"/>). A <see cref="ButtonControl"/>'s row has no entry: its button already shows the same text.</summary>
     internal IReadOnlyDictionary<string, TextBlock> ControlLabels => _controlLabels;
 
     /// <summary>The subset of <see cref="ControlViews"/> that are <see cref="IndicatorControl"/> labels, for tests asserting a live value update.</summary>
@@ -149,7 +149,7 @@ public partial class ControlPanelWindow : Window
             };
         }
 
-        _baseStatus = structuredSource is IStructuredPresenter
+        _baseStatus = structuredSource is IStructuredPresenter || !HasDecodedValueControls(definition)
             ? string.Empty
             : "Not decoding — connect with the matching --presenter to see live values.";
         StatusText.Text = _baseStatus;
@@ -215,19 +215,27 @@ public partial class ControlPanelWindow : Window
 
             // No wrapping: the Auto column grows to the section's longest label, so every control
             // in the section starts at the same x instead of a long label wrapping onto two lines.
-            var label = new TextBlock
+            // A button already shows its own label as its own text ("Apply", "Custom...") - a row
+            // label here too would repeat it ("Apply: [Apply]"), so buttons skip it; the shared
+            // Auto column still lines every control up, since other rows' labels (if any) set the
+            // column's width regardless of whether this particular row has one.
+            TextBlock? label = null;
+            if (control is not ButtonControl)
             {
-                Text = control.Label + ":",
-                TextWrapping = TextWrapping.NoWrap,
+                label = new TextBlock
+                {
+                    Text = control.Label + ":",
+                    TextWrapping = TextWrapping.NoWrap,
 
-                // A chart's label sits at its top, not beside its middle.
-                VerticalAlignment = control is BarGraphControl or StripChartControl or VectorControl ? VerticalAlignment.Top : VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 4),
-            };
-            Grid.SetRow(label, row);
-            Grid.SetColumn(label, 0);
-            grid.Children.Add(label);
-            _controlLabels[control.Id] = label;
+                    // A chart's label sits at its top, not beside its middle.
+                    VerticalAlignment = control is BarGraphControl or StripChartControl or VectorControl ? VerticalAlignment.Top : VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 4),
+                };
+                Grid.SetRow(label, row);
+                Grid.SetColumn(label, 0);
+                grid.Children.Add(label);
+                _controlLabels[control.Id] = label;
+            }
 
             var content = BuildRowContent(control);
             content.Margin = new Thickness(0, 0, 0, 4);
@@ -240,7 +248,7 @@ public partial class ControlPanelWindow : Window
 
             if (control.VisibleWhen is { } visibleWhen)
             {
-                _controlVisibilityRules.Add((visibleWhen, [label, content]));
+                _controlVisibilityRules.Add((visibleWhen, label is null ? [content] : [label, content]));
             }
         }
 
@@ -736,6 +744,16 @@ public partial class ControlPanelWindow : Window
     }
 
     private static string FormatUnit(double value, string? unit) => $"{value:0.#}{unit}";
+
+    /// <summary>
+    /// Whether <paramref name="definition"/> declares any control that shows a decoded/live value
+    /// (<see cref="IndicatorControl"/>, <see cref="BarGraphControl"/>, <see cref="StripChartControl"/>,
+    /// <see cref="VectorControl"/>) — an output-only device (e.g. Busylight: buttons/choices/sliders
+    /// only, nothing to decode) has none, so the "Not decoding" warning would never apply to it even
+    /// with a matching structured presenter, and is just noise.
+    /// </summary>
+    private static bool HasDecodedValueControls(UiDefinition definition) =>
+        definition.Sections.SelectMany(s => s.Controls).Any(c => c is IndicatorControl or BarGraphControl or StripChartControl or VectorControl);
 
     /// <summary>Reads a sibling control's current value for <see cref="ButtonControl.ParameterFieldIds"/> — see the branch above.</summary>
     private static string GetCurrentValue(FrameworkElement view) => view switch

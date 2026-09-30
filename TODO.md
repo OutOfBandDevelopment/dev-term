@@ -22,17 +22,11 @@ Completed work is logged by date under `docs/changes/`.
 
 ### TUI layout review follow-ups (from 2026-09-25)
 
-- **Control-panel button rows repeat their label** ("Apply: [Apply]", "Custom...: [Custom...]"). It's how
-  the label column lines up; a design call.
-- **Ctrl+Q in a nested TUI panel or dialog closes that window** rather than quitting the app. Decide which
-  it should be.
 - **The layout matrix made `DevTerm.Console.Tests` ~2 min** (was ~16 s). Reuse one app per class, or trim
   the matrix to 80x25 plus 200x60.
 - **A scrolled form can show a lone button-shadow row** at the viewport's top edge (correct, odd look).
 - **The startup editor looks unthemed in legacy conhost** (16-color downgrade of the truecolor theme:
   invisible field backgrounds, faint focus).
-- **Busylight's panel says "Not decoding — connect with the matching --presenter"** when opened without a
-  structured source; check whether that message suits an output-only device.
 
 ### UI batch (started 2026-09-25)
 

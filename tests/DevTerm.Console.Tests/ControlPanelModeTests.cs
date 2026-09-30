@@ -242,6 +242,30 @@ public sealed class ControlPanelModeTests
         });
     }
 
+    /// <summary>
+    /// An output-only device (no <see cref="IndicatorControl"/>/<see cref="BarGraphControl"/>/
+    /// <see cref="StripChartControl"/>/<see cref="VectorControl"/> anywhere - Busylight is the real
+    /// example) has nothing a structured presenter could ever decode, so the warning is just noise -
+    /// see TODO.md's 2026-09-25 TUI layout review follow-up. The WPF half of the same fix is
+    /// <c>ControlPanelWindowTests.NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine</c>.
+    /// </summary>
+    [TestMethod]
+    public void NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine()
+    {
+        var surface = new FakeControlSurface();
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Output Only Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            ControlPanelMode.BuildWindow(app, definition, surface, null, "Output Only Device");
+
+            Assert.DoesNotContain("Not decoding", TuiTestRunner.DumpBuffer());
+        });
+    }
+
     [TestMethod]
     public void ValuesChanged_UpdatesTheMatchingIndicatorLabel()
     {
@@ -442,6 +466,28 @@ public sealed class ControlPanelModeTests
             Assert.IsTrue(swatch.Visible);
             Assert.AreEqual(" #102030 ", swatch.Text);
             Assert.AreEqual(new Terminal.Gui.Drawing.Color(0x10, 0x20, 0x30, 255), swatch.GetScheme().Normal.Background);
+        });
+    }
+
+    /// <summary>
+    /// A button already shows its own text ("Apply") as the button itself; a row label would repeat
+    /// it ("Apply: [ Apply ]") - see TODO.md's 2026-09-25 TUI layout review follow-up. The WPF half of
+    /// the same fix is <c>ControlPanelWindowTests.ButtonRow_HasNoLeadingLabel</c>.
+    /// </summary>
+    [TestMethod]
+    public void ButtonRow_HasNoLeadingLabel()
+    {
+        var surface = new FakeControlSurface();
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Sample Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            ControlPanelMode.BuildWindow(app, definition, surface, null, "Sample Device");
+
+            Assert.IsFalse(TuiTestRunner.DumpBuffer().Contains("Apply:", StringComparison.Ordinal), "A button row shouldn't get a separate leading label.");
         });
     }
 

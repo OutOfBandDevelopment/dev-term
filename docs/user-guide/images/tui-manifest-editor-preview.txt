@@ -1,15 +1,15 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Edit ⟧ ⟦ Close ⟧      │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\ym5ykwgx.v54\loopback-sensor-demo.                                        │
+│~\…\wnyw5xt0.kla\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Preview (sends nothing)├─────────────────────╮│
 ││Commands (3)                ││┌┤Loopback Sensor Demo├──────────────────────┐││
 ││  Measure                   │││[-] Acquire                                ▲│││
-││  Stream Samples            │││  Measure:        ⟦ Measure ⟧  (i)         █│││
+││  Stream Samples            │││                  ⟦ Measure ⟧  (i)         █│││
 ││    count (integer)         │││  Last Sample:                             ░│││
 ││  Hello                     │││  Sample Count:   40                       ░│││
-││Response patterns (1)       │││  Stream Samples: ⟦ Stream Samples ⟧  (i)  ░│││
-││  sample                    │││  Hello:          ⟦ Hello ⟧  (i)           ░│││
+││Response patterns (1)       │││                  ⟦ Stream Samples ⟧  (i)  ░│││
+││  sample                    │││                  ⟦ Hello ⟧  (i)           ░│││
 ││Panel                       │││  Hello Reply:                             ░│││
 ││  [Acquire]                 │││                                           ░│││
 ││    button: Measure         │││[-] Levels                                 ░│││

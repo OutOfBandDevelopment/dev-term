@@ -117,6 +117,32 @@ public sealed class ControlPanelWindowTests
         });
     }
 
+    /// <summary>
+    /// An output-only device (no <see cref="IndicatorControl"/>/<see cref="BarGraphControl"/>/
+    /// <see cref="StripChartControl"/>/<see cref="VectorControl"/> anywhere - Busylight is the real
+    /// example) has nothing a structured presenter could ever decode, so the warning is just noise -
+    /// see TODO.md's 2026-09-25 TUI layout review follow-up. The TUI half of the same fix is
+    /// <c>ControlPanelModeTests.NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine</c>.
+    /// </summary>
+    [TestMethod]
+    public void NoStructuredPresenter_OnAnOutputOnlyDevice_SuppressesTheNotDecodingStatusLine()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Output Only Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] }],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(string.Empty, window.StatusText.Text);
+
+            await Task.CompletedTask;
+        });
+    }
+
     [TestMethod]
     public void Button_WhenClicked_InvokesItsIdWithNoValue()
     {
@@ -310,8 +336,8 @@ public sealed class ControlPanelWindowTests
                         Label = "Configure",
                         Controls =
                         [
-                            new ButtonControl { Id = "longLabel", Label = "Configure DC Voltage Range" },
-                            new ButtonControl { Id = "short", Label = "Go" },
+                            new TextFieldControl { Id = "longLabel", Label = "Configure DC Voltage Range" },
+                            new TextFieldControl { Id = "short", Label = "Go" },
                         ],
                     },
                 ],
@@ -332,6 +358,30 @@ public sealed class ControlPanelWindowTests
             var shortX = window.ControlViews["short"].TranslatePoint(default, grid).X;
             Assert.IsGreaterThanOrEqualTo(labelRight, longX, "The control starts past its label, not over it.");
             Assert.AreEqual(longX, shortX, 0.5, "Every control in a section starts in the same column.");
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void ButtonRow_HasNoLeadingLabel()
+    {
+        // A button already shows its own text ("Apply") as the button itself; a row label would
+        // repeat it ("Apply: [Apply]") - see TODO.md's 2026-09-25 TUI layout review follow-up.
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Sample Device",
+                Sections =
+                [
+                    new UiSection { Controls = [new ButtonControl { Id = "apply", Label = "Apply" }] },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            Assert.IsFalse(window.ControlLabels.ContainsKey("apply"), "A button row shouldn't get a separate leading label.");
 
             await Task.CompletedTask;
         });

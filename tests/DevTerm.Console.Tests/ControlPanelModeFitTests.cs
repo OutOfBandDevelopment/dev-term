@@ -71,7 +71,7 @@ public sealed class ControlPanelModeFitTests
             var markerRight = body.Frame.X + marker.Frame.Right;
             Assert.IsGreaterThan(0, form.Viewport.X, "Focusing the wide row scrolled the form right...");
             Assert.IsLessThanOrEqualTo(form.Viewport.X + form.Viewport.Width, markerRight, "...far enough that its (i) marker is visible.");
-            Assert.Contains("(i)", TuiTestRunner.DumpBuffer().Split('\n').Single(l => l.Contains("4-Wire Resistance Range:", StringComparison.Ordinal) && l.Contains('⟦')));
+            Assert.Contains("(i)", TuiTestRunner.DumpBuffer().Split('\n').Single(l => l.Contains("Configure 4-Wire Resistance Range", StringComparison.Ordinal) && l.Contains('⟦')));
 
             parts.SectionHeaders["Common"].SetFocus();
             app.LayoutAndDraw(true);

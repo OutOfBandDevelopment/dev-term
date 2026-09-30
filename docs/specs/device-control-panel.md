@@ -90,7 +90,9 @@ if any field is invalid, nothing is sent.
 - **Labels are aligned per section and never wrap.** WPF: a two-column `Grid` per section — an
   auto-sized, `NoWrap` label column, then the controls (a chart's label sits at its top). TUI: every
   control in a section starts at the section's longest `Label:` plus one space; a chart takes as many
-  rows as it draws, the rows below it following.
+  rows as it draws, the rows below it following. **A `ButtonControl`'s row has no leading label** —
+  its button already shows the same text (`Label:`), so one would repeat it (`Apply: [Apply]`); the
+  button still starts in the section's shared column, just with that column blank on its own row.
 - **TUI rows never run off the right edge — the form scrolls sideways.** After every layout pass the
   form measures its widest shown row (each section's indent plus its widest view's laid-out right
   edge, headers included) and sets that as its content width (never less than the visible width),
@@ -113,9 +115,13 @@ if any field is invalid, nothing is sent.
   changed the visible width, so resizing the terminal re-wraps them and reflows the form). It used to
   be one line above the sections (cut off in the TUI).
 - A status line at the bottom reads "Not decoding — connect with the matching `--presenter` to see
-  live values." whenever the presenter passed in isn't an `IStructuredPresenter` (K8055/Busylight
-  always are; SCPI needs the `scpi` presenter selected on the connection — see Open items). TUI: at
-  the end of the scrolling form. WPF: the red `StatusText` line, below the scroll area.
+  live values." whenever the presenter passed in isn't an `IStructuredPresenter` (K8055 always is;
+  SCPI needs the `scpi` presenter selected on the connection — see Open items) **and** the definition
+  actually declares something to decode (an `IndicatorControl`/`BarGraphControl`/`StripChartControl`/
+  `VectorControl` anywhere). An output-only device — Busylight: buttons/choices/sliders, nothing that
+  ever shows a decoded value — never shows it, even with no structured presenter, since the warning
+  would be true but meaningless there. TUI: at the end of the scrolling form. WPF: the red
+  `StatusText` line, below the scroll area.
 
 ### Command preview
 

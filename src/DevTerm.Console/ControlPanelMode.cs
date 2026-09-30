@@ -93,7 +93,7 @@ internal static class ControlPanelMode
         {
             X = 0,
             Width = Dim.Fill(),
-            Text = structuredSource is IStructuredPresenter
+            Text = structuredSource is IStructuredPresenter || !HasDecodedValueControls(definition)
                 ? string.Empty
                 : "Not decoding — connect with the matching --presenter to see live values.",
         };
@@ -466,6 +466,16 @@ internal static class ControlPanelMode
         };
     }
 
+    /// <summary>
+    /// Whether <paramref name="definition"/> declares any control that shows a decoded/live value
+    /// (<see cref="IndicatorControl"/>, <see cref="BarGraphControl"/>, <see cref="StripChartControl"/>,
+    /// <see cref="VectorControl"/>) — an output-only device (e.g. Busylight: buttons/choices/sliders
+    /// only, nothing to decode) has none, so the "Not decoding" warning below would never apply to it
+    /// even with a matching structured presenter, and is just noise.
+    /// </summary>
+    private static bool HasDecodedValueControls(UiDefinition definition) =>
+        definition.Sections.SelectMany(s => s.Controls).Any(c => c is IndicatorControl or BarGraphControl or StripChartControl or VectorControl);
+
     private static string HeaderText(string label, bool expanded) => $"[{(expanded ? '-' : '+')}] {label}";
 
     private static Button CreateHeader(string label) => new()
@@ -665,8 +675,15 @@ internal static class ControlPanelMode
     {
         var app = panel.App;
         var surface = panel.Surface;
-        var label = new Label { X = 0, Y = row, Text = control.Label + ":", HotKeySpecifier = (Rune)0xFFFF };
-        body.Add(label);
+        // A button already shows its own label as its own text ("Apply", "Custom...") - a row label
+        // here too would repeat it ("Apply: [Apply]"). FormRenderer's HasRowLabel excludes
+        // ButtonControl for the same reason; this is a separate code path that needs the same
+        // exclusion. columnX (below) still reserves the same column, so button rows line up with
+        // every other row - they just leave that column blank instead of repeating the button text.
+        if (control is not ButtonControl)
+        {
+            body.Add(new Label { X = 0, Y = row, Text = control.Label + ":", HotKeySpecifier = (Rune)0xFFFF });
+        }
 
         View? previewAnchor = null;
         string? probeCommandId = null;
