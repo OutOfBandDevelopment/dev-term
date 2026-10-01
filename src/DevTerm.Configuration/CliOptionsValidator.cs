@@ -36,6 +36,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--writebytedelayms' must be -1 (disabled), 0 (no delay), or a positive number of milliseconds.");
         }
 
+        if (options.LoopbackSampleIntervalMs < 0)
+        {
+            return ValidateOptionsResult.Fail("'--loopbacksampleintervalms' must be 0 or greater.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":

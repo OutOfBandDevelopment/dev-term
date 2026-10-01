@@ -530,6 +530,36 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SaveCommand_ThenLoadCommand_RoundTripsLoopbackSampleIntervalMs()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "loopback",
+                LoopbackSampleIntervalMs = "150",
+                SaveName = "sensor-sim",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            var fresh = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" })
+            {
+                SelectedProfileName = "sensor-sim",
+            };
+            fresh.LoadCommand.Execute(null);
+
+            Assert.AreEqual("150", fresh.LoopbackSampleIntervalMs);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void LoadIntoFields_DefaultsWriteByteDelayMsToNegativeOne_WhenNotSaved()
     {
         var directory = CreateTempDirectory();

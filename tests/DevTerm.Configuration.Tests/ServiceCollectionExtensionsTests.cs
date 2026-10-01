@@ -3,6 +3,7 @@ using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
+using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -62,6 +63,19 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.AreEqual("device.local", options.Host);
         Assert.AreEqual(2217, options.Port);
         Assert.AreEqual(4800, options.BaudRate);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_LoopbackTransport_ConfiguresSampleIntervalFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "loopback", LoopbackSampleIntervalMs = 250 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<LoopbackTransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<LoopbackTransport>(transport);
+        Assert.AreEqual(250, options.SampleIntervalMs);
     }
 
     [TestMethod]

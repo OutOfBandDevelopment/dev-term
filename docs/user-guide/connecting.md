@@ -162,8 +162,11 @@ works under the hood.
 ![WPF connection editor, HID transport](images/wpf-device-profiles-hid.png)
 
 **Loopback** — a zero-configuration, in-process fake device for exercising the UI without any real
-hardware attached (see [`docs/design/transports.md`](../design/transports.md)); no fields to fill
-in, just Connect:
+hardware attached (see [`docs/design/transports.md`](../design/transports.md)); the only field is
+an optional **Sample interval (ms)** (default `0`, instant delivery) that paces a scripted streaming
+response (`Samples: N`, `Send Events: N`) one line at a time instead of delivering it all at once —
+useful for demoing or verifying a strip chart or Stream Monitor capture at a believable cadence. No
+other fields to fill in beyond that, just Connect:
 
 ![TUI connection editor, Loopback transport](images/tui-configure-loopback.png)
 

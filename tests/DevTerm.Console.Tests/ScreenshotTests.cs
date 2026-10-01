@@ -220,8 +220,9 @@ public sealed class ScreenshotTests
     [TestMethod]
     public void ConfigureMode_LoopbackTransport_IsCaptured()
     {
-        // Scrolled one page so the Loopback section and the Presentation fields under it are in
-        // frame together, as ConfigureMode_ScrolledDown_RevealsControlsBelowTheFold does.
+        // The Loopback section (including its Sample interval field) and the Presentation fields
+        // under it are already in frame together unscrolled, now that the section has grown past
+        // a single indicator line.
         var directory = CreateTempProfilesDirectory();
         try
         {
@@ -236,10 +237,6 @@ public sealed class ScreenshotTests
 
                 try
                 {
-                    parts.DescriptionField.SetFocus();
-                    app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.PageDown);
-                    app.LayoutAndDraw(true);
-
                     dump = TuiTestRunner.DumpBuffer();
                     Directory.CreateDirectory(_imagesDirectory);
                     TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-loopback.png"));
@@ -252,6 +249,7 @@ public sealed class ScreenshotTests
 
             File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-loopback.txt"), dump);
 
+            Assert.Contains("Sample interval (ms)", dump);
             Assert.Contains("No configuration needed", dump);
         }
         finally

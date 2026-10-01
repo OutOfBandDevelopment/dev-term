@@ -125,8 +125,6 @@ the rest.
 
 ### Proposed Ideas
 
-- [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter
-  controlling how fast the loopback device generates stream samples.
 - [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)
   — call an external raster tool (Ghostscript-style path+args mapping), or a web service (e.g. Apache
   Tika) via a configured request, or an internal HP/GL-to-SVG converter.

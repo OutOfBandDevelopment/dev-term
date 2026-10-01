@@ -76,6 +76,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _bleServiceUuid = string.Empty;
     private string _bleWriteCharacteristicUuid = string.Empty;
     private string _bleNotifyCharacteristicUuid = string.Empty;
+    private string _loopbackSampleIntervalMs = "0";
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -1003,6 +1004,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    /// <summary>See <see cref="CliOptions.LoopbackSampleIntervalMs"/>. 0 preserves instant delivery.</summary>
+    [Category("Loopback")]
+    [DisplayName("Sample interval (ms)")]
+    [FormField(Order = 0, ValueKind = ValueKind.Integer, Minimum = 0)]
+    public string LoopbackSampleIntervalMs { get => _loopbackSampleIntervalMs; set => SetField(ref _loopbackSampleIntervalMs, value); }
+
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
     // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
@@ -1233,6 +1240,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         BleServiceUuid = options.BleServiceUuid ?? string.Empty;
         BleWriteCharacteristicUuid = options.BleWriteCharacteristicUuid ?? string.Empty;
         BleNotifyCharacteristicUuid = options.BleNotifyCharacteristicUuid ?? string.Empty;
+        LoopbackSampleIntervalMs = options.LoopbackSampleIntervalMs.ToString(CultureInfo.InvariantCulture);
 
         // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
         // those setters push VendorId/ProductId/SerialNumber/DevicePath from whichever device gets
@@ -1344,6 +1352,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (int.TryParse(ProductId, out var productId))
         {
             options.ProductId = productId;
+        }
+
+        if (int.TryParse(LoopbackSampleIntervalMs, out var loopbackSampleIntervalMs))
+        {
+            options.LoopbackSampleIntervalMs = loopbackSampleIntervalMs;
         }
 
         if (Enum.TryParse<LineEnding>(LineEndingText, ignoreCase: true, out var lineEnding))

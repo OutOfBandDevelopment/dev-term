@@ -36,7 +36,9 @@ public static class ConnectionDescription
 
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
-            return "Loopback";
+            return cliOptions.LoopbackSampleIntervalMs > 0
+                ? $"Loopback ({cliOptions.LoopbackSampleIntervalMs} ms/sample)"
+                : "Loopback";
         }
 
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))

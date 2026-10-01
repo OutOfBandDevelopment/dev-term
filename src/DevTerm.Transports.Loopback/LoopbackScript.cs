@@ -28,7 +28,7 @@ public static class LoopbackScript
         [
             LoopbackRule.Literal("hello", "From Loopback test"),
             LoopbackRule.Match(@"^Send Stream: (\d+), (\w+)$", m => [LoopbackGenerators.AsciiStream(int.Parse(m.Groups[1].Value))]),
-            LoopbackRule.Match(@"^Send Events: (\d+)$", m => LoopbackGenerators.Events(int.Parse(m.Groups[1].Value))),
+            LoopbackRule.Match(@"^Send Events: (\d+)$", m => LoopbackGenerators.Events(int.Parse(m.Groups[1].Value)), streaming: true),
             LoopbackRule.Match(@"^MEAS\?$", _ => [LoopbackGenerators.SensorSample(nextSample++)]),
             LoopbackRule.Match(@"^Samples: (\d+)$", m =>
             {
@@ -36,7 +36,7 @@ public static class LoopbackScript
                 var first = nextSample;
                 nextSample += count;
                 return Enumerable.Range(first, count).Select(LoopbackGenerators.SensorSample).ToList();
-            }),
+            }, streaming: true),
             LoopbackRule.Match(@"^(help|\?)$", _ => HelpLines),
         ];
     }

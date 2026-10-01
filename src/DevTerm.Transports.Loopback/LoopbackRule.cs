@@ -14,13 +14,19 @@ namespace DevTerm.Transports.Loopback;
 /// one stays internal to its test assembly for scripting test scenarios; this is the real,
 /// production-selectable transport a user without hardware can pick from the UI.
 /// </remarks>
-public sealed record LoopbackRule(Regex Pattern, Func<Match, IEnumerable<string>> Respond)
+public sealed record LoopbackRule(Regex Pattern, Func<Match, IEnumerable<string>> Respond, bool Streaming = false)
 {
     /// <summary>An exact-text command producing one fixed response line, e.g. "hello" -&gt; "From Loopback test". Case-insensitive.</summary>
     public static LoopbackRule Literal(string command, string response) =>
         new(new Regex($"^{Regex.Escape(command)}$", RegexOptions.IgnoreCase), _ => [response]);
 
-    /// <summary>A regex command whose capture groups feed the response generator, e.g. "Send Events: (\d+)". Case-insensitive.</summary>
-    public static LoopbackRule Match(string pattern, Func<Match, IEnumerable<string>> respond) =>
-        new(new Regex(pattern, RegexOptions.IgnoreCase), respond);
+    /// <summary>
+    /// A regex command whose capture groups feed the response generator, e.g. "Send Events: (\d+)".
+    /// Case-insensitive. <paramref name="streaming"/> marks a rule whose response is naturally
+    /// multi-line (one sample/event per line) so <see cref="LoopbackTransportOptions.SampleIntervalMs"/>
+    /// paces between its pushed lines; a single-line response leaves it <see langword="false"/> since
+    /// there's nothing to pace within one line.
+    /// </summary>
+    public static LoopbackRule Match(string pattern, Func<Match, IEnumerable<string>> respond, bool streaming = false) =>
+        new(new Regex(pattern, RegexOptions.IgnoreCase), respond, streaming);
 }

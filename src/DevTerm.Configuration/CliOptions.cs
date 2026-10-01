@@ -166,6 +166,17 @@ public sealed class CliOptions
     [DisplayName("RTS")]
     public bool Rts { get; set; } = true;
 
+    /// <summary>
+    /// Milliseconds paced between each pushed line of a naturally multi-line/streaming scripted
+    /// loopback response (<c>Samples: N</c>, <c>Send Events: N</c>) — lets a loopback profile
+    /// simulate a device that streams samples at a real rate instead of delivering them all
+    /// instantly. 0 (the default) preserves the original instant-delivery behavior. Loopback
+    /// transport only. See <see cref="DevTerm.Transports.Loopback.LoopbackTransportOptions.SampleIntervalMs"/>.
+    /// </summary>
+    [Category("Loopback")]
+    [DisplayName("Sample interval (ms)")]
+    public int LoopbackSampleIntervalMs { get; set; }
+
     // TCP transport.
     [Category("TCP")]
     [DisplayName("Host")]

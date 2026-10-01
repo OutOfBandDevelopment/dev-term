@@ -114,6 +114,7 @@ public static class ServiceCollectionExtensions
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             services.AddLoopbackTransport();
+            services.Configure<LoopbackTransportOptions>(o => o.SampleIntervalMs = cliOptions.LoopbackSampleIntervalMs);
         }
         else
         {

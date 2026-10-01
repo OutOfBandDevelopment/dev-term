@@ -17,6 +17,8 @@ public sealed class LoopbackTransportTests
 {
     private static LoopbackTransport CreateTransport() => new(Options.Create(new LoopbackTransportOptions()));
 
+    private static LoopbackTransport CreateTransport(LoopbackTransportOptions options) => new(Options.Create(options));
+
     // A single StreamReader must be reused across reads on the same transport: it buffers ahead
     // from the underlying PipeReader, so a fresh StreamReader per call would silently drop
     // already-buffered-but-unconsumed response lines.
@@ -101,6 +103,60 @@ public sealed class LoopbackTransportTests
         Assert.AreEqual("Event 1", await ReadLineAsync(reader));
         Assert.AreEqual("Event 2", await ReadLineAsync(reader));
         Assert.AreEqual("Event 3", await ReadLineAsync(reader));
+    }
+
+    [TestMethod]
+    public async Task WriteAsync_WithSampleIntervalMsSet_PacesLinesOfAStreamingResponse()
+    {
+        var transport = CreateTransport(new LoopbackTransportOptions { SampleIntervalMs = 100 });
+        await transport.OpenAsync(TestContext.CancellationToken);
+        var reader = CreateReader(transport);
+
+        var start = DateTime.UtcNow;
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("Samples: 3\r\n"), TestContext.CancellationToken);
+        await ReadLineAsync(reader);
+        await ReadLineAsync(reader);
+        await ReadLineAsync(reader);
+        var elapsed = DateTime.UtcNow - start;
+
+        // Two delays between three lines (never before the first, never after the last) - generous
+        // bounds matching WriteDelayStreamTests' pattern, to tolerate test-machine jitter.
+        Assert.IsTrue(elapsed >= TimeSpan.FromMilliseconds(180), $"Expected at least ~200ms for two paced gaps, was {elapsed}.");
+        Assert.IsTrue(elapsed < TimeSpan.FromSeconds(2), $"Expected well under 2s with no trailing delay, was {elapsed}.");
+    }
+
+    [TestMethod]
+    public async Task WriteAsync_WithSampleIntervalMsSet_NeverDelaysASingleLineResponse()
+    {
+        var transport = CreateTransport(new LoopbackTransportOptions { SampleIntervalMs = 1000 });
+        await transport.OpenAsync(TestContext.CancellationToken);
+        var reader = CreateReader(transport);
+
+        var start = DateTime.UtcNow;
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("hello\r\n"), TestContext.CancellationToken);
+        await ReadLineAsync(reader);
+        var elapsed = DateTime.UtcNow - start;
+
+        Assert.IsTrue(elapsed < TimeSpan.FromMilliseconds(500), $"A single-line response must never be paced, was {elapsed}.");
+    }
+
+    [TestMethod]
+    public async Task WriteAsync_WithZeroSampleIntervalMs_NeverPacesAStreamingResponse()
+    {
+        var transport = CreateTransport(new LoopbackTransportOptions { SampleIntervalMs = 0 });
+        await transport.OpenAsync(TestContext.CancellationToken);
+        var reader = CreateReader(transport);
+
+        var start = DateTime.UtcNow;
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("Send Events: 5\r\n"), TestContext.CancellationToken);
+        for (var i = 0; i < 5; i++)
+        {
+            await ReadLineAsync(reader);
+        }
+
+        var elapsed = DateTime.UtcNow - start;
+
+        Assert.IsTrue(elapsed < TimeSpan.FromMilliseconds(500), $"SampleIntervalMs=0 must preserve instant delivery, was {elapsed}.");
     }
 
     [TestMethod]
