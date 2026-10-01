@@ -12,7 +12,7 @@ namespace DevTerm.Devices.ZoomH4n.Tests;
 /// against a real <see cref="Session"/> whose <see cref="ITransport"/> is mocked (a <see cref="Pipe"/>
 /// backs <see cref="ITransport.Input"/> directly, so a reply to the handshake's probe byte can be
 /// written back synchronously from within the mocked <c>WriteAsync</c> — no real serial hardware
-/// involved, so this is <c>UNIT</c>), per docs/design/proposals/zoom-h4n-remote-protocol.md.
+/// involved, so this is <c>UNIT</c>), per docs/design/features/zoom-h4n-remote-protocol.md.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestCategory(TestCategories.Serial)]

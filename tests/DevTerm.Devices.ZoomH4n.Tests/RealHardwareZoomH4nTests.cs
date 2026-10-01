@@ -10,7 +10,7 @@ namespace DevTerm.Devices.ZoomH4n.Tests;
 /// <summary>
 /// Opt-in test against a real Zoom H4n over its RC04/RC2 remote port (a plain serial connection via
 /// the h4n2rs485 adapter — 2400 8-N-1, no handshake — see
-/// docs/design/proposals/zoom-h4n-remote-protocol.md). Same in-process pattern as
+/// docs/design/features/zoom-h4n-remote-protocol.md). Same in-process pattern as
 /// <c>DevTerm.Console.Tests.RealHardwareSerialTests</c>: constructs a real <see cref="SerialTransport"/>
 /// directly, parameterized entirely via <c>devterm.runsettings</c> so a COM port reassignment
 /// (Windows reassigns these whenever a USB-serial adapter is replugged) doesn't require a code change.
