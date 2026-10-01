@@ -339,6 +339,14 @@ file only points there, it doesn't restate them.**
   scopes) needs `AsciiPresenter` instead, which buffers until that terminator even though it's
   tempting to reach for `RawPresenter` everywhere just to sidestep `AsciiPresenter` never flushing a
   terminatorless reply.
+- **An editable WPF `ComboBox`'s `IsKeyboardFocused` stays `false` even right after a successful
+  `Focus()` call** — WPF delegates actual keyboard focus to the control's internal text-box part
+  (`IsEditable="True"`), so the `ComboBox` wrapper itself never reports keyboard focus; check
+  `IsKeyboardFocusWithin` instead when testing whether focus is "in" an editable `ComboBox`. Found
+  while writing a regression test for bug 062 (`MainWindow.SendBox`, used for command history
+  recall): both new tests failed against `IsKeyboardFocused` despite the production fix (restoring
+  focus to `SendBox` after a mouse-driven send) being correct — see
+  `docs/bugs/fixed/062-sendbox-arrow-keys-lose-focus-after-send.md`.
 - **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
   `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
   view-model property that already had a value at construction time still read back empty
