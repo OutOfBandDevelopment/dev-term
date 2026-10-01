@@ -6,7 +6,7 @@
 │                        ☐ Show as hex                                        ░│
 │  Detected HID devices: ⟦ Detect HID... ⟧                                    ░│
 │                                                                             ░│
-│                        (not found — no connected device matches this        █│
+│                        (not found — no connected device matches this        ░│
 │                        vendor/product/serial)                               █│
 │                                                                             █│
 │── Presentation ──                                                           █│

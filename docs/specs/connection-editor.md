@@ -42,7 +42,7 @@ Shown in two situations:
 
 | Field | Type | Default | Validation | Notes |
 |---|---|---|---|---|
-| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`loopback` | `serial` | Must be one of the six | Selecting a value shows only that transport's field group (see States) |
+| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`rfc2217`/`loopback` | `serial` | Must be one of the seven | Selecting a value shows only that transport's field group (see States); `rfc2217` reuses the Serial and TCP groups together rather than a group of its own — see States |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Declared `Integer`, at least 1: a value that isn't shows an inline message under/next to the field (`'96x' is not a whole number.`) while typing. The text is still kept as typed; on Connect/Save, `int.TryParse` ignores an unparseable value (keeps the previous one), as before | |
@@ -102,6 +102,17 @@ Shown in two situations:
   Detected-devices row for the *selected* one of `hid`/`usbtmc` is shown (row conditions on
   `IsHidTransport`/`IsUsbtmcTransport`), since they're separate discovery sources (see Per-front-end
   notes). Presentation/Description/Save/Import-export are always visible regardless of Transport.
+  **`rfc2217` is a third selector on the same Serial and TCP groups, not a group of its own**: the
+  Serial section's `VisibleWhen` is `IsSerialLikeTransport` (= `IsSerialTransport || IsRfc2217Transport`)
+  and the TCP section's is `IsTcpLikeTransport` (= `IsTcpTransport || IsRfc2217Transport`) — "a serial
+  port, reached over the network" reuses both groups' fields (Baud/Data bits/Parity/Stop bits/DTR/RTS
+  from Serial, Host/Port from TCP) rather than duplicating an eighth copy of them. Three fields stay
+  Serial/TCP-exclusive even though their section is now shown for `rfc2217` too, each via its own
+  field-level `VisibleWhen` narrower than its section's: Listen (`rfc2217` has no listen mode),
+  Handshake text, and Read timeout (ms) (RFC 2217 flow-control/read-timeout wiring isn't built in v1 —
+  see `docs/design/rfc2217.md`). The Serial section's Port/Detected-ports row has no such guard and
+  still renders for `rfc2217` (harmless, unused clutter — `BuildOptions` routes the TCP group's Port
+  into `CliOptions.Port` for `rfc2217` via `IsTcpLikeTransport`, never the Serial group's).
   **A hidden group leaves no gap in either front end**: the TUI form re-lays out its rows on every
   change (test `ConfigureModeTests.SwitchingTransport_ReflowsTheForm_SoAHiddenGroupLeavesNoGap`), and
   within a section the widget column follows the longest *shown* label. **BLE's field group is still
@@ -406,5 +417,8 @@ its live "Detect BLE..." picker on 2026-09-29, and the generated form (which als
 gap under a hidden transport group) on 2026-09-25. DTR/RTS, the read/write timeouts, and the ASCII
 max line length (previously carried over silently, never shown) became real fields on 2026-09-29.
 The detected-device/-characteristic pickers became searchable/filterable in both front ends on
-2026-09-29. Remaining Connection Editor follow-ups live in `BACKLOG.md`.
+2026-09-29. `rfc2217` (connect to a remote serial port over the network, e.g. `ser2net`) became a
+selectable transport on 2026-09-30, reusing the Serial and TCP field groups rather than adding a
+third copy of them — see States above and `docs/design/rfc2217.md`. Remaining Connection Editor
+follow-ups live in `BACKLOG.md`.
 

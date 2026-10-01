@@ -18,13 +18,14 @@ the rest.
   2026-09-25 and is real-hardware verified (`docs/design/transports.md`'s BLE section,
   `docs/changes/2026-09-25.md`/`2026-09-29.md`). The adapter seam supports adding either platform
   independently; neither has been started.
-- RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
-  `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
-  `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
-  differently-shaped bridge, not a transport — build second).
 - RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
+- **RFC 2217 client real-server verification** — `Rfc2217Transport` (landed 2026-09-30, see
+  `docs/changes/2026-09-30.md`) is only unit-tested against a fake server so far. Run it against a
+  real RFC 2217 server (`ser2net`, or pyserial's `rfc2217_server.py`) once one is available, per
+  `docs/design/rfc2217.md`'s Testing strategy section, and flip its Status note once that's done.
+  Deferred 2026-09-30 — no such server was reachable this session.
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
