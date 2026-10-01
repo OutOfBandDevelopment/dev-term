@@ -20,6 +20,22 @@ No editor screen in CLI mode — settings come from flags, environment variables
 saved `appsettings.Local.json` profile, in that precedence order (flags win). See `CLAUDE.md`'s
 Commands section for the full flag list per transport.
 
+`rfc2217` connects to a remote serial port over the network (e.g. a `ser2net` or pyserial
+`rfc2217_server.py` bridge) — same baud/parity/data-bits/stop-bits/DTR/RTS fields as `serial`, plus
+`--host`/`--port` like `tcp`:
+
+```
+$ dotnet DevTerm.Console.dll --transport rfc2217 --host 192.168.0.50 --port 2217 --baud 9600 --presenter ascii --cli true
+Connected to RFC 2217 192.168.0.50:2217 using 'ascii'.
+Type a line and press Enter to send; Ctrl+C to exit.
+```
+
+If the remote end doesn't actually speak RFC 2217 option negotiation (some vendor serial-to-TCP
+bridges advertise "RFC2217" without fully implementing it — see
+[`docs/design/rfc2217.md`](../design/rfc2217.md)'s vendor-variant warning), dev-term falls back to
+plain data pass-through with no baud/DTR/RTS control rather than failing the connection, unless the
+peer explicitly refuses the option (`WONT`/`DONT`), which is reported as a connection error.
+
 ### Discovering hardware first
 
 `--listports true` lists serial ports; `--listhiddevices true` lists USB HID devices;
@@ -74,12 +90,13 @@ rather than hanging:
 
 ```
 $ dotnet DevTerm.Console.dll --transport carrier-pigeon --cli true
-Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', or 'loopback'.
+Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', or 'loopback'.
 Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]
    or: dev-term --listports true
    or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]
@@ -124,6 +141,12 @@ hint: Connect still tries, and reports the error if the connection fails.
 ![TUI connection editor, TCP transport](images/tui-configure-tcp.png)
 
 ![WPF connection editor, TCP transport](images/wpf-device-profiles-tcp.png)
+
+**RFC 2217** (connect to a remote serial port over the network) has no screen of its own — selecting
+it shows the Serial and TCP field groups together (Host/Port from TCP, Baud/Data bits/Parity/Stop
+bits/DTR/RTS from Serial), minus the three fields that don't apply to it (Listen, Handshake, Read
+timeout (ms)) — see [the Connection Editor spec](../specs/connection-editor.md)'s States section for
+exactly which fields that is.
 
 **USB HID** (the TUI capture is scrolled so the USB Device section starts at the top):
 

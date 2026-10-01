@@ -129,6 +129,21 @@ public static class DevTermConfiguration
                 profile[nameof(CliOptions.BleNotifyCharacteristicUuid)] = options.BleNotifyCharacteristicUuid;
             }
         }
+        else if (string.Equals(options.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.Host)] = options.Host;
+            profile[nameof(CliOptions.Port)] = options.Port;
+            profile[nameof(CliOptions.Baud)] = options.Baud;
+            profile[nameof(CliOptions.DataBits)] = options.DataBits;
+            profile[nameof(CliOptions.Parity)] = options.Parity.ToString();
+            profile[nameof(CliOptions.StopBits)] = options.StopBits.ToString();
+            profile[nameof(CliOptions.Dtr)] = options.Dtr;
+            profile[nameof(CliOptions.Rts)] = options.Rts;
+            profile[nameof(CliOptions.WriteTimeoutMs)] = options.WriteTimeoutMs;
+
+            // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
+            // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
+        }
         else
         {
             profile[nameof(CliOptions.Port)] = options.Port;

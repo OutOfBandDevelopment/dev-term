@@ -98,11 +98,34 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
+            case "rfc2217":
+                if (!int.TryParse(options.Port, out var rfc2217Port) || rfc2217Port is < 1 or > 65535)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--port' for the RFC 2217 transport (expected 1-65535).");
+                }
+
+                if (string.IsNullOrWhiteSpace(options.Host))
+                {
+                    return ValidateOptionsResult.Fail("Missing required '--host' for the RFC 2217 transport.");
+                }
+
+                if (options.Baud <= 0)
+                {
+                    return ValidateOptionsResult.Fail("'--baud' must be a positive number.");
+                }
+
+                if (options.DataBits is < 5 or > 8)
+                {
+                    return ValidateOptionsResult.Fail("'--databits' must be between 5 and 8.");
+                }
+
+                break;
+
             case "loopback":
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

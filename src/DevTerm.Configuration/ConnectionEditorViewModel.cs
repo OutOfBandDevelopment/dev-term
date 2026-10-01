@@ -37,8 +37,8 @@ namespace DevTerm.Configuration;
 /// per front end. See docs/design/ui-definitions.md's "Forms from one definition".
 /// </remarks>
 [FormSection("General", Label = "", Order = 0)]
-[FormSection("Serial", Order = 1, VisibleWhen = nameof(IsSerialTransport))]
-[FormSection("TCP", Order = 2, VisibleWhen = nameof(IsTcpTransport))]
+[FormSection("Serial", Order = 1, VisibleWhen = nameof(IsSerialLikeTransport))]
+[FormSection("TCP", Order = 2, VisibleWhen = nameof(IsTcpLikeTransport))]
 [FormSection("USB Device", Order = 3, VisibleWhen = nameof(IsUsbDeviceTransport))]
 [FormSection("BLE", Order = 4, VisibleWhen = nameof(IsBleTransport))]
 [FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
@@ -116,6 +116,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsUsbDeviceTransport),
         nameof(IsBleTransport),
         nameof(IsLoopbackTransport),
+        nameof(IsRfc2217Transport),
+        nameof(IsSerialLikeTransport),
+        nameof(IsTcpLikeTransport),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
         nameof(SelectedUsbtmcDevice),
@@ -421,7 +424,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "loopback"];
 
     /// <summary>
     /// Every presenter name a saved profile can check, in registration order (built-ins first, then
@@ -552,6 +555,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsUsbDeviceTransport));
             OnPropertyChanged(nameof(IsBleTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
+            OnPropertyChanged(nameof(IsRfc2217Transport));
+            OnPropertyChanged(nameof(IsSerialLikeTransport));
+            OnPropertyChanged(nameof(IsTcpLikeTransport));
             OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
@@ -567,6 +573,28 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool IsBleTransport => string.Equals(Transport, "ble", StringComparison.OrdinalIgnoreCase);
 
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsRfc2217Transport => string.Equals(Transport, "rfc2217", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <see langword="true"/> for <see cref="IsSerialTransport"/> or <see cref="IsRfc2217Transport"/> —
+    /// RFC 2217 is "a serial port, reached over TCP", so it reuses the Serial field group
+    /// (<see cref="Baud"/>/<see cref="DataBits"/>/<see cref="ParityText"/>/<see cref="StopBitsText"/>/
+    /// <see cref="Dtr"/>/<see cref="Rts"/>) instead of a third, duplicate section. Gates the "Serial"
+    /// <see cref="FormSectionAttribute"/>; <see cref="HandshakeText"/> and <see cref="ReadTimeoutMs"/>
+    /// stay Serial-only via their own field-level <c>VisibleWhen</c>, since flow control and read-timeout
+    /// wiring aren't built for RFC 2217 in v1.
+    /// </summary>
+    public bool IsSerialLikeTransport => IsSerialTransport || IsRfc2217Transport;
+
+    /// <summary>
+    /// <see langword="true"/> for <see cref="IsTcpTransport"/> or <see cref="IsRfc2217Transport"/> —
+    /// both connect to a <see cref="Host"/>/<see cref="TcpPort"/> (reusing the field named "Port" under
+    /// TCP would collide with the Serial section's own <see cref="Port"/>, hence <see cref="TcpPort"/>).
+    /// Gates the "TCP" <see cref="FormSectionAttribute"/>; <see cref="Listen"/> stays TCP-only via its
+    /// own field-level <c>VisibleWhen</c>, since RFC 2217 has no listen/server mode.
+    /// </summary>
+    public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport;
 
     /// <summary>
     /// <see langword="true"/> when the current transport's identifying field(s) — <see cref="Port"/>
@@ -665,7 +693,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     [Category("Serial")]
     [DisplayName("Handshake")]
-    [FormField(Order = 7, OptionsFrom = nameof(HandshakeOptions))]
+    [FormField(Order = 7, OptionsFrom = nameof(HandshakeOptions), VisibleWhen = nameof(IsSerialTransport))]
     public string HandshakeText { get => _handshakeText; set => SetField(ref _handshakeText, value); }
 
     /// <summary>See <see cref="CliOptions.Dtr"/>. Previously hard-carried from whatever profile was loaded rather than exposed in this form — see docs/changes and BACKLOG.md's "Show the hidden connection settings".</summary>
@@ -689,7 +717,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <summary>See <see cref="CliOptions.ReadTimeoutMs"/>.</summary>
     [Category("Serial")]
     [DisplayName("Read timeout (ms)")]
-    [FormField(Order = 11, ValueKind = ValueKind.Integer, Minimum = 0)]
+    [FormField(Order = 11, ValueKind = ValueKind.Integer, Minimum = 0, VisibleWhen = nameof(IsSerialTransport))]
     public string ReadTimeoutMs { get => _readTimeoutMs; set => SetField(ref _readTimeoutMs, value); }
 
     /// <summary>
@@ -721,7 +749,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     [Category("TCP")]
     [DisplayName("Listen (server mode)")]
-    [FormField(Order = 2)]
+    [FormField(Order = 2, VisibleWhen = nameof(IsTcpTransport))]
     public bool Listen { get => _listen; set => SetField(ref _listen, value); }
 
     /// <summary>
@@ -1218,7 +1246,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         var options = new CliOptions
         {
             Transport = Transport.Trim(),
-            Port = IsTcpTransport
+            Port = IsTcpLikeTransport
                 ? (TcpPort.Trim() is { Length: > 0 } tp ? tp : null)
                 : (Port.Trim() is { Length: > 0 } p ? p : null),
             Host = Host.Trim() is { Length: > 0 } h ? h : null,

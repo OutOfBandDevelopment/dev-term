@@ -47,7 +47,7 @@ public sealed class ConnectionEditorFormTests
 
             Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation"], [.. definition.Sections.Select(s => s.Label)]);
             Assert.AreSequenceEqual(
-                [null, nameof(ConnectionEditorViewModel.IsSerialTransport), nameof(ConnectionEditorViewModel.IsTcpTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null],
+                [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null],
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
             Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
@@ -145,7 +145,7 @@ public sealed class ConnectionEditorFormTests
         Assert.AreEqual("Read timeout (ms)", Controls(definition).Single(c => c.Id == nameof(CliOptions.ReadTimeoutMs)).Label);
         Assert.IsTrue(((ToggleControl)Controls(definition).Single(c => c.Id == nameof(CliOptions.Dtr))).DefaultValue);
         Assert.AreEqual(
-            "Which transport to use: serial, tcp, hid, usbtmc, ble, or loopback.",
+            "Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, or loopback.",
             Controls(definition).Single(c => c.Id == nameof(CliOptions.Transport)).Description);
     }
 }

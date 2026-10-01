@@ -649,42 +649,53 @@ public partial class MainWindow : Window
             return;
         }
 
-        var line = SendBox.Text;
-        SendBox.Text = string.Empty;
-        tab.Tab.SendHistory.Add(line);
-
-        if (line.Length == 0 || !tab.Tab.Catalog.TryGetInput(CurrentParser, out var input))
-        {
-            return;
-        }
-
-        if (!TypedInput.TryEncode(input, CurrentParser, line, tab.Tab.CliOptions.LineEnding, out var payload, out var error))
-        {
-            AppendOutput(tab, error!, OutputKind.Error);
-            return;
-        }
-
-        if (payload.Length == 0)
-        {
-            return;
-        }
-
-        if (tab.Tab.Session.State != ConnectionState.Open)
-        {
-            AppendOutput(tab, "Not connected — use File > Connect.", OutputKind.Error);
-            return;
-        }
-
+        // Restore focus to SendBox once we're done, however we exit below - clicking "Send" (unlike
+        // pressing Enter in the box) moves keyboard focus to that button, and nothing else brings it
+        // back. Left alone, Up/Down stop recalling history right after the first mouse-driven send
+        // until the user clicks back into the box (see docs/bugs/fixed/062-sendbox-arrow-keys-lose-focus-after-send.md).
         try
         {
-            await tab.Tab.Session.SendAsync(payload);
-        }
-        catch (Exception ex)
-        {
-            if (tab.Tab.Session.State == ConnectionState.Open)
+            var line = SendBox.Text;
+            SendBox.Text = string.Empty;
+            tab.Tab.SendHistory.Add(line);
+
+            if (line.Length == 0 || !tab.Tab.Catalog.TryGetInput(CurrentParser, out var input))
             {
-                AppendOutput(tab, $"Send failed: {ex.Message}", OutputKind.Error);
+                return;
             }
+
+            if (!TypedInput.TryEncode(input, CurrentParser, line, tab.Tab.CliOptions.LineEnding, out var payload, out var error))
+            {
+                AppendOutput(tab, error!, OutputKind.Error);
+                return;
+            }
+
+            if (payload.Length == 0)
+            {
+                return;
+            }
+
+            if (tab.Tab.Session.State != ConnectionState.Open)
+            {
+                AppendOutput(tab, "Not connected — use File > Connect.", OutputKind.Error);
+                return;
+            }
+
+            try
+            {
+                await tab.Tab.Session.SendAsync(payload);
+            }
+            catch (Exception ex)
+            {
+                if (tab.Tab.Session.State == ConnectionState.Open)
+                {
+                    AppendOutput(tab, $"Send failed: {ex.Message}", OutputKind.Error);
+                }
+            }
+        }
+        finally
+        {
+            SendBox.Focus();
         }
     }
 

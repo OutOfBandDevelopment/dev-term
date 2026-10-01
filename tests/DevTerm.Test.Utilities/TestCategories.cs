@@ -25,6 +25,7 @@ public static class TestCategories
     public const string Usbtmc = nameof(Usbtmc);
     public const string Ble = nameof(Ble);
     public const string Loopback = nameof(Loopback);
+    public const string Rfc2217 = nameof(Rfc2217);
 
     // Device profile types.
     public const string Scpi = nameof(Scpi);

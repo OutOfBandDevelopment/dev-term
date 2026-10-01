@@ -10,6 +10,7 @@ using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
+using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using DevTerm.Transports.Usbtmc;
@@ -91,6 +92,22 @@ public static class ServiceCollectionExtensions
             // Must come after AddBleTransport() - see BlePlatformAdapterLoader's doc comment for why
             // its registrations (added via plain AddSingleton) need to be the last ones added.
             BlePlatformAdapterLoader.TryRegisterPlatformAdapter(services);
+        }
+        else if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddRfc2217Transport();
+            services.Configure<Rfc2217TransportOptions>(o =>
+            {
+                o.Host = cliOptions.Host ?? string.Empty;
+                o.Port = int.TryParse(cliOptions.Port, out var rfc2217Port) ? rfc2217Port : 0;
+                o.BaudRate = cliOptions.Baud;
+                o.DataBits = cliOptions.DataBits;
+                o.Parity = cliOptions.Parity;
+                o.StopBits = cliOptions.StopBits;
+                o.DtrEnable = cliOptions.Dtr;
+                o.RtsEnable = cliOptions.Rts;
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+            });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {

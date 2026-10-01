@@ -39,6 +39,19 @@ public static class ConnectionDescription
             return "Loopback";
         }
 
+        if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
+        {
+            var rfc2217StopBits = cliOptions.StopBits switch
+            {
+                StopBits.One => "1",
+                StopBits.Two => "2",
+                StopBits.OnePointFive => "1.5",
+                _ => cliOptions.StopBits.ToString(),
+            };
+
+            return $"RFC 2217 {cliOptions.Host}:{cliOptions.Port} at {cliOptions.Baud} baud ({cliOptions.DataBits}{cliOptions.Parity.ToString()[0]}{rfc2217StopBits})";
+        }
+
         var stopBits = cliOptions.StopBits switch
         {
             StopBits.One => "1",
@@ -87,6 +100,11 @@ public static class ConnectionDescription
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             return "loopback://";
+        }
+
+        if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"rfc2217://{cliOptions.Host}:{cliOptions.Port}";
         }
 
         var stopBits = cliOptions.StopBits switch

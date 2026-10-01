@@ -57,6 +57,46 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_Rfc2217WithHostAndPort_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217" });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    public void Validate_Rfc2217WithoutHost_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = null, Port = "2217" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_Rfc2217WithoutPort_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "0" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_Rfc2217WithInvalidBaud_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", Baud = 0 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_Rfc2217WithInvalidDataBits_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", DataBits = 9 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
     public void Validate_HidWithVendorAndProductId_Succeeds()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA });

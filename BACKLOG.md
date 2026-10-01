@@ -18,13 +18,14 @@ the rest.
   2026-09-25 and is real-hardware verified (`docs/design/transports.md`'s BLE section,
   `docs/changes/2026-09-25.md`/`2026-09-29.md`). The adapter seam supports adding either platform
   independently; neither has been started.
-- RFC 2217 client (`Rfc2217Transport`, `ITransport`) — connect to a remote serial port (e.g.
-  `ser2net`) with full baud/DTR/RTS control over the network. Design done: see
-  `docs/design/rfc2217.md`. Build first (server mode depends on the same codec but is a
-  differently-shaped bridge, not a transport — build second).
 - RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
+- **RFC 2217 client real-server verification** — `Rfc2217Transport` (landed 2026-09-30, see
+  `docs/changes/2026-09-30.md`) is only unit-tested against a fake server so far. Run it against a
+  real RFC 2217 server (`ser2net`, or pyserial's `rfc2217_server.py`) once one is available, per
+  `docs/design/rfc2217.md`'s Testing strategy section, and flip its Status note once that's done.
+  Deferred 2026-09-30 — no such server was reachable this session.
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
@@ -44,17 +45,22 @@ the rest.
 
 ### Tektronix TDS2024
 
-- **Every `TRIGger:...?` query hangs (never replies) against this specific real TDS2024 unit** —
-  real-hardware confirmed 2026-09-25 (`docs/test/2026-09-25-18-57-22.md`): `TRIGger:MAIn:FREQuency?`
-  and `TRIGger:STATE?` (a much cheaper status query, ruling out "expensive measurement" as the
-  cause) both hung the full step timeout, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`,
-  `CH2?`) answered normally, including as the 3rd command in a sequence (ruling out a simple
-  "3rd command" positional issue). `tektronix-tds2024.json`'s own `Name` field notes this unit is
-  specifically "NOT the TDS2024B" — unconfirmed hypothesis that the `TRIGger` query family needs
-  that variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family
-  for now (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a
-  known-working `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare
-  framing, similar to the USBTMC framing bugs above.
+- **Every `TRIGger:...?` query (including the unqualified `TRIGger?` form) gets no reply at all
+  against this specific real TDS2024 unit** — real-hardware confirmed 2026-09-25
+  (`docs/test/2026-09-25-18-57-22.md`) and extended 2026-09-30
+  (`docs/test/2026-09-30-21-51-12.md`): `TRIGger:MAIn:FREQuency?`, `TRIGger:STATE?` (a much cheaper
+  status query, ruling out "expensive measurement" as the cause), and plain `TRIGger?` all get no
+  reply, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`, `CH2?`) answers normally, including
+  immediately after a dropped `TRIGger` query (ruling out a stuck/corrupted link or a queued stale
+  reply bleeding into the next command). `*CLS` + `ALLEv?` right after a dropped query shows an
+  empty event queue — the device isn't posting an IEEE 488.2 command-error event (410/420-class)
+  for it either, so this looks like the firmware never generating a reply at all, not rejecting the
+  command as malformed. `tektronix-tds2024.json`'s own `Name` field notes this unit is specifically
+  "NOT the TDS2024B" — still an unconfirmed hypothesis that the `TRIGger` query family needs that
+  variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family for now
+  (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a known-working
+  `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare framing, similar
+  to the USBTMC framing bugs above.
 
 ### Plugin architecture, decoders & presenters
 

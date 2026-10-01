@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
