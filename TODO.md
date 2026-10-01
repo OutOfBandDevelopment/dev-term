@@ -7,19 +7,16 @@ Completed work is logged by date under `docs/changes/`.
 ## In progress
 
 **Four-item batch on `dev/hardware-review`, one item at a time, in this order: (1) Theme builder —
-done, committed (`c3c2752`), (2) Manifest editor expression builder — code+tests+docs done, commit
-pending, (3) Loopback sample rate control, (4) Stream monitor raster tool integration (Phase 2).**
-Each item gets code + tests + docs before moving to the next.
+done, committed (`c3c2752`), (2) Manifest editor expression builder — done, committed (`46419c2`),
+(3) Loopback sample rate control, (4) Stream monitor raster tool integration (Phase 2).** Each item
+gets code + tests + docs before moving to the next.
 
-Theme builder's full detail is in `docs/changes/2026-10-01.md` (the "Theme builder: in-app theme
-creation/editing" entry). Manifest editor expression builder's full detail is in the same file (the
-"Manifest editor expression builder" entry) — code, tests, and docs are done; only this item's commit
-is still pending.
+Theme builder's and Manifest editor expression builder's full detail are both in
+`docs/changes/2026-10-01.md`.
 
 ### 3-4. Not started
 
-Loopback sample rate control, Stream monitor raster tool integration — next up once the Manifest
-editor expression builder's commit lands.
+Loopback sample rate control, Stream monitor raster tool integration — next up now.
 
 ## Backlog / research
 
