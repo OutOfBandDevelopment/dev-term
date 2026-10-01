@@ -8,7 +8,7 @@ Completed work is logged by date under `docs/changes/`.
 
 **Four-item batch on `dev/hardware-review`, one item at a time, in this order: (1) Theme builder —
 done, committed (`c3c2752`), (2) Manifest editor expression builder — done, committed (`46419c2`),
-(3) Loopback sample rate control — done, not yet committed, (4) Stream monitor raster tool
+(3) Loopback sample rate control — done, committed (`3ab7b2c`), (4) Stream monitor raster tool
 integration (Phase 2).** Each item gets code + tests + docs before moving to the next.
 
 Theme builder's, Manifest editor expression builder's, and Loopback sample rate control's full
