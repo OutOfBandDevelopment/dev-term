@@ -3,6 +3,7 @@ using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
+using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,21 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.AreEqual(TcpTransportMode.Client, options.Mode);
         Assert.AreEqual("device.local", options.Host);
         Assert.AreEqual(502, options.Port);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_Rfc2217Transport_ResolvesRfc2217TransportConfiguredFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", Baud = 4800 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<Rfc2217TransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<Rfc2217Transport>(transport);
+        Assert.AreEqual("device.local", options.Host);
+        Assert.AreEqual(2217, options.Port);
+        Assert.AreEqual(4800, options.BaudRate);
     }
 
     [TestMethod]

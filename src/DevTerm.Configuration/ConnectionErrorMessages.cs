@@ -16,6 +16,7 @@ public static class ConnectionErrorMessages
         {
             "serial" => " Run with --listports to see available serial ports.",
             "hid" => " Run with --listhiddevices to see available USB HID devices.",
+            "rfc2217" => " Check --host/--port, and that the server actually speaks RFC 2217 option negotiation - some vendor bridges don't (see docs/design/rfc2217.md).",
             _ => string.Empty,
         };
 
