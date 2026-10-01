@@ -45,17 +45,22 @@ the rest.
 
 ### Tektronix TDS2024
 
-- **Every `TRIGger:...?` query hangs (never replies) against this specific real TDS2024 unit** —
-  real-hardware confirmed 2026-09-25 (`docs/test/2026-09-25-18-57-22.md`): `TRIGger:MAIn:FREQuency?`
-  and `TRIGger:STATE?` (a much cheaper status query, ruling out "expensive measurement" as the
-  cause) both hung the full step timeout, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`,
-  `CH2?`) answered normally, including as the 3rd command in a sequence (ruling out a simple
-  "3rd command" positional issue). `tektronix-tds2024.json`'s own `Name` field notes this unit is
-  specifically "NOT the TDS2024B" — unconfirmed hypothesis that the `TRIGger` query family needs
-  that variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family
-  for now (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a
-  known-working `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare
-  framing, similar to the USBTMC framing bugs above.
+- **Every `TRIGger:...?` query (including the unqualified `TRIGger?` form) gets no reply at all
+  against this specific real TDS2024 unit** — real-hardware confirmed 2026-09-25
+  (`docs/test/2026-09-25-18-57-22.md`) and extended 2026-09-30
+  (`docs/test/2026-09-30-21-51-12.md`): `TRIGger:MAIn:FREQuency?`, `TRIGger:STATE?` (a much cheaper
+  status query, ruling out "expensive measurement" as the cause), and plain `TRIGger?` all get no
+  reply, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`, `CH2?`) answers normally, including
+  immediately after a dropped `TRIGger` query (ruling out a stuck/corrupted link or a queued stale
+  reply bleeding into the next command). `*CLS` + `ALLEv?` right after a dropped query shows an
+  empty event queue — the device isn't posting an IEEE 488.2 command-error event (410/420-class)
+  for it either, so this looks like the firmware never generating a reply at all, not rejecting the
+  command as malformed. `tektronix-tds2024.json`'s own `Name` field notes this unit is specifically
+  "NOT the TDS2024B" — still an unconfirmed hypothesis that the `TRIGger` query family needs that
+  variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family for now
+  (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a known-working
+  `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare framing, similar
+  to the USBTMC framing bugs above.
 
 ### Plugin architecture, decoders & presenters
 
