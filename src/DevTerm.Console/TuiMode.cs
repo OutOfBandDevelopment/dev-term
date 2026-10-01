@@ -1109,7 +1109,7 @@ public static class TuiMode
             windowTab.Monitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
             windowTab.Monitor.Start();
 
-            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor);
+            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor, windowTab.Tab.CliOptions);
             app.Run(monitorParts.Window);
             monitorParts.Window.Dispose();
         }

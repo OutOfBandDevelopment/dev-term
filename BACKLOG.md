@@ -125,9 +125,6 @@ the rest.
 
 ### Proposed Ideas
 
-- [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)
-  — call an external raster tool (Ghostscript-style path+args mapping), or a web service (e.g. Apache
-  Tika) via a configured request, or an internal HP/GL-to-SVG converter.
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
 - [LXI support](docs/design/proposals/lxi-support.md).
 - [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/

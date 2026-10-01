@@ -156,6 +156,21 @@ public static class ServiceCollectionExtensions
         services.AddDe5000Presenter();
         services.AddNmeaGpsPresenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
+        services.AddStreamCaptureConverter(cliOptions);
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="StreamCaptureConverter"/> and its options, bound from <paramref name="cliOptions"/>'s
+    /// <c>StreamConvert*</c> properties, plus the named <see cref="IHttpClientFactory"/> client it uses
+    /// for the web-service conversion mechanism.
+    /// </summary>
+    public static IServiceCollection AddStreamCaptureConverter(this IServiceCollection services, CliOptions cliOptions)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        services.AddHttpClient(StreamCaptureConverter.HttpClientName);
+        services.Configure<StreamCaptureConverterOptions>(o => StreamCaptureConverterOptions.CopyFrom(cliOptions, o));
+        services.AddSingleton<StreamCaptureConverter>();
         return services;
     }
 }

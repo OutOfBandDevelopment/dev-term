@@ -89,6 +89,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
+| **Convert...** (TUI + WPF) | Runs the configured conversion mechanism (below) against the selected capture, writing the result next to its saved file (same folder and name, a new extension). Enabled when a capture is selected. TUI reports the outcome in the detail label; WPF reports success in the detail text and a failure via a message box |
 | Selecting a capture | Shows its detail (and, in WPF, its preview) |
 
 While monitoring, each capture also appends a status line to the main window's output:
@@ -119,10 +120,34 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free
   where a format already has a native decoder".
 
+## Converting a capture
+
+"Convert..." wraps three mechanisms, configured per connection profile (Connection Editor's
+"Stream Monitor" section) and offered as alternatives — one mode is active at a time, never all
+three. `DevTerm.Configuration.StreamCaptureConverter` picks the mode and never throws: every failure
+(nothing configured, the selected capture was never saved, a process error, a failed HTTP request)
+reports an explanatory message instead.
+
+| `Stream Convert Mode` | What it does | Other fields it uses |
+|---|---|---|
+| (blank/unrecognized) | Convert... always fails with "no conversion mechanism is configured" | — |
+| `internalhpgltosvg` | dev-term's own HP-GL-to-SVG converter (`HpglToSvgConverter`) — HP-GL captures only, fails for any other kind | `Stream Convert Output Extension` (default `svg`) |
+| `externaltool` | Runs a configured executable against the capture's saved file as a child process | `Stream Convert External Tool Path`, `Stream Convert External Tool Arguments` (a template with `{input}`/`{output}`/`{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`), `Stream Convert Dpi` (default 150), `Stream Convert Output Extension` (default `png`) |
+| `webservice` | POSTs (or other configured method) the capture's raw bytes to a configured HTTP endpoint, with its detected content type, and saves the response body | `Stream Convert Web Service Url`, `Stream Convert Web Service Method` (default `POST`), `Stream Convert Output Extension` (default `png`) |
+
+The argument template is split on whitespace before `{input}`/`{output}`/`{dpi}` substitution, and
+each resulting token becomes its own process argument (`ProcessStartInfo.ArgumentList`, no shell
+parsing) — a captured file path containing spaces still arrives as one argument, with no
+command-injection risk from a captured file name or a device-supplied value. dev-term bundles no
+external converter itself; the external-tool mode points at whatever the user already has installed
+(Ghostscript, for example), and the web-service mode sends a capture's raw bytes to a URL the user
+configures — never a default endpoint.
+
 ## Open items
 
-- **No HP-GL/PostScript/PCL preview or rasterize/convert action yet** — the proposal's phase 2, gated
-  on the rendering presenter from [presenters.md](../design/presenters.md) §3.
+- **No in-window preview of a converted file** — "Convert..." writes a file but doesn't show it; live
+  HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
+  [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
   proposal's Status for why it's bound in place instead).
 - **Only the SCPI command schema can declare a format** today; a device manifest's own command schema

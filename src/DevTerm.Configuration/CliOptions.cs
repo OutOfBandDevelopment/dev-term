@@ -334,4 +334,56 @@ public sealed class CliOptions
     /// </summary>
     [Category("Mode")]
     public double PlaybackSpeed { get; set; }
+
+    /// <summary>
+    /// Which mechanism the Stream Monitor's "Convert..." action uses, from
+    /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration":
+    /// <c>none</c> (default - the action reports nothing is configured), <c>externaltool</c> (run a
+    /// configured external converter, e.g. Ghostscript), <c>webservice</c> (POST the capture to a
+    /// configured HTTP endpoint), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
+    /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Convert mode")]
+    [Description("How Stream Monitor's Convert action works: none, externaltool, webservice, or internalhpgltosvg.")]
+    public string? StreamConvertMode { get; set; }
+
+    /// <summary>The external converter executable (e.g. Ghostscript's <c>gswin64c.exe</c>) run when <see cref="StreamConvertMode"/> is <c>externaltool</c>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool path")]
+    public string? StreamConvertExternalToolPath { get; set; }
+
+    /// <summary>
+    /// The external tool's argument template, e.g. <c>-sDEVICE=png16m -r{dpi} -o{output} {input}</c>.
+    /// Split on whitespace and substituted per-token (<c>{input}</c>, <c>{output}</c>, <c>{dpi}</c>) -
+    /// never built into a single shell string, so a substituted path can never be interpreted as
+    /// another argument or a shell metacharacter.
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool arguments")]
+    [Description("Argument template; {input}, {output}, {dpi} are substituted per-token, never shell-expanded.")]
+    public string? StreamConvertExternalToolArguments { get; set; }
+
+    /// <summary>The DPI value substituted for <c>{dpi}</c> in <see cref="StreamConvertExternalToolArguments"/>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool DPI")]
+    public int StreamConvertDpi { get; set; } = 150;
+
+    /// <summary>The HTTP endpoint a capture's raw bytes are POSTed to when <see cref="StreamConvertMode"/> is <c>webservice</c>. No default - this sends data to an external, user-configured host.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Web service URL")]
+    public string? StreamConvertWebServiceUrl { get; set; }
+
+    /// <summary>The HTTP method used for <see cref="StreamConvertWebServiceUrl"/>. Defaults to <c>POST</c>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Web service method")]
+    public string StreamConvertWebServiceMethod { get; set; } = "POST";
+
+    /// <summary>
+    /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible
+    /// default per mechanism (<c>svg</c> for the internal HP-GL converter, <c>png</c> for the other two).
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Converted output extension")]
+    public string? StreamConvertOutputExtension { get; set; }
 }

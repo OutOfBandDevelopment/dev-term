@@ -1099,7 +1099,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var window = new StreamMonitorWindow(monitor) { Owner = this };
+        var window = new StreamMonitorWindow(monitor, tab.Tab.CliOptions) { Owner = this };
         window.Closed += (_, _) => tab.MonitorWindow = null;
         tab.MonitorWindow = window;
         window.Show();

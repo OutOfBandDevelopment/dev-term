@@ -234,7 +234,59 @@ What was built, and where it differs from the text above:
   query). One capture at a time: a second stream starting mid-capture is appended to the first.
   No retention/cleanup.
 
-**Phase 2 (still ahead):** HP-GL/PostScript/PCL preview and a rasterize/convert export, gated on the
-rendering presenter from [presenters.md](../presenters.md) §3. The export action's conversion
-mechanism (external tool invocation, web-service conversion, or an internal HP/GL-to-SVG converter)
-is proposed above (2026-09-30) but not yet built either.
+**Phase 2 (partially built 2026-10-01):** the three conversion mechanisms proposed above (external
+tool invocation, web-service conversion, internal HP/GL-to-SVG) are now built as
+`DevTerm.Configuration.StreamCaptureConverter`, wired into both front ends' Stream Monitor windows
+as a "Convert..." action next to Start/Stop Monitoring. Still ahead: live vector/raster preview of
+HP-GL/PostScript/PCL captures in the window itself (the harder rendering-presenter work from
+[presenters.md](../presenters.md) §3) — "Convert..." writes a file but doesn't show it.
+
+What was built, and where it differs from the proposal text above:
+
+- **`StreamCaptureConverter.ConvertAsync(StreamMonitorCapture)`** picks one of the three mechanisms
+  by a single `StreamConversionMode` (`None`/`ExternalTool`/`WebService`/`InternalHpglToSvg`) rather
+  than offering all three per capture — matching the proposal's "offered as alternatives, not all
+  three at once" framing. Never throws; every failure path (nothing configured, a never-saved
+  capture, a process that won't start or exits non-zero, a failed HTTP request) returns a
+  `StreamConversionResult(Success, OutputPath, Error)`, the same tolerant result-object convention
+  `StreamMonitor.Save` already uses.
+- **External tool**: the argument template is split on whitespace *before* `{input}`/`{output}`/
+  `{dpi}` substitution, and each resulting token is added individually to
+  `ProcessStartInfo.ArgumentList` (`UseShellExecute = false`) — never a shell-parsed command string —
+  so a captured file name or a substituted path containing spaces can't break out of the intended
+  argument boundaries. `StreamConvertDpi` (default 150) is the only non-path placeholder.
+- **Web service**: POSTs (method configurable) the capture's raw bytes with its detected
+  `StreamContentKind.MediaType` as `Content-Type`, via a named `IHttpClientFactory` client
+  (`StreamCaptureConverter.HttpClientName`) when running under DI, or an owned, per-call `HttpClient`
+  (disposed after) when constructed ad hoc outside DI — the same ad-hoc-construction accommodation
+  `StreamMonitor` itself already needs for the TUI/WPF front ends.
+- **Internal HP/GL-to-SVG**: calls the already-built, unmodified `HpglToSvgConverter.ConvertToSvg`
+  against the capture's bytes; fails (rather than attempting it) for any non-HP-GL capture.
+- **Output path**: always the saved capture's own directory and file-name stem with a new extension
+  (`StreamConvertOutputExtension`, or a per-mechanism default — `svg` for the internal converter,
+  `png` for external tool/web service) — never a separately configured output directory, so a
+  conversion always lands next to the file it came from.
+- **Configuration**: seven new `CliOptions` properties, all `[Category("Stream Monitor")]` —
+  `StreamConvertMode`, `StreamConvertExternalToolPath`, `StreamConvertExternalToolArguments`,
+  `StreamConvertDpi`, `StreamConvertWebServiceUrl`, `StreamConvertWebServiceMethod`,
+  `StreamConvertOutputExtension` — carried per-connection-profile the same way every other
+  `CliOptions` setting is, and automatically surfaced as a new "Stream Monitor" section in the
+  Connection Editor's generated form (`FormDefinitionGenerator`) in both front ends. Bound into
+  `StreamCaptureConverterOptions` via `FromCliOptions`/`CopyFrom`, mirroring
+  `StreamCaptureConverterOptions.FromCliOptions(cliOptions)`'s ad-hoc-construction path for the
+  TUI/WPF windows (which don't go through DI) and `ServiceCollectionExtensions.AddDevTermFrontEnd`'s
+  `IOptions<StreamCaptureConverterOptions>` registration for DI.
+- **Front ends**: both Stream Monitor windows gained a "Convert..." action next to Start/Stop
+  Monitoring, enabled only when a capture is selected. TUI: a button beside the toggle, reporting
+  "Converting..." then the result in the detail label. WPF: a button beside the toggle,
+  `ConvertSelectedAsync` (internal, directly callable from tests) reporting into the detail text on
+  success and a `MessageBox.Show` on failure (matching the existing, also-untested `ExportAs_Click`
+  failure-path convention — a real modal, deliberately left untested).
+- **Not built this pass**: live preview of the converted output (the file is written but not shown
+  in-window — that's still gated on the rendering presenter), and no CLI-mode "export the last N
+  captures" command (the proposal's own aside under Phase 2's bullet) — Stream Monitor still has no
+  CLI-mode support at all, so this wasn't added in isolation.
+- **Verified**: unit tests only — all three mechanisms (including a real child-process round trip and
+  a fake-`HttpMessageHandler`-backed web-service round trip), placeholder-substitution safety, and
+  both front ends' wiring. **Not verified against real hardware / a real external tool (Ghostscript)
+  or a real web conversion service.**

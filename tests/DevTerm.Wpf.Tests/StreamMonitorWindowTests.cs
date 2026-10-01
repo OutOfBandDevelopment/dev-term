@@ -204,6 +204,45 @@ public sealed class StreamMonitorWindowTests
     }
 
     [TestMethod]
+    public void ConvertButton_IsEnabledOnlyWhenACaptureIsSelected()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("scope");
+            var window = new StreamMonitorWindow(bench.Monitor);
+            StaTestRunner.DoEvents();
+
+            Assert.IsFalse(window.ConvertButton.IsEnabled);
+
+            await bench.CaptureAsync(StreamContentSamples.Hpgl());
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => window.Items.Count == 1, _timeout));
+            Assert.IsTrue(window.ConvertButton.IsEnabled);
+            window.Close();
+        });
+    }
+
+    [TestMethod]
+    public void ConvertSelectedAsync_WithInternalHpglToSvgConfigured_ConvertsTheSelectedCapture()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("plotter");
+            var capture = await bench.CaptureAsync(StreamContentSamples.Hpgl());
+
+            var window = new StreamMonitorWindow(bench.Monitor, new CliOptions { StreamConvertMode = "internalhpgltosvg" });
+            StaTestRunner.DoEvents();
+
+            await window.ConvertSelectedAsync();
+
+            var expectedSvgPath = Path.ChangeExtension(capture.SavedPath, "svg");
+            Assert.IsTrue(File.Exists(expectedSvgPath));
+            StringAssert.Contains(File.ReadAllText(expectedSvgPath), "<svg");
+            Assert.Contains("Converted to", window.DetailText.Text);
+            window.Close();
+        });
+    }
+
+    [TestMethod]
     public void MainWindow_StreamMonitor_ReportsEachCaptureAsAStatusLine_AndFollowsAProfileSwitch()
     {
         var exportDirectory = Path.Combine(Path.GetTempPath(), "devterm-wpf-streammonitor-" + Guid.NewGuid().ToString("N"));

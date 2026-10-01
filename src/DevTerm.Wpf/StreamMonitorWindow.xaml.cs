@@ -52,13 +52,15 @@ public sealed class StreamMonitorCaptureItem
 public partial class StreamMonitorWindow : Window
 {
     private readonly StreamMonitor _monitor;
+    private readonly StreamCaptureConverter _converter;
 
-    public StreamMonitorWindow(StreamMonitor monitor)
+    public StreamMonitorWindow(StreamMonitor monitor, CliOptions? cliOptions = null)
     {
         ArgumentNullException.ThrowIfNull(monitor);
         InitializeComponent();
         WpfTheme.Attach(this);
         _monitor = monitor;
+        _converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(StreamCaptureConverterOptions.FromCliOptions(cliOptions)));
 
         CaptureList.ItemsSource = Items;
         foreach (var capture in monitor.Captures)
@@ -110,6 +112,7 @@ public partial class StreamMonitorWindow : Window
     {
         PreviewImage.Source = null;
         ExportAsButton.IsEnabled = item is not null;
+        ConvertButton.IsEnabled = item is not null;
 
         if (item is null)
         {
@@ -242,4 +245,25 @@ public partial class StreamMonitorWindow : Window
             MessageBox.Show(this, $"Could not save '{dialog.FileName}': {ex.Message}", "dev-term — Stream Monitor", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
+
+    /// <summary>The Convert... button's action — exposed so tests can drive it without a click.</summary>
+    internal async Task ConvertSelectedAsync()
+    {
+        if (CaptureList.SelectedItem is not StreamMonitorCaptureItem item)
+        {
+            return;
+        }
+
+        var result = await _converter.ConvertAsync(item.Capture).ConfigureAwait(true);
+        if (result.Success)
+        {
+            DetailText.Text = $"Converted to {Path.GetFileName(result.OutputPath)}.";
+        }
+        else
+        {
+            MessageBox.Show(this, result.Error, "dev-term — Stream Monitor", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void Convert_Click(object sender, RoutedEventArgs e) => await ConvertSelectedAsync();
 }
