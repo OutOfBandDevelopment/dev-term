@@ -704,6 +704,9 @@ public static class TuiMode
             new MenuBarItem("_View",
             [
                 themeMenu.ThemeMenuItem,
+
+                // Always available: building/editing a theme needs no connection (see ThemeBuilderMode).
+                new MenuItem("_Build/Edit Theme...", string.Empty, Guarded(() => ThemeBuilderMode.Run(app))),
                 echoSentCommandsMenuItem = new MenuItem(ToggleTitle("_Echo Sent Commands", false), string.Empty, () =>
                 {
                     echoSentCommands = !echoSentCommands;

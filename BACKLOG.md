@@ -100,6 +100,18 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
+### Observability
+
+- **OpenTelemetry / general app-logging support** — `DevTerm.Logging` today is device-session
+  transcript recording (`SessionLogger`/`SessionLogWriter`/playback), not application diagnostics.
+  There's no structured logging, tracing, or metrics for dev-term's own internals (connection
+  lifecycle, transport faults, presenter errors) beyond ad-hoc output-pane messages. Scope: decide
+  whether to wire `Microsoft.Extensions.Logging` + an OTel exporter (console/OTLP) through DI
+  (`AddDevTermCore`/`AddDevTermFrontEnd`), what's worth instrumenting first (`Session`
+  open/close/fault, `ITransport` connect/disconnect), and whether it's opt-in (a CLI flag/config
+  section) given most users won't have a collector running. Not started — raised 2026-10-01, no
+  priority set yet.
+
 ### TUI theming
 
 - **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
@@ -113,8 +125,6 @@ the rest.
 
 ### Proposed Ideas
 
-- [Theme builder](docs/design/proposals/theme-builder.md) — color pickers, save/export/import,
-  enumerate from `~/.dev-term/themes`.
 - [Manifest editor expression builder](docs/design/proposals/manifest-editor-expression-builder.md) —
   settable expression fields mapping data values to control parameters.
 - [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter

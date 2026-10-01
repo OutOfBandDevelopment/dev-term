@@ -64,6 +64,46 @@ And the WPF Device Profiles window, Light and Dark:
 
 ![WPF Device Profiles, Dark theme](images/wpf-theme-dark-profiles.png)
 
+## Building a theme in the app
+
+You don't have to hand-write JSON (see "Making your own theme" below) to create a theme — **View >
+Theme > Build/Edit Theme...** opens an in-app builder in both front ends, with live preview as you
+go: the whole app re-skins immediately with every edit, so what you see while building is exactly
+what the saved theme will look like.
+
+1. Pick **View > Theme > Build/Edit Theme...**. A small picker opens first: choose a starting point
+   (Light, Dark, System, or one of your own existing themes) and a name for the new theme — it
+   defaults to `"{starting point} copy"`, e.g. `"Light copy"`.
+2. Click **Create**. The builder window opens, already previewing the new theme everywhere — the
+   main window behind it, any other open window — live.
+3. The builder lists every color role, one per row, with its current value. A row marked with a dot
+   (`●`) has already been changed from the starting point; an unmarked row still shows that theme's
+   own color.
+4. Select a row and click **Edit...** to change it:
+   - **In WPF**, this opens the same RGB/HSV/hex color picker the Busylight panel uses.
+   - **In the TUI**, you type a `#RRGGBB` hex value directly (there's no color-picker widget in the
+     terminal).
+   Accepting a new color updates the row, re-checks contrast, and re-previews immediately.
+5. Changed your mind about one row? Select it and click **Reset to Seed** to go back to the
+   starting point's own color for just that role.
+6. A line under the role list reports any contrast problems (text too close in color to its
+   background) found by the same check `ThemeFile` already runs when loading a theme from disk. A
+   warning here doesn't stop you from saving — it's a heads-up, not a blocker.
+7. You can also rename the theme or switch its chart palette (Light/Dark — which set of chart colors
+   a strip chart or bar graph uses) at any point; both re-preview immediately too.
+8. Click **Save**. If you typed an empty name, or one of the reserved names (`light`/`dark`/
+   `system`), you'll be asked to fix it. If a theme with that name already exists, you'll be asked
+   to confirm overwriting it. Once saved, the new theme is written to `~/.dev-term/themes/` (exactly
+   where "Making your own theme" below puts a hand-written one) and is selected immediately — it's
+   now your active theme, and also shows up in **View > Theme**'s own list from now on.
+9. Click **Cancel**, or close the window, to discard your changes instead — the preview reverts to
+   whatever theme was actually selected before you opened the builder.
+
+The builder never edits Light or Dark themselves, no matter which one you started from — it always
+creates (or overwrites) a separate user theme file, so the built-in themes are always there to start
+from again later. The exact fields, behavior, and front-end differences are documented in
+[`docs/specs/theme-builder.md`](../specs/theme-builder.md).
+
 ## Making your own theme
 
 Put a `.json` file in `~/.dev-term/themes` (`C:\Users\you\.dev-term\themes` on Windows). Start

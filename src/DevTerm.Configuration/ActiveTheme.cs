@@ -100,6 +100,35 @@ public static class ActiveTheme
         return warning;
     }
 
+    /// <summary>
+    /// Shows <paramref name="theme"/> without selecting or persisting it - every open window re-applies
+    /// immediately via <see cref="Changed"/>, same as <see cref="Select"/>, but <see cref="Selection"/>
+    /// stays whatever it already was. For the theme builder's live preview; <see cref="CancelPreview"/>
+    /// reverts.
+    /// </summary>
+    public static void Preview(DevTermTheme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        lock (_lock)
+        {
+            Current = theme;
+        }
+
+        Changed?.Invoke(null, EventArgs.Empty);
+    }
+
+    /// <summary>Re-resolves <see cref="Selection"/> and shows it again, undoing any <see cref="Preview"/>.</summary>
+    public static void CancelPreview()
+    {
+        var theme = Catalog.Resolve(Selection, out _, PrefersDark);
+        lock (_lock)
+        {
+            Current = theme;
+        }
+
+        Changed?.Invoke(null, EventArgs.Empty);
+    }
+
     /// <summary>Re-resolves <c>system</c> after the OS setting changed; a no-op for any other selection.</summary>
     public static void RefreshSystem()
     {

@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using DevTerm.Configuration;
 
@@ -44,6 +45,9 @@ public partial class MainWindow
             AppendOutput(problem, OutputKind.Status);
         }
     }
+
+    /// <summary>"Build/Edit Theme...": always available, needs no connection - see <see cref="ThemeBuilderWindow.Run"/>.</summary>
+    private void BuildEditTheme_Click(object sender, RoutedEventArgs e) => ThemeBuilderWindow.Run(this);
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
