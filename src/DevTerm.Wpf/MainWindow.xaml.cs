@@ -35,6 +35,11 @@ public partial class MainWindow : Window
     /// </summary>
     private const int _maxOutputLines = 1000;
 
+    // View > Echo Sent Commands (default off - most sessions already see their own input in the
+    // SendBox history and don't need it duplicated into the output log). Toggled per-window, not
+    // per-tab - applies to every tab's AppendOutput going forward.
+    private bool _echoSentCommands;
+
     /// <summary>Pairs one <see cref="SessionTab"/> with the WPF chrome built for it — a <see cref="TabItem"/>, its own output <see cref="ListBox"/>, its header label, and the specific event-handler delegate instances subscribed to its <see cref="Configuration.SessionTab.Session"/> (so a profile switch or tab close can unsubscribe the exact same instances). Kept a private nested type: <see cref="Configuration.SessionTab"/> itself stays UI-framework-agnostic so the TUI front end can reuse it.</summary>
     private sealed class WindowTab
     {
@@ -229,8 +234,14 @@ public partial class MainWindow : Window
         {
             FontFamily = new FontFamily("Consolas"),
             ItemTemplate = (DataTemplate)FindResource("OutputLineTemplate"),
+            SelectionMode = SelectionMode.Extended,
         };
         ScrollViewer.SetHorizontalScrollBarVisibility(outputList, ScrollBarVisibility.Auto);
+        outputList.ContextMenu = new ContextMenu
+        {
+            Items = { new MenuItem { Header = "_Copy", Command = ApplicationCommands.Copy } },
+        };
+        outputList.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy, OutputList_CopyExecuted, OutputList_CopyCanExecute));
 
         var headerText = new TextBlock
         {
@@ -269,6 +280,36 @@ public partial class MainWindow : Window
         SessionTabs.SelectedItem = item;
         UpdateCloseSessionAvailability();
         return windowTab;
+    }
+
+    private static void OutputList_CopyCanExecute(object sender, CanExecuteRoutedEventArgs e) =>
+        e.CanExecute = sender is ListBox { SelectedItems.Count: > 0 };
+
+    // Builds the copied text from listBox.Items (original document order), not SelectedItems
+    // directly - out-of-order Ctrl+clicks scramble SelectedItems' own enumeration order.
+    private static void OutputList_CopyExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (sender is not ListBox { SelectedItems.Count: > 0 } listBox)
+        {
+            return;
+        }
+
+        var text = string.Join(
+            Environment.NewLine,
+            listBox.Items.Cast<OutputLine>().Where(listBox.SelectedItems.Contains).Select(line => line.Text));
+        Clipboard.SetText(text);
+    }
+
+    private void EchoSentCommandsMenuItem_Click(object sender, RoutedEventArgs e) =>
+        _echoSentCommands = EchoSentCommandsMenuItem.IsChecked;
+
+    // View > Clear Output: clears only the active tab's scrollback, not every open tab's.
+    private void ClearOutputMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveWindowTabOrNull is { } tab)
+        {
+            tab.OutputList.Items.Clear();
+        }
     }
 
     // Fires for both the auto-select of the first tab ever added and any later explicit switch -
@@ -491,6 +532,7 @@ public partial class MainWindow : Window
         De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, tab.Tab.CliOptions, connected);
         Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, tab.Tab.CliOptions, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.Tab.CliOptions, connected);
+        RefreshSoftwareFlowControlMenu(tab);
     }
 
     private void RefreshConnectionUi(ConnectionState? showState = null)
@@ -679,6 +721,11 @@ public partial class MainWindow : Window
             {
                 AppendOutput(tab, "Not connected — use File > Connect.", OutputKind.Error);
                 return;
+            }
+
+            if (_echoSentCommands)
+            {
+                AppendOutput(tab, $"Out> {line}", OutputKind.Sent);
             }
 
             try

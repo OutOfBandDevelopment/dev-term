@@ -73,6 +73,22 @@ The send box is an editable drop-down: click its arrow to see recently sent line
 field focused, press **Up**/**Down** the same way the TUI does — the same 100-line, this-run-only
 history.
 
+## View menu: echo, flow control, clearing output
+
+Both the TUI and WPF have a **View** menu with three items beyond Theme (see
+[Choosing a theme](themes.md)):
+
+- **Echo Sent Commands** — when on, every line you send is also added to the output as
+  `Out> {line}`, so a busy session's scrollback shows what you sent interleaved with what came back,
+  not just the replies. Off by default. A window-level setting, not per-tab.
+- **Software Flow Control (XON/XOFF)** — only enabled for a TCP connection. Some serial-to-Ethernet
+  bridges forward the attached device's XON/XOFF bytes over the wire instead of honoring them
+  locally; turning this on makes dev-term strip those bytes from the display and pause its own sends
+  until the device's XON arrives, the way hardware flow control already works for a direct serial
+  connection. It's per-tab (each TCP connection has its own setting) and can be toggled at any time
+  without reconnecting.
+- **Clear Output** — empties the active tab's output pane. Other tabs are untouched.
+
 ## Telling device output from dev-term's own messages
 
 The output pane mixes three kinds of line, and each looks different so you never mistake one for

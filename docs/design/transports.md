@@ -32,6 +32,21 @@ Supports both directions from day one, since either the device or dev-term may b
 
 Which mode a given session uses is a configuration choice (see the Options pattern in [platform.md](platform.md)), not two different transport plugins.
 
+**Software (XON/XOFF) flow control** (`TcpTransportOptions.SoftwareFlowControl`, landed
+2026-10-01): off by default — stripping 0x11/0x13 from a stream that isn't actually using them for
+flow control would silently eat legitimate device data. Some serial-to-Ethernet bridges forward the
+attached serial port's XON/XOFF bytes over the wire rather than honoring them locally; enabling this
+strips those bytes from the decoded output (`XonXoffReadStream`) and pauses/resumes `TcpTransport`'s
+own writes on them (`XonXoffFlowControlGate`) — the software equivalent of the hardware RTS/CTS
+handshake serial already honors. The options flag only sets the *initial* value for a new
+`TcpTransport`; `TcpTransport.SoftwareFlowControl` is a live, settable property that toggles the gate
+without reconnecting, since a bridge's actual behavior often can't be confirmed until a connection is
+already open. Disabling it releases any write currently paused on a stale XOFF rather than leaving it
+stuck forever. Both front ends expose this as a View > Software Flow Control (XON/XOFF) menu item,
+enabled only when the active tab's transport is `TcpTransport` — see
+[`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md) and
+[`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md).
+
 ### UDP
 
 Datagram-oriented; no connection lifecycle in the traditional sense, but still modeled as open/close for consistency with other transports. Also supports both directions:

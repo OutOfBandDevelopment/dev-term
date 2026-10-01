@@ -56,6 +56,15 @@ public sealed class Session : IAsyncDisposable
 
     public ConnectionState State => _transport.State;
 
+    /// <summary>
+    /// The underlying transport, for a front end that needs a transport-specific capability no
+    /// generic <see cref="ITransport"/> member exposes (e.g. toggling
+    /// <c>DevTerm.Transports.Tcp.TcpTransport.SoftwareFlowControl</c> at runtime) - pattern-match on
+    /// the concrete type at the call site rather than growing <see cref="ITransport"/> itself with
+    /// one-off members only a single transport supports.
+    /// </summary>
+    public ITransport Transport => _transport;
+
     public IReadOnlyList<IPresenter> Presenters => _pipeline.Presenters;
 
     /// <summary>

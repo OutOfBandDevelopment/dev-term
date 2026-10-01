@@ -27,4 +27,16 @@ public sealed class TcpTransportOptions
     /// docs/bugs/fixed/029-tcp-write-blocks-no-timeout.md.
     /// </summary>
     public int WriteTimeoutMs { get; set; } = 5000;
+
+    /// <summary>
+    /// Opt-in software flow control (XON/XOFF) - off by default, since stripping 0x11/0x13 from a
+    /// stream that isn't actually using them for flow control would silently eat legitimate device
+    /// data. Some serial-to-Ethernet bridges forward the attached serial port's XON/XOFF bytes over
+    /// the wire rather than honoring them locally; enabling this strips those bytes out of the
+    /// decoded output and pauses/resumes dev-term's own writes on them instead. Only the initial
+    /// value for a new <see cref="TcpTransport"/> - once open, <see cref="TcpTransport.SoftwareFlowControl"/>
+    /// is the live, settable switch (a front end can toggle it without reconnecting). See
+    /// docs/design/transports.md.
+    /// </summary>
+    public bool SoftwareFlowControl { get; set; }
 }

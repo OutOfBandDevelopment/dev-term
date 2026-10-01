@@ -13,6 +13,7 @@ using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
 using DevTerm.Logging;
+using DevTerm.Transports.Tcp;
 using Terminal.Gui.App;
 using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
@@ -184,6 +185,18 @@ public static class TuiMode
         MenuItem? closeSessionMenuItem = null;
         MenuItem? deviceProfilesMenuItem = null;
         MenuBarItem? sendAsMenuBarItem = null;
+
+        // View > Echo Sent Commands / Software Flow Control / Clear Output - predeclared for the same
+        // reason as the Device menu items above: their own click actions (and, for Software Flow
+        // Control, RefreshConnectionUi) need to reference the MenuItem to update its own Title.
+        MenuItem? echoSentCommandsMenuItem = null;
+        MenuItem? clearOutputMenuItem = null;
+        MenuItem? softwareFlowControlMenuItem = null;
+
+        // Window-level (not per-tab), mirroring MainWindow.xaml.cs's own _echoSentCommands - echoing
+        // typed commands is a display preference for this window session, not a property of any one
+        // connection.
+        var echoSentCommands = false;
 
         // The File menu's Start/Stop Logging item - one shared piece of UI chrome whose Title flips to
         // reflect whichever tab is active (see RefreshConnectionUi), the same way connectMenuItem does.
@@ -455,6 +468,10 @@ public static class TuiMode
         // View > Theme: switching re-applies live through OnThemeChanged below.
         var themeMenu = new TuiThemeMenu(text => AppendStatus(ActiveTab(), text));
 
+        // Marker-in-Title convention for a checkable item - mirrors TuiThemeMenu's own
+        // "●"/"  " marker (Terminal.Gui has no native checkable MenuItem in this v2 usage).
+        static string ToggleTitle(string label, bool on) => (on ? "● " : "  ") + label;
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -684,7 +701,31 @@ public static class TuiMode
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
                 streamMonitorMenuItem = new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
             ]),
-            themeMenu.MenuBarItem,
+            new MenuBarItem("_View",
+            [
+                themeMenu.ThemeMenuItem,
+                echoSentCommandsMenuItem = new MenuItem(ToggleTitle("_Echo Sent Commands", false), string.Empty, () =>
+                {
+                    echoSentCommands = !echoSentCommands;
+                    echoSentCommandsMenuItem!.Title = ToggleTitle("_Echo Sent Commands", echoSentCommands);
+                }),
+                // Only meaningful for a TCP transport; RefreshConnectionUi enables/disables and
+                // re-marks this per the active tab, the same way the Device menu items are gated.
+                softwareFlowControlMenuItem = new MenuItem(ToggleTitle("_Software Flow Control (XON/XOFF)", false), string.Empty, () =>
+                {
+                    if (ActiveTab().Tab.Session.Transport is TcpTransport tcp)
+                    {
+                        tcp.SoftwareFlowControl = !tcp.SoftwareFlowControl;
+                        softwareFlowControlMenuItem!.Title = ToggleTitle("_Software Flow Control (XON/XOFF)", tcp.SoftwareFlowControl);
+                    }
+                }),
+                clearOutputMenuItem = new MenuItem("Clea_r Output", string.Empty, () =>
+                {
+                    var windowTab = ActiveTab();
+                    windowTab.OutputLines.Clear();
+                    windowTab.Output.Text = string.Empty;
+                }),
+            ]),
         ]);
 
         // A theme switch (View > Theme, from this window or any other) re-applies everything themed:
@@ -767,6 +808,17 @@ public static class TuiMode
             de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, windowTab.Tab.CliOptions, connected);
             nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, windowTab.Tab.CliOptions, connected);
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, windowTab.Tab.CliOptions, connected);
+
+            if (windowTab.Tab.Session.Transport is TcpTransport tcp)
+            {
+                softwareFlowControlMenuItem!.Enabled = true;
+                softwareFlowControlMenuItem!.Title = ToggleTitle("_Software Flow Control (XON/XOFF)", tcp.SoftwareFlowControl);
+            }
+            else
+            {
+                softwareFlowControlMenuItem!.Enabled = false;
+                softwareFlowControlMenuItem!.Title = ToggleTitle("_Software Flow Control (XON/XOFF)", false);
+            }
         }
 
         // Quitting the whole app (as opposed to Ctrl+Q/Escape just closing a nested panel - see
@@ -1114,7 +1166,7 @@ public static class TuiMode
                 return;
             }
 
-            Observe(SendAsync(windowTab.Tab.Session, windowTab.Tab.CliOptions, input, line, l => AppendOutput(windowTab, l), windowTab.Tab.Parser), l => AppendOutput(windowTab, l));
+            Observe(SendAsync(windowTab.Tab.Session, windowTab.Tab.CliOptions, input, line, l => AppendOutput(windowTab, l), windowTab.Tab.Parser, echoSentCommands ? sent => AppendOutput(windowTab, $"Out> {sent}") : null), l => AppendOutput(windowTab, l));
         };
 
         // Shared chrome (the File menu label, the send field, the window title, the status line, the
@@ -1225,7 +1277,10 @@ public static class TuiMode
                     t.Logger?.Dispose();
                     t.Monitor?.Dispose();
                 }
-            });
+            },
+            echoSentCommandsMenuItem!,
+            clearOutputMenuItem!,
+            softwareFlowControlMenuItem!);
     }
 
     /// <summary>
@@ -1281,9 +1336,11 @@ public static class TuiMode
     /// Encodes and sends one typed line. A line the parser rejects is reported and not sent (the
     /// connection is left alone); a device-side failure has already disconnected the session and
     /// been reported by its <see cref="Session.Disconnected"/> handler, so it isn't reported twice.
-    /// Never throws.
+    /// <paramref name="onSending"/>, if given, runs with the raw typed line right after a successful
+    /// encode (echo for View &gt; Echo Sent Commands) - never for a line the parser rejected or that
+    /// encoded to nothing. Never throws.
     /// </summary>
-    internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput, string? parserName = null)
+    internal static async Task SendAsync(Session session, CliOptions cliOptions, IPresenterInput input, string line, Action<string> appendOutput, string? parserName = null, Action<string>? onSending = null)
     {
         if (!TypedInput.TryEncode(input, parserName ?? cliOptions.EffectiveParser, line, cliOptions.LineEnding, out var payload, out var error))
         {
@@ -1295,6 +1352,8 @@ public static class TuiMode
         {
             return;
         }
+
+        onSending?.Invoke(line);
 
         try
         {
@@ -1536,4 +1595,7 @@ internal sealed record TuiWindowParts(
     MenuItem NewSessionMenuItem,
     MenuItem CloseSessionMenuItem,
     Func<IReadOnlyList<Session>> AllSessions,
-    Action CleanupAllTabs);
+    Action CleanupAllTabs,
+    MenuItem EchoSentCommandsMenuItem,
+    MenuItem ClearOutputMenuItem,
+    MenuItem SoftwareFlowControlMenuItem);
