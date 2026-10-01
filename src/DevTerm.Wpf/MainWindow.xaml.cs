@@ -725,7 +725,7 @@ public partial class MainWindow : Window
 
             if (_echoSentCommands)
             {
-                AppendOutput(tab, $"Out> {line}", OutputKind.Sent);
+                AppendOutput(tab, $"Out> {TypedInput.FormatForEcho(line, tab.Tab.CliOptions.LineEnding)}", OutputKind.Sent);
             }
 
             try

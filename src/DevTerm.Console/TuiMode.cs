@@ -1166,7 +1166,7 @@ public static class TuiMode
                 return;
             }
 
-            Observe(SendAsync(windowTab.Tab.Session, windowTab.Tab.CliOptions, input, line, l => AppendOutput(windowTab, l), windowTab.Tab.Parser, echoSentCommands ? sent => AppendOutput(windowTab, $"Out> {sent}") : null), l => AppendOutput(windowTab, l));
+            Observe(SendAsync(windowTab.Tab.Session, windowTab.Tab.CliOptions, input, line, l => AppendOutput(windowTab, l), windowTab.Tab.Parser, echoSentCommands ? sent => AppendOutput(windowTab, $"Out> {TypedInput.FormatForEcho(sent, windowTab.Tab.CliOptions.LineEnding)}") : null), l => AppendOutput(windowTab, l));
         };
 
         // Shared chrome (the File menu label, the send field, the window title, the status line, the

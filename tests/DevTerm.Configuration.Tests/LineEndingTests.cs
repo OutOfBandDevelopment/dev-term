@@ -51,4 +51,16 @@ public sealed class LineEndingTests
 
         Assert.AreSequenceEqual("A"u8.ToArray(), payload);
     }
+
+    [TestMethod]
+    public void ToChars_None_ReturnsEmpty() => Assert.AreEqual(string.Empty, LineEnding.None.ToChars());
+
+    [TestMethod]
+    public void ToChars_Cr_ReturnsCarriageReturn() => Assert.AreEqual("\r", LineEnding.Cr.ToChars());
+
+    [TestMethod]
+    public void ToChars_Lf_ReturnsLineFeed() => Assert.AreEqual("\n", LineEnding.Lf.ToChars());
+
+    [TestMethod]
+    public void ToChars_CrLf_ReturnsCarriageReturnThenLineFeed() => Assert.AreEqual("\r\n", LineEnding.CrLf.ToChars());
 }

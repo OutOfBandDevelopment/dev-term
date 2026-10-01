@@ -80,7 +80,11 @@ Both the TUI and WPF have a **View** menu with three items beyond Theme (see
 
 - **Echo Sent Commands** — when on, every line you send is also added to the output as
   `Out> {line}`, so a busy session's scrollback shows what you sent interleaved with what came back,
-  not just the replies. Off by default. A window-level setting, not per-tab.
+  not just the replies. Off by default. A window-level setting, not per-tab. `{line}` includes the
+  connection's line ending (CR/LF/CRLF/none), and every non-printable character — the line ending's
+  own bytes included — is escaped so it's visible instead of silently appended: `\r`, `\n`, `\t`,
+  `\0`, or `\xHH` for anything else, with a literal backslash doubled so it reads unambiguously. A
+  CRLF-terminated `AT` command echoes as `Out> AT\r\n`.
 - **Software Flow Control (XON/XOFF)** — only enabled for a TCP connection. Some serial-to-Ethernet
   bridges forward the attached device's XON/XOFF bytes over the wire instead of honoring them
   locally; turning this on makes dev-term strip those bytes from the display and pause its own sends
