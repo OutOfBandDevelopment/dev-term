@@ -12,28 +12,6 @@ Prioritized per direction given 2026-09-15: BLE serial is the next transport to 
 RFC 2217/UDP), since real target hardware exists. USBTMC is newly-scoped, not yet ordered against
 the rest.
 
-### Write pacing (inter-byte delay)
-
-Requested 2026-10-01: a configurable delay inserted between each byte written to a transport, for
-slow devices without FIFO buffers that can't absorb a burst write (a full-line/full-packet write
-arrives faster than the device can consume it, and bytes get dropped or corrupted on the receiving
-end). Requirements as given:
-
-- **Lives in the device profile** (persisted per connection, like `WriteTimeoutMs`/`SoftwareFlowControl`
-  today), not just a CLI flag — so it travels with a saved profile the way other connection settings do.
-- **Transport-agnostic** ("should support any stream") — not a TCP-specific mechanism like
-  `XonXoffFlowControlGate` above. Most likely shape: a generic `Stream`-wrapping decorator applied
-  around whatever stream a transport's write path already uses, writing one byte, delaying the
-  configured interval, then calling an **explicit** `Flush`/`FlushAsync` before the next byte —
-  mirrors `XonXoffReadStream`/`Rfc2217TelnetReadStream`'s pattern of wrapping a transport's stream
-  for one orthogonal concern, but on the write side instead of read.
-- Needs a new field in `CliOptions`/the connection profile JSON (e.g. `WriteByteDelayMs` or similar),
-  wired through `DevTermConfiguration`'s profile layering the same way other connection fields are,
-  plus `ConnectionEditorViewModel`/`ConfigureMode` UI fields in both front ends.
-
-Not designed yet beyond the above — no code written. Start only once Task E's flow-control/View-menu
-work (`docs/changes/2026-10-01.md`) is committed, per the request's own sequencing.
-
 ### Transports
 
 - **BLE transport — Linux (BlueZ/D-Bus) and macOS (CoreBluetooth) backends.** Windows landed

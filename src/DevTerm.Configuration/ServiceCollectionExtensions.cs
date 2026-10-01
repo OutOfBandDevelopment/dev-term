@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
                 o.Host = cliOptions.Host;
                 o.Port = int.TryParse(cliOptions.Port, out var tcpPort) ? tcpPort : 0;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
@@ -107,6 +108,7 @@ public static class ServiceCollectionExtensions
                 o.DtrEnable = cliOptions.Dtr;
                 o.RtsEnable = cliOptions.Rts;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
@@ -128,6 +130,7 @@ public static class ServiceCollectionExtensions
                 o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
                 o.DtrEnable = cliOptions.Dtr;
                 o.RtsEnable = cliOptions.Rts;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
 

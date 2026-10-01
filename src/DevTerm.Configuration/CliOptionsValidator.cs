@@ -31,6 +31,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--playbackspeed' must be 0 or greater.");
         }
 
+        if (options.WriteByteDelayMs < -1)
+        {
+            return ValidateOptionsResult.Fail("'--writebytedelayms' must be -1 (disabled), 0 (no delay), or a positive number of milliseconds.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":

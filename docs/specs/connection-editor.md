@@ -56,6 +56,7 @@ Shown in two situations:
 | Host (tcp) | free text | empty | Required when Transport is `tcp` and Listen is off | Accepts a hostname, IPv4, or IPv6 literal — passed through as-is to `TcpTransport`/`.NET`'s own connect/resolve, not restricted to one format |
 | Port (tcp) | integer, typed as text | `0` | Required, 1–65535, when Transport is `tcp` (declared `Integer` 0–65535 for the inline message) | |
 | Listen (tcp) | boolean | off | none | Server mode; when on, Host is not required |
+| Write byte delay (ms) (serial, tcp, rfc2217) | integer, typed as text | `-1` | Declared `Integer`, at least -1 (same inline-message behavior as Baud) | Lives in its own "Timing" section, shown only for the three byte-stream transports (`SupportsWriteByteDelay`) — see States. `-1` disables pacing (an unpaced write, as before); `0` writes and flushes one byte at a time with no delay; a positive value adds that many milliseconds of delay between bytes (never after the last one). See [`docs/design/transports.md`](../design/transports.md)'s "Write pacing" section |
 | Vendor ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex (per "Show as hex"), or picked (with Product ID together) from a "Detected devices"/"Detect..." list | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | **Shared by both USB-device transports** — one field, one value, regardless of which is selected — since both identify a device the same way; only the detected-devices picker differs (see below). Stored/validated as decimal internally regardless of display format — see `ConnectionEditorViewModel.VendorIdDisplay`; the picker list is whatever `IHidDeviceDiscovery.GetDevices()`/`IUsbtmcDeviceDiscovery.GetDevices()` (the same enumeration `--listhiddevices`/`--listusbtmcdevices` uses) finds attached right now, formatted `"{VID:X4}:{PID:X4}  {ProductName}"`. The picker is **filtered by the Vendor/Product ID fields**: a non-zero id keeps only devices with that id, `0` means any (see Per-front-end notes) |
 | Product ID (hid, usbtmc) | integer, typed as decimal or 4-digit hex, or picked together with Vendor ID (see above) | `0` | Required, 1–65535, when Transport is `hid` or `usbtmc` | Same as Vendor ID — shared field |
 | BLE device ID (ble) | free text | empty | Required when Transport is `ble` | Platform-specific peripheral identifier (Windows: a `BluetoothLEDevice` id string, not a MAC address) — typed by hand, or picked via the "Detect BLE..." picker (same idea as HID/USBTMC's, see below) |
@@ -113,6 +114,11 @@ Shown in two situations:
   see `docs/design/rfc2217.md`). The Serial section's Port/Detected-ports row has no such guard and
   still renders for `rfc2217` (harmless, unused clutter — `BuildOptions` routes the TCP group's Port
   into `CliOptions.Port` for `rfc2217` via `IsTcpLikeTransport`, never the Serial group's).
+  **Timing is a fourth, independent section**, shown whenever `SupportsWriteByteDelay`
+  (= `IsSerialTransport || IsTcpTransport || IsRfc2217Transport`) — overlapping Serial/TCP/rfc2217's
+  own visibility rather than nesting inside any one of them, since the same one field (Write byte
+  delay (ms)) applies across all three. Not shown for HID, USBTMC, BLE, or Loopback — none of them
+  write a byte stream `WriteDelayStream` can wrap (see `docs/design/transports.md`).
   **A hidden group leaves no gap in either front end**: the TUI form re-lays out its rows on every
   change (test `ConfigureModeTests.SwitchingTransport_ReflowsTheForm_SoAHiddenGroupLeavesNoGap`), and
   within a section the widget column follows the longest *shown* label. **BLE's field group is still
@@ -419,6 +425,7 @@ max line length (previously carried over silently, never shown) became real fiel
 The detected-device/-characteristic pickers became searchable/filterable in both front ends on
 2026-09-29. `rfc2217` (connect to a remote serial port over the network, e.g. `ser2net`) became a
 selectable transport on 2026-09-30, reusing the Serial and TCP field groups rather than adding a
-third copy of them — see States above and `docs/design/rfc2217.md`. Remaining Connection Editor
-follow-ups live in `BACKLOG.md`.
+third copy of them — see States above and `docs/design/rfc2217.md`. Write byte delay (ms), a new
+"Timing" section shown for Serial/TCP/rfc2217, landed 2026-10-01 — see `docs/design/transports.md`'s
+"Write pacing" section. Remaining Connection Editor follow-ups live in `BACKLOG.md`.
 

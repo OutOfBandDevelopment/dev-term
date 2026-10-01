@@ -133,6 +133,21 @@ public sealed class CliOptions
     public int WriteTimeoutMs { get; set; } = 5000;
 
     /// <summary>
+    /// Milliseconds paced between each byte written to the transport - for a slow device with no
+    /// FIFO buffer that can't absorb a burst write (bytes get dropped or corrupted when a whole
+    /// line/packet arrives faster than the device can consume it). -1 (the default) disables pacing
+    /// entirely - the buffer is written as a single, unpaced call exactly as before this feature
+    /// existed. 0 still writes/flushes one byte at a time with no delay between them; a positive
+    /// value additionally delays that long between bytes. Supported by the serial, TCP, and RFC 2217
+    /// transports only - HID/USBTMC/BLE write one atomic report/message per call rather than a
+    /// continuous byte stream, so inter-byte pacing doesn't apply the same way. Write-only; has no
+    /// effect on the read side of a connection. See <see cref="DevTerm.Core.Transports.WriteDelayStream"/>.
+    /// </summary>
+    [Category("Timing")]
+    [DisplayName("Write byte delay (ms)")]
+    public int WriteByteDelayMs { get; set; } = -1;
+
+    /// <summary>
     /// Milliseconds a read blocks before timing out. Kept finite by default: SerialPort's
     /// BaseStream doesn't reliably honor cancellation on an in-flight read on all drivers, so a
     /// periodic timeout is how Close/Ctrl+C notice they should stop instead of hanging.

@@ -65,6 +65,50 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
+    public void AddDevTermFrontEnd_SerialTransport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "serial", Port = "COM3", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<SerialTransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_TcpTransport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "device.local", Port = "502", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<TcpTransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_Rfc2217Transport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<Rfc2217TransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_HidTransport_DoesNotExposeWriteByteDelay()
+    {
+        var cliOptions = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA, WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<HidTransportOptions>>().Value;
+
+        Assert.IsFalse(options.GetType().GetProperties().Any(p => p.Name == "WriteByteDelayMs"), "HID writes one atomic report per call; write pacing doesn't apply.");
+    }
+
+    [TestMethod]
     public void AddDevTermFrontEnd_TcpListener_ConfiguresListenerMode()
     {
         var cliOptions = new CliOptions { Transport = "tcp", Port = "9000", Listen = true };

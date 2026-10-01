@@ -107,6 +107,26 @@ public sealed class SerialTransportTests
     }
 
     [TestMethod]
+    public async Task WriteAsync_WithZeroByteDelay_WritesOneByteAtATimeThroughThePort()
+    {
+        var (port, _) = CreatePort();
+        var factory = new Mock<ISerialPortFactory>();
+        factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
+
+        var transport = new SerialTransport(factory.Object, Microsoft.Extensions.Options.Options.Create(new SerialTransportOptions { PortName = "COM1", WriteByteDelayMs = 0 }));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await transport.WriteAsync(new byte[] { 1, 2, 3 }, TestContext.CancellationToken);
+
+        port.Verify(p => p.Write(new byte[] { 1 }, 0, 1), Times.Once);
+        port.Verify(p => p.Write(new byte[] { 2 }, 0, 1), Times.Once);
+        port.Verify(p => p.Write(new byte[] { 3 }, 0, 1), Times.Once);
+        port.Verify(p => p.Write(It.IsAny<byte[]>(), 0, 3), Times.Never);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task IncomingBytes_AreAvailableThroughInput()
     {
         var (port, devicePipe) = CreatePort();

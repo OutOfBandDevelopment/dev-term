@@ -18,6 +18,7 @@ public sealed class Rfc2217Transport : ITransport
     private readonly IOptions<Rfc2217TransportOptions> _options;
     private ITcpConnection? _connection;
     private Rfc2217TelnetReadStream? _telnetStream;
+    private Stream? _writeStream;
     private ConnectionState _state = ConnectionState.Closed;
     private Pipe? _pipe;
     private CancellationTokenSource? _pumpCts;
@@ -92,6 +93,9 @@ public sealed class Rfc2217Transport : ITransport
         _connection = connection;
         var telnetStream = new Rfc2217TelnetReadStream(connection.Stream);
         _telnetStream = telnetStream;
+        _writeStream = options.WriteByteDelayMs >= 0
+            ? new WriteDelayStream(telnetStream, options.WriteByteDelayMs)
+            : null;
 
         // Subscribe before the pump ever runs: the pump's first read can already have the peer's
         // reply sitting in the socket buffer (seen in practice when the fake-server test stages the
@@ -166,7 +170,14 @@ public sealed class Rfc2217Transport : ITransport
 
         try
         {
-            await _telnetStream.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            if (_writeStream is not null)
+            {
+                await _writeStream.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await _telnetStream.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -268,6 +279,7 @@ public sealed class Rfc2217Transport : ITransport
 
             _telnetStream?.Dispose();
             _telnetStream = null;
+            _writeStream = null;
 
             _connection?.Dispose();
             _connection = null;

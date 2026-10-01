@@ -126,6 +126,32 @@ public sealed class TcpTransportTests
     }
 
     [TestMethod]
+    public async Task WriteAsync_WithZeroByteDelay_WritesOneByteAtATimeThroughTheStream()
+    {
+        var incoming = new Pipe();
+        var outgoing = new Pipe();
+        var duplexStream = new DuplexPipeStream(incoming, outgoing);
+        var connection = new Mock<ITcpConnection>();
+        connection.SetupGet(c => c.Stream).Returns(duplexStream);
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var options = Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = TcpTransportMode.Client, Host = "device.local", Port = 502, WriteByteDelayMs = 0 });
+        var transport = new TcpTransport(source.Object, options);
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await transport.WriteAsync(new byte[] { 1, 2, 3 }, TestContext.CancellationToken);
+        await outgoing.Writer.FlushAsync(TestContext.CancellationToken);
+
+        var result = await outgoing.Reader.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(new byte[] { 1, 2, 3 }, result.Buffer.ToArray());
+        outgoing.Reader.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     [TestCategory(TestCategories.BugRegression)]
     public async Task WriteAsync_ConnectionNeverDrains_ThrowsTimeoutExceptionAfterWriteTimeoutMs()
     {

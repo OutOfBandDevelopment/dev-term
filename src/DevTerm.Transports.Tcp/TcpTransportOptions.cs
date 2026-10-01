@@ -39,4 +39,10 @@ public sealed class TcpTransportOptions
     /// docs/design/transports.md.
     /// </summary>
     public bool SoftwareFlowControl { get; set; }
+
+    /// <summary>
+    /// Milliseconds paced between each byte written, or -1 (the default) to disable pacing and
+    /// write the buffer as a single, unpaced call. See <see cref="DevTerm.Core.Transports.WriteDelayStream"/>.
+    /// </summary>
+    public int WriteByteDelayMs { get; set; } = -1;
 }

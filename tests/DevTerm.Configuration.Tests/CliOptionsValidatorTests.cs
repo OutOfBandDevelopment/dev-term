@@ -205,6 +205,25 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_WriteByteDelayBelowNegativeOne_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", WriteByteDelayMs = -5 });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    [DataRow(-1)]
+    [DataRow(0)]
+    [DataRow(5)]
+    public void Validate_WriteByteDelayNegativeOneOrGreater_Succeeds(int writeByteDelayMs)
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", WriteByteDelayMs = writeByteDelayMs });
+
+        Assert.IsFalse(result.Failed);
+    }
+
+    [TestMethod]
     [TestCategory(TestCategories.BugRegression)]
     public void Validate_NegativePlaybackSpeed_Fails()
     {

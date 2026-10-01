@@ -55,4 +55,10 @@ public sealed class SerialTransportOptions
     /// or <see cref="System.IO.Ports.Handshake.RequestToSendXOnXOff"/>.
     /// </summary>
     public bool RtsEnable { get; set; } = true;
+
+    /// <summary>
+    /// Milliseconds paced between each byte written, or -1 (the default) to disable pacing and
+    /// write the buffer as a single, unpaced call. See <see cref="DevTerm.Core.Transports.WriteDelayStream"/>.
+    /// </summary>
+    public int WriteByteDelayMs { get; set; } = -1;
 }

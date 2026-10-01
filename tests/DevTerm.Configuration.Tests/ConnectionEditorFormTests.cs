@@ -45,9 +45,9 @@ public sealed class ConnectionEditorFormTests
         {
             var definition = viewModel.FormDefinition;
 
-            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation"], [.. definition.Sections.Select(s => s.Label)]);
+            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation", "Timing"], [.. definition.Sections.Select(s => s.Label)]);
             Assert.AreSequenceEqual(
-                [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null],
+                [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null, nameof(ConnectionEditorViewModel.SupportsWriteByteDelay)],
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
             Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
@@ -72,13 +72,13 @@ public sealed class ConnectionEditorFormTests
     }
 
     [TestMethod]
-    [DataRow("serial", "Serial")]
-    [DataRow("tcp", "TCP")]
-    [DataRow("hid", "USB Device")]
-    [DataRow("usbtmc", "USB Device")]
-    [DataRow("ble", "BLE")]
-    [DataRow("loopback", "Loopback")]
-    public void EachTransport_ShowsExactlyItsOwnFieldGroup(string transport, string expected)
+    [DataRow("serial", "Serial", "Timing")]
+    [DataRow("tcp", "TCP", "Timing")]
+    [DataRow("hid", "USB Device", null)]
+    [DataRow("usbtmc", "USB Device", null)]
+    [DataRow("ble", "BLE", null)]
+    [DataRow("loopback", "Loopback", null)]
+    public void EachTransport_ShowsExactlyItsOwnFieldGroup(string transport, string expected, string? alsoExpected)
     {
         WithViewModel(new CliOptions(), viewModel =>
         {
@@ -87,7 +87,8 @@ public sealed class ConnectionEditorFormTests
 
             var shown = viewModel.FormDefinition.Sections.Where(s => s.VisibleWhen is not null && binding.IsVisible(s.VisibleWhen)).Select(s => s.Label).ToList();
 
-            Assert.AreSequenceEqual([expected], shown);
+            List<string> expectedLabels = alsoExpected is null ? [expected] : [expected, alsoExpected];
+            Assert.AreSequenceEqual(expectedLabels, shown);
         });
     }
 
@@ -132,7 +133,7 @@ public sealed class ConnectionEditorFormTests
     {
         var definition = FormDefinitionGenerator.Generate<CliOptions>();
 
-        Assert.AreSequenceEqual(["General", "Mode", "Presentation", "Serial", "TCP", "USB Device", "BLE"], [.. definition.Sections.Select(s => s.Label)]);
+        Assert.AreSequenceEqual(["General", "Mode", "Presentation", "Serial", "Timing", "TCP", "USB Device", "BLE"], [.. definition.Sections.Select(s => s.Label)]);
         var ids = Controls(definition).Select(c => c.Id).ToList();
         Assert.DoesNotContain(nameof(CliOptions.EffectivePresenters), ids, "[Browsable(false)] is left out.");
         Assert.Contains(nameof(CliOptions.Baud), ids);

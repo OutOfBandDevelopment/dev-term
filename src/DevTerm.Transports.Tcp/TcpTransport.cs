@@ -13,6 +13,7 @@ public sealed class TcpTransport : ITransport
     private readonly ITcpConnectionSource _connectionSource;
     private readonly IOptions<TcpTransportOptions> _options;
     private ITcpConnection? _connection;
+    private Stream? _writeStream;
     private ConnectionState _state = ConnectionState.Closed;
     private Pipe? _pipe;
     private CancellationTokenSource? _pumpCts;
@@ -86,6 +87,9 @@ public sealed class TcpTransport : ITransport
         }
 
         _connection = connection;
+        _writeStream = options.WriteByteDelayMs >= 0
+            ? new WriteDelayStream(connection.Stream, options.WriteByteDelayMs)
+            : null;
         _pipe = new Pipe();
         _pumpCts = new CancellationTokenSource();
 
@@ -137,6 +141,7 @@ public sealed class TcpTransport : ITransport
             _pumpCts = null;
             _pumpTask = null;
             _pipe = null;
+            _writeStream = null;
 
             _connection.Dispose();
             _connection = null;
@@ -159,7 +164,14 @@ public sealed class TcpTransport : ITransport
         {
             await _flowControlGate.WaitUntilResumedAsync(linkedCts.Token).ConfigureAwait(false);
 
-            await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            if (_writeStream is not null)
+            {
+                await _writeStream.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
