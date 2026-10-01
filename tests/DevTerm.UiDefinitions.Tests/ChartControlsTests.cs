@@ -241,6 +241,76 @@ public sealed class ChartControlsTests
     }
 
     [TestMethod]
+    public void BarGraph_ExpressionChannel_ComputesFromItsReferencedRawIds_NotFromItsOwnId()
+    {
+        var state = new BarGraphState(new BarGraphControl
+        {
+            Id = "levels",
+            Label = "Levels",
+            Minimum = 0,
+            Maximum = 10,
+            Channels = [new ChartChannel { Id = "scaled", Expression = "{raw_mv} / 1000" }],
+        });
+
+        Assert.AreSequenceEqual(["raw_mv"], [.. state.ValueIds], "Only the expression's referenced ids are read, not the channel's own id.");
+        Assert.IsNull(state.ValueOf("scaled"), "No value until a referenced id arrives.");
+
+        Assert.IsTrue(state.ApplyAll(new Dictionary<string, string> { ["raw_mv"] = "5000" }));
+        Assert.AreEqual(5.0, state.ValueOf("scaled")!.Value, 1e-9);
+        Assert.AreEqual(0.5, state.FractionOf("scaled"), 1e-9);
+    }
+
+    [TestMethod]
+    public void BarGraph_InvalidChannelExpression_FallsBackToReadingTheChannelsOwnId()
+    {
+        // The manifest validator is what should actually reject a bad expression at load time; this
+        // is the runtime fallback for one that somehow got through anyway.
+        var state = new BarGraphState(new BarGraphControl
+        {
+            Id = "levels",
+            Label = "Levels",
+            Channels = [new ChartChannel { Id = "a", Expression = "1 +" }],
+        });
+
+        Assert.IsTrue(state.ApplyAll(new Dictionary<string, string> { ["a"] = "7" }));
+        Assert.AreEqual(7.0, state.ValueOf("a"));
+    }
+
+    [TestMethod]
+    public void StripChart_ExpressionChannel_EnqueuesOneDerivedSamplePerBatch_NotOnePerReferencedId()
+    {
+        var state = new StripChartState(new StripChartControl
+        {
+            Id = "s",
+            Label = "S",
+            Channels = [new ChartChannel { Id = "sum", Expression = "{a} + {b}" }],
+        });
+
+        // Both referenced ids arrive in one batch: exactly one derived sample, not two.
+        Assert.IsTrue(state.ApplyAll(new Dictionary<string, string> { ["a"] = "2", ["b"] = "3" }));
+        Assert.AreSequenceEqual([5.0], [.. state.SamplesOf("sum")]);
+
+        // A later batch that only touches one referenced id still re-evaluates with the latest of both.
+        state.Apply("a", "10");
+        Assert.AreSequenceEqual([5.0, 13.0], [.. state.SamplesOf("sum")]);
+    }
+
+    [TestMethod]
+    public void StripChart_ExpressionChannel_AndPlainChannel_CanCoexist()
+    {
+        var state = new StripChartState(new StripChartControl
+        {
+            Id = "s",
+            Label = "S",
+            Channels = [new ChartChannel { Id = "raw" }, new ChartChannel { Id = "doubled", Expression = "{raw} * 2" }],
+        });
+
+        Assert.IsTrue(state.ApplyAll(new Dictionary<string, string> { ["raw"] = "4" }));
+        Assert.AreSequenceEqual([4.0], [.. state.SamplesOf("raw")]);
+        Assert.AreSequenceEqual([8.0], [.. state.SamplesOf("doubled")]);
+    }
+
+    [TestMethod]
     public void ChartPalette_AssignsSlotsInOrder_ThenANeutralOverflow()
     {
         Assert.AreEqual("#2A78D6", ChartPalette.ColorFor(new ChartChannel { Id = "a" }, 0));

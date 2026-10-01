@@ -164,6 +164,15 @@ public static partial class DeviceManifestValidator
                 case StripChartControl { HistoryLength: > StripChartState.MaxCapacity } strip:
                     warnings.Add($"'{strip.Label}' declares a history length of {strip.HistoryLength}, which is clamped to {StripChartState.MaxCapacity}.");
                     break;
+                case IndicatorControl { Expression: { Length: > 0 } expression } indicator when !Expression.TryParse(expression, out _, out var error):
+                    errors.Add($"'{indicator.Label}' has an invalid expression: {error}");
+                    break;
+                case BarGraphControl { Channels: { } channels }:
+                    ValidateChannelExpressions(control.Label, channels, errors);
+                    break;
+                case StripChartControl { Channels: { } channels }:
+                    ValidateChannelExpressions(control.Label, channels, errors);
+                    break;
                 case ButtonControl { ColorPickerTargetCommandId: { } target } when !commandIds.Contains(target):
                     warnings.Add($"Button '{control.Label}' sends its color to '{target}', which no command declares.");
                     break;
@@ -181,6 +190,28 @@ public static partial class DeviceManifestValidator
                     when !commandIds.Contains(control.Id) && !parameterFields.Contains(control.Id):
                     warnings.Add($"'{control.Label}' sends to '{control.Id}' when changed, but no command declares that id (and no button reads it as a parameter).");
                     break;
+            }
+
+            if (control is ButtonControl { ParameterExpressions: { } expressions } parameterButton)
+            {
+                for (var i = 0; i < expressions.Count; i++)
+                {
+                    if (expressions[i] is { Length: > 0 } expr && !Expression.TryParse(expr, out _, out var error))
+                    {
+                        errors.Add($"Button '{parameterButton.Label}' has an invalid parameter expression at index {i}: {error}");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void ValidateChannelExpressions(string? label, IReadOnlyList<ChartChannel> channels, List<string> errors)
+    {
+        foreach (var channel in channels)
+        {
+            if (channel.Expression is { Length: > 0 } expr && !Expression.TryParse(expr, out _, out var error))
+            {
+                errors.Add($"'{label}' channel '{channel.Id}' has an invalid expression: {error}");
             }
         }
     }

@@ -125,8 +125,6 @@ the rest.
 
 ### Proposed Ideas
 
-- [Manifest editor expression builder](docs/design/proposals/manifest-editor-expression-builder.md) —
-  settable expression fields mapping data values to control parameters.
 - [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter
   controlling how fast the loopback device generates stream samples.
 - [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)

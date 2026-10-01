@@ -170,9 +170,19 @@ public sealed class ControlForm : EditorForm
     }
 
     [Category("Behavior")]
+    [DisplayName("Parameter expressions")]
+    [Description("Semicolon-separated, positionally parallel to Parameter fields: an expression (may contain commas, e.g. round(x,2)) evaluated against every field's current value and substituted for that index; blank keeps that index's field value as-is.")]
+    [FormField(Order = 2, VisibleWhen = nameof(Kind), VisibleWhenValues = [_buttonKind])]
+    public string ParameterExpressions
+    {
+        get => (Control as ButtonControl)?.ParameterExpressions is { } expressions ? string.Join("; ", expressions.Select(e => e ?? string.Empty)) : string.Empty;
+        set => Set<ButtonControl>(c => c.ParameterExpressions = SplitPositionalList(value) is { Count: > 0 } expressions ? [.. expressions] : null);
+    }
+
+    [Category("Behavior")]
     [DisplayName("Color picker target")]
     [Description("Opens a color picker and sends r,g,b to this command instead.")]
-    [FormField(Order = 2, VisibleWhen = nameof(Kind), VisibleWhenValues = [_buttonKind])]
+    [FormField(Order = 3, VisibleWhen = nameof(Kind), VisibleWhenValues = [_buttonKind])]
     public string? ColorPickerTarget
     {
         get => (Control as ButtonControl)?.ColorPickerTargetCommandId;
@@ -227,6 +237,16 @@ public sealed class ControlForm : EditorForm
 
             Changed();
         }
+    }
+
+    [Category("Behavior")]
+    [DisplayName("Expression")]
+    [Description("When set, derives the displayed number from the live published values (e.g. {raw_mv} / 1000) instead of showing the id's own value verbatim. Blank keeps the direct behavior.")]
+    [FormField(Order = 13, VisibleWhen = nameof(Kind), VisibleWhenValues = [_indicatorKind])]
+    public string? IndicatorExpression
+    {
+        get => (Control as IndicatorControl)?.Expression;
+        set => Set<IndicatorControl>(c => c.Expression = NullIfBlank(value));
     }
 
     [Category("Behavior")]
@@ -364,14 +384,14 @@ public sealed class ControlForm : EditorForm
 
     [Category("Display")]
     [DisplayName("Channels")]
-    [Description("Comma-separated value ids, each optionally id:label or id:label:#RRGGBB.")]
+    [Description("Semicolon-separated value ids, each optionally id:label, id:label:#RRGGBB, or id:label:color:expression (an expression may itself contain commas, e.g. round(x,2), which is why channels are semicolon- not comma-separated).")]
     [FormField(Order = 0, VisibleWhen = nameof(Kind), VisibleWhenValues = [_barGraphKind, _stripChartKind])]
     public string Channels
     {
-        get => string.Join(", ", ChannelsOf(Control).Select(c => c.Id + (c.Label is null && c.Color is null ? string.Empty : ":" + c.Label) + (c.Color is null ? string.Empty : ":" + c.Color)));
+        get => string.Join("; ", ChannelsOf(Control).Select(FormatChannel));
         set
         {
-            var channels = FormBinding.SplitList(value).Select(item =>
+            var channels = SplitExpressionList(value).Select(item =>
             {
                 var bits = item.Split(':');
                 return new ChartChannel
@@ -379,6 +399,7 @@ public sealed class ControlForm : EditorForm
                     Id = bits[0].Trim(),
                     Label = bits.Length > 1 ? NullIfBlank(bits[1].Trim()) : null,
                     Color = bits.Length > 2 ? NullIfBlank(bits[2].Trim()) : null,
+                    Expression = bits.Length > 3 ? NullIfBlank(bits[3].Trim()) : null,
                 };
             }).ToList();
             switch (Control)
@@ -565,6 +586,40 @@ public sealed class ControlForm : EditorForm
         StripChartControl s => s.Channels,
         _ => [],
     };
+
+    private static string FormatChannel(ChartChannel channel)
+    {
+        var parts = new List<string> { channel.Id };
+        if (channel.Label is not null || channel.Color is not null || channel.Expression is not null)
+        {
+            parts.Add(channel.Label ?? string.Empty);
+        }
+
+        if (channel.Color is not null || channel.Expression is not null)
+        {
+            parts.Add(channel.Color ?? string.Empty);
+        }
+
+        if (channel.Expression is not null)
+        {
+            parts.Add(channel.Expression);
+        }
+
+        return string.Join(':', parts);
+    }
+
+    /// <summary>A semicolon-separated list, items trimmed, blanks dropped — unlike <see cref="FormBinding.SplitList"/>'s comma, so an entry may itself contain a comma (an expression's function-call arguments).</summary>
+    private static IReadOnlyList<string> SplitExpressionList(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? [] : [.. text.Split(';').Select(s => s.Trim()).Where(s => s.Length > 0)];
+
+    /// <summary>
+    /// A semicolon-separated list, items trimmed, blank entries kept as <c>null</c> rather than
+    /// dropped — unlike <see cref="SplitExpressionList"/>, since a positionally-parallel list (e.g.
+    /// <see cref="ParameterExpressions"/> against <see cref="ParameterFields"/>) needs a blank at
+    /// index <c>i</c> to still occupy index <c>i</c>. A wholly-blank input still yields an empty list.
+    /// </summary>
+    private static IReadOnlyList<string?> SplitPositionalList(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? [] : [.. text.Split(';').Select(s => NullIfBlank(s.Trim()))];
 
     private static string Format(double value) => value.ToString(CultureInfo.InvariantCulture);
 

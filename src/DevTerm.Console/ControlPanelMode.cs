@@ -301,7 +301,7 @@ internal static class ControlPanelMode
                     {
                         foreach (var (id, value) in values)
                         {
-                            if (panel.IndicatorLabels.TryGetValue(id, out var label))
+                            if (!panel.IndicatorStates.ContainsKey(id) && panel.IndicatorLabels.TryGetValue(id, out var label))
                             {
                                 label.Text = value;
                             }
@@ -310,6 +310,14 @@ internal static class ControlPanelMode
                         foreach (var display in panel.DisplayViews.Values)
                         {
                             display.Apply(values);
+                        }
+
+                        foreach (var (id, state) in panel.IndicatorStates)
+                        {
+                            if (state.ApplyAll(values) && panel.IndicatorLabels.TryGetValue(id, out var label) && state.Text is { } text)
+                            {
+                                label.Text = text;
+                            }
                         }
 
                         panel.OnValueChanged?.Invoke();
@@ -738,7 +746,7 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     parameterButtonView.Accepting += (_, e) =>
                     {
-                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined))
+                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions))
                         {
                             Invoke(app, surface, commandId, joined);
                         }
@@ -749,7 +757,7 @@ internal static class ControlPanelMode
                     widget = parameterButtonView;
                     probeCommandId = commandId;
                     probeValue = panel.RawParameters(parameterFieldIds);
-                    previewSource = () => panel.TryReadParameters(parameterFieldIds, reportErrors: false, out var joined)
+                    previewSource = () => panel.TryReadParameters(parameterFieldIds, reportErrors: false, out var joined, button.ParameterExpressions)
                         ? panel.SendsText(commandId, joined)
                         : $"Won't send: {panel.LastParameterError}";
                     break;
@@ -908,6 +916,11 @@ internal static class ControlPanelMode
                     var indicatorLabel = new Label { X = columnX, Y = row, Text = indicator.DefaultValue ?? string.Empty };
                     body.Add(indicatorLabel);
                     panel.IndicatorLabels[control.Id] = indicatorLabel;
+                    if (LiveDisplayState.For(indicator) is IndicatorState indicatorState)
+                    {
+                        panel.IndicatorStates[control.Id] = indicatorState;
+                    }
+
                     widget = indicatorLabel;
                     break;
                 }
@@ -1165,6 +1178,9 @@ internal static class ControlPanelMode
 
         public Dictionary<string, Label> IndicatorLabels { get; } = [];
 
+        /// <summary>Indicators whose <see cref="IndicatorControl.Expression"/> is set — keyed by control id, mutually exclusive with the bare direct-set path in <c>OnValuesChanged</c>.</summary>
+        public Dictionary<string, IndicatorState> IndicatorStates { get; } = [];
+
         public Dictionary<string, CellCanvasView> DisplayViews { get; } = [];
 
         /// <summary>Scrolls a content-relative column span into view; set once the form's scrolling is wired.</summary>
@@ -1249,12 +1265,20 @@ internal static class ControlPanelMode
             return true;
         }
 
-        /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); on the first invalid one, fails (reporting it in the footer when <paramref name="reportErrors"/>).</summary>
-        public bool TryReadParameters(IReadOnlyList<string> fieldIds, bool reportErrors, out string joined)
+        /// <summary>
+        /// Reads and validates every named parameter field's current value, comma-joined (escaped);
+        /// on the first invalid one, fails (reporting it in the footer when <paramref name="reportErrors"/>).
+        /// <paramref name="expressions"/>, when given, is positionally parallel to
+        /// <paramref name="fieldIds"/> — a non-blank entry at an index replaces that field's own
+        /// value with an <see cref="Expression"/> evaluated against every sibling control's current
+        /// numeric value, keyed by id (see <see cref="ButtonControl.ParameterExpressions"/>).
+        /// </summary>
+        public bool TryReadParameters(IReadOnlyList<string> fieldIds, bool reportErrors, out string joined, IReadOnlyList<string?>? expressions = null)
         {
             var values = new List<string>(fieldIds.Count);
-            foreach (var fieldId in fieldIds)
+            for (var i = 0; i < fieldIds.Count; i++)
             {
+                var fieldId = fieldIds[i];
                 var raw = ControlViews.TryGetValue(fieldId, out var view) ? GetCurrentValue(view) : string.Empty;
                 var constraint = _controlsById.TryGetValue(fieldId, out var fieldControl) ? ValueValidator.ConstraintFor(fieldControl) : null;
                 var result = ValueValidator.Validate(constraint, raw);
@@ -1270,7 +1294,15 @@ internal static class ControlPanelMode
                     return false;
                 }
 
-                values.Add(result.Value);
+                var expressionText = expressions is { Count: > 0 } && i < expressions.Count ? expressions[i] : null;
+                if (expressionText is { Length: > 0 } && Expression.TryParse(expressionText, out var expression, out _))
+                {
+                    values.Add(ChartValue.Format(expression!.Evaluate(SiblingValues())));
+                }
+                else
+                {
+                    values.Add(result.Value);
+                }
             }
 
             if (reportErrors)
@@ -1280,6 +1312,21 @@ internal static class ControlPanelMode
 
             joined = ParameterValueList.Join(values);
             return true;
+        }
+
+        /// <summary>Every control's current value parsed as a number, keyed by id — what a <see cref="ButtonControl.ParameterExpressions"/> entry evaluates against.</summary>
+        private Dictionary<string, double> SiblingValues()
+        {
+            var values = new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (var (id, view) in ControlViews)
+            {
+                if (ChartValue.TryParse(GetCurrentValue(view), out var value))
+                {
+                    values[id] = value;
+                }
+            }
+
+            return values;
         }
     }
 

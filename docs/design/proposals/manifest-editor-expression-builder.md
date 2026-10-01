@@ -55,18 +55,61 @@ already has a live panel preview — see `ui-definitions.md`'s "Display controls
 TUI fitting" milestone) so a syntax error or an unknown variable name is caught while editing, not at
 first live use.
 
-## Open questions
+```plantuml
+@startuml
+title Expression evaluation — indicator display vs. button parameter
 
-- Whether an expression can reference *other controls'* current values (for `IndicatorControl`, this
-  is unusual — indicators are normally one decoder value each) or only the raw value(s) it's already
-  bound to plus constants.
-- Whether this generalizes to `TextFieldControl.Constraint`-typed fields at all, or stays scoped to
-  read-only display controls and the `ButtonControl` parameter-join case described above.
-- Whether a bad/unparsable expression should behave like a bad `ValueConstraint` today (rejected at
-  load with every problem listed, never silently ignored) — almost certainly yes, matching
-  `ThemeFile`'s and `ValueConstraint`'s existing "never throw, always report" convention.
+participant Decoder
+participant "IStructuredPresenter\n.ValuesChanged" as Values
+participant "IndicatorState\n(ApplyAll)" as Indicator
+participant "ControlPanel\n(TUI/WPF)" as Panel
+participant "ButtonControl\n(TryReadParameters)" as Button
+
+Decoder -> Values : publish { raw_mv: 4200, ... }
+Values -> Panel : values dictionary
+Panel -> Indicator : ApplyAll(values)
+Indicator -> Indicator : Expression.Evaluate(values)
+Indicator --> Panel : Text = "4.2" (changed)
+Panel -> Panel : update bound label
+
+Panel -> Button : click (CommandId, ParameterFieldIds)
+Button -> Button : SiblingValues()\n(every control's current value)
+Button -> Button : Expression.Evaluate(siblingValues)\nper ParameterExpressions[i]
+Button --> Panel : joined command text
+@enduml
+```
+
+## Resolved questions
+
+- **Can an expression reference other controls' current values?** Indicator (and chart channel)
+  expressions evaluate only against the live published-values dictionary — the same `{id}` values a
+  bare display already binds to, not other controls' widget state. Button `ParameterExpressions`
+  evaluate against every *sibling control's* current numeric value instead (`SiblingValues()`), since
+  a button's whole job is composing one command out of several fields' current state.
+- **Does this generalize to `TextFieldControl.Constraint`?** No — it stayed scoped to
+  `IndicatorControl.Expression`, `ChartChannel.Expression`, and `ButtonControl.ParameterExpressions`.
+  A text field's `Constraint` is about validating *user-typed* input, not deriving a displayed/sent
+  value from other values; folding expressions into it would be a different feature.
+- **Bad/unparsable expression behavior?** Rejected at manifest load: `DeviceManifestValidator` parses
+  every expression-bearing property up front and reports every failure, matching `ValueConstraint`'s
+  existing "never throw, always report" convention. At runtime (a manifest that somehow still carries
+  a bad expression, or one that evaluates against an id that never arrives) nothing throws:
+  `IndicatorState.Text` simply stays null until its referenced id arrives, and a chart channel without
+  a resolvable expression falls back to reading its own id as the raw value — never a crash, never a
+  stuck bad value.
 
 ## Status
 
-**Not started — design only.** No code exists yet. Grounded in the existing `UiDefinitions`/
-`IStructuredPresenter` model as implemented through 2026-09-25 (see [ui-definitions.md](../ui-definitions.md)).
+**Implemented.** `Expression` (`DevTerm.UiDefinitions`) is a hand-rolled recursive-descent parser/
+evaluator — numeric literals, `{id}` variable refs, `+ - * /`, unary `-`/`+`, parens, `round(x[,n])`,
+`min`/`max` (variadic), `abs(x)`, comparisons, `&&`/`||` (short-circuiting), `if(cond,a,b)`. `Parse`/
+`TryParse` can fail (and `DeviceManifestValidator` rejects a bad one at load); `Evaluate` never throws.
+`IndicatorControl.Expression` and `ChartChannel.Expression` drive live display (`IndicatorState`,
+`BarGraphState`/`StripChartState` in `LiveDisplayState.cs`); `ButtonControl.ParameterExpressions`
+drives outbound parameter composition. Wired into the manifest editor's form
+(`ControlForm.ParameterExpressions`/`IndicatorExpression`/`Channels`), both front ends' live control
+panel (`ControlPanelMode.cs`, `ControlPanelWindow.xaml.cs`), and the manifest editor's live preview.
+Covered by `ExpressionTests`, `IndicatorStateTests`, `ChartControlsTests`, `DeviceManifestTests`,
+`ManifestEditorTests`, and TUI/WPF wiring tests in `ControlPanelModeTests`/`ControlPanelWindowTests`.
+Not yet verified against real hardware — this is a pure UI/manifest-model feature with no device-side
+behavior to exercise, so that gap is expected rather than a coverage hole.

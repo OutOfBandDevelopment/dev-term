@@ -35,8 +35,7 @@ public abstract class LiveDisplayState
             }
         }
 
-        OnBatchCompleted(changed);
-        return changed;
+        return OnBatchCompleted(changed);
     }
 
     protected abstract bool ApplyNumber(string id, double value);
@@ -45,9 +44,15 @@ public abstract class LiveDisplayState
     {
     }
 
-    protected virtual void OnBatchCompleted(bool changed)
-    {
-    }
+    /// <summary>
+    /// Runs after every raw id in the batch has reached <see cref="ApplyNumber"/> — lets a subclass
+    /// report a change that didn't come from <see cref="ApplyNumber"/>'s own return value (e.g. an
+    /// expression-backed <see cref="StripChartState"/> channel, which only knows it has a complete
+    /// derived sample once the whole batch has landed). Returns the final "did anything change"
+    /// verdict <see cref="ApplyAll"/> reports back to its caller; the default passes
+    /// <paramref name="changed"/> through unchanged.
+    /// </summary>
+    protected virtual bool OnBatchCompleted(bool changed) => changed;
 
     /// <summary>The state for <paramref name="control"/>, or null when it isn't a live display control.</summary>
     public static LiveDisplayState? For(UiControl control) => control switch
@@ -55,6 +60,7 @@ public abstract class LiveDisplayState
         BarGraphControl bar => new BarGraphState(bar),
         StripChartControl strip => new StripChartState(strip),
         VectorControl vector => new VectorState(vector),
+        IndicatorControl { Expression: { Length: > 0 } } indicator => new IndicatorState(indicator),
         _ => null,
     };
 }
@@ -98,20 +104,54 @@ public static partial class ChartValue
 public sealed class BarGraphState : LiveDisplayState
 {
     private readonly Dictionary<string, double> _values = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Expression?> _expressionByChannel = new(StringComparer.Ordinal);
 
     public BarGraphState(BarGraphControl control)
     {
         ArgumentNullException.ThrowIfNull(control);
         Control = control;
-        ValueIds = [.. control.Channels.Select(c => c.Id)];
+
+        var ids = new List<string>();
+        foreach (var channel in control.Channels)
+        {
+            if (channel.Expression is { Length: > 0 } text && Expression.TryParse(text, out var expr, out _))
+            {
+                _expressionByChannel[channel.Id] = expr;
+                ids.AddRange(expr!.ReferencedIds);
+            }
+            else
+            {
+                _expressionByChannel[channel.Id] = null;
+                ids.Add(channel.Id);
+            }
+        }
+
+        ValueIds = [.. ids.Distinct(StringComparer.Ordinal)];
     }
 
     public BarGraphControl Control { get; }
 
     public override IReadOnlyList<string> ValueIds { get; }
 
-    /// <summary>The channel's latest value, or null before any has arrived.</summary>
-    public double? ValueOf(string channelId) => _values.TryGetValue(channelId, out var value) ? value : null;
+    /// <summary>
+    /// The channel's latest value — either its own raw published value, or (when the channel
+    /// declares an <see cref="ChartChannel.Expression"/>) that expression evaluated against every
+    /// raw id it references — or null before any relevant raw value has arrived.
+    /// </summary>
+    public double? ValueOf(string channelId)
+    {
+        if (!_expressionByChannel.TryGetValue(channelId, out var expression))
+        {
+            return null;
+        }
+
+        if (expression is null)
+        {
+            return _values.TryGetValue(channelId, out var value) ? value : null;
+        }
+
+        return expression.ReferencedIds.Any(id => _values.ContainsKey(id)) ? expression.Evaluate(_values) : null;
+    }
 
     /// <summary>How full the channel's bar is, in [0, 1] (0 before any value, and for an empty range).</summary>
     public double FractionOf(string channelId)
@@ -136,16 +176,32 @@ public sealed class BarGraphState : LiveDisplayState
 public sealed class StripChartState : LiveDisplayState
 {
     private readonly Dictionary<string, Queue<double>> _history = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double> _values = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Expression?> _expressionByChannel = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _touchedExpressionChannelsThisBatch = new(StringComparer.Ordinal);
 
     public StripChartState(StripChartControl control)
     {
         ArgumentNullException.ThrowIfNull(control);
         Control = control;
-        ValueIds = [.. control.Channels.Select(c => c.Id)];
-        foreach (var id in ValueIds)
+
+        var ids = new List<string>();
+        foreach (var channel in control.Channels)
         {
-            _history.TryAdd(id, new Queue<double>());
+            _history.TryAdd(channel.Id, new Queue<double>());
+            if (channel.Expression is { Length: > 0 } text && Expression.TryParse(text, out var expr, out _))
+            {
+                _expressionByChannel[channel.Id] = expr;
+                ids.AddRange(expr!.ReferencedIds);
+            }
+            else
+            {
+                _expressionByChannel[channel.Id] = null;
+                ids.Add(channel.Id);
+            }
         }
+
+        ValueIds = [.. ids.Distinct(StringComparer.Ordinal)];
     }
 
     public StripChartControl Control { get; }
@@ -196,16 +252,57 @@ public sealed class StripChartState : LiveDisplayState
         return (min, max);
     }
 
+    protected override void OnBatchStarting() => _touchedExpressionChannelsThisBatch.Clear();
+
+    /// <summary>
+    /// A plain channel enqueues one sample per raw arrival, exactly as before. An expression
+    /// channel instead just notes it was touched — several raw ids it references can arrive in the
+    /// same batch, and it must contribute exactly one derived sample for that batch, not one per raw
+    /// id — the actual enqueue happens once in <see cref="OnBatchCompleted"/>, after every raw id in
+    /// the batch has landed in <see cref="_values"/>.
+    /// </summary>
     protected override bool ApplyNumber(string id, double value)
     {
-        var samples = _history[id];
+        _values[id] = value;
+        var changed = false;
+        foreach (var (channelId, expression) in _expressionByChannel)
+        {
+            if (expression is null)
+            {
+                if (channelId == id)
+                {
+                    Enqueue(channelId, value);
+                    changed = true;
+                }
+            }
+            else if (expression.ReferencedIds.Contains(id, StringComparer.Ordinal))
+            {
+                _touchedExpressionChannelsThisBatch.Add(channelId);
+            }
+        }
+
+        return changed;
+    }
+
+    protected override bool OnBatchCompleted(bool changed)
+    {
+        foreach (var channelId in _touchedExpressionChannelsThisBatch)
+        {
+            Enqueue(channelId, _expressionByChannel[channelId]!.Evaluate(_values));
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private void Enqueue(string channelId, double value)
+    {
+        var samples = _history[channelId];
         samples.Enqueue(value);
         while (samples.Count > Capacity)
         {
             samples.Dequeue();
         }
-
-        return true;
     }
 }
 
@@ -298,7 +395,7 @@ public sealed class VectorState : LiveDisplayState
         return true;
     }
 
-    protected override void OnBatchCompleted(bool changed)
+    protected override bool OnBatchCompleted(bool changed)
     {
         // The point moved: where it was joins the trail (bounded by TrailLength).
         if (_coordinateChanged && _pointBeforeBatch is { } previous && Control.TrailLength > 0)
@@ -309,9 +406,54 @@ public sealed class VectorState : LiveDisplayState
                 _trail.Dequeue();
             }
         }
+
+        return changed;
     }
 
     private bool Has(string? id) => id is not null && _values.ContainsKey(id);
 
     private double Get(string? id) => id is not null && _values.TryGetValue(id, out var v) ? v : 0;
+}
+
+/// <summary>
+/// An <see cref="IndicatorControl"/> whose <see cref="IndicatorControl.Expression"/> is set: derives
+/// its displayed text from the live published values instead of showing its own raw id's text
+/// verbatim. Only constructed by <see cref="LiveDisplayState.For"/> when the expression is set and
+/// parses; an <see cref="IndicatorControl"/> with no expression never needs this class at all, so the
+/// existing direct "set the label from the raw published id" path stays exactly as it was.
+/// </summary>
+public sealed class IndicatorState : LiveDisplayState
+{
+    private readonly Dictionary<string, double> _values = new(StringComparer.Ordinal);
+    private readonly Expression? _expression;
+
+    /// <summary>
+    /// Never throws, even when <see cref="IndicatorControl.Expression"/> fails to parse — a bad
+    /// expression leaves this state with no <see cref="ValueIds"/> and an always-null
+    /// <see cref="Text"/> rather than taking down the control panel that built it. The load-time
+    /// manifest validator is what actually catches a bad expression as an error; this is just the
+    /// runtime fallback for one that somehow got through anyway.
+    /// </summary>
+    public IndicatorState(IndicatorControl control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        Control = control;
+        _ = Expression.TryParse(control.Expression ?? string.Empty, out _expression, out _);
+        ValueIds = _expression?.ReferencedIds ?? [];
+    }
+
+    public IndicatorControl Control { get; }
+
+    public override IReadOnlyList<string> ValueIds { get; }
+
+    /// <summary>The expression evaluated against every value received so far, or null before any referenced id has arrived (or the expression failed to parse).</summary>
+    public string? Text => _expression is not null && ValueIds.Any(id => _values.ContainsKey(id))
+        ? ChartValue.Format(_expression.Evaluate(_values))
+        : null;
+
+    protected override bool ApplyNumber(string id, double value)
+    {
+        _values[id] = value;
+        return true;
+    }
 }

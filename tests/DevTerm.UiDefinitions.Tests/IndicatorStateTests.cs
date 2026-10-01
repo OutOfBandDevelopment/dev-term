@@ -1,0 +1,65 @@
+using DevTerm.Test.Utilities;
+
+namespace DevTerm.UiDefinitions.Tests;
+
+/// <summary>
+/// <see cref="IndicatorState"/> — the runtime companion for an <see cref="IndicatorControl"/> whose
+/// <see cref="IndicatorControl.Expression"/> is set. See docs/design/proposals/manifest-editor-expression-builder.md.
+/// </summary>
+[TestCategory(TestCategories.Unit)]
+[TestClass]
+public sealed class IndicatorStateTests
+{
+    [TestMethod]
+    public void For_AnIndicatorWithNoExpression_ReturnsNull() =>
+        Assert.IsNull(LiveDisplayState.For(new IndicatorControl { Id = "i", Label = "I" }));
+
+    [TestMethod]
+    public void For_AnIndicatorWithABlankExpression_ReturnsNull() =>
+        Assert.IsNull(LiveDisplayState.For(new IndicatorControl { Id = "i", Label = "I", Expression = "" }));
+
+    [TestMethod]
+    public void For_AnIndicatorWithAnExpression_ReturnsAnIndicatorState() =>
+        Assert.IsInstanceOfType<IndicatorState>(LiveDisplayState.For(new IndicatorControl { Id = "i", Label = "I", Expression = "{raw_mv} / 1000" }));
+
+    [TestMethod]
+    public void ValueIds_IsTheExpressionsReferencedIds_NotTheControlsOwnId()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "{raw_mv} / 1000" });
+
+        Assert.AreSequenceEqual(["raw_mv"], [.. state.ValueIds]);
+    }
+
+    [TestMethod]
+    public void Text_IsNull_UntilAReferencedIdArrives()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "{raw_mv} / 1000" });
+
+        Assert.IsNull(state.Text);
+        Assert.IsFalse(state.Apply("other", "1"), "An id the expression doesn't reference changes nothing.");
+        Assert.IsNull(state.Text);
+    }
+
+    [TestMethod]
+    public void Text_IsTheExpressionEvaluated_AndFormatted_OnceItsIdArrives()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "{raw_mv} / 1000" });
+
+        Assert.IsTrue(state.Apply("raw_mv", "5500"));
+        Assert.AreEqual("5.5", state.Text);
+    }
+
+    [TestMethod]
+    public void Constructor_NeverThrows_OnAnInvalidExpression_AndLeavesTextAlwaysNull()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "1 +" });
+
+        Assert.IsEmpty(state.ValueIds);
+        Assert.IsNull(state.Text);
+        Assert.IsFalse(state.Apply("i", "5"), "With no referenced ids, nothing this state sees can match.");
+    }
+
+    [TestMethod]
+    public void Constructor_NullControl_Throws() =>
+        Assert.ThrowsExactly<ArgumentNullException>(() => new IndicatorState(null!));
+}
