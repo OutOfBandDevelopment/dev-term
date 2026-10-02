@@ -52,6 +52,3 @@ open; after that `*IDN?` returned
 [hp-34401a](../hp-34401a/known-configuration.md). A DTR-to-DSR loopback jumper does not work (the meter drops DTR after
 each query).
 
-## Not recorded anywhere yet
-
-- Current state of the USBTMC Rigol units.
