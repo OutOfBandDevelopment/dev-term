@@ -186,8 +186,12 @@ The same capture as an animation (one frame per arrived sample):
 
 ![Animation of six paced loopback samples arriving one at a time](images/tui-loopback-stream.gif)
 
-The stills are real captures from `LoopbackSampleStreamScreenshotTests`; `scripts/make_loopback_gif.py`
-assembles them into the GIF. The WPF window behaves the same way; no separate WPF stills are kept.
+The WPF window, same stream:
+
+![Animation of six paced loopback samples arriving in the WPF window](images/wpf-loopback-stream.gif)
+
+The stills are real captures from the two `LoopbackSampleStreamScreenshotTests` classes (Console and Wpf test
+projects); `scripts/make_loopback_gif.py` assembles each front end's stills into its GIF.
 
 **BLE** (Windows only today — see [`docs/design/transports.md`](../design/transports.md)'s BLE
 section): device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART
