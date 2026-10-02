@@ -156,6 +156,6 @@ processes; numbers walk smoothly inside Minimum/Maximum, booleans alternate, cho
 playback-log and declared-example preference tiers are not built. **Picker built (2026-10-02):** `ExpressionPickerViewModel`
 (`ExpressionPickerViewModelTests`) with a TUI `ExpressionPickerDialog` and WPF `ExpressionPickerWindow`, reached from **Pick...**
 beside an indicator's Expression field ([spec](../../specs/expression-picker.md)); Parameter and chart-channel expressions don't have it yet.
-The language extension is not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
+**Language extension, first part built (2026-10-02):** `Expression` now has string values (single- or double-quoted literals, `+` concatenation, ordinal comparisons), `matches(text, regex)` (a literal pattern is compiled at parse time, so a bad one is a parse error; a computed bad pattern or a 100 ms timeout evaluates to false), `contains`/`startsWith`/`endsWith`, `size`, `number`, `string`, `has({id})`, `!` and `cond ? a : b`, via `Evaluate(numbers, text)`; `Evaluate(numbers)` is unchanged (`ExpressionTextTests`). Not built: lists, dotted/indexed paths and bare identifiers, regex-building in the picker, function buttons for the new functions, and nothing publishes text values to `Evaluate` yet (callers still pass numbers only). Scope decision (2026-10-02): profiles, not `.ksy`
 files, are the input. Related:
 [expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).
