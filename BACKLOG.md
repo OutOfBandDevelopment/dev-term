@@ -31,11 +31,6 @@ the rest.
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
   resolving against a fresh capture before implementing, not just the existing notes.
 
-### Tektronix TDS2024
-
-- **A TDS2024 bridge can surface a reply one connection late**, so a real-hardware test should discard anything
-  that doesn't match what it just sent. Observed 2026-10-02; the test still passes without it, so low priority.
-
 ### Plugin architecture, decoders & presenters
 
 - `.ksy` binary-response schemas: promoted to in-progress (2026-10-02) — see `TODO.md`. Kaitai is read/parse-only,
