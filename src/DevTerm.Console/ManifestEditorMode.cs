@@ -264,7 +264,9 @@ internal static class ManifestEditorMode
             var definition = editor.BuildPreviewDefinition();
             var surface = editor.CreatePreviewSurface(definition);
             surface.PreviewInvoked += (_, sent) => ShowStatus($"Preview: would send {sent}");
-            var panelParts = ControlPanelMode.BuildWindow(app, definition, surface, editor.CreatePreviewPresenter(), definition.Name);
+            var presenter = editor.CreatePreviewPresenter();
+            var panelParts = ControlPanelMode.BuildWindow(app, definition, surface, presenter, definition.Name);
+            editor.PublishSampleData(presenter);
             previewWindow = panelParts.Window;
             previewWindow.X = 0;
             previewWindow.Y = 0;

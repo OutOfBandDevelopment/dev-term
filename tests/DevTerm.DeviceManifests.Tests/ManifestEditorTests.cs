@@ -550,4 +550,30 @@ public sealed class ManifestEditorTests
             Assert.IsNotEmpty(definition.Sections.SelectMany(s => s.Controls), type.Name);
         }
     }
+
+    [TestMethod]
+    public void PublishSampleData_FillsThePreviewWithValuesForTheBundledPanel()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        Assert.IsTrue(editor.Open(_bundled), editor.StatusMessage);
+        var presenter = editor.CreatePreviewPresenter();
+        Assert.IsNotNull(presenter);
+        IReadOnlyDictionary<string, string>? published = null;
+        presenter.ValuesChanged += (_, values) => published = values;
+
+        editor.PublishSampleData(presenter, seed: 1, step: 2);
+
+        Assert.IsNotNull(published);
+        Assert.IsTrue(published.Count > 0);
+        Assert.IsTrue(published.Values.All(v => v.Length > 0));
+    }
+
+    [TestMethod]
+    public void PublishSampleData_WithNoPresenter_DoesNothing()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        Assert.IsTrue(editor.Open(_bundled), editor.StatusMessage);
+
+        editor.PublishSampleData(null);
+    }
 }

@@ -431,6 +431,33 @@ public sealed class ManifestEditorViewModel
         }
     }
 
+    /// <summary>
+    /// Fills the preview panel with realistic sample values (see <see cref="SampleDataGenerator"/>) so its indicators, gauges
+    /// and expression results show something without a device. Numbers use the invariant culture; a choice shows its label.
+    /// </summary>
+    public void PublishSampleData(ManifestReplyPresenter? presenter, int seed = 0, int step = 0)
+    {
+        if (presenter is null)
+        {
+            return;
+        }
+
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in ValuePathCatalog.Enumerate(Manifest))
+        {
+            if (SampleDataGenerator.Text(path, step) is { } label)
+            {
+                values[path.Path] = label;
+            }
+            else if (SampleDataGenerator.Value(path, seed, step) is { } number)
+            {
+                values[path.Path] = number.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
+        presenter.PublishSampleValues(values);
+    }
+
     /// <summary>A folder name for a manifest's user copy: its name, lower-cased, spaces as dashes, anything unsafe dropped.</summary>
     public static string FolderNameFor(string? name)
     {

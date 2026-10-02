@@ -42,6 +42,15 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     /// <summary>Whether each complete line is also returned from <see cref="Render"/> as output text (true by default).</summary>
     protected virtual bool RendersLines => true;
 
+    /// <summary>Publishes values that didn't come from a reply line (the manifest editor's preview shows sample data this way).</summary>
+    protected void PublishValues(IReadOnlyDictionary<string, string> values)
+    {
+        if (values.Count > 0)
+        {
+            ValuesChanged?.Invoke(this, values);
+        }
+    }
+
     public void QuerySent(string replyIndicatorId) => _pendingReplyIds.Enqueue(replyIndicatorId);
 
     public void Cancel(string replyIndicatorId)

@@ -36,6 +36,9 @@ public sealed class ManifestReplyPresenter : LineReplyPresenter
 
     protected override bool RendersLines => false;
 
+    /// <summary>Publishes values as if a device had sent them. Used to fill a preview with sample data.</summary>
+    public void PublishSampleValues(IReadOnlyDictionary<string, string> values) => PublishValues(values);
+
     protected override void AddLineValues(string line, Dictionary<string, string> values)
     {
         foreach (var (pattern, regex) in _patterns)

@@ -174,7 +174,9 @@ public partial class ManifestEditorWindow : Window
         var definition = Editor.BuildPreviewDefinition();
         var surface = Editor.CreatePreviewSurface(definition);
         surface.PreviewInvoked += (_, sent) => Dispatcher.BeginInvoke(() => PreviewSentText.Text = $"Would send: {sent}");
-        var panel = new ControlPanelWindow(definition, surface, Editor.CreatePreviewPresenter());
+        var presenter = Editor.CreatePreviewPresenter();
+        var panel = new ControlPanelWindow(definition, surface, presenter);
+        Editor.PublishSampleData(presenter);
         var content = (UIElement)panel.Content;
         panel.Content = null;
         PreviewHost.Child = content;
