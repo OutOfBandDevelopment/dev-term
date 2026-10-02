@@ -33,7 +33,9 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` binary-response schemas: promoted to in-progress (2026-10-02) — see `TODO.md`. Kaitai is read/parse-only,
+- `.ksy` importer gaps (set aside by choice 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
+  `docs/changes/2026-10-02.md`): **bit fields** (the Zoom H4n status `.ksy` fails to import until then), **variable-length
+  frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
@@ -43,7 +45,7 @@ the rest.
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
   drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
-  already captures and saves but doesn't draw yet.
+  already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 
 ### Device control modules & hardware profiles
 
@@ -51,9 +53,9 @@ the rest.
   pattern, an SCPI baseline for common bench-instrument commands) — see the new section in
   `docs/design/device-control-modules.md`.
   **Still open:**
-  - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) landed 2026-09-25
+  - **DE-5000 bench pass.** [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) landed 2026-09-25
   (`DevTerm.Devices.De5000`, see `docs/changes/2026-09-25.md`) but is unverified against real
-  hardware — deferred, not a dev-term-side blocker: the general BLE/GATT transport is confirmed
+  hardware (its `.ksy` and decoder are unit-tested only; no meter available 2026-10-02) — deferred, not a dev-term-side blocker: the general BLE/GATT transport is confirmed
   working (`docs/test/2026-09-29-17-12-20.md`), but this meter's custom IR-to-BLE adapter is off the
   bench while its physical interface is rebuilt. Run `RealHardwareDe5000Tests` once it's back and
   `devterm.runsettings` has its device id/UUIDs filled in.

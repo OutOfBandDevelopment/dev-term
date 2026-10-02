@@ -4,7 +4,7 @@ namespace DevTerm.UiDefinitions.Tests;
 
 /// <summary>
 /// <see cref="Expression"/>'s string values and text functions (<c>matches</c>, <c>contains</c>, <c>has</c>, ...), the
-/// <c>?:</c> ternary and <c>!</c> — see docs/design/proposals/expression-picker-paths-and-cel.md.
+/// <c>?:</c> ternary and <c>!</c> — see docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]

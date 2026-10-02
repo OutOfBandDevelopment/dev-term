@@ -14,6 +14,11 @@ namespace DevTerm.Console;
 /// </summary>
 internal static class ExpressionPickerDialog
 {
+    internal const string MoreFunctionsTitle = "More functions";
+
+    /// <summary>One row per text/list function for the <c>more...</c> list: its signature, which is what you type.</summary>
+    internal static IReadOnlyList<string> MoreFunctionItems { get; } = [.. ExpressionPickerViewModel.MoreFunctions.Select(f => f.Signature)];
+
     /// <summary>Opens the picker over <paramref name="viewModel"/>; returns the final expression, or null when cancelled.</summary>
     public static string? Show(IApplication app, ExpressionPickerViewModel viewModel)
     {
@@ -36,7 +41,7 @@ internal static class ExpressionPickerDialog
         var functionLabel = new Label { X = 0, Y = Pos.AnchorEnd(4), Text = "Functions:", HotKeySpecifier = (System.Text.Rune)0xFFFF };
         Button? previous = null;
         var functionButtons = new List<Button>();
-        foreach (var function in ExpressionPickerViewModel.Functions)
+        foreach (var function in ExpressionPickerViewModel.ButtonFunctions)
         {
             var captured = function;
             var button = new Button { X = previous is null ? Pos.Right(functionLabel) + 1 : Pos.Right(previous), Y = Pos.AnchorEnd(4), Text = function.Name, ShadowStyle = ShadowStyles.None };
@@ -51,17 +56,23 @@ internal static class ExpressionPickerDialog
             previous = button;
         }
 
-        var nextSample = new Button { X = Pos.Right(previous!), Y = Pos.AnchorEnd(4), Text = "Next sample", ShadowStyle = ShadowStyles.None };
-        nextSample.Accepting += (_, e) =>
+        var more = new Button { X = Pos.Right(previous!), Y = Pos.AnchorEnd(4), Text = "more...", ShadowStyle = ShadowStyles.None };
+        more.Accepting += (_, e) =>
         {
             e.Handled = true;
-            viewModel.NextSample();
+            if (FormRenderer.PickFromList(app, MoreFunctionsTitle, MoreFunctionItems) is { } chosen)
+            {
+                viewModel.CaretIndex = expression.InsertionPoint;
+                viewModel.InsertFunction(ExpressionPickerViewModel.MoreFunctions[chosen]);
+            }
+
+            expression.SetFocus();
         };
+        functionButtons.Add(more);
 
         dialog.Title = viewModel.Title;
         expressionLabel.Text = viewModel.Prompt;
         result.Visible = viewModel.ShowsResult;
-        nextSample.Visible = viewModel.ShowsResult;
         functionLabel.Visible = viewModel.ShowsFunctions;
         foreach (var button in functionButtons)
         {
@@ -82,6 +93,15 @@ internal static class ExpressionPickerDialog
             e.Handled = true;
             app.RequestStop();
         };
+
+        var nextSample = new Button { X = Pos.Right(cancel) + 1, Y = Pos.AnchorEnd(2), Text = "Next sample", ShadowStyle = ShadowStyles.None };
+        nextSample.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            viewModel.NextSample();
+        };
+
+        nextSample.Visible = viewModel.ShowsResult;
 
         var syncing = false;
 

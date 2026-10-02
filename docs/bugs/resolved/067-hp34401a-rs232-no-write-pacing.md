@@ -54,7 +54,7 @@ A `[TestCategory(TestCategories.Hardware)]` loop in `RealHardwareSerialTests` fo
 reply or non-empty `SYST:ERR?`, run with and without the delay.
 
 ## Related
-[065](../065-hpgl-no-end-detection-splits-one-plot.md) and [068](../068-tek2230-bridge-runs-at-4800-baud.md) concern the same
+[065](065-hpgl-no-end-detection-splits-one-plot.md) and [068](../068-tek2230-bridge-runs-at-4800-baud.md) concern the same
 class of slow-instrument timing.
 
 ## Resolution

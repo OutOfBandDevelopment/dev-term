@@ -89,6 +89,12 @@ public sealed class ResponsePattern
     public required string Name { get; set; }
 
     public required string Match { get; set; }
+
+    /// <summary>
+    /// An example reply line this pattern matches (<c>"MEAS 12.5 V"</c>), optional. The sample-data generator reads each
+    /// published value out of it, so a preview or the picker shows realistic values instead of a generated walk.
+    /// </summary>
+    public string? Example { get; set; }
 }
 
 /// <summary>

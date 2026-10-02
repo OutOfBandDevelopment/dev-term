@@ -22,7 +22,7 @@ public partial class ExpressionPickerWindow : Window
         InitializeComponent();
         WpfTheme.Attach(this);
 
-        foreach (var function in ExpressionPickerViewModel.Functions)
+        foreach (var function in ExpressionPickerViewModel.ButtonFunctions)
         {
             var captured = function;
             var button = new Button { Content = function.Name, Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(10, 2, 10, 2), ToolTip = $"{function.Signature}: {function.Description}" };
@@ -34,6 +34,26 @@ public partial class ExpressionPickerWindow : Window
             };
             FunctionPanel.Children.Add(button);
         }
+
+        var more = new ComboBox { MinWidth = 150, VerticalContentAlignment = VerticalAlignment.Center, ToolTip = "Text and list functions" };
+        more.Items.Add("more functions...");
+        foreach (var function in ExpressionPickerViewModel.MoreFunctions)
+        {
+            more.Items.Add(new ComboBoxItem { Content = function.Name, Tag = function, ToolTip = $"{function.Signature}: {function.Description}" });
+        }
+
+        more.SelectedIndex = 0;
+        more.SelectionChanged += (_, _) =>
+        {
+            if (more.SelectedItem is ComboBoxItem { Tag: ExpressionFunction picked })
+            {
+                SyncCaret();
+                _viewModel.InsertFunction(picked);
+                more.SelectedIndex = 0;
+                ExpressionBox.Focus();
+            }
+        };
+        FunctionPanel.Children.Add(more);
 
         Title = "dev-term - " + _viewModel.Title;
         ExpressionLabel.Text = _viewModel.Prompt;

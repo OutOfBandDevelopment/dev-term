@@ -26,7 +26,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 | Explanation | Two fixed lines | One wrapped line | What's detected, and (TUI) that there's no preview |
 | Capture list | `ListView`, one row per capture: `HH:mm:ss  TYPE  size  end  file` | `ListBox`, two lines per capture: `HH:mm:ss — {kind}` / `{size} bytes · {end} · {file}` | Oldest first; the newest is selected whenever one arrives. Keeps the last 100 (`StreamMonitor.MaxRetainedCaptures`) — saved files are never deleted |
 | Detail | Two lines under the list: `{kind}, {size} bytes, {end}[ (declared by the command)].` / `Saved as {file} in the folder above.` or `Not saved: {reason}` | Same first line; second line `Saved to {path}` or `Not saved: {reason}` | For the selected capture |
-| Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up); otherwise a message | See States |
+| Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up) or a converted SVG (`SvgPreview`); otherwise a message | See States |
 
 "End" is how the capture finished (`StreamMonitorCapture.EndLabel`):
 
@@ -89,6 +89,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
+| **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, External tool or Web service (`StreamConversionModes`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool / Web service still read their path/URL from the profile |
 | **Convert...** (TUI + WPF) | Runs the configured conversion mechanism (below) against the selected capture, writing the result next to its saved file (same folder and name, a new extension). Enabled when a capture is selected. TUI reports the outcome in the detail label; WPF reports success in the detail text and a failure via a message box |
 | Selecting a capture | Shows its detail (and, in WPF, its preview) |
 
@@ -106,7 +107,7 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **Disconnected**: the monitor stays bound; nothing arrives, so nothing is captured. Reconnecting the
   same session carries on.
 - **Main window closing**: the monitor is disposed (stopped).
-- **WPF preview**: shows the decoded image for BMP/PNG/JPEG/GIF/TIFF; `Preview not available yet for
+- **WPF preview**: shows the decoded image for BMP/PNG/JPEG/GIF/TIFF, and draws a converted SVG; `Preview not available yet for
   {kind} — the captured bytes were saved as-is.` for HP-GL/PostScript/PCL/unrecognized data;
   `Could not preview this {kind}: {decoder message}` when WPF can't decode it; `Nothing captured
   yet. …` when the list is empty. A truncated (`stopped`/`went quiet`) PNG may still decode and show
@@ -117,7 +118,7 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **TUI**: no preview by design (Terminal.Gui can't draw images); open the saved file. The window is
   modal like every other TUI screen, which is why closing it doesn't stop monitoring. Device names
   and file names are shown verbatim (`_` is not treated as a hotkey marker).
-- **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free
+- **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free Under the preview, the detail text spans the full width and the conversion drop-down, Convert... and Export As... sit on their own right-aligned row (they used to share the text's row, which squeezed it to a sliver at the minimum window size).
   where a format already has a native decoder".
 
 ## Converting a capture
@@ -130,7 +131,7 @@ reports an explanatory message instead.
 
 | `Stream Convert Mode` | What it does | Other fields it uses |
 |---|---|---|
-| (blank/unrecognized) | Convert... always fails with "no conversion mechanism is configured" | — |
+| (blank/unrecognized) | Convert... always fails with "no conversion mechanism is selected" | — |
 | `internalhpgltosvg` | dev-term's own HP-GL-to-SVG converter (`HpglToSvgConverter`) — HP-GL captures only, fails for any other kind | `Stream Convert Output Extension` (default `svg`) |
 | `externaltool` | Runs a configured executable against the capture's saved file as a child process | `Stream Convert External Tool Path`, `Stream Convert External Tool Arguments` (a template with `{input}`/`{output}`/`{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`), `Stream Convert Dpi` (default 150), `Stream Convert Output Extension` (default `png`) |
 | `webservice` | POSTs (or other configured method) the capture's raw bytes to a configured HTTP endpoint, with its detected content type, and saves the response body | `Stream Convert Web Service Url`, `Stream Convert Web Service Method` (default `POST`), `Stream Convert Output Extension` (default `png`) |
@@ -145,7 +146,11 @@ configures — never a default endpoint.
 
 ## Open items
 
-- **No in-window preview of a converted file** — "Convert..." writes a file but doesn't show it; live
+- **Converted files are listed, and WPF draws an SVG** — a successful Convert... adds the output file as a new,
+  selected list entry (`converted from HP-GL plot` in its detail; `StreamMonitor.AddConverted`). WPF draws
+  `.svg` itself (`SvgPreview`: path, line, polyline, polygon, rect, circle, ellipse with stroke/fill/viewBox;
+  no transforms, gradients, text or CSS) and shows `Could not draw this SVG: …` otherwise; the TUI lists it
+  but still can't draw. The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the

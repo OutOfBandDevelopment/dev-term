@@ -39,12 +39,13 @@ public sealed record ValuePath(
     string? Unit = null,
     double? Minimum = null,
     double? Maximum = null,
-    IReadOnlyList<string>? Choices = null);
+    IReadOnlyList<string>? Choices = null,
+    string? Example = null);
 
 /// <summary>
 /// Enumerates every path an <see cref="Expression"/> in a <see cref="DeviceManifest"/> can reference, from the manifest alone
 /// (no connected device). It is the single source for the expression picker, sample-data generation and the validator's
-/// unknown-reference check. See docs/design/proposals/expression-picker-paths-and-cel.md.
+/// unknown-reference check. See docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 public static partial class ValuePathCatalog
 {
@@ -116,17 +117,41 @@ public static partial class ValuePathCatalog
 
         var groups = ScanGroups(pattern.Match ?? string.Empty);
         var results = new List<ValuePath>();
+        var example = ExampleMatch(pattern);
 
         var primary = groups.FirstOrDefault(g => g.Name is null);
         var wholeMatchBody = primary?.Body ?? pattern.Match ?? string.Empty;
-        results.Add(new ValuePath(pattern.Name, Classify(wholeMatchBody), ValuePathSource.ResponsePattern, pattern.Name));
+        results.Add(new ValuePath(pattern.Name, Classify(wholeMatchBody), ValuePathSource.ResponsePattern, pattern.Name, Example: example is null ? null : example.Groups.Count > 1 ? example.Groups[1].Value : example.Value));
 
         foreach (var group in groups.Where(g => g.Name is not null))
         {
-            results.Add(new ValuePath(group.Name!, Classify(group.Body), ValuePathSource.ResponsePattern, pattern.Name));
+            results.Add(new ValuePath(group.Name!, Classify(group.Body), ValuePathSource.ResponsePattern, pattern.Name, Example: example is { } m && m.Groups[group.Name!] is { Success: true } captured ? captured.Value : null));
         }
 
         return results;
+    }
+
+    // The declared example run through the pattern, or null when there is none, it doesn't match, or the regex is bad.
+    private static Match? ExampleMatch(ResponsePattern pattern)
+    {
+        if (string.IsNullOrEmpty(pattern.Example) || string.IsNullOrEmpty(pattern.Match))
+        {
+            return null;
+        }
+
+        try
+        {
+            var match = new Regex(pattern.Match, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)).Match(pattern.Example);
+            return match.Success ? match : null;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return null;
+        }
     }
 
     private static ValuePath FromControl(UiControl control) => control switch

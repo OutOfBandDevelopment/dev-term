@@ -40,14 +40,15 @@
                 </ListBox>
             </DockPanel>
             <DockPanel Grid.Column="2">
-                <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                    <Button x:Name="ExportAsButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="8,0,0,0" Content="Export As..." Padding="12,2" IsEnabled="False" Click="ExportAs_Click" />
-                    <Button x:Name="ConvertButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="8,0,0,0" Content="Convert..." Padding="12,2" IsEnabled="False" Click="Convert_Click" />
-                    <StackPanel>
-                        <TextBlock x:Name="DetailText" TextWrapping="Wrap" />
-                        <TextBlock x:Name="SavedPathText" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.MutedForeground}" />
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <TextBlock x:Name="DetailText" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SavedPathText" TextWrapping="Wrap" Foreground="{DynamicResource DevTerm.MutedForeground}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <ComboBox x:Name="ConvertModeBox" VerticalAlignment="Top" MinWidth="110" ToolTip="How Convert... turns a capture into another format" SelectionChanged="ConvertMode_Changed" />
+                        <Button x:Name="ConvertButton" VerticalAlignment="Top" Margin="8,0,0,0" Content="Convert..." Padding="12,2" IsEnabled="False" Click="Convert_Click" />
+                        <Button x:Name="ExportAsButton" VerticalAlignment="Top" Margin="8,0,0,0" Content="Export As..." Padding="12,2" IsEnabled="False" Click="ExportAs_Click" />
                     </StackPanel>
-                </DockPanel>
+                </StackPanel>
                 <Border BorderBrush="{DynamicResource DevTerm.ControlBorder}" BorderThickness="1" Background="{DynamicResource DevTerm.ControlBackground}">
                     <Grid>
                         <Image x:Name="PreviewImage" Stretch="Uniform" StretchDirection="DownOnly" Margin="8" RenderOptions.BitmapScalingMode="HighQuality" />

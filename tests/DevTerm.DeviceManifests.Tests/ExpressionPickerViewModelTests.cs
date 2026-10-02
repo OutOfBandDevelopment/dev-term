@@ -123,6 +123,16 @@ public sealed class ExpressionPickerViewModelTests
             ["max"] = "max(1, 2)",
             ["abs"] = "abs(-1)",
             ["if"] = "if(1, 2, 3)",
+            ["matches"] = "matches('abc', '^a')",
+            ["contains"] = "contains('abc', 'b')",
+            ["startsWith"] = "startsWith('abc', 'a')",
+            ["endsWith"] = "endsWith('abc', 'c')",
+            ["size"] = "size('abc')",
+            ["number"] = "number('1.5 V')",
+            ["string"] = "string(1)",
+            ["has"] = "has({volts})",
+            ["split"] = "split('a,b', ',')",
+            ["join"] = "join(['a', 'b'], ',')",
         };
 
         foreach (var function in ExpressionPickerViewModel.Functions)
@@ -288,5 +298,47 @@ public sealed class ExpressionPickerViewModelTests
         var picker = Create("startsWith({banner}, 'sample') ? 'ok' : 'no'");
 
         Assert.AreEqual("\"ok\"", picker.ResultText);
+    }
+
+    [TestMethod]
+    public void MatchesFunction_InsertsATemplate_WithTheCaretOnTheTextArgument()
+    {
+        var picker = new ExpressionPickerViewModel([new ValuePath("model", ValuePathType.Text, ValuePathSource.ResponsePattern, "id")]);
+        var matches = ExpressionPickerViewModel.Functions.Single(f => f.Name == "matches");
+
+        picker.InsertFunction(matches);
+        Assert.AreEqual("matches(, '')", picker.Text);
+        Assert.AreEqual(8, picker.CaretIndex);
+
+        picker.InsertPath(picker.AllPaths[0]);
+        Assert.AreEqual("matches({model}, '')", picker.Text);
+    }
+
+    [TestMethod]
+    public void MoreFunctions_AreTheOnesWithoutAButton_AndTogetherCoverEveryFunction()
+    {
+        Assert.AreEqual(ExpressionPickerViewModel.Functions.Count, ExpressionPickerViewModel.ButtonFunctions.Count + ExpressionPickerViewModel.MoreFunctions.Count);
+        CollectionAssert.AreEqual(new[] { "round", "min", "max", "abs", "if" }, ExpressionPickerViewModel.ButtonFunctions.Select(f => f.Name).ToArray());
+        Assert.IsTrue(ExpressionPickerViewModel.MoreFunctions.Any(f => f.Name == "split"));
+    }
+
+    [TestMethod]
+    [DataRow("contains", "contains(, '')", 9)]
+    [DataRow("startsWith", "startsWith(, '')", 11)]
+    [DataRow("endsWith", "endsWith(, '')", 9)]
+    [DataRow("size", "size()", 5)]
+    [DataRow("number", "number()", 7)]
+    [DataRow("string", "string()", 7)]
+    [DataRow("has", "has()", 4)]
+    [DataRow("split", "split(, ',')", 6)]
+    [DataRow("join", "join(, ',')", 5)]
+    public void MoreFunction_InsertsATemplate_WithTheCaretOnTheFirstArgument(string name, string text, int caret)
+    {
+        var picker = Create();
+
+        picker.InsertFunction(ExpressionPickerViewModel.Functions.Single(f => f.Name == name));
+
+        Assert.AreEqual(text, picker.Text);
+        Assert.AreEqual(caret, picker.CaretIndex);
     }
 }

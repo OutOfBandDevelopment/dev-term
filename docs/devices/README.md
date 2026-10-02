@@ -15,15 +15,16 @@ reaches it on the bench (transport, address, framing, quirks). Facts there come 
 
 ## Binary frame layouts (Kaitai Struct)
 
-The devices below speak binary, not SCPI text, so they have no `known-configuration.md`. Each folder holds `.ksy`
+The devices below speak binary, not SCPI text. Each folder has a `known-configuration.md` (identity, transport, framing,
+byte order, what's been verified on hardware) and holds `.ksy`
 files describing the frames in each direction, written from the decoders and control surfaces in `src/` (not from a
 bench capture); load one with the manifest editor's import button. `DeviceKsyFilesTests` imports and decodes a known
 frame from each file except the Zoom H4n status byte.
 
 | Device | Device to computer | Computer to device |
 | --- | --- | --- |
-| DE-5000 LCR meter | [de5000.ksy](de5000/de5000.ksy): 17-byte measurement packet (flag and unit bits documented, not split) | none: it streams and takes no commands |
-| Radex One | [read-data reply](radexone/radexone-read-data-reply.ksy) | [query](radexone/radexone-query-request.ksy) (Read Data, Read Serial/Version, Read Settings, Reset Accumulated), [write settings](radexone/radexone-write-settings-request.ksy); the word-sum checksums are not validated |
-| Velleman K8055 | [input report](k8055/k8055-input-report.ksy) | [output report](k8055/k8055-output-report.ksy) (set outputs, reset counters) |
-| Zoom H4n | [status byte](zoom-h4n/zoom-h4n-status.ksy), as bit fields the importer can't read yet, so documentation only | [button press](zoom-h4n/zoom-h4n-command.ksy), with the release and wake sequences in its doc |
-| Kuando Busylight | an ASCII identification string, so no `.ksy` | [command](busylight/busylight-command.ksy): the 9-byte single-step report |
+| [DE-5000 LCR meter](de5000/known-configuration.md) | [de5000.ksy](de5000/de5000.ksy): 17-byte measurement packet (flag and unit bits documented, not split) | none: it streams and takes no commands |
+| [Radex One](radexone/known-configuration.md) | [read-data reply](radexone/radexone-read-data-reply.ksy), [serial/version reply](radexone/radexone-serial-version-reply.ksy) (payload inferred from one real unit) | [query](radexone/radexone-query-request.ksy) (Read Data, Read Serial/Version, Read Settings, Reset Accumulated), [write settings](radexone/radexone-write-settings-request.ksy); the word-sum checksums are not validated |
+| [Velleman K8055](k8055/known-configuration.md) | [input report](k8055/k8055-input-report.ksy) | [output report](k8055/k8055-output-report.ksy) (set outputs, reset counters) |
+| [Zoom H4n](zoom-h4n/known-configuration.md) | [status byte](zoom-h4n/zoom-h4n-status.ksy), as bit fields the importer can't read yet, so documentation only | [button press](zoom-h4n/zoom-h4n-command.ksy), with the release and wake sequences in its doc |
+| [Kuando Busylight](busylight/known-configuration.md) | an ASCII identification string, so no `.ksy` | [command](busylight/busylight-command.ksy): the 9-byte single-step report |

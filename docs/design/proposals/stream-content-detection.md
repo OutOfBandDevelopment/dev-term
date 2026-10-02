@@ -240,6 +240,7 @@ tool invocation, web-service conversion, internal HP/GL-to-SVG) are now built as
 as a "Convert..." action next to Start/Stop Monitoring. Still ahead: live vector/raster preview of
 HP-GL/PostScript/PCL captures in the window itself (the harder rendering-presenter work from
 [presenters.md](../presenters.md) §3) — "Convert..." writes a file but doesn't show it.
+**Update 2026-10-02:** a converted file now joins the capture list as its own entry (`ConvertedFrom`, `StreamMonitor.AddConverted`), the mechanism is chosen in the window next to Convert..., and WPF draws an SVG in the preview pane (`SvgPreview`: paths, lines, polygons, rectangles, circles; no transforms, text or CSS). Verified against a real Tektronix 2230 HP-GL plot converted to SVG and drawn. Still ahead: direct preview of PostScript/PCL, and any SVG drawing in the TUI (it lists the converted file only). Detail in docs/changes/2026-10-02.md.
 
 What was built, and where it differs from the proposal text above:
 

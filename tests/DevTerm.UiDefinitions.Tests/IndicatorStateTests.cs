@@ -4,7 +4,7 @@ namespace DevTerm.UiDefinitions.Tests;
 
 /// <summary>
 /// <see cref="IndicatorState"/> — the runtime companion for an <see cref="IndicatorControl"/> whose
-/// <see cref="IndicatorControl.Expression"/> is set. See docs/design/proposals/manifest-editor-expression-builder.md.
+/// <see cref="IndicatorControl.Expression"/> is set. See docs/design/features/manifest-editor-expression-builder.md.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]

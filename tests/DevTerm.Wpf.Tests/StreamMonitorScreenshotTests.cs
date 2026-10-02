@@ -1,4 +1,5 @@
 using System.IO;
+using DevTerm.Configuration;
 using DevTerm.Devices.Scpi;
 using DevTerm.Test.Utilities;
 
@@ -78,6 +79,20 @@ public sealed class StreamMonitorScreenshotTests
             var hpglPath = Path.Combine(_imagesDirectory, "wpf-stream-monitor-hpgl.png");
             WpfScreenshot.Save(window, hpglPath);
             AssertRealImage(hpglPath);
+
+            // A real plot captured from the Tektronix 2230 (a toy square says nothing about how a trace looks).
+            await bench.CaptureAsync(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Samples", "tek2230-plot.hpgl")));
+            window.CaptureList.SelectedIndex = window.Items.Count - 1;
+            window.ConvertMode = StreamConversionMode.InternalHpglToSvg;
+            await window.ConvertSelectedAsync();
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+
+            Assert.IsNotNull(window.PreviewImage.Source);
+            Assert.IsTrue(window.Items[^1].Capture.Capture.Kind.IsSvg);
+            var svgPath = Path.Combine(_imagesDirectory, "wpf-stream-monitor-svg.png");
+            WpfScreenshot.Save(window, svgPath);
+            AssertRealImage(svgPath);
 
             window.Close();
         });

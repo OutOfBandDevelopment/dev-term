@@ -67,4 +67,28 @@ public sealed class SampleDataGeneratorTests
         var result = expression!.Evaluate(values);
         Assert.IsTrue(result is >= 0 and <= 30000, result.ToString());
     }
+
+    [TestMethod]
+    public void DeclaredExample_StartsTheSeries_AndTextKeepsIt()
+    {
+        var pattern = new ResponsePattern { Name = "reading", Match = @"^MEAS (?<volts>-?[\d.]+) V (?<state>\w+)$", Example = "MEAS 12.5 V OK" };
+        var paths = ValuePathCatalog.FromPattern(pattern);
+        var volts = paths.Single(p => p.Path == "volts");
+        var state = paths.Single(p => p.Path == "state");
+
+        Assert.AreEqual("12.5", volts.Example);
+        Assert.AreEqual(12.5, SampleDataGenerator.Value(volts, 3, 0));
+        var later = Enumerable.Range(1, 40).Select(step => SampleDataGenerator.Value(volts, 3, step)!.Value).ToList();
+        Assert.IsTrue(later.All(v => Math.Abs(v - 12.5) <= 0.7), "wanders only a few percent");
+        Assert.IsTrue(later.Distinct().Count() > 1);
+        Assert.AreEqual("OK", SampleDataGenerator.TextValues(paths.Where(p => p.Type == ValuePathType.Text), 3, 9)["state"]);
+    }
+
+    [TestMethod]
+    public void ExampleThatDoesNotMatch_IsIgnored()
+    {
+        var pattern = new ResponsePattern { Name = "reading", Match = @"^MEAS (?<volts>[\d.]+)$", Example = "nope" };
+
+        Assert.IsTrue(ValuePathCatalog.FromPattern(pattern).All(p => p.Example is null));
+    }
 }

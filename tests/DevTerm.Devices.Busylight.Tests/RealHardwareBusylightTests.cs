@@ -75,4 +75,66 @@ public sealed class RealHardwareBusylightTests
         await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         TestContext.WriteLine("Closed.");
     }
+
+    [TestMethod]
+    public async Task RealDevice_ColorsAndBlink_AllApplyWithoutFaultOrTimeout()
+    {
+        var vendorIdText = GetProperty("RealHidBusylightVendorId");
+        var productIdText = GetProperty("RealHidBusylightProductId");
+        var devicePath = GetProperty("RealHidBusylightDevicePath");
+
+        TestContext.WriteLine($"VendorId/ProductId/DevicePath: {vendorIdText}/{productIdText}/{devicePath}");
+
+        if (string.IsNullOrEmpty(vendorIdText) || string.IsNullOrEmpty(productIdText)
+            || !int.TryParse(vendorIdText, out var vendorId) || !int.TryParse(productIdText, out var productId))
+        {
+            Assert.Inconclusive("No 'RealHidBusylightVendorId'/'RealHidBusylightProductId' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            return;
+        }
+
+        if (!RealDeviceReachability.IsHidDeviceAvailable(vendorId, productId, devicePath))
+        {
+            Assert.Inconclusive($"No Busylight HID device (VendorId {vendorId}, ProductId {productId}) is currently enumerated — is it plugged in?");
+            return;
+        }
+
+        var options = Options.Create(new HidTransportOptions
+        {
+            VendorId = vendorId,
+            ProductId = productId,
+            DevicePath = string.IsNullOrEmpty(devicePath) ? null : devicePath,
+        });
+
+        await using var transport = new HidTransport(new SystemHidDeviceFactory(), options);
+        await using var session = new Session(transport, new Pipeline([]));
+
+        TestContext.WriteLine("Connecting...");
+        await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        TestContext.WriteLine("Connected.");
+
+        var controlSurface = new BusylightControlSurface(session);
+        try
+        {
+            foreach (var (command, value) in new (string, string?)[] { ("color", "Red"), ("apply", null), ("color", "Green"), ("apply", null), ("color", "Blue"), ("apply", null), ("blinkMode", "Fast"), ("color", "Yellow"), ("apply", null) })
+            {
+                TestContext.WriteLine($"Sending: {command} = {value}");
+                await controlSurface.InvokeAsync(command, value, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+                if (command == "apply")
+                {
+                    await Task.Delay(2500, TestContext.CancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            // Leave the light off whatever happened above.
+            await controlSurface.InvokeAsync("blinkMode", "Solid", TestContext.CancellationToken);
+            await controlSurface.InvokeAsync("color", "Off", TestContext.CancellationToken);
+            await controlSurface.InvokeAsync("apply", null, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            TestContext.WriteLine("Sent: blinkMode=Solid, color=Off, apply");
+        }
+
+        await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        TestContext.WriteLine("Closed.");
+    }
 }

@@ -34,6 +34,40 @@ public sealed class DeviceKsyFilesTests
         Assert.AreEqual("21", values["extension.cpm"]);
     }
 
+    /// <summary>Bytes captured from a real Radex One on COM8 (2026-10-02, scripts/radexone_probe.py): the request we send and the reply it gave.</summary>
+    [TestMethod]
+    public void RadexOne_RealCapturedReadDataExchange_DecodesWithTheShippedLayouts()
+    {
+        var (request, requestValues) = Decode("radexone/radexone-query-request.ksy", Convert.FromHexString("7BFF2000060001000000" + "5D00" + "00080C00" + "F3F7"));
+        Assert.AreEqual(18, request.Length);
+        Assert.AreEqual("2048", requestValues["extension.command_code"]);
+        Assert.AreEqual("12", requestValues["extension.word"]);
+
+        var reply = Convert.FromHexString("7AFF2080160001000000" + "4D80" + "0008" + "0000" + "0C000000" + "09000000" + "57030000" + "0D000000" + "86F4");
+        var (schema, values) = Decode("radexone/radexone-read-data-reply.ksy", reply);
+        Assert.AreEqual(reply.Length, schema.Length);
+        Assert.AreEqual("9", values["extension.ambient"]);
+        Assert.AreEqual("855", values["extension.accumulated"]);
+        Assert.AreEqual("13", values["extension.cpm"]);
+    }
+
+    /// <summary>A real Radex One's Read Serial/Version reply (2026-10-02): it spells the source doc's example "SN: 180620-0840-008344 v1.8".</summary>
+    [TestMethod]
+    public void RadexOne_RealCapturedSerialVersionReply_DecodesToTheKnownSerial()
+    {
+        var reply = Convert.FromHexString("7AFF2080" + "1E00" + "0100" + "0000" + "4580" + "0100" + "0000" + "14000000" + "11A40000" + "98200000" + "1400" + "06" + "12" + "01" + "08" + "4803" + "08000000" + "D61D");
+        var (schema, values) = Decode("radexone/radexone-serial-version-reply.ksy", reply);
+
+        Assert.AreEqual(42, schema.Length);
+        Assert.AreEqual("8344", values["extension.serial_number"]);
+        Assert.AreEqual("840", values["extension.batch"]);
+        Assert.AreEqual("20", values["extension.day"]);
+        Assert.AreEqual("6", values["extension.month"]);
+        Assert.AreEqual("18", values["extension.year"]);
+        Assert.AreEqual("1", values["extension.version_major"]);
+        Assert.AreEqual("8", values["extension.version_minor"]);
+    }
+
     [TestMethod]
     public void K8055_ImportsAndDecodesAnInputReport()
     {

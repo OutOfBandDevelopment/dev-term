@@ -438,6 +438,22 @@ public sealed class DeviceManifestTests
     }
 
     [TestMethod]
+    public void Validate_PatternExampleThatDoesNotMatch_Warns_AndRoundTripsThroughJson()
+    {
+        var manifest = BuildKoradManifest();
+        manifest.Inbound = new InboundProtocol { Patterns = [new ResponsePattern { Name = "v", Match = @"^V=(\d+)$", Example = "oops" }] };
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.Contains("example line doesn't match", string.Join(" ", result.Warnings));
+        manifest.Inbound.Patterns[0].Example = "V=12";
+        Assert.DoesNotContain("example line", string.Join(" ", DeviceManifestValidator.Validate(manifest).Warnings));
+        var again = DeviceManifestSerializer.FromJson(DeviceManifestSerializer.ToJson(manifest));
+        Assert.AreEqual("V=12", again.Inbound!.Patterns[0].Example);
+    }
+
+    [TestMethod]
     public void Validate_IndicatorExpression_InvalidSyntax_ReportsAnError()
     {
         var manifest = BuildKoradManifest(inlineUi: new UiDefinition

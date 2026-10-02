@@ -4,7 +4,7 @@ using DevTerm.UiDefinitions;
 namespace DevTerm.DeviceManifests.Editing;
 
 /// <summary>One function the expression language offers, with the snippet the picker inserts for it.</summary>
-public sealed record ExpressionFunction(string Name, string Signature, string Description, string Snippet);
+public sealed record ExpressionFunction(string Name, string Signature, string Description, string Snippet, int CaretFromEnd = 1);
 
 /// <summary>One row of the picker's path list: a <see cref="ValuePath"/> plus how to show it.</summary>
 public sealed record PickerPath(ValuePath Path, string Detail, string? Example)
@@ -20,7 +20,7 @@ public sealed record PickerPath(ValuePath Path, string Detail, string? Example)
 /// (from <see cref="ValuePathCatalog"/>), the functions the language offers, insert-at-caret editing, live
 /// parse/reference diagnostics, and a result evaluated against <see cref="SampleDataGenerator"/> values. The Terminal.Gui and
 /// WPF forms render this the way they render the other editor forms. See
-/// docs/design/proposals/expression-picker-paths-and-cel.md.
+/// docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 /// <summary>What the text being picked is: one expression, a chart's channel list, a semicolon-separated list of expressions, or one value id.</summary>
 public enum PickerMode
@@ -33,6 +33,8 @@ public enum PickerMode
 
 public sealed class ExpressionPickerViewModel
 {
+    private const int _buttonCount = 5;
+
     private static readonly IReadOnlyList<ExpressionFunction> _functions =
     [
         new("round", "round(x) / round(x, n)", "Round to n decimal places (0 when omitted).", "round()"),
@@ -40,10 +42,21 @@ public sealed class ExpressionPickerViewModel
         new("max", "max(a, b, ...)", "The largest argument.", "max()"),
         new("abs", "abs(x)", "The absolute value.", "abs()"),
         new("if", "if(cond, a, b)", "a when cond is non-zero, otherwise b.", "if()"),
+        new("matches", "matches(text, regex)", "1 when the text matches the regular expression (a literal regex is checked as you type).", "matches(, '')", CaretFromEnd: 5),
+        new("contains", "contains(text, part)", "1 when the text contains the part.", "contains(, '')", CaretFromEnd: 5),
+        new("startsWith", "startsWith(text, prefix)", "1 when the text starts with the prefix.", "startsWith(, '')", CaretFromEnd: 5),
+        new("endsWith", "endsWith(text, suffix)", "1 when the text ends with the suffix.", "endsWith(, '')", CaretFromEnd: 5),
+        new("size", "size(x)", "The length of a text or a list.", "size()"),
+        new("number", "number(text)", "The number at the start of the text.", "number()"),
+        new("string", "string(x)", "The value as text.", "string()"),
+        new("has", "has({id})", "1 when the value has arrived, 0 while it is absent.", "has()"),
+        new("split", "split(text, separator)", "The text cut into a list at each separator.", "split(, ',')", CaretFromEnd: 6),
+        new("join", "join(list, separator)", "The list's items joined into one text.", "join(, ',')", CaretFromEnd: 6),
     ];
 
     private readonly IReadOnlyList<PickerPath> _allPaths;
     private readonly Dictionary<string, ValuePath> _byId;
+    private RecordedSamples? _recorded;
     private string? _textResult;
     private string _text;
     private string _filter = string.Empty;
@@ -108,6 +121,12 @@ public sealed class ExpressionPickerViewModel
 
     /// <summary>The functions the picker offers, in display order.</summary>
     public static IReadOnlyList<ExpressionFunction> Functions => _functions;
+
+    /// <summary>The numeric functions every picker shows as a button of their own.</summary>
+    public static IReadOnlyList<ExpressionFunction> ButtonFunctions { get; } = [.. _functions.Take(_buttonCount)];
+
+    /// <summary>The text and list functions, offered from one "more" control to keep the function row short.</summary>
+    public static IReadOnlyList<ExpressionFunction> MoreFunctions { get; } = [.. _functions.Skip(_buttonCount)];
 
     /// <summary>The seed the sample data is generated from, so a screenshot or test shows the same values every time.</summary>
     public int Seed { get; }
@@ -203,7 +222,23 @@ public sealed class ExpressionPickerViewModel
         "OK";
 
     /// <summary>The sample values the result is evaluated against, so a form can show them next to the paths.</summary>
-    public IReadOnlyDictionary<string, double> SampleValues => SampleDataGenerator.Values(_byId.Values, Seed, _step);
+    public IReadOnlyDictionary<string, double> SampleValues => SampleDataGenerator.Values(_byId.Values, Seed, _step, _recorded);
+
+    /// <summary>
+    /// A recording to draw sample values from instead of generated ones (paths it has no values for still generate). Null uses
+    /// generated values only; setting it restarts the walk and re-evaluates.
+    /// </summary>
+    public RecordedSamples? Recording
+    {
+        get => _recorded;
+        set
+        {
+            _recorded = value;
+            _step = 0;
+            Recompute();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     /// <summary>Moves the sample data to the next point in its smooth walk and re-evaluates.</summary>
     public void NextSample()
@@ -238,11 +273,11 @@ public sealed class ExpressionPickerViewModel
         InsertAtCaret(path.Reference, path.Reference.Length);
     }
 
-    /// <summary>Inserts a function's snippet at the caret and leaves the caret between its parentheses.</summary>
+    /// <summary>Inserts a function's snippet at the caret and leaves the caret where the function's first argument goes.</summary>
     public void InsertFunction(ExpressionFunction function)
     {
         ArgumentNullException.ThrowIfNull(function);
-        InsertAtCaret(function.Snippet, function.Snippet.Length - 1);
+        InsertAtCaret(function.Snippet, function.Snippet.Length - function.CaretFromEnd);
     }
 
     /// <summary>Inserts an operator or literal at the caret (spaced when it is a binary operator).</summary>
@@ -318,8 +353,8 @@ public sealed class ExpressionPickerViewModel
         }
 
         Warnings = warnings;
-        var numbers = SampleDataGenerator.Values(_byId.Values, Seed, _step);
-        var texts = SampleDataGenerator.TextValues(_byId.Values, Seed, _step);
+        var numbers = SampleDataGenerator.Values(_byId.Values, Seed, _step, _recorded);
+        var texts = SampleDataGenerator.TextValues(_byId.Values, Seed, _step, _recorded);
         Result = expression.Evaluate(numbers, texts);
         var shown = double.IsNaN(Result.Value) ? expression.EvaluateToText(numbers, texts) : null;
         _textResult = shown == "NaN" ? null : shown;

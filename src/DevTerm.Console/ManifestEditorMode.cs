@@ -108,6 +108,7 @@ internal static class ManifestEditorMode
         var undoButton = ToolButton("Undo");
         var redoButton = ToolButton("Redo");
         var importKsyButton = ToolButton("Ksy");
+        var recordingButton = ToolButton("Log");
         addButton.X = 0;
         removeButton.X = Pos.Right(addButton) + 1;
         upButton.X = Pos.Right(removeButton) + 1;
@@ -115,7 +116,8 @@ internal static class ManifestEditorMode
         undoButton.X = Pos.Right(downButton) + 2;
         redoButton.X = Pos.Right(undoButton) + 1;
         importKsyButton.X = Pos.Right(redoButton) + 1;
-        foreach (var button in new[] { addButton, removeButton, upButton, downButton, undoButton, redoButton, importKsyButton })
+        recordingButton.X = Pos.Right(importKsyButton) + 1;
+        foreach (var button in new[] { addButton, removeButton, upButton, downButton, undoButton, redoButton, importKsyButton, recordingButton })
         {
             button.Y = Pos.AnchorEnd(1);
         }
@@ -143,6 +145,7 @@ internal static class ManifestEditorMode
             UndoButton = undoButton,
             RedoButton = redoButton,
             ImportKsyButton = importKsyButton,
+            RecordingButton = recordingButton,
         };
 
         FormBinding? binding = null;
@@ -223,29 +226,29 @@ internal static class ManifestEditorMode
             if (form is ControlForm)
             {
                 formOptions.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text));
                 formOptions.TextPickers[nameof(ControlForm.Channels)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.Channels));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.Channels));
                 formOptions.TextPickers[nameof(ControlForm.XId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.YId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.ZId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.RadiusId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.AngleId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.HueId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.SaturationId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.BrightnessId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.VisibleWhenId)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ValueId));
                 formOptions.TextPickers[nameof(ControlForm.ParameterExpressions)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ExpressionList));
+                    ExpressionPickerDialog.Show(app, editor.CreatePicker(text, PickerMode.ExpressionList));
             }
 
             var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, formOptions);
@@ -404,6 +407,24 @@ internal static class ManifestEditorMode
         OnClick(downButton, editor.MoveDown);
         OnClick(undoButton, editor.Undo);
         OnClick(redoButton, editor.Redo);
+        OnClick(recordingButton, () =>
+        {
+            if (editor.Recording is not null)
+            {
+                editor.ClearRecording();
+                recordingButton.Text = "Log";
+                return;
+            }
+
+            var dialog = new OpenDialog { Title = "Use a session log as sample data" };
+            app.Run(dialog);
+            var chosen = !dialog.Canceled && dialog.FilePaths.Count > 0 ? dialog.FilePaths[0] : null;
+            dialog.Dispose();
+            if (chosen is not null && editor.LoadRecording(chosen))
+            {
+                recordingButton.Text = "NoLog";
+            }
+        });
         OnClick(importKsyButton, () =>
         {
             var dialog = new OpenDialog { Title = "Import a Kaitai Struct .ksy file as the binary frame" };
@@ -492,6 +513,9 @@ internal sealed class ManifestEditorParts
     public required Button RedoButton { get; init; }
 
     public required Button ImportKsyButton { get; init; }
+
+    /// <summary>Picks a session log to draw sample data from (a second press, with a log loaded, goes back to generated data).</summary>
+    public required Button RecordingButton { get; init; }
 
     /// <summary>The selected part's rendered form, while one is shown.</summary>
     public TuiFormParts? Form { get; set; }

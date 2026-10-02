@@ -16,6 +16,9 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
 
     public static readonly StreamContentKind Tiff = new(StreamContentFormat.Image, "TIFF image", "tif", "image/tiff");
 
+    /// <summary>A vector image a converter wrote (never sniffed from a stream); WPF has no built-in decoder for it, so a front end draws it itself.</summary>
+    public static readonly StreamContentKind Svg = new(StreamContentFormat.Image, "SVG image", "svg", "image/svg+xml");
+
     /// <summary>A declared <see cref="StreamContentFormat.Image"/> reply whose bytes matched no known image signature.</summary>
     public static readonly StreamContentKind UnknownImage = new(StreamContentFormat.Image, "image data (unrecognized format)", "bin", "application/octet-stream");
 
@@ -32,7 +35,22 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
     /// <c>System.Windows.Media.Imaging</c> decodes all five) — HP-GL/PostScript/PCL need the
     /// not-yet-built rendering presenter (presenters.md §3) before they can be previewed.
     /// </summary>
-    public bool IsNativeImage => Format == StreamContentFormat.Image && this != UnknownImage;
+    public bool IsNativeImage => Format == StreamContentFormat.Image && this != UnknownImage && this != Svg;
+
+    /// <summary>Whether this is <see cref="Svg"/>, which a front end previews with its own drawing code rather than a raster decoder.</summary>
+    public bool IsSvg => this == Svg;
+
+    /// <summary>The kind a converter's output file with this extension (no dot) is, or <see cref="Binary"/> when it isn't one dev-term knows.</summary>
+    public static StreamContentKind ForExtension(string? extension) => extension?.TrimStart('.').ToLowerInvariant() switch
+    {
+        "svg" => Svg,
+        "png" => Png,
+        "jpg" or "jpeg" => Jpeg,
+        "gif" => Gif,
+        "bmp" => Bmp,
+        "tif" or "tiff" => Tiff,
+        _ => Binary,
+    };
 
     /// <summary>The kind a declared <paramref name="format"/> hint falls back to when the reply's own bytes don't identify anything more specific.</summary>
     public static StreamContentKind ForDeclaredFormat(StreamContentFormat format) => format switch

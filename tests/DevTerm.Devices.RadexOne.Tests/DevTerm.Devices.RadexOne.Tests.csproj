@@ -22,6 +22,7 @@
     <!-- Real-hardware Integration tests (RealHardwareRadexOneTests) construct a real SerialTransport
          directly - same reasoning as DevTerm.Devices.ZoomH4n.Tests' equivalent reference. -->
     <ProjectReference Include="..\..\src\DevTerm.Transports.Serial\DevTerm.Transports.Serial.csproj" />
+    <ProjectReference Include="..\..\src\DevTerm.DeviceManifests\DevTerm.DeviceManifests.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
   </ItemGroup>
 

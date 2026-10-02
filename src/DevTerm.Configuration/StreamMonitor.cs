@@ -11,7 +11,8 @@ namespace DevTerm.Configuration;
 /// <param name="LocalStartedAt">When it started, in local time — the timestamp its file name uses.</param>
 /// <param name="SavedPath">The file it was auto-saved to, or <see langword="null"/> if saving failed.</param>
 /// <param name="SaveError">Why saving failed, when it did.</param>
-public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceName, DateTimeOffset LocalStartedAt, string? SavedPath, string? SaveError)
+/// <param name="ConvertedFrom">For an entry that is a converter's output, the display name of what it was converted from (e.g. <c>HP-GL plot</c>); otherwise <see langword="null"/>.</param>
+public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceName, DateTimeOffset LocalStartedAt, string? SavedPath, string? SaveError, string? ConvertedFrom = null)
 {
     /// <summary>The front ends' one-line status message for this capture, e.g. <c>Captured 4,213 bytes of BMP image to C:\…\hp34401a_20260923-143512.bmp.</c></summary>
     public string Describe()
@@ -29,6 +30,11 @@ public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceNa
         get
         {
             var size = Capture.Data.Length.ToString("N0", CultureInfo.InvariantCulture);
+            if (ConvertedFrom is not null)
+            {
+                return $"{Capture.Kind.DisplayName}, {size} bytes, converted from {ConvertedFrom}.";
+            }
+
             var declared = Capture.WasDeclared ? " (declared by the command)" : string.Empty;
             return $"{Capture.Kind.DisplayName}, {size} bytes, {EndLabel}{declared}.";
         }
@@ -345,6 +351,42 @@ public sealed class StreamMonitor : IDisposable
         }
 
         CaptureAdded?.Invoke(this, record);
+    }
+
+    /// <summary>
+    /// Adds a converter's output file to <see cref="Captures"/> (and raises <see cref="CaptureAdded"/>)
+    /// so it appears in a window's list next to what it was converted from. Returns
+    /// <see langword="null"/>, adding nothing, if the file can't be read.
+    /// </summary>
+    public StreamMonitorCapture? AddConverted(StreamMonitorCapture source, string outputPath)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrEmpty(outputPath);
+
+        byte[] data;
+        try
+        {
+            data = File.ReadAllBytes(outputPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+
+        var kind = StreamContentKind.ForExtension(Path.GetExtension(outputPath));
+        var capture = new StreamCapture(kind, data, source.Capture.StartedAt, StreamCaptureEnd.Complete, WasDeclared: false);
+        var record = new StreamMonitorCapture(capture, source.DeviceName, source.LocalStartedAt, outputPath, null, source.Capture.Kind.DisplayName);
+        lock (_gate)
+        {
+            _captures.Add(record);
+            if (_captures.Count > MaxRetainedCaptures)
+            {
+                _captures.RemoveAt(0);
+            }
+        }
+
+        CaptureAdded?.Invoke(this, record);
+        return record;
     }
 
     private StreamMonitorCapture Save(StreamCapture capture, string deviceName, string exportDirectory)

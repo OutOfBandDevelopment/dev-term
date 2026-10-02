@@ -44,6 +44,8 @@ test class's own doc comment.
 - [Editing a device manifest](manifest-editor.md) — **Device > Edit Device Manifest...**: build or
   change a device manifest's commands, reply patterns and control panel in forms, with a live preview
   of the panel, in TUI/WPF.
+- [Expressions and the expression picker](expression-builder.md) — the expression language (indicator,
+  chart channels, button parameters) and the **Pick...** dialog that builds and checks one, in TUI/WPF.
 - [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
   Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
   preview in WPF.

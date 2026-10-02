@@ -68,9 +68,20 @@ decodes itself (PNG, JPEG, GIF, BMP, TIFF):
 
 ![WPF Stream Monitor previewing a captured PNG screen dump](images/wpf-stream-monitor.png)
 
-HP-GL, PostScript and PCL are captured and saved, but can't be previewed yet:
+HP-GL, PostScript and PCL are captured and saved, but can't be previewed directly:
 
 ![WPF Stream Monitor with an HP-GL capture selected](images/wpf-stream-monitor-hpgl.png)
+
+To see an HP-GL plot, pick **HP-GL to SVG** in the conversion drop-down above the preview and press
+**Convert...**. The SVG is added to the list as a new entry (selected, "converted from HP-GL plot") and
+drawn in the preview:
+
+![WPF Stream Monitor drawing an HP-GL plot converted to SVG](images/wpf-stream-monitor-svg.png)
+
+The drawing is dev-term's own and covers the simple shapes plots use (paths, lines, polygons, rectangles,
+circles), with lines kept thick enough to see when a plot is in plotter units. The `.svg` file itself is
+saved next to the capture, so any SVG viewer opens it too. The TUI lists the converted file but doesn't
+draw it.
 
 The WPF window also has:
 
@@ -84,7 +95,13 @@ Both windows have a **Convert...** button next to Start/Stop Monitoring, enabled
 selected a capture. It runs whichever conversion mechanism the connection is configured for and
 writes the result next to the capture's saved file (same folder and name, a new extension).
 
-Set it up in **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
+Choose the mechanism right in the window, next to Convert...: a **conversion** drop-down in WPF
+(None, HP-GL to SVG, External tool, Web service) and a **Convert as:** button in the TUI that opens the
+same list. The choice applies to that window; the profile's saved mode is just where it starts. For
+HP-GL captures, **HP-GL to SVG** needs nothing else. External tool and Web service also need their
+path or URL, which come from the profile.
+
+To save the choice and those settings, use **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
 **Stream Monitor** section:
 
 - **Internal HP-GL to SVG** (`internalhpgltosvg`) — no setup beyond picking this mode. Works only on
@@ -97,11 +114,15 @@ Set it up in **File > Device Profiles... > Edit** (or the TUI's Configure screen
 - **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
   default) and saves whatever comes back.
 
+When a conversion succeeds, the converted file joins the capture list as a new entry, selected, marked
+`converted from HP-GL plot` in its detail. In WPF an SVG is drawn in the preview pane, so you can check
+a plot without leaving dev-term (simple shapes only: paths, lines, polygons, rectangles, circles).
+
 If nothing is configured, or the conversion fails, Convert... reports why: in the TUI, in the detail
 text; in WPF, in the detail text (success) or a message box (failure).
 
 ## Not yet
 
-- Previewing a converted file in the window itself — Convert... writes a file but doesn't show it.
+- Drawing a converted file in the TUI (the converted file is listed there, but only WPF draws SVG).
 - Stream Monitor in the plain CLI (`--cli true`) mode.
 - Automatic cleanup of old files in the export folder.

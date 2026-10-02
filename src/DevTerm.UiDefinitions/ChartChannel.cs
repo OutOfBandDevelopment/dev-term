@@ -21,7 +21,7 @@ public sealed class ChartChannel
     /// When set, an <see cref="Expression"/> deriving this channel's plotted number from the live
     /// published values (e.g. <c>{raw_mv} / 1000</c>) instead of plotting <see cref="Id"/>'s own
     /// published value directly. Unset (the default) keeps today's direct behavior. See
-    /// docs/design/proposals/manifest-editor-expression-builder.md.
+    /// docs/design/features/manifest-editor-expression-builder.md.
     /// </summary>
     public string? Expression { get; set; }
 }
