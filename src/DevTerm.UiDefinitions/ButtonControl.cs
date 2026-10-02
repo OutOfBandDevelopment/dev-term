@@ -41,7 +41,7 @@ public sealed class ButtonControl : UiControl
     /// sending a field entered in Celsius as Fahrenheit via <c>{field_id} * 9 / 5 + 32</c>), evaluated
     /// against every sibling control's current value in the same section. A null or blank entry at a
     /// given index — including when this list itself is unset — keeps that index's existing bare
-    /// lookup unchanged. See docs/design/proposals/manifest-editor-expression-builder.md.
+    /// lookup unchanged. See docs/design/features/manifest-editor-expression-builder.md.
     /// </summary>
     public List<string?>? ParameterExpressions { get; set; }
 }
