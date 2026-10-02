@@ -51,14 +51,13 @@ public sealed class ExpressionPickerViewModelTests
     }
 
     [TestMethod]
-    public void UnknownId_AndTextPath_WarnWithoutBlocking()
+    public void UnknownId_WarnsWithoutBlocking()
     {
         var picker = Create("{volts} + {nothing} + {banner} + {mode}");
 
         Assert.IsTrue(picker.IsValid);
-        Assert.HasCount(2, picker.Warnings, "an unknown id and a free-text path, but not a choice");
+        Assert.HasCount(1, picker.Warnings, "only the unknown id; text paths are readable");
         Assert.IsTrue(picker.Warnings.Any(w => w.Contains("'nothing'", StringComparison.Ordinal)));
-        Assert.IsTrue(picker.Warnings.Any(w => w.Contains("'banner'", StringComparison.Ordinal)));
         StringAssert.StartsWith(picker.Diagnostics, "OK, with warnings");
     }
 
@@ -271,5 +270,23 @@ public sealed class ExpressionPickerViewModelTests
         picker.Text = "{volts}; {amps} *";
         Assert.IsFalse(picker.IsValid);
         StringAssert.StartsWith(picker.Error, "Item 2");
+    }
+
+    [TestMethod]
+    public void TextPath_ReadsSampleText_NotZero()
+    {
+        var picker = Create("size({banner}) > 0");
+
+        Assert.IsTrue(picker.IsValid);
+        Assert.AreEqual(0, picker.Warnings.Count, "A text path is readable now.");
+        Assert.AreEqual("1", picker.ResultText);
+    }
+
+    [TestMethod]
+    public void TextResult_IsShownQuoted()
+    {
+        var picker = Create("startsWith({banner}, 'sample') ? 'ok' : 'no'");
+
+        Assert.AreEqual("\"ok\"", picker.ResultText);
     }
 }

@@ -44,6 +44,7 @@ public sealed class ExpressionPickerViewModel
 
     private readonly IReadOnlyList<PickerPath> _allPaths;
     private readonly Dictionary<string, ValuePath> _byId;
+    private string? _textResult;
     private string _text;
     private string _filter = string.Empty;
     private int _caret;
@@ -190,7 +191,7 @@ public sealed class ExpressionPickerViewModel
     public double? Result { get; private set; }
 
     /// <summary>The result as shown: invariant culture, up to 6 significant decimals, or a dash when there is none.</summary>
-    public string ResultText => Result is { } r
+    public string ResultText => _textResult is not null ? $"\"{_textResult}\"" : Result is { } r
         ? double.IsFinite(r) ? r.ToString("0.######", CultureInfo.InvariantCulture) : r.ToString(CultureInfo.InvariantCulture)
         : "-";
 
@@ -267,6 +268,7 @@ public sealed class ExpressionPickerViewModel
     {
         Warnings = [];
         Result = null;
+        _textResult = null;
 
         if (IsEmpty)
         {
@@ -309,18 +311,18 @@ public sealed class ExpressionPickerViewModel
         var warnings = new List<string>();
         foreach (var id in expression!.ReferencedIds)
         {
-            if (!_byId.TryGetValue(id, out var path))
+            if (!_byId.ContainsKey(id))
             {
                 warnings.Add($"'{id}' is not published by anything in this manifest.");
-            }
-            else if (path.Type == ValuePathType.Text && path.Choices is null)
-            {
-                warnings.Add($"'{id}' is text, which an expression reads as 0.");
             }
         }
 
         Warnings = warnings;
-        Result = expression.Evaluate(SampleDataGenerator.Values(_byId.Values, Seed, _step));
+        var numbers = SampleDataGenerator.Values(_byId.Values, Seed, _step);
+        var texts = SampleDataGenerator.TextValues(_byId.Values, Seed, _step);
+        Result = expression.Evaluate(numbers, texts);
+        var shown = double.IsNaN(Result.Value) ? expression.EvaluateToText(numbers, texts) : null;
+        _textResult = shown == "NaN" ? null : shown;
     }
 
     private void RecomputeExpressionList()

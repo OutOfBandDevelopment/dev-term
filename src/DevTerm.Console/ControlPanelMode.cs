@@ -1297,7 +1297,7 @@ internal static class ControlPanelMode
                 var expressionText = expressions is { Count: > 0 } && i < expressions.Count ? expressions[i] : null;
                 if (expressionText is { Length: > 0 } && Expression.TryParse(expressionText, out var expression, out _))
                 {
-                    values.Add(ChartValue.Format(expression!.Evaluate(SiblingValues())));
+                    values.Add(expression!.EvaluateToText(SiblingValues(), SiblingTexts()));
                 }
                 else
                 {
@@ -1313,6 +1313,10 @@ internal static class ControlPanelMode
             joined = ParameterValueList.Join(values);
             return true;
         }
+
+        /// <summary>Every control's current value as raw text, keyed by id — lets a parameter expression match or compare it as a string.</summary>
+        private Dictionary<string, string> SiblingTexts() =>
+            ControlViews.ToDictionary(c => c.Key, c => GetCurrentValue(c.Value) ?? string.Empty, StringComparer.Ordinal);
 
         /// <summary>Every control's current value parsed as a number, keyed by id — what a <see cref="ButtonControl.ParameterExpressions"/> entry evaluates against.</summary>
         private Dictionary<string, double> SiblingValues()

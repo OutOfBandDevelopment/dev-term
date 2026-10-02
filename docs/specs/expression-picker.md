@@ -36,7 +36,7 @@ The picker has no buttons for the text functions, but typing them works and the 
 (a literal regex that doesn't compile is an error), `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`,
 `has({id})`, `!x` and `cond ? a : b`, with `'single'` or `"double"` quoted strings and `+` to join them. On a live indicator
 or chart, `{id}` is the device's published text: arithmetic still reads the number out of `"12.5 V"`, while string functions see the
-raw text. The picker's own result preview uses numeric sample data only, so a text expression shows its numeric reading there.
+raw text. A text path gets sample text (`sample-xxxx-N`) in the preview, and a text result shows quoted. A button's parameter expressions see each sibling control's current text the same way.
 
 ## Channels mode
 
