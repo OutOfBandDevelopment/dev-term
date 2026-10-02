@@ -4,7 +4,7 @@ namespace DevTerm.UiDefinitions.Tests;
 
 /// <summary>
 /// <see cref="Expression"/>'s lists (<c>[1, 2]</c>, <c>x[i]</c>, <c>in</c>, <c>split</c>/<c>join</c>), bare and dotted
-/// identifiers, and <c>true</c>/<c>false</c> — see docs/design/proposals/expression-picker-paths-and-cel.md.
+/// identifiers, and <c>true</c>/<c>false</c> — see docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]

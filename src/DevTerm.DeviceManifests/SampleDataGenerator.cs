@@ -9,7 +9,7 @@ namespace DevTerm.DeviceManifests;
 /// and are given by <see cref="TextValues"/> instead of <see cref="Values"/>. A path with a declared example
 /// (<see cref="ResponsePattern.Example"/>) starts from it: step 0 is the example itself, text paths keep it, and later numeric steps
 /// wander within a few percent of it. The same seed and step always give the
-/// same values, so screenshots and tests are stable. See docs/design/proposals/expression-picker-paths-and-cel.md.
+/// same values, so screenshots and tests are stable. See docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 public static class SampleDataGenerator
 {

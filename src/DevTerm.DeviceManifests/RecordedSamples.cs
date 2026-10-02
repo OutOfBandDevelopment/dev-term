@@ -9,7 +9,7 @@ namespace DevTerm.DeviceManifests;
 /// Real values a device published, per value path, in the order they arrived: the top preference tier for
 /// <see cref="SampleDataGenerator"/> (a recorded session, then a pattern's declared example, then generated values).
 /// Built by running a recording's received bytes through the manifest's own presenters, so a path holds exactly what a live
-/// panel would have been given. See docs/design/proposals/expression-picker-paths-and-cel.md.
+/// panel would have been given. See docs/design/features/expression-picker-paths-and-cel.md.
 /// </summary>
 public sealed partial class RecordedSamples
 {
