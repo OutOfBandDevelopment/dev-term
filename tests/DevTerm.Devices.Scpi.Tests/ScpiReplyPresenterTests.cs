@@ -264,6 +264,38 @@ public sealed class ScpiReplyPresenterTests
     }
 
     [TestMethod]
+    public void Render_ReplyOverTheBufferCap_ConsumesOnlyOneReplyId_NotOnePerForcedChunk()
+    {
+        // Bug 063: a terminatorless binary dump (a Tektronix HARDCOPY START) longer than the buffer cap is
+        // flushed in forced chunks; each used to dequeue a pending reply id that was never answered, so the
+        // next real query's reply was matched to the wrong id.
+        var presenter = new ScpiReplyPresenter();
+        var seen = new List<IReadOnlyDictionary<string, string>>();
+        presenter.ValuesChanged += (_, values) => seen.Add(values);
+        presenter.QuerySent("dump");
+        presenter.QuerySent("idn");
+
+        presenter.Render(Bytes(new string('Q', 9000) + "\r"));
+        presenter.Render(Bytes("TEKTRONIX,TDS 2024\r"));
+
+        Assert.HasCount(2, seen);
+        Assert.IsTrue(seen[0].ContainsKey("dump"));
+        Assert.AreEqual(9000 % 4096, seen[0]["dump"].Length);
+        Assert.AreEqual("TEKTRONIX,TDS 2024", seen[1]["idn"]);
+    }
+
+    [TestMethod]
+    public void Render_ReplyOverTheBufferCap_StillEmitsEveryChunkAsText()
+    {
+        var presenter = new ScpiReplyPresenter();
+
+        var lines = presenter.Render(Bytes(new string('Q', 9000) + "\r"));
+
+        Assert.AreEqual(9000, lines.Sum(l => l.Length));
+        Assert.HasCount(3, lines);
+    }
+
+    [TestMethod]
     public void Name_IsScpi()
     {
         var presenter = new ScpiReplyPresenter();

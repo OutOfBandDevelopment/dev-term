@@ -134,7 +134,8 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
                 _buffer.Add(b);
                 if (_buffer.Count >= _maxBufferLength)
                 {
-                    Complete(lines);
+                    // A safety flush, not the end of the reply: show the chunk but leave the reply id queued.
+                    Complete(lines, endsReply: false);
                 }
             }
         }
@@ -152,11 +153,16 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     {
     }
 
-    private void Complete(List<string> lines)
+    private void Complete(List<string> lines, bool endsReply = true)
     {
         var line = Encoding.ASCII.GetString(CollectionsMarshal.AsSpan(_buffer));
         _buffer.Clear();
         lines.Add(line);
+        if (!endsReply)
+        {
+            // See docs/bugs/resolved/063-line-reply-overflow-flush-desyncs-pending-ids.md.
+            return;
+        }
 
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         if (_pendingReplyIds.TryDequeue(out var replyId))
