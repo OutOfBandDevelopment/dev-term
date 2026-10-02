@@ -42,6 +42,9 @@ the rest.
   2026-09-29 manual attempt (`docs/test/2026-09-29-18-06-54.md`) got a real long/RAW-mode reply (8192 data bytes,
   8202 total) but that still isn't a multiple of 64 or 512 — still not reproduced; needs finer control over the
   exact point count to actually land on the boundary.
+  2026-10-02 (`docs/test/2026-10-02-07-08-35.md`): worked out why — a block reply's transfer length is N + 24 for
+  every power-of-two N the scope produces, i.e. 24 mod 64, so it can never land on a boundary. A text reply of 52 or
+  116 payload bytes (or a block of 64k - 34 data bytes) is what's needed; no such query identified yet.
 
 ### Tektronix TDS2024
 
