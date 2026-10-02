@@ -23,6 +23,13 @@ namespace DevTerm.Console.Tests;
 [DoNotParallelize]
 public sealed class ControlPanelModeTests
 {
+    private sealed class PreviewingControlSurface : IControlSurface, ICommandPreview
+    {
+        public Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public string? PreviewCommand(string commandId, string? value) => $"{commandId.ToUpperInvariant()}\n";
+    }
+
     private sealed class FakeControlSurface : IControlSurface
     {
         public List<(string CommandId, string? Value)> Invocations { get; } = [];
@@ -87,10 +94,10 @@ public sealed class ControlPanelModeTests
         ],
     };
 
-    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body) =>
+    private static void RunHeadless(IControlSurface surface, IPresenter? structuredSource, Action<ControlPanelWindowParts> body, Action<string>? echoSent = null) =>
         TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel");
+            var parts = ControlPanelMode.BuildWindow(app, BuildSampleDefinition(), surface, structuredSource, "Test Panel", echoSent);
             var token = app.Begin(parts.Window) ?? throw new NotSupportedException(); ;
             app.LayoutAndDraw(true);
 
@@ -137,6 +144,19 @@ public sealed class ControlPanelModeTests
             Assert.HasCount(1, surface.Invocations);
             Assert.AreEqual(("reset", (string?)null), surface.Invocations[0]);
         });
+    }
+
+    [TestMethod]
+    public void Button_WhenClicked_EchoesTheSentCommandsPreview()
+    {
+        // Bug 064: View > Echo Sent Commands used to cover only the typed send box.
+        var echoed = new List<string>();
+        RunHeadless(new PreviewingControlSurface(), null, parts =>
+        {
+            Accept(parts.ControlViews["reset"]);
+
+            CollectionAssert.AreEqual(new[] { "RESET\n" }, echoed);
+        }, echoed.Add);
     }
 
     [TestMethod]

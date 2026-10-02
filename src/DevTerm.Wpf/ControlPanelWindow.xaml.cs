@@ -93,6 +93,9 @@ public partial class ControlPanelWindow : Window
     /// <summary>Each labeled section's <see cref="Expander"/>, keyed by section label (<see cref="NotesSectionLabel"/> for the notes).</summary>
     internal IReadOnlyDictionary<string, Expander> SectionExpanders => _sectionExpanders;
 
+    /// <summary>Echoes a sent command's preview text into the owning window's output (View > Echo Sent Commands); null when nothing owns the panel.</summary>
+    internal Action<string>? EchoSent { get; set; }
+
     public ControlPanelWindow(UiDefinition definition, IControlSurface surface, IPresenter? structuredSource)
     {
         InitializeComponent();
@@ -684,6 +687,10 @@ public partial class ControlPanelWindow : Window
         void Report(Exception ex) =>
             Dispatcher.BeginInvoke(() => StatusText.Text = $"Command failed: {ex.GetBaseException().Message}");
 
+        // Computed before the send, echoed only once the send has started: a value the surface rejects
+        // must not leave a misleading "Out>" line (bug 064).
+        var echo = EchoSent is null ? null : _preview?.PreviewCommand(commandId, value);
+
         Task task;
         try
         {
@@ -693,6 +700,11 @@ public partial class ControlPanelWindow : Window
         {
             Report(ex);
             return;
+        }
+
+        if (echo is not null)
+        {
+            EchoSent!(echo);
         }
 
         _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);

@@ -44,7 +44,7 @@ internal static class ControlPanelMode
 {
     internal const string NotesSectionLabel = "Notes";
 
-    internal static ControlPanelWindowParts BuildWindow(IApplication app, UiDefinition definition, IControlSurface surface, IPresenter? structuredSource, string title)
+    internal static ControlPanelWindowParts BuildWindow(IApplication app, UiDefinition definition, IControlSurface surface, IPresenter? structuredSource, string title, Action<string>? echoSent = null)
     {
         var window = new Window
         {
@@ -74,7 +74,7 @@ internal static class ControlPanelMode
         var previewLabel = new Label { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1, Text = string.Empty };
         var messageLabel = new Label { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1, Text = string.Empty };
 
-        var panel = new PanelState(app, surface, definition, previewLabel, messageLabel);
+        var panel = new PanelState(app, surface, definition, previewLabel, messageLabel) { EchoSent = echoSent };
 
         var blocks = definition.Sections.Select(section => BuildSection(panel, section)).ToList();
         if (!string.IsNullOrWhiteSpace(definition.Description))
@@ -721,7 +721,7 @@ internal static class ControlPanelMode
                         {
                             LastPickedColors.Set(button.Id, picked);
                             ShowSwatch(swatchLabel, picked);
-                            Invoke(app, surface, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
+                            Invoke(app, surface, panel.EchoSent, colorTargetId, $"{picked.R},{picked.G},{picked.B}");
                             SelectCustomColorOption(panel, colorTargetId, button);
                         }
 
@@ -748,7 +748,7 @@ internal static class ControlPanelMode
                     {
                         if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions))
                         {
-                            Invoke(app, surface, commandId, joined);
+                            Invoke(app, surface, panel.EchoSent, commandId, joined);
                         }
 
                         e.Handled = true;
@@ -769,7 +769,7 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     buttonView.Accepting += (_, e) =>
                     {
-                        Invoke(app, surface, commandId, null);
+                        Invoke(app, surface, panel.EchoSent, commandId, null);
                         e.Handled = true;
                     };
                     body.Add(buttonView);
@@ -789,7 +789,7 @@ internal static class ControlPanelMode
                     };
                     checkBox.ValueChanged += (_, _) =>
                     {
-                        Invoke(app, surface, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
+                        Invoke(app, surface, panel.EchoSent, toggle.Id, checkBox.Value == CheckState.Checked ? "1" : "0");
                         panel.RefreshPreview();
                         panel.OnValueChanged?.Invoke();
                     };
@@ -823,7 +823,7 @@ internal static class ControlPanelMode
                         if (panel.TryValidate(control, field.Text, out var value))
                         {
                             field.Text = value;
-                            Invoke(app, surface, control.Id, value);
+                            Invoke(app, surface, panel.EchoSent, control.Id, value);
                         }
 
                         e.Handled = true;
@@ -869,7 +869,7 @@ internal static class ControlPanelMode
                             }
                             else
                             {
-                                Invoke(app, surface, choice.Id, option);
+                                Invoke(app, surface, panel.EchoSent, choice.Id, option);
                             }
                         }
 
@@ -893,7 +893,7 @@ internal static class ControlPanelMode
                         {
                             value = textField.MaxLength is { } max && value.Length > max ? value[..max] : value;
                             textFieldView.Text = value;
-                            Invoke(app, surface, textField.Id, value);
+                            Invoke(app, surface, panel.EchoSent, textField.Id, value);
                         }
 
                         e.Handled = true;
@@ -1021,7 +1021,7 @@ internal static class ControlPanelMode
             ShowSwatch(swatchLabel, color);
         }
 
-        Invoke(panel.App, panel.Surface, choiceId, $"{color.R},{color.G},{color.B}");
+        Invoke(panel.App, panel.Surface, panel.EchoSent, choiceId, $"{color.R},{color.G},{color.B}");
     }
 
     /// <summary>After a color pick, select its linked choice option (without sending it again).</summary>
@@ -1062,10 +1062,14 @@ internal static class ControlPanelMode
     /// disconnected itself) is shown in an error dialog over this panel - which, being modal, hides
     /// the main window's output pane where the disconnect is also reported.
     /// </summary>
-    private static void Invoke(IApplication app, IControlSurface surface, string commandId, string? value)
+    private static void Invoke(IApplication app, IControlSurface surface, Action<string>? echoSent, string commandId, string? value)
     {
         void Report(Exception ex) =>
             app.Invoke(() => MessageBox.ErrorQuery(app, "dev-term — command failed", ex.GetBaseException().Message, "Ok"));
+
+        // Computed before the send, but only echoed once the send has started: a value the surface rejects
+        // must not leave a misleading "Out>" line (bug 064).
+        var echo = echoSent is null ? null : (surface as ICommandPreview)?.PreviewCommand(commandId, value);
 
         Task task;
         try
@@ -1076,6 +1080,11 @@ internal static class ControlPanelMode
         {
             Report(ex);
             return;
+        }
+
+        if (echo is not null)
+        {
+            echoSent!(echo);
         }
 
         _ = task.ContinueWith(t => Report(t.Exception!), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
@@ -1138,6 +1147,9 @@ internal static class ControlPanelMode
         private readonly Dictionary<string, UiControl> _controlsById = [];
         private readonly Dictionary<string, string> _consumerByFieldId = [];
         private Func<string?>? _currentPreviewSource;
+
+        /// <summary>Echoes a sent command's preview text into the main window's output pane (View > Echo Sent Commands); null when the panel has no owner to echo to.</summary>
+        public Action<string>? EchoSent { get; init; }
 
         public PanelState(IApplication app, IControlSurface surface, UiDefinition definition, Label previewLabel, Label messageLabel)
         {

@@ -241,6 +241,15 @@ public static class TuiMode
         // docs/bugs/resolved/031-tui-output-no-backpressure.md (the single-tab bug this originally fixed).
         void AppendOutput(TuiWindowTab windowTab, string line) => windowTab.OutputQueue!.Enqueue(line);
 
+        // What a control panel's sends echo through (View > Echo Sent Commands), same as a typed command.
+        Action<string> PanelEcho(TuiWindowTab windowTab) => text =>
+        {
+            if (echoSentCommands)
+            {
+                AppendOutput(windowTab, $"Out> {text}");
+            }
+        };
+
         // The output pane is one plain-text Editor (no per-line colors), so status and error lines
         // are told apart from device output by a source tag, the same "[source] text" shape device
         // lines already use ("[ascii] ...").
@@ -568,7 +577,8 @@ public static class TuiMode
                         K8055UiDefinition.Build(),
                         new K8055ControlSurface(windowTab.Tab.Session),
                         structuredSource,
-                        "dev-term — K8055 Control Panel");
+                        "dev-term — K8055 Control Panel",
+                        PanelEcho(windowTab));
                     try
                     {
                         app.Run(panelParts.Window);
@@ -587,7 +597,8 @@ public static class TuiMode
                         BusylightUiDefinition.Build(),
                         new BusylightControlSurface(windowTab.Tab.Session),
                         structuredSource,
-                        "dev-term — Busylight Control Panel");
+                        "dev-term — Busylight Control Panel",
+                        PanelEcho(windowTab));
                     try
                     {
                         app.Run(panelParts.Window);
@@ -606,7 +617,8 @@ public static class TuiMode
                         RadexOneUiDefinition.Build(),
                         new RadexOneControlSurface(windowTab.Tab.Session),
                         structuredSource,
-                        "dev-term — Radex One Control Panel");
+                        "dev-term — Radex One Control Panel",
+                        PanelEcho(windowTab));
                     try
                     {
                         app.Run(panelParts.Window);
@@ -625,7 +637,8 @@ public static class TuiMode
                         ZoomH4nUiDefinition.Build(),
                         new ZoomH4nControlSurface(windowTab.Tab.Session),
                         structuredSource,
-                        "dev-term — Zoom H4n Remote");
+                        "dev-term — Zoom H4n Remote",
+                        PanelEcho(windowTab));
                     try
                     {
                         app.Run(panelParts.Window);
@@ -644,7 +657,8 @@ public static class TuiMode
                         De5000UiDefinition.Build(),
                         new De5000ControlSurface(),
                         structuredSource,
-                        "dev-term — DE-5000 LCR Meter");
+                        "dev-term — DE-5000 LCR Meter",
+                        PanelEcho(windowTab));
                     try
                     {
                         app.Run(panelParts.Window);
@@ -663,7 +677,8 @@ public static class TuiMode
                         NmeaGpsUiDefinition.Build(),
                         new NmeaGpsControlSurface(),
                         structuredSource,
-                        "dev-term — NMEA 0183");
+                        "dev-term — NMEA 0183",
+                        PanelEcho(windowTab));
                     app.Run(panelParts.Window);
                 })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
@@ -686,16 +701,16 @@ public static class TuiMode
                         // forget with the eventual window open marshaled back via Application.Invoke,
                         // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
                         // reason (real async I/O resumes off the UI thread).
-                        Observe(DetectAndOpenScpiInstrumentAsync(app, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text)), line => AppendOutput(windowTab, line));
+                        Observe(DetectAndOpenScpiInstrumentAsync(app, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab)), line => AppendOutput(windowTab, line));
                         return;
                     }
 
                     var profile = picked == _scpiGenericChoice
                         ? ScpiProfileCatalog.Generic
                         : ScpiProfileCatalog.All.First(p => p.Name == picked);
-                    OpenScpiInstrumentWindow(app, windowTab.Tab.Session, structuredSource, profile);
+                    OpenScpiInstrumentWindow(app, windowTab.Tab.Session, structuredSource, profile, PanelEcho(windowTab));
                 })),
-                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, ActiveTab().Tab.Session))),
+                manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, ActiveTab().Tab.Session, PanelEcho(ActiveTab())))),
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
@@ -1445,7 +1460,7 @@ public static class TuiMode
     /// reporting progress in the output pane while it waits and what it found afterward, then opens
     /// the matched profile's panel (or Generic).
     /// </summary>
-    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError)
+    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null)
     {
         var timeout = TimeSpan.FromMilliseconds(timeoutMs);
         appendStatus(ScpiAutoDetect.ProgressMessage(timeout));
@@ -1468,7 +1483,7 @@ public static class TuiMode
         {
             try
             {
-                OpenScpiInstrumentWindow(app, session, structuredSource, result.Profile ?? ScpiProfileCatalog.Generic);
+                OpenScpiInstrumentWindow(app, session, structuredSource, result.Profile ?? ScpiProfileCatalog.Generic, echoSent);
             }
             catch (Exception ex)
             {
@@ -1477,7 +1492,7 @@ public static class TuiMode
         });
     }
 
-    private static void OpenScpiInstrumentWindow(IApplication app, Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile)
+    private static void OpenScpiInstrumentWindow(IApplication app, Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile, Action<string>? echoSent = null)
     {
         if (structuredSource is ScpiReplyPresenter replyPresenter)
         {
@@ -1489,7 +1504,8 @@ public static class TuiMode
             ScpiUiDefinitionBuilder.Build(profile),
             new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
             structuredSource,
-            $"dev-term — {profile.Name}");
+            $"dev-term — {profile.Name}",
+            echoSent);
         try
         {
             app.Run(panelParts.Window);
@@ -1501,7 +1517,7 @@ public static class TuiMode
     }
 
     /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
-    private static void OpenDeviceManifest(IApplication app, Session session) => ManifestPanelMode.PickAndRun(app, session);
+    private static void OpenDeviceManifest(IApplication app, Session session, Action<string>? echoSent = null) => ManifestPanelMode.PickAndRun(app, session, echoSent);
 
     internal static string? PickScpiProfileChoice(IApplication app)
     {
