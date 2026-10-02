@@ -113,16 +113,31 @@ public sealed partial class Expression
         return _root.Eval(new Context(values, text)).AsNumber();
     }
 
+    /// <summary>
+    /// Evaluates for display: a text result is returned as is, a number is formatted with <see cref="ChartValue.Format"/>.
+    /// Reads <paramref name="text"/> the same way as <see cref="Evaluate(IReadOnlyDictionary{string, double}, IReadOnlyDictionary{string, string}?)"/>. Never throws.
+    /// </summary>
+    public string EvaluateToText(IReadOnlyDictionary<string, double> values, IReadOnlyDictionary<string, string>? text)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var result = _root.Eval(new Context(values, text));
+        return result.IsText ? result.Text! : ChartValue.Format(result.Number);
+    }
+
     private readonly record struct Context(IReadOnlyDictionary<string, double> Numbers, IReadOnlyDictionary<string, string>? Text);
 
     /// <summary>A value: a number, or a string when <see cref="Text"/> is set. Booleans are the numbers 1 and 0.</summary>
-    private readonly record struct Value(double Number, string? Text)
+    private readonly record struct Value(double Number, string? Text, string? Raw = null)
     {
         public static Value Of(double number) => new(number, null);
 
         public static Value Of(bool flag) => new(flag ? 1 : 0, null);
 
         public static Value Of(string text) => new(0, text);
+
+        /// <summary>A published value's text: a number (read tolerantly, so "12.5 V" still does arithmetic) that remembers its raw text for string functions, else plain text.</summary>
+        public static Value Published(string text) =>
+            ChartValue.TryParse(text, out var number) ? new Value(number, null, text) : Of(text);
 
         public bool IsText => Text is not null;
 
@@ -131,7 +146,7 @@ public sealed partial class Expression
         public double AsNumber() =>
             !IsText ? Number : double.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : double.NaN;
 
-        public string AsText() => IsText ? Text! : Number.ToString("G15", CultureInfo.InvariantCulture);
+        public string AsText() => Text ?? Raw ?? Number.ToString("G15", CultureInfo.InvariantCulture);
     }
 
     private abstract class Node
@@ -156,7 +171,7 @@ public sealed partial class Expression
         public bool IsPresent(Context context) => context.Text?.ContainsKey(id) == true || context.Numbers.ContainsKey(id);
 
         public override Value Eval(Context context) =>
-            context.Text is not null && context.Text.TryGetValue(id, out var text) ? Value.Of(text)
+            context.Text is not null && context.Text.TryGetValue(id, out var text) ? Value.Published(text)
             : context.Numbers.TryGetValue(id, out var number) ? Value.Of(number)
             : Value.Of(0);
     }

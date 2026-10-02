@@ -30,6 +30,14 @@ expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Edit
 | OK | Returns the expression to the form field. |
 | Cancel | Leaves the field unchanged. |
 
+## Text expressions
+
+The picker has no buttons for the text functions, but typing them works and the diagnostics check them: `matches(text, regex)`
+(a literal regex that doesn't compile is an error), `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`,
+`has({id})`, `!x` and `cond ? a : b`, with `'single'` or `"double"` quoted strings and `+` to join them. On a live indicator
+or chart, `{id}` is the device's published text: arithmetic still reads the number out of `"12.5 V"`, while string functions see the
+raw text. The picker's own result preview uses numeric sample data only, so a text expression shows its numeric reading there.
+
 ## Channels mode
 
 From **Channels** the same dialog edits the chart's `id[:label[:#RRGGBB[:expression]]]; ...` list: choosing a value appends its

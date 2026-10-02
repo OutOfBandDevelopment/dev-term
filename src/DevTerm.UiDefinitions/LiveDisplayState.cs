@@ -14,6 +14,9 @@ public abstract class LiveDisplayState
     /// <summary>The published value ids this display reads.</summary>
     public abstract IReadOnlyList<string> ValueIds { get; }
 
+    /// <summary>The latest raw text published for each of <see cref="ValueIds"/>, so an expression can match or compare it as a string.</summary>
+    protected Dictionary<string, string> Texts { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Applies one published value; false when the id isn't one of <see cref="ValueIds"/> or the text holds no number (nothing changes).</summary>
     public bool Apply(string id, string text) => ApplyAll([new KeyValuePair<string, string>(id, text)]);
 
@@ -29,14 +32,33 @@ public abstract class LiveDisplayState
         var changed = false;
         foreach (var (id, text) in values)
         {
-            if (ValueIds.Contains(id, StringComparer.Ordinal) && ChartValue.TryParse(text, out var value))
+            if (!ValueIds.Contains(id, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            var previousText = Texts.TryGetValue(id, out var old) ? old : null;
+            if (ReadsText)
+            {
+                Texts[id] = text;
+            }
+
+            if (ChartValue.TryParse(text, out var value))
             {
                 changed |= ApplyNumber(id, value);
+            }
+            else if (ReadsText)
+            {
+                // Text with no number in it (a model name) changes only what a string expression sees.
+                changed |= !string.Equals(previousText, text, StringComparison.Ordinal);
             }
         }
 
         return OnBatchCompleted(changed);
     }
+
+    /// <summary>True when an expression of this display may read published text (<see cref="Texts"/>); a display of plain numeric channels ignores text with no number in it.</summary>
+    protected virtual bool ReadsText => false;
 
     protected abstract bool ApplyNumber(string id, double value);
 
@@ -131,6 +153,8 @@ public sealed class BarGraphState : LiveDisplayState
 
     public BarGraphControl Control { get; }
 
+    protected override bool ReadsText => _expressionByChannel.Values.Any(e => e is not null);
+
     public override IReadOnlyList<string> ValueIds { get; }
 
     /// <summary>
@@ -150,7 +174,7 @@ public sealed class BarGraphState : LiveDisplayState
             return _values.TryGetValue(channelId, out var value) ? value : null;
         }
 
-        return expression.ReferencedIds.Any(id => _values.ContainsKey(id)) ? expression.Evaluate(_values) : null;
+        return expression.ReferencedIds.Any(id => _values.ContainsKey(id) || Texts.ContainsKey(id)) ? expression.Evaluate(_values, Texts) : null;
     }
 
     /// <summary>How full the channel's bar is, in [0, 1] (0 before any value, and for an empty range).</summary>
@@ -205,6 +229,8 @@ public sealed class StripChartState : LiveDisplayState
     }
 
     public StripChartControl Control { get; }
+
+    protected override bool ReadsText => _expressionByChannel.Values.Any(e => e is not null);
 
     public override IReadOnlyList<string> ValueIds { get; }
 
@@ -288,7 +314,7 @@ public sealed class StripChartState : LiveDisplayState
     {
         foreach (var channelId in _touchedExpressionChannelsThisBatch)
         {
-            Enqueue(channelId, _expressionByChannel[channelId]!.Evaluate(_values));
+            Enqueue(channelId, _expressionByChannel[channelId]!.Evaluate(_values, Texts));
             changed = true;
         }
 
@@ -444,11 +470,13 @@ public sealed class IndicatorState : LiveDisplayState
 
     public IndicatorControl Control { get; }
 
+    protected override bool ReadsText => true;
+
     public override IReadOnlyList<string> ValueIds { get; }
 
     /// <summary>The expression evaluated against every value received so far, or null before any referenced id has arrived (or the expression failed to parse).</summary>
-    public string? Text => _expression is not null && ValueIds.Any(id => _values.ContainsKey(id))
-        ? ChartValue.Format(_expression.Evaluate(_values))
+    public string? Text => _expression is not null && ValueIds.Any(id => _values.ContainsKey(id) || Texts.ContainsKey(id))
+        ? _expression.EvaluateToText(_values, Texts)
         : null;
 
     protected override bool ApplyNumber(string id, double value)

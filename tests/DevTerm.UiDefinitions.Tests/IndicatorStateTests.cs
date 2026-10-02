@@ -62,4 +62,27 @@ public sealed class IndicatorStateTests
     [TestMethod]
     public void Constructor_NullControl_Throws() =>
         Assert.ThrowsExactly<ArgumentNullException>(() => new IndicatorState(null!));
+
+    [TestMethod]
+    public void StringExpression_MatchesAgainstThePublishedText()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "matches({model}, '^KA') ? 'Korad' : 'Other'" });
+
+        Assert.IsNull(state.Text);
+        Assert.IsTrue(state.Apply("model", "KA3005P"), "A model name that holds digits is still published text.");
+        Assert.AreEqual("Korad", state.Text);
+        Assert.IsTrue(state.Apply("model", "RIGOL"), "Text with no number still changes the display.");
+        Assert.AreEqual("Other", state.Text);
+        Assert.IsFalse(state.Apply("model", "RIGOL"), "The same text again changes nothing.");
+    }
+
+    [TestMethod]
+    public void NumericArithmetic_StillReadsANumberOutOfUnitText()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "{v} * 2" });
+
+        state.Apply("v", "12.5 V");
+
+        Assert.AreEqual("25", state.Text);
+    }
 }
