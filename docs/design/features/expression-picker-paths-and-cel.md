@@ -1,6 +1,6 @@
 # Expression picker, value-path catalog, sample data, and a CEL-style language
 
-Requested 2026-10-02 as the next step of [the manifest expression builder](manifest-editor-expression-builder.md).
+Requested 2026-10-02 as the next step of [the manifest expression builder](../proposals/manifest-editor-expression-builder.md).
 Three asks, in priority order: (1) at minimum, enumerate the **valid parameter paths** an expression may reference
 and **generate realistic sample data** so previews look real; (2) a **picker control** that builds valid expressions
 by choosing values, not typing; (3) a small **programming language**, ideally close to Google's
@@ -26,7 +26,7 @@ without a device:
 | Source | Paths produced |
 |---|---|
 | `InboundProtocol.Patterns` | each named capture group, or the pattern's id for group 1 (type inferred from a numeric/format hint, else string) |
-| profile's binary-frame section | field names, dotted for nested (`header.length`) and indexed for repeated (`samples[0]`); present only if the profile declares one |
+| profile's binary-frame section (`Inbound.Frame`) | field names, dotted for nested (`header.length`) and indexed for repeated (`samples[0]`); present only if the manifest declares one |
 | SCPI profile commands | each query command's reply as a value (type from the profile's response hint), each command's parameters |
 | UI controls | each control's current value by id (slider/numeric: range; toggle: bool; choice: its options) |
 | command parameters | `ParameterExpressions` targets |
@@ -69,8 +69,7 @@ drags in `Google.Protobuf` and the ANTLR runtime. The picker needs exactly the p
 evaluating, a function list), so route B would mean wrapping the parse tree ourselves anyway. Extend our own
 `Expression`.
 
-Decision: spike B briefly against the picker's needs (type-check without evaluating, enumerate functions); otherwise
-build A. Either way the language stays non-Turing-complete: no loops, no assignment, bounded evaluation.
+The language stays non-Turing-complete: no loops, no assignment, bounded evaluation.
 
 ```plantuml
 @startuml
@@ -136,26 +135,17 @@ Lang --> Val
 5. Binary-frame paths join the catalog once a profile can declare a binary-frame section. A `.ksy` is never read by the
    catalog: the `.ksy` importer (`TODO.md`) only generates that section into a profile, and the catalog reads the profile.
 
-## Open questions
+## Open questions, resolved
 
-- Keep `{id}` as the canonical syntax or migrate manifests to bare CEL identifiers? Proposed: accept both, write
-  bare, with a one-time load-time upgrade.
-- Time-series sample data needs a notion of sample rate; reuse [loopback sample rate](../features/loopback-sample-rate.md) (now built, so a paced loopback stream can feed it).
-- Does the picker need to build regex (a tester pane with a sample line), or only insert `matches()`?
+- **`{id}` or bare identifiers?** Both parse and mean the same; `{id}` stays canonical because it is what the picker
+  inserts and what every bundled manifest uses. Manifests are not rewritten on load.
+- **Sample rate for time-series data?** Not needed as its own concept: a recorded session log (`RecordedSamples`) supplies
+  real series, and a paced loopback stream ([loopback sample rate](loopback-sample-rate.md)) covers live previews.
+- **A regex tester pane?** No. The picker inserts and checks `matches()`; the editor's Pattern form already has a
+  sample-line tester.
 
-## Status
+## Left out on purpose
 
-**Step 1 built (2026-10-02):** `ValuePathCatalog` (`DevTerm.DeviceManifests`) enumerates paths from response patterns (name
-plus named capture groups, type inferred from the group's regex), query reply ids and panel controls (range, unit,
-choices), and `DeviceManifestValidator` warns on an expression reading an unpublished id. Covered by
-`ValuePathCatalogTests`; not yet checked against real hardware (no device-side behavior). SCPI profiles are read
-through `Enumerate(UiDefinition)` over `ScpiUiDefinitionBuilder.Build(profile)` (a `{command}.reply` per query, a
-`{command}.{parameter}` per parameter; `ScpiValuePathTests`), so there is no SCPI project dependency. **Step 2 generator built (2026-10-02):** `SampleDataGenerator` (`Values`/`Value`/`Text`; seeded, FNV-1a hash so it is stable across
-processes; numbers walk smoothly inside Minimum/Maximum, booleans alternate, choices cycle, text paths get sample text
-now that `Expression` reads text; `SampleDataGeneratorTests`). Wired into both editors' preview (2026-10-02); the
-recording tier is built, with a button in the manifest editor in both front ends. **Recording tier built (2026-10-02):** `RecordedSamples.FromSessionLog(manifest, log)` runs a session log's received (`rx`) records through the manifest's own reply and frame presenters and keeps every value they publish, per path, in order; `SampleDataGenerator.Value/Values/TextValues` take an optional `RecordedSamples` and prefer it (numbers read the leading number of the recorded text, steps wrap at the end), and `ExpressionPickerViewModel.Recording` evaluates against one. Paths the log lacks still use the example, then generation. The manifest editor's **Log** (TUI) / **Use recording...** (WPF) button picks the log; it applies to the preview and every picker, and isn't saved with the manifest. **Declared-example tier built (2026-10-02):** `ResponsePattern.Example` (an optional sample reply line) is run through the pattern, `ValuePath.Example` carries each capture, and `SampleDataGenerator` starts there (step 0 is the example, text keeps it, numbers wander a few percent); the validator warns when an example doesn't match its regex. **Picker built (2026-10-02):** `ExpressionPickerViewModel`
-(`ExpressionPickerViewModelTests`) with a TUI `ExpressionPickerDialog` and WPF `ExpressionPickerWindow`, reached from **Pick...**
-beside an indicator's Expression field ([spec](../../specs/expression-picker.md)); Pick... was extended the same day to chart Channels, button Parameter expressions, vector/color ids and visible-when.
-**Language extension, first part built (2026-10-02):** `Expression` now has string values (single- or double-quoted literals, `+` concatenation, ordinal comparisons), `matches(text, regex)` (a literal pattern is compiled at parse time, so a bad one is a parse error; a computed bad pattern or a 100 ms timeout evaluates to false), `contains`/`startsWith`/`endsWith`, `size`, `number`, `string`, `has({id})`, `!` and `cond ? a : b`, via `Evaluate(numbers, text)`; `Evaluate(numbers)` is unchanged (`ExpressionTextTests`). **Lists built (2026-10-02):** `[a, b]`, `x[i]`, `x in list`, `split`/`join`, `size` and `contains` on lists, bare and dotted identifiers (the same as `{id}`, which stays what the picker inserts) and `true`/`false` (`ExpressionListTests`). Binary-frame paths are catalog entries (`ValuePathSource.Frame`) for a manifest that declares a frame. Not built: a regex tester pane in the picker, function buttons for the other new functions. **Regex helper (2026-10-02):** the picker has a `matches` button that inserts `matches(, '')` with the caret on the text argument; a literal regex is checked live by the existing diagnostics. Decision: the picker inserts and checks `matches()` rather than hosting a separate tester pane, since the editor's Pattern form already has a sample-line tester. Live displays now pass the published text: `LiveDisplayState` keeps each referenced id's raw text, so an indicator can show `matches({model}, '^KA') ? 'Korad' : 'Other'` (`IndicatorStateTests`); a bar/strip channel reads text, and a strip chart adds a sample for an expression channel when only its text changes. The picker preview gets sample text for text paths (`SampleDataGenerator.TextValues`) and button parameter expressions see each sibling control's text. Scope decision (2026-10-02): profiles, not `.ksy`
-files, are the input. Related:
-[expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).
+Picker buttons for the newer functions (`contains`, `startsWith`, `endsWith`, `size`, `number`, `string`, `has`, `split`,
+`join`) and picker offers for them beyond the six in `ExpressionPickerViewModel.Functions` are tracked in `BACKLOG.md`;
+they parse and evaluate today, they just aren't offered as buttons.

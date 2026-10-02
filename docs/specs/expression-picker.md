@@ -8,7 +8,7 @@ Opened from the **Pick...** button beside an indicator's **Expression** field, o
 **Channels** field, in the [Manifest Editor](manifest-editor.md), and (2026-10-02) beside every other field that names a value: a
 button's Parameter expressions, vector/color value ids and visible-when. Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
 `ValuePathCatalog.Enumerate(manifest)` and `SampleDataGenerator`; rendered as `ExpressionPickerDialog` (TUI) and
-`ExpressionPickerWindow` (WPF). Design: [proposal](../design/proposals/expression-picker-paths-and-cel.md).
+`ExpressionPickerWindow` (WPF). Design: [proposal](../design/features/expression-picker-paths-and-cel.md).
 
 ## Fields
 
