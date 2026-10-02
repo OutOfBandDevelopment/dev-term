@@ -96,7 +96,7 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | | Options, Style | a choice's `Options` (comma-separated), `Style` | choice only |
 | | Value type, Max length | a text field's `Constraint.Kind`, `MaxLength` | text field only |
 | | Minimum, Maximum, Step, Unit | per kind (a text field's constraint bounds when it's a number) | slider/numeric/bar graph/strip chart; Step slider only |
-| | Expression | an indicator's `Expression` — when set, derives the displayed number from the live published values (e.g. `{raw_mv} / 1000`) instead of showing the id's own value verbatim; blank keeps the direct behavior | indicator only |
+| | Expression | an indicator's `Expression` — when set, derives the displayed number from the live published values (e.g. `{raw_mv} / 1000`) instead of showing the id's own value verbatim; blank keeps the direct behavior; a **Pick...** button opens the [Expression Picker](expression-picker.md) | indicator only |
 | | Channels | a chart's `Channels`, semicolon-separated (an expression segment may itself contain commas), as `id[:label[:#RRGGBB[:expression]]], ...` — the trailing `expression`, when present, derives that channel's plotted value from the live published values instead of reading `id` directly | bar graph/strip chart |
 | | History length | `HistoryLength` | strip chart |
 | | Coordinates, X/Y/Z/Radius/Angle value ids, Angle unit, Range, Trail length, Hue/Saturation/Brightness value ids | the vector's fields | vector; X/Y for XY/XYZ, Z for XYZ, Radius/Angle/unit for Polar |

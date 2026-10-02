@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using DevTerm.Configuration;
+using DevTerm.DeviceManifests;
 using DevTerm.DeviceManifests.Editing;
 using DevTerm.UiDefinitions.Forms;
 using Microsoft.Win32;
@@ -144,7 +145,17 @@ public partial class ManifestEditorWindow : Window
         }
 
         _binding = new FormBinding(form);
-        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, new WpfFormOptions { LabelColumnWidth = 130, HideFirstSectionHeaderIfEquals = PaneTitle.Text });
+        var options = new WpfFormOptions { LabelColumnWidth = 130, HideFirstSectionHeaderIfEquals = PaneTitle.Text };
+        if (form is ControlForm)
+        {
+            options.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
+            {
+                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text)) { Owner = this };
+                return picker.ShowDialog() == true ? picker.Accepted : null;
+            };
+        }
+
+        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, options);
         FormHost.Content = Form.Root;
     }
 

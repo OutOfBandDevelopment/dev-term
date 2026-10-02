@@ -342,14 +342,14 @@ internal static class FormRenderer
                 }
 
             default:
-                BuildTextField(parts, row, control, column, width);
+                BuildTextField(app, parts, row, control, column, width, options);
                 break;
         }
 
         return row;
     }
 
-    private static void BuildTextField(TuiFormParts parts, FormRow row, UiControl control, int column, int width)
+    private static void BuildTextField(IApplication app, TuiFormParts parts, FormRow row, UiControl control, int column, int width, TuiFormOptions options)
     {
         var binding = parts.Binding;
         var constraint = ValueValidator.ConstraintFor(control);
@@ -358,10 +358,30 @@ internal static class FormRenderer
 
         // Never wider than the room left in the row: in a narrow form (the manifest editor's pane
         // at 80 columns) a 30-wide field ran past the pane's edge and was cut off.
-        fieldWidth = Math.Min(fieldWidth, Math.Max(width, 4));
+        var picker = options.TextPickers.GetValueOrDefault(control.Id);
+        fieldWidth = Math.Min(fieldWidth, Math.Max(width - (picker is null ? 0 : 13), 4));
         var field = new TextField { X = column, Width = fieldWidth };
         row.Add(field);
         var next = column + fieldWidth + 1;
+
+        if (picker is not null)
+        {
+            // A "Pick..." button after the field opens the host's picker (the expression picker), which
+            // returns the new text or null when cancelled.
+            var pick = new Button { X = next, Text = "Pick...", ShadowStyle = ShadowStyles.None };
+            pick.Accepting += (_, e) =>
+            {
+                e.Handled = true;
+                if (picker(field.Text) is { } picked)
+                {
+                    field.Text = picked;
+                }
+            };
+            row.Add(pick);
+            row.Height = 2;
+            parts.PickButtons[control.Id] = pick;
+            next += 12;
+        }
 
         if (control is NumericControl or SliderControl && RangeHint(control) is { } hintText)
         {
@@ -560,6 +580,9 @@ internal sealed class TuiFormOptions
 
     /// <summary>What a <see cref="ButtonControl"/> does, keyed by its id; without one, the bound model's command property of that name runs.</summary>
     public Dictionary<string, Action> Actions { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>A text field's picker, keyed by control id: given the field's current text, returns the new text or null when cancelled. The field gets a <c>Pick...</c> button.</summary>
+    public Dictionary<string, Func<string, string?>> TextPickers { get; } = new(StringComparer.Ordinal);
 
     /// <summary>The columns the form may use (for wrapping choices and indicator text); the screen width less the window's frame by default.</summary>
     public int? AvailableWidth { get; set; }

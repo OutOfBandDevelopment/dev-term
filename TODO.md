@@ -22,8 +22,8 @@ Completed work is logged by date under `docs/changes/`.
   value-path catalog (also used by the validator), a sample-data generator for realistic previews, a picker control in
   both front ends, then a CEL-style language (spike a .NET CEL library first). **Step 1 (value-path catalog for
   manifests) landed 2026-10-02**; SCPI-profile input landed the same day;
-  `SampleDataGenerator` landed too, wired into both editors' preview; `ExpressionPickerViewModel` landed;
-  next: the TUI and WPF picker forms (with specs and a user-guide entry), then the CEL spike.
+  `SampleDataGenerator` landed too, wired into both editors' preview; `ExpressionPickerViewModel` landed, then the TUI and WPF picker forms for indicator expressions (spec and guide
+  entry written); next: Pick on Parameter and chart-channel expressions, then the CEL spike.
 - **Finish the loopback sample-interval user-guide walkthrough, with real stills and an animated GIF.** Requested
   2026-10-02. The feature is built and was checked live in the TUI and WPF
   ([proposal](docs/design/proposals/loopback-sample-rate.md)), but `docs/user-guide/` only mentions the Loopback

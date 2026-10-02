@@ -131,7 +131,7 @@ Lang --> Val
 
 - Keep `{id}` as the canonical syntax or migrate manifests to bare CEL identifiers? Proposed: accept both, write
   bare, with a one-time load-time upgrade.
-- Time-series sample data needs a notion of sample rate; reuse [loopback sample rate](loopback-sample-rate.md).
+- Time-series sample data needs a notion of sample rate; reuse [loopback sample rate](loopback-sample-rate.md) (now built, so a paced loopback stream can feed it).
 - Does the picker need to build regex (a tester pane with a sample line), or only insert `matches()`?
 
 ## Status
@@ -143,7 +143,10 @@ choices), and `DeviceManifestValidator` warns on an expression reading an unpubl
 through `Enumerate(UiDefinition)` over `ScpiUiDefinitionBuilder.Build(profile)` (a `{command}.reply` per query, a
 `{command}.{parameter}` per parameter; `ScpiValuePathTests`), so there is no SCPI project dependency. **Step 2 generator built (2026-10-02):** `SampleDataGenerator` (`Values`/`Value`/`Text`; seeded, FNV-1a hash so it is stable across
 processes; numbers walk smoothly inside Minimum/Maximum, booleans alternate, choices cycle, text is omitted because
-`Expression` reads only numbers; `SampleDataGeneratorTests`). Not yet wired into the manifest editor preview, and the
-playback-log and declared-example preference tiers are not built. The picker and the language extension are not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
+`Expression` reads only numbers; `SampleDataGeneratorTests`). Wired into both editors' preview (2026-10-02); the
+playback-log and declared-example preference tiers are not built. **Picker built (2026-10-02):** `ExpressionPickerViewModel`
+(`ExpressionPickerViewModelTests`) with a TUI `ExpressionPickerDialog` and WPF `ExpressionPickerWindow`, reached from **Pick...**
+beside an indicator's Expression field ([spec](../../specs/expression-picker.md)); Parameter and chart-channel expressions don't have it yet.
+The language extension is not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
 files, are the input. Related:
 [expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).

@@ -168,6 +168,18 @@ public sealed class ManifestEditorModeTests
     }
 
     [TestMethod]
+    public void AnIndicatorsExpression_HasAPickButton_ButOtherFormsDoNot()
+    {
+        Run((parts, _) =>
+        {
+            Assert.IsFalse(parts.Form!.PickButtons.ContainsKey(nameof(ControlForm.IndicatorExpression)));
+
+            Select(parts, parts.ViewModel.Nodes.First(n => n.Display.Contains("Last Sample", StringComparison.Ordinal)).Display.Trim());
+            Assert.IsTrue(parts.Form!.PickButtons.ContainsKey(nameof(ControlForm.IndicatorExpression)));
+        });
+    }
+
+    [TestMethod]
     public void Screens_AreCaptured()
     {
         Run((parts, _) =>

@@ -216,7 +216,14 @@ internal static class ManifestEditorMode
             // ControlPanelMode's, never had one. A tall kind (Vector) tipping into needing the
             // scrollbar for the first time (adding the "Visibility" section) is what surfaced this.
             binding = new FormBinding(form);
-            var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, new TuiFormOptions { AvailableWidth = Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - OutlineWidth - 4 - 1, 30) });
+            var formOptions = new TuiFormOptions { AvailableWidth = Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - OutlineWidth - 4 - 1, 30) };
+            if (form is ControlForm)
+            {
+                formOptions.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text));
+            }
+
+            var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, formOptions);
             var scroller = new View { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), CanFocus = true };
             scroller.ViewportSettings |= ViewportSettingsFlags.HasVerticalScrollBar;
             scroller.Add(formParts.Root);
