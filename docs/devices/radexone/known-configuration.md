@@ -7,7 +7,7 @@
 | Framing | 9600 8N1, no handshake, DTR and RTS asserted |
 | USB-serial bridge id | VID `0xABBA`, PID `0xA011` (Device Manager, 2026-09-25) |
 | Presenter | `radexone` (decoder and control surface in `src/DevTerm.Devices.RadexOne`) |
-| Frame layouts | [read-data reply](radexone-read-data-reply.ksy), [query request](radexone-query-request.ksy), [write-settings request](radexone-write-settings-request.ksy) |
+| Frame layouts | [read-data reply](radexone-read-data-reply.ksy), [serial/version reply](radexone-serial-version-reply.ksy), [query request](radexone-query-request.ksy), [write-settings request](radexone-write-settings-request.ksy) |
 | Byte order | Little-endian; packets start `7B FF` (to the device) or `7A FF` (from it) |
 | Checksums | Word-sum: `0xFFFF - (sum of LE 16-bit words % 0xFFFF)`, one over the envelope's first 10 bytes and one over the extension. Not expressible in `.ksy` |
 | Reply lengths | Read Data 34 bytes, Read Serial/Version 42, Read Settings 28 (each is `extension_length` + 12) |

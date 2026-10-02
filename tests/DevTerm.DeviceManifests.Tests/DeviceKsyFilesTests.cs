@@ -51,6 +51,23 @@ public sealed class DeviceKsyFilesTests
         Assert.AreEqual("13", values["extension.cpm"]);
     }
 
+    /// <summary>A real Radex One's Read Serial/Version reply (2026-10-02): it spells the source doc's example "SN: 180620-0840-008344 v1.8".</summary>
+    [TestMethod]
+    public void RadexOne_RealCapturedSerialVersionReply_DecodesToTheKnownSerial()
+    {
+        var reply = Convert.FromHexString("7AFF2080" + "1E00" + "0100" + "0000" + "4580" + "0100" + "0000" + "14000000" + "11A40000" + "98200000" + "1400" + "06" + "12" + "01" + "08" + "4803" + "08000000" + "D61D");
+        var (schema, values) = Decode("radexone/radexone-serial-version-reply.ksy", reply);
+
+        Assert.AreEqual(42, schema.Length);
+        Assert.AreEqual("8344", values["extension.serial_number"]);
+        Assert.AreEqual("840", values["extension.batch"]);
+        Assert.AreEqual("20", values["extension.day"]);
+        Assert.AreEqual("6", values["extension.month"]);
+        Assert.AreEqual("18", values["extension.year"]);
+        Assert.AreEqual("1", values["extension.version_major"]);
+        Assert.AreEqual("8", values["extension.version_minor"]);
+    }
+
     [TestMethod]
     public void K8055_ImportsAndDecodesAnInputReport()
     {

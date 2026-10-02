@@ -24,7 +24,7 @@ frame from each file except the Zoom H4n status byte.
 | Device | Device to computer | Computer to device |
 | --- | --- | --- |
 | [DE-5000 LCR meter](de5000/known-configuration.md) | [de5000.ksy](de5000/de5000.ksy): 17-byte measurement packet (flag and unit bits documented, not split) | none: it streams and takes no commands |
-| [Radex One](radexone/known-configuration.md) | [read-data reply](radexone/radexone-read-data-reply.ksy) | [query](radexone/radexone-query-request.ksy) (Read Data, Read Serial/Version, Read Settings, Reset Accumulated), [write settings](radexone/radexone-write-settings-request.ksy); the word-sum checksums are not validated |
+| [Radex One](radexone/known-configuration.md) | [read-data reply](radexone/radexone-read-data-reply.ksy), [serial/version reply](radexone/radexone-serial-version-reply.ksy) (payload inferred from one real unit) | [query](radexone/radexone-query-request.ksy) (Read Data, Read Serial/Version, Read Settings, Reset Accumulated), [write settings](radexone/radexone-write-settings-request.ksy); the word-sum checksums are not validated |
 | [Velleman K8055](k8055/known-configuration.md) | [input report](k8055/k8055-input-report.ksy) | [output report](k8055/k8055-output-report.ksy) (set outputs, reset counters) |
 | [Zoom H4n](zoom-h4n/known-configuration.md) | [status byte](zoom-h4n/zoom-h4n-status.ksy), as bit fields the importer can't read yet, so documentation only | [button press](zoom-h4n/zoom-h4n-command.ksy), with the release and wake sequences in its doc |
 | [Kuando Busylight](busylight/known-configuration.md) | an ASCII identification string, so no `.ksy` | [command](busylight/busylight-command.ksy): the 9-byte single-step report |

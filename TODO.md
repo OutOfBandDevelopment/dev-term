@@ -27,8 +27,6 @@ Completed work is logged by date under `docs/changes/`.
     declared-example tiers, regex-building in the picker, `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
-    - A `.ksy` for the Radex One's Read Serial/Version reply (variable-length payload; its inner checksum doesn't
-      reconcile with the source doc, see `RadexOneExtensionCodec.ReadSerialVersionPayload`).
     - Real-device runs of the Radex One's Write Settings and Reset Accumulated (Write Settings changes a device setting, so
       ask first).
     - Bench passes for the K8055, Busylight and Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for
