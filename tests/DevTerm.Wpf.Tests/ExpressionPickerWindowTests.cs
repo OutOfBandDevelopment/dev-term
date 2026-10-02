@@ -25,6 +25,25 @@ public sealed class ExpressionPickerWindowTests
             seed: 7);
 
     [TestMethod]
+    public void MoreFunctionsDropDown_InsertsTheChosenFunction()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var window = new ExpressionPickerWindow(CreateViewModel());
+            StaTestRunner.DoEvents();
+            var more = window.FunctionPanel.Children.OfType<System.Windows.Controls.ComboBox>().Single();
+            var split = more.Items.OfType<System.Windows.Controls.ComboBoxItem>().Single(i => (string)i.Content == "split");
+
+            more.SelectedItem = split;
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual("split(, ',')", window.ExpressionBox.Text);
+            Assert.AreEqual(0, more.SelectedIndex);
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void ShowsTheViewModelsExpressionDiagnosticsAndResult()
     {
         StaTestRunner.Run(async () =>
