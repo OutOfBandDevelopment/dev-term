@@ -45,7 +45,7 @@ the rest.
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
   drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
-  already captures and saves but doesn't draw yet.
+  already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 
 ### Device control modules & hardware profiles
 
