@@ -24,6 +24,9 @@
                     <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.OutputError}" />
                     <Setter TargetName="LineText" Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:OutputKind.Sent}">
+                    <Setter TargetName="LineText" Property="Foreground" Value="{DynamicResource DevTerm.Accent}" />
+                </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
     </Window.Resources>
@@ -58,6 +61,13 @@
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">
                 <MenuItem x:Name="ThemeMenuItem" Header="_Theme" />
+                <MenuItem x:Name="BuildEditThemeMenuItem" Header="_Build/Edit Theme..." Click="BuildEditTheme_Click" />
+                <MenuItem x:Name="EchoSentCommandsMenuItem" Header="_Echo Sent Commands" IsCheckable="True" Click="EchoSentCommandsMenuItem_Click" />
+                <!-- Only meaningful for a TCP transport; RefreshConnectionUi enables/disables and
+                     checks/unchecks this per the active tab (MainWindow.FlowControl.cs). -->
+                <MenuItem x:Name="SoftwareFlowControlMenuItem" Header="_Software Flow Control (XON/XOFF)" IsCheckable="True" Click="SoftwareFlowControlMenuItem_Click" />
+                <Separator />
+                <MenuItem x:Name="ClearOutputMenuItem" Header="Clea_r Output" Click="ClearOutputMenuItem_Click" />
             </MenuItem>
         </Menu>
         <!-- Connection-state indicator (MainWindow.RefreshConnectionUi): a colored dot plus

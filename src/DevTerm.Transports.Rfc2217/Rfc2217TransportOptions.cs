@@ -46,4 +46,10 @@ public sealed class Rfc2217TransportOptions
     /// tuning before real-server feedback exists to justify exposing it.
     /// </summary>
     public int NegotiationTimeoutMs { get; set; } = 3000;
+
+    /// <summary>
+    /// Milliseconds paced between each byte written, or -1 (the default) to disable pacing and
+    /// write the buffer as a single, unpaced call. See <see cref="DevTerm.Core.Transports.WriteDelayStream"/>.
+    /// </summary>
+    public int WriteByteDelayMs { get; set; } = -1;
 }

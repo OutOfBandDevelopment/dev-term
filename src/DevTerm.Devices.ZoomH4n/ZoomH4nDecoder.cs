@@ -5,7 +5,7 @@ namespace DevTerm.Devices.ZoomH4n;
 
 /// <summary>
 /// Decodes the Zoom H4n RC04/RC2 remote protocol's inbound status byte, per
-/// docs/design/proposals/zoom-h4n-remote-protocol.md: a single byte, sent unprompted, is a bitmask
+/// docs/design/features/zoom-h4n-remote-protocol.md: a single byte, sent unprompted, is a bitmask
 /// (0x01 Record LED, 0x02 Peak, 0x10 Mic LED, 0x20 Led1, 0x40 Led2) — unlike
 /// <c>DevTerm.Devices.K8055</c>'s multi-byte frame, each byte is a complete, independent status
 /// snapshot, so nothing is buffered across reads. Bits 0x04/0x08/0x80 have no documented meaning

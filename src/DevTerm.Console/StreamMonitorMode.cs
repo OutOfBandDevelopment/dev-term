@@ -23,10 +23,12 @@ internal static class StreamMonitorMode
         "Detects images (PNG, JPEG, GIF, BMP, TIFF), HP-GL, PostScript and PCL in the\n" +
         "incoming data and saves each automatically. No preview here - open the file.";
 
-    internal static StreamMonitorWindowParts BuildWindow(IApplication app, StreamMonitor monitor)
+    internal static StreamMonitorWindowParts BuildWindow(IApplication app, StreamMonitor monitor, CliOptions? cliOptions = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(monitor);
+
+        var converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(StreamCaptureConverterOptions.FromCliOptions(cliOptions)));
 
         var window = new Window
         {
@@ -52,7 +54,8 @@ internal static class StreamMonitorMode
         };
         var detailLabel = new Label { X = 0, Y = Pos.Bottom(captureList), Width = Dim.Fill(), Height = 2, HotKeySpecifier = noHotKey };
         var toggleButton = new Button { X = 0, Y = Pos.Bottom(detailLabel), Text = "Stop Monitoring" };
-        var closeButton = new Button { X = Pos.Right(toggleButton) + 2, Y = Pos.Top(toggleButton), Text = "Close", IsDefault = true };
+        var convertButton = new Button { X = Pos.Right(toggleButton) + 2, Y = Pos.Top(toggleButton), Text = "Convert..." };
+        var closeButton = new Button { X = Pos.Right(convertButton) + 2, Y = Pos.Top(toggleButton), Text = "Close", IsDefault = true };
 
         var rows = new ObservableCollection<string>();
         captureList.SetSource(rows);
@@ -131,16 +134,41 @@ internal static class StreamMonitorMode
             Refresh();
         };
 
+        convertButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            var captures = monitor.Captures;
+            if (captures.Count == 0)
+            {
+                return;
+            }
+
+            var index = captureList.SelectedItem is int selected && selected >= 0 && selected < captures.Count ? selected : captures.Count - 1;
+            var capture = captures[index];
+            detailLabel.Text = "Converting...";
+
+            _ = converter.ConvertAsync(capture).ContinueWith(
+                t => app.Invoke(() =>
+                {
+                    detailLabel.Text = t.Result.Success
+                        ? $"Converted to {Path.GetFileName(t.Result.OutputPath)}."
+                        : $"Convert failed: {t.Result.Error}";
+                }),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnRanToCompletion,
+                TaskScheduler.Default);
+        };
+
         closeButton.Accepting += (_, e) =>
         {
             e.Handled = true;
             app.RequestStop();
         };
 
-        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, captureList, detailLabel, toggleButton, closeButton);
+        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, captureList, detailLabel, toggleButton, convertButton, closeButton);
         Refresh();
 
-        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, closeButton, Refresh);
+        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, convertButton, closeButton, Refresh);
     }
 
     /// <summary>
@@ -170,4 +198,4 @@ internal static class StreamMonitorMode
 }
 
 /// <summary>The Stream Monitor window's controls, for tests to drive/inspect headlessly — <see cref="Refresh"/> is what the window runs whenever the monitor changes.</summary>
-internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button CloseButton, Action Refresh);
+internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button ConvertButton, Button CloseButton, Action Refresh);

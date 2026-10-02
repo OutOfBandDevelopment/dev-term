@@ -7,7 +7,7 @@ namespace DevTerm.Devices.ZoomH4n;
 
 /// <summary>
 /// <see cref="IControlSurface"/> for the Zoom H4n's RC04/RC2 remote protocol, per
-/// docs/design/proposals/zoom-h4n-remote-protocol.md. Each button sends a fixed 2-byte press code
+/// docs/design/features/zoom-h4n-remote-protocol.md. Each button sends a fixed 2-byte press code
 /// followed by the shared 2-byte release code (<c>0x80 0x00</c>) as two separate writes — mirroring
 /// a physical remote's press-then-release, not one 4-byte frame. The command id is validated
 /// against the known button table *before* the handshake runs, so an unknown command id fails fast

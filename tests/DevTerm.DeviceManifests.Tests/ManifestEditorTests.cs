@@ -167,7 +167,7 @@ public sealed class ManifestEditorTests
         Assert.IsFalse(binding.IsVisible(channels.VisibleWhen), "A button has no chart channels.");
 
         form.Kind = "barGraph";
-        form.Channels = "chA:A, chB:B:#112233";
+        form.Channels = "chA:A; chB:B:#112233";
 
         var control = (BarGraphControl)editor.Manifest.Ui!.Sections[0].Controls.Single();
         Assert.AreEqual("button1", control.Id);
@@ -179,6 +179,73 @@ public sealed class ManifestEditorTests
 
         editor.Remove();
         Assert.IsEmpty(editor.Manifest.Ui.Sections[0].Controls, "Remove follows the replaced control, not the original button.");
+    }
+
+    [TestMethod]
+    public void ControlForm_ChannelsField_RoundTripsAnExpressionSegment_WhoseOwnTextContainsACommaAndColons()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Panel));
+        editor.AddChild();
+        editor.AddChild();
+        var form = (ControlForm)editor.SelectedNode!.Form!;
+        form.Kind = "barGraph";
+
+        form.Channels = "a:A:#112233:round({x}, 2); b";
+
+        var control = (BarGraphControl)editor.Manifest.Ui!.Sections[0].Controls.Single();
+        Assert.HasCount(2, control.Channels);
+        Assert.AreEqual("a", control.Channels[0].Id);
+        Assert.AreEqual("A", control.Channels[0].Label);
+        Assert.AreEqual("#112233", control.Channels[0].Color);
+        Assert.AreEqual("round({x}, 2)", control.Channels[0].Expression, "The expression's own comma doesn't split it into another channel.");
+        Assert.AreEqual("b", control.Channels[1].Id);
+        Assert.IsNull(control.Channels[1].Expression);
+
+        Assert.AreEqual("a:A:#112233:round({x}, 2); b", form.Channels, "Formatting round-trips back to the text that was set.");
+    }
+
+    [TestMethod]
+    public void ControlForm_IndicatorExpressionField_RoundTrips()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Panel));
+        editor.AddChild();
+        editor.AddChild();
+        var form = (ControlForm)editor.SelectedNode!.Form!;
+        form.Kind = "indicator";
+
+        Assert.IsNull(form.IndicatorExpression, "Blank until set.");
+
+        form.IndicatorExpression = "{raw_mv} / 1000";
+
+        var control = (IndicatorControl)editor.Manifest.Ui!.Sections[0].Controls.Single();
+        Assert.AreEqual("{raw_mv} / 1000", control.Expression);
+        Assert.AreEqual("{raw_mv} / 1000", form.IndicatorExpression);
+
+        form.IndicatorExpression = "   ";
+        Assert.IsNull(((IndicatorControl)editor.Manifest.Ui.Sections[0].Controls.Single()).Expression, "Blank clears it.");
+    }
+
+    [TestMethod]
+    public void ControlForm_ParameterExpressionsField_RoundTrips_AndKeepsBlankEntriesAtTheirIndex()
+    {
+        var editor = new ManifestEditorViewModel(Path.GetTempPath());
+        editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Panel));
+        editor.AddChild();
+        editor.AddChild();
+        var form = (ControlForm)editor.SelectedNode!.Form!;
+        form.Kind = "button";
+        form.ParameterFields = "a, b, c";
+
+        form.ParameterExpressions = "; round({b} * 2); ";
+
+        var control = (ButtonControl)editor.Manifest.Ui!.Sections[0].Controls.Single();
+        Assert.AreSequenceEqual([null, "round({b} * 2)", null], control.ParameterExpressions!, "A blank entry stays at its own index rather than being dropped and shifting the rest.");
+        Assert.AreEqual("; round({b} * 2); ", form.ParameterExpressions);
+
+        form.ParameterExpressions = string.Empty;
+        Assert.IsNull(((ButtonControl)editor.Manifest.Ui.Sections[0].Controls.Single()).ParameterExpressions, "All blank clears the field entirely.");
     }
 
     [TestMethod]

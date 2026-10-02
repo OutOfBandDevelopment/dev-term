@@ -43,6 +43,7 @@ namespace DevTerm.Configuration;
 [FormSection("BLE", Order = 4, VisibleWhen = nameof(IsBleTransport))]
 [FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
 [FormSection("Presentation", Order = 6)]
+[FormSection("Timing", Order = 7, VisibleWhen = nameof(SupportsWriteByteDelay))]
 public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly CliOptionsValidator _validator = new();
@@ -60,6 +61,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private bool _dtr = true;
     private bool _rts = true;
     private string _writeTimeoutMs = "5000";
+    private string _writeByteDelayMs = "-1";
     private string _readTimeoutMs = "1000";
     private string _asciiMaxLineLength = DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength.ToString(CultureInfo.InvariantCulture);
     private string _scpiProfile = string.Empty;
@@ -74,6 +76,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _bleServiceUuid = string.Empty;
     private string _bleWriteCharacteristicUuid = string.Empty;
     private string _bleNotifyCharacteristicUuid = string.Empty;
+    private string _loopbackSampleIntervalMs = "0";
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
     private string _description = string.Empty;
@@ -119,6 +122,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsRfc2217Transport),
         nameof(IsSerialLikeTransport),
         nameof(IsTcpLikeTransport),
+        nameof(SupportsWriteByteDelay),
         nameof(SelectedSerialPort),
         nameof(SelectedHidDevice),
         nameof(SelectedUsbtmcDevice),
@@ -558,6 +562,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsRfc2217Transport));
             OnPropertyChanged(nameof(IsSerialLikeTransport));
             OnPropertyChanged(nameof(IsTcpLikeTransport));
+            OnPropertyChanged(nameof(SupportsWriteByteDelay));
             OnPropertyChanged(nameof(ConnectedDeviceNotFound));
         }
     }
@@ -595,6 +600,15 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// own field-level <c>VisibleWhen</c>, since RFC 2217 has no listen/server mode.
     /// </summary>
     public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport;
+
+    /// <summary>
+    /// <see langword="true"/> for the serial, TCP, and RFC 2217 transports — the only ones whose
+    /// write path is a continuous byte stream a <see cref="DevTerm.Core.Transports.WriteDelayStream"/>
+    /// can pace. HID/USBTMC/BLE write one atomic report/message per call instead, so inter-byte
+    /// pacing doesn't apply the same way and <see cref="WriteByteDelayMs"/> is hidden for them.
+    /// Gates the "Timing" <see cref="FormSectionAttribute"/>.
+    /// </summary>
+    public bool SupportsWriteByteDelay => IsSerialTransport || IsTcpTransport || IsRfc2217Transport;
 
     /// <summary>
     /// <see langword="true"/> when the current transport's identifying field(s) — <see cref="Port"/>
@@ -719,6 +733,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [DisplayName("Read timeout (ms)")]
     [FormField(Order = 11, ValueKind = ValueKind.Integer, Minimum = 0, VisibleWhen = nameof(IsSerialTransport))]
     public string ReadTimeoutMs { get => _readTimeoutMs; set => SetField(ref _readTimeoutMs, value); }
+
+    /// <summary>See <see cref="CliOptions.WriteByteDelayMs"/>. -1 disables pacing.</summary>
+    [Category("Timing")]
+    [DisplayName("Write byte delay (ms)")]
+    [FormField(Order = 0, ValueKind = ValueKind.Integer, Minimum = -1)]
+    public string WriteByteDelayMs { get => _writeByteDelayMs; set => SetField(ref _writeByteDelayMs, value); }
 
     /// <summary>
     /// Bound to the SCPI-profile picker row, shown only when <see cref="IsScpiPresenterSelected"/> —
@@ -984,6 +1004,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         }
     }
 
+    /// <summary>See <see cref="CliOptions.LoopbackSampleIntervalMs"/>. 0 preserves instant delivery.</summary>
+    [Category("Loopback")]
+    [DisplayName("Sample interval (ms)")]
+    [FormField(Order = 0, ValueKind = ValueKind.Integer, Minimum = 0)]
+    public string LoopbackSampleIntervalMs { get => _loopbackSampleIntervalMs; set => SetField(ref _loopbackSampleIntervalMs, value); }
+
     // Formats/parses a canonical decimal USB vendor/product id string for display — 4-digit
     // uppercase hex (no "0x" prefix, matching --listhiddevices/--listusbtmcdevices' own "046D:C08B"
     // convention) when asHex/isHex, otherwise passed through unchanged. An unparseable value is
@@ -1200,6 +1226,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Rts = options.Rts;
         WriteTimeoutMs = options.WriteTimeoutMs.ToString(CultureInfo.InvariantCulture);
         ReadTimeoutMs = options.ReadTimeoutMs.ToString(CultureInfo.InvariantCulture);
+        WriteByteDelayMs = options.WriteByteDelayMs.ToString(CultureInfo.InvariantCulture);
         AsciiMaxLineLength = options.AsciiMaxLineLength.ToString(CultureInfo.InvariantCulture);
         ScpiProfile = options.ScpiProfile ?? string.Empty;
         Host = options.Host ?? string.Empty;
@@ -1213,6 +1240,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         BleServiceUuid = options.BleServiceUuid ?? string.Empty;
         BleWriteCharacteristicUuid = options.BleWriteCharacteristicUuid ?? string.Empty;
         BleNotifyCharacteristicUuid = options.BleNotifyCharacteristicUuid ?? string.Empty;
+        LoopbackSampleIntervalMs = options.LoopbackSampleIntervalMs.ToString(CultureInfo.InvariantCulture);
 
         // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
         // those setters push VendorId/ProductId/SerialNumber/DevicePath from whichever device gets
@@ -1306,6 +1334,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             options.ReadTimeoutMs = readTimeoutMs;
         }
 
+        if (int.TryParse(WriteByteDelayMs, out var writeByteDelayMs))
+        {
+            options.WriteByteDelayMs = writeByteDelayMs;
+        }
+
         if (int.TryParse(AsciiMaxLineLength, out var asciiMaxLineLength))
         {
             options.AsciiMaxLineLength = asciiMaxLineLength;
@@ -1319,6 +1352,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (int.TryParse(ProductId, out var productId))
         {
             options.ProductId = productId;
+        }
+
+        if (int.TryParse(LoopbackSampleIntervalMs, out var loopbackSampleIntervalMs))
+        {
+            options.LoopbackSampleIntervalMs = loopbackSampleIntervalMs;
         }
 
         if (Enum.TryParse<LineEnding>(LineEndingText, ignoreCase: true, out var lineEnding))
@@ -1363,6 +1401,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (!int.TryParse(ReadTimeoutMs, out _))
         {
             return ValidateOptionsResult.Fail($"'{ReadTimeoutMs}' isn't a valid read timeout.");
+        }
+
+        if (!int.TryParse(WriteByteDelayMs, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{WriteByteDelayMs}' isn't a valid write byte delay.");
         }
 
         if (!int.TryParse(AsciiMaxLineLength, out _))

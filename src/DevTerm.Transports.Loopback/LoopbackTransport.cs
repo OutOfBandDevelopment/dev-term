@@ -16,6 +16,7 @@ namespace DevTerm.Transports.Loopback;
 public sealed class LoopbackTransport : ITransport
 {
     private readonly IReadOnlyList<LoopbackRule> _rules;
+    private readonly LoopbackTransportOptions _options;
     private Pipe _pipe = new();
     private ConnectionState _state = ConnectionState.Closed;
 
@@ -23,8 +24,7 @@ public sealed class LoopbackTransport : ITransport
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        // Options is reserved for a future custom-script extension; today the transport always
-        // answers with the fixed example script.
+        _options = options.Value;
         _rules = LoopbackScript.Default();
     }
 
@@ -81,9 +81,17 @@ public sealed class LoopbackTransport : ITransport
             return;
         }
 
+        var paceLines = rule.Streaming && _options.SampleIntervalMs > 0;
+        var first = true;
         foreach (var responseLine in rule.Respond(rule.Pattern.Match(line)))
         {
+            if (paceLines && !first)
+            {
+                await Task.Delay(_options.SampleIntervalMs, cancellationToken);
+            }
+
             await PushLineAsync(responseLine);
+            first = false;
         }
     }
 

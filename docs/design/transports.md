@@ -23,6 +23,34 @@ The most common case for embedded dev boards. Config: port, baud rate, data bits
 - **`SerialPort.BaseStream.ReadAsync(Memory<byte>, CancellationToken)` does not reliably honor cancellation on an in-flight read**, at least on the driver tested. Relying on it meant Close/Ctrl+C could hang indefinitely waiting for a read that was never going to notice it was canceled. The transport instead reads via the `SerialPort.DataReceived` event: a pending read is a plain `TaskCompletionSource` that the caller's `CancellationToken` can complete directly, and the actual (fast, non-blocking) `Read` only happens once data is already known to be buffered. No polling, no background work item that can outlive whoever's waiting on it.
 - **Writes need a bounded timeout.** With hardware (RTS/CTS) flow control on, a device that never asserts CTS makes `Write` block forever with the default infinite `WriteTimeout`. A finite default (`WriteTimeoutMs`, 5s) turns a silent hang into a catchable `TimeoutException` with an actionable CLI message instead.
 
+### Write pacing (inter-byte delay)
+
+`WriteDelayStream` (`DevTerm.Core.Transports`) is a write-only `Stream` decorator for slow devices
+without FIFO buffers that can't absorb a burst write — a full-line/full-packet write arrives faster
+than the device can consume it, and bytes get dropped or corrupted on the receiving end. It wraps
+whatever stream a transport's write path already uses (the same "wrap a transport's stream for one
+orthogonal concern" shape as `XonXoffReadStream`/`Rfc2217TelnetReadStream`, but on the write side),
+writing one byte at a time with an explicit `FlushAsync` after each one, and delaying the configured
+interval between bytes — never after the last byte, so a paced write doesn't add trailing latency
+with nothing left to send.
+
+The delay is a single `int`, `WriteByteDelayMs`, with a three-way sentinel meaning (not just
+positive/zero): **negative** (the default, `-1`) disables pacing entirely — the transport writes
+unpaced, exactly as it did before this feature existed, with no per-byte flush overhead; **zero**
+paces with no delay — still one write-and-flush per byte (useful for a device that needs the flush
+boundary itself, e.g. one that reads a byte at a time off the wire, without actually needing time
+between them); **positive** adds a real `Task.Delay` of that many milliseconds between bytes. This
+is write-only and has no effect on how a transport reads.
+
+Supported on **Serial, TCP, and RFC 2217** (`SerialTransportOptions`/`TcpTransportOptions`/
+`Rfc2217TransportOptions.WriteByteDelayMs`) — the transports whose write path is already a single
+stream that `WriteDelayStream` can wrap. Not offered for HID or USBTMC: both write one atomic,
+device-framed report/message per call, where splitting it into single-byte writes would break
+framing rather than pace it; not offered for BLE or Loopback either, for the same "not a byte-stream
+write path" reason. `ConnectionEditorViewModel.SupportsWriteByteDelay` gates the Connection Editor's
+"Timing" form section to exactly these three transports — see
+[`docs/specs/connection-editor.md`](../specs/connection-editor.md).
+
 ### TCP
 
 Supports both directions from day one, since either the device or dev-term may be the one that connects:
@@ -31,6 +59,21 @@ Supports both directions from day one, since either the device or dev-term may b
 - **Listener mode** — bind and accept incoming connections on a local port, for devices that connect out to dev-term (e.g., a board acting as a TCP client). A listener session represents "waiting for a peer"; `OpenAsync` doesn't complete until a peer connects, and the session then behaves like any other connected transport for read/write. **v1 policy**: one peer at a time — the listening socket stops accepting as soon as one connection is accepted, so a second simultaneous inbound connection is simply not accepted until the session is closed and reopened. Queuing/multiplexing multiple concurrent peers on one listener session is not supported yet (see open questions).
 
 Which mode a given session uses is a configuration choice (see the Options pattern in [platform.md](platform.md)), not two different transport plugins.
+
+**Software (XON/XOFF) flow control** (`TcpTransportOptions.SoftwareFlowControl`, landed
+2026-10-01): off by default — stripping 0x11/0x13 from a stream that isn't actually using them for
+flow control would silently eat legitimate device data. Some serial-to-Ethernet bridges forward the
+attached serial port's XON/XOFF bytes over the wire rather than honoring them locally; enabling this
+strips those bytes from the decoded output (`XonXoffReadStream`) and pauses/resumes `TcpTransport`'s
+own writes on them (`XonXoffFlowControlGate`) — the software equivalent of the hardware RTS/CTS
+handshake serial already honors. The options flag only sets the *initial* value for a new
+`TcpTransport`; `TcpTransport.SoftwareFlowControl` is a live, settable property that toggles the gate
+without reconnecting, since a bridge's actual behavior often can't be confirmed until a connection is
+already open. Disabling it releases any write currently paused on a stale XOFF rather than leaving it
+stuck forever. Both front ends expose this as a View > Software Flow Control (XON/XOFF) menu item,
+enabled only when the active tab's transport is `TcpTransport` — see
+[`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md) and
+[`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md).
 
 ### UDP
 

@@ -67,6 +67,7 @@ public sealed class ControlPanelModeTests
                     new ButtonControl { Id = "reset", Label = "Reset" },
                     new ButtonControl { Id = "paramButton", Label = "Param Button", ParameterFieldIds = ["text1", "choice1"] },
                     new ButtonControl { Id = "paramButton2", Label = "Param Button 2", CommandId = "paramCommand", ParameterFieldIds = ["text1"] },
+                    new ButtonControl { Id = "paramButtonExpr", Label = "Param Button Expr", ParameterFieldIds = ["numeric1"], ParameterExpressions = ["{numeric1} * 2"] },
                     new ToggleControl { Id = "toggle1", Label = "Toggle 1", DefaultValue = false },
                     new SliderControl { Id = "slider1", Label = "Slider 1", Minimum = 0, Maximum = 255, DefaultValue = 10 },
                     new NumericControl { Id = "numeric1", Label = "Numeric 1", Minimum = 0, Maximum = 100, DefaultValue = 5 },
@@ -77,7 +78,11 @@ public sealed class ControlPanelModeTests
             new UiSection
             {
                 Label = "Inputs",
-                Controls = [new IndicatorControl { Id = "indicator1", Label = "Indicator 1", DefaultValue = "0" }],
+                Controls =
+                [
+                    new IndicatorControl { Id = "indicator1", Label = "Indicator 1", DefaultValue = "0" },
+                    new IndicatorControl { Id = "indicator2", Label = "Indicator 2", DefaultValue = "0", Expression = "{raw_mv} / 1000" },
+                ],
             },
         ],
     };
@@ -158,6 +163,19 @@ public sealed class ControlPanelModeTests
 
             Assert.HasCount(1, surface.Invocations);
             Assert.AreEqual(("paramCommand", "updated"), surface.Invocations[0]);
+        });
+    }
+
+    [TestMethod]
+    public void ButtonWithParameterExpressions_WhenClicked_InvokesWithTheEvaluatedValue()
+    {
+        var surface = new FakeControlSurface();
+        RunHeadless(surface, null, parts =>
+        {
+            Accept(parts.ControlViews["paramButtonExpr"]);
+
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreEqual(("paramButtonExpr", "10"), surface.Invocations[0], "numeric1 defaults to 5; {numeric1} * 2 == 10.");
         });
     }
 
@@ -283,6 +301,23 @@ public sealed class ControlPanelModeTests
                 () => parts.IndicatorLabels["indicator1"].Text.ToString() == "42",
                 TimeSpan.FromSeconds(5));
             Assert.IsTrue(updated, "The indicator label was never updated from ValuesChanged.");
+        });
+    }
+
+    [TestMethod]
+    public void ValuesChanged_UpdatesAnExpressionBackedIndicatorLabel_ComputedFromItsReferencedRawId()
+    {
+        var surface = new FakeControlSurface();
+        var presenter = new FakeStructuredPresenter();
+
+        TuiWindowPartsHarness.RunWithLoop(surface, presenter, parts =>
+        {
+            presenter.Fire(new Dictionary<string, string> { ["raw_mv"] = "5500" });
+
+            var updated = TuiWindowPartsHarness.WaitUntil(
+                () => parts.IndicatorLabels["indicator2"].Text.ToString() == "5.5",
+                TimeSpan.FromSeconds(5));
+            Assert.IsTrue(updated, "indicator2's Expression ({raw_mv} / 1000) was never evaluated from ValuesChanged.");
         });
     }
 

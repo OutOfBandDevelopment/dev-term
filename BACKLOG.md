@@ -100,6 +100,18 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
+### Observability
+
+- **OpenTelemetry / general app-logging support** — `DevTerm.Logging` today is device-session
+  transcript recording (`SessionLogger`/`SessionLogWriter`/playback), not application diagnostics.
+  There's no structured logging, tracing, or metrics for dev-term's own internals (connection
+  lifecycle, transport faults, presenter errors) beyond ad-hoc output-pane messages. Scope: decide
+  whether to wire `Microsoft.Extensions.Logging` + an OTel exporter (console/OTLP) through DI
+  (`AddDevTermCore`/`AddDevTermFrontEnd`), what's worth instrumenting first (`Session`
+  open/close/fault, `ITransport` connect/disconnect), and whether it's opt-in (a CLI flag/config
+  section) given most users won't have a collector running. Not started — raised 2026-10-01, no
+  priority set yet.
+
 ### TUI theming
 
 - **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
@@ -113,15 +125,6 @@ the rest.
 
 ### Proposed Ideas
 
-- [Theme builder](docs/design/proposals/theme-builder.md) — color pickers, save/export/import,
-  enumerate from `~/.dev-term/themes`.
-- [Manifest editor expression builder](docs/design/proposals/manifest-editor-expression-builder.md) —
-  settable expression fields mapping data values to control parameters.
-- [Loopback sample rate control](docs/design/proposals/loopback-sample-rate.md) — a parameter
-  controlling how fast the loopback device generates stream samples.
-- [Stream monitor raster tool integration](docs/design/proposals/stream-content-detection.md#rasterconvert-tool-integration-proposed-2026-09-30)
-  — call an external raster tool (Ghostscript-style path+args mapping), or a web service (e.g. Apache
-  Tika) via a configured request, or an internal HP/GL-to-SVG converter.
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
 - [LXI support](docs/design/proposals/lxi-support.md).
 - [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/

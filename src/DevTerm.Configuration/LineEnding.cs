@@ -32,4 +32,18 @@ public static class LineEndingExtensions
         var terminator = lineEnding.ToBytes();
         return terminator.Length == 0 ? payload : [.. payload, .. terminator];
     }
+
+    /// <summary>
+    /// The literal characters <see cref="Append"/> would add as raw bytes (an actual CR and/or LF,
+    /// not the two-character escape sequence) - for building the full text of what a sent line looked
+    /// like before escaping it for display with <see cref="TypedInput.EscapeForDisplay"/>.
+    /// </summary>
+    public static string ToChars(this LineEnding lineEnding) => lineEnding switch
+    {
+        LineEnding.None => string.Empty,
+        LineEnding.Cr => "\r",
+        LineEnding.Lf => "\n",
+        LineEnding.CrLf => "\r\n",
+        _ => throw new ArgumentOutOfRangeException(nameof(lineEnding), lineEnding, message: null),
+    };
 }

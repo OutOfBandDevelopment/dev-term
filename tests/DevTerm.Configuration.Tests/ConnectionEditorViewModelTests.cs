@@ -498,6 +498,143 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SaveCommand_ThenLoadCommand_RoundTripsWriteByteDelayMs()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.108",
+                TcpPort = "23",
+                WriteByteDelayMs = "20",
+                SaveName = "tek108",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            var fresh = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" })
+            {
+                SelectedProfileName = "tek108",
+            };
+            fresh.LoadCommand.Execute(null);
+
+            Assert.AreEqual("20", fresh.WriteByteDelayMs);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SaveCommand_ThenLoadCommand_RoundTripsLoopbackSampleIntervalMs()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            var vm = new ConnectionEditorViewModel(store, new CliOptions())
+            {
+                Transport = "loopback",
+                LoopbackSampleIntervalMs = "150",
+                SaveName = "sensor-sim",
+            };
+
+            vm.SaveCommand.Execute(null);
+
+            var fresh = new ConnectionEditorViewModel(store, new CliOptions { Transport = "serial" })
+            {
+                SelectedProfileName = "sensor-sim",
+            };
+            fresh.LoadCommand.Execute(null);
+
+            Assert.AreEqual("150", fresh.LoopbackSampleIntervalMs);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void LoadIntoFields_DefaultsWriteByteDelayMsToNegativeOne_WhenNotSaved()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                WriteByteDelayMs = "20",
+            };
+
+            vm.LoadIntoFields(new CliOptions());
+
+            Assert.AreEqual("-1", vm.WriteByteDelayMs, "A profile saved before this field existed (or one that never touched it) should load as disabled, not keep whatever was previously typed.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ConnectCommand_WithAnUnparseableWriteByteDelay_SetsStatusMessageAndDoesNotRaiseCloseRequested()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = "tcp",
+                Host = "192.168.0.1",
+                TcpPort = "23",
+                WriteByteDelayMs = "20x",
+            };
+
+            var closeRequested = false;
+            vm.CloseRequested += (_, _) => closeRequested = true;
+
+            vm.ConnectCommand.Execute(null);
+
+            Assert.IsFalse(closeRequested);
+            Assert.Contains("isn't a valid write byte delay", vm.StatusMessage);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [DataRow("serial", true)]
+    [DataRow("tcp", true)]
+    [DataRow("rfc2217", true)]
+    [DataRow("hid", false)]
+    [DataRow("usbtmc", false)]
+    [DataRow("ble", false)]
+    [DataRow("loopback", false)]
+    public void SupportsWriteByteDelay_IsTrueOnlyForSerialTcpAndRfc2217(string transport, bool expected)
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions())
+            {
+                Transport = transport,
+            };
+
+            Assert.AreEqual(expected, vm.SupportsWriteByteDelay);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void SaveCommand_IncludesSerialAndDescriptionFields()
     {
         var directory = CreateTempDirectory();

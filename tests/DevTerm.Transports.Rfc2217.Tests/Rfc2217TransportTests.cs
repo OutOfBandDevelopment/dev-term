@@ -11,7 +11,7 @@ namespace DevTerm.Transports.Rfc2217.Tests;
 [TestClass]
 public sealed class Rfc2217TransportTests
 {
-    private static Rfc2217Transport CreateTransport(FakeRfc2217Server server, int negotiationTimeoutMs = 3000, int writeTimeoutMs = 5000)
+    private static Rfc2217Transport CreateTransport(FakeRfc2217Server server, int negotiationTimeoutMs = 3000, int writeTimeoutMs = 5000, int writeByteDelayMs = -1)
     {
         var source = new Mock<ITcpConnectionSource>();
         source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
@@ -25,6 +25,7 @@ public sealed class Rfc2217TransportTests
             DataBits = 8,
             NegotiationTimeoutMs = negotiationTimeoutMs,
             WriteTimeoutMs = writeTimeoutMs,
+            WriteByteDelayMs = writeByteDelayMs,
         });
 
         return new Rfc2217Transport(source.Object, options);
@@ -135,6 +136,23 @@ public sealed class Rfc2217TransportTests
         var server = new FakeRfc2217Server();
         await server.SendWillDoComPortOptionAsync(TestContext.CancellationToken);
         var transport = CreateTransport(server);
+        await transport.OpenAsync(TestContext.CancellationToken);
+        server.DrainPendingOutgoing();
+
+        await transport.WriteAsync(new byte[] { 0x01, 0xFF, 0x02 }, TestContext.CancellationToken);
+
+        var written = await server.WaitForNextWriteAsync(TestContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(new byte[] { 0x01, 0xFF, 0xFF, 0x02 }, written);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task WriteAsync_WithWriteByteDelay_StillEscapesIacBytesCorrectly()
+    {
+        var server = new FakeRfc2217Server();
+        await server.SendWillDoComPortOptionAsync(TestContext.CancellationToken);
+        var transport = CreateTransport(server, writeByteDelayMs: 0);
         await transport.OpenAsync(TestContext.CancellationToken);
         server.DrainPendingOutgoing();
 

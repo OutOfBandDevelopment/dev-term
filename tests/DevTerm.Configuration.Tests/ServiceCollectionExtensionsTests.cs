@@ -3,6 +3,7 @@ using DevTerm.Core.Transports;
 using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
+using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -62,6 +63,63 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.AreEqual("device.local", options.Host);
         Assert.AreEqual(2217, options.Port);
         Assert.AreEqual(4800, options.BaudRate);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_LoopbackTransport_ConfiguresSampleIntervalFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "loopback", LoopbackSampleIntervalMs = 250 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<LoopbackTransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<LoopbackTransport>(transport);
+        Assert.AreEqual(250, options.SampleIntervalMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_SerialTransport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "serial", Port = "COM3", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<SerialTransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_TcpTransport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "tcp", Host = "device.local", Port = "502", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<TcpTransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_Rfc2217Transport_ConfiguresWriteByteDelayFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<Rfc2217TransportOptions>>().Value;
+
+        Assert.AreEqual(20, options.WriteByteDelayMs);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_HidTransport_DoesNotExposeWriteByteDelay()
+    {
+        var cliOptions = new CliOptions { Transport = "hid", VendorId = 0x1915, ProductId = 0xAFDA, WriteByteDelayMs = 20 };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var options = provider.GetRequiredService<IOptions<HidTransportOptions>>().Value;
+
+        Assert.IsFalse(options.GetType().GetProperties().Any(p => p.Name == "WriteByteDelayMs"), "HID writes one atomic report per call; write pacing doesn't apply.");
     }
 
     [TestMethod]

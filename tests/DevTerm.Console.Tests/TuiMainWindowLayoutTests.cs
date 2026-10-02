@@ -148,7 +148,9 @@ public sealed class TuiMainWindowLayoutTests
             TuiReview.Screen("main-menu-view-theme", width, height, "dark", MainWindow(session, catalog, options), (app, window) =>
             {
                 var popover = OpenMenu(window, "View");
-                var themeItem = popover.Root!.SubViews.OfType<MenuItem>().Single(i => i.Title.Contains("Theme", StringComparison.Ordinal));
+                // Exact match, not Contains("Theme") - "_Build/Edit Theme..." is a sibling leaf item
+                // that would also match a substring search.
+                var themeItem = popover.Root!.SubViews.OfType<MenuItem>().Single(i => i.Title == "_Theme");
                 // Not public in v2.5.0: what hovering or arrowing onto the item does.
                 typeof(PopoverMenu).GetMethod("ShowMenuItemSubMenu", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)!.Invoke(popover, [themeItem]);
             }, OverMenu);

@@ -78,8 +78,30 @@ The WPF window also has:
 - **Export As...**: saves a copy of the selected capture somewhere else. The automatic file stays
   where it is.
 
+## Converting a capture
+
+Both windows have a **Convert...** button next to Start/Stop Monitoring, enabled once you've
+selected a capture. It runs whichever conversion mechanism the connection is configured for and
+writes the result next to the capture's saved file (same folder and name, a new extension).
+
+Set it up in **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
+**Stream Monitor** section:
+
+- **Internal HP-GL to SVG** (`internalhpgltosvg`) — no setup beyond picking this mode. Works only on
+  HP-GL captures; converts a plotter stream to an SVG file dev-term draws itself, no external tool
+  needed.
+- **External tool** (`externaltool`) — point at a converter you already have installed (for example
+  Ghostscript's `gswin64c.exe`) and give it an argument template with `{input}`, `{output}` and
+  `{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`. dev-term doesn't bundle
+  any converter — this just runs the one you point it at.
+- **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
+  default) and saves whatever comes back.
+
+If nothing is configured, or the conversion fails, Convert... reports why: in the TUI, in the detail
+text; in WPF, in the detail text (success) or a message box (failure).
+
 ## Not yet
 
-- Previewing or converting HP-GL/PostScript/PCL to an image.
+- Previewing a converted file in the window itself — Convert... writes a file but doesn't show it.
 - Stream Monitor in the plain CLI (`--cli true`) mode.
 - Automatic cleanup of old files in the export folder.

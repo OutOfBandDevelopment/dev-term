@@ -49,6 +49,7 @@ public partial class ControlPanelWindow : Window
     private readonly Dictionary<string, UiControl> _controlsById = [];
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
+    private readonly Dictionary<string, IndicatorState> _indicatorStates = [];
     private readonly Dictionary<string, Border> _colorSwatches = [];
 
     // "Custom" choice options backed by a color button (CustomColorChoices), each radio group's
@@ -308,7 +309,7 @@ public partial class ControlPanelWindow : Window
         {
             foreach (var (id, value) in values)
             {
-                if (_indicatorLabels.TryGetValue(id, out var label))
+                if (!_indicatorStates.ContainsKey(id) && _indicatorLabels.TryGetValue(id, out var label))
                 {
                     label.Text = value;
                 }
@@ -317,6 +318,14 @@ public partial class ControlPanelWindow : Window
             foreach (var display in _displays.Values)
             {
                 display.Apply(values);
+            }
+
+            foreach (var (id, state) in _indicatorStates)
+            {
+                if (state.ApplyAll(values) && _indicatorLabels.TryGetValue(id, out var label) && state.Text is { } text)
+                {
+                    label.Text = text;
+                }
             }
 
             RecomputeVisibility();
@@ -397,7 +406,7 @@ public partial class ControlPanelWindow : Window
                     var commandId = button.CommandId ?? button.Id;
                     view.Click += (_, _) =>
                     {
-                        if (TryReadParameters(parameterFieldIds, out var joined, out var error))
+                        if (TryReadParameters(parameterFieldIds, out var joined, out var error, button.ParameterExpressions))
                         {
                             ClearValidationError();
                             Invoke(commandId, joined);
@@ -408,7 +417,7 @@ public partial class ControlPanelWindow : Window
                         }
                     };
                     var raw = ParameterValueList.Join(parameterFieldIds.Select(id => _controlViews.TryGetValue(id, out var fieldView) ? GetCurrentValue(fieldView) : string.Empty));
-                    Func<string?> preview = () => TryReadParameters(parameterFieldIds, out var joined, out var error)
+                    Func<string?> preview = () => TryReadParameters(parameterFieldIds, out var joined, out var error, button.ParameterExpressions)
                         ? SendsText(commandId, joined)
                         : $"Won't send: {error}";
                     return (view, view, preview, (commandId, raw));
@@ -549,6 +558,11 @@ public partial class ControlPanelWindow : Window
                 {
                     var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
                     _indicatorLabels[control.Id] = view;
+                    if (LiveDisplayState.For(indicator) is IndicatorState indicatorState)
+                    {
+                        _indicatorStates[control.Id] = indicatorState;
+                    }
+
                     return (view, view, null, null);
                 }
 
@@ -704,12 +718,20 @@ public partial class ControlPanelWindow : Window
         RecomputeVisibility();
     }
 
-    /// <summary>Reads and validates every named parameter field's current value, comma-joined (escaped); fails on the first invalid one.</summary>
-    private bool TryReadParameters(IReadOnlyList<string> fieldIds, out string joined, out string? error)
+    /// <summary>
+    /// Reads and validates every named parameter field's current value, comma-joined (escaped);
+    /// fails on the first invalid one. <paramref name="expressions"/> is positionally parallel to
+    /// <paramref name="fieldIds"/> (see <see cref="ButtonControl.ParameterExpressions"/>) — a
+    /// non-blank entry at a given index evaluates that <see cref="Expression"/> against every
+    /// sibling control's current numeric value and substitutes the formatted result in place of
+    /// that index's bare field value.
+    /// </summary>
+    private bool TryReadParameters(IReadOnlyList<string> fieldIds, out string joined, out string? error, IReadOnlyList<string?>? expressions = null)
     {
         var values = new List<string>(fieldIds.Count);
-        foreach (var fieldId in fieldIds)
+        for (var i = 0; i < fieldIds.Count; i++)
         {
+            var fieldId = fieldIds[i];
             var raw = _controlViews.TryGetValue(fieldId, out var view) ? GetCurrentValue(view) : string.Empty;
             var constraint = _controlsById.TryGetValue(fieldId, out var fieldControl) ? ValueValidator.ConstraintFor(fieldControl) : null;
             var result = ValueValidator.Validate(constraint, raw);
@@ -720,12 +742,35 @@ public partial class ControlPanelWindow : Window
                 return false;
             }
 
-            values.Add(result.Value);
+            var expressionText = expressions is { Count: > 0 } && i < expressions.Count ? expressions[i] : null;
+            if (expressionText is { Length: > 0 } && UiDefinitions.Expression.TryParse(expressionText, out var expression, out _))
+            {
+                values.Add(ChartValue.Format(expression!.Evaluate(SiblingValues())));
+            }
+            else
+            {
+                values.Add(result.Value);
+            }
         }
 
         joined = ParameterValueList.Join(values);
         error = null;
         return true;
+    }
+
+    /// <summary>Every control's current value parsed as a number, keyed by id — what a <see cref="ButtonControl.ParameterExpressions"/> entry evaluates against.</summary>
+    private Dictionary<string, double> SiblingValues()
+    {
+        var values = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var (id, view) in _controlViews)
+        {
+            if (ChartValue.TryParse(GetCurrentValue(view), out var value))
+            {
+                values[id] = value;
+            }
+        }
+
+        return values;
     }
 
     private void ShowValidationError(string error)

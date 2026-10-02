@@ -91,11 +91,13 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | Control | Kind | the control's type (`button`, `toggle`, `slider`, `numeric`, `choice`, `textField`, `indicator`, `barGraph`, `stripChart`, `vector`) | Changing it replaces the control with one of the new kind, keeping Id, Label and Help |
 | | Id, Label, Help | `Id`, `Label`, `Description` | |
 | | Command id, Parameter fields, Color picker target | a button's `CommandId`, `ParameterFieldIds` (comma-separated), `ColorPickerTargetCommandId` | button only |
+| | Parameter expressions | a button's `ParameterExpressions`, semicolon-separated and positionally parallel to Parameter fields — a non-blank entry evaluates an [expression](../design/proposals/manifest-editor-expression-builder.md) against every sibling control's current numeric value and substitutes the result for that field at send time; blank keeps that field's own value | button only |
 | | Starts on / Default value | `DefaultValue` | per kind |
 | | Options, Style | a choice's `Options` (comma-separated), `Style` | choice only |
 | | Value type, Max length | a text field's `Constraint.Kind`, `MaxLength` | text field only |
 | | Minimum, Maximum, Step, Unit | per kind (a text field's constraint bounds when it's a number) | slider/numeric/bar graph/strip chart; Step slider only |
-| | Channels | a chart's `Channels` as `id[:label[:#RRGGBB]], ...` | bar graph/strip chart |
+| | Expression | an indicator's `Expression` — when set, derives the displayed number from the live published values (e.g. `{raw_mv} / 1000`) instead of showing the id's own value verbatim; blank keeps the direct behavior | indicator only |
+| | Channels | a chart's `Channels`, semicolon-separated (an expression segment may itself contain commas), as `id[:label[:#RRGGBB[:expression]]], ...` — the trailing `expression`, when present, derives that channel's plotted value from the live published values instead of reading `id` directly | bar graph/strip chart |
 | | History length | `HistoryLength` | strip chart |
 | | Coordinates, X/Y/Z/Radius/Angle value ids, Angle unit, Range, Trail length, Hue/Saturation/Brightness value ids | the vector's fields | vector; X/Y for XY/XYZ, Z for XYZ, Radius/Angle/unit for Polar |
 | | Visible when, Visible values | `Control.VisibleWhen`'s `Id`, `Values` (comma-separated) | "Visible values" shown only once "Visible when" is set |

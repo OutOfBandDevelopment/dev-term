@@ -22,4 +22,12 @@ public sealed class IndicatorControl : UiControl
     public string? DefaultValue { get; set; }
 
     public IndicatorStyle Style { get; set; } = IndicatorStyle.Plain;
+
+    /// <summary>
+    /// When set, an <see cref="Expression"/> deriving this indicator's displayed number from the
+    /// live published values (e.g. <c>{raw_mv} / 1000</c>) instead of showing <see cref="UiControl.Id"/>'s
+    /// own published text verbatim. Unset (the default) keeps today's direct behavior. See
+    /// docs/design/proposals/manifest-editor-expression-builder.md.
+    /// </summary>
+    public string? Expression { get; set; }
 }

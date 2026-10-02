@@ -13,7 +13,7 @@ This directly answers device-control-modules.md's open question "how rich the co
 metadata needs to be" with an actual shape, informed by real devices: the `@startsalt` mockups
 already written for [Kuando Busylight](features/kuando-busylight-protocol.md),
 [Velleman K8055](features/velleman-k8055-protocol.md), [EByte](proposals/ebyte-e810-dtu-config-protocol.md),
-and [Zoom H4n](proposals/zoom-h4n-remote-protocol.md) are what this model needs to be able to
+and [Zoom H4n](features/zoom-h4n-remote-protocol.md) are what this model needs to be able to
 describe — a color swatch picker, toggle switches, sliders, a device list plus a settings form, a
 button panel. The model is built from those concrete examples, not designed in the abstract first.
 

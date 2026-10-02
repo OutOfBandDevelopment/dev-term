@@ -12,6 +12,7 @@ public sealed class SerialTransport : ITransport
     private readonly ISerialPortFactory _portFactory;
     private readonly IOptions<SerialTransportOptions> _options;
     private ISerialPort? _port;
+    private Stream? _writeStream;
     private ConnectionState _state = ConnectionState.Closed;
     private Pipe? _pipe;
     private CancellationTokenSource? _pumpCts;
@@ -69,6 +70,9 @@ public sealed class SerialTransport : ITransport
         }
 
         _port = port;
+        _writeStream = _options.Value.WriteByteDelayMs >= 0
+            ? new WriteDelayStream(new SerialPortWriteStream(port), _options.Value.WriteByteDelayMs)
+            : null;
         _pipe = new Pipe();
         _pumpCts = new CancellationTokenSource();
 
@@ -120,6 +124,7 @@ public sealed class SerialTransport : ITransport
             _pumpCts = null;
             _pumpTask = null;
             _pipe = null;
+            _writeStream = null;
 
             _port.Close();
             _port.Dispose();
@@ -129,16 +134,21 @@ public sealed class SerialTransport : ITransport
         }
     }
 
-    public Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
+    public async Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
     {
         if (_port is null || State != ConnectionState.Open)
         {
             throw new InvalidOperationException("The serial transport is not open.");
         }
 
+        if (_writeStream is not null)
+        {
+            await _writeStream.WriteAsync(data, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         var buffer = data.ToArray();
         _port.Write(buffer, 0, buffer.Length);
-        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()

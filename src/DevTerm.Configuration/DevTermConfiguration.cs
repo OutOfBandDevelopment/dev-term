@@ -95,6 +95,7 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.Host)] = options.Host;
             profile[nameof(CliOptions.Port)] = options.Port;
             profile[nameof(CliOptions.Listen)] = options.Listen;
+            profile[nameof(CliOptions.WriteByteDelayMs)] = options.WriteByteDelayMs;
         }
         else if (string.Equals(options.Transport, "hid", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(options.Transport, "usbtmc", StringComparison.OrdinalIgnoreCase))
@@ -140,9 +141,17 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.Dtr)] = options.Dtr;
             profile[nameof(CliOptions.Rts)] = options.Rts;
             profile[nameof(CliOptions.WriteTimeoutMs)] = options.WriteTimeoutMs;
+            profile[nameof(CliOptions.WriteByteDelayMs)] = options.WriteByteDelayMs;
 
             // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
             // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
+        }
+        else if (string.Equals(options.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
+        {
+            if (options.LoopbackSampleIntervalMs != 0)
+            {
+                profile[nameof(CliOptions.LoopbackSampleIntervalMs)] = options.LoopbackSampleIntervalMs;
+            }
         }
         else
         {
@@ -156,6 +165,7 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.Rts)] = options.Rts;
             profile[nameof(CliOptions.WriteTimeoutMs)] = options.WriteTimeoutMs;
             profile[nameof(CliOptions.ReadTimeoutMs)] = options.ReadTimeoutMs;
+            profile[nameof(CliOptions.WriteByteDelayMs)] = options.WriteByteDelayMs;
         }
 
         if (options.ManifestName is not null)

@@ -133,6 +133,21 @@ public sealed class CliOptions
     public int WriteTimeoutMs { get; set; } = 5000;
 
     /// <summary>
+    /// Milliseconds paced between each byte written to the transport - for a slow device with no
+    /// FIFO buffer that can't absorb a burst write (bytes get dropped or corrupted when a whole
+    /// line/packet arrives faster than the device can consume it). -1 (the default) disables pacing
+    /// entirely - the buffer is written as a single, unpaced call exactly as before this feature
+    /// existed. 0 still writes/flushes one byte at a time with no delay between them; a positive
+    /// value additionally delays that long between bytes. Supported by the serial, TCP, and RFC 2217
+    /// transports only - HID/USBTMC/BLE write one atomic report/message per call rather than a
+    /// continuous byte stream, so inter-byte pacing doesn't apply the same way. Write-only; has no
+    /// effect on the read side of a connection. See <see cref="DevTerm.Core.Transports.WriteDelayStream"/>.
+    /// </summary>
+    [Category("Timing")]
+    [DisplayName("Write byte delay (ms)")]
+    public int WriteByteDelayMs { get; set; } = -1;
+
+    /// <summary>
     /// Milliseconds a read blocks before timing out. Kept finite by default: SerialPort's
     /// BaseStream doesn't reliably honor cancellation on an in-flight read on all drivers, so a
     /// periodic timeout is how Close/Ctrl+C notice they should stop instead of hanging.
@@ -150,6 +165,17 @@ public sealed class CliOptions
     [Category("Serial")]
     [DisplayName("RTS")]
     public bool Rts { get; set; } = true;
+
+    /// <summary>
+    /// Milliseconds paced between each pushed line of a naturally multi-line/streaming scripted
+    /// loopback response (<c>Samples: N</c>, <c>Send Events: N</c>) — lets a loopback profile
+    /// simulate a device that streams samples at a real rate instead of delivering them all
+    /// instantly. 0 (the default) preserves the original instant-delivery behavior. Loopback
+    /// transport only. See <see cref="DevTerm.Transports.Loopback.LoopbackTransportOptions.SampleIntervalMs"/>.
+    /// </summary>
+    [Category("Loopback")]
+    [DisplayName("Sample interval (ms)")]
+    public int LoopbackSampleIntervalMs { get; set; }
 
     // TCP transport.
     [Category("TCP")]
@@ -308,4 +334,56 @@ public sealed class CliOptions
     /// </summary>
     [Category("Mode")]
     public double PlaybackSpeed { get; set; }
+
+    /// <summary>
+    /// Which mechanism the Stream Monitor's "Convert..." action uses, from
+    /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration":
+    /// <c>none</c> (default - the action reports nothing is configured), <c>externaltool</c> (run a
+    /// configured external converter, e.g. Ghostscript), <c>webservice</c> (POST the capture to a
+    /// configured HTTP endpoint), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
+    /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Convert mode")]
+    [Description("How Stream Monitor's Convert action works: none, externaltool, webservice, or internalhpgltosvg.")]
+    public string? StreamConvertMode { get; set; }
+
+    /// <summary>The external converter executable (e.g. Ghostscript's <c>gswin64c.exe</c>) run when <see cref="StreamConvertMode"/> is <c>externaltool</c>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool path")]
+    public string? StreamConvertExternalToolPath { get; set; }
+
+    /// <summary>
+    /// The external tool's argument template, e.g. <c>-sDEVICE=png16m -r{dpi} -o{output} {input}</c>.
+    /// Split on whitespace and substituted per-token (<c>{input}</c>, <c>{output}</c>, <c>{dpi}</c>) -
+    /// never built into a single shell string, so a substituted path can never be interpreted as
+    /// another argument or a shell metacharacter.
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool arguments")]
+    [Description("Argument template; {input}, {output}, {dpi} are substituted per-token, never shell-expanded.")]
+    public string? StreamConvertExternalToolArguments { get; set; }
+
+    /// <summary>The DPI value substituted for <c>{dpi}</c> in <see cref="StreamConvertExternalToolArguments"/>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("External tool DPI")]
+    public int StreamConvertDpi { get; set; } = 150;
+
+    /// <summary>The HTTP endpoint a capture's raw bytes are POSTed to when <see cref="StreamConvertMode"/> is <c>webservice</c>. No default - this sends data to an external, user-configured host.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Web service URL")]
+    public string? StreamConvertWebServiceUrl { get; set; }
+
+    /// <summary>The HTTP method used for <see cref="StreamConvertWebServiceUrl"/>. Defaults to <c>POST</c>.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Web service method")]
+    public string StreamConvertWebServiceMethod { get; set; } = "POST";
+
+    /// <summary>
+    /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible
+    /// default per mechanism (<c>svg</c> for the internal HP-GL converter, <c>png</c> for the other two).
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Converted output extension")]
+    public string? StreamConvertOutputExtension { get; set; }
 }

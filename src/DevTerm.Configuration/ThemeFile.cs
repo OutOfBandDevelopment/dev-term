@@ -153,6 +153,60 @@ public static class ThemeFile
         }
     }
 
+    /// <summary>
+    /// Writes a user theme file at <paramref name="path"/> — the literal inverse of <see cref="Parse"/>'s
+    /// <c>colors</c> grammar: every entry in <paramref name="overrides"/> becomes one <c>colors</c> field,
+    /// nothing else is computed or diffed here (that's <see cref="ThemeBuilderState.Save"/>'s job, so a
+    /// built-in is never written back as a file - only ever a new user theme). <paramref name="baseName"/>
+    /// must be <c>"light"</c> or <c>"dark"</c>, matching what <see cref="Parse"/> accepts for <c>basedOn</c>.
+    /// Creates <see cref="DevTermUserDataPaths.ThemesDirectory"/> (or <paramref name="path"/>'s own
+    /// directory) if it doesn't exist yet. Returns an error message if the file couldn't be written,
+    /// otherwise null - never throws, matching <see cref="Load"/>'s "report, don't throw" convention.
+    /// </summary>
+    public static string? Save(string path, string name, string baseName, ChartPaletteVariant chartPalette, IReadOnlyDictionary<ThemeRole, ThemeColor> overrides)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseName);
+        ArgumentNullException.ThrowIfNull(overrides);
+
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("name", name);
+            writer.WriteString("basedOn", baseName.ToLowerInvariant());
+            writer.WriteString("chartPalette", chartPalette == ChartPaletteVariant.Dark ? "dark" : "light");
+            writer.WriteStartObject("colors");
+            foreach (var role in Enum.GetValues<ThemeRole>())
+            {
+                if (overrides.TryGetValue(role, out var color))
+                {
+                    writer.WriteString(RoleName(role), color.ToHex());
+                }
+            }
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllBytes(path, stream.ToArray());
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $"{Path.GetFileName(path)}: could not be written ({ex.Message}).";
+        }
+    }
+
     private static void ReadColors(JsonElement colors, string source, Dictionary<ThemeRole, ThemeColor> overrides, List<string> errors)
     {
         if (colors.ValueKind != JsonValueKind.Object)

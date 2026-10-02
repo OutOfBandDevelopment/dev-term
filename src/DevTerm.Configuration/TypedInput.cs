@@ -1,3 +1,4 @@
+using System.Text;
 using DevTerm.Core.Presenters;
 
 namespace DevTerm.Configuration;
@@ -34,5 +35,53 @@ public static class TypedInput
             error = $"Not sent: '{line}' isn't valid {parserName} input ({ex.Message})";
             return false;
         }
+    }
+
+    /// <summary>
+    /// Builds the text to echo for a sent line (View &gt; Echo Sent Commands): <paramref name="line"/>
+    /// with <paramref name="lineEnding"/>'s literal characters appended, then
+    /// <see cref="EscapeForDisplay"/>d - so e.g. a CR/LF line ending shows as the two visible
+    /// characters <c>\r\n</c> instead of silently appended or breaking the echoed line in the output
+    /// pane.
+    /// </summary>
+    public static string FormatForEcho(string line, LineEnding lineEnding) =>
+        EscapeForDisplay(line + lineEnding.ToChars());
+
+    /// <summary>
+    /// Escapes every non-printable character in <paramref name="text"/> so it's safe to show as a
+    /// single visible line: CR/LF/TAB/NUL become <c>\r</c>/<c>\n</c>/<c>\t</c>/<c>\0</c>, any other
+    /// control character becomes <c>\xHH</c>, and a literal backslash is doubled so none of those
+    /// escapes are ever ambiguous with a real backslash already in <paramref name="text"/>.
+    /// </summary>
+    public static string EscapeForDisplay(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        StringBuilder? builder = null;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            var escape = c switch
+            {
+                '\\' => "\\\\",
+                '\r' => "\\r",
+                '\n' => "\\n",
+                '\t' => "\\t",
+                '\0' => "\\0",
+                _ when char.IsControl(c) => $"\\x{(int)c:X2}",
+                _ => null,
+            };
+
+            if (escape is null)
+            {
+                builder?.Append(c);
+                continue;
+            }
+
+            builder ??= new StringBuilder(text[..i], text.Length + 8);
+            builder.Append(escape);
+        }
+
+        return builder?.ToString() ?? text;
     }
 }

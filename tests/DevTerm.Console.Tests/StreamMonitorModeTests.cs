@@ -1,3 +1,4 @@
+using DevTerm.Configuration;
 using DevTerm.Core.StreamContent;
 using DevTerm.Test.Utilities;
 using Terminal.Gui.Input;
@@ -135,5 +136,68 @@ public sealed class StreamMonitorModeTests
         {
             File.Delete(notADirectory);
         }
+    }
+
+    [TestMethod]
+    public async Task ConvertButton_WithInternalHpglToSvgConfigured_ConvertsTheSelectedCapture()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("scope");
+        var capture = await bench.CaptureAsync(StreamContentSamples.Hpgl());
+        var cliOptions = new CliOptions { StreamConvertMode = "internalhpgltosvg" };
+
+        StreamMonitorWindowParts? captured = null;
+        TuiTestRunner.RunWithLoopApp(
+            beforeBuild: null,
+            build: app =>
+            {
+                captured = StreamMonitorMode.BuildWindow(app, bench.Monitor, cliOptions);
+                return captured.Window;
+            },
+            body: (app, _) =>
+            {
+                var parts = captured!;
+                TuiTestRunner.InvokeOnLoop(() =>
+                {
+                    parts.CaptureList.SelectedItem = 0;
+                    parts.ConvertButton.InvokeCommand(Command.Accept);
+                    return 0;
+                });
+
+                Assert.IsTrue(
+                    TuiTestRunner.WaitUntilOnLoop(() => parts.DetailLabel.Text.Contains("Converted to", StringComparison.Ordinal), TimeSpan.FromSeconds(5)),
+                    $"Expected the detail label to report a conversion; last seen: {TuiTestRunner.InvokeOnLoop(() => parts.DetailLabel.Text)}");
+            });
+
+        var expectedSvgPath = Path.ChangeExtension(capture.SavedPath, "svg");
+        Assert.IsTrue(File.Exists(expectedSvgPath));
+        StringAssert.Contains(File.ReadAllText(expectedSvgPath), "<svg");
+    }
+
+    [TestMethod]
+    public async Task ConvertButton_WithNoModeConfigured_ReportsTheFailure()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("scope");
+        await bench.CaptureAsync(StreamContentSamples.Hpgl());
+
+        StreamMonitorWindowParts? captured = null;
+        TuiTestRunner.RunWithLoopApp(
+            beforeBuild: null,
+            build: app =>
+            {
+                captured = StreamMonitorMode.BuildWindow(app, bench.Monitor);
+                return captured.Window;
+            },
+            body: (app, _) =>
+            {
+                var parts = captured!;
+                TuiTestRunner.InvokeOnLoop(() =>
+                {
+                    parts.CaptureList.SelectedItem = 0;
+                    parts.ConvertButton.InvokeCommand(Command.Accept);
+                    return 0;
+                });
+
+                Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.DetailLabel.Text.Contains("Convert failed", StringComparison.Ordinal), TimeSpan.FromSeconds(5)));
+            });
     }
 }

@@ -31,6 +31,51 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--playbackspeed' must be 0 or greater.");
         }
 
+        if (options.WriteByteDelayMs < -1)
+        {
+            return ValidateOptionsResult.Fail("'--writebytedelayms' must be -1 (disabled), 0 (no delay), or a positive number of milliseconds.");
+        }
+
+        if (options.LoopbackSampleIntervalMs < 0)
+        {
+            return ValidateOptionsResult.Fail("'--loopbacksampleintervalms' must be 0 or greater.");
+        }
+
+        if (options.StreamConvertDpi <= 0)
+        {
+            return ValidateOptionsResult.Fail("'--streamconvertdpi' must be a positive number.");
+        }
+
+        var streamConvertMode = (options.StreamConvertMode ?? "none").Trim().ToLowerInvariant();
+        switch (streamConvertMode)
+        {
+            case "none":
+                break;
+
+            case "externaltool":
+                if (string.IsNullOrWhiteSpace(options.StreamConvertExternalToolPath))
+                {
+                    return ValidateOptionsResult.Fail("'--streamconvertexternaltoolpath' is required when '--streamconvertmode' is 'externaltool'.");
+                }
+
+                break;
+
+            case "webservice":
+                if (string.IsNullOrWhiteSpace(options.StreamConvertWebServiceUrl) ||
+                    !Uri.TryCreate(options.StreamConvertWebServiceUrl, UriKind.Absolute, out _))
+                {
+                    return ValidateOptionsResult.Fail("'--streamconvertwebserviceurl' must be a valid absolute URL when '--streamconvertmode' is 'webservice'.");
+                }
+
+                break;
+
+            case "internalhpgltosvg":
+                break;
+
+            default:
+                return ValidateOptionsResult.Fail($"Unknown '--streamconvertmode' '{options.StreamConvertMode}'. Expected 'none', 'externaltool', 'webservice', or 'internalhpgltosvg'.");
+        }
+
         switch (options.Transport.ToLowerInvariant())
         {
             case "serial":

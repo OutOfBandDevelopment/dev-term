@@ -34,4 +34,14 @@ public sealed class ButtonControl : UiControl
     /// (e.g. a SCPI command with parameters) without a bespoke dynamic form.
     /// </summary>
     public List<string>? ParameterFieldIds { get; set; }
+
+    /// <summary>
+    /// Positionally parallel to <see cref="ParameterFieldIds"/>: an <see cref="Expression"/>
+    /// transforming that index's sibling field value before it's joined into the sent string (e.g.
+    /// sending a field entered in Celsius as Fahrenheit via <c>{field_id} * 9 / 5 + 32</c>), evaluated
+    /// against every sibling control's current value in the same section. A null or blank entry at a
+    /// given index — including when this list itself is unset — keeps that index's existing bare
+    /// lookup unchanged. See docs/design/proposals/manifest-editor-expression-builder.md.
+    /// </summary>
+    public List<string?>? ParameterExpressions { get; set; }
 }

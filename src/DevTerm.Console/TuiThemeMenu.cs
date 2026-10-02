@@ -30,11 +30,16 @@ internal sealed class TuiThemeMenu
             });
         }
 
-        MenuBarItem = new MenuBarItem("_View", [new MenuItem("_Theme", string.Empty, new Menu([.. _items.Values]))]);
+        ThemeMenuItem = new MenuItem("_Theme", string.Empty, new Menu([.. _items.Values]));
     }
 
-    /// <summary>The top-level "_View" entry for the menu bar.</summary>
-    public MenuBarItem MenuBarItem { get; }
+    /// <summary>
+    /// The "_Theme" submenu item - a sibling of TuiMode's other "_View" entries (Echo Sent Commands,
+    /// Software Flow Control, Clear Output), which it doesn't know about and can't own the whole
+    /// top-level "_View" <see cref="MenuBarItem"/> the way it used to when "_Theme" was View's only
+    /// child.
+    /// </summary>
+    public MenuItem ThemeMenuItem { get; }
 
     /// <summary>Each theme's menu item by selection name - for tests to invoke, and to read which is marked current.</summary>
     public IReadOnlyDictionary<string, MenuItem> Items => _items;

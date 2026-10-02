@@ -12,8 +12,8 @@ namespace DevTerm.Transports.Tcp.Tests;
 [TestClass]
 public sealed class TcpTransportTests
 {
-    private static IOptions<TcpTransportOptions> Options(TcpTransportMode mode, string? host = "device.local", int port = 502, int writeTimeoutMs = 5000) =>
-        Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = mode, Host = host, Port = port, WriteTimeoutMs = writeTimeoutMs });
+    private static IOptions<TcpTransportOptions> Options(TcpTransportMode mode, string? host = "device.local", int port = 502, int writeTimeoutMs = 5000, bool softwareFlowControl = false) =>
+        Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = mode, Host = host, Port = port, WriteTimeoutMs = writeTimeoutMs, SoftwareFlowControl = softwareFlowControl });
 
     /// <summary>
     /// A connection double whose <see cref="ITcpConnection.Stream"/> is backed by a real
@@ -126,6 +126,32 @@ public sealed class TcpTransportTests
     }
 
     [TestMethod]
+    public async Task WriteAsync_WithZeroByteDelay_WritesOneByteAtATimeThroughTheStream()
+    {
+        var incoming = new Pipe();
+        var outgoing = new Pipe();
+        var duplexStream = new DuplexPipeStream(incoming, outgoing);
+        var connection = new Mock<ITcpConnection>();
+        connection.SetupGet(c => c.Stream).Returns(duplexStream);
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var options = Microsoft.Extensions.Options.Options.Create(new TcpTransportOptions { Mode = TcpTransportMode.Client, Host = "device.local", Port = 502, WriteByteDelayMs = 0 });
+        var transport = new TcpTransport(source.Object, options);
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await transport.WriteAsync(new byte[] { 1, 2, 3 }, TestContext.CancellationToken);
+        await outgoing.Writer.FlushAsync(TestContext.CancellationToken);
+
+        var result = await outgoing.Reader.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(new byte[] { 1, 2, 3 }, result.Buffer.ToArray());
+        outgoing.Reader.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     [TestCategory(TestCategories.BugRegression)]
     public async Task WriteAsync_ConnectionNeverDrains_ThrowsTimeoutExceptionAfterWriteTimeoutMs()
     {
@@ -216,6 +242,128 @@ public sealed class TcpTransportTests
         await transport.CloseAsync(TestContext.CancellationToken);
 
         source.Verify(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task SoftwareFlowControl_WhenDisabled_PassesXonXoffBytesThroughUnfiltered()
+    {
+        var (connection, wirePipe) = CreateConnection();
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, softwareFlowControl: false));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        var payload = new byte[] { 0x13, (byte)'A', 0x11, (byte)'B' };
+        await wirePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
+
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual(payload, result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task SoftwareFlowControl_WhenEnabled_StripsXonXoffBytesFromInput()
+    {
+        var (connection, wirePipe) = CreateConnection();
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, softwareFlowControl: true));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        var payload = new byte[] { 0x13, (byte)'A', 0x11, (byte)'B' }; // XOFF, 'A', XON, 'B'
+        await wirePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
+
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual("AB"u8.ToArray(), result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task SoftwareFlowControl_WhenEnabled_PausesWritesAfterXoff_AndResumesAfterXon()
+    {
+        var (connection, wirePipe) = CreateConnection();
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, softwareFlowControl: true));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await wirePipe.Writer.WriteAsync(new byte[] { 0x13 }, TestContext.CancellationToken); // XOFF from the peer
+        await Task.Delay(100, TestContext.CancellationToken); // let the background pump observe it
+
+        var writeTask = transport.WriteAsync(new byte[] { 1, 2, 3 }, TestContext.CancellationToken);
+
+        await Task.Delay(100, TestContext.CancellationToken);
+        Assert.IsFalse(writeTask.IsCompleted, "Write should stay paused until an XON is received.");
+        connection.Verify(c => c.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        await wirePipe.Writer.WriteAsync(new byte[] { 0x11 }, TestContext.CancellationToken); // XON resumes writes
+
+        await writeTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        connection.Verify(c => c.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task SoftwareFlowControl_ToggledOnLiveConnection_TakesEffectWithoutReconnecting()
+    {
+        var (connection, wirePipe) = CreateConnection();
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, softwareFlowControl: false));
+        await transport.OpenAsync(TestContext.CancellationToken);
+        Assert.IsFalse(transport.SoftwareFlowControl);
+
+        transport.SoftwareFlowControl = true;
+        Assert.IsTrue(transport.SoftwareFlowControl);
+
+        var payload = new byte[] { 0x13, (byte)'A', 0x11, (byte)'B' }; // XOFF, 'A', XON, 'B'
+        await wirePipe.Writer.WriteAsync(payload, TestContext.CancellationToken);
+
+        var result = await transport.Input.ReadAsync(TestContext.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreSequenceEqual("AB"u8.ToArray(), result.Buffer.ToArray());
+        transport.Input.AdvanceTo(result.Buffer.End);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task SoftwareFlowControl_DisablingWhilePaused_ReleasesTheStuckWriteImmediately()
+    {
+        var (connection, wirePipe) = CreateConnection();
+        var source = new Mock<ITcpConnectionSource>();
+        source.Setup(s => s.ConnectAsync(It.IsAny<TcpTransportOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection.Object);
+
+        var transport = new TcpTransport(source.Object, Options(TcpTransportMode.Client, softwareFlowControl: true));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await wirePipe.Writer.WriteAsync(new byte[] { 0x13 }, TestContext.CancellationToken); // XOFF from the peer
+        await Task.Delay(100, TestContext.CancellationToken); // let the background pump observe it
+
+        var writeTask = transport.WriteAsync(new byte[] { 1, 2, 3 }, TestContext.CancellationToken);
+
+        await Task.Delay(100, TestContext.CancellationToken);
+        Assert.IsFalse(writeTask.IsCompleted, "Write should stay paused until flow control is resolved.");
+
+        transport.SoftwareFlowControl = false; // disabling must release the stuck write, not leave it paused forever
+
+        await writeTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        connection.Verify(c => c.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
     }
 
     /// <summary>Stand-in for a real socket exception so the test doesn't depend on actual networking.</summary>

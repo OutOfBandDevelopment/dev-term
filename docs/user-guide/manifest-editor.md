@@ -28,6 +28,12 @@ A panel control's form only shows the fields that control's **Kind** has — a b
 and range, a slider's step, a vector display's coordinate ids. Changing the Kind turns the control
 into the new kind, keeping its id, label and help text:
 
+An indicator's **Expression** field, a chart's **Channels** (`id:label:color:expression`), and a
+button's **Parameter expressions** let a field derive its value instead of showing a raw decoder
+value verbatim — `{raw_mv} / 1000` to show millivolts as volts, `round({voltage} * {current}, 2)` to
+compute and send a derived value. See [`docs/specs/manifest-editor.md`](../specs/manifest-editor.md)'s
+Fields table for the exact grammar and syntax.
+
 ![WPF manifest editor: a bar graph control's form](images/wpf-manifest-editor-control.png)
 
 ![TUI manifest editor: a bar graph control's form](images/tui-manifest-editor-control.png)

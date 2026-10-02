@@ -437,6 +437,115 @@ public sealed class DeviceManifestTests
         Assert.Contains($"Trace' declares a history length of {StripChartState.MaxCapacity + 1}", string.Join(" ", result.Warnings));
     }
 
+    [TestMethod]
+    public void Validate_IndicatorExpression_InvalidSyntax_ReportsAnError()
+    {
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections = [new UiSection { Controls = [new IndicatorControl { Id = "i", Label = "Readout", Expression = "1 +" }] }],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.Contains("Readout", string.Join(" ", result.Errors));
+    }
+
+    [TestMethod]
+    public void Validate_IndicatorExpression_ValidSyntax_ReportsNoError()
+    {
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections = [new UiSection { Controls = [new IndicatorControl { Id = "i", Label = "Readout", Expression = "{raw_mv} / 1000" }] }],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid);
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void Validate_ChartChannelExpression_InvalidSyntax_ReportsAnError(bool stripChart)
+    {
+        UiControl chart = stripChart
+            ? new StripChartControl { Id = "trace", Label = "Trace", Channels = [new ChartChannel { Id = "value", Expression = "1 +" }] }
+            : new BarGraphControl { Id = "levels", Label = "Levels", Channels = [new ChartChannel { Id = "value", Expression = "1 +" }] };
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition { Name = "Korad KA3005P", Sections = [new UiSection { Controls = [chart] }] });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.Contains("invalid expression", string.Join(" ", result.Errors));
+    }
+
+    [TestMethod]
+    public void Validate_ChartChannelExpression_ValidSyntax_ReportsNoError()
+    {
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections = [new UiSection { Controls = [new BarGraphControl { Id = "levels", Label = "Levels", Channels = [new ChartChannel { Id = "value", Expression = "{raw} / 1000" }] }] }],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid);
+    }
+
+    [TestMethod]
+    public void Validate_ButtonParameterExpression_InvalidSyntax_ReportsAnErrorWithItsIndex()
+    {
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections =
+            [
+                new UiSection
+                {
+                    Controls =
+                    [
+                        new NumericControl { Id = "field", Label = "Field" },
+                        new ButtonControl { Id = "send", Label = "Send", ParameterFieldIds = ["field"], ParameterExpressions = ["1 +"] },
+                    ],
+                },
+            ],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.Contains("index 0", string.Join(" ", result.Errors));
+    }
+
+    [TestMethod]
+    public void Validate_ButtonParameterExpression_BlankOrValidEntries_ReportNoError()
+    {
+        var manifest = BuildKoradManifest(inlineUi: new UiDefinition
+        {
+            Name = "Korad KA3005P",
+            Sections =
+            [
+                new UiSection
+                {
+                    Controls =
+                    [
+                        new NumericControl { Id = "a", Label = "A" },
+                        new NumericControl { Id = "b", Label = "B" },
+                        new ButtonControl { Id = "send", Label = "Send", ParameterFieldIds = ["a", "b"], ParameterExpressions = [null, "round({a} * 2)"] },
+                    ],
+                },
+            ],
+        });
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.IsValid);
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "devterm-manifest-tests", Path.GetRandomFileName());

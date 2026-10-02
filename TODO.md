@@ -6,9 +6,7 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-Nothing active right now — the UI batch started 2026-09-25 (built on `dev/error-handling-and-todo`)
-finished its last item, "Multiple sessions per window," 2026-09-30; see `docs/changes/2026-09-30.md`
-and `docs/design/multi-session-ui.md`'s Status section.
+Nothing active right now.
 
 ## Backlog / research
 

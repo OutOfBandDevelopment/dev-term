@@ -11,6 +11,9 @@ public enum OutputKind
 
     /// <summary>An error (a failed connect, a lost connection, rejected input...) - dark red.</summary>
     Error,
+
+    /// <summary>An echoed sent command (<c>Out&gt; text</c>), shown only when enabled via View > Echo Sent Commands - accent-colored, matching Playback's <c>[tx]</c> lines.</summary>
+    Sent,
 }
 
 /// <summary>

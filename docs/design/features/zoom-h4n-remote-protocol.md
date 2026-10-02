@@ -127,20 +127,25 @@ indicator lamps rather than a scrolling text log:
 
 ## Status
 
-**Implemented, 2026-09-25** (`DevTerm.Devices.ZoomH4n`): decoder (`ZoomH4nDecoder`, the 5-flag
-status bitmask, `IStructuredPresenter`-driven live indicators), control surface
-(`ZoomH4nControlSurface`, including the init handshake — a private, non-DI-registered
-`ZoomH4nWakeWatcher` presenter added directly into the session's live pipeline so the handshake
-sees the wake reply regardless of the user's own `--presenter` selection), `UiDefinition`
-(`ZoomH4nUiDefinition`), and menu wiring in both the TUI and WPF Device menus, gated on
-`DevicePanel.ZoomH4n` (any serial connection — no VID/PID to match on, unlike the HID devices).
-Unit-tested (`tests/DevTerm.Devices.ZoomH4n.Tests`) against a mocked `ITransport` (a real `Pipe`
-backs its `Input`, so the handshake's wake-byte reply is written back deterministically from
-inside the mocked `WriteAsync` — see `ScpiAutoDetectTests`' pattern, reused here) — **not yet
-verified against real hardware**: no Zoom H4n / `h4n2rs485` adapter was attached this session, so
-the handshake timing (1024 attempts, ~30ms apart) and the exact status-bitmask semantics remain
-unconfirmed against a live unit. `RealHardwareZoomH4nTests` exists and will exercise this for real
-once the adapter is available and `devterm.runsettings`' blank `RealSerialZoomH4nPort` is filled in.
+**Implemented and verified against real hardware, 2026-09-25 / 2026-10-01**
+(`DevTerm.Devices.ZoomH4n`): decoder (`ZoomH4nDecoder`, the 5-flag status bitmask,
+`IStructuredPresenter`-driven live indicators), control surface (`ZoomH4nControlSurface`,
+including the init handshake — a private, non-DI-registered `ZoomH4nWakeWatcher` presenter added
+directly into the session's live pipeline so the handshake sees the wake reply regardless of the
+user's own `--presenter` selection), `UiDefinition` (`ZoomH4nUiDefinition`), and menu wiring in
+both the TUI and WPF Device menus, gated on `DevicePanel.ZoomH4n` (any serial connection — no
+VID/PID to match on, unlike the HID devices). Unit-tested (`tests/DevTerm.Devices.ZoomH4n.Tests`)
+against a mocked `ITransport` (a real `Pipe` backs its `Input`, so the handshake's wake-byte reply
+is written back deterministically from inside the mocked `WriteAsync` — see `ScpiAutoDetectTests`'
+pattern, reused here).
+
+Confirmed against a real Zoom H4n via the `h4n2rs485` adapter on COM5 (2026-10-01, see
+`docs/test/2026-10-01-08-15-06.md`): `RealHardwareZoomH4nTests.InvokeAsync_AgainstRealDevice_CompletesHandshakeAndSendsAButtonCommand`
+passed — the init handshake completes and a `mic` button command sends without fault or timeout,
+the same "no fault, no timeout" bar used by every other real-hardware confirmation in this repo.
+Only this one path was exercised; the other 11 buttons, the exact status-bitmask semantics against
+a live unit, and the per-recording-mode LED blink timing remain unconfirmed — the H4n's remote port
+is send-oriented, and whether it echoes anything back for this physical unit still isn't confirmed.
 
 ## Open questions
 

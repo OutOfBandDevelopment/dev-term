@@ -148,6 +148,13 @@ bits/DTR/RTS from Serial), minus the three fields that don't apply to it (Listen
 timeout (ms)) — see [the Connection Editor spec](../specs/connection-editor.md)'s States section for
 exactly which fields that is.
 
+**Timing** is a separate section shown below Serial/TCP/RFC 2217's own fields (not for HID, USBTMC,
+BLE, or Loopback): **Write byte delay (ms)**, for a slow device without a FIFO buffer that can't
+absorb a burst write. Leave it at `-1` (the default) for normal unpaced writes; `0` writes and
+flushes one byte at a time with no added delay; a positive value adds that many milliseconds between
+bytes. See [`docs/design/transports.md`](../design/transports.md)'s "Write pacing" section for how it
+works under the hood.
+
 **USB HID** (the TUI capture is scrolled so the USB Device section starts at the top):
 
 ![TUI connection editor, HID transport](images/tui-configure-hid.png)
@@ -155,8 +162,11 @@ exactly which fields that is.
 ![WPF connection editor, HID transport](images/wpf-device-profiles-hid.png)
 
 **Loopback** — a zero-configuration, in-process fake device for exercising the UI without any real
-hardware attached (see [`docs/design/transports.md`](../design/transports.md)); no fields to fill
-in, just Connect:
+hardware attached (see [`docs/design/transports.md`](../design/transports.md)); the only field is
+an optional **Sample interval (ms)** (default `0`, instant delivery) that paces a scripted streaming
+response (`Samples: N`, `Send Events: N`) one line at a time instead of delivering it all at once —
+useful for demoing or verifying a strip chart or Stream Monitor capture at a believable cadence. No
+other fields to fill in beyond that, just Connect:
 
 ![TUI connection editor, Loopback transport](images/tui-configure-loopback.png)
 

@@ -13,10 +13,12 @@ public sealed class TcpTransport : ITransport
     private readonly ITcpConnectionSource _connectionSource;
     private readonly IOptions<TcpTransportOptions> _options;
     private ITcpConnection? _connection;
+    private Stream? _writeStream;
     private ConnectionState _state = ConnectionState.Closed;
     private Pipe? _pipe;
     private CancellationTokenSource? _pumpCts;
     private Task? _pumpTask;
+    private readonly XonXoffFlowControlGate _flowControlGate = new();
 
     public TcpTransport(ITcpConnectionSource connectionSource, IOptions<TcpTransportOptions> options)
     {
@@ -25,6 +27,20 @@ public sealed class TcpTransport : ITransport
 
         _connectionSource = connectionSource;
         _options = options;
+        _flowControlGate.Enabled = options.Value.SoftwareFlowControl;
+    }
+
+    /// <summary>
+    /// Whether inbound XON/XOFF bytes pause/resume outbound writes - seeded from
+    /// <see cref="TcpTransportOptions.SoftwareFlowControl"/> but settable live on an open connection,
+    /// since whether a given serial-to-Ethernet bridge actually needs this often can't be confirmed
+    /// until after connecting. The gate persists for this transport's whole lifetime (survives
+    /// Close/Open), so toggling it once isn't lost across a reconnect.
+    /// </summary>
+    public bool SoftwareFlowControl
+    {
+        get => _flowControlGate.Enabled;
+        set => _flowControlGate.Enabled = value;
     }
 
     public ConnectionState State
@@ -71,11 +87,15 @@ public sealed class TcpTransport : ITransport
         }
 
         _connection = connection;
+        _writeStream = options.WriteByteDelayMs >= 0
+            ? new WriteDelayStream(connection.Stream, options.WriteByteDelayMs)
+            : null;
         _pipe = new Pipe();
         _pumpCts = new CancellationTokenSource();
 
         var pipe = _pipe;
-        _pumpTask = Task.Run(() => StreamToPipePump.RunAsync(connection.Stream, pipe.Writer, _pumpCts.Token), CancellationToken.None);
+        Stream pumpSource = new XonXoffReadStream(connection.Stream, _flowControlGate);
+        _pumpTask = Task.Run(() => StreamToPipePump.RunAsync(pumpSource, pipe.Writer, _pumpCts.Token), CancellationToken.None);
         _ = _pumpTask.ContinueWith(
             _ =>
             {
@@ -121,6 +141,7 @@ public sealed class TcpTransport : ITransport
             _pumpCts = null;
             _pumpTask = null;
             _pipe = null;
+            _writeStream = null;
 
             _connection.Dispose();
             _connection = null;
@@ -141,7 +162,16 @@ public sealed class TcpTransport : ITransport
 
         try
         {
-            await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            await _flowControlGate.WaitUntilResumedAsync(linkedCts.Token).ConfigureAwait(false);
+
+            if (_writeStream is not null)
+            {
+                await _writeStream.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await _connection.WriteAsync(data, linkedCts.Token).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {

@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
                 o.Host = cliOptions.Host;
                 o.Port = int.TryParse(cliOptions.Port, out var tcpPort) ? tcpPort : 0;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "hid", StringComparison.OrdinalIgnoreCase))
@@ -107,11 +108,13 @@ public static class ServiceCollectionExtensions
                 o.DtrEnable = cliOptions.Dtr;
                 o.RtsEnable = cliOptions.Rts;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             services.AddLoopbackTransport();
+            services.Configure<LoopbackTransportOptions>(o => o.SampleIntervalMs = cliOptions.LoopbackSampleIntervalMs);
         }
         else
         {
@@ -128,6 +131,7 @@ public static class ServiceCollectionExtensions
                 o.ReadTimeoutMs = cliOptions.ReadTimeoutMs;
                 o.DtrEnable = cliOptions.Dtr;
                 o.RtsEnable = cliOptions.Rts;
+                o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
 
@@ -152,6 +156,21 @@ public static class ServiceCollectionExtensions
         services.AddDe5000Presenter();
         services.AddNmeaGpsPresenter();
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
+        services.AddStreamCaptureConverter(cliOptions);
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="StreamCaptureConverter"/> and its options, bound from <paramref name="cliOptions"/>'s
+    /// <c>StreamConvert*</c> properties, plus the named <see cref="IHttpClientFactory"/> client it uses
+    /// for the web-service conversion mechanism.
+    /// </summary>
+    public static IServiceCollection AddStreamCaptureConverter(this IServiceCollection services, CliOptions cliOptions)
+    {
+        ArgumentNullException.ThrowIfNull(cliOptions);
+        services.AddHttpClient(StreamCaptureConverter.HttpClientName);
+        services.Configure<StreamCaptureConverterOptions>(o => StreamCaptureConverterOptions.CopyFrom(cliOptions, o));
+        services.AddSingleton<StreamCaptureConverter>();
         return services;
     }
 }

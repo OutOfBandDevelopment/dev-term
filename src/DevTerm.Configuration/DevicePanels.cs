@@ -71,7 +71,7 @@ public static class DevicePanels
             DevicePanel.RadexOne => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
 
             // Zoom H4n's RC04/RC2 remote port is presented as plain serial (via the h4n2rs485
-            // adapter, see docs/design/proposals/zoom-h4n-remote-protocol.md) - no VID/PID to gate
+            // adapter, see docs/design/features/zoom-h4n-remote-protocol.md) - no VID/PID to gate
             // on, so any serial connection is offered, like SCPI's "any non-HID transport".
             DevicePanel.ZoomH4n => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
 
