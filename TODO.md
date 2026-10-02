@@ -28,8 +28,7 @@ Completed work is logged by date under `docs/changes/`.
     `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
-    - Bench passes for the Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for
-      what was hardware-tested; the DE-5000 has never been run against a real meter here.
+    - The DE-5000 has never been run against a real meter here.
 
 ## Backlog / research
 
