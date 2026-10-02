@@ -228,8 +228,9 @@ What was built, and where it differs from the text above:
   HP-GL/PostScript/PCL show "Preview not available yet".
 - **Verified**: unit tests only, covering every signature/end finder byte-by-byte, the watcher on a
   fake clock, the monitor over a real `Session`, both windows, and the main windows' wiring including
-  a live profile switch. **Not verified against real hardware yet**: the DG1062Z screen capture and
-  the TDS2024 hard copy are the obvious first checks.
+  a live profile switch. **Verified against real hardware 2026-10-02**: the DG1062Z screen dump
+  (`HCOPy:SDUMp:DATA?`, 230,456-byte BMP, USBTMC) and the TDS2024 hard copy (`HARDCopy START`, 77,878-byte BMP,
+  19200 baud TCP bridge) each arrive as one capture, saved as `.bmp`; see `docs/test/2026-10-02-18-20-00.md`.
 - **Open questions, as answered so far**: unsolicited captures work (sniffing needs no tracked
   query). One capture at a time: a second stream starting mid-capture is appended to the first.
   No retention/cleanup.
