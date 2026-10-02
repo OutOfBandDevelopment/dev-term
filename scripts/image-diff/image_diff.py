@@ -38,11 +38,11 @@ overly broad mask.
 ## Commands
 
     python scripts/image-diff/image_diff.py [diff] [--ref HEAD] [--save-diff DIR] [--tolerance N]
-                                             [--no-restore] [file ...]
+                                             [--auto-restore-threshold N] [--no-restore] [file ...]
         Diff mode (default). With no file arguments, diffs every changed-or-new
         docs/user-guide/images/*.png (per `git status`) against --ref. Exit code 0 if every change is
         fully covered by that file's mask sidecar (or there's no change at all), 1 if any file has a
-        diff pixel outside its mask.
+        diff pixel outside its mask (and outside --auto-restore-threshold, if given).
 
         When a file's diff is fully covered by its mask (nothing to actually review), the working-tree
         PNG - and its paired `.txt` sidecar, if one exists (e.g. TuiTestRunner.DumpBuffer() dumps) - is
@@ -50,12 +50,34 @@ overly broad mask.
         temp path, say) doesn't churn a new binary into git for no reason. Pass --no-restore to only
         report instead.
 
+        --auto-restore-threshold N: opt-in escape valve for an *unmasked* diff, OFF by default (N=0).
+        This tool's whole premise is that every diff pixel is a real content change, never noise (see
+        the determinism note above) - so this flag does not mean "small diffs are probably fine" and
+        must never be left on by default or baked into a script that runs unattended. It exists for the
+        moment after you've actually looked at a cropped --save-diff preview and judged a specific,
+        tiny, incidental diff (anti-aliasing jitter on one glyph, a cursor blink frame) not worth a
+        permanent mask file. When a file's unmasked diff count is <= N pixels, it's logged as AUTO (with
+        the exact pixel count, so the waiver is auditable in the run's output) and restored to --ref
+        like a masked match would be. Anything larger still reports DIFF and is never auto-restored.
+        Prefer a real `.mask.json` sidecar with a `note` over reaching for this flag repeatedly for the
+        same region in the same file - a mask documents *why* a region is expected to change, this flag
+        just says "small enough this one time."
+
     python scripts/image-diff/image_diff.py render-masks [--out-dir artifacts/image-diff-preview] [file ...]
         Draws each image's declared mask rects (outlined + translucent fill, numbered) onto a copy of
         the image so you can visually confirm a mask actually covers the region you mean it to, before
         trusting it to auto-clear a diff. With no file arguments, renders every image under
         docs/user-guide/images that currently has a mask sidecar. Output is untracked review output
         (same convention as artifacts/ for TuiReview/WpfReview) - never commit it.
+
+## --save-diff output: review a crop, not the whole screenshot
+
+A screenshot is 700-900px on a side; opening one just to look at a changed status line wastes most of
+the vision tokens on pixels that didn't change. `--save-diff DIR` instead crops to the diff's bounding
+box (padded by `--crop-padding`, default 24px) and writes one `{stem}.diff-crop.png` per unmasked-diff
+file: baseline crop | working crop | amplified diff crop, side by side with labels, so reviewing it
+costs tokens proportional to the change, not to the screenshot's full size. If the bbox is already most
+of the image, the crop is close to full-size anyway - there's no second, separate "full image" dump.
 """
 
 from __future__ import annotations
@@ -139,8 +161,61 @@ def restore_to_baseline(image_path: Path, ref: str) -> None:
             print(f"      WARN: could not restore {p}: {result.stderr.strip()}")
 
 
-def diff_one(path: str, ref: str, tolerance: int, save_diff_dir: Path | None, restore: bool) -> bool:
-    """Returns True if the file is clean (no unmasked diff)."""
+def padded_bbox(bbox: tuple[int, int, int, int], padding: int, size: tuple[int, int]) -> tuple[int, int, int, int]:
+    x0, y0, x1, y1 = bbox
+    return (
+        max(0, x0 - padding),
+        max(0, y0 - padding),
+        min(size[0], x1 + padding),
+        min(size[1], y1 + padding),
+    )
+
+
+def save_cropped_diff_preview(
+    baseline: Image.Image,
+    working: Image.Image,
+    diff: Image.Image,
+    bbox: tuple[int, int, int, int],
+    padding: int,
+    working_path: Path,
+    out_dir: Path,
+) -> Path:
+    """Writes baseline-crop | working-crop | amplified-diff-crop side by side, cropped to bbox
+    (padded) instead of the full screenshot - reviewing this costs tokens proportional to the
+    change, not to the whole image."""
+    crop_box = padded_bbox(bbox, padding, baseline.size)
+    baseline_crop = baseline.crop(crop_box).convert("RGB")
+    working_crop = working.crop(crop_box).convert("RGB")
+    diff_crop = diff.crop(crop_box).point(lambda p: min(255, p * 8)).convert("RGB")
+
+    gap = 8
+    label_h = 16
+    w, h = baseline_crop.size
+    combined = Image.new("RGB", (w * 3 + gap * 2, h + label_h), (32, 32, 32))
+    draw = ImageDraw.Draw(combined)
+    font = ImageFont.load_default()
+    for i, (label, crop) in enumerate((("before", baseline_crop), ("after", working_crop), ("diff x8", diff_crop))):
+        x = i * (w + gap)
+        combined.paste(crop, (x, label_h))
+        draw.text((x + 2, 2), label, fill=(255, 255, 0), font=font)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{working_path.stem}.diff-crop.png"
+    combined.save(out_path)
+    return out_path
+
+
+def diff_one(
+    path: str,
+    ref: str,
+    tolerance: int,
+    save_diff_dir: Path | None,
+    crop_padding: int,
+    auto_restore_threshold: int,
+    restore: bool,
+) -> bool:
+    """Returns True if the file is clean (no unmasked diff, or a diff waived by a mask or
+    --auto-restore-threshold)."""
     working_path = Path(path)
     if not working_path.exists():
         print(f"SKIP  {path}: not present in working tree")
@@ -181,16 +256,24 @@ def diff_one(path: str, ref: str, tolerance: int, save_diff_dir: Path | None, re
         return True
 
     diff_pixels = sum(diff_gray.histogram()[1:])
+
+    if auto_restore_threshold > 0 and diff_pixels <= auto_restore_threshold:
+        print(
+            f"AUTO  {path}: {diff_pixels} pixel(s) differ outside any mask (<= --auto-restore-threshold "
+            f"{auto_restore_threshold}), bounding box {bbox} - treating as noise and restoring"
+        )
+        if restore:
+            restore_to_baseline(working_path, ref)
+        return True
+
     print(
         f"DIFF  {path}: {diff_pixels} pixel(s) differ outside any declared mask region, "
         f"bounding box {bbox} - review this one"
     )
 
     if save_diff_dir is not None:
-        save_diff_dir.mkdir(parents=True, exist_ok=True)
-        out_path = save_diff_dir / f"{working_path.stem}.diff.png"
-        diff.point(lambda p: min(255, p * 8)).convert("RGB").save(out_path)
-        print(f"      wrote {out_path}")
+        out_path = save_cropped_diff_preview(baseline, working, diff, bbox, crop_padding, working_path, save_diff_dir)
+        print(f"      wrote {out_path} (cropped to the diff region, not the full screenshot)")
 
     return False
 
@@ -206,7 +289,15 @@ def run_diff(args: argparse.Namespace) -> int:
 
     all_clean = True
     for path in files:
-        clean = diff_one(path, args.ref, args.tolerance, save_diff_dir, restore)
+        clean = diff_one(
+            path,
+            args.ref,
+            args.tolerance,
+            save_diff_dir,
+            args.crop_padding,
+            args.auto_restore_threshold,
+            restore,
+        )
         all_clean = all_clean and clean
 
     return 0 if all_clean else 1
@@ -266,8 +357,17 @@ def main() -> int:
     diff_parser = subparsers.add_parser("diff", help="pixel-diff changed screenshots against a git ref (default)")
     diff_parser.add_argument("files", nargs="*", help="specific PNG paths; default is every changed docs/user-guide/images/*.png")
     diff_parser.add_argument("--ref", default="HEAD", help="git ref to diff against (default: HEAD)")
-    diff_parser.add_argument("--save-diff", metavar="DIR", help="write an amplified diff PNG for each unmasked-diff file into DIR")
+    diff_parser.add_argument("--save-diff", metavar="DIR", help="write a cropped before/after/diff PNG for each unmasked-diff file into DIR")
+    diff_parser.add_argument("--crop-padding", type=int, default=24, help="pixels of padding around the diff bbox in --save-diff output (default: 24)")
     diff_parser.add_argument("--tolerance", type=int, default=0, help="per-channel delta to ignore before masking (default: 0 - renders are proven deterministic)")
+    diff_parser.add_argument(
+        "--auto-restore-threshold",
+        type=int,
+        default=0,
+        help="opt-in only (default: 0/off) - restore a file whose UNMASKED diff is <= N pixels, logged as AUTO. "
+        "Not a general tolerance: use it only after reviewing a --save-diff crop and judging that specific tiny "
+        "diff as incidental; prefer a real .mask.json sidecar for anything recurring.",
+    )
     diff_parser.add_argument("--no-restore", action="store_true", help="only report fully-masked diffs instead of checking the file back out to --ref")
     diff_parser.set_defaults(func=run_diff)
 
