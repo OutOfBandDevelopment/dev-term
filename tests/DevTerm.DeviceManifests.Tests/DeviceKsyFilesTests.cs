@@ -54,6 +54,49 @@ public sealed class DeviceKsyFilesTests
         Assert.IsNotEmpty(result.Warnings);
     }
 
+    [TestMethod]
+    public void RadexOne_ImportsAndDecodesTheRequests()
+    {
+        var (query, queryValues) = Decode("radexone/radexone-query-request.ksy", [0x7B, 0xFF, 0x20, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x0C, 0x00, 0x00, 0x00]);
+        Assert.AreEqual(18, query.Length);
+        Assert.AreEqual("2048", queryValues["extension.command_code"]);
+
+        var (write, writeValues) = Decode("radexone/radexone-write-settings-request.ksy", [0x7B, 0xFF, 0x20, 0x00, 0x10, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x08, 0x0E, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        Assert.AreEqual(28, write.Length);
+        Assert.AreEqual("1", writeValues["extension.alarm_mode"]);
+        Assert.AreEqual("100", writeValues["extension.threshold"]);
+    }
+
+    [TestMethod]
+    public void K8055_ImportsAndDecodesAnOutputReport()
+    {
+        var (schema, values) = Decode("k8055/k8055-output-report.ksy", [0x00, 0x05, 0x0F, 0x80, 0x40, 0x00, 0x00, 0x00, 0x00]);
+
+        Assert.AreEqual(9, schema.Length);
+        Assert.AreEqual("5", values["command"]);
+        Assert.AreEqual("15", values["digital_out"]);
+        Assert.AreEqual("128", values["analog_out_1"]);
+    }
+
+    [TestMethod]
+    public void Busylight_ImportsAndDecodesACommand()
+    {
+        var (schema, values) = Decode("busylight/busylight-command.ksy", [0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x01, 0x00, 0x00]);
+
+        Assert.AreEqual(9, schema.Length);
+        Assert.AreEqual("255", values["red"]);
+        Assert.AreEqual("1", values["on_time"]);
+    }
+
+    [TestMethod]
+    public void ZoomH4n_ImportsAndDecodesAPress()
+    {
+        var (schema, values) = Decode("zoom-h4n/zoom-h4n-command.ksy", [0x80, 0x08]);
+
+        Assert.AreEqual(2, schema.Length);
+        Assert.AreEqual("8", values["button_bits"]);
+    }
+
     private static (FrameSchema Schema, Dictionary<string, string> Values) Decode(string relativePath, byte[] bytes)
     {
         var result = KsyImporter.Import(File.ReadAllText(Path.Combine(DevicesDirectory(), relativePath)));
