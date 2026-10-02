@@ -35,8 +35,10 @@ it **sends nothing while its DSR input (pin 6) is false**. The bridge never driv
 | DTR/DSR switches open, jumper removed | silent: DSR floating/driven false (scope showed a flat -7 V on DSR) |
 | **DSR (pin 6) jumpered to CTS (pin 8)**, data lines straight through | **works** |
 
-Which line drove CTS was not captured (the handshake-line scope captures did not trigger); treat the DSR-to-CTS jumper
-as an empirical fix. The manual's 34398A cable (F1047-80002, DB-9 female both ends) is a null modem: 1-1, 2<->3,
+CTS (pin 8) is an output from the bridge (stated by the bench operator, not measured: the handshake-line scope captures
+never triggered), so the jumper feeds a bridge-driven line into the meter's DSR. Its level was not captured; in the
+COM10-to-bridge test CTS followed the inverse of the PC's DTR, so it may not be constant. Treat the jumper as an
+empirical fix. The manual's 34398A cable (F1047-80002, DB-9 female both ends) is a null modem: 1-1, 2<->3,
 4<->6, 5-5, 7<->8, 9-9. Handshake can also be disabled outright by leaving DTR unconnected and tying DSR true at
 300/600/1200 baud.
 
