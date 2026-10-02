@@ -15,7 +15,9 @@ Completed work is logged by date under `docs/changes/`.
   into a device profile (manifest). Starting point found in research: no `.ksy` files exist in the repo,
   no Kaitai package is referenced, and `DeviceManifest`'s `.ksy` path is "referenced only, not parsed"
   (`DeviceManifest.cs:64`), so decoding a `.ksy` is the biggest missing piece (own small interpreter vs.
-  the Kaitai compiler is the first design decision). Nothing built yet; needs a plan agreed with the user.
+  the Kaitai compiler was the first design decision). **Decided 2026-10-02: our own `.ksy` interpreter, framed as a
+  transformation** of a `.ksy` into dev-term's existing manifest formats (a binary-frame counterpart to
+  `InboundProtocol.Patterns`' regex-to-named-values path) rather than a separate decoding stack. Nothing built yet.
 - **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
   improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
