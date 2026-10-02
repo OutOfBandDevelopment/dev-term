@@ -121,7 +121,7 @@ In the real form the template shows its placeholder in curly braces; the wirefra
 | Control | Kind | the control's type (`button`, `toggle`, `slider`, `numeric`, `choice`, `textField`, `indicator`, `barGraph`, `stripChart`, `vector`) | Changing it replaces the control with one of the new kind, keeping Id, Label and Help |
 | | Id, Label, Help | `Id`, `Label`, `Description` | |
 | | Command id, Parameter fields, Color picker target | a button's `CommandId`, `ParameterFieldIds` (comma-separated), `ColorPickerTargetCommandId` | button only |
-| | Parameter expressions | a button's `ParameterExpressions`, semicolon-separated and positionally parallel to Parameter fields — a non-blank entry evaluates an [expression](../design/proposals/manifest-editor-expression-builder.md) against every sibling control's current numeric value and substitutes the result for that field at send time; blank keeps that field's own value | button only |
+| | Parameter expressions | a button's `ParameterExpressions`, semicolon-separated and positionally parallel to Parameter fields — a non-blank entry evaluates an [expression](../design/features/manifest-editor-expression-builder.md) against every sibling control's current numeric value and substitutes the result for that field at send time; blank keeps that field's own value | button only |
 | | Starts on / Default value | `DefaultValue` | per kind |
 | | Options, Style | a choice's `Options` (comma-separated), `Style` | choice only |
 | | Value type, Max length | a text field's `Constraint.Kind`, `MaxLength` | text field only |

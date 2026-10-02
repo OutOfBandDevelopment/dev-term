@@ -1,6 +1,6 @@
 # Expression picker, value-path catalog, sample data, and a CEL-style language
 
-Requested 2026-10-02 as the next step of [the manifest expression builder](../proposals/manifest-editor-expression-builder.md).
+Requested 2026-10-02 as the next step of [the manifest expression builder](manifest-editor-expression-builder.md).
 Three asks, in priority order: (1) at minimum, enumerate the **valid parameter paths** an expression may reference
 and **generate realistic sample data** so previews look real; (2) a **picker control** that builds valid expressions
 by choosing values, not typing; (3) a small **programming language**, ideally close to Google's

@@ -48,7 +48,7 @@ taking on an external dependency for them. Worth revisiting only if the hand-rol
 grows past simple arithmetic (e.g., string manipulation, lookups against an external map file — closer
 to the "mappable presenters" idea in [presenters.md](../presenters.md)).
 
-**Where it's authored**: the [manifest editor](../specs/manifest-editor.md) gains an "Expression"
+**Where it's authored**: the [manifest editor](../../specs/manifest-editor.md) gains an "Expression"
 field next to the controls above, alongside the existing per-control fields it already edits
 (Description, Constraint). Validated live against the manifest's own sample/preview values (the editor
 already has a live panel preview — see `ui-definitions.md`'s "Display controls, manifest panels, and
@@ -114,8 +114,8 @@ Covered by `ExpressionTests`, `IndicatorStateTests`, `ChartControlsTests`, `Devi
 Not yet verified against real hardware — this is a pure UI/manifest-model feature with no device-side
 behavior to exercise, so that gap is expected rather than a coverage hole.
 
-**Extension in progress (decided 2026-10-02, not built).** Expressions still read only the flat `{id}` values a
-decoder publishes. Next: expressions that reference properties of a structured decoder (a dotted path for
-nested/repeated fields) or regex captures from raw reply text, fed by a binary-frame inbound schema produced from a
-`.ksy` by our own importer (a transformation into the existing manifest formats). Tracked in `TODO.md`; the
-generated files would be covered by [Schema files for custom formats](format-schema-files.md).
+**Extension built (2026-10-02).** Expressions now also reach dotted/indexed paths and regex captures: the value-path catalog,
+sample-data generator, expression picker and CEL-style language landed
+([expression picker](expression-picker-paths-and-cel.md)), and a binary-frame inbound schema (`Inbound.Frame`) can be
+generated from a `.ksy` by `KsyImporter` ([.ksy importer](../proposals/ksy-importer.md)). Generated schema files for the
+manifest formats are a separate, not-started proposal: [Schema files for custom formats](../proposals/format-schema-files.md).

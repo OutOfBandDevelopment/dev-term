@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Build a valid [expression](../design/manifest-editor-expression-builder.md) without remembering ids or syntax: pick the
+Build a valid [expression](../design/features/manifest-editor-expression-builder.md) without remembering ids or syntax: pick the
 values it may read, insert functions, and see at once whether it parses and what it evaluates to against sample data.
 Opened from the **Pick...** button beside an indicator's **Expression** field, or a bar graph / strip chart's
 **Channels** field, in the [Manifest Editor](manifest-editor.md), and (2026-10-02) beside every other field that names a value: a
