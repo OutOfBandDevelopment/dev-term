@@ -343,7 +343,7 @@ public sealed class MainWindowTests
     // sequence a second time (confirmed deterministically, 30/30 runs, against the pre-fix code
     // before this test was updated to assert on it - the extra run didn't actually throw there,
     // since every step it repeated happened to already be idempotent, but it was genuine,
-    // unintended re-entrancy nonetheless). See docs/bugs/fixed/058-wpf-onclosing-reentry.md.
+    // unintended re-entrancy nonetheless). See docs/bugs/resolved/058-wpf-onclosing-reentry.md.
     [TestMethod]
     [TestCategory(TestCategories.BugRegression)]
     public void Close_CalledAgainWhileTheFirstCloseIsStillCleaningUp_ClosesOnceWithoutThrowing()

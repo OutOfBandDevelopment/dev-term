@@ -5,8 +5,8 @@
 Build a valid [expression](../design/manifest-editor-expression-builder.md) without remembering ids or syntax: pick the
 values it may read, insert functions, and see at once whether it parses and what it evaluates to against sample data.
 Opened from the **Pick...** button beside an indicator's **Expression** field, or a bar graph / strip chart's
-**Channels** field, in the [Manifest Editor](manifest-editor.md) (other expression fields — a button's Parameter expressions, a chart channel's
-expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
+**Channels** field, in the [Manifest Editor](manifest-editor.md), and (2026-10-02) beside every other field that names a value: a
+button's Parameter expressions, vector/color value ids and visible-when. Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
 `ValuePathCatalog.Enumerate(manifest)` and `SampleDataGenerator`; rendered as `ExpressionPickerDialog` (TUI) and
 `ExpressionPickerWindow` (WPF). Design: [proposal](../design/proposals/expression-picker-paths-and-cel.md).
 
@@ -29,6 +29,19 @@ expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Edit
 | Next sample | Advances the sample data; the result changes. |
 | OK | Returns the expression to the form field. |
 | Cancel | Leaves the field unchanged. |
+
+## Text expressions
+
+The picker has no buttons for the text functions, but typing them works and the diagnostics check them: `matches(text, regex)`
+(a literal regex that doesn't compile is an error), `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`,
+`has({id})`, `!x` and `cond ? a : b`, with `'single'` or `"double"` quoted strings and `+` to join them. On a live indicator
+or chart, `{id}` is the device's published text: arithmetic still reads the number out of `"12.5 V"`, while string functions see the
+raw text. A text path gets sample text (`sample-xxxx-N`) in the preview, and a text result shows quoted. A button's parameter expressions see each sibling control's current text the same way.
+
+Lists, indexing and bare names also parse: `[1, 2, 3]`, `x[i]` (an item of a list or a character of a string; out of range reads as 0),
+`x in list` / `'ell' in 'hello'`, `size(list)`, `list + list`, `split(text, sep)` and `join(list, sep)`, so
+`split({frame}, ',')[1]` reads the second comma-separated field. `volts` and the dotted `gps.sats` mean the same as `{volts}` and
+`{gps.sats}` (the picker still inserts the braced form), and `true`/`false` are 1 and 0. A list result shows as `[1,2,3]` and is not a number.
 
 ## Channels mode
 

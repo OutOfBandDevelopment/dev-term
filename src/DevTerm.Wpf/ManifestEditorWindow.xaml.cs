@@ -258,6 +258,15 @@ public partial class ManifestEditorWindow : Window
 
     private void Redo_Click(object sender, RoutedEventArgs e) => Editor.Redo();
 
+    private void ImportKsy_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "Kaitai Struct (*.ksy)|*.ksy|All files (*.*)|*.*", Title = "Import a .ksy file as the binary frame" };
+        if (dialog.ShowDialog(this) == true)
+        {
+            Editor.ImportKsy(dialog.FileName);
+        }
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Add_Click(object sender, RoutedEventArgs e) => Editor.AddChild();

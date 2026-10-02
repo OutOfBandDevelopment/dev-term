@@ -8,7 +8,7 @@
 | **Area** | TUI (Console) |
 | **Created** | 2026-09-26 |
 | **Found at commit** | `d5729d15f5be4945f94dd88cceb4c69bed1f101f` (`dev/fix-bugs`) |
-| **Found by** | Code review while fixing bug [017](fixed/017-wpf-profile-switch-no-supersede.md) (WPF) |
+| **Found by** | Code review while fixing bug [017](017-wpf-profile-switch-no-supersede.md) (WPF) |
 
 ## Where
 `src/DevTerm.Console/TuiMode.cs`, `SwitchProfileAsync` local function (starts at line 593):
@@ -54,7 +54,7 @@ by a second, real switch that succeeds - assert the second switch's session/UI s
 first switch's eventual (cancelled) resolution.
 
 ## Related
-- [017](fixed/017-wpf-profile-switch-no-supersede.md) - the WPF analog of this exact bug, fixed first; this report exists because the TUI code it was ported from turned out to share both gaps.
+- [017](017-wpf-profile-switch-no-supersede.md) - the WPF analog of this exact bug, fixed first; this report exists because the TUI code it was ported from turned out to share both gaps.
 
 ## Resolution
 Fixed on 2026-09-29 in `src/DevTerm.Console/TuiMode.cs`'s `SwitchProfileAsync`, porting bug 017's WPF

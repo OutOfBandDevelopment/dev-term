@@ -328,7 +328,7 @@ public sealed class ControlPanelModeTests
         // Regression test for bug 020: a surface that binds something into the session's live
         // pipeline for the panel's lifetime (ZoomH4nControlSurface's wake watcher) needs the same
         // Disposing-driven teardown ValuesChanged already gets above, or reopening its panel stacks
-        // up another leaked subscription each time. See docs/bugs/020-zoomh4n-wake-watcher-leak.md.
+        // up another leaked subscription each time. See docs/bugs/resolved/020-zoomh4n-wake-watcher-leak.md.
         var surface = new FakeDisposableControlSurface();
         RunHeadless(surface, null, parts =>
         {

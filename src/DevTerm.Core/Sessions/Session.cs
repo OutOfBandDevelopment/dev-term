@@ -31,7 +31,7 @@ public sealed class Session : IAsyncDisposable
     // running concurrently while PumpAsync is itself still blocked in a read. AsyncLocal, not a
     // plain field, is what makes that distinction possible: ambient flow follows only the call
     // chain that was actually spawned from inside PumpAsync, never a separate caller on the same
-    // Session. See StopAsync's use of this - docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+    // Session. See StopAsync's use of this - docs/bugs/resolved/039-sendasync-from-read-loop-deadlock.md.
     private readonly AsyncLocal<bool> _onReadLoop = new();
 
     // Bumped on every open and close. A fault captured under one generation is ignored once the
@@ -137,7 +137,7 @@ public sealed class Session : IAsyncDisposable
             {
                 // Already open (or opening) under this same lock - a second call (e.g. a slow
                 // connect racing a second Connect click) must not start a second read loop on the
-                // same PipeReader. See docs/bugs/fixed/001-session-double-open.md.
+                // same PipeReader. See docs/bugs/resolved/001-session-double-open.md.
                 return;
             }
 
@@ -146,7 +146,7 @@ public sealed class Session : IAsyncDisposable
             // A presenter (a pending SCPI/manifest reply queue, a partial ASCII line) survives
             // Close/OpenAsync on this same Session instance - without this, a stale pending id or a
             // half-received line from the previous connection carried into the new one. See
-            // docs/bugs/fixed/006-reply-queue-desync.md.
+            // docs/bugs/resolved/006-reply-queue-desync.md.
             foreach (var presenter in _pipeline.Presenters.OfType<IResettablePresenter>())
             {
                 presenter.Reset();
@@ -330,7 +330,7 @@ public sealed class Session : IAsyncDisposable
                 // synchronously from within the read loop's own call stack, and the send failed -
                 // awaiting the read loop here would deadlock, since it can't complete until this
                 // very call returns. Fail fast instead of hanging forever. See
-                // docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+                // docs/bugs/resolved/039-sendasync-from-read-loop-deadlock.md.
                 throw new InvalidOperationException(
                     "Session: SendAsync was called synchronously from within the read loop (e.g. a " +
                     "Session.Output handler) and the send failed. Reply asynchronously (e.g. via " +

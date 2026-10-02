@@ -80,7 +80,7 @@ public static class ScpiAutoDetect
             {
                 // The send failed, so the id QuerySent just registered will never get a reply -
                 // cancel it or it shifts every later reply onto the wrong field. See
-                // docs/bugs/fixed/006-reply-queue-desync.md.
+                // docs/bugs/resolved/006-reply-queue-desync.md.
                 tracker.Cancel(_detectReplyId);
                 throw;
             }

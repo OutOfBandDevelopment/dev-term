@@ -163,7 +163,7 @@ public partial class ControlPanelWindow : Window
 
         // A surface that binds something into the session's live pipeline for the panel's lifetime
         // (e.g. ZoomH4nControlSurface's wake watcher) unbinds it here, the same way the ValuesChanged
-        // subscription above is torn down (see docs/bugs/020-zoomh4n-wake-watcher-leak.md).
+        // subscription above is torn down (see docs/bugs/resolved/020-zoomh4n-wake-watcher-leak.md).
         if (surface is IDisposable disposableSurface)
         {
             Closed += (_, _) => disposableSurface.Dispose();
@@ -745,7 +745,7 @@ public partial class ControlPanelWindow : Window
             var expressionText = expressions is { Count: > 0 } && i < expressions.Count ? expressions[i] : null;
             if (expressionText is { Length: > 0 } && UiDefinitions.Expression.TryParse(expressionText, out var expression, out _))
             {
-                values.Add(ChartValue.Format(expression!.Evaluate(SiblingValues())));
+                values.Add(expression!.EvaluateToText(SiblingValues(), SiblingTexts()));
             }
             else
             {
@@ -757,6 +757,10 @@ public partial class ControlPanelWindow : Window
         error = null;
         return true;
     }
+
+    /// <summary>Every control's current value as raw text, keyed by id — lets a parameter expression match or compare it as a string.</summary>
+    private Dictionary<string, string> SiblingTexts() =>
+        _controlViews.ToDictionary(c => c.Key, c => GetCurrentValue(c.Value) ?? string.Empty, StringComparer.Ordinal);
 
     /// <summary>Every control's current value parsed as a number, keyed by id — what a <see cref="ButtonControl.ParameterExpressions"/> entry evaluates against.</summary>
     private Dictionary<string, double> SiblingValues()

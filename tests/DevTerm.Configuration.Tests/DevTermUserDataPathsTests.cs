@@ -16,7 +16,7 @@ public sealed class DevTermUserDataPathsTests
         // resolve to that directory directly - escaping both the user's and the app's manifest
         // folders. Pointing at Path.GetTempPath() (guaranteed to exist) proves the escape actually
         // worked, rather than merely asserting on a path that happens not to exist either way. See
-        // docs/bugs/012-profile-names-not-validated.md.
+        // docs/bugs/resolved/012-profile-names-not-validated.md.
         var outsideDirectory = CreateTempDirectory();
         try
         {

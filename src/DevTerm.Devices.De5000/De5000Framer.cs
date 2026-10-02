@@ -113,7 +113,7 @@ public static class De5000Framer
         // theta (deg) and % are the only secondary units that can go negative (a capacitor's phase
         // angle, for one) - the reference implementation sign-extends the raw 16-bit word only for
         // those two, so an unsigned D/Q/ESR reading isn't misread as negative. See
-        // docs/bugs/fixed/005-de5000-negative-secondary.md.
+        // docs/bugs/resolved/005-de5000-negative-secondary.md.
         var secondaryRaw = frame[11] * 0x100 + frame[12];
         double secondaryMagnitude = secondaryUnit is "%" or "deg" ? (short)secondaryRaw : secondaryRaw;
         var secondaryValue = secondaryMagnitude * Math.Pow(10, -(frame[13] & 0b0000_0111));

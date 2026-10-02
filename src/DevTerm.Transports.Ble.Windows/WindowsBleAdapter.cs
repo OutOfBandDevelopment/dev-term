@@ -85,7 +85,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
             // cancellation or a WinRT exception thrown out of WriteClientCharacteristicConfigurationDescriptorAsync
             // itself skips that branch entirely and used to leave ValueChanged attached to a
             // characteristic whose device is about to be disposed. See
-            // docs/bugs/fixed/054-ble-cancelled-connect-handler-leak.md.
+            // docs/bugs/resolved/054-ble-cancelled-connect-handler-leak.md.
             notifyCharacteristic?.ValueChanged -= OnValueChanged;
 
             service?.Dispose();
@@ -109,7 +109,7 @@ public sealed class WindowsBleAdapter : IBleAdapter
             : GattWriteOption.WriteWithResponse;
 
         // A without-response write is limited to one ATT packet - split anything larger instead of
-        // letting the stack fail or silently truncate it. See docs/bugs/fixed/026-ble-writes-not-mtu-chunked.md.
+        // letting the stack fail or silently truncate it. See docs/bugs/resolved/026-ble-writes-not-mtu-chunked.md.
         foreach (var chunk in BleWriteChunker.Chunk(data, _options.MaxWriteChunkSize))
         {
             var status = await _writeCharacteristic

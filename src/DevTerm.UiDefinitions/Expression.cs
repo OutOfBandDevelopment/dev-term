@@ -113,10 +113,21 @@ public sealed partial class Expression
         return _root.Eval(new Context(values, text)).AsNumber();
     }
 
+    /// <summary>
+    /// Evaluates for display: a text result is returned as is, a number is formatted with <see cref="ChartValue.Format"/>.
+    /// Reads <paramref name="text"/> the same way as <see cref="Evaluate(IReadOnlyDictionary{string, double}, IReadOnlyDictionary{string, string}?)"/>. Never throws.
+    /// </summary>
+    public string EvaluateToText(IReadOnlyDictionary<string, double> values, IReadOnlyDictionary<string, string>? text)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var result = _root.Eval(new Context(values, text));
+        return result.IsText ? result.Text! : result.Items is not null ? result.AsText() : ChartValue.Format(result.Number);
+    }
+
     private readonly record struct Context(IReadOnlyDictionary<string, double> Numbers, IReadOnlyDictionary<string, string>? Text);
 
     /// <summary>A value: a number, or a string when <see cref="Text"/> is set. Booleans are the numbers 1 and 0.</summary>
-    private readonly record struct Value(double Number, string? Text)
+    private readonly record struct Value(double Number, string? Text, string? Raw = null, IReadOnlyList<Value>? Items = null)
     {
         public static Value Of(double number) => new(number, null);
 
@@ -124,14 +135,22 @@ public sealed partial class Expression
 
         public static Value Of(string text) => new(0, text);
 
+        public static Value List(IReadOnlyList<Value> items) => new(double.NaN, null, null, items);
+
+        /// <summary>A published value's text: a number (read tolerantly, so "12.5 V" still does arithmetic) that remembers its raw text for string functions, else plain text.</summary>
+        public static Value Published(string text) =>
+            ChartValue.TryParse(text, out var number) ? new Value(number, null, text) : Of(text);
+
         public bool IsText => Text is not null;
 
-        public bool IsTrue => IsText ? Text!.Length > 0 : Number != 0;
+        public bool IsTrue => Items is not null ? Items.Count > 0 : IsText ? Text!.Length > 0 : Number != 0;
 
         public double AsNumber() =>
-            !IsText ? Number : double.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : double.NaN;
+            Items is not null ? double.NaN : !IsText ? Number : double.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : double.NaN;
 
-        public string AsText() => IsText ? Text! : Number.ToString("G15", CultureInfo.InvariantCulture);
+        public string AsText() =>
+            Items is not null ? "[" + string.Join(",", Items.Select(i => i.AsText())) + "]"
+            : Text ?? Raw ?? Number.ToString("G15", CultureInfo.InvariantCulture);
     }
 
     private abstract class Node
@@ -156,9 +175,55 @@ public sealed partial class Expression
         public bool IsPresent(Context context) => context.Text?.ContainsKey(id) == true || context.Numbers.ContainsKey(id);
 
         public override Value Eval(Context context) =>
-            context.Text is not null && context.Text.TryGetValue(id, out var text) ? Value.Of(text)
+            context.Text is not null && context.Text.TryGetValue(id, out var text) ? Value.Published(text)
             : context.Numbers.TryGetValue(id, out var number) ? Value.Of(number)
             : Value.Of(0);
+    }
+
+    private sealed class ListNode(IReadOnlyList<Node> items) : Node
+    {
+        public override Value Eval(Context context) => Value.List([.. items.Select(i => i.Eval(context))]);
+    }
+
+    /// <summary><c>target[index]</c>: an item of a list or a character of a string; out of range reads as 0 (never throws).</summary>
+    private sealed class IndexNode(Node target, Node index) : Node
+    {
+        public override Value Eval(Context context)
+        {
+            var t = target.Eval(context);
+            var i = index.Eval(context).AsNumber();
+            if (!double.IsFinite(i) || i < 0)
+            {
+                return Value.Of(0);
+            }
+
+            var at = (int)Math.Min(i, int.MaxValue);
+            if (t.Items is not null)
+            {
+                return at < t.Items.Count ? t.Items[at] : Value.Of(0);
+            }
+
+            var text = t.AsText();
+            return at < text.Length ? Value.Of(text[at].ToString()) : Value.Of(0);
+        }
+    }
+
+    /// <summary><c>x in list</c> (an item equal to x) or <c>x in text</c> (a substring).</summary>
+    private sealed class InNode(Node item, Node container) : Node
+    {
+        public override Value Eval(Context context)
+        {
+            var x = item.Eval(context);
+            var c = container.Eval(context);
+            return c.Items is not null
+                ? Value.Of(c.Items.Any(i => Same(i, x)))
+                : Value.Of(c.AsText().Contains(x.AsText(), StringComparison.Ordinal));
+        }
+
+        public static bool Same(Value a, Value b) =>
+            a.IsText || b.IsText || a.Items is not null || b.Items is not null
+                ? string.Equals(a.AsText(), b.AsText(), StringComparison.Ordinal)
+                : a.Number == b.Number;
     }
 
     private sealed class UnaryMinusNode(Node operand) : Node
@@ -189,6 +254,17 @@ public sealed partial class Expression
             }
 
             var r = right.Eval(context);
+            if (l.Items is not null || r.Items is not null)
+            {
+                return op switch
+                {
+                    "+" when l.Items is not null && r.Items is not null => Value.List([.. l.Items, .. r.Items]),
+                    "==" => Value.Of(InNode.Same(l, r)),
+                    "!=" => Value.Of(!InNode.Same(l, r)),
+                    _ => Value.Of(double.NaN),
+                };
+            }
+
             if (l.IsText || r.IsText)
             {
                 var ls = l.AsText();
@@ -262,7 +338,7 @@ public sealed partial class Expression
             switch (name)
             {
                 case "size":
-                    return Value.Of(text.Length);
+                    return Value.Of(first.Items?.Count ?? text.Length);
                 case "number":
                     return Value.Of(first.AsNumber());
                 case "string":
@@ -272,6 +348,12 @@ public sealed partial class Expression
             var second = args[1].Eval(context).AsText();
             switch (name)
             {
+                case "split":
+                    return Value.List([.. (second.Length == 0 ? [text] : text.Split(second)).Select(Value.Of)]);
+                case "join":
+                    return Value.Of(first.Items is null ? text : string.Join(second, first.Items.Select(i => i.AsText())));
+                case "contains" when first.Items is not null:
+                    return Value.Of(first.Items.Any(i => string.Equals(i.AsText(), second, StringComparison.Ordinal)));
                 case "contains":
                     return Value.Of(text.Contains(second, StringComparison.Ordinal));
                 case "startsWith":
@@ -312,6 +394,8 @@ public sealed partial class Expression
         RParen,
         Comma,
         String,
+        LBracket,
+        RBracket,
         Not,
         Question,
         Colon,
@@ -408,7 +492,9 @@ public sealed partial class Expression
                 if (char.IsLetter(c) || c == '_')
                 {
                     var start = i;
-                    while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_'))
+                    // A dot followed by a letter continues the name (gps.sats), so a bare identifier can be a dotted path.
+                    while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_'
+                        || (text[i] == '.' && i + 1 < text.Length && (char.IsLetter(text[i + 1]) || text[i + 1] == '_'))))
                     {
                         i++;
                     }
@@ -445,6 +531,14 @@ public sealed partial class Expression
                         break;
                     case ',':
                         tokens.Add(new Token(TokenKind.Comma, ","));
+                        i++;
+                        break;
+                    case '[':
+                        tokens.Add(new Token(TokenKind.LBracket, "["));
+                        i++;
+                        break;
+                    case ']':
+                        tokens.Add(new Token(TokenKind.RBracket, "]"));
                         i++;
                         break;
                     case '<':
@@ -551,7 +645,7 @@ public sealed partial class Expression
             throw new ExpressionParseException("a string literal has no closing quote.");
         }
 
-        [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_.]*$")]
+        [GeneratedRegex(@"^[A-Za-z_](?:[A-Za-z0-9_.]|\[[0-9]+\])*$")]
         public static partial Regex VariableId();
     }
 
@@ -614,8 +708,16 @@ public sealed partial class Expression
         private Node ParseComparison()
         {
             var left = ParseAdditive();
-            while (Current.Kind is TokenKind.Lt or TokenKind.Le or TokenKind.Gt or TokenKind.Ge or TokenKind.EqEq or TokenKind.NotEq)
+            while (Current.Kind is TokenKind.Lt or TokenKind.Le or TokenKind.Gt or TokenKind.Ge or TokenKind.EqEq or TokenKind.NotEq
+                || (Current.Kind == TokenKind.Identifier && Current.Text == "in"))
             {
+                if (Current.Kind == TokenKind.Identifier)
+                {
+                    _pos++;
+                    left = new InNode(left, ParseAdditive());
+                    continue;
+                }
+
                 var op = Current.Text;
                 _pos++;
                 left = new BinaryNode(op, left, ParseAdditive());
@@ -670,7 +772,21 @@ public sealed partial class Expression
                 return new NotNode(ParseUnary());
             }
 
-            return ParsePrimary();
+            return ParsePostfix();
+        }
+
+        private Node ParsePostfix()
+        {
+            var node = ParsePrimary();
+            while (Current.Kind == TokenKind.LBracket)
+            {
+                _pos++;
+                var index = ParseTernary();
+                Expect(TokenKind.RBracket, "]");
+                node = new IndexNode(node, index);
+            }
+
+            return node;
         }
 
         private Node ParsePrimary()
@@ -707,11 +823,43 @@ public sealed partial class Expression
                         return inner;
                     }
 
-                case TokenKind.Identifier:
+                case TokenKind.LBracket:
+                    {
+                        _pos++;
+                        var items = new List<Node>();
+                        if (Current.Kind != TokenKind.RBracket)
+                        {
+                            items.Add(ParseTernary());
+                            while (Current.Kind == TokenKind.Comma)
+                            {
+                                _pos++;
+                                items.Add(ParseTernary());
+                            }
+                        }
+
+                        Expect(TokenKind.RBracket, "]");
+                        return new ListNode(items);
+                    }
+
+                case TokenKind.Identifier when tokens[_pos + 1].Kind == TokenKind.LParen:
                     return ParseCall();
 
+                case TokenKind.Identifier:
+                    {
+                        // A bare identifier (volts, gps.sats) is the same as {volts}; true and false are 1 and 0.
+                        var id = Current.Text;
+                        _pos++;
+                        if (id is "true" or "false")
+                        {
+                            return new NumberNode(id == "true" ? 1 : 0);
+                        }
+
+                        ReferencedIds.Add(id);
+                        return new VariableNode(id);
+                    }
+
                 default:
-                    throw new ExpressionParseException($"expected a number, string, '{{variable}}', '(' or a function, found '{Current.Text}'.");
+                    throw new ExpressionParseException($"expected a number, string, '{{variable}}', a name, '[', '(' or a function, found '{Current.Text}'.");
             }
         }
 
@@ -752,11 +900,11 @@ public sealed partial class Expression
                     return new TextFunctionNode(name, args, null);
                 case "has":
                     throw new ExpressionParseException("'has' takes one {id}, e.g. has({volts}).");
-                case "contains" or "startsWith" or "endsWith" when args.Count == 2:
+                case "contains" or "startsWith" or "endsWith" or "split" or "join" when args.Count == 2:
                     return new TextFunctionNode(name, args, null);
                 case "matches" when args.Count == 2:
                     return new TextFunctionNode(name, args, CompileLiteralPattern(args[1]));
-                case "size" or "number" or "string" or "contains" or "startsWith" or "endsWith" or "matches":
+                case "size" or "number" or "string" or "contains" or "startsWith" or "endsWith" or "split" or "join" or "matches":
                     throw new ExpressionParseException($"'{name}' was given {args.Count} argument(s), which isn't valid for it.");
                 case "abs" when args.Count == 1:
                 case "round" when args.Count is 1 or 2:

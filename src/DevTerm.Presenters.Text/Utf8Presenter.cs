@@ -7,7 +7,7 @@ namespace DevTerm.Presenters.Text;
 /// <summary>
 /// Decodes UTF-8 statefully across chunks via a per-instance <see cref="Decoder"/> - a multi-byte
 /// character can arrive split across two transport reads (serial routinely delivers one byte per
-/// read, and TCP can split anywhere). See docs/bugs/fixed/028-utf8-split-across-reads.md. Safe to
+/// read, and TCP can split anywhere). See docs/bugs/resolved/028-utf8-split-across-reads.md. Safe to
 /// keep as instance state since presenters are resolved fresh per session (see CLAUDE.md).
 /// </summary>
 public sealed class Utf8Presenter : IPresenter, IPresenterInput

@@ -15,6 +15,8 @@ public enum ManifestNodeKind
     Parameter,
     Patterns,
     Pattern,
+    Frame,
+    FrameField,
     Panel,
     Section,
     Control,
@@ -313,6 +315,7 @@ public sealed class ManifestEditorViewModel
         ManifestNodeKind.Command => "Add parameter",
         ManifestNodeKind.Parameter => "Add parameter",
         ManifestNodeKind.Patterns or ManifestNodeKind.Pattern => "Add pattern",
+        ManifestNodeKind.Frame or ManifestNodeKind.FrameField => "Add field",
         ManifestNodeKind.Panel => "Add section",
         ManifestNodeKind.Section or ManifestNodeKind.Control => "Add control",
         _ => null,
@@ -340,6 +343,10 @@ public sealed class ManifestEditorViewModel
             case ManifestNodeKind.Patterns or ManifestNodeKind.Pattern:
                 var inbound = Manifest.Inbound ??= new InboundProtocol();
                 added = AddTo(inbound.Patterns, new ResponsePattern { Name = Unique("pattern", inbound.Patterns.Select(p => p.Name), numberFirst: true), Match = "^(.*)$" });
+                break;
+            case ManifestNodeKind.Frame or ManifestNodeKind.FrameField:
+                var frame = (Manifest.Inbound ??= new InboundProtocol()).Frame ??= new FrameSchema();
+                added = AddTo(frame.Fields, new FrameField { Name = Unique("field", frame.Fields.Select(f => f.Name), numberFirst: true) });
                 break;
             case ManifestNodeKind.Panel:
                 var ui = Manifest.Ui ??= new UiDefinition { Name = Manifest.Name };
@@ -389,6 +396,41 @@ public sealed class ManifestEditorViewModel
     public void MoveUp() => Move(-1);
 
     public void MoveDown() => Move(1);
+
+    /// <summary>
+    /// Replaces the manifest's binary frame with the one a Kaitai Struct <c>.ksy</c> file describes (see
+    /// <see cref="KsyImporter"/>). Returns false, leaving the manifest alone, when the file can't be read or yields no
+    /// frame; the status message carries the importer's warnings (what it had to leave out) either way.
+    /// </summary>
+    public bool ImportKsy(string path)
+    {
+        string text;
+        try
+        {
+            text = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusMessage = $"Couldn't read '{path}': {ex.Message}";
+            return false;
+        }
+
+        var result = KsyImporter.Import(text);
+        if (result.Schema is null)
+        {
+            StatusMessage = "Not imported: " + string.Join(" ", result.Warnings);
+            return false;
+        }
+
+        ArmCheckpoint();
+        (Manifest.Inbound ??= new InboundProtocol()).Frame = result.Schema;
+        MarkEdited();
+        Rebuild(Nodes.Count);
+        Select(Nodes.FirstOrDefault(n => n.Kind == ManifestNodeKind.Frame));
+        StructureChanged?.Invoke(this, EventArgs.Empty);
+        StatusMessage = $"Imported {result.Schema.Fields.Count} field(s) from {Path.GetFileName(path)}." + (result.Warnings.Count == 0 ? string.Empty : " " + string.Join(" ", result.Warnings));
+        return true;
+    }
 
     /// <summary>For a manifest with no declared panel: declares the one it would get from its commands, to edit from there.</summary>
     public void CreatePanelFromCommands()
@@ -650,6 +692,20 @@ public sealed class ManifestEditorViewModel
         foreach (var pattern in patterns ?? [])
         {
             Nodes.Add(new ManifestEditorNode(ManifestNodeKind.Pattern, 1, () => string.IsNullOrWhiteSpace(pattern.Name) ? "(unnamed pattern)" : pattern.Name, new PatternForm(pattern, MarkEdited), pattern, patterns));
+        }
+
+        if (manifest.Inbound?.Frame is { } frame)
+        {
+            var frameForm = new FrameForm(frame, MarkEdited);
+            Nodes.Add(new ManifestEditorNode(ManifestNodeKind.Frame, 0, () => $"Binary frame ({frame.Fields.Count})", frameForm));
+            foreach (var field in frame.Fields)
+            {
+                Nodes.Add(new ManifestEditorNode(ManifestNodeKind.FrameField, 1, () => field.Publishes ? $"{field.Name} ({field.Type})" : $"(skip {field.Size})", new FrameFieldForm(field, MarkEdited, frameForm.Refresh), field, frame.Fields));
+            }
+        }
+        else
+        {
+            Nodes.Add(new ManifestEditorNode(ManifestNodeKind.Frame, 0, () => "Binary frame (none)", null, hint: "A fixed-layout binary reply, decoded into values. Import a Kaitai Struct .ksy file, or add a field to describe one by hand."));
         }
 
         if (manifest.Ui is { } ui)

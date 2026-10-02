@@ -58,7 +58,7 @@ public sealed class LoopbackTransportTests
         // Regression test for bug 003: the transport used to keep one Pipe for its whole lifetime,
         // so CloseAsync completed its writer permanently - a later OpenAsync just flipped State back
         // to Open over an already-completed pipe, and the next WriteAsync threw "Writing is not
-        // allowed after writer was completed". See docs/bugs/fixed/003-loopback-cannot-reconnect.md.
+        // allowed after writer was completed". See docs/bugs/resolved/003-loopback-cannot-reconnect.md.
         var transport = CreateTransport();
         await transport.OpenAsync(TestContext.CancellationToken);
         await transport.CloseAsync(TestContext.CancellationToken);

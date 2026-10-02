@@ -176,7 +176,7 @@ public sealed class ConnectionEditorViewModelTests
         // try/catch, so a name invalid on this system (e.g. an NTFS-reserved character) threw
         // straight out of the command - crashing the TUI editor's app.Run loop, or surfacing as an
         // unhandled stack-trace dialog in WPF, instead of a StatusMessage like every other command
-        // here. See docs/bugs/013-save-export-no-error-handling.md.
+        // here. See docs/bugs/resolved/013-save-export-no-error-handling.md.
         var directory = CreateTempDirectory();
         try
         {
@@ -206,7 +206,7 @@ public sealed class ConnectionEditorViewModelTests
         // Regression test for bug 015: BuildOptions() used int.TryParse(Baud, out var baud) and only
         // assigned options.Baud when it succeeded, silently leaving the CliOptions() default (9600)
         // in place for something like "115200x" - so a mistyped baud rate saved and connected at
-        // 9600 with no error. See docs/bugs/015-mistyped-numbers-silently-default.md.
+        // 9600 with no error. See docs/bugs/resolved/015-mistyped-numbers-silently-default.md.
         var directory = CreateTempDirectory();
         try
         {
@@ -292,7 +292,7 @@ public sealed class ConnectionEditorViewModelTests
         // Regression test for bug 013: Export() called ConnectionProfileStore.ExportToFile(path,
         // options) with no try/catch, so a path in a folder that doesn't exist threw
         // DirectoryNotFoundException straight out of the command instead of a StatusMessage.
-        // See docs/bugs/013-save-export-no-error-handling.md.
+        // See docs/bugs/resolved/013-save-export-no-error-handling.md.
         var directory = CreateTempDirectory();
         try
         {
@@ -716,7 +716,7 @@ public sealed class ConnectionEditorViewModelTests
         // Regression test for bug 014: Profiles.Contains(name) is ordinal/case-sensitive, but the
         // store and NTFS are case-insensitive (List() itself uses OrdinalIgnoreCase), so saving
         // "bench" over an existing "Bench" skipped ConfirmOverwrite entirely and silently
-        // overwrote it. See docs/bugs/014-save-overwrites-different-case.md.
+        // overwrote it. See docs/bugs/resolved/014-save-overwrites-different-case.md.
         var directory = CreateTempDirectory();
         try
         {

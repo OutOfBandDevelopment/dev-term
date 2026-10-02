@@ -165,7 +165,7 @@ var layeredConfig = earlyConfigBuilder.Build();
 
 // A bad value on the command line, in an environment variable, or in a corrupt/truncated saved
 // profile (e.g. --baud fast) throws from inside the configuration binder before validation ever
-// runs - see docs/bugs/fixed/032-startup-bind-failure-crash.md. Tui/Cli are read from the raw
+// runs - see docs/bugs/resolved/032-startup-bind-failure-crash.md. Tui/Cli are read from the raw
 // config rather than cliOptions, since a failed Bind may have left cliOptions only partially
 // populated; cliOptions itself is reset to a clean default so it doesn't carry that partial state
 // into ConfigureMode/the CLI error path below.
@@ -190,7 +190,7 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException or
 {
     // cliOptions is reset to a clean default so it doesn't carry whatever partial state a failed
     // Bind left behind into ConfigureMode/the CLI error path below - see
-    // docs/bugs/fixed/032-startup-bind-failure-crash.md.
+    // docs/bugs/resolved/032-startup-bind-failure-crash.md.
     cliOptions = new CliOptions();
     bindError = ex.Message;
 }

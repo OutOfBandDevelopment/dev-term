@@ -175,7 +175,7 @@ public sealed class ChartControlsTests
     {
         // Regression test for bug 050: HistoryLength came straight from the manifest with no upper
         // bound, so a manifest could make the chart's per-sample queue grow without limit. See
-        // docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        // docs/bugs/resolved/050-strip-chart-history-unbounded.md.
         var state = new StripChartState(new StripChartControl
         {
             Id = "s",
@@ -185,6 +185,24 @@ public sealed class ChartControlsTests
         });
 
         Assert.AreEqual(StripChartState.MaxCapacity, state.Capacity);
+    }
+
+    [TestMethod]
+    public void StripChart_TextOnlyArrival_AddsASampleToTheExpressionChannelThatReadsIt()
+    {
+        var state = new StripChartState(new StripChartControl
+        {
+            Id = "s",
+            Label = "S",
+            Channels = [new ChartChannel { Id = "ok", Expression = "startsWith(mode, 'CV') ? 1 : 0" }, new ChartChannel { Id = "plain" }],
+        });
+
+        Assert.IsTrue(state.ApplyAll([new("mode", "CV")]));
+        Assert.IsTrue(state.ApplyAll([new("mode", "CC")]));
+        Assert.IsFalse(state.ApplyAll([new("mode", "CC")]), "the same text again is not a change");
+
+        CollectionAssert.AreEqual(new[] { 1.0, 0.0 }, state.SamplesOf("ok").ToArray());
+        Assert.AreEqual(0, state.SamplesOf("plain").Count);
     }
 
     [TestMethod]

@@ -496,6 +496,12 @@ public sealed class UiLayoutReviewTests
                 var sizes = ui.SizesFor(window);
                 UiReview.Show(window, sizes[0]);
 
+                // The demo has no binary frame; add a field so the Frame and FrameField forms are reviewed too.
+                window.OutlineList.SelectedItem = window.Editor.Nodes.First(n => n.Kind == ManifestNodeKind.Frame);
+                UiReview.Settle(window);
+                window.Editor.AddChild();
+                UiReview.Settle(window);
+
                 foreach (var kind in Enum.GetValues<ManifestNodeKind>())
                 {
                     var node = window.Editor.Nodes.FirstOrDefault(n => n.Kind == kind);
@@ -505,8 +511,7 @@ public sealed class UiLayoutReviewTests
                     ui.Review(window, "manifest-editor-" + kind.ToString().ToLowerInvariant(), ControlPanelOptions(window.Preview), sizes);
                 }
 
-                window.Editor.ConfirmDiscardChanges = () => true;
-                window.Close();
+                // Not closed: the editor is dirty (a field was added) and closing it would raise a modal.
                 ui.AssertClean();
                 await Task.CompletedTask;
             });

@@ -6,7 +6,7 @@ namespace DevTerm.DeviceManifests;
 /// Produces realistic, deterministic sample values for the paths in a <see cref="ValuePathCatalog"/>, so an expression's
 /// result (and a manifest editor preview) can be shown without a connected device. Numbers follow the path's
 /// Minimum/Maximum as a smooth walk plus a little noise, booleans alternate, choices cycle; text paths are not numeric
-/// and are left out, since <see cref="Expression.Evaluate"/> only reads numbers. The same seed and step always give the
+/// and are given by <see cref="TextValues"/> instead of <see cref="Values"/>. The same seed and step always give the
 /// same values, so screenshots and tests are stable. See docs/design/proposals/expression-picker-paths-and-cel.md.
 /// </summary>
 public static class SampleDataGenerator
@@ -27,6 +27,23 @@ public static class SampleDataGenerator
             {
                 values[path.Path] = value;
             }
+        }
+
+        return values;
+    }
+
+    /// <summary>
+    /// Sample text for each text path that has no choices (a decoder's string capture), stable by seed and step
+    /// (<c>"sample-ab12"</c>), so a text expression's result can be previewed.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> TextValues(IEnumerable<ValuePath> paths, int seed = 0, int step = 0)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in paths.Where(p => p.Type == ValuePathType.Text && p.Choices is not { Count: > 0 }))
+        {
+            values[path.Path] = $"sample-{Hash(seed, path.Path) % 0x10000:x4}-{step}";
         }
 
         return values;

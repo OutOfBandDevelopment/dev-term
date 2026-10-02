@@ -143,7 +143,7 @@ public sealed class RadexOneControlSurfaceTests
         // Regression test for bug 045: ParseUInt16 used a throwing double.Parse, so bad text in
         // "threshold" (bypassing the renderer's normal validation) threw an unhandled
         // FormatException straight out of InvokeAsync. See
-        // docs/bugs/fixed/045-control-surface-parse-throws.md.
+        // docs/bugs/resolved/045-control-surface-parse-throws.md.
         var (session, transport) = CreateSurfaceSession();
         var surface = new RadexOneControlSurface(session);
         await surface.InvokeAsync("threshold", "not-a-number", TestContext.CancellationToken);

@@ -65,7 +65,7 @@ public sealed class SessionTests
     {
         // Regression test for bug 006: a LineReplyPresenter (or AsciiPresenter) survives Close and a
         // later OpenAsync on this same Session, so its pending-reply queue/partial line used to carry
-        // over into the new connection. See docs/bugs/fixed/006-reply-queue-desync.md.
+        // over into the new connection. See docs/bugs/resolved/006-reply-queue-desync.md.
         var (transport, _) = CreateOpenableTransport();
         var presenter = new Mock<IPresenter>();
         presenter.SetupGet(p => p.Name).Returns("resettable");
@@ -83,7 +83,7 @@ public sealed class SessionTests
     {
         // Same regression as above, for the reconnect case the report specifically calls out: a
         // presenter bound to a Session that closes and reopens must be reset every time, not just on
-        // the very first open. See docs/bugs/fixed/006-reply-queue-desync.md.
+        // the very first open. See docs/bugs/resolved/006-reply-queue-desync.md.
         var (transport, _) = CreateOpenableTransport();
         var presenter = new Mock<IPresenter>();
         presenter.SetupGet(p => p.Name).Returns("resettable");
@@ -327,7 +327,7 @@ public sealed class SessionTests
         // the fix makes it fail fast with a clear exception instead of hanging forever - it
         // deliberately does not try to preserve the normal (awaited, non-reentrant) fault-handling
         // behavior for this case, only for every other caller. See
-        // docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md.
+        // docs/bugs/resolved/039-sendasync-from-read-loop-deadlock.md.
         var (transport, pipe) = CreateOpenableTransport();
         transport.SetupGet(t => t.State).Returns(ConnectionState.Open);
         transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()))
@@ -392,7 +392,7 @@ public sealed class SessionTests
         // second call (e.g. a slow connect racing a second Connect click) started a second
         // PumpAsync on the same PipeReader. Two concurrent reads on one PipeReader throw
         // "Reading is already in progress", which faults the healthy connection and reports a
-        // bogus disconnect - see docs/bugs/fixed/001-session-double-open.md.
+        // bogus disconnect - see docs/bugs/resolved/001-session-double-open.md.
         var (transport, pipe) = CreateOpenableTransport();
         var presenter = new Mock<IPresenter>();
         presenter.SetupGet(p => p.Name).Returns("p");

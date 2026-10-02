@@ -23,7 +23,7 @@ public sealed class SessionLogTests
         // Regression test for bug 041: a record type this version doesn't know (SessionLogRecordKind.Unknown)
         // gets DateTimeOffset.MinValue when it has no "t" field. If that record happens to be first, Start
         // used to become MinValue, so every real record's offset came out as billions of seconds - effectively
-        // an infinite wait in 1x playback. See docs/bugs/fixed/041-unknown-record-min-timestamp.md.
+        // an infinite wait in 1x playback. See docs/bugs/resolved/041-unknown-record-min-timestamp.md.
         var log = new SessionLog(
             new SessionLogHeader { Created = _t0, Presenters = ["ascii"] },
             [UnknownWithNoTimestamp(), Rx(0), Rx(5)]);

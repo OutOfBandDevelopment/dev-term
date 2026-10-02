@@ -269,6 +269,84 @@ public sealed class ManifestEditorTests
         });
     }
 
+    private const string _ksy = """
+        meta:
+          id: demo
+          endian: le
+        seq:
+          - id: magic
+            contents: [0xA5, 0x5A]
+          - id: temperature
+            type: s2
+          - id: label
+            type: str
+            size: 4
+            encoding: ASCII
+        """;
+
+    [TestMethod]
+    public void ImportKsy_FillsTheFrame_AddsNodes_AndUndoes()
+    {
+        InTemp(directory =>
+        {
+            var path = Path.Combine(directory, "demo.ksy");
+            File.WriteAllText(path, _ksy);
+            var editor = new ManifestEditorViewModel(directory);
+
+            Assert.IsTrue(editor.ImportKsy(path), editor.StatusMessage);
+
+            Assert.IsNotNull(editor.Manifest.Inbound?.Frame);
+            Assert.AreEqual("A55A", editor.Manifest.Inbound!.Frame!.Sync);
+            Assert.AreEqual(ManifestNodeKind.Frame, editor.SelectedNode!.Kind);
+            Assert.IsNotNull(editor.SelectedNode.Form);
+            Assert.HasCount(editor.Manifest.Inbound.Frame.Fields.Count, editor.Nodes.Where(n => n.Kind == ManifestNodeKind.FrameField).ToList());
+            Assert.IsTrue(editor.IsDirty);
+
+            editor.Undo();
+            Assert.IsNull(editor.Manifest.Inbound?.Frame);
+        });
+    }
+
+    [TestMethod]
+    public void ImportKsy_NotAKsy_LeavesTheManifestAlone()
+    {
+        InTemp(directory =>
+        {
+            var path = Path.Combine(directory, "bad.ksy");
+            File.WriteAllText(path, "not: [valid");
+            var editor = new ManifestEditorViewModel(directory);
+
+            Assert.IsFalse(editor.ImportKsy(path));
+            Assert.IsNull(editor.Manifest.Inbound?.Frame);
+            Assert.StartsWith("Not imported:", editor.StatusMessage);
+            Assert.IsFalse(editor.ImportKsy(Path.Combine(directory, "missing.ksy")));
+            Assert.StartsWith("Couldn't read", editor.StatusMessage);
+        });
+    }
+
+    [TestMethod]
+    public void FrameField_AddedByHand_EditsThroughItsForm_AndSavesValid()
+    {
+        InTemp(directory =>
+        {
+            var editor = new ManifestEditorViewModel(directory);
+            editor.Select(editor.Nodes.First(n => n.Kind == ManifestNodeKind.Frame));
+            Assert.AreEqual("Add field", editor.AddLabel);
+            editor.AddChild();
+            var form = (FrameFieldForm)editor.SelectedNode!.Form!;
+            form.Name = "volts";
+            form.Type = "u2";
+            form.Scale = 0.1;
+
+            var field = editor.Manifest.Inbound!.Frame!.Fields.Single();
+            Assert.AreEqual("u2", field.Type);
+            Assert.AreEqual(0.1, field.Scale);
+            Assert.AreEqual("volts (u2)", editor.SelectedNode.Display.Trim());
+            Assert.IsEmpty(editor.Manifest.Inbound.Frame.Validate());
+            Assert.IsTrue(FormDefinitionGenerator.Generate(form.GetType(), form).Sections.SelectMany(x => x.Controls).Any());
+        });
+    }
+
     [TestMethod]
     public void Loader_RejectsWhatTheValidatorCallsAnError_ButTheEditorStillOpensIt()
     {

@@ -3,7 +3,7 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Transports.Ble.Tests;
 
 /// <summary>
-/// See docs/bugs/fixed/026-ble-writes-not-mtu-chunked.md: a without-response GATT write is limited to
+/// See docs/bugs/resolved/026-ble-writes-not-mtu-chunked.md: a without-response GATT write is limited to
 /// one ATT packet, so a write larger than the negotiated MTU must be split before it reaches the
 /// characteristic.
 /// </summary>

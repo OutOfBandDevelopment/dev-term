@@ -59,7 +59,7 @@ public partial class App : Application
 
         // A bad value on the command line, in an environment variable, or in a corrupt/truncated
         // saved profile (e.g. --baud fast) throws from inside the configuration binder before
-        // validation ever runs - see docs/bugs/fixed/032-startup-bind-failure-crash.md. cliOptions is
+        // validation ever runs - see docs/bugs/resolved/032-startup-bind-failure-crash.md. cliOptions is
         // reset to a clean default so it doesn't carry whatever partial state a failed Bind left
         // behind into the Device Profiles editor below.
         string? bindError = null;

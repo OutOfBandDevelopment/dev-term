@@ -376,7 +376,7 @@ public sealed class ConnectionProfileStoreTests
         // Regression test for bug 012: "..\..\Desktop\x" escaped the profiles directory, "a:b" became
         // an NTFS alternate data stream on a file named "a" (List() never shows it, so the saved
         // profile silently vanishes), and reserved device names like "CON" fail on Windows. See
-        // docs/bugs/012-profile-names-not-validated.md.
+        // docs/bugs/resolved/012-profile-names-not-validated.md.
         var directory = CreateTempDirectory();
         try
         {
@@ -529,7 +529,7 @@ public sealed class ConnectionProfileStoreTests
         // Regression test for bug 004: a profile value that fails ConfigurationBinder.Bind (e.g. a
         // non-numeric Baud) throws InvalidOperationException, which FindName's catch filter didn't
         // list - the exception used to propagate out and crash the TUI/WPF title lookup instead of
-        // being skipped like other unreadable profiles. See docs/bugs/fixed/004-bad-profile-value-crashes-title.md.
+        // being skipped like other unreadable profiles. See docs/bugs/resolved/004-bad-profile-value-crashes-title.md.
         var directory = CreateTempDirectory();
         try
         {

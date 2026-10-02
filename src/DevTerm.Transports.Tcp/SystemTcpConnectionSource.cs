@@ -36,7 +36,7 @@ public sealed class SystemTcpConnectionSource : ITcpConnectionSource
             // Unlike TcpListener.Create(port), the constructor does not enable dual-mode on its
             // own - without this, binding IPv6Any still only accepts IPv6 peers, which is no
             // better than the IPv4-only IPAddress.Any this replaces. See
-            // docs/bugs/fixed/056-tcp-listen-rejects-hostnames.md.
+            // docs/bugs/resolved/056-tcp-listen-rejects-hostnames.md.
             listener.Server.DualMode = true;
         }
 
@@ -56,7 +56,7 @@ public sealed class SystemTcpConnectionSource : ITcpConnectionSource
     /// Accepts an IP literal as-is; otherwise resolves it as a hostname. Listen mode's validators
     /// only require a non-empty host string, so a value like "localhost" reaches here -
     /// <see cref="IPAddress.Parse(string)"/> alone throws <see cref="FormatException"/> for that.
-    /// See docs/bugs/fixed/056-tcp-listen-rejects-hostnames.md.
+    /// See docs/bugs/resolved/056-tcp-listen-rejects-hostnames.md.
     /// </summary>
     private static async Task<IPAddress> ResolveBindAddressAsync(string host, CancellationToken cancellationToken)
     {

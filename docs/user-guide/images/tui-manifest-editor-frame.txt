@@ -1,0 +1,25 @@
+┌┤dev-term — Manifest Editor: Loopback Sensor Demo *├──────────────────────────┐
+│⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
+│Imported 4 field(s) from demo.ksy.                                            │
+│                                                                              │
+│╭┤Outline├───────────────────╮╭┤voltage (u2)├────────────────────────────────╮│
+││Identity                    ││  Name:       voltage                         ││
+││Commands (3)                ││  Type:       ○ u1  ◉ u2  ○ u4  ○ u8  ○ s1    ││
+││  Measure                   ││              ○ s2  ○ s4  ○ s8  ○ f4  ○ f8    ││
+││  Stream Samples            ││              ○ str  ○ bytes  ○ skip          ││
+││    count (integer)         ││  Byte order: ◉ (none)  ○ le  ○ be            ││
+││  Hello                     ││  Scale:                                      ││
+││Response patterns (1)       ││  Offset:                                     ││
+││  sample                    ││  Unit:                                       ││
+││Binary frame (4)            ││  Label:      Battery voltage                 ││
+││  (skip 2)                  ││  Must equal:                                 ││
+││  voltage (u2)              ││                                              ││
+││  current (s2)              ││                                              ││
+││  name (str)                ││                                              ││
+││Panel                       ││                                              ││
+││  [Acquire]                 ││                                              ││
+││    button: Measure         ││                                              ││
+││    indicator: Last Sample  ││                                              ││
+│╰────────────────────────────╯╰──────────────────────────────────────────────╯│
+│⟦ Add field ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧   ⟦ Undo ⟧  ⟦ Redo ⟧  ⟦ Ksy ⟧     │
+└──────────────────────────────────────────────────────────────────────────────┘

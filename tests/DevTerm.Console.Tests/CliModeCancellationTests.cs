@@ -11,7 +11,7 @@ namespace DevTerm.Console.Tests;
 /// the injected <see cref="TextReader"/> doesn't itself observe the cancellation token once a read
 /// has started - true of the real <see cref="System.Console.In"/> on Linux/macOS (a SyncTextReader
 /// checks the token once, then blocks synchronously; confirmed against a real Linux kernel - see
-/// docs/bugs/fixed/059-cli-ctrl-c-non-windows.md).
+/// docs/bugs/resolved/059-cli-ctrl-c-non-windows.md).
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]

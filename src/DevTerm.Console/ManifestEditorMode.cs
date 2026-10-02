@@ -107,13 +107,15 @@ internal static class ManifestEditorMode
         var downButton = ToolButton("Down");
         var undoButton = ToolButton("Undo");
         var redoButton = ToolButton("Redo");
+        var importKsyButton = ToolButton("Ksy");
         addButton.X = 0;
         removeButton.X = Pos.Right(addButton) + 1;
         upButton.X = Pos.Right(removeButton) + 1;
         downButton.X = Pos.Right(upButton) + 1;
         undoButton.X = Pos.Right(downButton) + 2;
         redoButton.X = Pos.Right(undoButton) + 1;
-        foreach (var button in new[] { addButton, removeButton, upButton, downButton, undoButton, redoButton })
+        importKsyButton.X = Pos.Right(redoButton) + 1;
+        foreach (var button in new[] { addButton, removeButton, upButton, downButton, undoButton, redoButton, importKsyButton })
         {
             button.Y = Pos.AnchorEnd(1);
         }
@@ -140,6 +142,7 @@ internal static class ManifestEditorMode
             DownButton = downButton,
             UndoButton = undoButton,
             RedoButton = redoButton,
+            ImportKsyButton = importKsyButton,
         };
 
         FormBinding? binding = null;
@@ -401,6 +404,18 @@ internal static class ManifestEditorMode
         OnClick(downButton, editor.MoveDown);
         OnClick(undoButton, editor.Undo);
         OnClick(redoButton, editor.Redo);
+        OnClick(importKsyButton, () =>
+        {
+            var dialog = new OpenDialog { Title = "Import a Kaitai Struct .ksy file as the binary frame" };
+            app.Run(dialog);
+            var chosen = !dialog.Canceled && dialog.FilePaths.Count > 0 ? dialog.FilePaths[0] : null;
+            dialog.Dispose();
+            if (chosen is not null && editor.ImportKsy(chosen))
+            {
+                RefreshOutline();
+                ShowSelection();
+            }
+        });
 
         // Global, not window.KeyDown: a per-view handler doesn't reliably see keys already routed
         // to a focused child first (the outline or a form field normally has focus) - same reason
@@ -427,7 +442,7 @@ internal static class ManifestEditorMode
         app.Keyboard.KeyDown += undoRedoOnCtrlKeys;
         window.Disposing += (_, _) => app.Keyboard.KeyDown -= undoRedoOnCtrlKeys;
 
-        window.Add(newButton, openButton, saveButton, saveAsButton, validateButton, previewButton, closeButton, status, outlineFrame, pane, addButton, removeButton, upButton, downButton, undoButton, redoButton);
+        window.Add(newButton, openButton, saveButton, saveAsButton, validateButton, previewButton, closeButton, status, outlineFrame, pane, addButton, removeButton, upButton, downButton, undoButton, redoButton, importKsyButton);
         window.Disposing += (_, _) => ClearPane();
 
         RefreshOutline();
@@ -475,6 +490,8 @@ internal sealed class ManifestEditorParts
     public required Button UndoButton { get; init; }
 
     public required Button RedoButton { get; init; }
+
+    public required Button ImportKsyButton { get; init; }
 
     /// <summary>The selected part's rendered form, while one is shown.</summary>
     public TuiFormParts? Form { get; set; }

@@ -22,42 +22,68 @@ uses — no hand-built field lists. The preview is the real control-panel render
 
 ## Layout
 
+The window is a toolbar, a status line and three panes. Each is drawn separately below.
+
 ```plantuml
 @startsalt
 {
   [New] | [Open...] | [Save] | [Save As...] | [Check] | [Close]
   Status line
-  {
-    { Outline
-      Identity
-      Commands (3)
-      ..Measure
-      ..Stream Samples
-      ....count (integer)
-      Response patterns (1)
-      ..sample
-      Panel
-      ..[Acquire]
-      ....button: Measure
-      [Add parameter] | [Remove] | [Up] | [Down]
-    } | {
-      Stream Samples
-      Name: | "Stream Samples"
-      Id: | "samples"
-      Template: | "Samples: {count}"
-      [ ] Is a query
-      Sends: | Samples: 40\n
-    } | {
-      Preview (sends nothing)
-      the panel, live
-    }
-  }
+  Outline | Form | Preview
 }
 @endsalt
 ```
 
-WPF shows the outline, the form and the preview side by side (splitters between them); the TUI shows
-the outline and one pane that holds either the form or, with **Preview**, the panel.
+**Outline** (left): the manifest as a tree, with the buttons that act on the selected node.
+
+```plantuml
+@startsalt
+{
+  Identity
+  Commands (3)
+  ..Measure
+  ..Stream Samples
+  ....count (integer)
+  Response patterns (1)
+  ..sample
+  Binary frame (4)
+  ..voltage (u2)
+  Panel
+  ..Acquire
+  ....button: Measure
+  [Add parameter] | [Remove] | [Up] | [Down]
+}
+@endsalt
+```
+
+**Form** (middle): the fields of the selected node, here the command "Stream Samples".
+
+```plantuml
+@startsalt
+{
+  Stream Samples
+  Name: | "Stream Samples"
+  Id: | "samples"
+  Template: | "Samples: (count)"
+  [ ] Is a query
+  Sends: | "Samples: 40"
+}
+@endsalt
+```
+
+In the real form the template shows its placeholder in curly braces; the wireframe uses parentheses because braces are salt syntax.
+
+**Preview** (right): the real control-panel renderer showing the panel as it would open. It sends nothing.
+
+```plantuml
+@startsalt
+{
+  Preview (sends nothing)
+  The panel, live
+  [Acquire]
+}
+@endsalt
+```
 
 ## Outline
 
@@ -69,6 +95,8 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | a parameter (`name (type)`) | `ParameterForm` | a parameter (to the same command) |
 | Response patterns (n) | none — a hint | a pattern |
 | a pattern | `PatternForm` | a pattern |
+| Binary frame (n) | `FrameForm` (a declared frame), or a hint (none) | a frame field (declares a frame if there was none) |
+| a frame field (`name (type)`, or `(skip n)`) | `FrameFieldForm` | a frame field (to the same frame) |
 | Panel | `PanelForm` (a declared panel), or a hint and **Create panel from commands** (none declared) | a section (declares a panel if there was none) |
 | `[section]` | `SectionForm` | a control |
 | `kind: label` | `ControlForm` | a control (to the same section) |
@@ -85,6 +113,8 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | Command | Name, Id, Template (escapes), Is a query, Reply id | `OutboundCommand` | **Sends** (read-only) shows the wire text with default parameter values and the terminator, and the reply id a query lands in |
 | Parameter | Name, Type (`string`/`number`/`integer`), Minimum, Maximum, Unit, Default value, Number format | `CommandParameter` | Minimum/Maximum/Number format shown only for a numeric type |
 | Pattern | Name, Regex | `ResponsePattern` | **Try it**: a *Sample line* (not saved) and **Publishes** — the values a match would publish (`name=… chA=…`), `no match`, or the regex error |
+| Frame | Sync bytes, Byte order, Layout | `Inbound.Frame.Sync`, `Endian` | **Layout** (read-only) shows the field count, the frame length (or "length unknown"), and the first validation problem if any |
+| Frame field | Name, Type (`u1`..`u8`, `s1`..`s8`, `f4`, `f8`, `str`, `bytes`, `skip`), Size, Byte order, Scale, Offset, Unit, Label, Must equal | `FrameField` | Size shown only for `str`/`bytes`/`skip`; Byte order/Scale/Offset only for a number; Name/Unit/Label hidden for `skip`; Name may be dotted (`header.length`) or indexed (`samples[0]`) |
 | Panel | Panel name, Notes | `Ui.Name`, `Ui.Description` | |
 | Section | Label | `UiSection.Label` | Blank: a headerless, always-open section |
 | | Visible when, Visible values | `UiSection.VisibleWhen`'s `Id`, `Values` (comma-separated) | "Visible values" shown only once "Visible when" is set |
@@ -121,6 +151,7 @@ part itself — the condition a live control panel and the preview evaluate — 
 | **Remove** | Removes the selected entry; on **Panel**, removes the declared panel (the generated one is used again) | Disabled on Identity and the headings |
 | **Up** / **Down** | Moves the selected entry within its list | Disabled on Identity and the headings |
 | **Undo** / **Redo** (Ctrl+Z / Ctrl+Y) | Reverts/reapplies the last change — a field edit or an Add/Remove/Up/Down/Create-panel-from-commands — and re-selects the part it happened on | Disabled with nothing to undo/redo |
+| **Ksy** (TUI) / **Import .ksy...** (WPF) | Picks a Kaitai Struct `.ksy` file and replaces the manifest's binary frame with what `KsyImporter` makes of it (nested types become dotted names, fixed repeats indexed ones); selects the Binary frame entry. The status line lists what the importer had to leave out (dynamic attributes, bit fields, ...). Undoable | "Couldn't read '…': …" or "Not imported: …" — the manifest is left alone |
 | **Create panel from commands** | For a manifest with no declared panel: declares the one it would get from its commands, to edit from there | — |
 | **Preview** (TUI; WPF always shows it) | Shows the panel as it would open, drawn by the control-panel renderer against a surface that sends nothing: invoking a control shows *what it would send* in the status line (TUI) / under the preview (WPF), and the ⓘ/(i) command previews work as on a live panel. The TUI's button toggles back to the form (**Edit**) | — |
 | **Close** | Closes (asks first if there are unsaved edits) | Declining keeps it open |

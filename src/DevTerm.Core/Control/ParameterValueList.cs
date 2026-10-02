@@ -7,7 +7,7 @@ namespace DevTerm.Core.Control;
 /// into the single string <see cref="IControlSurface.InvokeAsync"/> carries, escaping a literal comma
 /// or backslash in any one value (backslash-escaped, the same convention as most shell/CSV quoting)
 /// so it survives the round trip intact instead of being mistaken for the separator between values —
-/// see docs/bugs/fixed/024-comma-in-text-parameter.md. <see cref="Split"/> mirrors
+/// see docs/bugs/resolved/024-comma-in-text-parameter.md. <see cref="Split"/> mirrors
 /// <see cref="string.Split(char)"/>'s own behavior for an empty input (a single empty-string element,
 /// never zero elements) so existing "no value at index i, use the parameter's default" logic keeps
 /// working unchanged.

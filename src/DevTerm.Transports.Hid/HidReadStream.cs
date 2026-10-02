@@ -87,7 +87,7 @@ internal sealed class HidReadStream : Stream
             // This runs on a raw background Thread (see the class remarks), not a Task - anything
             // unhandled here, including GetMaxInputReportLength() itself (which used to run outside
             // this try), would otherwise crash the whole process instead of surfacing as an ordinary
-            // connection failure. See docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+            // connection failure. See docs/bugs/resolved/055-hid-read-thread-and-close-blocking.md.
         }
         finally
         {

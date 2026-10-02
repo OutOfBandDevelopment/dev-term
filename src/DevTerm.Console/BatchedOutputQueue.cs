@@ -6,7 +6,7 @@ namespace DevTerm.Console;
 /// <paramref name="scheduleDrain"/> (which marshals to the UI thread) the first time a line arrives
 /// with no drain already pending - a fast stream that outruns the UI thread piles lines up here
 /// instead of queuing one separate UI-thread closure per line. See
-/// docs/bugs/fixed/031-tui-output-no-backpressure.md.
+/// docs/bugs/resolved/031-tui-output-no-backpressure.md.
 /// </summary>
 internal sealed class BatchedOutputQueue(Action scheduleDrain)
 {

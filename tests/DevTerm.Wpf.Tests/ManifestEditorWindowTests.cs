@@ -174,4 +174,44 @@ public sealed class ManifestEditorWindowTests
             await Task.CompletedTask;
         });
     }
+
+    [TestMethod]
+    public void ImportKsy_FillsTheFrameOutline_AndIsCaptured()
+    {
+        Run(async (window, userDirectory) =>
+        {
+            var ksy = Path.Combine(userDirectory, "demo.ksy");
+            File.WriteAllText(ksy, """
+                meta:
+                  id: demo
+                  endian: le
+                seq:
+                  - id: magic
+                    contents: [0xA5, 0x5A]
+                  - id: voltage
+                    type: u2
+                    doc: Battery voltage
+                  - id: current
+                    type: s2
+                  - id: name
+                    type: str
+                    size: 4
+                    encoding: ASCII
+                """);
+            Assert.IsTrue(window.Editor.ImportKsy(ksy), window.Editor.StatusMessage);
+            StaTestRunner.DoEvents();
+            Assert.IsTrue(window.Editor.Nodes.Any(n => n.Kind == ManifestNodeKind.FrameField));
+
+            Select(window, "voltage (u2)");
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            WpfScreenshot.ShowOffScreen(window, 1180, 660);
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+            var path = Path.Combine(FindRepoRoot(), "docs", "user-guide", "images", "wpf-manifest-editor-frame.png");
+            WpfScreenshot.Save(window, path);
+            Assert.IsGreaterThan(1000L, new FileInfo(path).Length);
+            Assert.Contains("Imported 4 field(s)", window.StatusText.Text);
+            await Task.CompletedTask;
+        });
+    }
 }

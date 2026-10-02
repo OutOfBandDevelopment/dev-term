@@ -22,7 +22,7 @@ public sealed class BleTransport : ITransport
     // OnAdapterDisconnected/CloseAsync complete the writer from other threads. PipeWriter is
     // single-writer: a second WriteAsync while a first is still flushing (blocked on backpressure)
     // doesn't just throw - it corrupts the Pipe's internal state badly enough that even the reader
-    // side stops working afterward. See docs/bugs/fixed/053-ble-pipe-writes-unsynchronized.md.
+    // side stops working afterward. See docs/bugs/resolved/053-ble-pipe-writes-unsynchronized.md.
     private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     public BleTransport(IBleAdapterFactory adapterFactory, IOptions<BleTransportOptions> options)
@@ -71,7 +71,7 @@ public sealed class BleTransport : ITransport
         // notifications are enabled, which happens inside ConnectAsync - a notification arriving
         // that early needs somewhere to land rather than being silently dropped by
         // OnNotificationReceived's _pipe-is-null guard. See
-        // docs/bugs/fixed/052-ble-notifications-before-pipe.md.
+        // docs/bugs/resolved/052-ble-notifications-before-pipe.md.
         _pipe = new Pipe();
 
         try
@@ -137,7 +137,7 @@ public sealed class BleTransport : ITransport
     /// Runs <paramref name="operation"/> under a linked token cancelled after <paramref name="timeoutMs"/>,
     /// converting the resulting <see cref="OperationCanceledException"/> into a <see cref="TimeoutException"/>
     /// only when the timeout (not the caller's own <paramref name="cancellationToken"/>) fired - see
-    /// docs/bugs/fixed/027-ble-timeouts-unused.md.
+    /// docs/bugs/resolved/027-ble-timeouts-unused.md.
     /// </summary>
     private static async Task RunWithTimeoutAsync(
         Func<CancellationToken, Task> operation,

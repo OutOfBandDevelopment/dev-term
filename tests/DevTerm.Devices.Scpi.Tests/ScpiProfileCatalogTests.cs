@@ -156,7 +156,7 @@ public sealed class ScpiProfileCatalogTests
     {
         // Regression test for bug 044: Math.Clamp(number, Min, Max) throws ArgumentException when
         // Min > Max, which used to reach a live control panel invocation with no warning at load
-        // time. See docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+        // time. See docs/bugs/resolved/044-scpi-clamp-bad-limits.md.
         var baseDirectory = CreateTempDirectory();
         try
         {
@@ -220,7 +220,7 @@ public sealed class ScpiProfileCatalogTests
     {
         // Regression test for bug 048: TryMatchByIdn ran a profile-supplied IdnPattern with
         // Regex.IsMatch and no timeout, so a catastrophic-backtracking pattern in a user profile could
-        // hang auto-detect for a very long time. See docs/bugs/fixed/048-scpi-idn-regex-no-timeout.md.
+        // hang auto-detect for a very long time. See docs/bugs/resolved/048-scpi-idn-regex-no-timeout.md.
         // The [Timeout] attribute fails the test (rather than actually hanging the run) if the fix's
         // 250 ms regex timeout isn't honored.
         var evil = new ScpiInstrumentProfile { Name = "Evil", IdnPattern = "^(a+)+$" };

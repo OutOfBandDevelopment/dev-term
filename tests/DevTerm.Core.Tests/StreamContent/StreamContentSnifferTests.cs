@@ -134,7 +134,7 @@ public sealed class StreamContentSnifferTests
     {
         // Regression test for bug 042: a "#0" indefinite-length block used to be reported as
         // NotABlock, so its two header bytes were left in front of the wrapped content instead of
-        // being stripped as part of the match. See docs/bugs/fixed/042-stream-watcher-indefinite-block.md.
+        // being stripped as part of the match. See docs/bugs/resolved/042-stream-watcher-indefinite-block.md.
         var png = StreamContentSamples.Png();
         byte[] data = [.. "x"u8, .. StreamContentSamples.ScpiIndefiniteBlock(png)];
 

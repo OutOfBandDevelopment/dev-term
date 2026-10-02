@@ -2,7 +2,7 @@ using DevTerm.Test.Utilities;
 
 namespace DevTerm.Console.Tests;
 
-/// <summary>See docs/bugs/fixed/031-tui-output-no-backpressure.md.</summary>
+/// <summary>See docs/bugs/resolved/031-tui-output-no-backpressure.md.</summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
 public sealed class BatchedOutputQueueTests

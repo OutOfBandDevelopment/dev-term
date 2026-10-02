@@ -25,7 +25,7 @@ namespace DevTerm.Transports.Serial;
 /// happens once data is already known to be buffered, so it returns immediately. A slow
 /// (1s) <see cref="SerialPort.BytesToRead"/> poll runs alongside the event wait purely as an
 /// unplug-detection fallback - see the remarks inside <see cref="ReadAsync"/> and
-/// docs/bugs/fixed/057-serial-unplug-not-detected.md.
+/// docs/bugs/resolved/057-serial-unplug-not-detected.md.
 /// </summary>
 internal sealed class SerialPortReadStream(SerialPort port) : Stream
 {
@@ -52,7 +52,7 @@ internal sealed class SerialPortReadStream(SerialPort port) : Stream
                 // Neither DataReceived nor ErrorReceived is guaranteed to fire for a physical
                 // unplug with no data in flight - a yanked USB-serial adapter often raises
                 // neither, so waiting on them alone can hang forever (see
-                // docs/bugs/fixed/057-serial-unplug-not-detected.md). Poll BytesToRead on an
+                // docs/bugs/resolved/057-serial-unplug-not-detected.md). Poll BytesToRead on an
                 // interval as a fallback instead of (or in addition to) trusting either event:
                 // BytesToRead touches the real device handle, so it throws on a genuinely removed
                 // port the same way the eventual Read() below would - IsOpen was considered

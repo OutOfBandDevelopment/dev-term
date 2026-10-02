@@ -65,7 +65,7 @@ public sealed class HidTransport : ITransport
             // already cancelled by the time the pool thread starts would make Task.Run yield a
             // Canceled task WITHOUT ever calling Open() at all - Open() itself has no way to accept
             // cancellation, so skipping it isn't a real cancellation, just a silent no-open. See
-            // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+            // docs/bugs/resolved/055-hid-read-thread-and-close-blocking.md.
             await Task.Run(device.Open, CancellationToken.None).ConfigureAwait(false);
         }
         catch
@@ -137,7 +137,7 @@ public sealed class HidTransport : ITransport
             // affects where a continuation resumes when a real suspension happens, not an
             // already-completed await. Running Close() through Task.Run keeps that caller (often
             // the UI thread) from blocking on the Join either way. See
-            // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+            // docs/bugs/resolved/055-hid-read-thread-and-close-blocking.md.
             await Task.Run(device.Close, CancellationToken.None).ConfigureAwait(false);
             device.Dispose();
 

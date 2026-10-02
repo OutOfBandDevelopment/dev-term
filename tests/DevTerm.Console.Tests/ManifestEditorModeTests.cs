@@ -210,4 +210,40 @@ public sealed class ManifestEditorModeTests
             Assert.Contains("[-] Acquire", preview);
         });
     }
+
+    [TestMethod]
+    public void ImportKsy_FillsTheFrameOutline_AndItsFieldFormShows()
+    {
+        Run((parts, userDirectory) =>
+        {
+            var ksy = Path.Combine(userDirectory, "demo.ksy");
+            File.WriteAllText(ksy, """
+                meta:
+                  id: demo
+                  endian: le
+                seq:
+                  - id: magic
+                    contents: [0xA5, 0x5A]
+                  - id: voltage
+                    type: u2
+                    doc: Battery voltage
+                  - id: current
+                    type: s2
+                  - id: name
+                    type: str
+                    size: 4
+                    encoding: ASCII
+                """);
+            Assert.IsTrue(parts.ViewModel.ImportKsy(ksy), parts.ViewModel.StatusMessage);
+            TuiTestRunner.CurrentApp.LayoutAndDraw(true);
+            Assert.IsTrue(parts.ViewModel.Nodes.Any(n => n.Kind == ManifestNodeKind.FrameField));
+
+            Select(parts, "voltage (u2)");
+            var dump = TuiTestRunner.DumpBuffer();
+            Assert.Contains("Binary frame (", dump);
+            Directory.CreateDirectory(_imagesDirectory);
+            File.WriteAllText(Path.Combine(_imagesDirectory, "tui-manifest-editor-frame.txt"), dump);
+            TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-manifest-editor-frame.png"));
+        });
+    }
 }

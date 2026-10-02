@@ -285,6 +285,10 @@ Opening **Device Manifest...** shows a picker (TUI: `ManifestPanelMode`'s modal 
 dev-term installs one: **Loopback Sensor Demo** (`src/DevTerm.DeviceManifests/Manifests/loopback-sensor-demo/device.json`,
 copied to `manifests\loopback-sensor-demo\` in every front end's output), which answers over the
 loopback transport's simulated sensor (`MEAS?`, `Samples: N`) and exercises every chart control.
+`Samples: N` is a streaming loopback rule, so with the connection's `SampleIntervalMs` above `0` the bar
+graph, strip chart and vector displays update once per interval as each line arrives, rather than all at once
+(`MEAS?` is a single line and is never delayed). `LoopbackChartsScreenshotTests` (Console and Wpf) captures this
+as a regression check: it waits on `StripChartState.SamplesOf("chA").Count` and screenshots after every fourth sample.
 
 A manifest's panel is `ManifestUiBuilder.Build(manifest)`: the manifest's own `Ui`, or — when it has
 none — one generated section with, per outbound command, a `TextFieldControl` per parameter

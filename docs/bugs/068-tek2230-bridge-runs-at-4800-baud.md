@@ -41,4 +41,4 @@ lost or garbled; with `WriteByteDelayMs` set (try 10 to 50 ms) it is reliable at
 Hardware-category tests for both 2230 hosts that run the query loop at 9600 with the chosen delay.
 
 ## Related
-[065](065-hpgl-no-end-detection-splits-one-plot.md), [067](067-hp34401a-rs232-no-write-pacing.md).
+[065](065-hpgl-no-end-detection-splits-one-plot.md), [067](resolved/067-hp34401a-rs232-no-write-pacing.md).

@@ -26,7 +26,7 @@ dequeues exactly one id and assigns it the line just finished (line 153-156), re
    a no-terminator device.
 3. **The buffer hitting its 4096-byte safety cap** (line 126-129, `_maxBufferLength`) — this exists purely so an
    unbounded terminatorless/binary stream can't grow the buffer forever (see
-   [006](fixed/006-reply-queue-desync.md)'s resolution). It is *not* the end of the reply; it's an arbitrary chunk
+   [006](resolved/006-reply-queue-desync.md)'s resolution). It is *not* the end of the reply; it's an arbitrary chunk
    boundary partway through one.
 
 Because case 3 calls the same `Complete` as cases 1/2, every forced 4096-byte chunk of a long terminatorless/binary
@@ -36,7 +36,7 @@ binary block) forces several of these spurious completions before the real end o
 time the *next* real query's reply comes back, the queue has already been drained by N phantom completions, and that
 next reply gets matched to the wrong (or no) id. The same desync reaches `ScpiControlSurface`/`ManifestControlSurface`'s
 reply-indicator correlation (`IStructuredPresenter.ValuesChanged`), not just the raw text view — this is the same
-failure class [006](fixed/006-reply-queue-desync.md) fixed for *missing* replies, left open for *oversized* ones;
+failure class [006](resolved/006-reply-queue-desync.md) fixed for *missing* replies, left open for *oversized* ones;
 006's own failure scenario called this out directly ("A hinted binary block … splits on random 0x0A/0x0D bytes and
 each fragment dequeues an id") but the landed fix only capped the buffer's growth, without separating "flushed for
 safety" from "this is a complete reply."
@@ -57,7 +57,7 @@ drained several ids ahead of it, so by the time `*IDN?`'s real reply line finall
 CR), the id dequeued for it is not the one `*IDN?` itself registered — and the visible text itself is also wrong,
 carrying the unflushed binary tail of the previous forced chunk as a prefix. Any `ScpiControlSurface`/
 `ManifestControlSurface` panel field reading from this presenter during the dump would show the device's binary
-reply (or garbage) on the *wrong* field, exactly as [006](fixed/006-reply-queue-desync.md) described for a missing
+reply (or garbage) on the *wrong* field, exactly as [006](resolved/006-reply-queue-desync.md) described for a missing
 reply — just triggered by an oversized one instead.
 
 ## Suggested fix

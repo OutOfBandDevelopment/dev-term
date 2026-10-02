@@ -158,7 +158,7 @@ Seven kinds of doc, each with a distinct job — don't blend them:
   confidence, the date and full git commit it was found at, location, failure scenario, suggested fix, tests to
   add. File and update them with the `bug-report` skill (`.claude/skills/bug-report/SKILL.md`). When a fix lands, set its Status to `Fixed`
   with a `## Resolution` section (commit + regression test) and update its row in `docs/bugs/README.md` in the same
-  change; the fix's detail still goes in `docs/changes/`. Keep fixed reports (numbers aren't reused).
+  change; the fix's detail still goes in `docs/changes/`. Closed reports (Fixed, Won't fix, duplicate) move to `docs/bugs/resolved/`, so `docs/bugs/` holds only open work; numbers aren't reused. The `work-docs-audit` skill (`.claude/skills/work-docs-audit/SKILL.md`) is the periodic sweep that checks TODO, BACKLOG, bugs, proposals and the changelog against the code.
 
 **Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
 a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has
@@ -303,7 +303,7 @@ file only points there, it doesn't restate them.**
   `PumpAsync`'s own call stack (a synchronous `Output` handler invoking `SendAsync`), so the deadlock
   it was meant to catch reproduced identically. Fixed with an `AsyncLocal<bool>` set at the top of
   `PumpAsync` instead — see the next point and
-  [039](docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md).
+  [039](docs/bugs/resolved/039-sendasync-from-read-loop-deadlock.md).
 - **An `AsyncLocal<T>` set inside a method stays visible to everything that method calls — sync or
   async — until that method returns, but never to a separate, concurrent caller on the same object**,
   which is exactly the distinction `Session` needs to detect "`SendAsync` was called synchronously
@@ -346,7 +346,7 @@ file only points there, it doesn't restate them.**
   while writing a regression test for bug 062 (`MainWindow.SendBox`, used for command history
   recall): both new tests failed against `IsKeyboardFocused` despite the production fix (restoring
   focus to `SendBox` after a mouse-driven send) being correct — see
-  `docs/bugs/fixed/062-sendbox-arrow-keys-lose-focus-after-send.md`.
+  `docs/bugs/resolved/062-sendbox-arrow-keys-lose-focus-after-send.md`.
 - **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
   `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
   view-model property that already had a value at construction time still read back empty

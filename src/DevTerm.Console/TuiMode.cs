@@ -238,7 +238,7 @@ public static class TuiMode
 
         // Tagged by tab (not a single window-level queue) so a fast-arriving background tab's output
         // can't block or get dropped by the active tab's own coalescing - see BatchedOutputQueue and
-        // docs/bugs/fixed/031-tui-output-no-backpressure.md (the single-tab bug this originally fixed).
+        // docs/bugs/resolved/031-tui-output-no-backpressure.md (the single-tab bug this originally fixed).
         void AppendOutput(TuiWindowTab windowTab, string line) => windowTab.OutputQueue!.Enqueue(line);
 
         // The output pane is one plain-text Editor (no per-line colors), so status and error lines

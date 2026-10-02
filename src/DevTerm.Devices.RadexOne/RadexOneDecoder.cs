@@ -11,7 +11,7 @@ namespace DevTerm.Devices.RadexOne;
 /// even a single short reply across more than one <c>Session.Output</c> event (see CLAUDE.md's
 /// "RawPresenter is only trustworthy for a genuinely terminatorless device" note: the device is a
 /// plain virtual COM port, 9600 8N1, real-hardware confirmed 2026-09-26 (correcting an earlier,
-/// unverified "2400 baud" claim - see docs/bugs/fixed/061-radexone-wrong-baud-rate.md), not the USB
+/// unverified "2400 baud" claim - see docs/bugs/resolved/061-radexone-wrong-baud-rate.md), not the USB
 /// HID device an earlier draft of the proposal wrongly assumed, so there is no fixed-size report to rely on to
 /// mark a reply's boundary) — then parses each complete framer packet (see
 /// <see cref="RadexOneFramer"/>) once enough bytes have arrived. A byte sequence that can't start a

@@ -116,7 +116,7 @@ public sealed class ScpiReplyPresenterTests
         // Regression test for bug 051: LF CR (unlike the already-handled CR LF) was treated as two
         // separate terminators, so a device ending lines in LF CR produced a spurious extra empty
         // line that consumed the next pending query's reply id (see
-        // docs/bugs/fixed/006-reply-queue-desync.md). See docs/bugs/fixed/051-line-reply-lf-cr-two-lines.md.
+        // docs/bugs/resolved/006-reply-queue-desync.md). See docs/bugs/resolved/051-line-reply-lf-cr-two-lines.md.
         var presenter = new ScpiReplyPresenter();
         var received = new List<KeyValuePair<string, string>>();
         presenter.ValuesChanged += (_, values) => received.Add(values.Single());
@@ -198,7 +198,7 @@ public sealed class ScpiReplyPresenterTests
         // Regression test for bug 006: a query whose send fails (or that timed out with no reply)
         // left its id pending forever, so the *next* query's reply landed on that stale id instead
         // of its own. Cancel removes it, so the next line goes back to being unsolicited. See
-        // docs/bugs/fixed/006-reply-queue-desync.md.
+        // docs/bugs/resolved/006-reply-queue-desync.md.
         var presenter = new ScpiReplyPresenter();
         var raised = false;
         presenter.ValuesChanged += (_, _) => raised = true;
@@ -249,7 +249,7 @@ public sealed class ScpiReplyPresenterTests
     {
         // Regression test for bug 006: a stale pending id and a half-received line both used to
         // carry over into a reopened connection on the same Session (Session.OpenAsync now calls
-        // Reset via IResettablePresenter). See docs/bugs/fixed/006-reply-queue-desync.md.
+        // Reset via IResettablePresenter). See docs/bugs/resolved/006-reply-queue-desync.md.
         var presenter = new ScpiReplyPresenter();
         var received = new List<KeyValuePair<string, string>>();
         presenter.ValuesChanged += (_, values) => received.AddRange(values);

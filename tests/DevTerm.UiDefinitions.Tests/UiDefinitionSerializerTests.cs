@@ -131,7 +131,7 @@ public sealed class UiDefinitionSerializerTests
         // Regression test for bug 049: a manifest's UiFile .xml is untrusted input, and
         // XmlSerializer.Deserialize(TextReader) applied no DtdProcessing restriction, so an
         // internal-entity DOCTYPE (billion-laughs style) could expand into the deserialized model.
-        // See docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        // See docs/bugs/resolved/049-uidefinition-xml-dtd.md.
         const string maliciousXml = """
             <?xml version="1.0"?>
             <!DOCTYPE UiDefinition [<!ENTITY evil "expanded">]>

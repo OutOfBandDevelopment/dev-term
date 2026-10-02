@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Plausible (a maintainer's hypothesis, not yet reproduced; no logged failure is attributed to byte timing) |
 | **Area** | DevTerm.Transports.Serial (`WriteByteDelayMs`), `hp-agilent-keysight-34401a.json`, `RealHardwareSerialTests` |
 | **Created** | 2026-10-02 |
@@ -28,6 +28,13 @@ logged as single characters (`docs/test/2026-09-25-15-02-44.md`, a harness readi
 `+550 "Command not allowed in local"` entry (a missing `SYSTem:REMote`). So the hypothesis rests on the instrument class
 and the TDS2024 precedent, not on a recorded failure.
 
+## Update 2026-10-02: the 34401A does use DTR/DSR handshake
+Through bridge 192.168.0.109 the meter sent nothing until the bridge's CTS was wired to the meter's DSR; it suspends
+output while its DSR input is false (`docs/test/2026-10-02-11-21-45.md`). So "no hardware handshake in the documented
+setup" above is not true for every path, and a silent or partial reply may be handshake, not byte timing. That run used
+`--writebytedelayms 50` and did not isolate whether the delay was needed, so this report is still open and still
+unreproduced. Step 1 of the suggested fix should be run on the DSR-wired path.
+
 ## Failure scenario
 Expected, to be confirmed: with default pacing, a command sent right after connect, or several sent back to back, is
 sometimes partly lost, giving a missing reply, a `-102 Syntax error` or `-113 Undefined header` in `SYST:ERR?`, or a
@@ -47,5 +54,13 @@ A `[TestCategory(TestCategories.Hardware)]` loop in `RealHardwareSerialTests` fo
 reply or non-empty `SYST:ERR?`, run with and without the delay.
 
 ## Related
-[065](065-hpgl-no-end-detection-splits-one-plot.md) and [068](068-tek2230-bridge-runs-at-4800-baud.md) concern the same
+[065](../065-hpgl-no-end-detection-splits-one-plot.md) and [068](../068-tek2230-bridge-runs-at-4800-baud.md) concern the same
 class of slow-instrument timing.
+
+## Resolution
+Resolved 2026-10-02 on the bench, no dev-term code change. Through bridge 192.168.0.109 the meter answers reliably with
+`--writebytedelayms 50` and the bridge's CTS (pin 8) wired to the meter's DSR (pin 6); three runs gave clean `*IDN?`,
+`MEAS:VOLT:DC?` and `SYST:ERR?` (`docs/test/2026-10-02-11-21-45.md`). The cause of the silence was the DSR handshake,
+not byte timing. Caveat: the delay was on for every working run, so whether 50 ms is *required* (versus merely
+sufficient) was not isolated. Recorded in `docs/devices/hp-34401a/known-configuration.md`. No regression test: it is a
+wiring and bench-setting fix.

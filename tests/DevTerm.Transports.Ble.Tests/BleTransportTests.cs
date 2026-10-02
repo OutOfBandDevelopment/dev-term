@@ -106,7 +106,7 @@ public sealed class BleTransportTests
         // Regression test for bug 052: some devices send a greeting the instant notifications are
         // enabled, which happens inside adapter.ConnectAsync — but _pipe was only created after
         // ConnectAsync returned, so OnNotificationReceived silently dropped a notification arriving
-        // that early. See docs/bugs/fixed/052-ble-notifications-before-pipe.md.
+        // that early. See docs/bugs/resolved/052-ble-notifications-before-pipe.md.
         var adapter = new Mock<IBleAdapter>();
         var payload = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
         adapter.Setup(a => a.ConnectAsync(It.IsAny<CancellationToken>()))
@@ -138,7 +138,7 @@ public sealed class BleTransportTests
         // while a first is still flushing (blocked on the pipe's backpressure threshold, since
         // nothing is reading yet) throws InvalidOperationException, which WriteToPipeAsync's catch
         // swallows, silently losing that notification's bytes. See
-        // docs/bugs/fixed/053-ble-pipe-writes-unsynchronized.md.
+        // docs/bugs/resolved/053-ble-pipe-writes-unsynchronized.md.
         var adapter = new Mock<IBleAdapter>();
         var factory = new Mock<IBleAdapterFactory>();
         factory.Setup(f => f.Create(It.IsAny<BleTransportOptions>())).Returns(adapter.Object);

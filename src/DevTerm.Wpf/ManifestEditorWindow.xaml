@@ -13,6 +13,8 @@
                     ToolTip="Run the same checks the manifest loader runs (Save runs them too)" />
             <Button x:Name="UndoButton" Content="Undo" Padding="10,2" Margin="0,0,6,0" Click="Undo_Click" ToolTip="Ctrl+Z" />
             <Button x:Name="RedoButton" Content="Redo" Padding="10,2" Margin="0,0,6,0" Click="Redo_Click" ToolTip="Ctrl+Y" />
+            <Button Content="Import .ksy..." Padding="10,2" Margin="0,0,6,0" Click="ImportKsy_Click"
+                    ToolTip="Import a Kaitai Struct .ksy file as the manifest's binary frame" />
             <Button x:Name="CloseButton" Content="Close" Padding="10,2" IsCancel="True" Click="Close_Click" />
         </StackPanel>
 

@@ -90,7 +90,7 @@ public sealed partial class ScpiControlSurface : IControlSurface, ICommandPrevie
     /// Sends the resolved bytes, cancelling the reply id <see cref="InvokeAsync"/> just registered
     /// via <see cref="DevTerm.Core.Presenters.IReplyTracker.QuerySent"/> if the send itself fails — otherwise that id stays
     /// queued forever waiting for a reply that will never arrive, shifting every later reply onto
-    /// the wrong field. See docs/bugs/fixed/006-reply-queue-desync.md.
+    /// the wrong field. See docs/bugs/resolved/006-reply-queue-desync.md.
     /// </summary>
     private async Task SendAsync(byte[] bytes, string? replyIndicatorId, CancellationToken cancellationToken)
     {
@@ -177,7 +177,7 @@ public sealed partial class ScpiControlSurface : IControlSurface, ICommandPrevie
         // A single pass over the original template: a parameter's own substituted value is never
         // re-scanned for further "{name}" tokens, so a value that itself contains another
         // parameter's placeholder text is inserted verbatim instead of being substituted again
-        // (see docs/bugs/fixed/043-template-substitution-not-single-pass.md).
+        // (see docs/bugs/resolved/043-template-substitution-not-single-pass.md).
         return TemplatePlaceholder().Replace(text, match =>
             substitutions.TryGetValue(match.Groups[1].Value, out var substituted) ? substituted : match.Value);
     }
@@ -200,6 +200,6 @@ public sealed partial class ScpiControlSurface : IControlSurface, ICommandPrevie
         return clamped.ToString(format, CultureInfo.InvariantCulture);
     }
 
-    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
+    [GeneratedRegex(@"\{([A-Za-z_](?:[A-Za-z0-9_.]|\[[0-9]+\])*)\}")]
     private static partial Regex TemplatePlaceholder();
 }

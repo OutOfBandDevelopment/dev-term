@@ -17,6 +17,9 @@ public enum ValuePathSource
     /// <summary>A response pattern's name, or one of its named capture groups.</summary>
     ResponsePattern,
 
+    /// <summary>A field of the manifest's binary frame (<see cref="InboundProtocol.Frame"/>).</summary>
+    Frame,
+
     /// <summary>The id a query command's reply is published under.</summary>
     QueryReply,
 
@@ -45,7 +48,7 @@ public sealed record ValuePath(
 /// </summary>
 public static partial class ValuePathCatalog
 {
-    /// <summary>Every readable path, de-duplicated by <see cref="ValuePath.Path"/> (first source wins), in a stable order: patterns, then query replies, then controls.</summary>
+    /// <summary>Every readable path, de-duplicated by <see cref="ValuePath.Path"/> (first source wins), in a stable order: patterns, then frame fields, then query replies, then controls.</summary>
     public static IReadOnlyList<ValuePath> Enumerate(DeviceManifest manifest)
     {
         ArgumentNullException.ThrowIfNull(manifest);
@@ -66,6 +69,14 @@ public static partial class ValuePathCatalog
             foreach (var path in FromPattern(pattern))
             {
                 Add(path);
+            }
+        }
+
+        foreach (var field in manifest.Inbound?.Frame?.Fields ?? [])
+        {
+            if (field.Publishes && !string.IsNullOrWhiteSpace(field.Name))
+            {
+                Add(new ValuePath(field.Name, field.IsNumber ? ValuePathType.Number : ValuePathType.Text, ValuePathSource.Frame, field.Label ?? field.Name, field.Unit, field.Minimum, field.Maximum));
             }
         }
 

@@ -11,7 +11,7 @@ namespace DevTerm.Transports.Serial.Tests;
 /// <c>RealSerialRadexOnePort</c>) purely as a real, already-open <see cref="SerialPort"/> to read
 /// from - the Radex One's own protocol is irrelevant here, since this drives
 /// <see cref="SerialPortReadStream"/> directly rather than going through
-/// <c>DevTerm.Devices.RadexOne</c>. See docs/bugs/fixed/057-serial-unplug-not-detected.md.
+/// <c>DevTerm.Devices.RadexOne</c>. See docs/bugs/resolved/057-serial-unplug-not-detected.md.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.Serial)]
