@@ -2,9 +2,11 @@
 
 | | |
 |---|---|
-| Profile | none bundled; closest is `rigol-ds1105e.json` (a DS1105E, not verified interchangeable) |
+| Profile | `rigol-ds1102e.json` (bundled; matches the `DS1102E` in the `*IDN?` reply) |
 | Transport | USBTMC, VID 0x1AB1, PID 0x0588 (enumerates as "DS1000 SERIES") |
-| Line ending | none: the device sends no terminator, so use the terminatorless `raw` presenter when over serial |
+| Line ending | none needed either way: sending ``, `
+`, `
+` or nothing after `*IDN?` gave the identical reply (checked 2026-10-02), and the reply carries no terminator, so the `ascii` presenter buffers it forever. Use `--lineending None` with `--presenter hex` |
 
 ```bash
 dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true
