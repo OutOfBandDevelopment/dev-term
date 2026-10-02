@@ -17,13 +17,31 @@ indicators and charts read them unchanged.
 
 ```plantuml
 @startuml
-class FrameSchema { Sync; Endian; Fields }
-class FrameField { Name; Type; Endian; Size; Scale; Offset; Expect }
-class FrameDecoder { TryDecode(bytes, values) }
-class ManifestFramePresenter { Render(bytes) }
+class FrameSchema {
+  Sync
+  Endian
+  Fields
+}
+class FrameField {
+  Name
+  Type
+  Endian
+  Size
+  Scale
+  Offset
+  Expect
+}
+class FrameDecoder {
+  TryDecode(bytes, values)
+}
+class ManifestFramePresenter {
+  Render(bytes)
+}
 class ManifestPanel
 class ValuePathCatalog
-class KsyImporter { Import(ksy) }
+class KsyImporter {
+  Import(ksy)
+}
 FrameSchema "1" *-- "many" FrameField
 FrameDecoder --> FrameSchema
 ManifestFramePresenter --> FrameDecoder
