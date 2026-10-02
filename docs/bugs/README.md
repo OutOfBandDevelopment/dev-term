@@ -70,6 +70,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
+| 066 | [DS1102E omits the terminating zero-length packet when a reply ends on a 64-byte boundary (pyvisa-py #472)](066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md) | DevTerm.Transports.Usbtmc | Won't fix |
 | 064 | [View > Echo Sent Commands doesn't echo a device-profile control panel's button/field sends](064-control-panel-sends-skip-echo.md) | DevTerm.Console (ControlPanelMode), DevTerm.Wpf (ControlPanelWindow) | Open |
 | 033 | [Profiles, the saved default and preferences are written non-atomically](fixed/033-non-atomic-writes.md) | DevTerm.Configuration | Fixed |
 | 034 | [Export All deletes the existing zip before checking the profile names](fixed/034-exportzip-deletes-target-first.md) | DevTerm.Configuration (ConnectionProfileStore) | Fixed |
