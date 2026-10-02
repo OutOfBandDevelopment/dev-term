@@ -45,6 +45,7 @@ public sealed class ExpressionPickerViewModel
 
     private readonly IReadOnlyList<PickerPath> _allPaths;
     private readonly Dictionary<string, ValuePath> _byId;
+    private RecordedSamples? _recorded;
     private string? _textResult;
     private string _text;
     private string _filter = string.Empty;
@@ -204,7 +205,23 @@ public sealed class ExpressionPickerViewModel
         "OK";
 
     /// <summary>The sample values the result is evaluated against, so a form can show them next to the paths.</summary>
-    public IReadOnlyDictionary<string, double> SampleValues => SampleDataGenerator.Values(_byId.Values, Seed, _step);
+    public IReadOnlyDictionary<string, double> SampleValues => SampleDataGenerator.Values(_byId.Values, Seed, _step, _recorded);
+
+    /// <summary>
+    /// A recording to draw sample values from instead of generated ones (paths it has no values for still generate). Null uses
+    /// generated values only; setting it restarts the walk and re-evaluates.
+    /// </summary>
+    public RecordedSamples? Recording
+    {
+        get => _recorded;
+        set
+        {
+            _recorded = value;
+            _step = 0;
+            Recompute();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     /// <summary>Moves the sample data to the next point in its smooth walk and re-evaluates.</summary>
     public void NextSample()
@@ -319,8 +336,8 @@ public sealed class ExpressionPickerViewModel
         }
 
         Warnings = warnings;
-        var numbers = SampleDataGenerator.Values(_byId.Values, Seed, _step);
-        var texts = SampleDataGenerator.TextValues(_byId.Values, Seed, _step);
+        var numbers = SampleDataGenerator.Values(_byId.Values, Seed, _step, _recorded);
+        var texts = SampleDataGenerator.TextValues(_byId.Values, Seed, _step, _recorded);
         Result = expression.Evaluate(numbers, texts);
         var shown = double.IsNaN(Result.Value) ? expression.EvaluateToText(numbers, texts) : null;
         _textResult = shown == "NaN" ? null : shown;

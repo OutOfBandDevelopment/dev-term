@@ -18,14 +18,14 @@ public static class SampleDataGenerator
     private const double _defaultMaximum = 100;
 
     /// <summary>The values at one point in time. Step 0, 1, 2... walks the series forward.</summary>
-    public static IReadOnlyDictionary<string, double> Values(IEnumerable<ValuePath> paths, int seed = 0, int step = 0)
+    public static IReadOnlyDictionary<string, double> Values(IEnumerable<ValuePath> paths, int seed = 0, int step = 0, RecordedSamples? recorded = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         var values = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var path in paths)
         {
-            if (Value(path, seed, step) is { } value)
+            if (Value(path, seed, step, recorded) is { } value)
             {
                 values[path.Path] = value;
             }
@@ -38,23 +38,28 @@ public static class SampleDataGenerator
     /// Sample text for each text path that has no choices (a decoder's string capture), stable by seed and step
     /// (<c>"sample-ab12"</c>), so a text expression's result can be previewed.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> TextValues(IEnumerable<ValuePath> paths, int seed = 0, int step = 0)
+    public static IReadOnlyDictionary<string, string> TextValues(IEnumerable<ValuePath> paths, int seed = 0, int step = 0, RecordedSamples? recorded = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var path in paths.Where(p => p.Type == ValuePathType.Text && p.Choices is not { Count: > 0 }))
         {
-            values[path.Path] = path.Example ?? $"sample-{Hash(seed, path.Path) % 0x10000:x4}-{step}";
+            values[path.Path] = recorded?.Text(path.Path, step) ?? path.Example ?? $"sample-{Hash(seed, path.Path) % 0x10000:x4}-{step}";
         }
 
         return values;
     }
 
     /// <summary>One path's value at a step, or null when it has no numeric form (text).</summary>
-    public static double? Value(ValuePath path, int seed = 0, int step = 0)
+    public static double? Value(ValuePath path, int seed = 0, int step = 0, RecordedSamples? recorded = null)
     {
         ArgumentNullException.ThrowIfNull(path);
+
+        if (recorded?.Number(path.Path, step) is { } recordedNumber)
+        {
+            return recordedNumber;
+        }
 
         var hash = Hash(seed, path.Path);
         var phase = (hash % 628) / 100.0;

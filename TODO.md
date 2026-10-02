@@ -23,8 +23,9 @@ Completed work is logged by date under `docs/changes/`.
   (strings, `matches()`, lists, indexing, dotted ids), binary frames and `KsyImporter`.
 
   **Remaining:**
-  - From the proposals' own "not built" lists: the sample-data generator's playback-log
-    tier (the declared-example tier is built), `.ksy` bit fields / variable-length frames /
+  - From the proposals' own "not built" lists: the sample-data generator's recording tier
+    has no front-end action yet (a **Use recording...** button on the picker and the editor preview; the model is built),
+    `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
     - Bench passes for the K8055, Busylight and Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for
