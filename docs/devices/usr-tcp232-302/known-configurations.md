@@ -18,7 +18,7 @@ Read with the script above, not typed from memory.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 192.168.0.107 | RS232-1 (MAC 9c-a5-25-a8-6e-3a) | Tektronix 2230 (second unit) | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
 | 192.168.0.108 | RS232-2 (fw 4018, MAC 9c-a5-25-a8-6e-80) | Tektronix 2230 | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
-| 192.168.0.109 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-83) | HP 34401A (meter set to 9600; **bridge does not match**) | static | TCP Server | 23 | 1200 8/None/2 | on |
+| 192.168.0.109 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-83) | HP 34401A (9600 8N2) | static | TCP Server | 23 | 9600 8/None/2 (read 1200 on the first pass; set to 9600 later the same day, re-read) | on |
 | 192.168.0.110 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-86) | Tektronix TDS2024 | DHCP | TCP Server | 23 | 19200 8/None/1 | on |
 
 Common to .107/.108/.109/.110: remote (target) address 192.168.0.201 and remote port 8234 (unused in TCP Server mode).
@@ -42,14 +42,14 @@ The TDS2024 hangs on `TRIGger...?` queries; use `CH1?`/`CH2?`. Earlier reports r
 
 The older `launchSettings.json` TCP profiles for .107-.110 all use `--lineending Cr --asciimaxlinelength 512`.
 
-## .109 and the HP 34401A (not working yet)
+## .109 and the HP 34401A (working, 2026-10-02)
 
-The HP 34401A behind .109 is configured for **9600 baud** (on COM5 it runs 9600 8N2, see
-[hp-34401a](../hp-34401a/known-configuration.md)), but the bridge's UART reads **1200 8N2** (2026-10-02). With the
-bridge at 1200 the meter's 9600 replies arrive as garbage or nothing, which is the most likely reason it doesn't
-work yet. Fix: set the bridge's Serial Port baud to 9600 (keeping 8/None/2) on its web UI; not done here since the
-script is read-only. Then use `--lineending Lf`, `--presenter ascii`, and send `SYST:REM` first.
-Check the meter's own parity/stop-bit setting matches (8N2 on COM5; its front panel can differ).
+The bridge was first read at 1200 8N2 against a 9600 meter, and was then set to 9600 8N2. That alone was **not enough**:
+the meter still never transmitted. The bridge does not drive DSR true and the 34401A suspends output while its DSR is
+false, so the meter-side DB-9 needed **DSR (pin 6) jumpered to CTS (pin 8)**; after that `*IDN?` returned
+`HEWLETT-PACKARD,34401A,0,5-1-1` through the bridge. Wiring table, arguments and replies:
+[hp-34401a](../hp-34401a/known-configuration.md). A DTR-to-DSR loopback jumper does not work (the meter drops DTR after
+each query).
 
 ## Not recorded anywhere yet
 
