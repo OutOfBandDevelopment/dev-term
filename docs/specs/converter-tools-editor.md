@@ -7,6 +7,14 @@ Configure screen in the TUI) by **Edit tools...**. Design: [stream-converter-too
 Logic is shared: `DevTerm.Configuration.ConverterToolsEditor` (a working copy of the list). WPF renders it as
 `ConverterToolsWindow`, the TUI as `ConverterToolsDialog`.
 
+## Screenshots
+
+Captured by `ConverterToolsScreenshotTests` (TUI, 80x25) and `ScreenshotTests.ConverterToolsWindow_IsCaptured` (WPF).
+
+![TUI converter tools dialog](../user-guide/images/tui-converter-tools.png)
+
+![WPF converter tools dialog](../user-guide/images/wpf-converter-tools.png)
+
 ## Fields (per selected tool)
 
 | Field | Meaning |

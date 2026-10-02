@@ -185,6 +185,29 @@ public sealed class ScreenshotTests
     }
 
     [TestMethod]
+    public void ConverterToolsWindow_IsCaptured()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            StreamConvertToolOptions[] tools =
+            [
+                new() { Name = "gs", Path = @"C:\Program Files\gs\bin\gswin64c.exe", Arguments = "-q -dNOPAUSE -sDEVICE=png16m -r{dpi} -sOutputFile={output} {input}", Formats = "ps, eps", OutputExtension = "png", Dpi = 150 },
+                new() { Name = "gpcl", Path = @"C:\Program Files\gs\bin\gpcl6win64.exe", Arguments = "-sDEVICE=png16m -r{dpi} -o {output} {input}", Formats = "pcl", OutputExtension = "png", Dpi = 200 },
+            ];
+            var window = new ConverterToolsWindow(new ConverterToolsEditor(tools));
+            WpfScreenshot.ShowOffScreen(window);
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+
+            var path = Path.Combine(_imagesDirectory, "wpf-converter-tools.png");
+            WpfScreenshot.Save(window, path);
+
+            AssertRealImage(path);
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void DeviceProfilesWindow_SerialTransport_IsCaptured()
     {
         var directory = CreateTempDirectory();

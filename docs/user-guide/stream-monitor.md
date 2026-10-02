@@ -116,6 +116,10 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
   format. Manage the list with **Edit tools...** in the same section: add, edit, remove and reorder tools (order
   decides which one Auto tries first); see [the editor's spec](../specs/converter-tools-editor.md). See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
 
+![Converter tools dialog, TUI](images/tui-converter-tools.png)
+
+![Converter tools dialog, WPF](images/wpf-converter-tools.png)
+
 When a conversion succeeds, the converted file joins the capture list as a new entry, selected, marked
 `converted from HP-GL plot` in its detail. In WPF an SVG is drawn in the preview pane, so you can check
 a plot without leaving dev-term (simple shapes only: paths, lines, polygons, rectangles, circles).
