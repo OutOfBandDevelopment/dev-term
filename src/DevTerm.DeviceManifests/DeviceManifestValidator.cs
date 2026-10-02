@@ -68,6 +68,11 @@ public static partial class DeviceManifestValidator
             errors.Add($"The manifest's KaitaiFile '{kaitaiFile}' must be a path inside the manifest's own folder.");
         }
 
+        if (manifest.Inbound?.Frame is { } frame)
+        {
+            errors.AddRange(frame.Validate());
+        }
+
         var commandIds = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < manifest.OutboundCommands.Count; i++)
         {

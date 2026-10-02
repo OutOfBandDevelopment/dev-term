@@ -24,6 +24,7 @@ public sealed class ManifestPanel : IDisposable
         Manifest = manifest;
         Definition = ManifestUiBuilder.Build(manifest);
         Presenter = new ManifestReplyPresenter(manifest);
+        FramePresenter = manifest.Inbound?.Frame is { } frame && frame.Validate().Count == 0 ? new ManifestFramePresenter(frame) : null;
         Surface = new ManifestControlSurface(session, manifest, Presenter, Definition);
     }
 
@@ -34,6 +35,9 @@ public sealed class ManifestPanel : IDisposable
     public ManifestControlSurface Surface { get; }
 
     public ManifestReplyPresenter Presenter { get; }
+
+    /// <summary>Decodes the manifest's binary frames into values, when it declares any (<see cref="InboundProtocol.Frame"/>); otherwise null.</summary>
+    public ManifestFramePresenter? FramePresenter { get; }
 
     /// <summary>The window title both front ends use: <c>dev-term — {manifest name}</c>.</summary>
     public string Title => $"dev-term — {Manifest.Name}";
@@ -46,8 +50,17 @@ public sealed class ManifestPanel : IDisposable
 
         var panel = new ManifestPanel(session, manifest);
         session.AddPresenter(panel.Presenter);
+        if (panel.FramePresenter is { } frames)
+        {
+            // Panels listen to one presenter; frame values ride on the reply presenter's ValuesChanged.
+            frames.ValuesChanged += panel.ForwardFrameValues;
+            session.AddPresenter(frames);
+        }
+
         return panel;
     }
+
+    private void ForwardFrameValues(object? sender, IReadOnlyDictionary<string, string> values) => Presenter.PublishSampleValues(values);
 
     /// <summary>Unbinds the presenter from the session (the panel has closed).</summary>
     public void Dispose()
@@ -59,5 +72,10 @@ public sealed class ManifestPanel : IDisposable
 
         _disposed = true;
         _session.RemovePresenter(Presenter);
+        if (FramePresenter is { } frames)
+        {
+            frames.ValuesChanged -= ForwardFrameValues;
+            _session.RemovePresenter(frames);
+        }
     }
 }

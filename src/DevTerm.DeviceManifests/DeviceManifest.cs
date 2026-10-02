@@ -66,6 +66,9 @@ public sealed class InboundProtocol
 
     public List<ResponsePattern> Patterns { get; set; } = [];
 
+    /// <summary>A fixed-layout binary frame the device sends, decoded into live values (<see cref="ManifestFramePresenter"/>): the binary counterpart to <see cref="Patterns"/>.</summary>
+    public FrameSchema? Frame { get; set; }
+
     /// <summary>
     /// Whether replies end in CR, LF, or CRLF (true, the default). False for a device whose replies
     /// have no terminator at all: whatever arrives in one read then counts as one complete reply

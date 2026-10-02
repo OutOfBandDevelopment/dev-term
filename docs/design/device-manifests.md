@@ -149,10 +149,10 @@ to `~/.dev-term/manifests` by default.
 - **Not a connection opener** — a manifest's panel rides on whatever session is already open; its
   `Transport` hint doesn't pre-fill or open a connection, and a profile's `ManifestName` doesn't
   open the panel by itself yet.
-- **Not a Kaitai Struct reimplementation** — the manifest only *references* a `.ksy` file by path;
-  actually running Kaitai-generated parsing code against it is separate, future work, so binary
-  replies aren't decoded (a `.ksy`-referencing manifest loads and its commands send, but only text
-  patterns publish values).
+- **Not a Kaitai Struct reimplementation** — a `.ksy` file is *not* run. `KsyImporter` instead reads a fixed-layout
+  `.ksy` (numbers, strings, byte runs, magic `contents`) into a `FrameSchema`, stored as `Inbound.Frame` (see
+  [the importer proposal](proposals/ksy-importer.md)); anything dynamic (`repeat`, `if`, `switch-on`, user types) is
+  reported and ends the frame. The manifest's own `KaitaiFile` is still just a reference.
 
 ## Open questions
 

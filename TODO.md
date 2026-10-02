@@ -23,7 +23,7 @@ Completed work is logged by date under `docs/changes/`.
   both front ends, then a CEL-style language (spike a .NET CEL library first). **Step 1 (value-path catalog for
   manifests) landed 2026-10-02**; SCPI-profile input landed the same day;
   `SampleDataGenerator` landed too, wired into both editors' preview; `ExpressionPickerViewModel` landed, then the TUI and WPF picker forms for indicator expressions (spec and guide
-  entry written); Pick landed on chart Channels, Parameter expressions and the value-id fields too; the CEL spike chose to extend our own `Expression` (recorded in the proposal); the language extension's first part landed (strings, `matches()`, `contains`/`startsWith`/`endsWith`, `size`, `has()`, `!`, `?:`), and live indicators/charts pass published text to it; text sample data and button parameters landed too; lists, indexing and bare/dotted identifiers landed too; next: binary-frame paths and the `.ksy` importer.
+  entry written); Pick landed on chart Channels, Parameter expressions and the value-id fields too; the CEL spike chose to extend our own `Expression` (recorded in the proposal); the language extension's first part landed (strings, `matches()`, `contains`/`startsWith`/`endsWith`, `size`, `has()`, `!`, `?:`), and live indicators/charts pass published text to it; text sample data and button parameters landed too; lists, indexing and bare/dotted identifiers landed too; binary frames (`InboundProtocol.Frame`, `ManifestFramePresenter`), their catalog paths and a `.ksy` importer (`KsyImporter`) landed; next: a UI to import a `.ksy` and edit a frame in the manifest editors, dotted/indexed frame paths for nested `.ksy` types and arrays, and a real-device frame check.
 
 ## Backlog / research
 
