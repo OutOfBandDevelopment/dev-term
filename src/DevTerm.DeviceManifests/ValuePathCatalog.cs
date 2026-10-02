@@ -85,6 +85,19 @@ public static partial class ValuePathCatalog
         return paths;
     }
 
+    /// <summary>
+    /// The paths a bare <see cref="UiDefinition"/> offers: every control's id. This is how a SCPI instrument profile is read
+    /// (<c>ScpiUiDefinitionBuilder.Build(profile)</c> yields a <c>{command}.reply</c> indicator per query and a
+    /// <c>{command}.{parameter}</c> field per parameter), so the catalog needs no reference to the SCPI project.
+    /// </summary>
+    public static IReadOnlyList<ValuePath> Enumerate(UiDefinition ui)
+    {
+        ArgumentNullException.ThrowIfNull(ui);
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        return [.. ui.Sections.SelectMany(s => s.Controls).Select(FromControl).Where(p => !string.IsNullOrWhiteSpace(p.Path) && seen.Add(p.Path))];
+    }
+
     /// <summary>The paths one response pattern publishes: its name (first capture group, or the whole match) and every named group.</summary>
     public static IReadOnlyList<ValuePath> FromPattern(ResponsePattern pattern)
     {

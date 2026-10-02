@@ -139,7 +139,8 @@ Lang --> Val
 **Step 1 built (2026-10-02):** `ValuePathCatalog` (`DevTerm.DeviceManifests`) enumerates paths from response patterns (name
 plus named capture groups, type inferred from the group's regex), query reply ids and panel controls (range, unit,
 choices), and `DeviceManifestValidator` warns on an expression reading an unpublished id. Covered by
-`ValuePathCatalogTests`; not yet checked against real hardware (no device-side behavior). SCPI device-profile input,
-sample data, the picker and the language extension are not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
+`ValuePathCatalogTests`; not yet checked against real hardware (no device-side behavior). SCPI profiles are read
+through `Enumerate(UiDefinition)` over `ScpiUiDefinitionBuilder.Build(profile)` (a `{command}.reply` per query, a
+`{command}.{parameter}` per parameter; `ScpiValuePathTests`), so there is no SCPI project dependency. Sample data, the picker and the language extension are not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
 files, are the input. Related:
 [expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).
