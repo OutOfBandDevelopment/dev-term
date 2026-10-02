@@ -84,7 +84,13 @@ Both windows have a **Convert...** button next to Start/Stop Monitoring, enabled
 selected a capture. It runs whichever conversion mechanism the connection is configured for and
 writes the result next to the capture's saved file (same folder and name, a new extension).
 
-Set it up in **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
+Choose the mechanism right in the window, next to Convert...: a **conversion** drop-down in WPF
+(None, HP-GL to SVG, External tool, Web service) and a **Convert as:** button in the TUI that opens the
+same list. The choice applies to that window; the profile's saved mode is just where it starts. For
+HP-GL captures, **HP-GL to SVG** needs nothing else. External tool and Web service also need their
+path or URL, which come from the profile.
+
+To save the choice and those settings, use **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
 **Stream Monitor** section:
 
 - **Internal HP-GL to SVG** (`internalhpgltosvg`) — no setup beyond picking this mode. Works only on

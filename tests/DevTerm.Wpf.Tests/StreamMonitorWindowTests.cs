@@ -243,6 +243,29 @@ public sealed class StreamMonitorWindowTests
     }
 
     [TestMethod]
+    public void ConvertModeBox_ListsEveryMode_StartsOnTheProfilesMode_AndChoosingOneConverts()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("plotter");
+            var capture = await bench.CaptureAsync(StreamContentSamples.Hpgl());
+
+            var window = new StreamMonitorWindow(bench.Monitor);
+            StaTestRunner.DoEvents();
+
+            Assert.AreEqual(StreamConversionModes.All.Count, window.ConvertModeBox.Items.Count);
+            Assert.AreEqual(StreamConversionMode.None, window.ConvertMode);
+
+            window.ConvertMode = StreamConversionMode.InternalHpglToSvg;
+            await window.ConvertSelectedAsync();
+
+            Assert.IsTrue(File.Exists(Path.ChangeExtension(capture.SavedPath, "svg")));
+            Assert.Contains("Converted to", window.DetailText.Text);
+            window.Close();
+        });
+    }
+
+    [TestMethod]
     public void MainWindow_StreamMonitor_ReportsEachCaptureAsAStatusLine_AndFollowsAProfileSwitch()
     {
         var exportDirectory = Path.Combine(Path.GetTempPath(), "devterm-wpf-streammonitor-" + Guid.NewGuid().ToString("N"));

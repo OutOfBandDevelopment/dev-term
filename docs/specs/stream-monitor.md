@@ -89,6 +89,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
+| **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, External tool or Web service (`StreamConversionModes`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool / Web service still read their path/URL from the profile |
 | **Convert...** (TUI + WPF) | Runs the configured conversion mechanism (below) against the selected capture, writing the result next to its saved file (same folder and name, a new extension). Enabled when a capture is selected. TUI reports the outcome in the detail label; WPF reports success in the detail text and a failure via a message box |
 | Selecting a capture | Shows its detail (and, in WPF, its preview) |
 
@@ -130,7 +131,7 @@ reports an explanatory message instead.
 
 | `Stream Convert Mode` | What it does | Other fields it uses |
 |---|---|---|
-| (blank/unrecognized) | Convert... always fails with "no conversion mechanism is configured" | — |
+| (blank/unrecognized) | Convert... always fails with "no conversion mechanism is selected" | — |
 | `internalhpgltosvg` | dev-term's own HP-GL-to-SVG converter (`HpglToSvgConverter`) — HP-GL captures only, fails for any other kind | `Stream Convert Output Extension` (default `svg`) |
 | `externaltool` | Runs a configured executable against the capture's saved file as a child process | `Stream Convert External Tool Path`, `Stream Convert External Tool Arguments` (a template with `{input}`/`{output}`/`{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`), `Stream Convert Dpi` (default 150), `Stream Convert Output Extension` (default `png`) |
 | `webservice` | POSTs (or other configured method) the capture's raw bytes to a configured HTTP endpoint, with its detected content type, and saves the response body | `Stream Convert Web Service Url`, `Stream Convert Web Service Method` (default `POST`), `Stream Convert Output Extension` (default `png`) |

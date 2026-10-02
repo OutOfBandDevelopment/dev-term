@@ -81,6 +81,21 @@ public sealed class StreamCaptureConverterOptions
     };
 }
 
+/// <summary>The names the Stream Monitor windows show for each <see cref="StreamConversionMode"/>, in the order they are offered.</summary>
+public static class StreamConversionModes
+{
+    public static IReadOnlyList<StreamConversionMode> All { get; } =
+        [StreamConversionMode.None, StreamConversionMode.InternalHpglToSvg, StreamConversionMode.ExternalTool, StreamConversionMode.WebService];
+
+    public static string DisplayName(StreamConversionMode mode) => mode switch
+    {
+        StreamConversionMode.InternalHpglToSvg => "HP-GL to SVG",
+        StreamConversionMode.ExternalTool => "External tool",
+        StreamConversionMode.WebService => "Web service",
+        _ => "None",
+    };
+}
+
 /// <summary>The outcome of one <see cref="StreamCaptureConverter.ConvertAsync"/> call.</summary>
 public sealed record StreamConversionResult(bool Success, string? OutputPath, string? Error);
 
@@ -133,7 +148,7 @@ public sealed class StreamCaptureConverter
             StreamConversionMode.InternalHpglToSvg => ConvertInternal(capture, options),
             StreamConversionMode.ExternalTool => await ConvertExternalAsync(capture, options, cancellationToken).ConfigureAwait(false),
             StreamConversionMode.WebService => await ConvertWebServiceAsync(capture, options, cancellationToken).ConfigureAwait(false),
-            _ => new StreamConversionResult(false, null, "No conversion mechanism is configured (Stream Convert Mode is 'none')."),
+            _ => new StreamConversionResult(false, null, "No conversion mechanism is selected. Choose one from the Conversion list next to Convert (or set Stream Convert Mode in the profile)."),
         };
     }
 

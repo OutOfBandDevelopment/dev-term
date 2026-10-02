@@ -2,6 +2,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.StreamContent;
 using DevTerm.Test.Utilities;
 using Terminal.Gui.Input;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console.Tests;
 
@@ -198,6 +199,48 @@ public sealed class StreamMonitorModeTests
                 });
 
                 Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.DetailLabel.Text.Contains("Convert failed", StringComparison.Ordinal), TimeSpan.FromSeconds(5)));
+            });
+    }
+
+    [TestMethod]
+    public async Task ModeButton_ChoosingAMode_SetsItForConvert_AndShowsItOnTheButton()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("scope");
+        var chosenIndex = StreamConversionModes.All.ToList().IndexOf(StreamConversionMode.InternalHpglToSvg);
+
+        StreamMonitorWindowParts? captured = null;
+        TuiTestRunner.RunWithLoopApp(
+            beforeBuild: null,
+            build: app =>
+            {
+                captured = StreamMonitorMode.BuildWindow(app, bench.Monitor);
+                return captured.Window;
+            },
+            body: (app, _) =>
+            {
+                var parts = captured!;
+                Assert.AreEqual(StreamConversionMode.None, parts.ConverterOptions.Mode);
+
+                TuiTestRunner.InvokeOnLoop(() =>
+                {
+                    app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                    {
+                        if (app.TopRunnableView is not Dialog list)
+                        {
+                            return true;
+                        }
+
+                        ((ListView)list.SubViews.First(v => v is ListView)).SelectedItem = chosenIndex;
+                        app.Keyboard.RaiseKeyDownEvent(Key.Enter);
+                        return false;
+                    });
+
+                    parts.ModeButton.InvokeCommand(Command.Accept);
+                    return 0;
+                });
+
+                Assert.AreEqual(StreamConversionMode.InternalHpglToSvg, parts.ConverterOptions.Mode);
+                StringAssert.Contains(TuiTestRunner.InvokeOnLoop(() => parts.ModeButton.Text), "HP-GL to SVG");
             });
     }
 }

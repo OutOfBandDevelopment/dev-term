@@ -53,6 +53,7 @@ public partial class StreamMonitorWindow : Window
 {
     private readonly StreamMonitor _monitor;
     private readonly StreamCaptureConverter _converter;
+    private readonly StreamCaptureConverterOptions _converterOptions;
 
     public StreamMonitorWindow(StreamMonitor monitor, CliOptions? cliOptions = null)
     {
@@ -60,7 +61,14 @@ public partial class StreamMonitorWindow : Window
         InitializeComponent();
         WpfTheme.Attach(this);
         _monitor = monitor;
-        _converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(StreamCaptureConverterOptions.FromCliOptions(cliOptions)));
+        _converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions);
+        _converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(_converterOptions));
+        foreach (var mode in StreamConversionModes.All)
+        {
+            ConvertModeBox.Items.Add(new ComboBoxItem { Content = StreamConversionModes.DisplayName(mode), Tag = mode });
+        }
+
+        ConvertModeBox.SelectedIndex = StreamConversionModes.All.ToList().IndexOf(_converterOptions.Mode);
 
         CaptureList.ItemsSource = Items;
         foreach (var capture in monitor.Captures)
@@ -262,6 +270,21 @@ public partial class StreamMonitorWindow : Window
         else
         {
             MessageBox.Show(this, result.Error, "dev-term — Stream Monitor", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>The conversion mode currently selected next to Convert... (this window only; the profile's saved mode is just the starting choice).</summary>
+    internal StreamConversionMode ConvertMode
+    {
+        get => _converterOptions.Mode;
+        set => ConvertModeBox.SelectedIndex = StreamConversionModes.All.ToList().IndexOf(value);
+    }
+
+    private void ConvertMode_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (ConvertModeBox.SelectedItem is ComboBoxItem { Tag: StreamConversionMode mode })
+        {
+            _converterOptions.Mode = mode;
         }
     }
 
