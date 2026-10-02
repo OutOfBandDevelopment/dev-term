@@ -5,8 +5,8 @@
 Build a valid [expression](../design/manifest-editor-expression-builder.md) without remembering ids or syntax: pick the
 values it may read, insert functions, and see at once whether it parses and what it evaluates to against sample data.
 Opened from the **Pick...** button beside an indicator's **Expression** field, or a bar graph / strip chart's
-**Channels** field, in the [Manifest Editor](manifest-editor.md) (other expression fields — a button's Parameter expressions, a chart channel's
-expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
+**Channels** field, in the [Manifest Editor](manifest-editor.md), and (2026-10-02) beside every other field that names a value: a
+button's Parameter expressions, vector/color value ids and visible-when. Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
 `ValuePathCatalog.Enumerate(manifest)` and `SampleDataGenerator`; rendered as `ExpressionPickerDialog` (TUI) and
 `ExpressionPickerWindow` (WPF). Design: [proposal](../design/proposals/expression-picker-paths-and-cel.md).
 
