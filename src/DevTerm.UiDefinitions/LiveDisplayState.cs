@@ -50,7 +50,11 @@ public abstract class LiveDisplayState
             else if (ReadsText)
             {
                 // Text with no number in it (a model name) changes only what a string expression sees.
-                changed |= !string.Equals(previousText, text, StringComparison.Ordinal);
+                if (!string.Equals(previousText, text, StringComparison.Ordinal))
+                {
+                    OnTextChanged(id);
+                    changed = true;
+                }
             }
         }
 
@@ -61,6 +65,11 @@ public abstract class LiveDisplayState
     protected virtual bool ReadsText => false;
 
     protected abstract bool ApplyNumber(string id, double value);
+
+    /// <summary>Called when an id published text with no number in it and that text differs from before, so a display can re-derive anything that reads it.</summary>
+    protected virtual void OnTextChanged(string id)
+    {
+    }
 
     protected virtual void OnBatchStarting()
     {
@@ -308,6 +317,18 @@ public sealed class StripChartState : LiveDisplayState
         }
 
         return changed;
+    }
+
+    /// <summary>A text-only change still re-evaluates the expression channels that read it, adding one derived sample for the batch.</summary>
+    protected override void OnTextChanged(string id)
+    {
+        foreach (var (channelId, expression) in _expressionByChannel)
+        {
+            if (expression is not null && expression.ReferencedIds.Contains(id, StringComparer.Ordinal))
+            {
+                _touchedExpressionChannelsThisBatch.Add(channelId);
+            }
+        }
     }
 
     protected override bool OnBatchCompleted(bool changed)

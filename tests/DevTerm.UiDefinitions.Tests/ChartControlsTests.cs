@@ -188,6 +188,24 @@ public sealed class ChartControlsTests
     }
 
     [TestMethod]
+    public void StripChart_TextOnlyArrival_AddsASampleToTheExpressionChannelThatReadsIt()
+    {
+        var state = new StripChartState(new StripChartControl
+        {
+            Id = "s",
+            Label = "S",
+            Channels = [new ChartChannel { Id = "ok", Expression = "startsWith(mode, 'CV') ? 1 : 0" }, new ChartChannel { Id = "plain" }],
+        });
+
+        Assert.IsTrue(state.ApplyAll([new("mode", "CV")]));
+        Assert.IsTrue(state.ApplyAll([new("mode", "CC")]));
+        Assert.IsFalse(state.ApplyAll([new("mode", "CC")]), "the same text again is not a change");
+
+        CollectionAssert.AreEqual(new[] { 1.0, 0.0 }, state.SamplesOf("ok").ToArray());
+        Assert.AreEqual(0, state.SamplesOf("plain").Count);
+    }
+
+    [TestMethod]
     public void StripChart_Scale_UsesDeclaredBounds_AndAutoScalesTheRest()
     {
         var state = new StripChartState((StripChartControl)BuildChartsPanel().Sections[0].Controls[1]);
