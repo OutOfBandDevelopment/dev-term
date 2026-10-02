@@ -32,8 +32,6 @@ Completed work is logged by date under `docs/changes/`.
   moments), assemble them into a GIF (PIL is available; ffmpeg is installed), put the files under
   `docs/user-guide/images/`, and write the guide page (or section) with real captured output, as CLAUDE.md requires.
   Remember `docs/specs/` if it changes any screen's documented behavior.
-- **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
-  improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
 ## Backlog / research
 

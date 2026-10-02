@@ -11,7 +11,7 @@
 │                                                                             █│
 │  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217            █│
 │               ○ loopback                                                    █│
-│  Description: Tektronix 2230 bench scope                                    █│
+│  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
 │── TCP ──                                                                    ░│
 │  Host: 192.168.0.107                                                        ░│

@@ -1,25 +1,25 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Preview ⟧ ⟦ Close ⟧   │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\jdm4fs5w.jlz\loopback-sensor-demo.                                        │
+│~\…\pb2u0ssv.r0w\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤barGraph: Channels├──────────────────────────╮│
-││Commands (3)                ││  Kind:  barGraph                ⟦ Pick... ⟧▖ ││
-││  Measure                   ││                                 ▝▀▀▀▀▀▀▀▀▀▀▘ ││
-││  Stream Samples            ││  Id:    levels                               ││
-││    count (integer)         ││  Label: Channels                             ││
-││  Hello                     ││  Help:                                       ││
-││Response patterns (1)       ││                                              ││
-││  sample                    ││── Behavior ──                                ││
-││Panel                       ││  Minimum: 0                                  ││
-││  [Acquire]                 ││  Maximum: 100                                ││
-││    button: Measure         ││  Unit:    %                                  ││
-││    indicator: Last Sample  ││                                              ││
-││    textField: Sample Count ││── Display ──                                 ││
-││    button: Stream Samples  ││  Channels: chA:A, chB:B, chC:C               ││
-││    button: Hello           ││                                              ││
-││    indicator: Hello Reply  ││── Visibility ──                              ││
-││  [Levels]                  ││  Visible when:                               ││
-││    barGraph: Channels      ││                                              ││
+││Commands (3)                ││  Kind:  barGraph                ⟦ Pick... ⟧▖▲││
+││  Measure                   ││                                 ▝▀▀▀▀▀▀▀▀▀▀▘█││
+││  Stream Samples            ││  Id:    levels                              █││
+││    count (integer)         ││  Label: Channels                            █││
+││  Hello                     ││  Help:                                      █││
+││Response patterns (1)       ││                                             █││
+││  sample                    ││── Behavior ──                               █││
+││Panel                       ││  Minimum: 0                                 █││
+││  [Acquire]                 ││  Maximum: 100                               █││
+││    button: Measure         ││  Unit:    %                                 █││
+││    indicator: Last Sample  ││                                             █││
+││    textField: Sample Count ││── Display ──                                █││
+││    button: Stream Samples  ││  Channels: B; chC:C  ⟦ Pick... ⟧            █││
+││    button: Hello           ││                                             █││
+││    indicator: Hello Reply  ││                                             █││
+││  [Levels]                  ││── Visibility ──                             ░││
+││    barGraph: Channels      ││  Visible when:                ⟦ Pick... ⟧   ▼││
 │╰────────────────────────────╯╰──────────────────────────────────────────────╯│
 │⟦ Add control ⟧  ⟦ Remove ⟧  ⟦ Up ⟧  ⟦ Down ⟧   ⟦ Undo ⟧  ⟦ Redo ⟧            │
 └──────────────────────────────────────────────────────────────────────────────┘
