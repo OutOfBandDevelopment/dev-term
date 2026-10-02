@@ -22,36 +22,65 @@ uses — no hand-built field lists. The preview is the real control-panel render
 
 ## Layout
 
+The window is a toolbar, a status line and three panes. Each is drawn separately below.
+
 ```plantuml
 @startsalt
 {
   [New] | [Open...] | [Save] | [Save As...] | [Check] | [Close]
   Status line
-  {
-    { Outline
-      Identity
-      Commands (3)
-      ..Measure
-      ..Stream Samples
-      ....count (integer)
-      Response patterns (1)
-      ..sample
-      Panel
-      ..[Acquire]
-      ....button: Measure
-      [Add parameter] | [Remove] | [Up] | [Down]
-    } | {
-      Stream Samples
-      Name: | "Stream Samples"
-      Id: | "samples"
-      Template: | "Samples: {count}"
-      [ ] Is a query
-      Sends: | Samples: 40\n
-    } | {
-      Preview (sends nothing)
-      the panel, live
-    }
+  {+
+    Outline | Form | Preview
   }
+}
+@endsalt
+```
+
+**Outline** (left): the manifest as a tree, with the buttons that act on the selected node.
+
+```plantuml
+@startsalt
+{
+  {T
+    + Identity
+    + Commands (3)
+    ++ Measure
+    ++ Stream Samples
+    +++ count (integer)
+    + Response patterns (1)
+    ++ sample
+    + Panel
+    ++ Acquire
+    +++ button: Measure
+  }
+  [Add parameter] | [Remove] | [Up] | [Down]
+}
+@endsalt
+```
+
+**Form** (middle): the fields of the selected node, here the command "Stream Samples".
+
+```plantuml
+@startsalt
+{
+  Stream Samples
+  Name: | "Stream Samples"
+  Id: | "samples"
+  Template: | "Samples: {count}"
+  [ ] Is a query
+  Sends: | "Samples: 40"
+}
+@endsalt
+```
+
+**Preview** (right): the real control-panel renderer showing the panel as it would open. It sends nothing.
+
+```plantuml
+@startsalt
+{+
+  Preview (sends nothing)
+  The panel, live
+  [Acquire]
 }
 @endsalt
 ```
