@@ -28,7 +28,7 @@ Completed work is logged by date under `docs/changes/`.
     `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
-    - Bench passes for the K8055, Busylight and Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for
+    - Bench passes for the Busylight and Zoom H4n (the K8055 was done 2026-10-02), whose `known-configuration.md` pages lean on earlier docs for
       what was hardware-tested; the DE-5000 has never been run against a real meter here.
 
 ## Backlog / research
