@@ -243,6 +243,52 @@ public sealed class StreamMonitorWindowTests
     }
 
     [TestMethod]
+    public void ConvertSelectedAsync_AddsTheSvgToTheList_AndDrawsIt()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("plotter");
+            await bench.CaptureAsync(StreamContentSamples.Hpgl());
+
+            var window = new StreamMonitorWindow(bench.Monitor, new CliOptions { StreamConvertMode = "internalhpgltosvg" });
+            StaTestRunner.DoEvents();
+            Assert.HasCount(1, window.Items);
+
+            await window.ConvertSelectedAsync();
+            StaTestRunner.DoEvents();
+
+            Assert.HasCount(2, window.Items);
+            var added = window.Items[1].Capture;
+            Assert.IsTrue(added.Capture.Kind.IsSvg);
+            Assert.AreEqual("HP-GL plot", added.ConvertedFrom);
+            Assert.AreSame(window.Items[1], window.CaptureList.SelectedItem);
+            Assert.IsNotNull(window.PreviewImage.Source);
+            Assert.AreEqual(string.Empty, window.PreviewMessage.Text);
+            window.Close();
+        });
+    }
+
+    [TestMethod]
+    public void SvgPreview_DrawsTheSupportedShapes_AndRejectsNonSvg()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var image = SvgPreview.TryRender(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 50 20\"><path d=\"M 1,1 L 40,10\" fill=\"none\" stroke=\"red\"/><circle cx=\"10\" cy=\"10\" r=\"4\" fill=\"blue\"/></svg>",
+                out var error);
+            Assert.IsNotNull(image, error);
+            Assert.AreEqual(50, image.Width);
+            Assert.AreEqual(20, image.Height);
+
+            Assert.IsNull(SvgPreview.TryRender("<html/>", out var notSvg));
+            Assert.IsNotNull(notSvg);
+            Assert.IsNull(SvgPreview.TryRender("not xml", out var bad));
+            Assert.IsNotNull(bad);
+            return Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void ConvertModeBox_ListsEveryMode_StartsOnTheProfilesMode_AndChoosingOneConverts()
     {
         StaTestRunner.Run(async () =>

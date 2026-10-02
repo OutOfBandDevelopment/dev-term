@@ -135,6 +135,14 @@ public partial class StreamMonitorWindow : Window
         SavedPathText.Text = capture.SavedPath is { } path ? $"Saved to {StreamMonitor.DisplayPath(path)}" : $"Not saved: {capture.SaveError}";
         SavedPathText.ToolTip = capture.SavedPath;
 
+        if (capture.Capture.Kind.IsSvg)
+        {
+            var svg = SvgPreview.TryRender(System.Text.Encoding.UTF8.GetString(capture.Capture.Data), out var svgError);
+            PreviewImage.Source = svg;
+            PreviewMessage.Text = svg is null ? $"Could not draw this SVG: {svgError}" : string.Empty;
+            return;
+        }
+
         if (!capture.Capture.Kind.IsNativeImage)
         {
             PreviewMessage.Text = $"Preview not available yet for {capture.Capture.Kind.DisplayName} — the captured bytes were saved as-is.";
@@ -266,6 +274,10 @@ public partial class StreamMonitorWindow : Window
         if (result.Success)
         {
             DetailText.Text = $"Converted to {Path.GetFileName(result.OutputPath)}.";
+            if (result.OutputPath is not null)
+            {
+                _monitor.AddConverted(item.Capture, result.OutputPath);
+            }
         }
         else
         {

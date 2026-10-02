@@ -165,6 +165,13 @@ internal static class StreamMonitorMode
             _ = converter.ConvertAsync(capture).ContinueWith(
                 t => app.Invoke(() =>
                 {
+                    if (t.Result is { Success: true, OutputPath: { } output })
+                    {
+                        // Adds the file to the list and selects it; the line below then says what happened.
+                        monitor.AddConverted(capture, output);
+                        Refresh();
+                    }
+
                     detailLabel.Text = t.Result.Success
                         ? $"Converted to {Path.GetFileName(t.Result.OutputPath)}."
                         : $"Convert failed: {t.Result.Error}";

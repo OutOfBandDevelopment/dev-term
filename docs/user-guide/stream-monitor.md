@@ -103,11 +103,15 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
 - **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
   default) and saves whatever comes back.
 
+When a conversion succeeds, the converted file joins the capture list as a new entry, selected, marked
+`converted from HP-GL plot` in its detail. In WPF an SVG is drawn in the preview pane, so you can check
+a plot without leaving dev-term (simple shapes only: paths, lines, polygons, rectangles, circles).
+
 If nothing is configured, or the conversion fails, Convert... reports why: in the TUI, in the detail
 text; in WPF, in the detail text (success) or a message box (failure).
 
 ## Not yet
 
-- Previewing a converted file in the window itself — Convert... writes a file but doesn't show it.
+- Drawing a converted file in the TUI (the converted file is listed there, but only WPF draws SVG).
 - Stream Monitor in the plain CLI (`--cli true`) mode.
 - Automatic cleanup of old files in the export folder.

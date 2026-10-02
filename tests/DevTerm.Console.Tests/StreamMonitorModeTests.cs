@@ -203,6 +203,43 @@ public sealed class StreamMonitorModeTests
     }
 
     [TestMethod]
+    public async Task ConvertButton_AddsTheConvertedSvgToTheList()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("scope");
+        await bench.CaptureAsync(StreamContentSamples.Hpgl());
+        var cliOptions = new CliOptions { StreamConvertMode = "internalhpgltosvg" };
+
+        StreamMonitorWindowParts? captured = null;
+        TuiTestRunner.RunWithLoopApp(
+            beforeBuild: null,
+            build: app =>
+            {
+                captured = StreamMonitorMode.BuildWindow(app, bench.Monitor, cliOptions);
+                return captured.Window;
+            },
+            body: (app, _) =>
+            {
+                var parts = captured!;
+                TuiTestRunner.InvokeOnLoop(() =>
+                {
+                    parts.CaptureList.SelectedItem = 0;
+                    parts.ConvertButton.InvokeCommand(Command.Accept);
+                    return 0;
+                });
+
+                Assert.IsTrue(
+                    TuiTestRunner.WaitUntilOnLoop(() => bench.Monitor.Captures.Count == 2, TimeSpan.FromSeconds(5)),
+                    "Expected the converted file to join the monitor's captures.");
+                Assert.IsTrue(
+                    TuiTestRunner.WaitUntilOnLoop(() => parts.CaptureList.SelectedItem == 1, TimeSpan.FromSeconds(5)),
+                    "Expected the new entry to be selected.");
+            });
+
+        Assert.AreEqual("svg", bench.Monitor.Captures[1].Capture.Kind.Extension);
+        Assert.AreEqual("HP-GL plot", bench.Monitor.Captures[1].ConvertedFrom);
+    }
+
+    [TestMethod]
     public async Task ModeButton_ChoosingAMode_SetsItForConvert_AndShowsItOnTheButton()
     {
         await using var bench = await StreamMonitorBench.StartAsync("scope");

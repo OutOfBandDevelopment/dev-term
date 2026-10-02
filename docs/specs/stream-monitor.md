@@ -107,7 +107,7 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **Disconnected**: the monitor stays bound; nothing arrives, so nothing is captured. Reconnecting the
   same session carries on.
 - **Main window closing**: the monitor is disposed (stopped).
-- **WPF preview**: shows the decoded image for BMP/PNG/JPEG/GIF/TIFF; `Preview not available yet for
+- **WPF preview**: shows the decoded image for BMP/PNG/JPEG/GIF/TIFF, and draws a converted SVG; `Preview not available yet for
   {kind} — the captured bytes were saved as-is.` for HP-GL/PostScript/PCL/unrecognized data;
   `Could not preview this {kind}: {decoder message}` when WPF can't decode it; `Nothing captured
   yet. …` when the list is empty. A truncated (`stopped`/`went quiet`) PNG may still decode and show
@@ -146,7 +146,11 @@ configures — never a default endpoint.
 
 ## Open items
 
-- **No in-window preview of a converted file** — "Convert..." writes a file but doesn't show it; live
+- **Converted files are listed, and WPF draws an SVG** — a successful Convert... adds the output file as a new,
+  selected list entry (`converted from HP-GL plot` in its detail; `StreamMonitor.AddConverted`). WPF draws
+  `.svg` itself (`SvgPreview`: path, line, polyline, polygon, rect, circle, ellipse with stroke/fill/viewBox;
+  no transforms, gradients, text or CSS) and shows `Could not draw this SVG: …` otherwise; the TUI lists it
+  but still can't draw. The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
