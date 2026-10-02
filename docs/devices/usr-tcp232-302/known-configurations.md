@@ -46,7 +46,8 @@ The older `launchSettings.json` TCP profiles for .107-.110 all use `--lineending
 
 The bridge was first read at 1200 8N2 against a 9600 meter, and was then set to 9600 8N2. That alone was **not enough**:
 the meter still never transmitted. The bridge does not drive DSR true and the 34401A suspends output while its DSR is
-false, so the meter-side DB-9 needed **DSR (pin 6) jumpered to CTS (pin 8)**; after that `*IDN?` returned
+false, so the bridge's CTS output (pin 8) had to be jumpered to the meter's DSR input (pin 6), with the tester's DSR switch
+open; after that `*IDN?` returned
 `HEWLETT-PACKARD,34401A,0,5-1-1` through the bridge. Wiring table, arguments and replies:
 [hp-34401a](../hp-34401a/known-configuration.md). A DTR-to-DSR loopback jumper does not work (the meter drops DTR after
 each query).

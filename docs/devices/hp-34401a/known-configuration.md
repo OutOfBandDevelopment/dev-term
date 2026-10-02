@@ -23,20 +23,24 @@ Bridge UART 9600 8/None/2 (matches the meter). Sent `SYST:REM`, `*IDN?`, `SYST:E
 `+1.26283000E-04` (leads plugged in, no source: offset only). Repeated on a second run. No error beep.
 A third run with the scope probes removed gave `HEWLETT-PACKARD,34401A,0,5-1-1`, `+0,"No error"` and
 `+6.28130000E-05`; the front panel showed `0.0628 mV DC` with Rmt lit and ERROR dark, matching the bridge reply. Tester
-switches for that run: DSR open, CTS jumpered to DSR, all others closed.
+switches for that run: DSR open, all others closed, plus the jumper described below.
 
 **What made it work is the DB-9 wiring, not the baud.** The meter is a DTE and uses a DTR/DSR handshake (programming
 manual, "RS-232 Interface Configuration"): it drops DTR after receiving a query's newline until the reply is read, and
 it **sends nothing while its DSR input (pin 6) is false**. The bridge never drives DSR true, so:
 
-| Meter-side wiring | Result |
-| --- | --- |
-| Straight through, DTR/DSR switches closed, jumper from meter DTR to its own DSR | silent: the meter drops DTR after each query, DSR follows it, output suspended (a loopback jumper deadlocks) |
-| DTR/DSR switches open, jumper removed | silent: DSR floating/driven false (scope showed a flat -7 V on DSR) |
-| **DSR (pin 6) jumpered to CTS (pin 8)**, data lines straight through | **works** |
+The bench has an RS-232 breakout tester between the meter (DMM side) and the bridge, with a switch per line and
+jumper holes on both rows.
 
-CTS (pin 8) is an output from the bridge (stated by the bench operator, not measured: the handshake-line scope captures
-never triggered), so the jumper feeds a bridge-driven line into the meter's DSR. Its level was not captured; in the
+| Wiring (tester between meter and bridge) | Result |
+| --- | --- |
+| Straight through, DTR/DSR switches closed, jumper from DTR to DSR on the DMM side | silent: the meter drops DTR after each query, its DSR follows it, output suspended (a loopback jumper deadlocks) |
+| DTR/DSR switches open, jumper removed | silent: DSR floating/driven false (scope showed a flat -7 V on DSR) |
+| **DSR switch open, other switches closed, jumper from the bridge-side CTS hole to the DMM-side DSR hole** | **works** |
+
+In the working case the bridge's CTS output (stated by the bench operator, not measured: the handshake-line scope
+captures never triggered) drives the meter's DSR input (pin 6), and the open DSR switch keeps the meter's DSR cut off
+from the bridge's DSR. As a fixed cable that is bridge pin 8 to meter pin 6. The CTS level was not captured; in the
 COM10-to-bridge test CTS followed the inverse of the PC's DTR, so it may not be constant. Treat the jumper as an
 empirical fix. The manual's 34398A cable (F1047-80002, DB-9 female both ends) is a null modem: 1-1, 2<->3,
 4<->6, 5-5, 7<->8, 9-9. Handshake can also be disabled outright by leaving DTR unconnected and tying DSR true at

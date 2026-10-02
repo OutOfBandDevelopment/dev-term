@@ -6,7 +6,7 @@ reaches it on the bench (transport, address, framing, quirks). Facts there come 
 
 | Folder | Transport | Address |
 | --- | --- | --- |
-| [hp-34401a](hp-34401a/known-configuration.md) | Serial / TCP bridge | COM5, 9600 8N2; or 192.168.0.109 (needs DSR-to-CTS jumper) |
+| [hp-34401a](hp-34401a/known-configuration.md) | Serial / TCP bridge | COM5, 9600 8N2; or 192.168.0.109 (needs bridge CTS wired to meter DSR) |
 | [korad-ka3005p-ka6003p](korad-ka3005p-ka6003p/known-configuration.md) | Serial | COM6 / COM7, 9600 8N1 |
 | [tektronix-2230](tektronix-2230/known-configuration.md) | TCP bridge | 192.168.0.108 and .107 |
 | [tektronix-tds2024](tektronix-tds2024/known-configuration.md) | TCP bridge | 192.168.0.110 |
