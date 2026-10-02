@@ -55,4 +55,84 @@ public sealed class ConverterToolsDialogTests
             Assert.IsNull(parts.Accepted);
         });
     }
+
+    [TestMethod]
+    public void Down_Cancel_AndSelectingAnotherTool_DriveTheDialog()
+    {
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var editor = new ConverterToolsEditor([Tool("a"), Tool("b")]);
+            var parts = ConverterToolsDialog.Build(app, editor);
+
+            parts.List.SelectedItem = 1;
+            Assert.AreEqual("b", parts.Name.Text);
+
+            parts.List.SelectedItem = 0;
+            Press(parts.Down);
+            CollectionAssert.AreEqual(new[] { "b", "a" }, editor.Tools.Select(t => t.Name).ToArray());
+            Assert.AreEqual("a", parts.Name.Text);
+
+            Press(parts.Cancel);
+            Assert.IsNull(parts.Accepted);
+        });
+    }
+
+    [TestMethod]
+    public void Add_SelectsTheNewTool_AndOkAcceptsTheValidList()
+    {
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ConverterToolsDialog.Build(app, new ConverterToolsEditor([Tool("gs")]));
+
+            Press(parts.Add);
+            Assert.AreEqual(1, parts.List.SelectedItem);
+            Assert.AreEqual("tool2", parts.Name.Text);
+            parts.Path.Text = "gpcl6.exe";
+            parts.Dpi.Text = "300";
+
+            Press(parts.Ok);
+
+            var accepted = parts.Accepted!;
+            CollectionAssert.AreEqual(new[] { "gs", "tool2" }, accepted.Select(t => t.Name).ToArray());
+            Assert.AreEqual("gpcl6.exe", accepted[1].Path);
+            Assert.AreEqual(300, accepted[1].Dpi);
+        });
+    }
+
+    [TestMethod]
+    public void ConfigureScreen_EditToolsButton_AppliesTheDialogsResult_AndShowsTheSummary()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools-tui", Path.GetRandomFileName());
+        Directory.CreateDirectory(directory);
+        try
+        {
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var parts = ConfigureMode.BuildWindow(app, new CliOptions { Transport = "loopback", StreamConvertTools = [Tool("gs")] }, null, new ConnectionProfileStore(directory));
+                StringAssert.Contains(parts.EditConverterToolsButton.Text, "gs");
+
+                parts.ShowConverterToolsDialog = _ => null;
+                Press(parts.EditConverterToolsButton);
+                Assert.AreEqual(1, parts.ViewModel.ConverterTools.Count);
+                Assert.IsFalse(parts.ViewModel.IsDirty);
+
+                IReadOnlyList<StreamConvertToolOptions>? offered = null;
+                parts.ShowConverterToolsDialog = tools =>
+                {
+                    offered = tools;
+                    return [Tool("gs"), Tool("gpcl")];
+                };
+                Press(parts.EditConverterToolsButton);
+
+                Assert.AreEqual("gs", offered!.Single().Name);
+                Assert.AreEqual(2, parts.ViewModel.ConverterTools.Count);
+                Assert.IsTrue(parts.ViewModel.IsDirty);
+                StringAssert.Contains(parts.EditConverterToolsButton.Text, "2 converter tools");
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

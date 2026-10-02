@@ -257,7 +257,7 @@ What was built, and where it differs from the proposal text above:
   `ProcessStartInfo.ArgumentList` (`UseShellExecute = false`) — never a shell-parsed command string —
   so a captured file name or a substituted path containing spaces can't break out of the intended
   argument boundaries. `StreamConvertDpi` (default 150) is the only non-path placeholder.
-- **Web service**: POSTs (method configurable) the capture's raw bytes with its detected
+- **Web service** (removed 2026-10-02, see [stream-converter-tools.md](stream-converter-tools.md)): POSTed (method configurable) the capture's raw bytes with its detected
   `StreamContentKind.MediaType` as `Content-Type`, via a named `IHttpClientFactory` client
   (`StreamCaptureConverter.HttpClientName`) when running under DI, or an owned, per-call `HttpClient`
   (disposed after) when constructed ad hoc outside DI — the same ad-hoc-construction accommodation

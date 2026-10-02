@@ -60,15 +60,6 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
-            case "webservice":
-                if (string.IsNullOrWhiteSpace(options.StreamConvertWebServiceUrl) ||
-                    !Uri.TryCreate(options.StreamConvertWebServiceUrl, UriKind.Absolute, out _))
-                {
-                    return ValidateOptionsResult.Fail("'--streamconvertwebserviceurl' must be a valid absolute URL when '--streamconvertmode' is 'webservice'.");
-                }
-
-                break;
-
             case "internalhpgltosvg":
             case "auto":
                 break;
@@ -83,7 +74,7 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown '--streamconvertmode' '{options.StreamConvertMode}'. Expected 'none', 'externaltool', 'webservice', 'internalhpgltosvg', 'auto', or 'tool:<name>'.");
+                return ValidateOptionsResult.Fail($"Unknown '--streamconvertmode' '{options.StreamConvertMode}'. Expected 'none', 'externaltool', 'internalhpgltosvg', 'auto', or 'tool:<name>'.");
         }
 
         foreach (var tool in options.StreamConvertTools)

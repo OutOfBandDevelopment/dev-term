@@ -214,16 +214,6 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.StreamConvertDpi)] = options.StreamConvertDpi;
         }
 
-        if (options.StreamConvertWebServiceUrl is not null)
-        {
-            profile[nameof(CliOptions.StreamConvertWebServiceUrl)] = options.StreamConvertWebServiceUrl;
-        }
-
-        if (!string.Equals(options.StreamConvertWebServiceMethod, new CliOptions().StreamConvertWebServiceMethod, StringComparison.Ordinal))
-        {
-            profile[nameof(CliOptions.StreamConvertWebServiceMethod)] = options.StreamConvertWebServiceMethod;
-        }
-
         if (options.StreamConvertOutputExtension is not null)
         {
             profile[nameof(CliOptions.StreamConvertOutputExtension)] = options.StreamConvertOutputExtension;

@@ -26,13 +26,13 @@ both serialize it, see `CLAUDE.md`):
 | `Dpi` | Value for `{dpi}`. Default 150. |
 
 The conversion list offers, in order: **None**, **HP-GL to SVG**, **Auto**, one entry per registered tool (by
-`Name`), and (until it is removed) **External tool** / **Web service**. **Auto** runs the first registered tool
+`Name`), and the legacy single **External tool**. **Auto** runs the first registered tool
 whose `Formats` include the selected capture's format, and reports "no registered tool handles X" otherwise.
 Picking a tool by name runs it regardless of `Formats`, so a user can force one.
 
 The single-tool settings keep working: `StreamConvertExternalToolPath` still defines the legacy **External tool**
-entry, so every existing profile behaves as before. The built-in Web service mode is dropped in the same series
-once the tool list is in both profile editors (decided 2026-10-02: a registered script or `curl` covers it).
+entry, so every existing profile behaves as before. The built-in Web service mode was removed (decided 2026-10-02: a registered script or `curl` covers it); a profile
+saying `webservice` now fails validation as an unknown mode.
 
 ```plantuml
 @startuml
@@ -90,4 +90,5 @@ Selection is stored as `StreamConvertMode`: the existing values, plus `auto` and
   in both windows, and tests. Real-tool verification is the same open item as the Ghostscript guide.
 - **Built 2026-10-02**: the tool-list editor, reached by **Edit tools...** in the Stream Monitor section of both profile
   forms ([spec](../../specs/converter-tools-editor.md)); the `StreamConvert*` settings now persist through profile save/load.
-- **Not built**: removing Web service mode.
+- **Built 2026-10-02**: Web service mode removed (`StreamConvertWebService*`, the `webservice` mode, its validator
+  case, the HTTP client registration and its tests).

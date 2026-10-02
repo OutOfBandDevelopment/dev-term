@@ -96,10 +96,10 @@ selected a capture. It runs whichever conversion mechanism the connection is con
 writes the result next to the capture's saved file (same folder and name, a new extension).
 
 Choose the mechanism right in the window, next to Convert...: a **conversion** drop-down in WPF
-(None, HP-GL to SVG, Auto, each registered tool, External tool, Web service) and a **Convert as:** button in the TUI that opens the
+(None, HP-GL to SVG, Auto, each registered tool, External tool) and a **Convert as:** button in the TUI that opens the
 same list. The choice applies to that window; the profile's saved mode is just where it starts. For
-HP-GL captures, **HP-GL to SVG** needs nothing else. External tool and Web service also need their
-path or URL, which come from the profile.
+HP-GL captures, **HP-GL to SVG** needs nothing else. External tool also needs its
+path, which comes from the profile.
 
 To save the choice and those settings, use **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
 **Stream Monitor** section:
@@ -115,8 +115,6 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
   the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL). **Auto** picks by the capture's
   format. Manage the list with **Edit tools...** in the same section: add, edit, remove and reorder tools (order
   decides which one Auto tries first); see [the editor's spec](../specs/converter-tools-editor.md). See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
-- **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
-  default) and saves whatever comes back.
 
 When a conversion succeeds, the converted file joins the capture list as a new entry, selected, marked
 `converted from HP-GL plot` in its detail. In WPF an SVG is drawn in the preview pane, so you can check

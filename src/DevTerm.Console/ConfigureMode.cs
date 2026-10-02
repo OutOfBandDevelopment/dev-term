@@ -233,6 +233,7 @@ public static class ConfigureMode
             DetectBleCharacteristicsButton = detectBleCharacteristicsButton,
             PickBleNotifyCharacteristicButton = pickBleNotifyCharacteristicButton,
             EditConverterToolsButton = editConverterToolsButton,
+            ShowConverterToolsDialog = tools => ConverterToolsDialog.Show(app, tools),
             LoopbackInfoLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.LoopbackInfo)],
             PresenterCheckBoxes = form.CheckLists[nameof(ConnectionEditorViewModel.PresentersText)],
             ScpiProfileSelector = form.Choices[nameof(ConnectionEditorViewModel.ScpiProfile)],
@@ -540,7 +541,7 @@ public static class ConfigureMode
         };
         editConverterToolsButton.Accepting += (_, e) =>
         {
-            if (ConverterToolsDialog.Show(app, viewModel.ConverterTools) is { } edited)
+            if (parts.ShowConverterToolsDialog(viewModel.ConverterTools) is { } edited)
             {
                 viewModel.ConverterTools = edited;
             }
@@ -827,6 +828,9 @@ internal sealed class ConfigureWindowParts
     public required Button PickBleNotifyCharacteristicButton { get; init; }
 
     public required Button EditConverterToolsButton { get; init; }
+
+    /// <summary>Opens the converter tools dialog and returns the edited list, or null when cancelled. A test replaces it, since a real nested <c>Run</c> blocks.</summary>
+    public required Func<IReadOnlyList<StreamConvertToolOptions>, IReadOnlyList<StreamConvertToolOptions>?> ShowConverterToolsDialog { get; set; }
 
     /// <summary>Shown only when the loopback transport is selected — it takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

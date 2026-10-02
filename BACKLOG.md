@@ -47,9 +47,6 @@ the rest.
   drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
   already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 
-- **Stream Monitor converters, remaining:** dropping the built-in Web service mode (`StreamConvertWebService*`) now that
-  tools can be registered: a script or `curl` registered as a tool covers it (decided 2026-10-02).
-
 ### Device control modules & hardware profiles
 
 - Declarative command/response schema for device control modules (send template + response

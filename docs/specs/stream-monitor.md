@@ -89,7 +89,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
-| **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, Auto, each registered tool (`StreamConvertTools`), External tool or Web service (`StreamConversionChoice.For`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool / Web service still read their path/URL from the profile |
+| **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, Auto, each registered tool (`StreamConvertTools`), or External tool (`StreamConversionChoice.For`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool still reads its path from the profile |
 | **Convert...** (TUI + WPF) | Runs the configured conversion mechanism (below) against the selected capture, writing the result next to its saved file (same folder and name, a new extension). Enabled when a capture is selected. TUI reports the outcome in the detail label; WPF reports success in the detail text and a failure via a message box |
 | Selecting a capture | Shows its detail (and, in WPF, its preview) |
 
@@ -136,15 +136,14 @@ reports an explanatory message instead.
 | `externaltool` | Runs a configured executable against the capture's saved file as a child process | `Stream Convert External Tool Path`, `Stream Convert External Tool Arguments` (a template with `{input}`/`{output}`/`{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`), `Stream Convert Dpi` (default 150), `Stream Convert Output Extension` (default `png`) |
 | `auto` | Runs the first registered tool whose `Formats` include the capture's (empty `Formats` accepts anything); fails naming the format if none does | `Stream Convert Tools` (a list: `Name`, `Path`, `Arguments`, `Formats`, `OutputExtension` default `png`, `Dpi` default 150), `Stream Convert Output Extension` if set overrides the tool's |
 | `tool:<name>` | Runs the registered tool of that name regardless of format; the validator rejects an unknown name | as `auto` |
-| `webservice` | POSTs (or other configured method) the capture's raw bytes to a configured HTTP endpoint, with its detected content type, and saves the response body | `Stream Convert Web Service Url`, `Stream Convert Web Service Method` (default `POST`), `Stream Convert Output Extension` (default `png`) |
 
 The argument template is split on whitespace before `{input}`/`{output}`/`{dpi}` substitution, and
 each resulting token becomes its own process argument (`ProcessStartInfo.ArgumentList`, no shell
 parsing) — a captured file path containing spaces still arrives as one argument, with no
 command-injection risk from a captured file name or a device-supplied value. dev-term bundles no
 external converter itself; the external-tool mode points at whatever the user already has installed
-(Ghostscript, for example), and the web-service mode sends a capture's raw bytes to a URL the user
-configures — never a default endpoint.
+(Ghostscript, for example). The built-in web-service mode was removed 2026-10-02: a script or `curl` registered as
+a converter tool covers it, and a profile still saying `webservice` now fails validation as an unknown mode.
 
 ## Open items
 

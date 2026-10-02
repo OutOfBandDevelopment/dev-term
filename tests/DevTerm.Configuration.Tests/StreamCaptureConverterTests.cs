@@ -1,15 +1,12 @@
-using System.Net;
-using System.Net.Http;
 using DevTerm.Core.StreamContent;
 using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Options;
-using Moq;
 
 namespace DevTerm.Configuration.Tests;
 
 /// <summary>
 /// Covers <see cref="StreamCaptureConverter"/>'s three conversion mechanisms (internal HP-GL-to-SVG,
-/// external tool, web service), placeholder-substitution safety, and each mechanism's failure paths.
+/// external tool), placeholder-substitution safety, and each mechanism's failure paths.
 /// See docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration".
 /// </summary>
 [TestClass]
@@ -34,8 +31,8 @@ public sealed class StreamCaptureConverterTests
         }
     }
 
-    private static StreamCaptureConverter Converter(StreamCaptureConverterOptions options, IHttpClientFactory? factory = null) =>
-        new(Options.Create(options), factory);
+    private static StreamCaptureConverter Converter(StreamCaptureConverterOptions options) =>
+        new(Options.Create(options));
 
     private StreamMonitorCapture SavedCapture(StreamContentKind kind, byte[] data, string? fileName = null)
     {
@@ -213,98 +210,6 @@ public sealed class StreamCaptureConverterTests
     }
 
     [TestMethod]
-    public async Task ConvertAsync_WebService_NoUrlConfigured_Fails()
-    {
-        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.WebService };
-        var converter = Converter(options);
-
-        var result = await converter.ConvertAsync(SavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsFalse(result.Success);
-        StringAssert.Contains(result.Error, "web-service URL");
-    }
-
-    [TestMethod]
-    public async Task ConvertAsync_WebService_CaptureNeverSaved_Fails()
-    {
-        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.WebService, WebServiceUrl = "https://example.invalid/convert" };
-        var converter = Converter(options);
-
-        var result = await converter.ConvertAsync(UnsavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsFalse(result.Success);
-        StringAssert.Contains(result.Error, "never saved");
-    }
-
-    [TestMethod]
-    public async Task ConvertAsync_WebService_SuccessResponse_WritesTheReturnedBytes()
-    {
-        var converted = "<svg>from the web service</svg>"u8.ToArray();
-        var handler = new FakeHttpMessageHandler((request, _) =>
-        {
-            Assert.AreEqual(HttpMethod.Post, request.Method);
-            Assert.AreEqual("https://example.invalid/convert", request.RequestUri!.ToString());
-            Assert.AreEqual(StreamContentKind.Hpgl.MediaType, request.Content!.Headers.ContentType!.MediaType);
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(converted) };
-        });
-        var factory = FakeFactory(handler);
-        var options = new StreamCaptureConverterOptions
-        {
-            Mode = StreamConversionMode.WebService,
-            WebServiceUrl = "https://example.invalid/convert",
-            OutputExtension = "svg",
-        };
-        var converter = Converter(options, factory);
-
-        var result = await converter.ConvertAsync(SavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsTrue(result.Success, result.Error);
-        CollectionAssert.AreEqual(converted, File.ReadAllBytes(result.OutputPath!));
-    }
-
-    [TestMethod]
-    public async Task ConvertAsync_WebService_NonSuccessStatus_FailsWithTheStatusCode()
-    {
-        var handler = new FakeHttpMessageHandler((_, _) => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
-        var factory = FakeFactory(handler);
-        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.WebService, WebServiceUrl = "https://example.invalid/convert" };
-        var converter = Converter(options, factory);
-
-        var result = await converter.ConvertAsync(SavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsFalse(result.Success);
-        StringAssert.Contains(result.Error, "503");
-    }
-
-    [TestMethod]
-    public async Task ConvertAsync_WebService_RequestThrows_FailsRatherThanPropagating()
-    {
-        var handler = new FakeHttpMessageHandler((_, _) => throw new HttpRequestException("connection refused"));
-        var factory = FakeFactory(handler);
-        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.WebService, WebServiceUrl = "https://example.invalid/convert" };
-        var converter = Converter(options, factory);
-
-        var result = await converter.ConvertAsync(SavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsFalse(result.Success);
-        StringAssert.Contains(result.Error, "connection refused");
-    }
-
-    [TestMethod]
-    public async Task ConvertAsync_WebService_WithNoHttpClientFactory_FallsBackToAnOwnedHttpClient()
-    {
-        // No IHttpClientFactory supplied — covers the ad hoc (non-DI) construction path used by
-        // StreamMonitorMode/StreamMonitorWindow, which still needs to fail gracefully rather than throw.
-        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.WebService, WebServiceUrl = "https://127.0.0.1:1/convert" };
-        var converter = Converter(options);
-
-        var result = await converter.ConvertAsync(SavedCapture(StreamContentKind.Hpgl, StreamContentSamples.Hpgl()));
-
-        Assert.IsFalse(result.Success);
-        Assert.IsNotNull(result.Error);
-    }
-
-    [TestMethod]
     public void FromCliOptions_Null_YieldsModeNone()
     {
         var options = StreamCaptureConverterOptions.FromCliOptions(null);
@@ -314,7 +219,7 @@ public sealed class StreamCaptureConverterTests
 
     [TestMethod]
     [DataRow("externaltool", StreamConversionMode.ExternalTool)]
-    [DataRow("WebService", StreamConversionMode.WebService)]
+    [DataRow("webservice", StreamConversionMode.None)]
     [DataRow("InternalHpglToSvg", StreamConversionMode.InternalHpglToSvg)]
     [DataRow("not-a-real-mode", StreamConversionMode.None)]
     [DataRow(null, StreamConversionMode.None)]
@@ -336,8 +241,6 @@ public sealed class StreamCaptureConverterTests
             StreamConvertExternalToolPath = @"C:\tools\convert.exe",
             StreamConvertExternalToolArguments = "{input} {output}",
             StreamConvertDpi = 600,
-            StreamConvertWebServiceUrl = "https://example.invalid/convert",
-            StreamConvertWebServiceMethod = "PUT",
             StreamConvertOutputExtension = "svg",
         };
 
@@ -347,16 +250,7 @@ public sealed class StreamCaptureConverterTests
         Assert.AreEqual(cliOptions.StreamConvertExternalToolPath, options.ExternalToolPath);
         Assert.AreEqual(cliOptions.StreamConvertExternalToolArguments, options.ExternalToolArguments);
         Assert.AreEqual(600, options.ExternalToolDpi);
-        Assert.AreEqual(cliOptions.StreamConvertWebServiceUrl, options.WebServiceUrl);
-        Assert.AreEqual("PUT", options.WebServiceMethod);
         Assert.AreEqual("svg", options.OutputExtension);
-    }
-
-    private static IHttpClientFactory FakeFactory(HttpMessageHandler handler)
-    {
-        var factory = new Mock<IHttpClientFactory>();
-        factory.Setup(f => f.CreateClient(StreamCaptureConverter.HttpClientName)).Returns(new HttpClient(handler));
-        return factory.Object;
     }
 
     /// <summary>A minimal <see cref="HttpMessageHandler"/> stub — no fake-HTTP pattern existed yet in this repo's tests.</summary>
@@ -462,7 +356,7 @@ public sealed class StreamCaptureConverterTests
         var choices = StreamConversionChoice.For(options);
 
         CollectionAssert.AreEqual(
-            new[] { "None", "HP-GL to SVG", "Auto (by format)", "gs", "gpcl", "External tool", "Web service" },
+            new[] { "None", "HP-GL to SVG", "Auto (by format)", "gs", "gpcl", "External tool" },
             choices.Select(c => c.DisplayName).ToArray());
         choices[4].ApplyTo(options);
         Assert.AreEqual(StreamConversionMode.Tool, options.Mode);
@@ -474,12 +368,6 @@ public sealed class StreamCaptureConverterTests
     {
         var choices = StreamConversionChoice.For(new StreamCaptureConverterOptions());
 
-        CollectionAssert.AreEqual(new[] { "None", "HP-GL to SVG", "External tool", "Web service" }, choices.Select(c => c.DisplayName).ToArray());
-    }
-
-    private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(respond(request, cancellationToken));
+        CollectionAssert.AreEqual(new[] { "None", "HP-GL to SVG", "External tool" }, choices.Select(c => c.DisplayName).ToArray());
     }
 }

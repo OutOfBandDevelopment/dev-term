@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net.Http.Headers;
 using DevTerm.Core.StreamContent;
 using Microsoft.Extensions.Options;
 
@@ -15,9 +14,6 @@ public enum StreamConversionMode
 
     /// <summary>Run a configured external executable (Ghostscript-style) against the capture's saved file.</summary>
     ExternalTool,
-
-    /// <summary>POST the capture's raw bytes to a configured HTTP endpoint and save the response body.</summary>
-    WebService,
 
     /// <summary>dev-term's own <see cref="HpglToSvgConverter"/> - HP-GL captures only.</summary>
     InternalHpglToSvg,
@@ -51,10 +47,6 @@ public sealed class StreamCaptureConverterOptions
 
     public int ExternalToolDpi { get; set; } = 150;
 
-    public string? WebServiceUrl { get; set; }
-
-    public string WebServiceMethod { get; set; } = "POST";
-
     public string? OutputExtension { get; set; }
 
     /// <summary>Builds a fresh <see cref="StreamCaptureConverterOptions"/> from <paramref name="cliOptions"/> (or all-defaults/<see cref="StreamConversionMode.None"/> when null) - for ad hoc construction outside DI (TUI/WPF, which build <see cref="StreamMonitor"/> the same ad hoc way).</summary>
@@ -81,8 +73,6 @@ public sealed class StreamCaptureConverterOptions
         target.ExternalToolPath = cliOptions.StreamConvertExternalToolPath;
         target.ExternalToolArguments = cliOptions.StreamConvertExternalToolArguments ?? string.Empty;
         target.ExternalToolDpi = cliOptions.StreamConvertDpi;
-        target.WebServiceUrl = cliOptions.StreamConvertWebServiceUrl;
-        target.WebServiceMethod = string.IsNullOrWhiteSpace(cliOptions.StreamConvertWebServiceMethod) ? "POST" : cliOptions.StreamConvertWebServiceMethod;
         target.OutputExtension = cliOptions.StreamConvertOutputExtension;
     }
 
@@ -94,7 +84,6 @@ public sealed class StreamCaptureConverterOptions
         "auto" => StreamConversionMode.Auto,
         { } text when text.StartsWith("tool:", StringComparison.Ordinal) => StreamConversionMode.Tool,
         "externaltool" => StreamConversionMode.ExternalTool,
-        "webservice" => StreamConversionMode.WebService,
         "internalhpgltosvg" => StreamConversionMode.InternalHpglToSvg,
         _ => StreamConversionMode.None,
     };
@@ -104,13 +93,12 @@ public sealed class StreamCaptureConverterOptions
 public static class StreamConversionModes
 {
     public static IReadOnlyList<StreamConversionMode> All { get; } =
-        [StreamConversionMode.None, StreamConversionMode.InternalHpglToSvg, StreamConversionMode.ExternalTool, StreamConversionMode.WebService];
+        [StreamConversionMode.None, StreamConversionMode.InternalHpglToSvg, StreamConversionMode.ExternalTool];
 
     public static string DisplayName(StreamConversionMode mode) => mode switch
     {
         StreamConversionMode.InternalHpglToSvg => "HP-GL to SVG",
         StreamConversionMode.ExternalTool => "External tool",
-        StreamConversionMode.WebService => "Web service",
         StreamConversionMode.Auto => "Auto (by format)",
         _ => "None",
     };
@@ -167,34 +155,27 @@ public sealed record StreamConversionChoice(StreamConversionMode Mode, string? T
 public sealed record StreamConversionResult(bool Success, string? OutputPath, string? Error);
 
 /// <summary>
-/// Wraps the three "Convert/Rasterize" mechanisms proposed in
+/// Wraps the "Convert/Rasterize" mechanisms proposed in
 /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration" section —
-/// external tool invocation, web-service conversion, and the internal HP-GL-to-SVG converter — behind
+/// registered external tools, a single legacy external tool, and the internal HP-GL-to-SVG converter — behind
 /// one call so the Stream Monitor windows' "Convert..." action doesn't need to know which is active.
 /// </summary>
 /// <remarks>
 /// Never throws: every failure path (missing config, a process that fails to start or exits
-/// non-zero, a failed HTTP request, malformed input) returns a <see cref="StreamConversionResult"/>
+/// non-zero, malformed input) returns a <see cref="StreamConversionResult"/>
 /// with <see cref="StreamConversionResult.Success"/> false and an explanatory
 /// <see cref="StreamConversionResult.Error"/>, matching <see cref="StreamMonitor"/>'s own
-/// tolerant, result-object-returning file I/O. <see cref="HttpClientFactory"/> is optional so this
-/// can be constructed ad hoc (as <see cref="StreamMonitor"/> itself is, in the TUI/WPF front ends)
-/// without a DI container; when null, each web-service conversion uses its own short-lived
-/// <see cref="HttpClient"/> instead of a pooled one.
+/// tolerant, result-object-returning file I/O, so it can be constructed ad hoc (as
+/// <see cref="StreamMonitor"/> itself is, in the TUI/WPF front ends) without a DI container.
 /// </remarks>
 public sealed class StreamCaptureConverter
 {
-    /// <summary>The named <see cref="IHttpClientFactory"/> client this registers/resolves through DI.</summary>
-    public const string HttpClientName = "StreamCaptureConverter";
-
     private readonly IOptions<StreamCaptureConverterOptions> _options;
-    private readonly IHttpClientFactory? _httpClientFactory;
 
-    public StreamCaptureConverter(IOptions<StreamCaptureConverterOptions> options, IHttpClientFactory? httpClientFactory = null)
+    public StreamCaptureConverter(IOptions<StreamCaptureConverterOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
-        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>Whether a mechanism is configured at all - lets a caller skip offering "Convert..." when there's nothing to do.</summary>
@@ -214,7 +195,6 @@ public sealed class StreamCaptureConverter
         {
             StreamConversionMode.InternalHpglToSvg => ConvertInternal(capture, options),
             StreamConversionMode.ExternalTool => await ConvertExternalAsync(capture, options, cancellationToken).ConfigureAwait(false),
-            StreamConversionMode.WebService => await ConvertWebServiceAsync(capture, options, cancellationToken).ConfigureAwait(false),
             StreamConversionMode.Auto => await ConvertWithRegisteredToolAsync(capture, options, null, cancellationToken).ConfigureAwait(false),
             StreamConversionMode.Tool => await ConvertWithRegisteredToolAsync(capture, options, options.ToolName, cancellationToken).ConfigureAwait(false),
             _ => new StreamConversionResult(false, null, "No conversion mechanism is selected. Choose one from the Conversion list next to Convert (or set Stream Convert Mode in the profile)."),
@@ -355,49 +335,6 @@ public sealed class StreamCaptureConverter
         catch (Exception ex) when (ex is Win32Exception or IOException or UnauthorizedAccessException)
         {
             return new StreamConversionResult(false, null, ex.Message);
-        }
-    }
-
-    private async Task<StreamConversionResult> ConvertWebServiceAsync(StreamMonitorCapture capture, StreamCaptureConverterOptions options, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(options.WebServiceUrl))
-        {
-            return new StreamConversionResult(false, null, "No web-service URL is configured.");
-        }
-
-        var outputPath = OutputPathFor(capture, options.OutputExtension ?? "png");
-        if (outputPath is null)
-        {
-            return new StreamConversionResult(false, null, "This capture was never saved to a file, so there is nowhere to write the converted output next to.");
-        }
-
-        var ownedClient = _httpClientFactory is null ? new HttpClient() : null;
-        var client = _httpClientFactory?.CreateClient(HttpClientName) ?? ownedClient!;
-        try
-        {
-            using var request = new HttpRequestMessage(new HttpMethod(options.WebServiceMethod), options.WebServiceUrl)
-            {
-                Content = new ByteArrayContent(capture.Capture.Data),
-            };
-            request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(capture.Capture.Kind.MediaType);
-
-            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new StreamConversionResult(false, null, $"The web service returned {(int)response.StatusCode} {response.ReasonPhrase}.");
-            }
-
-            var converted = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            await File.WriteAllBytesAsync(outputPath, converted, cancellationToken).ConfigureAwait(false);
-            return new StreamConversionResult(true, outputPath, null);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException)
-        {
-            return new StreamConversionResult(false, null, ex.Message);
-        }
-        finally
-        {
-            ownedClient?.Dispose();
         }
     }
 

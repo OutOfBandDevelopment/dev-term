@@ -116,6 +116,62 @@ public sealed class ConverterToolsEditorTests
     }
 
     [TestMethod]
+    public void ConnectionEditor_RaisesSummaryChanged_WhenTheToolsAreReplaced()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools", Path.GetRandomFileName());
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "loopback" });
+            StringAssert.Contains(vm.ConverterToolsSummary, "No converter tools");
+            var raised = new List<string?>();
+            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            vm.ConverterTools = [Tool("gs"), Tool("gpcl")];
+
+            CollectionAssert.Contains(raised, nameof(ConnectionEditorViewModel.ConverterToolsSummary));
+            StringAssert.Contains(vm.ConverterToolsSummary, "2 converter tools");
+            StringAssert.Contains(vm.ConverterToolsSummary, "gpcl");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void Profile_SaveThenLoad_RoundTripsTheTopLevelConverterSettings()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools", Path.GetRandomFileName());
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var store = new ConnectionProfileStore(directory);
+            store.Save("scope", new CliOptions
+            {
+                Transport = "loopback",
+                StreamConvertMode = "externaltool",
+                StreamConvertExternalToolPath = @"C:\gs\gs.exe",
+                StreamConvertExternalToolArguments = "-r{dpi} {input}",
+                StreamConvertDpi = 300,
+                StreamConvertOutputExtension = "jpg",
+            });
+
+            var loaded = store.Load("scope");
+
+            Assert.AreEqual("externaltool", loaded.StreamConvertMode);
+            Assert.AreEqual(@"C:\gs\gs.exe", loaded.StreamConvertExternalToolPath);
+            Assert.AreEqual("-r{dpi} {input}", loaded.StreamConvertExternalToolArguments);
+            Assert.AreEqual(300, loaded.StreamConvertDpi);
+            Assert.AreEqual("jpg", loaded.StreamConvertOutputExtension);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void Profile_SaveThenLoad_RoundTripsTheConverterSettings()
     {
         var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools", Path.GetRandomFileName());

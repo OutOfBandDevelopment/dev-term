@@ -157,6 +157,13 @@ public partial class ConverterToolsWindow : Window
             return;
         }
 
-        DialogResult = true;
+        try
+        {
+            DialogResult = true;
+        }
+        catch (InvalidOperationException)
+        {
+            // Not shown via ShowDialog() (a test drives the window directly): Result is already correct.
+        }
     }
 }

@@ -339,13 +339,13 @@ public sealed class CliOptions
     /// Which mechanism the Stream Monitor's "Convert..." action uses, from
     /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration":
     /// <c>none</c> (default - the action reports nothing is configured), <c>externaltool</c> (run a
-    /// configured external converter, e.g. Ghostscript), <c>webservice</c> (POST the capture to a
-    /// configured HTTP endpoint), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
+    /// configured external converter, e.g. Ghostscript), <c>auto</c> / <c>tool:&lt;name&gt;</c> (a registered
+    /// converter tool), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
     /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
     /// </summary>
     [Category("Stream Monitor")]
     [DisplayName("Convert mode")]
-    [Description("How Stream Monitor's Convert action works: none, externaltool, webservice, or internalhpgltosvg.")]
+    [Description("How Stream Monitor's Convert action works: none, externaltool, auto, tool:<name>, or internalhpgltosvg.")]
     public string? StreamConvertMode { get; set; }
 
     /// <summary>The external converter executable (e.g. Ghostscript's <c>gswin64c.exe</c>) run when <see cref="StreamConvertMode"/> is <c>externaltool</c>.</summary>
@@ -368,16 +368,6 @@ public sealed class CliOptions
     [Category("Stream Monitor")]
     [DisplayName("External tool DPI")]
     public int StreamConvertDpi { get; set; } = 150;
-
-    /// <summary>The HTTP endpoint a capture's raw bytes are POSTed to when <see cref="StreamConvertMode"/> is <c>webservice</c>. No default - this sends data to an external, user-configured host.</summary>
-    [Category("Stream Monitor")]
-    [DisplayName("Web service URL")]
-    public string? StreamConvertWebServiceUrl { get; set; }
-
-    /// <summary>The HTTP method used for <see cref="StreamConvertWebServiceUrl"/>. Defaults to <c>POST</c>.</summary>
-    [Category("Stream Monitor")]
-    [DisplayName("Web service method")]
-    public string StreamConvertWebServiceMethod { get; set; } = "POST";
 
     /// <summary>
     /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible
