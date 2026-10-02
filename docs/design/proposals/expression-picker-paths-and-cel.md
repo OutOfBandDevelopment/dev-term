@@ -141,6 +141,9 @@ plus named capture groups, type inferred from the group's regex), query reply id
 choices), and `DeviceManifestValidator` warns on an expression reading an unpublished id. Covered by
 `ValuePathCatalogTests`; not yet checked against real hardware (no device-side behavior). SCPI profiles are read
 through `Enumerate(UiDefinition)` over `ScpiUiDefinitionBuilder.Build(profile)` (a `{command}.reply` per query, a
-`{command}.{parameter}` per parameter; `ScpiValuePathTests`), so there is no SCPI project dependency. Sample data, the picker and the language extension are not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
+`{command}.{parameter}` per parameter; `ScpiValuePathTests`), so there is no SCPI project dependency. **Step 2 generator built (2026-10-02):** `SampleDataGenerator` (`Values`/`Value`/`Text`; seeded, FNV-1a hash so it is stable across
+processes; numbers walk smoothly inside Minimum/Maximum, booleans alternate, choices cycle, text is omitted because
+`Expression` reads only numbers; `SampleDataGeneratorTests`). Not yet wired into the manifest editor preview, and the
+playback-log and declared-example preference tiers are not built. The picker and the language extension are not started. The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
 files, are the input. Related:
 [expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).

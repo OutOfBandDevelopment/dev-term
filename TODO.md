@@ -22,7 +22,8 @@ Completed work is logged by date under `docs/changes/`.
   value-path catalog (also used by the validator), a sample-data generator for realistic previews, a picker control in
   both front ends, then a CEL-style language (spike a .NET CEL library first). **Step 1 (value-path catalog for
   manifests) landed 2026-10-02**; SCPI-profile input landed the same day;
-  next: the sample-data generator.
+  `SampleDataGenerator` landed too;
+  next: wire it into the manifest editor preview, then the picker view-model.
 - **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
   improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
