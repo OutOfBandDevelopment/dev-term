@@ -84,6 +84,16 @@ needed OS, or the goal is specifically to avoid depending on it.
   and is worth a dedicated design discussion (not attempted in this document) rather than assuming
   it slots into the existing transport contract unchanged.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Check whether the vendor's own client software makes the remote device look local (Option A; no dev-term work if so)
+- [ ] Check whether the box speaks the open USB/IP protocol
+- [ ] Capture real traffic (nothing exists yet, publicly or locally)
+- [ ] Decide: build, hand off to existing tooling, or close as won't-do
+- [ ] If built: transport/design doc, unit tests, real-hardware pass (`docs/test/`)
+
 ## Status
 
 **Not started — research only, low priority by choice (2026-09-15, see `BACKLOG.md`'s Research

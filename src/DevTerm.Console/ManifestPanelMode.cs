@@ -19,21 +19,21 @@ namespace DevTerm.Console;
 internal static class ManifestPanelMode
 {
     /// <summary>Picks, loads, and runs a manifest panel (a nested <c>Application.Run</c>); does nothing if the picker is cancelled.</summary>
-    public static void PickAndRun(IApplication app, Session session)
+    public static void PickAndRun(IApplication app, Session session, Action<string>? echoSent = null)
     {
         if (Pick(app, InstalledManifests.Discover()) is not { } path)
         {
             return;
         }
 
-        Run(app, session, DeviceManifestLoader.Load(path));
+        Run(app, session, DeviceManifestLoader.Load(path), echoSent);
     }
 
     /// <summary>Opens <paramref name="manifest"/>'s panel on <paramref name="session"/> until it's closed.</summary>
-    public static void Run(IApplication app, Session session, DeviceManifest manifest)
+    public static void Run(IApplication app, Session session, DeviceManifest manifest, Action<string>? echoSent = null)
     {
         using var panel = ManifestPanel.Attach(session, manifest);
-        var parts = BuildWindow(app, panel);
+        var parts = BuildWindow(app, panel, echoSent);
         try
         {
             app.Run(parts.Window);
@@ -45,10 +45,10 @@ internal static class ManifestPanelMode
     }
 
     /// <summary>The panel window for an attached <paramref name="panel"/> — split out so tests can drive it headlessly.</summary>
-    public static ControlPanelWindowParts BuildWindow(IApplication app, ManifestPanel panel)
+    public static ControlPanelWindowParts BuildWindow(IApplication app, ManifestPanel panel, Action<string>? echoSent = null)
     {
         ArgumentNullException.ThrowIfNull(panel);
-        return ControlPanelMode.BuildWindow(app, panel.Definition, panel.Surface, panel.Presenter, panel.Title);
+        return ControlPanelMode.BuildWindow(app, panel.Definition, panel.Surface, panel.Presenter, panel.Title, echoSent);
     }
 
     /// <summary>

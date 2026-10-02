@@ -21,6 +21,16 @@ namespace DevTerm.Wpf.Tests;
 [DoNotParallelize]
 public sealed class ControlPanelWindowTests
 {
+    private sealed class PreviewingControlSurface : IControlSurface, ICommandPreview
+    {
+        public bool Reject { get; init; }
+
+        public Task InvokeAsync(string commandId, string? value, CancellationToken cancellationToken = default) =>
+            Reject ? throw new ArgumentException("rejected") : Task.CompletedTask;
+
+        public string? PreviewCommand(string commandId, string? value) => $"{commandId.ToUpperInvariant()}\n";
+    }
+
     private sealed class FakeControlSurface : IControlSurface
     {
         public List<(string CommandId, string? Value)> Invocations { get; } = [];
@@ -143,6 +153,27 @@ public sealed class ControlPanelWindowTests
             StaTestRunner.DoEvents();
 
             Assert.AreEqual(string.Empty, window.StatusText.Text);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
+    public void Button_WhenClicked_EchoesTheSentCommandsPreview_ButNotWhenTheSurfaceRejectsIt()
+    {
+        // Bug 064: View > Echo Sent Commands used to cover only the typed send box.
+        StaTestRunner.Run(async () =>
+        {
+            var echoed = new List<string>();
+            var window = new ControlPanelWindow(BuildSampleDefinition(), new PreviewingControlSurface(), null) { ShowInTaskbar = false, EchoSent = echoed.Add };
+            var rejecting = new ControlPanelWindow(BuildSampleDefinition(), new PreviewingControlSurface { Reject = true }, null) { ShowInTaskbar = false, EchoSent = echoed.Add };
+            StaTestRunner.DoEvents();
+
+            ((Button)window.ControlViews["reset"]).RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+            CollectionAssert.AreEqual(new[] { "RESET\n" }, echoed);
+
+            ((Button)rejecting.ControlViews["reset"]).RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+            Assert.HasCount(1, echoed);
 
             await Task.CompletedTask;
         });

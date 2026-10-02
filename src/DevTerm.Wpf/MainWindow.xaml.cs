@@ -770,6 +770,17 @@ public partial class MainWindow : Window
     private void TrackControlPanel(Window window, WindowTab tab)
     {
         window.Tag = tab;
+        if (window is ControlPanelWindow panel)
+        {
+            panel.EchoSent = text =>
+            {
+                if (_echoSentCommands)
+                {
+                    AppendOutput(tab, $"Out> {text}", OutputKind.Sent);
+                }
+            };
+        }
+
         _openControlPanels.Add(window);
         window.Closed += (_, _) => _openControlPanels.Remove(window);
     }

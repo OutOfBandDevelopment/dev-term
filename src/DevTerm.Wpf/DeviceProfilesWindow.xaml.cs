@@ -85,6 +85,12 @@ public partial class DeviceProfilesWindow : Window
 
     internal Button DetectBleButton { get; }
 
+    /// <summary>The Stream Monitor section's "Edit tools..." button (opens <see cref="ConverterToolsWindow"/>).</summary>
+    internal Button EditConverterToolsButton { get; }
+
+    /// <summary>Opens the converter tools dialog over the given working copy and returns the edited list, or null when cancelled. A test replaces it, since a real <c>ShowDialog()</c> blocks.</summary>
+    internal Func<ConverterToolsEditor, IReadOnlyList<StreamConvertToolOptions>?> ShowConverterToolsDialog { get; set; }
+
     internal ComboBox DetectedBleWriteCharacteristicBox { get; }
 
     internal ComboBox DetectedBleNotifyCharacteristicBox { get; }
@@ -156,7 +162,20 @@ public partial class DeviceProfilesWindow : Window
         bleWriteCharacteristicRow.Children.Add(DetectBleCharacteristicsButton);
         bleWriteCharacteristicRow.Children.Add(DetectedBleWriteCharacteristicBox);
 
+        // The Stream Monitor's converter tools: a one-line summary and a button opening the list editor.
+        EditConverterToolsButton = new Button { Content = "Edit tools...", Margin = new Thickness(4, 0, 0, 0), Padding = new Thickness(8, 1, 8, 1) };
+        EditConverterToolsButton.Click += EditConverterTools_Click;
+        ShowConverterToolsDialog = ShowConverterToolsWindow;
+        var converterToolsSummary = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        converterToolsSummary.SetBinding(TextBlock.TextProperty, new Binding(nameof(ConnectionEditorViewModel.ConverterToolsSummary)) { Mode = BindingMode.OneWay });
+        converterToolsSummary.SetBinding(FrameworkElement.ToolTipProperty, new Binding(nameof(ConnectionEditorViewModel.ConverterToolsSummary)) { Mode = BindingMode.OneWay });
+        var converterToolsRow = new DockPanel();
+        DockPanel.SetDock(EditConverterToolsButton, Dock.Right);
+        converterToolsRow.Children.Add(EditConverterToolsButton);
+        converterToolsRow.Children.Add(converterToolsSummary);
+
         var options = new WpfFormOptions();
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.ConverterToolsSummary)] = _ => converterToolsRow;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => DetectedPortsBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => DetectedHidDevicesBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => DetectedUsbtmcDevicesBox;
@@ -259,6 +278,25 @@ public partial class DeviceProfilesWindow : Window
     // Same LoadCommand the Load button is bound to - not a separate code path. Selects the
     // double-clicked row first so a ctrl/shift-extended multi-selection can't leave Load acting on
     // some other profile than the one that was actually clicked.
+    private void EditConverterTools_Click(object sender, RoutedEventArgs e)
+    {
+        if (ShowConverterToolsDialog(new ConverterToolsEditor(ViewModel.ConverterTools)) is { } edited)
+        {
+            ViewModel.ConverterTools = edited;
+        }
+    }
+
+    private IReadOnlyList<StreamConvertToolOptions>? ShowConverterToolsWindow(ConverterToolsEditor editor)
+    {
+        var dialog = new ConverterToolsWindow(editor);
+        if (IsLoaded)
+        {
+            dialog.Owner = this;
+        }
+
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
     private void ProfilesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         // Only a double-click on a row loads - not one on the list's empty space or scroll bar.

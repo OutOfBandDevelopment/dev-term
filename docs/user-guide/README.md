@@ -49,6 +49,8 @@ test class's own doc comment.
 - [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
   Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
   preview in WPF.
+- [Converting PostScript and PCL with Ghostscript](ghostscript-conversion.md) — installing a converter and
+  pointing the Stream Monitor at it.
 - [Choosing a theme](themes.md) — **View > Theme** (Light, Dark, System) in TUI/WPF, `--theme`, and
   writing your own JSON theme in `~/.dev-term/themes`.
 

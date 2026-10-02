@@ -44,6 +44,7 @@ namespace DevTerm.Configuration;
 [FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
 [FormSection("Presentation", Order = 6)]
 [FormSection("Timing", Order = 7, VisibleWhen = nameof(SupportsWriteByteDelay))]
+[FormSection("Stream Monitor", Order = 8)]
 public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly CliOptionsValidator _validator = new();
@@ -87,6 +88,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     // The profile most recently loaded into the form - see BuildOptions for why it's kept.
     private CliOptions _loadedOptions = new();
+    private IReadOnlyList<StreamConvertToolOptions> _converterTools = [];
     private bool _isDirty;
     private string? _selectedSerialPort;
     private HidDeviceOption? _selectedHidDevice;
@@ -130,6 +132,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(BleDeviceOptions),
         nameof(SelectedBleWriteCharacteristic),
         nameof(SelectedBleNotifyCharacteristic),
+        nameof(ConverterToolsSummary),
         nameof(BleCharacteristicOptions),
         nameof(IdsShowHex),
         nameof(VendorIdDisplay),
@@ -1241,6 +1244,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         BleWriteCharacteristicUuid = options.BleWriteCharacteristicUuid ?? string.Empty;
         BleNotifyCharacteristicUuid = options.BleNotifyCharacteristicUuid ?? string.Empty;
         LoopbackSampleIntervalMs = options.LoopbackSampleIntervalMs.ToString(CultureInfo.InvariantCulture);
+        ConverterTools = [.. options.StreamConvertTools.Select(StreamConvertToolOptions.Clone)];
 
         // Bypasses SelectedHidDevice/SelectedUsbtmcDevice's own setters (SetField directly) —
         // those setters push VendorId/ProductId/SerialNumber/DevicePath from whichever device gets
@@ -1269,6 +1273,29 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Description = options.Description ?? string.Empty;
     }
 
+    /// <summary>
+    /// The Stream Monitor's registered converter tools (docs/design/proposals/stream-converter-tools.md), edited
+    /// through <see cref="ConverterToolsEditor"/> by both front ends' "Converter tools..." button. Replaced as a whole
+    /// (never mutated in place) so assigning it counts as an edit for <see cref="IsDirty"/>.
+    /// </summary>
+    public IReadOnlyList<StreamConvertToolOptions> ConverterTools
+    {
+        get => _converterTools;
+        set
+        {
+            SetField(ref _converterTools, value);
+            OnPropertyChanged(nameof(ConverterToolsSummary));
+        }
+    }
+
+    /// <summary>One line for the "Converter tools..." button's label/tooltip: how many tools, and their names.</summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Converter tools")]
+    [FormField(Order = 0, Kind = FormFieldKind.Indicator)]
+    public string ConverterToolsSummary => _converterTools.Count == 0
+        ? "No converter tools registered"
+        : $"{_converterTools.Count} converter tool{(_converterTools.Count == 1 ? string.Empty : "s")}: {string.Join(", ", _converterTools.Select(t => t.Name))}";
+
     public CliOptions BuildOptions()
     {
         var options = new CliOptions
@@ -1288,6 +1315,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             // than reset to CliOptions' defaults.
             ManifestName = _loadedOptions.ManifestName,
             ScpiAutoDetectTimeoutMs = _loadedOptions.ScpiAutoDetectTimeoutMs,
+            StreamConvertMode = _loadedOptions.StreamConvertMode,
+            StreamConvertExternalToolPath = _loadedOptions.StreamConvertExternalToolPath,
+            StreamConvertExternalToolArguments = _loadedOptions.StreamConvertExternalToolArguments,
+            StreamConvertDpi = _loadedOptions.StreamConvertDpi,
+            StreamConvertOutputExtension = _loadedOptions.StreamConvertOutputExtension,
+            StreamConvertTools = [.. _converterTools.Select(StreamConvertToolOptions.Clone)],
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
             Description = Description.Trim() is { Length: > 0 } d ? d : null,
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,

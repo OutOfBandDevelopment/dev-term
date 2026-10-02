@@ -54,6 +54,7 @@ public partial class StreamMonitorWindow : Window
     private readonly StreamMonitor _monitor;
     private readonly StreamCaptureConverter _converter;
     private readonly StreamCaptureConverterOptions _converterOptions;
+    private readonly IReadOnlyList<StreamConversionChoice> _choices;
 
     public StreamMonitorWindow(StreamMonitor monitor, CliOptions? cliOptions = null)
     {
@@ -63,12 +64,13 @@ public partial class StreamMonitorWindow : Window
         _monitor = monitor;
         _converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions);
         _converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(_converterOptions));
-        foreach (var mode in StreamConversionModes.All)
+        _choices = StreamConversionChoice.For(_converterOptions);
+        foreach (var choice in _choices)
         {
-            ConvertModeBox.Items.Add(new ComboBoxItem { Content = StreamConversionModes.DisplayName(mode), Tag = mode });
+            ConvertModeBox.Items.Add(new ComboBoxItem { Content = choice.DisplayName, Tag = choice });
         }
 
-        ConvertModeBox.SelectedIndex = StreamConversionModes.All.ToList().IndexOf(_converterOptions.Mode);
+        ConvertModeBox.SelectedIndex = StreamConversionChoice.IndexOf(_choices, _converterOptions);
 
         CaptureList.ItemsSource = Items;
         foreach (var capture in monitor.Captures)
@@ -289,14 +291,18 @@ public partial class StreamMonitorWindow : Window
     internal StreamConversionMode ConvertMode
     {
         get => _converterOptions.Mode;
-        set => ConvertModeBox.SelectedIndex = StreamConversionModes.All.ToList().IndexOf(value);
+        set => ConvertModeBox.SelectedIndex = Math.Max(0, _choices.ToList().FindIndex(c => c.Mode == value));
     }
+
+    /// <summary>Selects the registered tool named <paramref name="name"/> next to Convert... (this window only).</summary>
+    internal void SelectConvertTool(string name) =>
+        ConvertModeBox.SelectedIndex = Math.Max(0, _choices.ToList().FindIndex(c => c.Mode == StreamConversionMode.Tool && string.Equals(c.ToolName, name, StringComparison.OrdinalIgnoreCase)));
 
     private void ConvertMode_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (ConvertModeBox.SelectedItem is ComboBoxItem { Tag: StreamConversionMode mode })
+        if (ConvertModeBox.SelectedItem is ComboBoxItem { Tag: StreamConversionChoice choice })
         {
-            _converterOptions.Mode = mode;
+            choice.ApplyTo(_converterOptions);
         }
     }
 

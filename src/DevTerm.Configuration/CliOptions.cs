@@ -339,13 +339,13 @@ public sealed class CliOptions
     /// Which mechanism the Stream Monitor's "Convert..." action uses, from
     /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration":
     /// <c>none</c> (default - the action reports nothing is configured), <c>externaltool</c> (run a
-    /// configured external converter, e.g. Ghostscript), <c>webservice</c> (POST the capture to a
-    /// configured HTTP endpoint), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
+    /// configured external converter, e.g. Ghostscript), <c>auto</c> / <c>tool:&lt;name&gt;</c> (a registered
+    /// converter tool), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
     /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
     /// </summary>
     [Category("Stream Monitor")]
     [DisplayName("Convert mode")]
-    [Description("How Stream Monitor's Convert action works: none, externaltool, webservice, or internalhpgltosvg.")]
+    [Description("How Stream Monitor's Convert action works: none, externaltool, auto, tool:<name>, or internalhpgltosvg.")]
     public string? StreamConvertMode { get; set; }
 
     /// <summary>The external converter executable (e.g. Ghostscript's <c>gswin64c.exe</c>) run when <see cref="StreamConvertMode"/> is <c>externaltool</c>.</summary>
@@ -369,16 +369,6 @@ public sealed class CliOptions
     [DisplayName("External tool DPI")]
     public int StreamConvertDpi { get; set; } = 150;
 
-    /// <summary>The HTTP endpoint a capture's raw bytes are POSTed to when <see cref="StreamConvertMode"/> is <c>webservice</c>. No default - this sends data to an external, user-configured host.</summary>
-    [Category("Stream Monitor")]
-    [DisplayName("Web service URL")]
-    public string? StreamConvertWebServiceUrl { get; set; }
-
-    /// <summary>The HTTP method used for <see cref="StreamConvertWebServiceUrl"/>. Defaults to <c>POST</c>.</summary>
-    [Category("Stream Monitor")]
-    [DisplayName("Web service method")]
-    public string StreamConvertWebServiceMethod { get; set; } = "POST";
-
     /// <summary>
     /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible
     /// default per mechanism (<c>svg</c> for the internal HP-GL converter, <c>png</c> for the other two).
@@ -386,4 +376,45 @@ public sealed class CliOptions
     [Category("Stream Monitor")]
     [DisplayName("Converted output extension")]
     public string? StreamConvertOutputExtension { get; set; }
+
+    /// <summary>
+    /// External converter tools registered by name (docs/design/proposals/stream-converter-tools.md). Set in
+    /// the profile JSON; <see cref="StreamConvertMode"/> <c>auto</c> picks the first whose formats match a
+    /// capture, <c>tool:Name</c> runs one by name.
+    /// </summary>
+    [Browsable(false)]
+    public List<StreamConvertToolOptions> StreamConvertTools { get; set; } = [];
+}
+
+/// <summary>One registered Stream Monitor converter tool - see <see cref="CliOptions.StreamConvertTools"/>.</summary>
+public sealed class StreamConvertToolOptions
+{
+    /// <summary>Shown in the conversion list and used by <c>tool:Name</c>.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The executable.</summary>
+    public string? Path { get; set; }
+
+    /// <summary>Argument template; <c>{input}</c>, <c>{output}</c>, <c>{dpi}</c> are substituted per token.</summary>
+    public string Arguments { get; set; } = string.Empty;
+
+    /// <summary>Comma-separated capture formats it accepts (<c>ps</c>, <c>pcl</c>, <c>hpgl</c>, <c>image</c> or an extension such as <c>bmp</c>); empty means any.</summary>
+    public string Formats { get; set; } = string.Empty;
+
+    /// <summary>Extension (no dot) of the file the tool writes.</summary>
+    public string OutputExtension { get; set; } = "png";
+
+    /// <summary>The value substituted for <c>{dpi}</c>.</summary>
+    public int Dpi { get; set; } = 150;
+
+    /// <summary>A copy, so an editor can change a tool without touching the options it was loaded from.</summary>
+    public static StreamConvertToolOptions Clone(StreamConvertToolOptions tool) => new()
+    {
+        Name = tool.Name,
+        Path = tool.Path,
+        Arguments = tool.Arguments,
+        Formats = tool.Formats,
+        OutputExtension = tool.OutputExtension,
+        Dpi = tool.Dpi,
+    };
 }

@@ -23,7 +23,11 @@ internal static class StreamMonitorMode
         "Detects images (PNG, JPEG, GIF, BMP, TIFF), HP-GL, PostScript and PCL in the\n" +
         "incoming data and saves each automatically. No preview here - open the file.";
 
-    private static string ModeButtonText(StreamConversionMode mode) => $"Convert as: {StreamConversionModes.DisplayName(mode)}";
+    private static string ModeButtonText(StreamCaptureConverterOptions options)
+    {
+        var choices = StreamConversionChoice.For(options);
+        return $"Convert as: {choices[StreamConversionChoice.IndexOf(choices, options)].DisplayName}";
+    }
 
     internal static StreamMonitorWindowParts BuildWindow(IApplication app, StreamMonitor monitor, CliOptions? cliOptions = null)
     {
@@ -57,7 +61,7 @@ internal static class StreamMonitorMode
         };
         var detailLabel = new Label { X = 0, Y = Pos.Bottom(captureList), Width = Dim.Fill(), Height = 2, HotKeySpecifier = noHotKey };
         var toggleButton = new Button { X = 0, Y = Pos.Bottom(detailLabel), Text = "Stop Monitoring" };
-        var modeButton = new Button { X = Pos.Right(toggleButton) + 2, Y = Pos.Top(toggleButton), Text = ModeButtonText(converterOptions.Mode) };
+        var modeButton = new Button { X = Pos.Right(toggleButton) + 2, Y = Pos.Top(toggleButton), Text = ModeButtonText(converterOptions) };
         var convertButton = new Button { X = Pos.Right(modeButton) + 2, Y = Pos.Top(toggleButton), Text = "Convert..." };
         var closeButton = new Button { X = Pos.Right(convertButton) + 2, Y = Pos.Top(toggleButton), Text = "Close", IsDefault = true };
 
@@ -141,11 +145,12 @@ internal static class StreamMonitorMode
         modeButton.Accepting += (_, e) =>
         {
             e.Handled = true;
-            var items = StreamConversionModes.All.Select(StreamConversionModes.DisplayName).ToList();
+            var choices = StreamConversionChoice.For(converterOptions);
+            var items = choices.Select(c => c.DisplayName).ToList();
             if (FormRenderer.PickFromList(app, "Conversion", items) is { } chosen)
             {
-                converterOptions.Mode = StreamConversionModes.All[chosen];
-                modeButton.Text = ModeButtonText(converterOptions.Mode);
+                choices[chosen].ApplyTo(converterOptions);
+                modeButton.Text = ModeButtonText(converterOptions);
             }
         };
 

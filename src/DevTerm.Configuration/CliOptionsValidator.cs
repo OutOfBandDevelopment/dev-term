@@ -60,20 +60,34 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
-            case "webservice":
-                if (string.IsNullOrWhiteSpace(options.StreamConvertWebServiceUrl) ||
-                    !Uri.TryCreate(options.StreamConvertWebServiceUrl, UriKind.Absolute, out _))
+            case "internalhpgltosvg":
+            case "auto":
+                break;
+
+            case var named when named.StartsWith("tool:", StringComparison.Ordinal):
+                var toolName = named["tool:".Length..].Trim();
+                if (!options.StreamConvertTools.Any(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    return ValidateOptionsResult.Fail("'--streamconvertwebserviceurl' must be a valid absolute URL when '--streamconvertmode' is 'webservice'.");
+                    return ValidateOptionsResult.Fail($"'--streamconvertmode' names the tool '{toolName}', which is not in StreamConvertTools.");
                 }
 
                 break;
 
-            case "internalhpgltosvg":
-                break;
-
             default:
-                return ValidateOptionsResult.Fail($"Unknown '--streamconvertmode' '{options.StreamConvertMode}'. Expected 'none', 'externaltool', 'webservice', or 'internalhpgltosvg'.");
+                return ValidateOptionsResult.Fail($"Unknown '--streamconvertmode' '{options.StreamConvertMode}'. Expected 'none', 'externaltool', 'internalhpgltosvg', 'auto', or 'tool:<name>'.");
+        }
+
+        foreach (var tool in options.StreamConvertTools)
+        {
+            if (string.IsNullOrWhiteSpace(tool.Name) || string.IsNullOrWhiteSpace(tool.Path))
+            {
+                return ValidateOptionsResult.Fail("Every StreamConvertTools entry needs a Name and a Path.");
+            }
+        }
+
+        if (options.StreamConvertTools.GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+        {
+            return ValidateOptionsResult.Fail("StreamConvertTools names must be unique.");
         }
 
         switch (options.Transport.ToLowerInvariant())

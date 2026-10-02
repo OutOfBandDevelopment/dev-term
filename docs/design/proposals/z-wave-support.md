@@ -55,6 +55,16 @@ dropped a confirmed-no-op batch-program format rather than keep chasing it):
   would be its first real consumer, so the integration shape (a decoder wrapping a Kaitai-generated
   parser, presumably) isn't proven yet the way the text-schema SCPI path is.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Acquire a Z-Wave controller (Z-Stick or RPi HAT)
+- [ ] Capture real frames to ground the protocol work
+- [ ] Transport and codec with unit tests
+- [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
+- [ ] Real-hardware pass (`docs/test/`)
+
 ## Status
 
 **Not started — design only.** No Z-Wave hardware (a Z-Stick or an RPi HAT) is confirmed on hand yet.

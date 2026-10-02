@@ -179,6 +179,22 @@ already is) rather than a new top-level settings surface.
   already-saved capture file, so they have no dependency on Phase 2's harder rendering work and could
   ship independently, ahead of everything else in Phase 2, if that's a more useful order.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Phase 1: sniffer, end finder, `StreamContentWatcher`, declared hint, Stream Monitor in both front ends, WPF native-image preview
+- [x] Phase 1 verified on real hardware: DG1062Z BMP and TDS2024 BMP (`docs/test/2026-10-02-18-20-00.md`)
+- [x] Conversion: internal HP-GL to SVG, external tool, multiple named tools (`stream-converter-tools.md`)
+- [x] WPF SVG preview, verified on a real Tektronix 2230 plot
+- [x] Real Ghostscript (PostScript) and GhostPCL (PCL) conversion runs (`RealGhostscriptConversionTests`, 2026-10-02)
+- [ ] Rewrite the stale Phase 2 and Status text (web service removed; "Phase 2: not started" header is wrong)
+- [ ] Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
+- [ ] SVG drawing in the TUI (it only lists the converted file)
+- [ ] CLI-mode "export last N captures" (Stream Monitor has no CLI support)
+- [ ] Retention/cleanup policy for the exports folder (low priority)
+- [ ] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
+
 ## Status
 
 **Phase 1: implemented 2026-09-25. Phase 2: not started.** Screen reference:
@@ -228,8 +244,9 @@ What was built, and where it differs from the text above:
   HP-GL/PostScript/PCL show "Preview not available yet".
 - **Verified**: unit tests only, covering every signature/end finder byte-by-byte, the watcher on a
   fake clock, the monitor over a real `Session`, both windows, and the main windows' wiring including
-  a live profile switch. **Not verified against real hardware yet**: the DG1062Z screen capture and
-  the TDS2024 hard copy are the obvious first checks.
+  a live profile switch. **Verified against real hardware 2026-10-02**: the DG1062Z screen dump
+  (`HCOPy:SDUMp:DATA?`, 230,456-byte BMP, USBTMC) and the TDS2024 hard copy (`HARDCopy START`, 77,878-byte BMP,
+  19200 baud TCP bridge) each arrive as one capture, saved as `.bmp`; see `docs/test/2026-10-02-18-20-00.md`.
 - **Open questions, as answered so far**: unsolicited captures work (sniffing needs no tracked
   query). One capture at a time: a second stream starting mid-capture is appended to the first.
   No retention/cleanup.
@@ -256,7 +273,7 @@ What was built, and where it differs from the proposal text above:
   `ProcessStartInfo.ArgumentList` (`UseShellExecute = false`) — never a shell-parsed command string —
   so a captured file name or a substituted path containing spaces can't break out of the intended
   argument boundaries. `StreamConvertDpi` (default 150) is the only non-path placeholder.
-- **Web service**: POSTs (method configurable) the capture's raw bytes with its detected
+- **Web service** (removed 2026-10-02, see [stream-converter-tools.md](stream-converter-tools.md)): POSTed (method configurable) the capture's raw bytes with its detected
   `StreamContentKind.MediaType` as `Content-Type`, via a named `IHttpClientFactory` client
   (`StreamCaptureConverter.HttpClientName`) when running under DI, or an owned, per-call `HttpClient`
   (disposed after) when constructed ad hoc outside DI — the same ad-hoc-construction accommodation

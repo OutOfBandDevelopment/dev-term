@@ -66,6 +66,16 @@ neither of those has: per-message **topic addressing**, not just message boundar
   small/embedded devices, and the lightest client dependency) covers the real motivating use case and
   AMQP/STOMP can stay backlog until a specific need for either shows up.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Identify a concrete target broker/device (none yet)
+- [ ] Resolve the per-topic routing question against that real use case
+- [ ] Transport design and unit tests
+- [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
+- [ ] Real-broker verification
+
 ## Status
 
 **Not started — design only.** No code exists yet, and no concrete target broker/device has been
