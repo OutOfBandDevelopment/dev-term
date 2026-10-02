@@ -89,7 +89,7 @@ public sealed class HidTransportTests
         // synchronous body (no Task.Run), so the call expression itself didn't return a Task until
         // Open() returned - blocking whatever thread called OpenAsync (often the UI thread) for
         // however long the real, synchronous HidSharp open takes. See
-        // docs/bugs/fixed/055-hid-read-thread-and-close-blocking.md.
+        // docs/bugs/resolved/055-hid-read-thread-and-close-blocking.md.
         var (device, _) = CreateDevice();
         using var openGate = new ManualResetEventSlim(false);
         device.Setup(d => d.Open()).Callback(() => openGate.Wait(TimeSpan.FromSeconds(5)));

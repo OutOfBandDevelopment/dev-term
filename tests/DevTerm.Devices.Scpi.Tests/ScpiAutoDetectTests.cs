@@ -96,7 +96,7 @@ public sealed class ScpiAutoDetectTests
     {
         // Regression test for bug 006: DetectAsync's own pending id ("scpiAutoDetect.reply") used
         // to stay queued forever after a NoReply timeout, so the *next* query's reply landed on
-        // that stale id instead of its own. See docs/bugs/fixed/006-reply-queue-desync.md.
+        // that stale id instead of its own. See docs/bugs/resolved/006-reply-queue-desync.md.
         var (session, presenter) = await OpenAsync(idnReply: null);
         await using var _ = session;
 

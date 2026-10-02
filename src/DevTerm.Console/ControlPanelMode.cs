@@ -380,7 +380,7 @@ internal static class ControlPanelMode
         // (e.g. ZoomH4nControlSurface's wake watcher) unbinds it here, the same way the ValuesChanged
         // subscription above is torn down — every caller already disposes panelParts.Window once its
         // nested app.Run(...) returns (see TuiMode.cs), so this reliably fires unlike the main window's
-        // own Disposing (see docs/bugs/fixed/020-zoomh4n-wake-watcher-leak.md).
+        // own Disposing (see docs/bugs/resolved/020-zoomh4n-wake-watcher-leak.md).
         if (surface is IDisposable disposableSurface)
         {
             window.Disposing += (_, _) => disposableSurface.Dispose();

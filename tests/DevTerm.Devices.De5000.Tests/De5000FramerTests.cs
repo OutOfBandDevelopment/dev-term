@@ -133,7 +133,7 @@ public sealed class De5000FramerTests
     {
         // Regression test for bug 005: the secondary 16-bit value was never sign-extended, so
         // theta = -45.0 deg (raw 0xFE3E) decoded as a huge positive (6508.6) instead. See
-        // docs/bugs/fixed/005-de5000-negative-secondary.md.
+        // docs/bugs/resolved/005-de5000-negative-secondary.md.
         var bad = (byte[])_validFrame.Clone();
         bad[10] = 0x04; // Secondary quantity code 4 -> Theta.
         bad[11] = 0xFE;
@@ -153,7 +153,7 @@ public sealed class De5000FramerTests
     public void TryParse_NegativeSecondaryPercent_DecodesAsANegativeValue()
     {
         // Same defect as the degrees case above, for the other secondary unit the reference
-        // implementation sign-extends: '%'. See docs/bugs/fixed/005-de5000-negative-secondary.md.
+        // implementation sign-extends: '%'. See docs/bugs/resolved/005-de5000-negative-secondary.md.
         var bad = (byte[])_validFrame.Clone();
         bad[10] = 0x01; // Secondary quantity code 1 -> D.
         bad[11] = 0xFF;

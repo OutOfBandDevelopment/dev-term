@@ -4,7 +4,7 @@ namespace DevTerm.DeviceManifests;
 /// Guards a manifest's own <see cref="DeviceManifest.UiFile"/>/<see cref="InboundProtocol.KaitaiFile"/>
 /// path against escaping the manifest's folder — a rooted path (<c>C:\...</c>) or a <c>..\</c> segment
 /// would otherwise let <see cref="DeviceManifestWriter.Save"/> write, and <see cref="DeviceManifestLoader"/>
-/// read, anywhere on disk. See docs/bugs/fixed/010-manifest-path-traversal.md.
+/// read, anywhere on disk. See docs/bugs/resolved/010-manifest-path-traversal.md.
 /// </summary>
 public static class ManifestRelativePath
 {

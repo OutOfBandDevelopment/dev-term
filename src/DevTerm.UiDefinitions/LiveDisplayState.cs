@@ -247,7 +247,7 @@ public sealed class StripChartState : LiveDisplayState
     /// Hard ceiling on <see cref="Capacity"/>, regardless of what a manifest's
     /// <see cref="StripChartControl.HistoryLength"/> declares — protects against an
     /// unbounded-memory manifest (a per-sample <c>double</c> queue with no upper bound). See
-    /// docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+    /// docs/bugs/resolved/050-strip-chart-history-unbounded.md.
     /// </summary>
     public const int MaxCapacity = 10_000;
 

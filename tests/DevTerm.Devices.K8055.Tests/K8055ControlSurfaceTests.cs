@@ -184,7 +184,7 @@ public sealed class K8055ControlSurfaceTests
     {
         // Since bug 045's fix, ParseByte no longer throws for unparsable text, so this (unlike an
         // actually-unknown command id) is no longer an error path for PreviewCommand either — it
-        // matches InvokeAsync's own fallback. See docs/bugs/fixed/045-control-surface-parse-throws.md.
+        // matches InvokeAsync's own fallback. See docs/bugs/resolved/045-control-surface-parse-throws.md.
         var (session, _) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 
@@ -198,7 +198,7 @@ public sealed class K8055ControlSurfaceTests
         // Regression test for bug 045: ParseByte used a throwing double.Parse, so bad text reaching
         // InvokeAsync (unlike PreviewCommand, which already catches this in its own try/catch around
         // the shared Plan method) threw an unhandled FormatException straight out of InvokeAsync. See
-        // docs/bugs/fixed/045-control-surface-parse-throws.md.
+        // docs/bugs/resolved/045-control-surface-parse-throws.md.
         var (session, transport) = CreateSurfaceSession();
         var surface = new K8055ControlSurface(session);
 

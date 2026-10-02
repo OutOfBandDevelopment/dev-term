@@ -81,7 +81,7 @@ public sealed class MainWindowSwitchProfileTests
         // structured presenter) built against the session/catalog active when the panel was opened.
         // Before the fix, SwitchProfileAsync disposed that session and opened a new one without ever
         // closing an already-open panel, so its buttons went on calling into a disposed transport.
-        // See docs/bugs/fixed/016-wpf-panels-bound-to-old-session.md.
+        // See docs/bugs/resolved/016-wpf-panels-bound-to-old-session.md.
         StaTestRunner.Run(async () =>
         {
             var initialTransport = new FakeTransport();
@@ -120,7 +120,7 @@ public sealed class MainWindowSwitchProfileTests
         // captures the old catalog's structuredSource before awaiting a reply. Before the fix, if a
         // profile switch completed while that await was still pending, the detection's completion
         // paired the OLD structuredSource with the NEW _session when opening a panel. See
-        // docs/bugs/fixed/016-wpf-panels-bound-to-old-session.md.
+        // docs/bugs/resolved/016-wpf-panels-bound-to-old-session.md.
         StaTestRunner.Run(async () =>
         {
             var initialTransport = new FakeTransport();
@@ -164,7 +164,7 @@ public sealed class MainWindowSwitchProfileTests
         // still pending (here, a TCP listener mode that never gets a client, standing in for a host
         // that never actively refuses) must not have its eventual failure/cancellation reset the
         // connect menu/send box/output after a second, newer switch has already established its own,
-        // real connection. See docs/bugs/fixed/017-wpf-profile-switch-no-supersede.md.
+        // real connection. See docs/bugs/resolved/017-wpf-profile-switch-no-supersede.md.
         StaTestRunner.Run(async () =>
         {
             var initialTransport = new FakeTransport();

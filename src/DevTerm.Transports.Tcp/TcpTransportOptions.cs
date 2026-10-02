@@ -24,7 +24,7 @@ public sealed class TcpTransportOptions
     /// Milliseconds a single <see cref="TcpTransport.WriteAsync"/> call may block before it's abandoned with a
     /// <see cref="TimeoutException"/> - a peer that stops reading (a full TCP send window) would otherwise block
     /// the caller (often the UI thread, via Session.SendAsync) forever. See
-    /// docs/bugs/fixed/029-tcp-write-blocks-no-timeout.md.
+    /// docs/bugs/resolved/029-tcp-write-blocks-no-timeout.md.
     /// </summary>
     public int WriteTimeoutMs { get; set; } = 5000;
 

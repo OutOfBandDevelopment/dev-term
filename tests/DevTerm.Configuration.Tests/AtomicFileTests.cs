@@ -3,7 +3,7 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Configuration.Tests;
 
 /// <summary>
-/// See docs/bugs/fixed/033-non-atomic-writes.md - <see cref="AtomicFile.WriteAllText"/> replaces a
+/// See docs/bugs/resolved/033-non-atomic-writes.md - <see cref="AtomicFile.WriteAllText"/> replaces a
 /// bare <c>File.WriteAllText(path, ...)</c> (which overwrites in place, so a crash or power loss
 /// mid-write leaves a truncated file at <c>path</c>) with a write to a temporary file followed by
 /// an atomic <see cref="File.Move(string, string, bool)"/>.

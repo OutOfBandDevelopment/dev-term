@@ -7,7 +7,7 @@ namespace DevTerm.Configuration;
 /// <see cref="AppPreferencesStore"/>, or <see cref="DevTermConfiguration.SaveLocalProfile"/> read
 /// from next - the old file stays intact until the new one is fully written. Same pattern as
 /// <c>DevTerm.Logging.SessionLog.Save</c> (a different project, writing a stream rather than a
-/// short string, so not shared directly). See docs/bugs/fixed/033-non-atomic-writes.md.
+/// short string, so not shared directly). See docs/bugs/resolved/033-non-atomic-writes.md.
 /// </summary>
 public static class AtomicFile
 {

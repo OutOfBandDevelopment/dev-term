@@ -208,7 +208,7 @@ public sealed class StreamContentWatcherTests
     {
         // Regression test for bug 042: a hinted "#0" indefinite-length block used to be treated as
         // NotABlock, so the "#0" header bytes were left in front of the payload and captured as part
-        // of it instead of being stripped. See docs/bugs/fixed/042-stream-watcher-indefinite-block.md.
+        // of it instead of being stripped. See docs/bugs/resolved/042-stream-watcher-indefinite-block.md.
         var (watcher, _, captures) = Create();
         var png = StreamContentSamples.Png();
 

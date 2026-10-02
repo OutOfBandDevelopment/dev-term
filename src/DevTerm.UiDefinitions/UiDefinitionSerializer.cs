@@ -30,7 +30,7 @@ public static class UiDefinitionSerializer
         using var stringReader = new StringReader(xml);
         // A manifest's UiFile .xml is untrusted input — prohibit DTDs so an internal-entity
         // DOCTYPE (billion-laughs style) can't expand into the deserialized model. See
-        // docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        // docs/bugs/resolved/049-uidefinition-xml-dtd.md.
         using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
         return (UiDefinition?)_xmlSerializerInstance.Deserialize(xmlReader)
             ?? throw new InvalidOperationException("Deserialized UI definition was null.");

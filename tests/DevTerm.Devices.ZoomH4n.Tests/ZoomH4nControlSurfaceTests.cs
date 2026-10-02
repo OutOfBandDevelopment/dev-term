@@ -121,7 +121,7 @@ public sealed class ZoomH4nControlSurfaceTests
     // Regression tests for bug 020: the surface binds its wake watcher into the session's live
     // pipeline (see the class doc comment) but had no way to unbind it again, so every panel open
     // left another watcher scanning every received byte for the rest of the session. See
-    // docs/bugs/fixed/020-zoomh4n-wake-watcher-leak.md.
+    // docs/bugs/resolved/020-zoomh4n-wake-watcher-leak.md.
 
     [TestMethod]
     [TestCategory(TestCategories.BugRegression)]

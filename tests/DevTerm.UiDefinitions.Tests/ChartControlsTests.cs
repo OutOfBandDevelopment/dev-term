@@ -175,7 +175,7 @@ public sealed class ChartControlsTests
     {
         // Regression test for bug 050: HistoryLength came straight from the manifest with no upper
         // bound, so a manifest could make the chart's per-sample queue grow without limit. See
-        // docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        // docs/bugs/resolved/050-strip-chart-history-unbounded.md.
         var state = new StripChartState(new StripChartControl
         {
             Id = "s",

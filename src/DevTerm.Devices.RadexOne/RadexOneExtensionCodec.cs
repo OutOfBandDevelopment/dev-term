@@ -71,7 +71,7 @@ internal static class RadexOneExtensionCodec
     /// trace's own worked example (Ambient=Accumulated=0x12, CPM=0x15). The trailing checksum covers
     /// the first 20 bytes and is verified here — the outer framer's checksum only guarantees the
     /// outer header arrived intact, not this extension's own payload (see
-    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
+    /// docs/bugs/resolved/021-radexone-extension-checksum-unverified.md).
     /// </summary>
     public static bool TryParseReadData(ReadOnlySpan<byte> extension, out ushort ambient, out ushort accumulated, out ushort cpm)
     {
@@ -96,7 +96,7 @@ internal static class RadexOneExtensionCodec
     /// bytes — the same shape as <see cref="BuildWriteSettings"/>'s request, minus the leading
     /// Reserved(0x000E) field (replaced here by a zero word). The trailing checksum covers the first
     /// 14 bytes and is verified here (see
-    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
+    /// docs/bugs/resolved/021-radexone-extension-checksum-unverified.md).
     /// </summary>
     public static bool TryParseReadSettings(ReadOnlySpan<byte> extension, out byte alarmMode, out ushort threshold)
     {
@@ -116,7 +116,7 @@ internal static class RadexOneExtensionCodec
     /// <summary>
     /// Write Settings ack: CommandCode(2) echo + ZeroReserved(2) + Checksum(2) = 6 bytes. The
     /// trailing checksum covers the first 4 bytes and is verified here (see
-    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md).
+    /// docs/bugs/resolved/021-radexone-extension-checksum-unverified.md).
     /// </summary>
     public static bool TryVerifyWriteSettingsAck(ReadOnlySpan<byte> extension) =>
         extension.Length >= 6 && HasValidChecksum(extension, coveredLength: 4);
@@ -129,7 +129,7 @@ internal static class RadexOneExtensionCodec
     /// document), so this deliberately doesn't re-validate this extension's own inner checksum —
     /// unlike <see cref="TryParseReadData"/>/<see cref="TryParseReadSettings"/>/
     /// <see cref="TryVerifyWriteSettingsAck"/>, which do (see
-    /// docs/bugs/fixed/021-radexone-extension-checksum-unverified.md); this just slices out the
+    /// docs/bugs/resolved/021-radexone-extension-checksum-unverified.md); this just slices out the
     /// middle for display.
     /// </summary>
     public static ReadOnlySpan<byte> ReadSerialVersionPayload(ReadOnlySpan<byte> extension) =>

@@ -15,7 +15,7 @@ public sealed class PlaybackTextTests
     {
         // Regression test for bug 040: TimeSpan's "h" custom format specifier is the hour-of-day
         // component (0-23), not total hours, so a 25-hour offset showed as "1:00:00.000" instead of
-        // "25:00:00.000". See docs/bugs/fixed/040-playback-offset-over-24h.md.
+        // "25:00:00.000". See docs/bugs/resolved/040-playback-offset-over-24h.md.
         var offset = TimeSpan.FromHours(25);
 
         var text = PlaybackText.FormatOffset(offset);

@@ -27,7 +27,7 @@ public sealed class SystemTcpConnectionSourceTests
         // Regression test for bug 056: AcceptAsync used to call IPAddress.Parse(options.Host)
         // directly on the raw host string, which throws FormatException for a non-IP-literal host
         // like "localhost" - `--listen true --host localhost` never got as far as listening. See
-        // docs/bugs/fixed/056-tcp-listen-rejects-hostnames.md.
+        // docs/bugs/resolved/056-tcp-listen-rejects-hostnames.md.
         var port = GetFreePort();
         var options = new TcpTransportOptions { Mode = TcpTransportMode.Listener, Host = "localhost", Port = port };
         var acceptTask = _source.AcceptAsync(options, TestContext.CancellationToken);
@@ -49,7 +49,7 @@ public sealed class SystemTcpConnectionSourceTests
     {
         // Regression test for bug 056: AcceptAsync used to bind IPAddress.Any unconditionally,
         // which is IPv4-only - an IPv6 peer could never connect in listen mode with no host set.
-        // See docs/bugs/fixed/056-tcp-listen-rejects-hostnames.md.
+        // See docs/bugs/resolved/056-tcp-listen-rejects-hostnames.md.
         var port = GetFreePort();
         var options = new TcpTransportOptions { Mode = TcpTransportMode.Listener, Host = null, Port = port };
         var acceptTask = _source.AcceptAsync(options, TestContext.CancellationToken);

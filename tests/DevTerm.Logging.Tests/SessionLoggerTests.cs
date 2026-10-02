@@ -210,7 +210,7 @@ public sealed class SessionLoggerTests
         var backing = new MemoryStream();
         // Calls 1-2: header (content, newline). Calls 3-4: the "session" record Attach writes below.
         // Call 5: the "open" record's content succeeds; call 6 (its newline) fails - a torn line,
-        // exactly the disk-full-mid-write scenario from docs/bugs/fixed/036-log-write-failure-silent.md.
+        // exactly the disk-full-mid-write scenario from docs/bugs/resolved/036-log-write-failure-silent.md.
         var failing = new FailOnNthWriteStream(backing, failOnWriteNumber: 6);
         var writer = new SessionLogWriter(failing, Header());
         using var logger = new SessionLogger(writer);

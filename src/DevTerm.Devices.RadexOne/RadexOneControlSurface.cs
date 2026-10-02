@@ -9,7 +9,7 @@ namespace DevTerm.Devices.RadexOne;
 /// <see cref="RadexOneFramer"/> and <see cref="RadexOneExtensionCodec"/>) over the given
 /// <see cref="Session"/>'s live serial connection (9600 8N1, no handshake — real-hardware confirmed
 /// 2026-09-26 on COM8, correcting an earlier, unverified "2400 baud" claim — see
-/// docs/bugs/fixed/061-radexone-wrong-baud-rate.md), per docs/design/proposals/radex-one-protocol.md. The device is a plain
+/// docs/bugs/resolved/061-radexone-wrong-baud-rate.md), per docs/design/proposals/radex-one-protocol.md. The device is a plain
 /// virtual COM port; there is no HID report wrapping (an earlier "confirmed directly" HID assumption
 /// in that doc was wrong). "readData"/"readSerialVersion"/"readSettings"/"resetAccumulated" are
 /// one-shot queries built via <see cref="RadexOneExtensionCodec.BuildQuery"/>; their replies arrive asynchronously through

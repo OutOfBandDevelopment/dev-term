@@ -50,7 +50,7 @@ public static class RadexOneCommand
 ///
 /// <para>The device is a plain virtual COM port (9600 8N1, real-hardware confirmed 2026-09-26,
 /// correcting an earlier, unverified "2400 baud" claim - see
-/// docs/bugs/fixed/061-radexone-wrong-baud-rate.md), not a USB HID device as an earlier draft of the
+/// docs/bugs/resolved/061-radexone-wrong-baud-rate.md), not a USB HID device as an earlier draft of the
 /// proposal wrongly claimed, so there is no report wrapping to account for here.</para>
 /// </summary>
 public static class RadexOneFramer
@@ -109,7 +109,7 @@ public static class RadexOneFramer
     /// a stream-buffering reader (see <see cref="RadexOneDecoder"/>) needs to reject a bogus header
     /// (e.g. line noise that happens to start with the prefix bytes, with a garbage length up to
     /// 65,535) immediately rather than stalling until that many bytes accumulate (see
-    /// docs/bugs/fixed/022-radexone-false-header-stall.md). Returns the declared
+    /// docs/bugs/resolved/022-radexone-false-header-stall.md). Returns the declared
     /// <paramref name="extensionLength"/> on success so the caller knows how many more bytes to wait
     /// for before the extension itself can be parsed.
     /// </summary>

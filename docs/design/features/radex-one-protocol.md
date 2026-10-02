@@ -16,7 +16,7 @@ COM8 that the source doc's original transport claim (a plain virtual COM port) w
 along** — see "Device" below for how an earlier draft of this doc got that backwards. The same
 2026-09-25 pass also guessed the wrong baud rate (2400); **2026-09-26: corrected to 9600, the
 device's actual real-hardware-confirmed baud** — see
-[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md).
+[061](../../bugs/resolved/061-radexone-wrong-baud-rate.md).
 
 ## Device
 
@@ -24,7 +24,7 @@ device's actual real-hardware-confirmed baud** — see
 Quarta. It enumerates as a **plain virtual COM port** (9600 baud, 8 data bits, no parity, 1 stop
 bit, no handshake) — real-hardware confirmed 2026-09-26 on COM8 (correcting an earlier, unverified
 "2400 baud" guess from 2026-09-25 — see
-[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md)). An earlier draft of this doc
+[061](../../bugs/resolved/061-radexone-wrong-baud-rate.md)). An earlier draft of this doc
 claimed it was "confirmed directly" as a USB HID device instead and built the whole module (HID
 transport, a `RadexOneHidFraming` report wrapper) around that claim; that claim was never actually
 checked against a real device and turned out to be wrong. Once a real unit turned up as a COM
@@ -131,7 +131,7 @@ trace except where noted:
   payload leniently (skip the first 4 bytes, drop the trailing 2-byte checksum) without
   re-validating this one extension's own inner checksum — unlike Read Data, Read Settings and the
   Write Settings ack, which now do
-  (`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`); the outer framer's checksum
+  (`docs/bugs/resolved/021-radexone-extension-checksum-unverified.md`); the outer framer's checksum
   only guarantees the outer header arrived intact, not this extension's own payload.
 
 ## Proposed shape
@@ -210,13 +210,13 @@ whole `TestCategory=Unit` suite passes.
 zero bytes** — the transport and packet-layout fixes above were correct, but the 2400 baud setting
 adopted the same day was never itself checked against real hardware. Trying alternate baud rates
 found the device answers at **9600 baud**, not 2400 — see
-[061](../../bugs/fixed/061-radexone-wrong-baud-rate.md). Every code/doc location claiming "2400
+[061](../../bugs/resolved/061-radexone-wrong-baud-rate.md). Every code/doc location claiming "2400
 baud, real-hardware confirmed 2026-09-25" was corrected to 9600, and the real-hardware test now
 passes end to end, decoding a real reading (`RADEX-ONE: CPM=15 Ambient=10 Accum=259`).
 
 `RadexOneExtensionCodec.TryParseReadData`/`TryParseReadSettings`/`TryVerifyWriteSettingsAck` now also
 verify each extension's own trailing checksum, not just the framer's outer header checksum
-(`docs/bugs/fixed/021-radexone-extension-checksum-unverified.md`) — a corrupted extension payload is
+(`docs/bugs/resolved/021-radexone-extension-checksum-unverified.md`) — a corrupted extension payload is
 rejected (falls back to the generic "reply command 0x..." line) rather than shown as a valid reading.
 Read Serial/Version deliberately still doesn't re-validate its own inner checksum; see "Open
 questions" below.

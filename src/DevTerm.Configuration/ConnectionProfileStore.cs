@@ -146,7 +146,7 @@ public sealed class ConnectionProfileStore(string? profilesDirectory = null)
         // Build in a temp file first, then move it into place - an existing zip at zipPath (which
         // Export/Save As already let the user pick to overwrite) must never be deleted/truncated
         // unless the new archive fully succeeded. See
-        // docs/bugs/fixed/034-exportzip-deletes-target-first.md.
+        // docs/bugs/resolved/034-exportzip-deletes-target-first.md.
         var temporary = $"{zipPath}.tmp";
         File.Delete(temporary);
         using (var archive = ZipFile.Open(temporary, ZipArchiveMode.Create))

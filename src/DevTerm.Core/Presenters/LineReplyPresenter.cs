@@ -26,7 +26,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
 
     // Matches AsciiPresenter.DefaultMaxLineLength - an unbounded buffer let a hinted binary block (a
     // screen dump with no CR/LF in it) or a wedged device grow this list forever. See
-    // docs/bugs/fixed/006-reply-queue-desync.md.
+    // docs/bugs/resolved/006-reply-queue-desync.md.
     private const int _maxBufferLength = 4096;
 
     private readonly List<byte> _buffer = [];
@@ -79,7 +79,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
         }
     }
 
-    /// <summary>Clears the pending-reply queue and any partial line — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    /// <summary>Clears the pending-reply queue and any partial line — see docs/bugs/resolved/006-reply-queue-desync.md.</summary>
     public void Reset()
     {
         _buffer.Clear();
@@ -119,7 +119,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
                     {
                         // The second half of an LF CR pair already flushed by the LF — swallow it,
                         // or it counts as a spurious extra empty line and consumes the next pending
-                        // query's reply id. See docs/bugs/fixed/051-line-reply-lf-cr-two-lines.md.
+                        // query's reply id. See docs/bugs/resolved/051-line-reply-lf-cr-two-lines.md.
                         _pendingLf = false;
                         continue;
                     }

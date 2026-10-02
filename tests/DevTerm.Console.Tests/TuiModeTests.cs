@@ -292,7 +292,7 @@ public sealed class TuiModeTests
     }
 
     /// <summary>
-    /// Bug 007 (docs/bugs/fixed/007-tui-modal-windows-not-disposed.md): the K8055 panel window
+    /// Bug 007 (docs/bugs/resolved/007-tui-modal-windows-not-disposed.md): the K8055 panel window
     /// opened via <c>app.Run(panelParts.Window)</c> used to never be disposed by its caller, so
     /// <c>window.Disposing</c>'s <c>structuredPresenter.ValuesChanged -= onValuesChanged</c>
     /// (registered in <c>ControlPanelMode.BuildWindow</c>) never ran — the subscription leaked for
@@ -341,7 +341,7 @@ public sealed class TuiModeTests
     }
 
     /// <summary>
-    /// Bug 019 (docs/bugs/fixed/019-tui-stream-monitor-capture-lost-on-quit.md): the Stream Monitor
+    /// Bug 019 (docs/bugs/resolved/019-tui-stream-monitor-capture-lost-on-quit.md): the Stream Monitor
     /// used to be disposed only via <c>window.Disposing</c> on the main window, which never fires
     /// once <c>Application.Run</c> returns (CLAUDE.md) - so a capture still in progress at quit was
     /// never flushed or saved. <see cref="TuiMode.RunAsync"/> now disposes whatever

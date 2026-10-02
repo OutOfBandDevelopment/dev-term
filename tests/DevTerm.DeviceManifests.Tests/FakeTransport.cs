@@ -11,7 +11,7 @@ internal sealed class FakeTransport : ITransport
 
     public List<byte[]> WrittenPayloads { get; } = [];
 
-    /// <summary>When set, <see cref="WriteAsync"/> throws this instead of recording the write — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    /// <summary>When set, <see cref="WriteAsync"/> throws this instead of recording the write — see docs/bugs/resolved/006-reply-queue-desync.md.</summary>
     public Exception? FailWritesWith { get; set; }
 
     public ConnectionState State

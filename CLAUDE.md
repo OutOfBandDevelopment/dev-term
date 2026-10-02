@@ -303,7 +303,7 @@ file only points there, it doesn't restate them.**
   `PumpAsync`'s own call stack (a synchronous `Output` handler invoking `SendAsync`), so the deadlock
   it was meant to catch reproduced identically. Fixed with an `AsyncLocal<bool>` set at the top of
   `PumpAsync` instead — see the next point and
-  [039](docs/bugs/fixed/039-sendasync-from-read-loop-deadlock.md).
+  [039](docs/bugs/resolved/039-sendasync-from-read-loop-deadlock.md).
 - **An `AsyncLocal<T>` set inside a method stays visible to everything that method calls — sync or
   async — until that method returns, but never to a separate, concurrent caller on the same object**,
   which is exactly the distinction `Session` needs to detect "`SendAsync` was called synchronously
@@ -346,7 +346,7 @@ file only points there, it doesn't restate them.**
   while writing a regression test for bug 062 (`MainWindow.SendBox`, used for command history
   recall): both new tests failed against `IsKeyboardFocused` despite the production fix (restoring
   focus to `SendBox` after a mouse-driven send) being correct — see
-  `docs/bugs/fixed/062-sendbox-arrow-keys-lose-focus-after-send.md`.
+  `docs/bugs/resolved/062-sendbox-arrow-keys-lose-focus-after-send.md`.
 - **A WPF `{Binding ...}` doesn't populate a control synchronously from a constructor-assigned
   `DataContext` if the window is never `Show()`n** — checked directly: a `TextBox` bound to a
   view-model property that already had a value at construction time still read back empty

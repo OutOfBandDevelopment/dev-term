@@ -47,7 +47,7 @@ wrong reading. With a per-byte delay (try 5, 10 and 50 ms) the same sequence is 
 2. If it reproduces, set the smallest reliable delay in the real-hardware test's settings and record it in the profile's
    Notes. Whether a profile should be able to declare a default write delay (so a user need not know the flag) is the
    design question to raise.
-3. If it does not reproduce, close this as `Won't fix`, as with [066](../066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md).
+3. If it does not reproduce, close this as `Won't fix`, as with [066](066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md).
 
 ## Tests to add
 A `[TestCategory(TestCategories.Hardware)]` loop in `RealHardwareSerialTests` for the 34401A that fails on any missing

@@ -52,7 +52,7 @@ public static class ScpiProfileCatalog
     /// <summary>
     /// One entry per profile file that failed to load (bad JSON, unreadable file), skipped rather
     /// than left to fail the whole catalog — see
-    /// docs/bugs/fixed/023-scpi-profile-catalog-bad-file.md. A picker/settings screen can surface
+    /// docs/bugs/resolved/023-scpi-profile-catalog-bad-file.md. A picker/settings screen can surface
     /// this; nothing does yet.
     /// </summary>
     public static IReadOnlyList<string> LoadErrors => _loadErrors;
@@ -94,7 +94,7 @@ public static class ScpiProfileCatalog
                 // A profile-supplied pattern with catastrophic backtracking must not hang auto-detect
                 // (or, here, the whole loop) — treat a timed-out match as "this profile doesn't match"
                 // and keep checking the rest, mirroring ManifestReplyPresenter.AddLineValues. See
-                // docs/bugs/fixed/048-scpi-idn-regex-no-timeout.md.
+                // docs/bugs/resolved/048-scpi-idn-regex-no-timeout.md.
                 continue;
             }
         }
@@ -166,7 +166,7 @@ public static class ScpiProfileCatalog
     /// are both set with <c>Minimum &gt; Maximum</c> — <c>Math.Clamp</c> throws
     /// <see cref="ArgumentException"/> for that combination, so a profile like this is rejected here
     /// rather than reaching a live control panel invocation. See
-    /// docs/bugs/fixed/044-scpi-clamp-bad-limits.md.
+    /// docs/bugs/resolved/044-scpi-clamp-bad-limits.md.
     /// </summary>
     private static ScpiParameterDefinition? FindBadNumericLimits(ScpiInstrumentProfile profile) =>
         profile.Commands

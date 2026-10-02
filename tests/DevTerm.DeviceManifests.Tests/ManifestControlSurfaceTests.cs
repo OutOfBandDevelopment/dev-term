@@ -133,7 +133,7 @@ public sealed class ManifestControlSurfaceTests
         // Regression test for bug 046: double.TryParse happily accepts "NaN"/"Infinity"/"-Infinity" as
         // literal text regardless of NumberStyles, and Math.Clamp passes NaN through unchanged (every
         // comparison against NaN is false), so a non-finite value reached the wire verbatim instead of
-        // being rejected. See docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+        // being rejected. See docs/bugs/resolved/046-manifest-formatnumber-nan.md.
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
         await using var _ = session;
         using var __ = panel;
@@ -149,7 +149,7 @@ public sealed class ManifestControlSurfaceTests
     {
         // Regression test for bug 046: rounding happened after clamping, so an already-in-range value
         // could round past a fractional Maximum (Max 10.5, value 10.5 -> rounds to 11 > 10.5). See
-        // docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+        // docs/bugs/resolved/046-manifest-formatnumber-nan.md.
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
         await using var _ = session;
         using var __ = panel;
@@ -165,7 +165,7 @@ public sealed class ManifestControlSurfaceTests
     {
         // Regression test for bug 024: a text parameter's literal comma used to be mistaken for the
         // separator between parameter values, truncating that parameter and shifting every later one
-        // onto the wrong token. See docs/bugs/fixed/024-comma-in-text-parameter.md. The joined string
+        // onto the wrong token. See docs/bugs/resolved/024-comma-in-text-parameter.md. The joined string
         // here is exactly what ControlPanelMode/ControlPanelWindow's TryReadParameters now produce via
         // ParameterValueList.Join.
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
@@ -185,7 +185,7 @@ public sealed class ManifestControlSurfaceTests
         // Regression test for bug 043: parameters used to be substituted one after another with
         // Replace, so a value typed into an earlier parameter that contains "{Later}" was itself
         // replaced by the later parameter's value. See
-        // docs/bugs/fixed/043-template-substitution-not-single-pass.md.
+        // docs/bugs/resolved/043-template-substitution-not-single-pass.md.
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
         await using var _ = session;
         using var __ = panel;
@@ -225,7 +225,7 @@ public sealed class ManifestControlSurfaceTests
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => panel.Surface.InvokeAsync("nope", null, TestContext.CancellationToken));
     }
 
-    /// <summary>Records every <see cref="Cancel"/> call — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    /// <summary>Records every <see cref="Cancel"/> call — see docs/bugs/resolved/006-reply-queue-desync.md.</summary>
     private sealed class RecordingReplyTracker : IReplyTracker
     {
         public List<string> Cancelled { get; } = [];
@@ -243,7 +243,7 @@ public sealed class ManifestControlSurfaceTests
     {
         // Regression test for bug 006: a failed send used to leave the reply id InvokeAsync just
         // registered pending forever, shifting the *next* query's reply onto the wrong field. See
-        // docs/bugs/fixed/006-reply-queue-desync.md.
+        // docs/bugs/resolved/006-reply-queue-desync.md.
         var transport = new FakeTransport { FailWritesWith = new IOException("write failed") };
         var session = new Session(transport, new Pipeline([]));
         var tracker = new RecordingReplyTracker();

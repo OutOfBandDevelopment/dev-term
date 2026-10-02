@@ -210,7 +210,7 @@ public sealed class PlaybackController
         var index = Engine.Position;
 
         // Save a trial copy first: if the save fails (e.g. an active SessionLogger still has Path open -
-        // see docs/bugs/fixed/030-playback-addnote-live-log.md), the note must not appear added in memory,
+        // see docs/bugs/resolved/030-playback-addnote-live-log.md), the note must not appear added in memory,
         // or a retry after fixing the conflict would insert it a second time.
         var trial = new SessionLog(Log.Header, Log.Records);
         trial.InsertNote(index, trimmed);

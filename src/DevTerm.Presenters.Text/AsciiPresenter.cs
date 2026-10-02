@@ -113,7 +113,7 @@ public sealed class AsciiPresenter : IPresenter, IPresenterInput, IResettablePre
 
     public byte[] Parse(string input) => Encoding.ASCII.GetBytes(input);
 
-    /// <summary>Clears any partial line left over from a previous connection — see docs/bugs/fixed/006-reply-queue-desync.md.</summary>
+    /// <summary>Clears any partial line left over from a previous connection — see docs/bugs/resolved/006-reply-queue-desync.md.</summary>
     public void Reset()
     {
         _buffer.Clear();

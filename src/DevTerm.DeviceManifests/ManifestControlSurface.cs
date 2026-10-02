@@ -102,7 +102,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
     /// Sends the resolved bytes, cancelling the reply id <see cref="InvokeAsync"/> just registered
     /// via <see cref="IReplyTracker.QuerySent"/> if the send itself fails — otherwise that id stays
     /// queued forever waiting for a reply that will never arrive, shifting every later reply onto
-    /// the wrong field. See docs/bugs/fixed/006-reply-queue-desync.md.
+    /// the wrong field. See docs/bugs/resolved/006-reply-queue-desync.md.
     /// </summary>
     private async Task SendAsync(byte[] bytes, string? replyIndicatorId, CancellationToken cancellationToken)
     {
@@ -169,7 +169,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
         // A single pass over the original template: a parameter's own substituted value is never
         // re-scanned for further "{name}" tokens, so a value that itself contains another
         // parameter's placeholder text is inserted verbatim instead of being substituted again
-        // (see docs/bugs/fixed/043-template-substitution-not-single-pass.md).
+        // (see docs/bugs/resolved/043-template-substitution-not-single-pass.md).
         return TemplatePlaceholder().Replace(text, match =>
             substitutions.TryGetValue(match.Groups[1].Value, out var substituted) ? substituted : match.Value);
     }
@@ -183,7 +183,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
 
         // Round before clamping, not after: rounding an already-in-range value (e.g. Max 10.5, value
         // 10.5) can push it past a fractional bound (11 > 10.5) — see
-        // docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+        // docs/bugs/resolved/046-manifest-formatnumber-nan.md.
         if (parameter.IsInteger)
         {
             number = Math.Round(number, MidpointRounding.AwayFromZero);
@@ -202,7 +202,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
     /// literal text regardless of <see cref="NumberStyles"/>) — a non-finite value must never reach
     /// <see cref="Math.Clamp(double, double, double)"/>, which passes <c>NaN</c> through unchanged
     /// rather than clamping it (every comparison against <c>NaN</c> is false). See
-    /// docs/bugs/fixed/046-manifest-formatnumber-nan.md.
+    /// docs/bugs/resolved/046-manifest-formatnumber-nan.md.
     /// </summary>
     private static bool TryParseFinite(string? raw, out double number) =>
         double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out number) && double.IsFinite(number);

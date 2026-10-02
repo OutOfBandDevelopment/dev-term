@@ -15,7 +15,7 @@
 
 ## What happens
 A device ending lines in LF CR produces a second, empty line, which consumes a pending query id (see
-[006](fixed/006-reply-queue-desync.md)).
+[006](006-reply-queue-desync.md)).
 
 ## Suggested fix
 Treat LF CR as one terminator, or skip empty lines while an id is pending.
@@ -25,7 +25,7 @@ Fixed on 2026-09-29 on `dev/fix-bugs`: `LineReplyPresenter.Render`
 (`src/DevTerm.Core/Presenters/LineReplyPresenter.cs`) already treated CR LF as one terminator (a
 `_pendingCr` flag set on CR swallows an immediately-following LF), but had no symmetric handling for
 LF CR — an LF completed the line, then the CR that followed completed a second, empty line,
-consuming the next pending query's reply id exactly as [006](fixed/006-reply-queue-desync.md)
+consuming the next pending query's reply id exactly as [006](006-reply-queue-desync.md)
 describes. Skipping empty lines while an id is pending (the report's other suggested option) was
 already rejected in bug 006's own resolution ("some devices legitimately reply with an empty line"),
 so this reuses the CRLF approach instead: a new `_pendingLf` flag, set when an LF completes a line,

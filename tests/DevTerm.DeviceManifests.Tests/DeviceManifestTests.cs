@@ -95,7 +95,7 @@ public sealed class DeviceManifestTests
         // Regression test for bug 049: a manifest's device.xml is untrusted input, and
         // XmlSerializer.Deserialize(TextReader) applied no DtdProcessing restriction, so an
         // internal-entity DOCTYPE (billion-laughs style) could expand into the deserialized model.
-        // See docs/bugs/fixed/049-uidefinition-xml-dtd.md.
+        // See docs/bugs/resolved/049-uidefinition-xml-dtd.md.
         const string maliciousXml = """
             <?xml version="1.0"?>
             <!DOCTYPE DeviceManifest [<!ENTITY evil "expanded">]>
@@ -409,7 +409,7 @@ public sealed class DeviceManifestTests
     {
         // Regression test for bug 050: StripChartControl.HistoryLength came straight from the
         // manifest with no upper bound, so a manifest could make the chart's per-sample queue grow
-        // without limit. See docs/bugs/fixed/050-strip-chart-history-unbounded.md.
+        // without limit. See docs/bugs/resolved/050-strip-chart-history-unbounded.md.
         var manifest = BuildKoradManifest(inlineUi: new UiDefinition
         {
             Name = "Korad KA3005P",

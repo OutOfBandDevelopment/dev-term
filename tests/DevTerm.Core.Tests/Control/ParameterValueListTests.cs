@@ -6,7 +6,7 @@ namespace DevTerm.Core.Tests.Control;
 /// <summary>
 /// Verifies the escaped comma-join/split round trip every parameter-button join site
 /// (<c>ControlPanelMode</c>/<c>ControlPanelWindow</c>) and split site (<c>ScpiControlSurface</c>/
-/// <c>ManifestControlSurface</c>) now shares — see docs/bugs/fixed/024-comma-in-text-parameter.md.
+/// <c>ManifestControlSurface</c>) now shares — see docs/bugs/resolved/024-comma-in-text-parameter.md.
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
