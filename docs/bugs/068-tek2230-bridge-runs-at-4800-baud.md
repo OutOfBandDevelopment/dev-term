@@ -51,3 +51,8 @@ arriving. This supports the hypothesis (pacing makes 9600 usable) but is not a m
 delay value, and the 175 ms figure is far above the 10-50 ms first guessed, so it is worth checking whether it is
 per-byte or per-write on the bridge. Still open: record the delay and speed in `tektronix-2230.json` Notes, add the
 hardware tests, re-check [065](065-hpgl-no-end-detection-splits-one-plot.md) at 9600, and close this once those are done.
+
+Bridge check, same day: re-reading .107 with `Get-UsrBridgeSettings.ps1` shows its UART at **9600 8/None/1** (it read
+4800 earlier today), so the bench result above is on .107; .108 was not re-read and is assumed still 4800. The bridge's
+"Similar RFC2217" box is on. `docs/devices/usr-tcp232-302/known-configurations.md` and
+`docs/devices/tektronix-2230/known-configuration.md` are updated to match.

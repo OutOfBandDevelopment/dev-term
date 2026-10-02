@@ -16,7 +16,7 @@ Read with the script above, not typed from memory.
 
 | Bridge | Module | Behind it | IP config | Work mode | Local port | UART | RFC2217-like |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 192.168.0.107 | RS232-1 (MAC 9c-a5-25-a8-6e-3a) | Tektronix 2230 (second unit) | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
+| 192.168.0.107 | RS232-1 (MAC 9c-a5-25-a8-6e-3a) | Tektronix 2230 (second unit) | DHCP | TCP Server | 23 | 9600 8/None/1 (read 4800 on the first pass; changed to 9600 later the same day, re-read) | on (box checked) |
 | 192.168.0.108 | RS232-2 (fw 4018, MAC 9c-a5-25-a8-6e-80) | Tektronix 2230 | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
 | 192.168.0.109 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-83) | HP 34401A (9600 8N2) | static | TCP Server | 23 | 9600 8/None/2 (read 1200 on the first pass; set to 9600 later the same day, re-read) | on |
 | 192.168.0.110 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-86) | Tektronix TDS2024 | DHCP | TCP Server | 23 | 19200 8/None/1 | on |
