@@ -83,7 +83,7 @@ that names a value). It opens on whatever is already in the field.
 4. **Functions** inserts a function with the caret in the first argument. There is a button for
    `round`, `min`, `max`, `abs` and `if`, and a **more...** control (a drop-down in WPF, a list in the TUI) for the text and
    list functions: `matches`, `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`, `has`, `split` and `join`.
-   Hovering a WPF entry shows its signature; the TUI list shows it beside each name. Those that take text leave
+   Hovering a WPF entry shows its signature; the TUI list shows the signature as each row, and typing in its filter box narrows it. Those that take text leave
    the caret on the first argument, ready for you to choose a value. Everything is also fine typed by hand.
 
    ![TUI more... list](images/tui-expression-picker-more.png)

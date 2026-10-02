@@ -69,6 +69,51 @@ public sealed class ExpressionPickerScreenshotTests
         Assert.IsTrue(ExpressionPickerDialog.MoreFunctionItems.All(i => i.Length < 60), "each row must fit the list dialog");
     }
 
+    [TestMethod]
+    public void MoreButton_ChoosingAFunctionInsertsItsTemplateIntoTheExpression()
+    {
+        var viewModel = new ExpressionPickerViewModel(_paths, string.Empty, seed: 7);
+        var chosenIndex = ExpressionPickerViewModel.MoreFunctions.ToList().FindIndex(f => f.Name == "split");
+        string? textAfterChoosing = null;
+
+        TuiTestRunner.RunWithLoopApp(
+            app => app.Driver!.SetScreenSize(80, 25),
+            app => new Window { Width = Dim.Fill(), Height = Dim.Fill() },
+            (app, _) => TuiTestRunner.InvokeOnLoop(() =>
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                {
+                    if (app.TopRunnableView is not Dialog picker)
+                    {
+                        return true;
+                    }
+
+                    // The list opens as a nested Run from the button's handler; a timer inside that loop picks the row.
+                    app.AddTimeout(TimeSpan.FromMilliseconds(20), () =>
+                    {
+                        if (app.TopRunnableView is not Dialog list || list == picker)
+                        {
+                            return true;
+                        }
+
+                        ((ListView)list.SubViews.First(v => v is ListView)).SelectedItem = chosenIndex;
+                        app.Keyboard.RaiseKeyDownEvent(Terminal.Gui.Input.Key.Enter);
+                        return false;
+                    });
+
+                    picker.SubViews.OfType<Button>().Single(b => b.Text == "more...").InvokeCommand(Terminal.Gui.Input.Command.Accept);
+                    textAfterChoosing = viewModel.Text;
+                    app.RequestStop(picker);
+                    return false;
+                });
+
+                ExpressionPickerDialog.Show(app, viewModel);
+                return true;
+            }));
+
+        Assert.AreEqual("split(, ',')", textAfterChoosing);
+    }
+
     private static void CopyToGuide(string imageName)
     {
         var source = Path.Combine(TuiReview.Directory, $"guide-{imageName}-80x25-light.png");
