@@ -42,7 +42,13 @@ public sealed class ExpressionPickerScreenshotTests
     [TestMethod]
     public void ChannelsMode() => Capture("tui-expression-picker-channels", "volts:Volts:#FF6600; amps", PickerMode.Channels);
 
-    private static void Capture(string imageName, string text, PickerMode mode = PickerMode.Expression)
+    [TestMethod]
+    public void ParameterExpressionsMode() => Capture("tui-expression-picker-parameters", "round({volts} * 100, 0); {amps}", PickerMode.ExpressionList);
+
+    [TestMethod]
+    public void FindFiltersTheList() => Capture("tui-expression-picker-find", "{volts}", filter: "amp");
+
+    private static void Capture(string imageName, string text, PickerMode mode = PickerMode.Expression, string? filter = null)
     {
         TuiReview.Modal(
             "guide-" + imageName,
@@ -50,7 +56,7 @@ public sealed class ExpressionPickerScreenshotTests
             25,
             "light",
             app => new Window { Title = "dev-term", Width = Dim.Fill(), Height = Dim.Fill() },
-            app => ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(_paths, text, seed: 7, mode: mode)));
+            app => ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(_paths, text, seed: 7, mode: mode) { Filter = filter ?? string.Empty }));
 
         var source = Path.Combine(TuiReview.Directory, $"guide-{imageName}-80x25-light.png");
         var images = Path.Combine(TuiReview.Directory, "..", "..", "..", "docs", "user-guide", "images");

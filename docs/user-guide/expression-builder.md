@@ -74,7 +74,12 @@ that names a value). It opens on whatever is already in the field.
 2. The line under it is the **diagnostic**: `OK`, `OK, with warnings: ...`, or `Error: ...`.
 3. **Find a value** filters the list of values the manifest publishes; each row shows the id and,
    where known, its type, unit and range (`volts  (number, V, 0 to 30)`). Choose one to insert
-   `{id}` at the caret.
+   `{id}` at the caret. Typing `amp` narrows the list to `amps`:
+
+   ![WPF picker with the find box filtering the list](images/wpf-expression-picker-find.png)
+
+   ![TUI picker with the list filtered](images/tui-expression-picker-find.png)
+
 4. **Functions** inserts a function with the caret in the first argument. The buttons offered are
    `round`, `min`, `max`, `abs`, `if` and `matches` (which leaves the caret on the text argument); every other function in the table above can
    be typed by hand and is checked just the same.
@@ -147,6 +152,10 @@ A button with parameter fields (a setpoint to type in, say) can send a computed 
 **Parameter expressions**, write one expression per parameter field, `;`-separated, in field order:
 `round({volts} * 100, 0); {amps}`. The picker keeps the function buttons here; choosing a value inserts `{id}` at the caret, blank
 entries are allowed, and a bad one is reported as `Item N: ...`.
+
+![WPF picker for parameter expressions](images/wpf-expression-picker-parameters.png)
+
+![TUI picker for parameter expressions](images/tui-expression-picker-parameters.png)
 
 ## Sample data from a real recording
 

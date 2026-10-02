@@ -162,12 +162,14 @@ public sealed class ExpressionPickerWindowTests
             new ValuePath("amps", ValuePathType.Number, ValuePathSource.Control, "Current", "A", 0, 5),
             new ValuePath("status", ValuePathType.Text, ValuePathSource.ResponsePattern, "Status"),
         };
-        var cases = new (string Name, string Text, PickerMode Mode)[]
+        var cases = new (string Name, string Text, PickerMode Mode, string Filter)[]
         {
-            ("wpf-expression-picker-error", "round({volts} * ", PickerMode.Expression),
-            ("wpf-expression-picker-warning", "{volts} * {watts}", PickerMode.Expression),
-            ("wpf-expression-picker-text", "matches({status}, 'READY') ? 100 : 0", PickerMode.Expression),
-            ("wpf-expression-picker-channels", "volts:Volts:#FF6600; amps", PickerMode.Channels),
+            ("wpf-expression-picker-error", "round({volts} * ", PickerMode.Expression, ""),
+            ("wpf-expression-picker-warning", "{volts} * {watts}", PickerMode.Expression, ""),
+            ("wpf-expression-picker-text", "matches({status}, 'READY') ? 100 : 0", PickerMode.Expression, ""),
+            ("wpf-expression-picker-parameters", "round({volts} * 100, 0); {amps}", PickerMode.ExpressionList, ""),
+            ("wpf-expression-picker-find", "{volts}", PickerMode.Expression, "amp"),
+            ("wpf-expression-picker-channels", "volts:Volts:#FF6600; amps", PickerMode.Channels, ""),
         };
 
         StaTestRunner.Run(async () =>
@@ -178,9 +180,9 @@ public sealed class ExpressionPickerWindowTests
                 directory = directory.Parent;
             }
 
-            foreach (var (name, text, mode) in cases)
+            foreach (var (name, text, mode, filter) in cases)
             {
-                var window = new ExpressionPickerWindow(new ExpressionPickerViewModel(paths, text, seed: 7, mode: mode));
+                var window = new ExpressionPickerWindow(new ExpressionPickerViewModel(paths, text, seed: 7, mode: mode) { Filter = filter });
                 WpfScreenshot.ShowOffScreen(window, 560, 460);
                 StaTestRunner.DoEvents();
                 window.UpdateLayout();
