@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
+| **Status** | Fixed |
 | **Confidence** | Plausible (a maintainer's hypothesis, not yet reproduced; no logged failure is attributed to byte timing) |
 | **Area** | DevTerm.Transports.Serial (`WriteByteDelayMs`), `hp-agilent-keysight-34401a.json`, `RealHardwareSerialTests` |
 | **Created** | 2026-10-02 |
@@ -47,12 +47,20 @@ wrong reading. With a per-byte delay (try 5, 10 and 50 ms) the same sequence is 
 2. If it reproduces, set the smallest reliable delay in the real-hardware test's settings and record it in the profile's
    Notes. Whether a profile should be able to declare a default write delay (so a user need not know the flag) is the
    design question to raise.
-3. If it does not reproduce, close this as `Won't fix`, as with [066](066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md).
+3. If it does not reproduce, close this as `Won't fix`, as with [066](../066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md).
 
 ## Tests to add
 A `[TestCategory(TestCategories.Hardware)]` loop in `RealHardwareSerialTests` for the 34401A that fails on any missing
 reply or non-empty `SYST:ERR?`, run with and without the delay.
 
 ## Related
-[065](065-hpgl-no-end-detection-splits-one-plot.md) and [068](068-tek2230-bridge-runs-at-4800-baud.md) concern the same
+[065](../065-hpgl-no-end-detection-splits-one-plot.md) and [068](../068-tek2230-bridge-runs-at-4800-baud.md) concern the same
 class of slow-instrument timing.
+
+## Resolution
+Resolved 2026-10-02 on the bench, no dev-term code change. Through bridge 192.168.0.109 the meter answers reliably with
+`--writebytedelayms 50` and the bridge's CTS (pin 8) wired to the meter's DSR (pin 6); three runs gave clean `*IDN?`,
+`MEAS:VOLT:DC?` and `SYST:ERR?` (`docs/test/2026-10-02-11-21-45.md`). The cause of the silence was the DSR handshake,
+not byte timing. Caveat: the delay was on for every working run, so whether 50 ms is *required* (versus merely
+sufficient) was not isolated. Recorded in `docs/devices/hp-34401a/known-configuration.md`. No regression test: it is a
+wiring and bench-setting fix.
