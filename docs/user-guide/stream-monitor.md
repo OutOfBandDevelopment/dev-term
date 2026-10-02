@@ -110,7 +110,7 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
 - **External tool** (`externaltool`) — point at a converter you already have installed (for example
   Ghostscript's `gswin64c.exe`) and give it an argument template with `{input}`, `{output}` and
   `{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`. dev-term doesn't bundle
-  any converter — this just runs the one you point it at.
+  any converter — this just runs the one you point it at. [Installing and configuring Ghostscript](ghostscript-conversion.md) walks through it.
 - **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
   default) and saves whatever comes back.
 

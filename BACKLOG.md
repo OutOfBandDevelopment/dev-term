@@ -47,6 +47,14 @@ the rest.
   drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/proposals/stream-content-detection.md))
   already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 
+- Register several external converters for the Stream Monitor, each declaring the capture formats it handles
+  (for example Ghostscript for PostScript, GhostPCL for PCL 5), instead of the single
+  `StreamConvertExternalTool*` pair; Convert... would pick by the selected capture's kind, and the mode
+  selector would list the registered tools by name. Needs a settings shape (a list of name/path/arguments/
+  formats/output extension, as `List<T>` rather than a dictionary so JSON and XML both work), UI in both
+  profile editors, and a proposal first. Today: [Ghostscript guide](docs/user-guide/ghostscript-conversion.md)
+  notes the one-tool limit.
+
 ### Device control modules & hardware profiles
 
 - Declarative command/response schema for device control modules (send template + response
