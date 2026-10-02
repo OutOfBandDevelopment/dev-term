@@ -26,14 +26,14 @@ button's Parameter expressions, vector/color value ids and visible-when. Shared 
 |---|---|
 | Choose a path (Enter / double-click) | Inserts `{id}` at the caret, replacing any selection. |
 | Function buttons (`round`, `min`, `max`, `abs`, `if`) | Insert `name()` with the caret between the parentheses. |
-| `matches` button | Inserts `matches(, '')` with the caret on the text argument; choose a value, then type the regex between the quotes (a literal regex that doesn't compile shows as an error as you type). |
+| **more...** (WPF drop-down, TUI list) | Offers `matches`, `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`, `has`, `split`, `join`; the choice inserts a template (e.g. `matches(, '')`, `split(, ',')`) with the caret on the first argument. For `matches`, choose a value, then type the regex between the quotes (a literal regex that doesn't compile shows as an error as you type). |
 | Next sample | Advances the sample data; the result changes. |
 | OK | Returns the expression to the form field. |
 | Cancel | Leaves the field unchanged. |
 
 ## Text expressions
 
-The picker has a button only for `matches`; the other text functions are typed and the diagnostics check them: `matches(text, regex)`
+The text functions are offered from **more...** (or typed) and the diagnostics check them: `matches(text, regex)`
 (a literal regex that doesn't compile is an error), `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`,
 `has({id})`, `!x` and `cond ? a : b`, with `'single'` or `"double"` quoted strings and `+` to join them. On a live indicator
 or chart, `{id}` is the device's published text: arithmetic still reads the number out of `"12.5 V"`, while string functions see the
@@ -67,7 +67,7 @@ the picker opens until **Next sample** is pressed.
 
 ## Per-front-end notes
 
-- TUI: a modal `Dialog` sized to the screen (up to 78x24); **Pick...** is a button after the field. **Next sample** sits beside OK/Cancel, since the function row is full.
+- TUI: a modal `Dialog` sized to the screen (up to 78x24); **Pick...** is a button after the field. **Next sample** sits beside OK/Cancel, since the function row (five buttons plus **more...**) is full.
 - WPF: a modal `ExpressionPickerWindow` owned by the editor; **Pick...** is docked right of the field.
 
 ## Open items

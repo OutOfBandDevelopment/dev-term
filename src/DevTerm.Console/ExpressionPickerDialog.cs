@@ -36,7 +36,7 @@ internal static class ExpressionPickerDialog
         var functionLabel = new Label { X = 0, Y = Pos.AnchorEnd(4), Text = "Functions:", HotKeySpecifier = (System.Text.Rune)0xFFFF };
         Button? previous = null;
         var functionButtons = new List<Button>();
-        foreach (var function in ExpressionPickerViewModel.Functions)
+        foreach (var function in ExpressionPickerViewModel.ButtonFunctions)
         {
             var captured = function;
             var button = new Button { X = previous is null ? Pos.Right(functionLabel) + 1 : Pos.Right(previous), Y = Pos.AnchorEnd(4), Text = function.Name, ShadowStyle = ShadowStyles.None };
@@ -50,6 +50,21 @@ internal static class ExpressionPickerDialog
             functionButtons.Add(button);
             previous = button;
         }
+
+        var more = new Button { X = Pos.Right(previous!), Y = Pos.AnchorEnd(4), Text = "more...", ShadowStyle = ShadowStyles.None };
+        more.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            var items = ExpressionPickerViewModel.MoreFunctions.Select(f => $"{f.Signature}  -  {f.Description}").ToList();
+            if (FormRenderer.PickFromList(app, "More functions", items) is { } chosen)
+            {
+                viewModel.CaretIndex = expression.InsertionPoint;
+                viewModel.InsertFunction(ExpressionPickerViewModel.MoreFunctions[chosen]);
+            }
+
+            expression.SetFocus();
+        };
+        functionButtons.Add(more);
 
         dialog.Title = viewModel.Title;
         expressionLabel.Text = viewModel.Prompt;

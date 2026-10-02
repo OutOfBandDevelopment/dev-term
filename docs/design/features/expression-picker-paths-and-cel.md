@@ -146,6 +146,6 @@ Lang --> Val
 
 ## Left out on purpose
 
-Picker buttons for the newer functions (`contains`, `startsWith`, `endsWith`, `size`, `number`, `string`, `has`, `split`,
-`join`) and picker offers for them beyond the six in `ExpressionPickerViewModel.Functions` are tracked in `BACKLOG.md`;
-they parse and evaluate today, they just aren't offered as buttons.
+The five numeric functions have a button each; the text and list functions (`matches`, `contains`, `startsWith`,
+`endsWith`, `size`, `number`, `string`, `has`, `split`, `join`) sit in one **more...** control (a drop-down in WPF, a list
+dialog in the TUI) so the function row stays short (`ExpressionPickerViewModel.ButtonFunctions` / `MoreFunctions`).

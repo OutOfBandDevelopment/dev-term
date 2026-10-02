@@ -38,9 +38,6 @@ the rest.
   frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
-- **Expression picker: buttons for the newer functions** (`contains`, `startsWith`, `endsWith`, `size`, `number`, `string`,
-  `has`, `split`, `join`). They parse and evaluate; the picker only offers six (`ExpressionPickerViewModel.Functions`). See
-  `docs/design/features/expression-picker-paths-and-cel.md`.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
