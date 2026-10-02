@@ -32,6 +32,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 006 | [One missing SCPI or manifest reply shifts every later reply onto the wrong field](fixed/006-reply-queue-desync.md) | DevTerm.Core (LineReplyPresenter), DevTerm.Devices.Scpi, DevTerm.DeviceManifests | Fixed |
 | 007 | [Closed TUI windows are never disposed: Page Up/Down stop working and handlers leak](fixed/007-tui-modal-windows-not-disposed.md) | TUI (DevTerm.Console) | Fixed |
 | 061 | [The Radex One never replies because its serial connection uses the wrong baud rate](fixed/061-radexone-wrong-baud-rate.md) | DevTerm.Devices.RadexOne | Fixed |
+| 063 | [A terminatorless reply over 4096 bytes burns extra entries off the SCPI/manifest reply-id queue](063-line-reply-overflow-flush-desyncs-pending-ids.md) | DevTerm.Core (LineReplyPresenter), DevTerm.Devices.Scpi, DevTerm.DeviceManifests | Open |
 
 ## Medium
 
@@ -68,6 +69,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
+| 064 | [View > Echo Sent Commands doesn't echo a device-profile control panel's button/field sends](064-control-panel-sends-skip-echo.md) | DevTerm.Console (ControlPanelMode), DevTerm.Wpf (ControlPanelWindow) | Open |
 | 033 | [Profiles, the saved default and preferences are written non-atomically](fixed/033-non-atomic-writes.md) | DevTerm.Configuration | Fixed |
 | 034 | [Export All deletes the existing zip before checking the profile names](fixed/034-exportzip-deletes-target-first.md) | DevTerm.Configuration (ConnectionProfileStore) | Fixed |
 | 035 | [Typing an export path marks the editor as having unsaved changes](fixed/035-dirty-tracking-non-connection-fields.md) | DevTerm.Configuration (ConnectionEditorViewModel) | Fixed |
