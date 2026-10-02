@@ -113,3 +113,9 @@ Covered by `ExpressionTests`, `IndicatorStateTests`, `ChartControlsTests`, `Devi
 `ManifestEditorTests`, and TUI/WPF wiring tests in `ControlPanelModeTests`/`ControlPanelWindowTests`.
 Not yet verified against real hardware — this is a pure UI/manifest-model feature with no device-side
 behavior to exercise, so that gap is expected rather than a coverage hole.
+
+**Extension in progress (decided 2026-10-02, not built).** Expressions still read only the flat `{id}` values a
+decoder publishes. Next: expressions that reference properties of a structured decoder (a dotted path for
+nested/repeated fields) or regex captures from raw reply text, fed by a binary-frame inbound schema produced from a
+`.ksy` by our own importer (a transformation into the existing manifest formats). Tracked in `TODO.md`; the
+generated files would be covered by [Schema files for custom formats](format-schema-files.md).
