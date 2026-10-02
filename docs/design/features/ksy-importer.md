@@ -71,7 +71,7 @@ computed repeat count, `if`, `switch-on`, `size-eos`) ends the frame there with 
 ## Status
 
 Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`ValuePathSource.Frame`), validator checks,
-JSON/XML round trip, importer, and (2026-10-02) the manifest editors' **Binary frame** outline entry with field forms and an **Import** button in both front ends ([spec](../../specs/manifest-editor.md)). Unit- and screenshot-tested, plus one live check: the imported Radex One read-data frame was run through `ManifestFramePresenter` against a real unit on COM8 (every field published, three runs; `docs/test/2026-10-02-14-42-26.md`). The other devices' `.ksy` layouts (DE-5000, K8055, Zoom H4n) are checked against captured or documented bytes only. Not built, by choice (tracked in `BACKLOG.md`; this is closed out as a feature with these gaps):
+JSON/XML round trip, importer, and (2026-10-02) the manifest editors' **Binary frame** outline entry with field forms and an **Import** button in both front ends ([spec](../../specs/manifest-editor.md)). Unit- and screenshot-tested, plus one live check: the imported Radex One read-data frame was run through `ManifestFramePresenter` against a real unit on COM8 (every field published, three runs; `docs/test/2026-10-02-14-42-26.md`). The other devices' `.ksy` layouts (DE-5000, K8055, Zoom H4n) are checked against captured or documented bytes only. Not built:
 
-- bit fields (the Zoom H4n status `.ksy` fails to import until then), length-prefixed or variable-size frames, checksums (the Radex One reply's is skipped);
-- a generated JSON Schema for the frame (see [format-schema-files.md](../proposals/format-schema-files.md)).
+- bit fields, length-prefixed or variable-size frames, checksums;
+- a generated JSON Schema for the frame (see [format-schema-files.md](format-schema-files.md)).

@@ -117,5 +117,5 @@ behavior to exercise, so that gap is expected rather than a coverage hole.
 **Extension built (2026-10-02).** Expressions now also reach dotted/indexed paths and regex captures: the value-path catalog,
 sample-data generator, expression picker and CEL-style language landed
 ([expression picker](expression-picker-paths-and-cel.md)), and a binary-frame inbound schema (`Inbound.Frame`) can be
-generated from a `.ksy` by `KsyImporter` ([.ksy importer](ksy-importer.md)). Generated schema files for the
+generated from a `.ksy` by `KsyImporter` ([.ksy importer](../proposals/ksy-importer.md)). Generated schema files for the
 manifest formats are a separate, not-started proposal: [Schema files for custom formats](../proposals/format-schema-files.md).
