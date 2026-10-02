@@ -41,7 +41,7 @@ lost or garbled; with `WriteByteDelayMs` set (try 10 to 50 ms) it is reliable at
 Hardware-category tests for both 2230 hosts that run the query loop at 9600 with the chosen delay.
 
 ## Related
-[065](065-hpgl-no-end-detection-splits-one-plot.md), [067](resolved/067-hp34401a-rs232-no-write-pacing.md).
+[065](resolved/065-hpgl-no-end-detection-splits-one-plot.md), [067](resolved/067-hp34401a-rs232-no-write-pacing.md).
 
 ## Update 2026-10-02
 User report from the bench: at 9600 baud with a **175 ms** write delay the 2230 is "working good enough"; it was
@@ -50,7 +50,7 @@ Monitor. The user also reduced the read buffer to 512 characters so the display 
 arriving. This supports the hypothesis (pacing makes 9600 usable) but is not a measured result: no failure counts per
 delay value, and the 175 ms figure is far above the 10-50 ms first guessed, so it is worth checking whether it is
 per-byte or per-write on the bridge. Still open: record the delay and speed in `tektronix-2230.json` Notes, add the
-hardware tests, re-check [065](065-hpgl-no-end-detection-splits-one-plot.md) at 9600, and close this once those are done.
+hardware tests (065 re-checked at 9600 and closed 2026-10-02), and close this once those are done.
 
 Bridge check, same day: re-reading .107 with `Get-UsrBridgeSettings.ps1` shows its UART at **9600 8/None/1** (it read
 4800 earlier today), so the bench result above is on .107; .108 was not re-read and is assumed still 4800. The bridge's

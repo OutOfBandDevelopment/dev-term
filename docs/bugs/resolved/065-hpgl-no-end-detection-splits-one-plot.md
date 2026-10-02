@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Severity** | Medium |
-| **Status** | Open |
+| **Status** | Won't fix |
 | **Confidence** | Confirmed (code read end to end; reproduced live against real hardware) |
 | **Area** | DevTerm.Core (StreamContent: StreamContentEndFinder, StreamContentWatcher) |
 | **Created** | 2026-10-02 |
@@ -77,3 +77,6 @@ worth detecting instead of leaving every capture to timeout alone:
 - `StreamContentWatcherTests`: an HP-GL capture with an internal pause shorter than the new HP-GL-specific
   idle timeout (or past a real in-band terminator) stays one capture; one genuinely idle past the timeout
   still closes as `StreamCaptureEnd.IdleTimeout` as today.
+
+## Resolution
+Won't fix, 2026-10-02: no longer reproduces. With the Tektronix 2230 bridge at 9600 baud, a 175 ms write delay and a 512-character read buffer ([068](../068-tek2230-bridge-runs-at-4800-baud.md)), the user captured a complete HP-GL plot as a single Stream Monitor capture and converted it to SVG (it renders correctly in the WPF preview; sample kept at `tests/DevTerm.Wpf.Tests/Samples/tek2230-plot.hpgl`). The split was a symptom of the 4800 baud link, as the report suspected, not of a wrong default. The 2 s `IdleTimeout` and the lack of an in-band HP-GL end finder are unchanged, so a genuinely slower link or a plot with a long internal pause could still split; reopen with a new capture if that happens.
