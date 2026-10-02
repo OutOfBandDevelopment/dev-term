@@ -64,6 +64,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 031 | [The TUI output pane has no backpressure](fixed/031-tui-output-no-backpressure.md) | TUI (TuiMode) | Fixed |
 | 032 | [A bad value on the command line or in the saved default crashes startup instead of opening the editor](fixed/032-startup-bind-failure-crash.md) | DevTerm.Console (Program), DevTerm.Wpf (App) | Fixed |
 | 062 | [WPF Up/Down history recall stops working on SendBox after clicking "Send"](fixed/062-sendbox-arrow-keys-lose-focus-after-send.md) | DevTerm.Wpf (MainWindow) | Fixed |
+| 065 | [HP-GL plots with any pause longer than the idle timeout are split into multiple Stream Monitor captures](065-hpgl-no-end-detection-splits-one-plot.md) | DevTerm.Core (StreamContent) | Open |
 
 ## Low
 
