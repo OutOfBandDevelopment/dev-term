@@ -18,6 +18,9 @@ Completed work is logged by date under `docs/changes/`.
   the Kaitai compiler was the first design decision). **Decided 2026-10-02: our own `.ksy` interpreter, framed as a
   transformation** of a `.ksy` into dev-term's existing manifest formats (a binary-frame counterpart to
   `InboundProtocol.Patterns`' regex-to-named-values path) rather than a separate decoding stack. Nothing built yet.
+  **Scoped 2026-10-02** ([proposal](docs/design/proposals/expression-picker-paths-and-cel.md)): build order is a
+  value-path catalog (also used by the validator), a sample-data generator for realistic previews, a picker control in
+  both front ends, then a CEL-style language (spike a .NET CEL library first).
 - **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
   improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
