@@ -6,7 +6,18 @@ Completed work is logged by date under `docs/changes/`.
 
 ## In progress
 
-Nothing active right now.
+- **Manifest expression builder: decoder properties and regex matching, `.ksy` build-out, and a
+  `.ksy`-to-profile tool.** Made a priority 2026-10-02. The expression language itself is already built
+  (`DevTerm.UiDefinitions/Expression.cs`; see `docs/design/proposals/manifest-editor-expression-builder.md`),
+  but it only reads flat `{id}` values from a decoder's `ValuesChanged` dictionary. Asked for: expressions
+  that reference properties of a device decoder (a structured/Kaitai-decoded record, not just flat ids) or
+  match with a regex against raw reply text; more `.ksy` definitions; and a tool that turns a `.ksy` file
+  into a device profile (manifest). Starting point found in research: no `.ksy` files exist in the repo,
+  no Kaitai package is referenced, and `DeviceManifest`'s `.ksy` path is "referenced only, not parsed"
+  (`DeviceManifest.cs:64`), so decoding a `.ksy` is the biggest missing piece (own small interpreter vs.
+  the Kaitai compiler is the first design decision). Nothing built yet; needs a plan agreed with the user.
+- **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
+  improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
 ## Backlog / research
 
