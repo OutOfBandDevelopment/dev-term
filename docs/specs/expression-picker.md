@@ -38,6 +38,11 @@ The picker has no buttons for the text functions, but typing them works and the 
 or chart, `{id}` is the device's published text: arithmetic still reads the number out of `"12.5 V"`, while string functions see the
 raw text. A text path gets sample text (`sample-xxxx-N`) in the preview, and a text result shows quoted. A button's parameter expressions see each sibling control's current text the same way.
 
+Lists, indexing and bare names also parse: `[1, 2, 3]`, `x[i]` (an item of a list or a character of a string; out of range reads as 0),
+`x in list` / `'ell' in 'hello'`, `size(list)`, `list + list`, `split(text, sep)` and `join(list, sep)`, so
+`split({frame}, ',')[1]` reads the second comma-separated field. `volts` and the dotted `gps.sats` mean the same as `{volts}` and
+`{gps.sats}` (the picker still inserts the braced form), and `true`/`false` are 1 and 0. A list result shows as `[1,2,3]` and is not a number.
+
 ## Channels mode
 
 From **Channels** the same dialog edits the chart's `id[:label[:#RRGGBB[:expression]]]; ...` list: choosing a value appends its
