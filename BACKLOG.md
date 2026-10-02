@@ -47,6 +47,8 @@ the rest.
 
 ### Device control modules & hardware profiles
 
+- **DE-5000 bench pass** — the DE-5000 meter has never been run against a real device here (its `.ksy` and decoder are
+  unit-tested only). Needs the meter attached; follow the `hardware-test` skill.
 - Declarative command/response schema for device control modules (send template + response
   pattern, an SCPI baseline for common bench-instrument commands) — see the new section in
   `docs/design/device-control-modules.md`.

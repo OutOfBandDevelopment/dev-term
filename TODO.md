@@ -23,12 +23,7 @@ Completed work is logged by date under `docs/changes/`.
   (strings, `matches()`, lists, indexing, dotted ids), binary frames and `KsyImporter`.
 
   **Remaining:**
-  - From the proposals' own "not built" lists: the sample-data generator's recording tier
-    has no front-end action yet (a **Use recording...** button on the picker and the editor preview; the model is built),
-    `.ksy` bit fields / variable-length frames /
-    checksums.
-  - Small gaps found 2026-10-02:
-    - The DE-5000 has never been run against a real meter here.
+  - From the proposals' own "not built" lists: `.ksy` bit fields, variable-length frames and checksums.
 
 ## Backlog / research
 
