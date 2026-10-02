@@ -29,9 +29,7 @@ The window is a toolbar, a status line and three panes. Each is drawn separately
 {
   [New] | [Open...] | [Save] | [Save As...] | [Check] | [Close]
   Status line
-  {+
-    Outline | Form | Preview
-  }
+  Outline | Form | Preview
 }
 @endsalt
 ```
@@ -41,18 +39,16 @@ The window is a toolbar, a status line and three panes. Each is drawn separately
 ```plantuml
 @startsalt
 {
-  {T
-    + Identity
-    + Commands (3)
-    ++ Measure
-    ++ Stream Samples
-    +++ count (integer)
-    + Response patterns (1)
-    ++ sample
-    + Panel
-    ++ Acquire
-    +++ button: Measure
-  }
+  Identity
+  Commands (3)
+  ..Measure
+  ..Stream Samples
+  ....count (integer)
+  Response patterns (1)
+  ..sample
+  Panel
+  ..Acquire
+  ....button: Measure
   [Add parameter] | [Remove] | [Up] | [Down]
 }
 @endsalt
@@ -66,27 +62,26 @@ The window is a toolbar, a status line and three panes. Each is drawn separately
   Stream Samples
   Name: | "Stream Samples"
   Id: | "samples"
-  Template: | "Samples: {count}"
+  Template: | "Samples: (count)"
   [ ] Is a query
   Sends: | "Samples: 40"
 }
 @endsalt
 ```
 
+In the real form the template shows its placeholder in curly braces; the wireframe uses parentheses because braces are salt syntax.
+
 **Preview** (right): the real control-panel renderer showing the panel as it would open. It sends nothing.
 
 ```plantuml
 @startsalt
-{+
+{
   Preview (sends nothing)
   The panel, live
   [Acquire]
 }
 @endsalt
 ```
-
-WPF shows the outline, the form and the preview side by side (splitters between them); the TUI shows
-the outline and one pane that holds either the form or, with **Preview**, the panel.
 
 ## Outline
 
