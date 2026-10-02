@@ -14,7 +14,8 @@
 
 Verified against the real device: 2026-10-02, all three read commands answered first try
 ([report](../../test/2026-10-02-14-42-26.md), `scripts/radexone_probe.py`); the Read Data exchange is also a regression test in
-`DeviceKsyFilesTests`. Write Settings and Reset Accumulated have not been run on the device.
+`DeviceKsyFilesTests`, and `RealHardwareRadexOneTests` runs the imported `.ksy` live through `ManifestFramePresenter` (it publishes
+every field). Write Settings and Reset Accumulated have not been run on the device.
 
 Quirks:
 - The baud rate is 9600. An earlier 2400 guess received nothing ([bug 061](../../bugs/resolved/061-radexone-wrong-baud-rate.md)).

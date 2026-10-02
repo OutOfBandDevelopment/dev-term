@@ -5,6 +5,8 @@ using DevTerm.Test.Utilities;
 using DevTerm.Transports.Serial;
 using Microsoft.Extensions.Options;
 
+using DevTerm.DeviceManifests;
+
 namespace DevTerm.Devices.RadexOne.Tests;
 
 /// <summary>
@@ -28,6 +30,7 @@ namespace DevTerm.Devices.RadexOne.Tests;
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.Serial)]
 [TestCategory(TestCategories.Radex_One)]
+[DoNotParallelize]
 [TestClass]
 public sealed class RealHardwareRadexOneTests
 {
@@ -89,5 +92,70 @@ public sealed class RealHardwareRadexOneTests
 
         await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         TestContext.WriteLine("Closed.");
+    }
+
+    /// <summary>The imported <c>radexone-read-data-reply.ksy</c> layout, run live through <see cref="ManifestFramePresenter"/> against the real device's Read Data reply.</summary>
+    [TestMethod]
+    [TestCategory(TestCategories.Hardware)]
+    public async Task RealDevice_ReadData_PublishesFieldsFromTheImportedKsyFrame()
+    {
+        var port = GetProperty("RealSerialRadexOnePort");
+        if (string.IsNullOrEmpty(port))
+        {
+            Assert.Inconclusive("No 'RealSerialRadexOnePort' - run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            return;
+        }
+
+        if (!RealDeviceReachability.IsSerialPortAvailable(port))
+        {
+            Assert.Inconclusive($"'{port}' is not currently enumerated by the OS — is the Radex One plugged in?");
+            return;
+        }
+
+        var ksy = KsyImporter.Import(File.ReadAllText(Path.Combine(DevicesDirectory(), "radexone", "radexone-read-data-reply.ksy")));
+        Assert.IsNotNull(ksy.Schema, string.Join("; ", ksy.Warnings));
+        var presenter = new ManifestFramePresenter(ksy.Schema);
+        IReadOnlyDictionary<string, string>? values = null;
+        presenter.ValuesChanged += (_, published) => values = published;
+
+        var options = Options.Create(new SerialTransportOptions
+        {
+            PortName = port,
+            BaudRate = 9600,
+            DataBits = 8,
+            Parity = Parity.None,
+            StopBits = StopBits.One,
+            Handshake = Handshake.None,
+        });
+
+        await using var transport = new SerialTransport(new SystemSerialPortFactory(), options);
+        await using var session = new Session(transport, new Pipeline([presenter]));
+
+        await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        await new RadexOneControlSurface(session).InvokeAsync("readData", null, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+
+        var deadline = DateTime.UtcNow + _timeout;
+        while (values is null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100, TestContext.CancellationToken);
+        }
+
+        TestContext.WriteLine($"Published: {(values is null ? "(nothing)" : string.Join(", ", values.Select(pair => $"{pair.Key}={pair.Value}")))}");
+        Assert.IsNotNull(values, "The frame presenter published nothing from the real device's reply.");
+        Assert.AreEqual("2048", values["extension.command_code"]);
+        Assert.IsTrue(int.TryParse(values["extension.cpm"], out _));
+
+        await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+    }
+
+    private static string DevicesDirectory()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DevTerm.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return Path.Combine(directory?.FullName ?? throw new InvalidOperationException("Could not find DevTerm.slnx."), "docs", "devices");
     }
 }
