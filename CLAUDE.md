@@ -69,16 +69,17 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.UiDefinitions` — a framework-agnostic, JSON/XML-serializable model for declaring a
   device control panel once (`UiDefinition` → `UiSection`s → `UiControl`s: button/toggle/slider/
   numeric/choice/textField/indicator) so every front end can render it generically instead of
-  hand-coding a UI per device per front end. See docs/design/ui-definitions.md. Model + round-trip
-  serialization only so far — nothing yet reads this model to actually produce Terminal.Gui/WPF
-  controls, and it isn't wired to a live device (`IControlSurface` itself is still design-only).
+  hand-coding a UI per device per front end. See docs/design/ui-definitions.md. Both front ends'
+  control panels (`ControlPanelMode`, `ControlPanelWindow`) render it generically, driven by an
+  `IControlSurface` (`DevTerm.Core.Control`) on a live session.
 - `DevTerm.DeviceManifests` — a no-code, JSON/XML `DeviceManifest` (identity, a transport hint, the
   declarative command/response schema from device-control-modules.md, and a `UiDefinition`) plus
   `DeviceManifestLoader`, which loads one from a single file, a folder (`device.json` at its root),
   or a `.zip` of one (extracted then loaded as a folder — no separate zip-handling logic anywhere
   else). See docs/design/device-manifests.md. Referenced `.ksy`/UI files are resolved relative to
-  the manifest's own location. Model + loader only — not wired to anything that opens a real
-  connection or reads a `.ksy` file yet.
+  the manifest's own location. A manifest also drives a live session (`ManifestReplyPresenter`,
+  `ManifestControlSurface`, `ManifestPanel`), declares a binary `Inbound.Frame` (`ManifestFramePresenter`),
+  and `KsyImporter` builds one from a Kaitai `.ksy` file.
 - `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
   `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
   `ConnectionDescription`, and `AddDevTermFrontEnd` (the one place that wires core + text

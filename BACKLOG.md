@@ -49,15 +49,13 @@ the rest.
 
 ### Device control modules & hardware profiles
 
-- **DE-5000 bench pass** — the DE-5000 meter has never been run against a real device here (its `.ksy` and decoder are
-  unit-tested only). Needs the meter attached; follow the `hardware-test` skill.
 - Declarative command/response schema for device control modules (send template + response
   pattern, an SCPI baseline for common bench-instrument commands) — see the new section in
   `docs/design/device-control-modules.md`.
   **Still open:**
-  - [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) landed 2026-09-25
+  - **DE-5000 bench pass.** [DE-5000 LCR meter](docs/design/proposals/de5000-lcr-meter-protocol.md) landed 2026-09-25
   (`DevTerm.Devices.De5000`, see `docs/changes/2026-09-25.md`) but is unverified against real
-  hardware — deferred, not a dev-term-side blocker: the general BLE/GATT transport is confirmed
+  hardware (its `.ksy` and decoder are unit-tested only; no meter available 2026-10-02) — deferred, not a dev-term-side blocker: the general BLE/GATT transport is confirmed
   working (`docs/test/2026-09-29-17-12-20.md`), but this meter's custom IR-to-BLE adapter is off the
   bench while its physical interface is rebuilt. Run `RealHardwareDe5000Tests` once it's back and
   `devterm.runsettings` has its device id/UUIDs filled in.
