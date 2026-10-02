@@ -83,4 +83,67 @@ public sealed class RealHardwareK8055Tests
         await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
         TestContext.WriteLine("Closed.");
     }
+
+    [TestMethod]
+    [DataRow("K8055-1")]
+    [DataRow("K8055-2")]
+    [DataRow("K8055-3")]
+    [DataRow("K8055-4")]
+    public async Task RealDevice_SetOutputs_AllCommandsCompleteWithoutFaultOrTimeout(string name)
+    {
+        var vendorIdText = GetProperty($"RealHid{name}-VendorId");
+        var productIdText = GetProperty($"RealHid{name}-ProductId");
+        var devicePath = GetProperty($"RealHid{name}-DevicePath");
+
+        TestContext.WriteLine($"VendorId/ProductId/DevicePath: {vendorIdText}/{productIdText}/{devicePath}");
+
+        if (string.IsNullOrEmpty(vendorIdText) || string.IsNullOrEmpty(productIdText)
+            || !int.TryParse(vendorIdText, out var vendorId) || !int.TryParse(productIdText, out var productId))
+        {
+            Assert.Inconclusive($"No 'RealHid{name}-VendorId'/'RealHid{name}-ProductId' — run with 'dotnet test --settings devterm.runsettings' to exercise this against real hardware.");
+            return;
+        }
+
+        if (!RealDeviceReachability.IsHidDeviceAvailable(vendorId, productId, devicePath))
+        {
+            Assert.Inconclusive($"No K8055 HID device (VendorId {vendorId}, ProductId {productId}) is currently enumerated — is it plugged in?");
+            return;
+        }
+
+        var options = Options.Create(new HidTransportOptions
+        {
+            VendorId = vendorId,
+            ProductId = productId,
+            DevicePath = string.IsNullOrEmpty(devicePath) ? null : devicePath,
+        });
+
+        await using var transport = new HidTransport(new SystemHidDeviceFactory(), options);
+        await using var session = new Session(transport, new Pipeline([]));
+
+        TestContext.WriteLine("Connecting...");
+        await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        TestContext.WriteLine("Connected.");
+
+        var controlSurface = new K8055ControlSurface(session);
+        try
+        {
+            foreach (var (command, value) in new[] { ("digitalOut1", "true"), ("digitalOut3", "true"), ("analogOut1", "128"), ("analogOut2", "255") })
+            {
+                TestContext.WriteLine($"Sending: {command} = {value}");
+                await controlSurface.InvokeAsync(command, value, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            }
+        }
+        finally
+        {
+            // Leave the board's outputs off whatever happened above.
+            foreach (var (command, value) in new[] { ("digitalOut1", "false"), ("digitalOut3", "false"), ("analogOut1", "0"), ("analogOut2", "0") })
+            {
+                TestContext.WriteLine($"Sending: {command} = {value}");
+                await controlSurface.InvokeAsync(command, value, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            }
+        }
+
+        await session.CloseAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+        TestContext.WriteLine("Closed.");
+    }
 }
