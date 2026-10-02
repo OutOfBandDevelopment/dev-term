@@ -150,12 +150,12 @@ public partial class ManifestEditorWindow : Window
         {
             options.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
             {
-                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text)) { Owner = this };
+                var picker = new ExpressionPickerWindow(Editor.CreatePicker(text)) { Owner = this };
                 return picker.ShowDialog() == true ? picker.Accepted : null;
             };
             options.TextPickers[nameof(ControlForm.Channels)] = text =>
             {
-                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: PickerMode.Channels)) { Owner = this };
+                var picker = new ExpressionPickerWindow(Editor.CreatePicker(text, PickerMode.Channels)) { Owner = this };
                 return picker.ShowDialog() == true ? picker.Accepted : null;
             };
             options.TextPickers[nameof(ControlForm.XId)] = text => PickFor(text, PickerMode.ValueId);
@@ -176,7 +176,7 @@ public partial class ManifestEditorWindow : Window
 
     private string? PickFor(string text, PickerMode mode)
     {
-        var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: mode)) { Owner = this };
+        var picker = new ExpressionPickerWindow(Editor.CreatePicker(text, mode)) { Owner = this };
         return picker.ShowDialog() == true ? picker.Accepted : null;
     }
 
@@ -264,6 +264,22 @@ public partial class ManifestEditorWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             Editor.ImportKsy(dialog.FileName);
+        }
+    }
+
+    private void Recording_Click(object sender, RoutedEventArgs e)
+    {
+        if (Editor.Recording is not null)
+        {
+            Editor.ClearRecording();
+            RecordingButton.Content = "Use recording...";
+            return;
+        }
+
+        var dialog = new OpenFileDialog { Filter = "dev-term session log (*.jsonl)|*.jsonl|All files (*.*)|*.*", Title = "Use a session log as sample data" };
+        if (dialog.ShowDialog(this) == true && Editor.LoadRecording(dialog.FileName))
+        {
+            RecordingButton.Content = "Stop using recording";
         }
     }
 

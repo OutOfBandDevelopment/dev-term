@@ -86,3 +86,46 @@ public sealed class RecordedSamplesTests
         Assert.AreEqual(25.4, picker.Result!.Value, 1e-9);
     }
 }
+
+[TestCategory(TestCategories.Unit)]
+[TestClass]
+public sealed class ManifestEditorRecordingTests
+{
+    private static string WriteLog(string rx)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"rec-{Guid.NewGuid():N}.jsonl");
+        var log = new SessionLog(new SessionLogHeader { Created = DateTimeOffset.UtcNow }, [new SessionLogRecord { Kind = SessionLogRecordKind.Rx, Sequence = 1, Timestamp = DateTimeOffset.UtcNow, Data = Encoding.ASCII.GetBytes(rx) }]);
+        using (var stream = File.Create(path))
+        {
+            log.Write(stream);
+        }
+
+        return path;
+    }
+
+    [TestMethod]
+    public void LoadRecording_FeedsPickersAndPreview_AndBadFilesKeepTheOldOne()
+    {
+        var editor = new Editing.ManifestEditorViewModel(Path.Combine(Path.GetTempPath(), "dt-user"));
+        editor.Manifest.Inbound = new InboundProtocol { Patterns = [new ResponsePattern { Name = "r", Match = @"^MEAS (?<volts>[\d.]+)$" }] };
+        var good = WriteLog("MEAS 9.5\n");
+        var empty = WriteLog("nothing\n");
+        try
+        {
+            Assert.IsTrue(editor.LoadRecording(good));
+            Assert.AreEqual(9.5, editor.CreatePicker("{volts}").Result);
+
+            Assert.IsFalse(editor.LoadRecording(empty));
+            Assert.IsFalse(editor.LoadRecording(Path.Combine(Path.GetTempPath(), "missing.jsonl")));
+            Assert.IsNotNull(editor.Recording);
+
+            editor.ClearRecording();
+            Assert.IsNull(editor.Recording);
+        }
+        finally
+        {
+            File.Delete(good);
+            File.Delete(empty);
+        }
+    }
+}

@@ -111,3 +111,7 @@ Where it saves:
 a manifest file, folder, or `.zip`. It opens a manifest even if it has errors, so you can fix it.
 **New**, **Open...** and **Close** ask before throwing away unsaved changes; the title bar ends in
 ` *` while there are some.
+
+## Previewing with a recorded session
+
+Press **Use recording...** (WPF) or **Log** (TUI, next to **Ksy**) and pick a session log you captured earlier. The preview panel and the expression pickers then show the values the device really sent, in order, instead of generated ones; **Next sample** steps through them. Press the button again to go back to generated data.

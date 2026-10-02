@@ -473,6 +473,48 @@ public sealed class ManifestEditorViewModel
         }
     }
 
+    /// <summary>Values from a session log that previews and the expression pickers use instead of generated ones; null when none is loaded.</summary>
+    public RecordedSamples? Recording { get; private set; }
+
+    /// <summary>
+    /// Loads a session log as the sample-data source. Returns false (status message set) when it can't be read or holds nothing
+    /// this manifest recognises; the previous recording is kept then.
+    /// </summary>
+    public bool LoadRecording(string path)
+    {
+        RecordedSamples samples;
+        try
+        {
+            samples = RecordedSamples.FromSessionLog(Manifest, DevTerm.Logging.SessionLog.Load(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            StatusMessage = $"Couldn't read '{path}': {ex.Message}";
+            return false;
+        }
+
+        if (samples.IsEmpty)
+        {
+            StatusMessage = $"{Path.GetFileName(path)} holds no replies this manifest's patterns or frame recognise.";
+            return false;
+        }
+
+        Recording = samples;
+        StatusMessage = $"Sample data now comes from {Path.GetFileName(path)} ({samples.Paths.Count} value(s)).";
+        return true;
+    }
+
+    /// <summary>Goes back to generated sample data.</summary>
+    public void ClearRecording()
+    {
+        Recording = null;
+        StatusMessage = "Sample data is generated again.";
+    }
+
+    /// <summary>An expression picker over this manifest's value paths, drawing sample values from the loaded recording if any.</summary>
+    public ExpressionPickerViewModel CreatePicker(string? text, PickerMode mode = PickerMode.Expression) =>
+        new(ValuePathCatalog.Enumerate(Manifest), text, mode: mode) { Recording = Recording };
+
     /// <summary>
     /// Fills the preview panel with realistic sample values (see <see cref="SampleDataGenerator"/>) so its indicators, gauges
     /// and expression results show something without a device. Numbers use the invariant culture; a choice shows its label.
@@ -487,7 +529,11 @@ public sealed class ManifestEditorViewModel
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var path in ValuePathCatalog.Enumerate(Manifest))
         {
-            if (SampleDataGenerator.Text(path, step) is { } label)
+            if (Recording?.Text(path.Path, step) is { } recorded)
+            {
+                values[path.Path] = recorded;
+            }
+            else if (SampleDataGenerator.Text(path, step) is { } label)
             {
                 values[path.Path] = label;
             }
