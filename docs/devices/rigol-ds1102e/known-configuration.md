@@ -6,7 +6,7 @@
 | Transport | USBTMC, VID 0x1AB1, PID 0x0588 (enumerates as "DS1000 SERIES") |
 | Line ending | none needed either way: sending ``, `
 `, `
-` or nothing after `*IDN?` gave the identical reply (checked 2026-10-02), and the reply carries no terminator, so the `ascii` presenter buffers it forever. Use `--lineending None` with `--presenter hex` |
+` or nothing after `*IDN?` gave the identical reply (checked 2026-10-02), and the reply carries no terminator, so the `ascii` presenter buffers it forever. Use `--lineending None` with `--presenter hex`, or `--presenter scpi --scpiprofile "Rigol DS1102E Oscilloscope"` to get the reply as text (the profile's empty terminator is what makes the `scpi` presenter print it) |
 
 ```bash
 dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true

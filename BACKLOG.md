@@ -53,7 +53,8 @@ the rest.
   selector would list the registered tools by name. Needs a settings shape (a list of name/path/arguments/
   formats/output extension, as `List<T>` rather than a dictionary so JSON and XML both work), UI in both
   profile editors, and a proposal first. Today: [Ghostscript guide](docs/user-guide/ghostscript-conversion.md)
-  notes the one-tool limit.
+  notes the one-tool limit. Once several tools can be registered, drop the built-in Web service mode
+  (`StreamConvertWebService*`): a script or `curl` registered as a tool covers it (decided 2026-10-02).
 
 ### Device control modules & hardware profiles
 
