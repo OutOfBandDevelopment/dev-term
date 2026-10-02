@@ -222,7 +222,27 @@ internal static class ManifestEditorMode
                 formOptions.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
                     ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text));
                 formOptions.TextPickers[nameof(ControlForm.Channels)] = text =>
-                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, channelList: true));
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.Channels));
+                formOptions.TextPickers[nameof(ControlForm.XId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.YId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.ZId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.RadiusId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.AngleId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.HueId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.SaturationId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.BrightnessId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.VisibleWhenId)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ValueId));
+                formOptions.TextPickers[nameof(ControlForm.ParameterExpressions)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, mode: PickerMode.ExpressionList));
             }
 
             var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, formOptions);

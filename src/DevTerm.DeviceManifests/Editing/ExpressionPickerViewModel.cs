@@ -22,6 +22,15 @@ public sealed record PickerPath(ValuePath Path, string Detail, string? Example)
 /// WPF forms render this the way they render the other editor forms. See
 /// docs/design/proposals/expression-picker-paths-and-cel.md.
 /// </summary>
+/// <summary>What the text being picked is: one expression, a chart's channel list, a semicolon-separated list of expressions, or one value id.</summary>
+public enum PickerMode
+{
+    Expression,
+    Channels,
+    ExpressionList,
+    ValueId,
+}
+
 public sealed class ExpressionPickerViewModel
 {
     private static readonly IReadOnlyList<ExpressionFunction> _functions =
@@ -41,25 +50,57 @@ public sealed class ExpressionPickerViewModel
     private int _selectionLength;
     private int _step;
 
-    public ExpressionPickerViewModel(IEnumerable<ValuePath> paths, string? text = null, int seed = 0, bool channelList = false)
+    public ExpressionPickerViewModel(IEnumerable<ValuePath> paths, string? text = null, int seed = 0, PickerMode mode = PickerMode.Expression)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         var list = paths.ToList();
         _byId = list.GroupBy(p => p.Path, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         Seed = seed;
-        IsChannelList = channelList;
+        Mode = mode;
         _allPaths = [.. _byId.Values.Select(p => new PickerPath(p, Describe(p), Example(p, seed)))];
         _text = text ?? string.Empty;
         _caret = _text.Length;
         Recompute();
     }
 
-    /// <summary>
-    /// True when the text is a chart's semicolon-separated channel list (<c>id[:label[:#RRGGBB[:expression]]]</c>) rather than one
-    /// expression: choosing a path appends its bare id as a new channel, and there is no single result to show.
-    /// </summary>
-    public bool IsChannelList { get; }
+    /// <summary>What the text is; decides how a chosen path is inserted and how the text is checked.</summary>
+    public PickerMode Mode { get; }
+
+    /// <summary>True when the text is a chart's channel list (see <see cref="PickerMode.Channels"/>).</summary>
+    public bool IsChannelList => Mode == PickerMode.Channels;
+
+    /// <summary>True when the function buttons apply (a single expression or a list of them).</summary>
+    public bool ShowsFunctions => Mode is PickerMode.Expression or PickerMode.ExpressionList;
+
+    /// <summary>True when there is one expression whose result against sample data can be shown.</summary>
+    public bool ShowsResult => Mode == PickerMode.Expression;
+
+    /// <summary>The dialog title.</summary>
+    public string Title => Mode switch
+    {
+        PickerMode.Channels => "Channels",
+        PickerMode.ExpressionList => "Expressions",
+        PickerMode.ValueId => "Value",
+        _ => "Expression",
+    };
+
+    /// <summary>The label over the text box.</summary>
+    public string Prompt => Mode switch
+    {
+        PickerMode.Channels => "Channels (id[:label[:#RRGGBB[:expression]]], separated by ;):",
+        PickerMode.ExpressionList => "Expressions (separated by ;, blank keeps a field's own value):",
+        PickerMode.ValueId => "Value id:",
+        _ => "Expression:",
+    };
+
+    /// <summary>The hint on the path list for how to choose.</summary>
+    public string ChooseHint => Mode switch
+    {
+        PickerMode.Channels => "Double-click a value to add it as a channel",
+        PickerMode.ValueId => "Double-click a value to use it",
+        _ => "Double-click a value to insert it at the caret",
+    };
 
     /// <summary>Raised after any change to the text, the filter, the sample step or the caret-visible state.</summary>
     public event EventHandler? Changed;
@@ -175,6 +216,16 @@ public sealed class ExpressionPickerViewModel
     public void InsertPath(PickerPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
+        if (Mode == PickerMode.ValueId)
+        {
+            _text = path.Path.Path;
+            _caret = _text.Length;
+            _selectionLength = 0;
+            Recompute();
+            Changed?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (IsChannelList)
         {
             var before = _text.AsSpan(0, Math.Min(_caret, _text.Length)).TrimEnd();
@@ -224,9 +275,24 @@ public sealed class ExpressionPickerViewModel
             return;
         }
 
+        if (Mode == PickerMode.ValueId)
+        {
+            IsValid = true;
+            Error = null;
+            var id = _text.Trim();
+            Warnings = _byId.ContainsKey(id) ? [] : [$"'{id}' is not published by anything in this manifest."];
+            return;
+        }
+
         if (IsChannelList)
         {
             RecomputeChannels();
+            return;
+        }
+
+        if (Mode == PickerMode.ExpressionList)
+        {
+            RecomputeExpressionList();
             return;
         }
 
@@ -255,6 +321,33 @@ public sealed class ExpressionPickerViewModel
 
         Warnings = warnings;
         Result = expression.Evaluate(SampleDataGenerator.Values(_byId.Values, Seed, _step));
+    }
+
+    private void RecomputeExpressionList()
+    {
+        var warnings = new List<string>();
+        var index = 0;
+        foreach (var item in _text.Split(';').Select(i => i.Trim()))
+        {
+            index++;
+            if (item.Length == 0)
+            {
+                continue;
+            }
+
+            if (!Expression.TryParse(item, out var expression, out var error))
+            {
+                IsValid = false;
+                Error = $"Item {index}: {error}";
+                return;
+            }
+
+            warnings.AddRange(expression!.ReferencedIds.Where(r => !_byId.ContainsKey(r)).Select(r => $"'{r}' is not published by anything in this manifest."));
+        }
+
+        IsValid = true;
+        Error = null;
+        Warnings = warnings;
     }
 
     private void RecomputeChannels()

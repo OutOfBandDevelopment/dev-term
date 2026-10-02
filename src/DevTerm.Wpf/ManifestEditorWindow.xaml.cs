@@ -155,13 +155,29 @@ public partial class ManifestEditorWindow : Window
             };
             options.TextPickers[nameof(ControlForm.Channels)] = text =>
             {
-                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, channelList: true)) { Owner = this };
+                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: PickerMode.Channels)) { Owner = this };
                 return picker.ShowDialog() == true ? picker.Accepted : null;
             };
+            options.TextPickers[nameof(ControlForm.XId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.YId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.ZId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.RadiusId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.AngleId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.HueId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.SaturationId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.BrightnessId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.VisibleWhenId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.ParameterExpressions)] = text => PickFor(text, PickerMode.ExpressionList);
         }
 
         Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, options);
         FormHost.Content = Form.Root;
+    }
+
+    private string? PickFor(string text, PickerMode mode)
+    {
+        var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: mode)) { Owner = this };
+        return picker.ShowDialog() == true ? picker.Accepted : null;
     }
 
     // Rebuilt at most once per burst of edits (every keystroke is an edit), after they've all applied.

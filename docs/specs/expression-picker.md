@@ -37,6 +37,15 @@ bare id as a new channel (with `; ` between), there are no function buttons, sam
 check each channel's id (and any channel expression) against the manifest, warning on unknown ids and erroring on a
 channel expression that doesn't parse.
 
+## Other modes
+
+The same dialog serves every field that names a value (`PickerMode`):
+
+- **Parameter expressions** (a button): a `;`-separated list of expressions. Choosing a value inserts `{id}` at the caret, the
+  function buttons are shown, blanks are allowed, and a bad item is reported as `Item N: ...`.
+- **Value id** fields (vector X/Y/Z/Radius/Angle ids, color Hue/Saturation/Brightness ids, **Visible when**): choosing a value
+  replaces the field with that id; an id nothing publishes warns.
+
 ## States
 
 The sample result is deterministic for a given manifest (seeded), so the same expression shows the same number each time
@@ -49,5 +58,5 @@ the picker opens until **Next sample** is pressed.
 
 ## Open items
 
-- Pick on a button's Parameter expressions, and on a single channel's expression segment.
+- Pick on a single channel's expression segment (typed after the third `:`), and on a button's Parameter fields (command parameter ids, not value paths).
 - Operators/regex helpers and the CEL-style language extension (proposal's later steps).

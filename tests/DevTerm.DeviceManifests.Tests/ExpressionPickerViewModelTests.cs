@@ -229,7 +229,7 @@ public sealed class ExpressionPickerViewModelTests
     [TestMethod]
     public void ChannelList_AppendsBareIdsWithSeparators_AndValidatesEachChannel()
     {
-        var picker = new ExpressionPickerViewModel([_voltage, _current], null, 7, channelList: true);
+        var picker = new ExpressionPickerViewModel([_voltage, _current], null, 7, PickerMode.Channels);
 
         picker.InsertPath(picker.AllPaths.Single(p => p.Path.Path == "volts"));
         picker.InsertPath(picker.AllPaths.Single(p => p.Path.Path == "amps"));
@@ -245,5 +245,31 @@ public sealed class ExpressionPickerViewModelTests
         picker.Text = "volts:V:#FF0000:{amps} * 2; nothing";
         Assert.IsTrue(picker.IsValid);
         Assert.HasCount(1, picker.Warnings);
+    }
+
+    [TestMethod]
+    public void ValueIdMode_ReplacesTheTextWithTheChosenId()
+    {
+        var picker = new ExpressionPickerViewModel([_voltage, _current], "volts", 7, PickerMode.ValueId);
+        picker.InsertPath(picker.AllPaths.Single(p => p.Path.Path == "amps"));
+
+        Assert.AreEqual("amps", picker.Text);
+        Assert.IsTrue(picker.IsValid);
+        Assert.AreEqual(0, picker.Warnings.Count);
+        picker.Text = "nothing";
+        Assert.HasCount(1, picker.Warnings);
+    }
+
+    [TestMethod]
+    public void ExpressionListMode_AllowsBlanks_AndNamesTheBadItem()
+    {
+        var picker = new ExpressionPickerViewModel([_voltage, _current], "; {volts} * 2", 7, PickerMode.ExpressionList);
+        Assert.IsTrue(picker.IsValid);
+        Assert.IsTrue(picker.ShowsFunctions);
+        Assert.IsFalse(picker.ShowsResult);
+
+        picker.Text = "{volts}; {amps} *";
+        Assert.IsFalse(picker.IsValid);
+        StringAssert.StartsWith(picker.Error, "Item 2");
     }
 }
