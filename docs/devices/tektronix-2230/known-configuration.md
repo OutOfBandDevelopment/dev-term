@@ -4,8 +4,8 @@
 |---|---|
 | Profile | `tektronix-2230.json` |
 | Transport | TCP through a serial-to-Ethernet bridge, port 23 |
-| Units | 192.168.0.108 (`ID TEK/2230,V81.1,VERS:13;`), 192.168.0.107 (`VERS:14`; **offline on 2026-10-02**) |
-| Bridge UART (.108, read 2026-10-02) | 4800 baud, 8 data, no parity, 1 stop. [.107: to fill in] |
+| Units | 192.168.0.108 (`ID TEK/2230,V81.1,VERS:13;`), 192.168.0.107 (`VERS:14`) |
+| Bridge UART (read 2026-10-02) | 4800 baud, 8 data, no parity, 1 stop (.107 and .108 both) |
 | Line ending | `--lineending Cr`, `--asciimaxlinelength 512` |
 | Identify | `ID?` (pre-SCPI, not `*IDN?`) |
 

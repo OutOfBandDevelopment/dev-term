@@ -16,12 +16,12 @@ Read with the script above, not typed from memory.
 
 | Bridge | Module | Behind it | IP config | Work mode | Local port | UART | RFC2217-like |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 192.168.0.107 | **unreachable** (request timed out) | Tektronix 2230 (second unit) | | | | **to fill in:** baud ___ data ___ parity ___ stop ___ | |
+| 192.168.0.107 | RS232-1 (MAC 9c-a5-25-a8-6e-3a) | Tektronix 2230 (second unit) | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
 | 192.168.0.108 | RS232-2 (fw 4018, MAC 9c-a5-25-a8-6e-80) | Tektronix 2230 | DHCP | TCP Server | 23 | 4800 8/None/1 | on (box checked) |
-| 192.168.0.109 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-83) | **to fill in** (not recorded in any report) | static | TCP Server | 23 | 1200 8/None/2 | on |
+| 192.168.0.109 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-83) | HP 34401A (meter set to 9600; **bridge does not match**) | static | TCP Server | 23 | 1200 8/None/2 | on |
 | 192.168.0.110 | USR-TCP232-302 (MAC 9c-a5-25-a8-6e-86) | Tektronix TDS2024 | DHCP | TCP Server | 23 | 19200 8/None/1 | on |
 
-Common to .108/.109/.110: remote (target) address 192.168.0.201 and remote port 8234 (unused in TCP Server mode).
+Common to .107/.108/.109/.110: remote (target) address 192.168.0.201 and remote port 8234 (unused in TCP Server mode).
 "UART Set Parameter" (Expand Function page) is on for .109 only. The "Similar RFC2217" box on the Serial Port page is
 on for all three; what that does on the wire is unverified here (see `RFC2217-like Function Example.md` and
 `docs/design/rfc2217.md`).
@@ -42,8 +42,15 @@ The TDS2024 hangs on `TRIGger...?` queries; use `CH1?`/`CH2?`. Earlier reports r
 
 The older `launchSettings.json` TCP profiles for .107-.110 all use `--lineending Cr --asciimaxlinelength 512`.
 
+## .109 and the HP 34401A (not working yet)
+
+The HP 34401A behind .109 is configured for **9600 baud** (on COM5 it runs 9600 8N2, see
+[hp-34401a](../hp-34401a/known-configuration.md)), but the bridge's UART reads **1200 8N2** (2026-10-02). With the
+bridge at 1200 the meter's 9600 replies arrive as garbage or nothing, which is the most likely reason it doesn't
+work yet. Fix: set the bridge's Serial Port baud to 9600 (keeping 8/None/2) on its web UI; not done here since the
+script is read-only. Then use `--lineending Lf`, `--presenter ascii`, and send `SYST:REM` first.
+Check the meter's own parity/stop-bit setting matches (8N2 on COM5; its front panel can differ).
+
 ## Not recorded anywhere yet
 
-- UART settings of **.107** (unreachable on 2026-10-02: powered off, unplugged, or the bench has one spare network
-  cable for the two 2230s, per the 2026-09-24 test report).
-- What instrument is connected to **.109** and why it uses 1200 baud, 2 stop bits.
+- Current state of the USBTMC Rigol units.
