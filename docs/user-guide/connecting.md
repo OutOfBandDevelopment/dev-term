@@ -172,6 +172,23 @@ other fields to fill in beyond that, just Connect:
 
 ![WPF connection editor, Loopback transport](images/wpf-device-profiles-loopback.png)
 
+To watch a paced stream arrive, set **Sample interval (ms)** to `400`, connect, and send `Samples: 6`
+(or `dotnet run --project src/DevTerm.Console -- --transport loopback --loopbacksampleintervalms 400`).
+Each simulated sample appears on its own line, about 0.4 s after the one before, instead of all at once:
+
+![TUI after the first sample of a paced Samples: 6 stream has arrived](images/tui-loopback-stream-1.png)
+
+![TUI after the third sample](images/tui-loopback-stream-3.png)
+
+![TUI after all six samples](images/tui-loopback-stream-6.png)
+
+The same capture as an animation (one frame per arrived sample):
+
+![Animation of six paced loopback samples arriving one at a time](images/tui-loopback-stream.gif)
+
+The stills are real captures from `LoopbackSampleStreamScreenshotTests`; `scripts/make_loopback_gif.py`
+assembles them into the GIF. The WPF window behaves the same way; no separate WPF stills are kept.
+
 **BLE** (Windows only today — see [`docs/design/transports.md`](../design/transports.md)'s BLE
 section): device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART
 Service defaults). No live "Detect..." picker yet, unlike Serial/HID/USBTMC — copy the device id from

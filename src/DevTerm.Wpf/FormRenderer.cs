@@ -251,11 +251,11 @@ internal static class FormRenderer
                 }
 
             default:
-                return BuildTextBox(parts, row, control);
+                return BuildTextBox(parts, row, control, options);
         }
     }
 
-    private static FrameworkElement BuildTextBox(WpfFormParts parts, WpfFormRow row, UiControl control)
+    private static FrameworkElement BuildTextBox(WpfFormParts parts, WpfFormRow row, UiControl control, WpfFormOptions options)
     {
         var binding = parts.Binding;
         var box = new TextBox { VerticalContentAlignment = VerticalAlignment.Center, IsReadOnly = binding.IsReadOnly(control.Id) };
@@ -297,6 +297,24 @@ internal static class FormRenderer
             line.Children.Add(box);
             stack.Children.Add(line);
         }
+        else if (options.TextPickers.TryGetValue(control.Id, out var picker))
+        {
+            // A "Pick..." button beside the field opens the host's picker, which returns the new text or null when cancelled.
+            var line = new DockPanel();
+            var pick = new Button { Content = "Pick...", Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(10, 2, 10, 2) };
+            pick.Click += (_, _) =>
+            {
+                if (picker(box.Text) is { } picked)
+                {
+                    box.Text = picked;
+                }
+            };
+            DockPanel.SetDock(pick, Dock.Right);
+            line.Children.Add(pick);
+            line.Children.Add(box);
+            parts.PickButtons[control.Id] = pick;
+            stack.Children.Add(line);
+        }
         else
         {
             stack.Children.Add(box);
@@ -315,6 +333,9 @@ internal sealed class WpfFormOptions
 
     /// <summary>What a <see cref="ButtonControl"/> does, keyed by its id; without one, the bound model's command property of that name runs.</summary>
     public Dictionary<string, Action> Actions { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>A text field's picker, keyed by control id: given the field's current text, returns the new text or null when cancelled. The field gets a <c>Pick...</c> button.</summary>
+    public Dictionary<string, Func<string, string?>> TextPickers { get; } = new(StringComparer.Ordinal);
 
     /// <summary>The label column's minimum width - it grows, across the whole form, to fit the longest label; null sizes each row's own label column to its label.</summary>
     public double? LabelColumnWidth { get; set; } = 140;
@@ -347,6 +368,9 @@ internal sealed class WpfFormParts
     public Dictionary<string, StackPanel> SectionPanels { get; } = new(StringComparer.Ordinal);
 
     public Dictionary<string, TextBox> TextBoxes { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The <c>Pick...</c> button beside a text field that has a picker (see <see cref="WpfFormOptions.TextPickers"/>).</summary>
+    public Dictionary<string, Button> PickButtons { get; } = new(StringComparer.Ordinal);
 
     public Dictionary<string, TextBlock> ErrorTexts { get; } = new(StringComparer.Ordinal);
 

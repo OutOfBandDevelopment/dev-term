@@ -34,6 +34,18 @@ value verbatim — `{raw_mv} / 1000` to show millivolts as volts, `round({voltag
 compute and send a derived value. See [`docs/specs/manifest-editor.md`](../specs/manifest-editor.md)'s
 Fields table for the exact grammar and syntax.
 
+An indicator's Expression field has a **Pick...** button that opens the expression picker: choose from the
+manifest's own values (with type, unit and range), insert `round`/`min`/`max`/`abs`/`if`, and watch the
+diagnostics and the result against sample data update as you type. **OK** puts the expression back in the field.
+Every field that names a value has a **Pick...** button too: a bar graph or strip chart's **Channels** (choosing a value
+adds a channel), a button's **Parameter expressions**, a vector's coordinate ids, a color control's hue/saturation/brightness ids
+and **Visible when**.
+See [`docs/specs/expression-picker.md`](../specs/expression-picker.md).
+
+![WPF expression picker](images/wpf-expression-picker.png)
+
+![TUI expression picker](images/tui-expression-picker.png)
+
 ![WPF manifest editor: a bar graph control's form](images/wpf-manifest-editor-control.png)
 
 ![TUI manifest editor: a bar graph control's form](images/tui-manifest-editor-control.png)

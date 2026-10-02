@@ -31,44 +31,16 @@ the rest.
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
   resolving against a fresh capture before implementing, not just the existing notes.
 
-### USBTMC
-
-- **DS1102E missing-ZLP at an exact packet boundary (pyvisa-py #472, not reproduced)** — pyvisa-py reports that the
-  device omits the terminating zero-length packet when a reply ends exactly on a 64-byte boundary. The rework would
-  wait one `ReadTimeoutMs` for it and then raise an error. A normal-mode 600-sample `:WAV:DATA?` (610 bytes plus 10
-  padding) never hits a boundary, so this needs a reply that does (a long-memory/RAW-mode read, for example) to check.
-  The same issue's other claim ("TransferSize is 10 bytes short") did **not** match this unit: TransferSize was exact and
-  the 10 extra bytes were trailing padding, which the rework correctly drops (see the 2026-09-25 bench report). A
-  2026-09-29 manual attempt (`docs/test/2026-09-29-18-06-54.md`) got a real long/RAW-mode reply (8192 data bytes,
-  8202 total) but that still isn't a multiple of 64 or 512 — still not reproduced; needs finer control over the
-  exact point count to actually land on the boundary.
-
 ### Tektronix TDS2024
 
-- **Every `TRIGger:...?` query (including the unqualified `TRIGger?` form) gets no reply at all
-  against this specific real TDS2024 unit** — real-hardware confirmed 2026-09-25
-  (`docs/test/2026-09-25-18-57-22.md`) and extended 2026-09-30
-  (`docs/test/2026-09-30-21-51-12.md`): `TRIGger:MAIn:FREQuency?`, `TRIGger:STATE?` (a much cheaper
-  status query, ruling out "expensive measurement" as the cause), and plain `TRIGger?` all get no
-  reply, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`, `CH2?`) answers normally, including
-  immediately after a dropped `TRIGger` query (ruling out a stuck/corrupted link or a queued stale
-  reply bleeding into the next command). `*CLS` + `ALLEv?` right after a dropped query shows an
-  empty event queue — the device isn't posting an IEEE 488.2 command-error event (410/420-class)
-  for it either, so this looks like the firmware never generating a reply at all, not rejecting the
-  command as malformed. `tektronix-tds2024.json`'s own `Name` field notes this unit is specifically
-  "NOT the TDS2024B" — still an unconfirmed hypothesis that the `TRIGger` query family needs that
-  variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family for now
-  (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a known-working
-  `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare framing, similar
-  to the USBTMC framing bugs above.
+- **A TDS2024 bridge can surface a reply one connection late**, so a real-hardware test should discard anything
+  that doesn't match what it just sent. Observed 2026-10-02; the test still passes without it, so low priority.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` reference for binary response layouts via [Kaitai Struct](https://kaitai.io/) — see
-  `docs/design/device-control-modules.md`'s "Declarative command/response schema" section. Kaitai is
-  read/parse-only (no concept of sending a command), so it only ever covers the response half; the
-  general Kaitai-backed binary-response schema is unimplemented for genuinely binary devices (the SCPI
-  baseline below it in that doc is a separate, already-built, SCPI-specific path). Not started.
+- `.ksy` binary-response schemas: promoted to in-progress (2026-10-02) — see `TODO.md`. Kaitai is read/parse-only,
+  so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
+  separate, already-built path.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
@@ -130,6 +102,8 @@ the rest.
 - [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
   route inbound messages and trigger outbound events to external services.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
+- [Schema files for custom formats](docs/design/proposals/format-schema-files.md) — generated JSON Schemas for manifests,
+  UI definitions and profiles (proposed 2026-10-02; spike `JsonSchemaExporter` first).
 
 ## Research (not backlog-ready)
 

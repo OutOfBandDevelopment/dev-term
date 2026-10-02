@@ -83,6 +83,8 @@ section (a numeric "Sample interval (ms)" field, visible only when `Transport = 
 Verified by unit tests only (`LoopbackTransportOptionsValidatorTests`, `LoopbackTransportTests`,
 `CliOptionsValidatorTests`, `ServiceCollectionExtensionsTests`, `ConnectionEditorFormTests`,
 `ConnectionEditorViewModelTests`) — ascertaining this needs no real hardware, since the loopback
-transport has none. Not yet verified via a live screen recording/Stream Monitor capture showing the
-paced arrival visually (the motivating use case) — that remains a follow-up if/when the user-guide
-walkthrough wants a real captured example.
+transport has none.
+
+**Checked live (2026-10-02):** the maintainer ran it in both the TUI and WPF front ends and reported that it
+looks great, which closes the "verify the paced arrival visually" follow-up. No transcript or recording was
+captured; a user-guide walkthrough that wants a real captured example would still need one.

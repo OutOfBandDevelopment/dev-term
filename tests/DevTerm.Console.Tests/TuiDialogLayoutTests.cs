@@ -1,4 +1,5 @@
 using DevTerm.DeviceManifests;
+using DevTerm.DeviceManifests.Editing;
 using DevTerm.Test.Utilities;
 using Terminal.Gui.App;
 using Terminal.Gui.ViewBase;
@@ -67,6 +68,20 @@ public sealed class TuiDialogLayoutTests
                 new ManifestEntry("Loopback Sensor Demo", Path.Combine(AppContext.BaseDirectory, "manifests", "loopback-sensor-demo"), "installed"),
                 new ManifestEntry("Bench power supply (my copy)", @"C:\Users\someone\.dev-term\manifests\bench-psu", "yours"),
             ]));
+
+    [TestMethod]
+    [DynamicData(nameof(SizesAndThemes))]
+    public void ExpressionPicker(int width, int height, string theme) =>
+        TuiReview.Modal("dialog-expression-picker", width, height, theme, Background, app => ExpressionPickerDialog.Show(
+            app,
+            new ExpressionPickerViewModel(
+                [
+                    new ValuePath("volts", ValuePathType.Number, ValuePathSource.Control, "Voltage", "V", 0, 30),
+                    new ValuePath("amps", ValuePathType.Number, ValuePathSource.Control, "Current", "A", 0, 5),
+                    new ValuePath("mode", ValuePathType.Text, ValuePathSource.Control, "Mode", Choices: ["CC", "CV"]),
+                ],
+                "{volts} * {amps}",
+                seed: 7)));
 
     [TestMethod]
     [DynamicData(nameof(SizesAndThemes))]

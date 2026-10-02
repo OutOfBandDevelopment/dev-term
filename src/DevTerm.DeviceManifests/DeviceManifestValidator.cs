@@ -139,6 +139,7 @@ public static partial class DeviceManifestValidator
         if (manifest.Ui is { } ui)
         {
             ValidateUi(ui, commandIds, errors, warnings);
+            WarnOnUnknownReferences(ui, ValuePathCatalog.Enumerate(manifest), warnings);
         }
 
         return new DeviceManifestValidation(errors, warnings);
@@ -201,6 +202,49 @@ public static partial class DeviceManifestValidator
                         errors.Add($"Button '{parameterButton.Label}' has an invalid parameter expression at index {i}: {error}");
                     }
                 }
+            }
+        }
+    }
+
+    // An expression only ever reads ids the manifest can publish (ValuePathCatalog); one it can't is almost certainly a typo,
+    // and evaluates as 0 at runtime without saying why. A warning, not an error: a decoder outside the manifest may still publish it.
+    private static void WarnOnUnknownReferences(UiDefinition ui, IReadOnlyList<ValuePath> known, List<string> warnings)
+    {
+        var knownIds = known.Select(p => p.Path).ToHashSet(StringComparer.Ordinal);
+
+        void Check(string owner, string? text)
+        {
+            if (text is not { Length: > 0 } || !Expression.TryParse(text, out var expression, out _))
+            {
+                return;
+            }
+
+            foreach (var id in expression!.ReferencedIds.Where(id => !knownIds.Contains(id)))
+            {
+                warnings.Add($"{owner}: its expression reads '{{{id}}}', which nothing in the manifest publishes.");
+            }
+        }
+
+        foreach (var control in ui.Sections.SelectMany(s => s.Controls))
+        {
+            switch (control)
+            {
+                case IndicatorControl indicator:
+                    Check($"'{indicator.Label}'", indicator.Expression);
+                    break;
+                case BarGraphControl { Channels: { } channels }:
+                    channels.ForEach(ch => Check($"'{control.Label}' channel '{ch.Id}'", ch.Expression));
+                    break;
+                case StripChartControl { Channels: { } channels }:
+                    channels.ForEach(ch => Check($"'{control.Label}' channel '{ch.Id}'", ch.Expression));
+                    break;
+                case ButtonControl { ParameterExpressions: { } expressions }:
+                    foreach (var expr in expressions)
+                    {
+                        Check($"Button '{control.Label}'", expr);
+                    }
+
+                    break;
             }
         }
     }

@@ -119,7 +119,8 @@ effective id (only the first could ever run); a parameter with no name or a dupl
 pattern with no name, no regex, or one that doesn't compile; a panel control with no id — and
 *warnings* — a button or field whose command id no command declares (the panel would report
 "Unknown manifest command" on use), a button reading a parameter field the panel lacks, a template
-`{placeholder}` no parameter fills. `DeviceManifestLoader.Load` now throws
+`{placeholder}` no parameter fills, an indicator/chart/parameter expression reading an id nothing in the manifest
+publishes (`ValuePathCatalog`). `DeviceManifestLoader.Load` now throws
 `DeviceManifestValidationException` (an `InvalidOperationException`, which the pickers and the
 catalog already handle) for errors; warnings never block a load. `Load(path, validate: false, out
 manifestFile)` skips the checks — the editor opens a broken manifest so it can be fixed.

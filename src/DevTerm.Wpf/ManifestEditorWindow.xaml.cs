@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using DevTerm.Configuration;
+using DevTerm.DeviceManifests;
 using DevTerm.DeviceManifests.Editing;
 using DevTerm.UiDefinitions.Forms;
 using Microsoft.Win32;
@@ -144,8 +145,39 @@ public partial class ManifestEditorWindow : Window
         }
 
         _binding = new FormBinding(form);
-        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, new WpfFormOptions { LabelColumnWidth = 130, HideFirstSectionHeaderIfEquals = PaneTitle.Text });
+        var options = new WpfFormOptions { LabelColumnWidth = 130, HideFirstSectionHeaderIfEquals = PaneTitle.Text };
+        if (form is ControlForm)
+        {
+            options.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
+            {
+                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text)) { Owner = this };
+                return picker.ShowDialog() == true ? picker.Accepted : null;
+            };
+            options.TextPickers[nameof(ControlForm.Channels)] = text =>
+            {
+                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: PickerMode.Channels)) { Owner = this };
+                return picker.ShowDialog() == true ? picker.Accepted : null;
+            };
+            options.TextPickers[nameof(ControlForm.XId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.YId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.ZId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.RadiusId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.AngleId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.HueId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.SaturationId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.BrightnessId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.VisibleWhenId)] = text => PickFor(text, PickerMode.ValueId);
+            options.TextPickers[nameof(ControlForm.ParameterExpressions)] = text => PickFor(text, PickerMode.ExpressionList);
+        }
+
+        Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, options);
         FormHost.Content = Form.Root;
+    }
+
+    private string? PickFor(string text, PickerMode mode)
+    {
+        var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, mode: mode)) { Owner = this };
+        return picker.ShowDialog() == true ? picker.Accepted : null;
     }
 
     // Rebuilt at most once per burst of edits (every keystroke is an edit), after they've all applied.
@@ -174,7 +206,9 @@ public partial class ManifestEditorWindow : Window
         var definition = Editor.BuildPreviewDefinition();
         var surface = Editor.CreatePreviewSurface(definition);
         surface.PreviewInvoked += (_, sent) => Dispatcher.BeginInvoke(() => PreviewSentText.Text = $"Would send: {sent}");
-        var panel = new ControlPanelWindow(definition, surface, Editor.CreatePreviewPresenter());
+        var presenter = Editor.CreatePreviewPresenter();
+        var panel = new ControlPanelWindow(definition, surface, presenter);
+        Editor.PublishSampleData(presenter);
         var content = (UIElement)panel.Content;
         panel.Content = null;
         PreviewHost.Child = content;

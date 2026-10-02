@@ -96,8 +96,8 @@ the outline and one pane that holds either the form or, with **Preview**, the pa
 | | Options, Style | a choice's `Options` (comma-separated), `Style` | choice only |
 | | Value type, Max length | a text field's `Constraint.Kind`, `MaxLength` | text field only |
 | | Minimum, Maximum, Step, Unit | per kind (a text field's constraint bounds when it's a number) | slider/numeric/bar graph/strip chart; Step slider only |
-| | Expression | an indicator's `Expression` — when set, derives the displayed number from the live published values (e.g. `{raw_mv} / 1000`) instead of showing the id's own value verbatim; blank keeps the direct behavior | indicator only |
-| | Channels | a chart's `Channels`, semicolon-separated (an expression segment may itself contain commas), as `id[:label[:#RRGGBB[:expression]]], ...` — the trailing `expression`, when present, derives that channel's plotted value from the live published values instead of reading `id` directly | bar graph/strip chart |
+| | Expression | an indicator's `Expression` — when set, derives the displayed number from the live published values (e.g. `{raw_mv} / 1000`) instead of showing the id's own value verbatim; blank keeps the direct behavior; a **Pick...** button opens the [Expression Picker](expression-picker.md) | indicator only |
+| | Channels | a chart's `Channels`, semicolon-separated (an expression segment may itself contain commas), as `id[:label[:#RRGGBB[:expression]]], ...` — the trailing `expression`, when present, derives that channel's plotted value from the live published values instead of reading `id` directly | bar graph/strip chart; a **Pick...** button appends a chosen value as a channel ([Expression Picker](expression-picker.md)) |
 | | History length | `HistoryLength` | strip chart |
 | | Coordinates, X/Y/Z/Radius/Angle value ids, Angle unit, Range, Trail length, Hue/Saturation/Brightness value ids | the vector's fields | vector; X/Y for XY/XYZ, Z for XYZ, Radius/Angle/unit for Polar |
 | | Visible when, Visible values | `Control.VisibleWhen`'s `Id`, `Values` (comma-separated) | "Visible values" shown only once "Visible when" is set |
@@ -137,7 +137,7 @@ part itself — the condition a live control panel and the preview evaluate — 
   same id; a parameter with no name or a duplicate one; a response pattern with no name, no regex, or
   a regex that doesn't compile; a panel control with no id) block Save and make the loader reject the
   file. *Warnings* (a button or field whose command id no command declares, a button reading a
-  parameter field the panel lacks, a template placeholder no parameter fills) are shown after Open,
+  parameter field the panel lacks, a template placeholder no parameter fills, an expression reading an id nothing in the manifest publishes) are shown after Open,
   Check and Save but don't block anything.
 - **Preview**: rebuilt from a copy of the manifest after every edit (WPF, coalesced to one rebuild per
   burst of keystrokes) or each time it's shown (TUI). Building a panel can fill in its Notes from the
