@@ -189,6 +189,17 @@ arrive:
 The TUI draws bars with block characters and plots with braille dots, so they need a font with
 those characters (Cascadia Mono, Consolas, and most modern terminal fonts have them).
 
+Streamed samples normally arrive all at once. To watch the charts fill at a believable cadence, set the
+loopback connection's **Sample interval (ms)** (or pass `--loopbacksampleintervalms 150`) before pressing
+**Stream Samples**; each sample is then pushed that long after the one before it. These animations are a
+24-sample stream at 150 ms, one frame per four samples:
+
+![Animation of the TUI Loopback Sensor Demo panel filling as paced samples arrive](images/tui-loopback-charts.gif)
+
+![Animation of the WPF Loopback Sensor Demo panel filling as paced samples arrive](images/wpf-loopback-charts.gif)
+
+The stills come from `LoopbackChartsScreenshotTests` in the Console and Wpf test projects.
+
 To write a manifest for your own device, or change one, use **Device > Edit Device Manifest...**
 instead of editing the JSON by hand: see [Editing a device manifest](manifest-editor.md).
 

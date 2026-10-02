@@ -87,4 +87,10 @@ transport has none.
 
 **Checked live (2026-10-02):** the maintainer ran it in both the TUI and WPF front ends and reported that it
 looks great, which closes the "verify the paced arrival visually" follow-up. No transcript or recording was
-captured; a user-guide walkthrough that wants a real captured example would still need one.
+captured then. Since then, captured examples exist: paced-stream stills and GIFs
+(`{tui,wpf}-loopback-stream`) and control-panel chart stills and GIFs (`{tui,wpf}-loopback-charts`), produced by
+`LoopbackSampleStreamScreenshotTests` and `LoopbackChartsScreenshotTests` (Console and Wpf test projects) and
+assembled by `scripts/make_loopback_gif.py`. They are embedded in `docs/user-guide/connecting.md` and
+`docs/user-guide/device-control-panels.md`; the spec coverage is in `docs/specs/connection-editor.md` and
+`docs/specs/device-control-panel.md`. Nothing further is planned: single-line replies such as `MEAS?` stay
+undelayed by design.
