@@ -113,7 +113,8 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
   any converter — this just runs the one you point it at. [Installing and configuring Ghostscript](ghostscript-conversion.md) walks through it.
 - **Registered tools** (`StreamConvertTools`, with `auto` or `tool:<name>`) — several converters, each declaring
   the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL). **Auto** picks by the capture's
-  format. See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
+  format. Manage the list with **Edit tools...** in the same section: add, edit, remove and reorder tools (order
+  decides which one Auto tries first); see [the editor's spec](../specs/converter-tools-editor.md). See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
 - **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
   default) and saves whatever comes back.
 

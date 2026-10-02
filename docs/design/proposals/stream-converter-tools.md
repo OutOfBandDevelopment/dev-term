@@ -88,5 +88,6 @@ Selection is stored as `StreamConvertMode`: the existing values, plus `auto` and
 
 - **Built 2026-10-02**: the options, `StreamCaptureConverter` selection (Auto and by name), the conversion list
   in both windows, and tests. Real-tool verification is the same open item as the Ghostscript guide.
-- **Not built**: the tool-list editor in the WPF/TUI profile forms (tools are set in the profile JSON for now),
-  and removing Web service mode.
+- **Built 2026-10-02**: the tool-list editor, reached by **Edit tools...** in the Stream Monitor section of both profile
+  forms ([spec](../../specs/converter-tools-editor.md)); the `StreamConvert*` settings now persist through profile save/load.
+- **Not built**: removing Web service mode.

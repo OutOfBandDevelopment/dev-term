@@ -188,6 +188,47 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.ScpiAutoDetectTimeoutMs)] = options.ScpiAutoDetectTimeoutMs;
         }
 
+        // Stream Monitor converter settings, written only when set so a plain profile stays small.
+        if (!string.IsNullOrWhiteSpace(options.StreamConvertMode))
+        {
+            profile[nameof(CliOptions.StreamConvertMode)] = options.StreamConvertMode;
+        }
+
+        if (options.StreamConvertTools.Count > 0)
+        {
+            profile[nameof(CliOptions.StreamConvertTools)] = options.StreamConvertTools;
+        }
+
+        if (options.StreamConvertExternalToolPath is not null)
+        {
+            profile[nameof(CliOptions.StreamConvertExternalToolPath)] = options.StreamConvertExternalToolPath;
+        }
+
+        if (options.StreamConvertExternalToolArguments is not null)
+        {
+            profile[nameof(CliOptions.StreamConvertExternalToolArguments)] = options.StreamConvertExternalToolArguments;
+        }
+
+        if (options.StreamConvertDpi != new CliOptions().StreamConvertDpi)
+        {
+            profile[nameof(CliOptions.StreamConvertDpi)] = options.StreamConvertDpi;
+        }
+
+        if (options.StreamConvertWebServiceUrl is not null)
+        {
+            profile[nameof(CliOptions.StreamConvertWebServiceUrl)] = options.StreamConvertWebServiceUrl;
+        }
+
+        if (!string.Equals(options.StreamConvertWebServiceMethod, new CliOptions().StreamConvertWebServiceMethod, StringComparison.Ordinal))
+        {
+            profile[nameof(CliOptions.StreamConvertWebServiceMethod)] = options.StreamConvertWebServiceMethod;
+        }
+
+        if (options.StreamConvertOutputExtension is not null)
+        {
+            profile[nameof(CliOptions.StreamConvertOutputExtension)] = options.StreamConvertOutputExtension;
+        }
+
         return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
     }
 }

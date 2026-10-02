@@ -156,6 +156,7 @@ public static class ConfigureMode
         var detectBleButton = new Button { Text = "Detect BLE...", ShadowStyle = ShadowStyles.None };
         var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics...", ShadowStyle = ShadowStyles.None };
         var pickBleNotifyCharacteristicButton = new Button { Text = "Pick...", ShadowStyle = ShadowStyles.None };
+        var editConverterToolsButton = new Button { Text = "Edit tools...", ShadowStyle = ShadowStyles.None };
         var formOptions = new TuiFormOptions();
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
@@ -163,6 +164,7 @@ public static class ConfigureMode
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleDevice)] = _ => new TuiCustomWidget(detectBleButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)] = _ => new TuiCustomWidget(detectBleCharacteristicsButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)] = _ => new TuiCustomWidget(pickBleNotifyCharacteristicButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.ConverterToolsSummary)] = _ => new TuiCustomWidget(editConverterToolsButton, 2);
 
         var binding = new FormBinding(viewModel);
         var form = FormRenderer.Build(app, viewModel.FormDefinition, binding, formOptions);
@@ -230,6 +232,7 @@ public static class ConfigureMode
             BleNotifyUuidField = Field(nameof(ConnectionEditorViewModel.BleNotifyCharacteristicUuid)),
             DetectBleCharacteristicsButton = detectBleCharacteristicsButton,
             PickBleNotifyCharacteristicButton = pickBleNotifyCharacteristicButton,
+            EditConverterToolsButton = editConverterToolsButton,
             LoopbackInfoLabel = (Label)form.ControlViews[nameof(ConnectionEditorViewModel.LoopbackInfo)],
             PresenterCheckBoxes = form.CheckLists[nameof(ConnectionEditorViewModel.PresentersText)],
             ScpiProfileSelector = form.Choices[nameof(ConnectionEditorViewModel.ScpiProfile)],
@@ -526,6 +529,25 @@ public static class ConfigureMode
             e.Handled = true;
         };
 
+        void ShowConverterToolsSummary() => editConverterToolsButton.Text = $"Edit tools... ({viewModel.ConverterToolsSummary})";
+        ShowConverterToolsSummary();
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConnectionEditorViewModel.ConverterToolsSummary))
+            {
+                ShowConverterToolsSummary();
+            }
+        };
+        editConverterToolsButton.Accepting += (_, e) =>
+        {
+            if (ConverterToolsDialog.Show(app, viewModel.ConverterTools) is { } edited)
+            {
+                viewModel.ConverterTools = edited;
+            }
+
+            e.Handled = true;
+        };
+
         Run(importButton, () => viewModel.ImportCommand.Execute(null));
         Run(replaceAllButton, () => viewModel.ReplaceAllFromZipCommand.Execute(null));
         Run(exportButton, () => viewModel.ExportCommand.Execute(null));
@@ -803,6 +825,8 @@ internal sealed class ConfigureWindowParts
 
     /// <summary>Offers the notify-role pick from the same already-scanned list <see cref="DetectBleCharacteristicsButton"/> populated — see <see cref="ConnectionEditorViewModel.SelectedBleNotifyCharacteristic"/>.</summary>
     public required Button PickBleNotifyCharacteristicButton { get; init; }
+
+    public required Button EditConverterToolsButton { get; init; }
 
     /// <summary>Shown only when the loopback transport is selected — it takes no configuration.</summary>
     public required Label LoopbackInfoLabel { get; init; }

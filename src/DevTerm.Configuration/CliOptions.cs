@@ -416,4 +416,15 @@ public sealed class StreamConvertToolOptions
 
     /// <summary>The value substituted for <c>{dpi}</c>.</summary>
     public int Dpi { get; set; } = 150;
+
+    /// <summary>A copy, so an editor can change a tool without touching the options it was loaded from.</summary>
+    public static StreamConvertToolOptions Clone(StreamConvertToolOptions tool) => new()
+    {
+        Name = tool.Name,
+        Path = tool.Path,
+        Arguments = tool.Arguments,
+        Formats = tool.Formats,
+        OutputExtension = tool.OutputExtension,
+        Dpi = tool.Dpi,
+    };
 }

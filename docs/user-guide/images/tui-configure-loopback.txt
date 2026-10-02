@@ -10,8 +10,8 @@
 │                                                                             █│
 │                                                                             █│
 │  Transport:   ○ serial  ○ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217            █│
-│               ◉ loopback                                                    █│
-│  Description:                                                               █│
+│               ◉ loopback                                                    ░│
+│  Description:                                                               ░│
 │                                                                             ░│
 │── Loopback ──                                                               ░│
 │  Sample interval (ms): 0                                                    ░│
