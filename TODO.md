@@ -7,23 +7,29 @@ Completed work is logged by date under `docs/changes/`.
 ## In progress
 
 - **Manifest expression builder: decoder properties and regex matching, `.ksy` build-out, and a
-  `.ksy`-to-profile tool.** Made a priority 2026-10-02. The expression language itself is already built
-  (`DevTerm.UiDefinitions/Expression.cs`; see `docs/design/proposals/manifest-editor-expression-builder.md`),
-  but it only reads flat `{id}` values from a decoder's `ValuesChanged` dictionary. Asked for: expressions
-  that reference properties of a device decoder (a structured/Kaitai-decoded record, not just flat ids) or
-  match with a regex against raw reply text; more `.ksy` definitions; and a tool that turns a `.ksy` file
-  into a device profile (manifest). Starting point found in research: no `.ksy` files exist in the repo,
-  no Kaitai package is referenced, and `DeviceManifest`'s `.ksy` path is "referenced only, not parsed"
-  (`DeviceManifest.cs:64`), so decoding a `.ksy` is the biggest missing piece (own small interpreter vs.
-  the Kaitai compiler was the first design decision). **Decided 2026-10-02: our own `.ksy` interpreter, framed as a
-  transformation** of a `.ksy` into dev-term's existing manifest formats (a binary-frame counterpart to
-  `InboundProtocol.Patterns`' regex-to-named-values path) rather than a separate decoding stack. Nothing built yet.
-  **Scoped 2026-10-02** ([proposal](docs/design/proposals/expression-picker-paths-and-cel.md)): build order is a
-  value-path catalog (also used by the validator), a sample-data generator for realistic previews, a picker control in
-  both front ends, then a CEL-style language (spike a .NET CEL library first). **Step 1 (value-path catalog for
-  manifests) landed 2026-10-02**; SCPI-profile input landed the same day;
-  `SampleDataGenerator` landed too, wired into both editors' preview; `ExpressionPickerViewModel` landed, then the TUI and WPF picker forms for indicator expressions (spec and guide
-  entry written); Pick landed on chart Channels, Parameter expressions and the value-id fields too; the CEL spike chose to extend our own `Expression` (recorded in the proposal); the language extension's first part landed (strings, `matches()`, `contains`/`startsWith`/`endsWith`, `size`, `has()`, `!`, `?:`), and live indicators/charts pass published text to it; text sample data and button parameters landed too; lists, indexing and bare/dotted identifiers landed too; binary frames (`InboundProtocol.Frame`, `ManifestFramePresenter`), their catalog paths and a `.ksy` importer (`KsyImporter`) landed; next: a UI to import a `.ksy` and edit a frame in the manifest editors, dotted/indexed frame paths for nested `.ksy` types and arrays, and a real-device frame check.
+  `.ksy`-to-profile tool.** Made a priority 2026-10-02. Asked for: expressions that reference properties
+  of a device decoder (a structured, Kaitai-decoded record, not just flat ids) or match with a regex
+  against raw reply text; more `.ksy` definitions; and a tool that turns a `.ksy` file into a device
+  profile (manifest). **Decided 2026-10-02:** our own `.ksy` interpreter, framed as a transformation of
+  a `.ksy` into dev-term's existing manifest formats (a binary-frame counterpart to
+  `InboundProtocol.Patterns`' regex-to-named-values path), and the CEL spike chose to extend our own
+  `Expression` rather than take a library. Designs: [expression picker, value paths and
+  CEL-style language](docs/design/proposals/expression-picker-paths-and-cel.md), [`.ksy` importer and
+  binary frames](docs/design/proposals/ksy-importer.md), [expression
+  builder](docs/design/proposals/manifest-editor-expression-builder.md).
+
+  Built so far (detail in `docs/changes/2026-10-02.md`; unit-tested only, no real device used): the
+  value-path catalog, sample-data generator, the picker in both front ends, the language extension
+  (strings, `matches()`, lists, indexing, dotted ids), binary frames and `KsyImporter`.
+
+  **Remaining:**
+  - A UI in both manifest editors to import a `.ksy` and edit a frame (today: author `Inbound.Frame` in
+    `device.json` or call the importer).
+  - Dotted/indexed frame paths (`header.length`, `samples[0]`) for nested `.ksy` types and arrays.
+  - A real-device check of a binary frame.
+  - From the proposals' own "not built" lists: the sample-data generator's playback-log and
+    declared-example tiers, regex-building in the picker, `.ksy` bit fields / variable-length frames /
+    checksums.
 
 ## Backlog / research
 
