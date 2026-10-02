@@ -41,18 +41,25 @@ public sealed class ExpressionPickerViewModel
     private int _selectionLength;
     private int _step;
 
-    public ExpressionPickerViewModel(IEnumerable<ValuePath> paths, string? text = null, int seed = 0)
+    public ExpressionPickerViewModel(IEnumerable<ValuePath> paths, string? text = null, int seed = 0, bool channelList = false)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         var list = paths.ToList();
         _byId = list.GroupBy(p => p.Path, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         Seed = seed;
+        IsChannelList = channelList;
         _allPaths = [.. _byId.Values.Select(p => new PickerPath(p, Describe(p), Example(p, seed)))];
         _text = text ?? string.Empty;
         _caret = _text.Length;
         Recompute();
     }
+
+    /// <summary>
+    /// True when the text is a chart's semicolon-separated channel list (<c>id[:label[:#RRGGBB[:expression]]]</c>) rather than one
+    /// expression: choosing a path appends its bare id as a new channel, and there is no single result to show.
+    /// </summary>
+    public bool IsChannelList { get; }
 
     /// <summary>Raised after any change to the text, the filter, the sample step or the caret-visible state.</summary>
     public event EventHandler? Changed;
@@ -168,6 +175,14 @@ public sealed class ExpressionPickerViewModel
     public void InsertPath(PickerPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
+        if (IsChannelList)
+        {
+            var before = _text.AsSpan(0, Math.Min(_caret, _text.Length)).TrimEnd();
+            var channel = before.Length > 0 && before[^1] != ';' ? "; " + path.Path.Path : path.Path.Path;
+            InsertAtCaret(channel, channel.Length);
+            return;
+        }
+
         InsertAtCaret(path.Reference, path.Reference.Length);
     }
 
@@ -209,6 +224,12 @@ public sealed class ExpressionPickerViewModel
             return;
         }
 
+        if (IsChannelList)
+        {
+            RecomputeChannels();
+            return;
+        }
+
         if (!Expression.TryParse(_text, out var expression, out var error))
         {
             IsValid = false;
@@ -234,6 +255,44 @@ public sealed class ExpressionPickerViewModel
 
         Warnings = warnings;
         Result = expression.Evaluate(SampleDataGenerator.Values(_byId.Values, Seed, _step));
+    }
+
+    private void RecomputeChannels()
+    {
+        var warnings = new List<string>();
+        var count = 0;
+        foreach (var item in _text.Split(';').Select(i => i.Trim()).Where(i => i.Length > 0))
+        {
+            count++;
+            var bits = item.Split(':');
+            var id = bits[0].Trim();
+            if (id.Length == 0)
+            {
+                IsValid = false;
+                Error = $"Channel {count} has no id.";
+                return;
+            }
+
+            if (bits.Length > 3 && bits[3].Trim() is { Length: > 0 } expressionText)
+            {
+                if (!Expression.TryParse(expressionText, out var expression, out var error))
+                {
+                    IsValid = false;
+                    Error = $"Channel '{id}': {error}";
+                    return;
+                }
+
+                warnings.AddRange(expression!.ReferencedIds.Where(r => !_byId.ContainsKey(r)).Select(r => $"'{r}' is not published by anything in this manifest."));
+            }
+            else if (!_byId.ContainsKey(id))
+            {
+                warnings.Add($"'{id}' is not published by anything in this manifest.");
+            }
+        }
+
+        IsValid = count > 0;
+        Error = null;
+        Warnings = warnings;
     }
 
     private static bool Matches(ValuePath path, string filter) =>

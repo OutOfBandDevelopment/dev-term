@@ -37,6 +37,7 @@ Fields table for the exact grammar and syntax.
 An indicator's Expression field has a **Pick...** button that opens the expression picker: choose from the
 manifest's own values (with type, unit and range), insert `round`/`min`/`max`/`abs`/`if`, and watch the
 diagnostics and the result against sample data update as you type. **OK** puts the expression back in the field.
+A bar graph or strip chart's **Channels** field has a **Pick...** button too: choosing a value adds it as a channel.
 See [`docs/specs/expression-picker.md`](../specs/expression-picker.md).
 
 ![WPF expression picker](images/wpf-expression-picker.png)

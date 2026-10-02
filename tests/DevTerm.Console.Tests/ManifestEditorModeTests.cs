@@ -176,6 +176,9 @@ public sealed class ManifestEditorModeTests
 
             Select(parts, parts.ViewModel.Nodes.First(n => n.Display.Contains("Last Sample", StringComparison.Ordinal)).Display.Trim());
             Assert.IsTrue(parts.Form!.PickButtons.ContainsKey(nameof(ControlForm.IndicatorExpression)));
+
+            Select(parts, "barGraph: Channels");
+            Assert.IsTrue(parts.Form!.PickButtons.ContainsKey(nameof(ControlForm.Channels)));
         });
     }
 

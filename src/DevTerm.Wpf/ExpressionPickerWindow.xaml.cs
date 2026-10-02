@@ -35,6 +35,17 @@ public partial class ExpressionPickerWindow : Window
             FunctionPanel.Children.Add(button);
         }
 
+        if (_viewModel.IsChannelList)
+        {
+            // A channel list has no single result or functions: choosing a value appends it as a channel.
+            Title = "dev-term - Channels";
+            ExpressionLabel.Text = "Channels (id[:label[:#RRGGBB[:expression]]], separated by ;):";
+            FunctionPanel.Visibility = Visibility.Collapsed;
+            ResultText.Visibility = Visibility.Collapsed;
+            NextSampleButton.Visibility = Visibility.Collapsed;
+            PathList.ToolTip = "Double-click a value to add it as a channel";
+        }
+
         _viewModel.Changed += (_, _) => Refresh();
         Refresh();
         ExpressionBox.CaretIndex = _viewModel.CaretIndex;

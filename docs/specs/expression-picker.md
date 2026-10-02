@@ -4,8 +4,8 @@
 
 Build a valid [expression](../design/manifest-editor-expression-builder.md) without remembering ids or syntax: pick the
 values it may read, insert functions, and see at once whether it parses and what it evaluates to against sample data.
-Opened from the **Pick...** button beside an indicator's **Expression** field in the
-[Manifest Editor](manifest-editor.md) (other expression fields — a button's Parameter expressions, a chart channel's
+Opened from the **Pick...** button beside an indicator's **Expression** field, or a bar graph / strip chart's
+**Channels** field, in the [Manifest Editor](manifest-editor.md) (other expression fields — a button's Parameter expressions, a chart channel's
 expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Editing.ExpressionPickerViewModel`, fed by
 `ValuePathCatalog.Enumerate(manifest)` and `SampleDataGenerator`; rendered as `ExpressionPickerDialog` (TUI) and
 `ExpressionPickerWindow` (WPF). Design: [proposal](../design/proposals/expression-picker-paths-and-cel.md).
@@ -30,6 +30,13 @@ expression — don't have it yet). Shared logic is `DevTerm.DeviceManifests.Edit
 | OK | Returns the expression to the form field. |
 | Cancel | Leaves the field unchanged. |
 
+## Channels mode
+
+From **Channels** the same dialog edits the chart's `id[:label[:#RRGGBB[:expression]]]; ...` list: choosing a value appends its
+bare id as a new channel (with `; ` between), there are no function buttons, sample result or Next sample, and diagnostics
+check each channel's id (and any channel expression) against the manifest, warning on unknown ids and erroring on a
+channel expression that doesn't parse.
+
 ## States
 
 The sample result is deterministic for a given manifest (seeded), so the same expression shows the same number each time
@@ -42,5 +49,5 @@ the picker opens until **Next sample** is pressed.
 
 ## Open items
 
-- Pick on Parameter expressions and chart channel expressions.
+- Pick on a button's Parameter expressions, and on a single channel's expression segment.
 - Operators/regex helpers and the CEL-style language extension (proposal's later steps).

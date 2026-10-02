@@ -104,6 +104,13 @@ public sealed class ExpressionPickerWindowTests
                 window.OutlineList.SelectedItem = editor.Nodes.First(n => n.Display.Contains("Last Sample", StringComparison.Ordinal));
                 StaTestRunner.DoEvents();
                 Assert.IsTrue(window.Form!.PickButtons.ContainsKey(nameof(ControlForm.IndicatorExpression)));
+                var pick = window.Form!.PickButtons[nameof(ControlForm.IndicatorExpression)];
+                window.UpdateLayout();
+                Assert.IsTrue(pick.IsVisible || pick.Visibility == System.Windows.Visibility.Visible, $"Visibility={pick.Visibility} Actual={pick.ActualWidth}x{pick.ActualHeight}");
+
+                window.OutlineList.SelectedItem = editor.Nodes.First(n => n.Display.Contains("barGraph", StringComparison.Ordinal));
+                StaTestRunner.DoEvents();
+                Assert.IsTrue(window.Form!.PickButtons.ContainsKey(nameof(ControlForm.Channels)));
 
                 window.OutlineList.SelectedItem = editor.Nodes.First(n => n.Kind == ManifestNodeKind.Identity);
                 StaTestRunner.DoEvents();

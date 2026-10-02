@@ -153,6 +153,11 @@ public partial class ManifestEditorWindow : Window
                 var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text)) { Owner = this };
                 return picker.ShowDialog() == true ? picker.Accepted : null;
             };
+            options.TextPickers[nameof(ControlForm.Channels)] = text =>
+            {
+                var picker = new ExpressionPickerWindow(new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(Editor.Manifest), text, channelList: true)) { Owner = this };
+                return picker.ShowDialog() == true ? picker.Accepted : null;
+            };
         }
 
         Form = FormRenderer.Build(FormDefinitionGenerator.Generate(form.GetType(), form), _binding, options);

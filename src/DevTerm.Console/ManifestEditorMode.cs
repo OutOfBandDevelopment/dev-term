@@ -221,6 +221,8 @@ internal static class ManifestEditorMode
             {
                 formOptions.TextPickers[nameof(ControlForm.IndicatorExpression)] = text =>
                     ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text));
+                formOptions.TextPickers[nameof(ControlForm.Channels)] = text =>
+                    ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(ValuePathCatalog.Enumerate(editor.Manifest), text, channelList: true));
             }
 
             var formParts = FormRenderer.Build(app, FormDefinitionGenerator.Generate(form.GetType(), form), binding, formOptions);

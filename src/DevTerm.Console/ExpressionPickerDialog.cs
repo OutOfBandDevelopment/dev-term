@@ -58,6 +58,20 @@ internal static class ExpressionPickerDialog
             viewModel.NextSample();
         };
 
+        if (viewModel.IsChannelList)
+        {
+            // A channel list has no single result or functions: choosing a value appends it as a channel.
+            dialog.Title = "Channels";
+            expressionLabel.Text = "Channels (id[:label[:#RRGGBB[:expression]]], separated by ;):";
+            result.Visible = false;
+            functionLabel.Visible = false;
+            nextSample.Visible = false;
+            foreach (var button in functionButtons)
+            {
+                button.Visible = false;
+            }
+        }
+
         string? accepted = null;
         var ok = new Button { X = 0, Y = Pos.AnchorEnd(2), Text = "OK", IsDefault = true, ShadowStyle = ShadowStyles.None };
         ok.Accepting += (_, e) =>
@@ -88,7 +102,7 @@ internal static class ExpressionPickerDialog
 
                 diagnostics.Text = viewModel.Diagnostics;
                 diagnostics.SchemeName = viewModel.IsEmpty || (viewModel.IsValid && viewModel.Warnings.Count == 0) ? null : FormRenderer.ErrorSchemeName;
-                result.Text = $"Result with sample data: {viewModel.ResultText}";
+                result.Text = viewModel.IsChannelList ? string.Empty : $"Result with sample data: {viewModel.ResultText}";
                 var rows = viewModel.Paths.Select(p => p.ToString()).ToList();
                 paths.SetSource(new ObservableCollection<string>(rows));
             }
