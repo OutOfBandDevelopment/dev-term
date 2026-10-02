@@ -152,4 +152,43 @@ public sealed class ExpressionPickerWindowTests
             await Task.CompletedTask;
         });
     }
+
+    [TestMethod]
+    public void Screens_AreCapturedForTheUserGuide()
+    {
+        var paths = new[]
+        {
+            new ValuePath("volts", ValuePathType.Number, ValuePathSource.Control, "Voltage", "V", 0, 30),
+            new ValuePath("amps", ValuePathType.Number, ValuePathSource.Control, "Current", "A", 0, 5),
+            new ValuePath("status", ValuePathType.Text, ValuePathSource.ResponsePattern, "Status"),
+        };
+        var cases = new (string Name, string Text, PickerMode Mode)[]
+        {
+            ("wpf-expression-picker-error", "round({volts} * ", PickerMode.Expression),
+            ("wpf-expression-picker-warning", "{volts} * {watts}", PickerMode.Expression),
+            ("wpf-expression-picker-text", "matches({status}, 'READY') ? 100 : 0", PickerMode.Expression),
+            ("wpf-expression-picker-channels", "volts:Volts:#FF6600; amps", PickerMode.Channels),
+        };
+
+        StaTestRunner.Run(async () =>
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DevTerm.slnx")))
+            {
+                directory = directory.Parent;
+            }
+
+            foreach (var (name, text, mode) in cases)
+            {
+                var window = new ExpressionPickerWindow(new ExpressionPickerViewModel(paths, text, seed: 7, mode: mode));
+                WpfScreenshot.ShowOffScreen(window, 560, 460);
+                StaTestRunner.DoEvents();
+                window.UpdateLayout();
+                WpfScreenshot.Save(window, Path.Combine(directory!.FullName, "docs", "user-guide", "images", name + ".png"));
+                window.Close();
+            }
+
+            await Task.CompletedTask;
+        });
+    }
 }

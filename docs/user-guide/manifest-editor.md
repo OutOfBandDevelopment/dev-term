@@ -40,7 +40,7 @@ diagnostics and the result against sample data update as you type. **OK** puts t
 Every field that names a value has a **Pick...** button too: a bar graph or strip chart's **Channels** (choosing a value
 adds a channel), a button's **Parameter expressions**, a vector's coordinate ids, a color control's hue/saturation/brightness ids
 and **Visible when**.
-See [`docs/specs/expression-picker.md`](../specs/expression-picker.md).
+The full manual, with the whole expression language and every picker mode, is [Expressions and the expression picker](expression-builder.md). Reference: [`docs/specs/expression-picker.md`](../specs/expression-picker.md).
 
 ![WPF expression picker](images/wpf-expression-picker.png)
 
