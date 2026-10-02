@@ -132,7 +132,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] TUI `ThemeBuilderMode`
 - [x] WPF seed picker and builder windows
 - [x] Unit tests, spec (`docs/specs/theme-builder.md`) and user guide
-- [ ] Manual-use pass in both front ends (no device dependency; optional)
+- [x] Manual-use pass in both front ends (reviewed by the maintainer 2026-10-02: "looks great")
 
 ## Status
 
