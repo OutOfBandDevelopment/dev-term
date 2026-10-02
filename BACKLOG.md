@@ -33,7 +33,9 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` binary-response schemas: promoted to in-progress (2026-10-02) — see `TODO.md`. Kaitai is read/parse-only,
+- `.ksy` importer gaps (set aside by choice 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
+  `docs/changes/2026-10-02.md`): **bit fields** (the Zoom H4n status `.ksy` fails to import until then), **variable-length
+  frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
 - Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
