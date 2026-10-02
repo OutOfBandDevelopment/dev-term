@@ -16,7 +16,7 @@ public sealed record KsyImportResult(FrameSchema? Schema, IReadOnlyList<string> 
 /// <see cref="FrameSchema.Sync"/>); and <c>doc</c> as a label; user types from <c>types</c> (flattened to <c>parent.child</c> names) and <c>repeat: expr</c> with a
 /// literal count (<c>name[0]</c>, <c>name[1]</c>, ...). Anything dynamic (<c>repeat-until</c>, <c>repeat: eos</c>, a computed
 /// count, <c>if</c>, <c>switch-on</c>, <c>size-eos</c>) ends the frame there with a warning, since later offsets are no longer known.
-/// See docs/design/features/ksy-importer.md.
+/// See docs/design/proposals/ksy-importer.md.
 /// </summary>
 public static class KsyImporter
 {
