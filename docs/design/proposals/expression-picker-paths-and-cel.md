@@ -10,7 +10,7 @@ by choosing values, not typing; (3) a small **programming language**, ideally cl
 
 Today an author types `{id}` references by memory into a text box. Nothing lists which ids exist (decoder values,
 control ids, command parameters), nothing knows their type or range, and the manifest editor's live preview has no
-data to show unless a device is connected. Regex captures and `.ksy` fields (see `TODO.md`) will add nested and
+data to show unless a device is connected. Regex captures and binary-frame fields (see `TODO.md`) will add nested and
 repeated values that `{id}` cannot name. Expressions are also limited to arithmetic, comparison and `if`, so string
 tests, regex matching and list handling are impossible.
 
@@ -18,14 +18,16 @@ tests, regex matching and list handling are impossible.
 
 ### 1. Value-path catalog (build first)
 
-`IValuePathCatalog.Enumerate(DeviceManifest)` returns every path an expression can legally read, each as a
+**The catalog works off the device profile, never a `.ksy` file.** `IValuePathCatalog.Enumerate(profile)` takes a
+device manifest or a SCPI device profile (`Profiles/*.json`) and returns every path an expression can legally read, each as a
 `ValuePath { Path, Type, Unit?, Min?, Max?, Choices?, Source, Example }`. Sources, all derivable from the manifest
 without a device:
 
 | Source | Paths produced |
 |---|---|
 | `InboundProtocol.Patterns` | each named capture group, or the pattern's id for group 1 (type inferred from a numeric/format hint, else string) |
-| binary-frame schema / imported `.ksy` | field names, dotted for nested (`header.length`) and indexed for repeated (`samples[0]`) |
+| profile's binary-frame section | field names, dotted for nested (`header.length`) and indexed for repeated (`samples[0]`); present only if the profile declares one |
+| SCPI profile commands | each query command's reply as a value (type from the profile's response hint), each command's parameters |
 | UI controls | each control's current value by id (slider/numeric: range; toggle: bool; choice: its options) |
 | command parameters | `ParameterExpressions` targets |
 
@@ -66,7 +68,8 @@ build A. Either way the language stays non-Turing-complete: no loops, no assignm
 title Expression authoring: where each piece reads from
 package "Manifest" {
   [InboundProtocol.Patterns] as Pat
-  [Binary-frame schema / .ksy import] as Ksy
+  [Binary-frame section] as Ksy
+  [SCPI profile commands] as Scpi
   [UiDefinition controls] as Ui
   [Command parameters] as Cmd
 }
@@ -81,6 +84,7 @@ database "Session log\n(playback)" as Log
 
 Pat --> Cat
 Ksy --> Cat
+Scpi --> Cat
 Ui --> Cat
 Cmd --> Cat
 Cat --> Sample : types, ranges, units
@@ -120,7 +124,8 @@ Lang --> Val
 2. Sample-data generator, wired into the manifest editor preview.
 3. Picker view-model plus TUI and WPF forms (with `docs/specs/` and `docs/user-guide/` entries when it ships).
 4. CEL spike, then the language extension (regex `matches()`, strings, lists, `has()`, dotted/indexed paths).
-5. Binary-frame/`.ksy` paths join the catalog when the importer lands (`TODO.md`).
+5. Binary-frame paths join the catalog once a profile can declare a binary-frame section. A `.ksy` is never read by the
+   catalog: the `.ksy` importer (`TODO.md`) only generates that section into a profile, and the catalog reads the profile.
 
 ## Open questions
 
@@ -131,5 +136,6 @@ Lang --> Val
 
 ## Status
 
-**Proposal, not started (2026-10-02).** The current `Expression` language is unchanged. Related:
+**Proposal, not started (2026-10-02).** The current `Expression` language is unchanged. Scope decision (2026-10-02): profiles, not `.ksy`
+files, are the input. Related:
 [expression builder](manifest-editor-expression-builder.md), [schema files](format-schema-files.md).
