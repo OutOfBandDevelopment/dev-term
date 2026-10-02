@@ -23,8 +23,6 @@ Completed work is logged by date under `docs/changes/`.
   (strings, `matches()`, lists, indexing, dotted ids), binary frames and `KsyImporter`.
 
   **Remaining:**
-  - A UI in both manifest editors to import a `.ksy` and edit a frame (today: author `Inbound.Frame` in
-    `device.json` or call the importer).
   - A real-device check of a binary frame.
   - From the proposals' own "not built" lists: the sample-data generator's playback-log and
     declared-example tiers, regex-building in the picker, `.ksy` bit fields / variable-length frames /

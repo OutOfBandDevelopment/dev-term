@@ -71,8 +71,7 @@ computed repeat count, `if`, `switch-on`, `size-eos`) ends the frame there with 
 ## Status
 
 Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`ValuePathSource.Frame`), validator checks,
-JSON/XML round trip, importer. Unit-tested only; **no real device has been used**. Not built:
+JSON/XML round trip, importer, and (2026-10-02) the manifest editors' **Binary frame** outline entry with field forms and an **Import** button in both front ends ([spec](../../specs/manifest-editor.md)). Unit- and screenshot-tested only; **no real device has been used**. Not built:
 
-- a manifest-editor UI to import a `.ksy` or edit a frame (today: author `Inbound.Frame` in `device.json`, or call the importer);
 - bit fields, length-prefixed or variable-size frames, checksums;
 - a generated JSON Schema for the frame (see [format-schema-files.md](format-schema-files.md)).

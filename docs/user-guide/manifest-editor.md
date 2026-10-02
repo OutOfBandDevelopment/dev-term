@@ -60,6 +60,22 @@ panel of its own uses one generated from its commands (a button per command, a f
 a reply line per query); select **Panel (generated)** and press **Create panel from commands** to
 start from that and design your own.
 
+## Describing a binary reply
+
+A device that answers in binary rather than text has its reply layout under **Binary frame**: a
+sync prefix and a list of fields (number, text, raw bytes, or skipped), each publishing a value the
+panel can show like any pattern's. Press **Import .ksy...** (WPF) or **Ksy** (TUI, the button at
+the right of the bottom row) to fill it from a Kaitai Struct file instead of typing each field, or
+**Add field** to build it by hand. The status line reports what was imported and what the importer
+couldn't express.
+
+![WPF manifest editor: an imported binary frame and one of its fields](images/wpf-manifest-editor-frame.png)
+
+![TUI manifest editor: an imported binary frame and one of its fields](images/tui-manifest-editor-frame.png)
+
+Imported nested types show up as dotted names (`header.length`) and fixed-count repeats as indexed
+ones (`samples[0]`); use them in an expression as `{header.length}` and `{samples[0]}`.
+
 ## Previewing the panel
 
 WPF shows the panel on the right the whole time, rebuilt after every edit. In the TUI, press
