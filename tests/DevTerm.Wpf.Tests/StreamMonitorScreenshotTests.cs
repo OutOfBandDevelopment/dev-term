@@ -80,7 +80,9 @@ public sealed class StreamMonitorScreenshotTests
             WpfScreenshot.Save(window, hpglPath);
             AssertRealImage(hpglPath);
 
-            window.CaptureList.SelectedIndex = 0;
+            // A real plot captured from the Tektronix 2230 (a toy square says nothing about how a trace looks).
+            await bench.CaptureAsync(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Samples", "tek2230-plot.hpgl")));
+            window.CaptureList.SelectedIndex = window.Items.Count - 1;
             window.ConvertMode = StreamConversionMode.InternalHpglToSvg;
             await window.ConvertSelectedAsync();
             StaTestRunner.DoEvents();
