@@ -24,14 +24,6 @@ Completed work is logged by date under `docs/changes/`.
   manifests) landed 2026-10-02**; SCPI-profile input landed the same day;
   `SampleDataGenerator` landed too, wired into both editors' preview; `ExpressionPickerViewModel` landed, then the TUI and WPF picker forms for indicator expressions (spec and guide
   entry written); Pick landed on chart Channels, Parameter expressions and the value-id fields too; next: the CEL spike.
-- **Finish the loopback sample-interval user-guide walkthrough, with real stills and an animated GIF.** Requested
-  2026-10-02. The feature is built and was checked live in the TUI and WPF
-  ([proposal](docs/design/proposals/loopback-sample-rate.md)), but `docs/user-guide/` only mentions the Loopback
-  transport's connection fields; there is no walkthrough of a paced stream arriving. Plan: capture a few stills of a
-  `Samples: N` stream at an interval (headless TUI via `TuiScreenshot`, WPF via `WpfScreenshot`, taken at successive
-  moments), assemble them into a GIF (PIL is available; ffmpeg is installed), put the files under
-  `docs/user-guide/images/`, and write the guide page (or section) with real captured output, as CLAUDE.md requires.
-  Remember `docs/specs/` if it changes any screen's documented behavior.
 
 ## Backlog / research
 
