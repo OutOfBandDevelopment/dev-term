@@ -85,6 +85,8 @@ that names a value). It opens on whatever is already in the field.
    list functions: `matches`, `contains`, `startsWith`, `endsWith`, `size`, `number`, `string`, `has`, `split` and `join`.
    Hovering a WPF entry shows its signature; the TUI list shows it beside each name. Those that take text leave
    the caret on the first argument, ready for you to choose a value. Everything is also fine typed by hand.
+
+   ![TUI more... list](images/tui-expression-picker-more.png)
 5. **Result with sample data** (WPF: **Sample result**) evaluates your expression against made-up
    values that respect each value's type and range. **Next sample** draws another set, so you can see
    the expression over several inputs. The samples are repeatable, not random from run to run.

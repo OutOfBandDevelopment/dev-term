@@ -14,6 +14,11 @@ namespace DevTerm.Console;
 /// </summary>
 internal static class ExpressionPickerDialog
 {
+    internal const string MoreFunctionsTitle = "More functions";
+
+    /// <summary>One row per text/list function for the <c>more...</c> list: its signature, which is what you type.</summary>
+    internal static IReadOnlyList<string> MoreFunctionItems { get; } = [.. ExpressionPickerViewModel.MoreFunctions.Select(f => f.Signature)];
+
     /// <summary>Opens the picker over <paramref name="viewModel"/>; returns the final expression, or null when cancelled.</summary>
     public static string? Show(IApplication app, ExpressionPickerViewModel viewModel)
     {
@@ -55,8 +60,7 @@ internal static class ExpressionPickerDialog
         more.Accepting += (_, e) =>
         {
             e.Handled = true;
-            var items = ExpressionPickerViewModel.MoreFunctions.Select(f => $"{f.Signature}  -  {f.Description}").ToList();
-            if (FormRenderer.PickFromList(app, "More functions", items) is { } chosen)
+            if (FormRenderer.PickFromList(app, MoreFunctionsTitle, MoreFunctionItems) is { } chosen)
             {
                 viewModel.CaretIndex = expression.InsertionPoint;
                 viewModel.InsertFunction(ExpressionPickerViewModel.MoreFunctions[chosen]);

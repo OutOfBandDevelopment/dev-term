@@ -1,7 +1,7 @@
 ┌┤dev-term — Manifest Editor: Loopback Sensor Demo├────────────────────────────┐
 │⟦ New ⟧ ⟦ Open... ⟧ ⟦ Save ⟧ ⟦ Save As... ⟧ ⟦ Check ⟧ ⟦ Edit ⟧ ⟦ Close ⟧      │
 │Opened 'C:\…\manifests\loopback-sensor-demo'. Saving writes your own copy to  │
-│~\…\oxxgyzes.faz\loopback-sensor-demo.                                        │
+│~\…\ynosox5b.lcs\loopback-sensor-demo.                                        │
 │╭┤Outline├───────────────────╮╭┤Preview (sends nothing)├─────────────────────╮│
 ││  Measure                   ││┌┤Loopback Sensor Demo├──────────────────────┐││
 ││  Stream Samples            │││[-] Acquire                                ▲│││

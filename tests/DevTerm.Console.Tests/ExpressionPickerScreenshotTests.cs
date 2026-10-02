@@ -48,6 +48,34 @@ public sealed class ExpressionPickerScreenshotTests
     [TestMethod]
     public void FindFiltersTheList() => Capture("tui-expression-picker-find", "{volts}", filter: "amp");
 
+    [TestMethod]
+    public void MoreFunctionsList()
+    {
+        TuiReview.Modal(
+            "guide-tui-expression-picker-more",
+            80,
+            25,
+            "light",
+            app => new Window { Title = "dev-term", Width = Dim.Fill(), Height = Dim.Fill() },
+            app => FormRenderer.PickFromList(app, ExpressionPickerDialog.MoreFunctionsTitle, ExpressionPickerDialog.MoreFunctionItems));
+        CopyToGuide("tui-expression-picker-more");
+    }
+
+    [TestMethod]
+    public void MoreFunctionsList_HasOneRowPerFunctionWithoutAButton()
+    {
+        Assert.HasCount(ExpressionPickerViewModel.MoreFunctions.Count, ExpressionPickerDialog.MoreFunctionItems);
+        Assert.IsTrue(ExpressionPickerDialog.MoreFunctionItems.Contains("split(text, separator)"));
+        Assert.IsTrue(ExpressionPickerDialog.MoreFunctionItems.All(i => i.Length < 60), "each row must fit the list dialog");
+    }
+
+    private static void CopyToGuide(string imageName)
+    {
+        var source = Path.Combine(TuiReview.Directory, $"guide-{imageName}-80x25-light.png");
+        var images = Path.Combine(TuiReview.Directory, "..", "..", "..", "docs", "user-guide", "images");
+        File.Copy(source, Path.Combine(Path.GetFullPath(images), imageName + ".png"), overwrite: true);
+    }
+
     private static void Capture(string imageName, string text, PickerMode mode = PickerMode.Expression, string? filter = null)
     {
         TuiReview.Modal(
@@ -58,8 +86,6 @@ public sealed class ExpressionPickerScreenshotTests
             app => new Window { Title = "dev-term", Width = Dim.Fill(), Height = Dim.Fill() },
             app => ExpressionPickerDialog.Show(app, new ExpressionPickerViewModel(_paths, text, seed: 7, mode: mode) { Filter = filter ?? string.Empty }));
 
-        var source = Path.Combine(TuiReview.Directory, $"guide-{imageName}-80x25-light.png");
-        var images = Path.Combine(TuiReview.Directory, "..", "..", "..", "docs", "user-guide", "images");
-        File.Copy(source, Path.Combine(Path.GetFullPath(images), imageName + ".png"), overwrite: true);
+        CopyToGuide(imageName);
     }
 }
