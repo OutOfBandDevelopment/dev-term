@@ -26,7 +26,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 | Explanation | Two fixed lines | One wrapped line | What's detected, and (TUI) that there's no preview |
 | Capture list | `ListView`, one row per capture: `HH:mm:ss  TYPE  size  end  file` | `ListBox`, two lines per capture: `HH:mm:ss — {kind}` / `{size} bytes · {end} · {file}` | Oldest first; the newest is selected whenever one arrives. Keeps the last 100 (`StreamMonitor.MaxRetainedCaptures`) — saved files are never deleted |
 | Detail | Two lines under the list: `{kind}, {size} bytes, {end}[ (declared by the command)].` / `Saved as {file} in the folder above.` or `Not saved: {reason}` | Same first line; second line `Saved to {path}` or `Not saved: {reason}` | For the selected capture |
-| Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up); otherwise a message | See States |
+| Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up) or a converted SVG (`SvgPreview`); otherwise a message | See States |
 
 "End" is how the capture finished (`StreamMonitorCapture.EndLabel`):
 
@@ -118,7 +118,7 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 - **TUI**: no preview by design (Terminal.Gui can't draw images); open the saved file. The window is
   modal like every other TUI screen, which is why closing it doesn't stop monitoring. Device names
   and file names are shown verbatim (`_` is not treated as a hotkey marker).
-- **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free
+- **WPF**: the capture list and preview split the width 2:3 (the list at least 220px, at most 420px; it was a fixed 320px), with a 640x380 minimum window size. A capture's second line is the item's own text color at 85% opacity rather than the muted color, so it stays readable on a selected row in a dark theme. Export As... stays button-sized at the top of the details area however many lines the details wrap to. Live preview + Open Folder + Export As..., per the proposal's "WPF can do better for free Under the preview, the detail text spans the full width and the conversion drop-down, Convert... and Export As... sit on their own right-aligned row (they used to share the text's row, which squeezed it to a sliver at the minimum window size).
   where a format already has a native decoder".
 
 ## Converting a capture

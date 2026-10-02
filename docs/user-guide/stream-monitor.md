@@ -68,9 +68,20 @@ decodes itself (PNG, JPEG, GIF, BMP, TIFF):
 
 ![WPF Stream Monitor previewing a captured PNG screen dump](images/wpf-stream-monitor.png)
 
-HP-GL, PostScript and PCL are captured and saved, but can't be previewed yet:
+HP-GL, PostScript and PCL are captured and saved, but can't be previewed directly:
 
 ![WPF Stream Monitor with an HP-GL capture selected](images/wpf-stream-monitor-hpgl.png)
+
+To see an HP-GL plot, pick **HP-GL to SVG** in the conversion drop-down above the preview and press
+**Convert...**. The SVG is added to the list as a new entry (selected, "converted from HP-GL plot") and
+drawn in the preview:
+
+![WPF Stream Monitor drawing an HP-GL plot converted to SVG](images/wpf-stream-monitor-svg.png)
+
+The drawing is dev-term's own and covers the simple shapes plots use (paths, lines, polygons, rectangles,
+circles), with lines kept thick enough to see when a plot is in plotter units. The `.svg` file itself is
+saved next to the capture, so any SVG viewer opens it too. The TUI lists the converted file but doesn't
+draw it.
 
 The WPF window also has:
 

@@ -10,7 +10,7 @@ namespace DevTerm.Wpf;
 /// Draws the small SVG subset dev-term's own converters write (and most simple plots use) as a WPF
 /// <see cref="DrawingImage"/>: <c>path</c>, <c>line</c>, <c>polyline</c>, <c>polygon</c>, <c>rect</c>,
 /// <c>circle</c> and <c>ellipse</c>, with <c>stroke</c>, <c>fill</c> and <c>stroke-width</c>, scaled by
-/// the document's <c>viewBox</c> and drawn on white. Transforms, gradients, text, CSS and
+/// the document's <c>viewBox</c> and drawn on white (lines are never thinner than 1/250 of the drawing, so a plot in plotter units stays visible). Transforms, gradients, text, CSS and
 /// <c>use</c> are not drawn: WPF has no SVG decoder and dev-term takes no dependency for one, so
 /// anything else is skipped rather than guessed at.
 /// </summary>
@@ -30,13 +30,15 @@ internal static class SvgPreview
             }
 
             var bounds = Bounds(root);
+            // A plot in plotter units (HP-GL: thousands across) with a 1-unit pen is a hairline once scaled to fit, so keep lines visible.
+            var minStroke = Math.Max(bounds.Width, bounds.Height) / 250;
             var group = new DrawingGroup();
             group.Children.Add(new GeometryDrawing(Brushes.White, null, new RectangleGeometry(bounds)));
             foreach (var element in root.Descendants())
             {
                 if (Shape(element) is { } geometry)
                 {
-                    group.Children.Add(new GeometryDrawing(Fill(element), Stroke(element), geometry));
+                    group.Children.Add(new GeometryDrawing(Fill(element), Stroke(element, minStroke), geometry));
                 }
             }
 
@@ -111,10 +113,10 @@ internal static class SvgPreview
     /// <summary>SVG's default fill is black; a line has nothing to fill, and <c>fill="none"</c> means none.</summary>
     private static Brush? Fill(XElement e) => e.Name.LocalName is "line" ? null : Color(e.Attribute("fill")?.Value, Brushes.Black);
 
-    private static Pen? Stroke(XElement e)
+    private static Pen? Stroke(XElement e, double minWidth)
     {
         var brush = Color(e.Attribute("stroke")?.Value, null);
-        return brush is null ? null : new Pen(brush, Number(e, "stroke-width", 1)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
+        return brush is null ? null : new Pen(brush, Math.Max(Number(e, "stroke-width", 1), minWidth)) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
     }
 
     private static Brush? Color(string? value, Brush? fallback)

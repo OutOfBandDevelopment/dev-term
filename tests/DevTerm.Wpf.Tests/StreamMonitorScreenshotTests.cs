@@ -1,4 +1,5 @@
 using System.IO;
+using DevTerm.Configuration;
 using DevTerm.Devices.Scpi;
 using DevTerm.Test.Utilities;
 
@@ -78,6 +79,18 @@ public sealed class StreamMonitorScreenshotTests
             var hpglPath = Path.Combine(_imagesDirectory, "wpf-stream-monitor-hpgl.png");
             WpfScreenshot.Save(window, hpglPath);
             AssertRealImage(hpglPath);
+
+            window.CaptureList.SelectedIndex = 0;
+            window.ConvertMode = StreamConversionMode.InternalHpglToSvg;
+            await window.ConvertSelectedAsync();
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+
+            Assert.IsNotNull(window.PreviewImage.Source);
+            Assert.IsTrue(window.Items[^1].Capture.Capture.Kind.IsSvg);
+            var svgPath = Path.Combine(_imagesDirectory, "wpf-stream-monitor-svg.png");
+            WpfScreenshot.Save(window, svgPath);
+            AssertRealImage(svgPath);
 
             window.Close();
         });
