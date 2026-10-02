@@ -69,6 +69,15 @@ minimum, before real design work starts:
 - Whether this ever needs its own transport-like "session discovery" (list what's running, attach to
   one) or always starts a session itself from a connection profile the way the other front ends do.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Answer the security and access-control questions above
+- [ ] Pick a Blazor hosting model
+- [ ] Real design doc (this is research only)
+- [ ] Prototype, tests, and `docs/specs/` / `docs/user-guide/` entries
+
 ## Status
 
 **Not started — research/early design only.** No code exists yet, and unlike most proposals here this

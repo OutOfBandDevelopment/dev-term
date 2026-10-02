@@ -56,6 +56,16 @@ profile — this proposal is about the parts that aren't covered yet.
   component the TCP transport doesn't depend on (mirroring how BLE's scanner is a separate,
   on-demand-invoked piece rather than baked into `BleTransport` itself).
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Confirm a real LXI instrument on the bench (needed before Phase 2)
+- [ ] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module
+- [ ] Phase 2: VXI-11 client, only if a real instrument needs it
+- [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
+- [ ] Real-hardware pass (`docs/test/`)
+
 ## Status
 
 **Not started — design only.** No code exists yet, and Phase 2 in particular needs a confirmed real

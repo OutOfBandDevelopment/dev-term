@@ -179,6 +179,22 @@ already is) rather than a new top-level settings surface.
   already-saved capture file, so they have no dependency on Phase 2's harder rendering work and could
   ship independently, ahead of everything else in Phase 2, if that's a more useful order.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Phase 1: sniffer, end finder, `StreamContentWatcher`, declared hint, Stream Monitor in both front ends, WPF native-image preview
+- [x] Phase 1 verified on real hardware: DG1062Z BMP and TDS2024 BMP (`docs/test/2026-10-02-18-20-00.md`)
+- [x] Conversion: internal HP-GL to SVG, external tool, multiple named tools (`stream-converter-tools.md`)
+- [x] WPF SVG preview, verified on a real Tektronix 2230 plot
+- [x] Real Ghostscript (PostScript) and GhostPCL (PCL) conversion runs (`RealGhostscriptConversionTests`, 2026-10-02)
+- [ ] Rewrite the stale Phase 2 and Status text (web service removed; "Phase 2: not started" header is wrong)
+- [ ] Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
+- [ ] SVG drawing in the TUI (it only lists the converted file)
+- [ ] CLI-mode "export last N captures" (Stream Monitor has no CLI support)
+- [ ] Retention/cleanup policy for the exports folder (low priority)
+- [ ] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
+
 ## Status
 
 **Phase 1: implemented 2026-09-25. Phase 2: not started.** Screen reference:

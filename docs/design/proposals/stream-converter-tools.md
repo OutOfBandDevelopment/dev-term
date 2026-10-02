@@ -84,6 +84,18 @@ end
 
 Selection is stored as `StreamConvertMode`: the existing values, plus `auto` and `tool:<Name>`.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Options, Auto and by-name selection, conversion list in both windows
+- [x] Tool-list editor in both profile forms (`docs/specs/converter-tools-editor.md`)
+- [x] Settings persist through profile save/load
+- [x] Web service mode removed
+- [x] Screenshots of both editors in the user guide
+- [x] Real Ghostscript and GhostPCL runs (`RealGhostscriptConversionTests`, 2026-10-02)
+- [ ] Update this Status and the `docs/design/README.md` one-liner (both still say no real tool run)
+
 ## Status
 
 - **Built 2026-10-02**: the options, `StreamCaptureConverter` selection (Auto and by name), the conversion list

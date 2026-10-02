@@ -124,6 +124,16 @@ note right : no-op after Save (Select already\nre-resolved to the same theme)
 @endsalt
 ```
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Shared model (`ThemeFile.Save`, `ThemeBuilderState`, `ActiveTheme.Preview`)
+- [x] TUI `ThemeBuilderMode`
+- [x] WPF seed picker and builder windows
+- [x] Unit tests, spec (`docs/specs/theme-builder.md`) and user guide
+- [ ] Manual-use pass in both front ends (no device dependency; optional)
+
 ## Status
 
 **Implemented 2026-10-01.** Both front ends ship the full flow described above:

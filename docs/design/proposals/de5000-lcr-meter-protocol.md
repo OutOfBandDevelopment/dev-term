@@ -140,6 +140,17 @@ decoder --> decoder : Human-readable text baseline\n(e.g. "L=1.234mH D=0.012 @1k
 @enduml
 ```
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Framer, decoder, no-op control surface, `UiDefinition` (`DevTerm.Devices.De5000`)
+- [x] Wired into both front ends' Device menus (gated on any BLE connection)
+- [x] Unit tests against synthetic packets
+- [ ] Confirm the adapter's GATT profile (Nordic UART assumed) with the adapter on the bench
+- [ ] Run `RealHardwareDe5000Tests` and write the `docs/test/` report
+- [ ] Decide whether other ES51919-based meters are supported or left as "probably works"
+
 ## Status
 
 Implemented (2026-09-25): `DevTerm.Devices.De5000` — `De5000Framer`/`De5000Decoder` (stream-buffering

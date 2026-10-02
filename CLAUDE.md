@@ -137,7 +137,7 @@ Seven kinds of doc, each with a distinct job — don't blend them:
 - **[`docs/design/`](docs/design/README.md)** — intent and rationale for people building dev-term:
   one doc per architectural concern (transports, presenters, plugin model, ...), plus
   `docs/design/proposals/` (listed in `docs/design/README.md`'s "Proposals" section) for concrete,
-  per-device/per-feature proposals (each with a "Status" section — implemented/not, and what's
+  per-device/per-feature proposals (each with a "Completion checklist" of `- [ ]`/`- [x]` items saying what is still needed to close it, kept current in the same change as the work, and a "Status" section — implemented/not, and what's
   actually been verified against real hardware vs. assumed). Update a proposal's Status and
   `docs/design/README.md`'s one-line summary of it in the same change that implements/extends it.
 - **[`docs/specs/`](docs/specs/README.md)** — the precise field/action/state reference for one

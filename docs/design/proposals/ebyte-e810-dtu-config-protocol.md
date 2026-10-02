@@ -189,6 +189,17 @@ plus a settings form reads far better than a CLI flag dump:
 - Whether RS-422 variants of the E810-DTU family share this exact config format (the notes only
   cover the RS485 model) — worth checking if/when an RS-422 unit is in hand.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Field table's widths reconciled against a real captured packet (2026-09-30)
+- [ ] Resolve the `FD00`/`FD01` ambiguity with a fresh, deliberate capture (blocker)
+- [ ] Build the UDP transport (see `transports.md`; `BACKLOG.md`)
+- [ ] Discovery/config codec and unit tests
+- [ ] Both front ends' panel, plus a `docs/specs/` and `docs/user-guide/` entry
+- [ ] Real-hardware pass; writes verified against a real unit
+
 ## Status
 
 **Not started — design only.** No code exists yet, and it's gated on the not-yet-built UDP transport

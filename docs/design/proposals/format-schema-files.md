@@ -99,6 +99,17 @@ Validator ..> [DeviceManifest] : loads + checks meaning
 - Polymorphic `UiControl` (`kind`): confirm `JsonSchemaExporter` emits a usable `oneOf` with the
   discriminator, otherwise that one schema needs a hand-written overlay.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [ ] Spike `JsonSchemaExporter` on `DeviceManifest`; check the `UiControl` discriminator output
+- [ ] Decide whether the schema is generated at build time or checked in
+- [ ] Generate the schema for `DeviceManifest` / `UiDefinition`
+- [ ] Generate the schema for the `.ksy`-derived frame (see `ksy-importer.md`)
+- [ ] A test that fails when the schema drifts from the types
+- [ ] Reference the schema from manifest docs and editors
+
 ## Status
 
 **Proposal, not started.** Nothing generated yet. First step: spike `JsonSchemaExporter` on `DeviceManifest`

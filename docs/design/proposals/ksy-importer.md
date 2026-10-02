@@ -68,6 +68,21 @@ deep), and `repeat: expr` with a literal count (1 to 256) becomes indexed names 
 read in expressions as `{header.length}` / `{samples[0]}`. A dynamic attribute (`repeat-until`, `repeat: eos`, a
 computed repeat count, `if`, `switch-on`, `size-eos`) ends the frame there with a warning, since later offsets are unknown. Uses YamlDotNet for the YAML.
 
+## Completion checklist
+
+What is needed before this proposal can be closed. Tick items as they land, in the same change.
+
+- [x] Model, decoder, presenter, panel wiring, catalog paths, validator checks
+- [x] JSON/XML round trip and the importer
+- [x] Manifest editors' Binary frame entry and Import button, both front ends
+- [x] Unit and screenshot tests
+- [x] Live check: Radex One frame on COM8 (`docs/test/2026-10-02-14-42-26.md`)
+- [ ] Check DE-5000, K8055 and Zoom H4n `.ksy` layouts against live captures (documented bytes only so far)
+- [ ] Bit fields (not built)
+- [ ] Length-prefixed or variable-size frames (not built)
+- [ ] Checksums (not built)
+- [ ] Generated JSON Schema for the frame (`format-schema-files.md`)
+
 ## Status
 
 Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`ValuePathSource.Frame`), validator checks,
