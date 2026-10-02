@@ -121,7 +121,7 @@ public sealed class RealHardwareBusylightTests
                 await controlSurface.InvokeAsync(command, value, TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
                 if (command == "apply")
                 {
-                    await Task.Delay(800, TestContext.CancellationToken);
+                    await Task.Delay(2500, TestContext.CancellationToken);
                 }
             }
         }
