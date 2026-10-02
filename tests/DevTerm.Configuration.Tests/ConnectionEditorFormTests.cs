@@ -45,9 +45,9 @@ public sealed class ConnectionEditorFormTests
         {
             var definition = viewModel.FormDefinition;
 
-            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation", "Timing", "Stream Monitor"], [.. definition.Sections.Select(s => s.Label)]);
+            Assert.AreSequenceEqual(["", "Serial", "TCP", "USB Device", "BLE", "Loopback", "Presentation", "Timing"], [.. definition.Sections.Select(s => s.Label)]);
             Assert.AreSequenceEqual(
-                [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null, nameof(ConnectionEditorViewModel.SupportsWriteByteDelay), null],
+                [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null, nameof(ConnectionEditorViewModel.SupportsWriteByteDelay)],
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
             Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(

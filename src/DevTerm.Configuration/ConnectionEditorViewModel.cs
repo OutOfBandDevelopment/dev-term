@@ -44,7 +44,6 @@ namespace DevTerm.Configuration;
 [FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
 [FormSection("Presentation", Order = 6)]
 [FormSection("Timing", Order = 7, VisibleWhen = nameof(SupportsWriteByteDelay))]
-[FormSection("Stream Monitor", Order = 8)]
 public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly CliOptionsValidator _validator = new();
@@ -132,7 +131,6 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(BleDeviceOptions),
         nameof(SelectedBleWriteCharacteristic),
         nameof(SelectedBleNotifyCharacteristic),
-        nameof(ConverterToolsSummary),
         nameof(BleCharacteristicOptions),
         nameof(IdsShowHex),
         nameof(VendorIdDisplay),
@@ -1274,27 +1272,16 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     }
 
     /// <summary>
-    /// The Stream Monitor's registered converter tools (docs/design/proposals/stream-converter-tools.md), edited
-    /// through <see cref="ConverterToolsEditor"/> by both front ends' "Converter tools..." button. Replaced as a whole
+    /// Converter tools an older profile still carries (docs/design/features/stream-converter-tools.md). The list is now
+    /// app-wide (<see cref="ConverterToolsStore"/>, Device &gt; Converter Tools...); a profile's own are kept so they survive a
+    /// save and still merge in. Replaced as a whole
     /// (never mutated in place) so assigning it counts as an edit for <see cref="IsDirty"/>.
     /// </summary>
     public IReadOnlyList<StreamConvertToolOptions> ConverterTools
     {
         get => _converterTools;
-        set
-        {
-            SetField(ref _converterTools, value);
-            OnPropertyChanged(nameof(ConverterToolsSummary));
-        }
+        set => SetField(ref _converterTools, value);
     }
-
-    /// <summary>One line for the "Converter tools..." button's label/tooltip: how many tools, and their names.</summary>
-    [Category("Stream Monitor")]
-    [DisplayName("Converter tools")]
-    [FormField(Order = 0, Kind = FormFieldKind.Indicator)]
-    public string ConverterToolsSummary => _converterTools.Count == 0
-        ? "No converter tools registered"
-        : $"{_converterTools.Count} converter tool{(_converterTools.Count == 1 ? string.Empty : "s")}: {string.Join(", ", _converterTools.Select(t => t.Name))}";
 
     public CliOptions BuildOptions()
     {

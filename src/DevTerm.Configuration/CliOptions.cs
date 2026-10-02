@@ -294,7 +294,7 @@ public sealed class CliOptions
 
     /// <summary>
     /// Directory where auto-saved captures (e.g. the Stream Monitor's detected binary/image data —
-    /// see docs/design/proposals/stream-content-detection.md) are written. Unset means
+    /// see docs/design/features/stream-content-detection.md) are written. Unset means
     /// <see cref="DevTermUserDataPaths.ExportsDirectory"/> (<c>~/.dev-term/exports</c>) — see
     /// <see cref="EffectiveExportDirectory"/>. Bound the same as every other property here (a
     /// settings file, the <c>DEVTERM_</c>-prefixed environment variable, or <c>--exportdirectory</c>
@@ -337,7 +337,7 @@ public sealed class CliOptions
 
     /// <summary>
     /// Which mechanism the Stream Monitor's "Convert..." action uses, from
-    /// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration":
+    /// docs/design/features/stream-content-detection.md's "Raster/convert tool integration":
     /// <c>none</c> (default - the action reports nothing is configured), <c>externaltool</c> (run a
     /// configured external converter, e.g. Ghostscript), <c>auto</c> / <c>tool:&lt;name&gt;</c> (a registered
     /// converter tool), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
@@ -378,7 +378,7 @@ public sealed class CliOptions
     public string? StreamConvertOutputExtension { get; set; }
 
     /// <summary>
-    /// External converter tools registered by name (docs/design/proposals/stream-converter-tools.md). Set in
+    /// External converter tools registered by name (docs/design/features/stream-converter-tools.md). Set in
     /// the profile JSON; <see cref="StreamConvertMode"/> <c>auto</c> picks the first whose formats match a
     /// capture, <c>tool:Name</c> runs one by name.
     /// </summary>

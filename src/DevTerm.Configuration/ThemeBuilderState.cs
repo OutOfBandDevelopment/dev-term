@@ -8,7 +8,7 @@ namespace DevTerm.Configuration;
 /// theme file, diffed against whichever of <see cref="BuiltInThemes.Light"/>/<see cref="BuiltInThemes.Dark"/>
 /// the resulting theme is closer to (<see cref="DevTermTheme.IsDark"/>) — not against <see cref="Seed"/>
 /// itself, so seeding from another user theme still produces a file valid against <see cref="ThemeFile.Parse"/>'s
-/// <c>basedOn: "light"|"dark"</c> grammar. See docs/design/proposals/theme-builder.md.
+/// <c>basedOn: "light"|"dark"</c> grammar. See docs/design/features/theme-builder.md.
 /// </summary>
 public sealed class ThemeBuilderState
 {

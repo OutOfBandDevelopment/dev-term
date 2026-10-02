@@ -101,8 +101,9 @@ same list. The choice applies to that window; the profile's saved mode is just w
 HP-GL captures, **HP-GL to SVG** needs nothing else. External tool also needs its
 path, which comes from the profile.
 
-To save the choice and those settings, use **File > Device Profiles... > Edit** (or the TUI's Configure screen), under the new
-**Stream Monitor** section:
+To save the choice, set the `StreamConvert*` settings in the profile JSON or `appsettings.Local.json` (the profile
+editors have no fields for them). The registered tools below are not per profile: they are shared by every device, and are edited from **Device > Converter
+Tools...**.
 
 - **Internal HP-GL to SVG** (`internalhpgltosvg`) — no setup beyond picking this mode. Works only on
   HP-GL captures; converts a plotter stream to an SVG file dev-term draws itself, no external tool
@@ -111,9 +112,9 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
   Ghostscript's `gswin64c.exe`) and give it an argument template with `{input}`, `{output}` and
   `{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`. dev-term doesn't bundle
   any converter — this just runs the one you point it at. [Installing and configuring Ghostscript](ghostscript-conversion.md) walks through it.
-- **Registered tools** (`StreamConvertTools`, with `auto` or `tool:<name>`) — several converters, each declaring
+- **Registered tools** (`auto` or `tool:<name>`) — several converters, each declaring
   the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL). **Auto** picks by the capture's
-  format. Manage the list with **Edit tools...** in the same section: add, edit, remove and reorder tools (order
+  format. Manage the list with **Device > Converter Tools...**: add, edit, remove and reorder tools (order
   decides which one Auto tries first); see [the editor's spec](../specs/converter-tools-editor.md). See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
 
 ![Converter tools dialog, TUI](images/tui-converter-tools.png)

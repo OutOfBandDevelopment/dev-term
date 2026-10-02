@@ -6,7 +6,7 @@ namespace DevTerm.Core.StreamContent;
 /// <summary>
 /// A small, dev-term-owned HP-GL instruction interpreter that emits a static SVG file — the
 /// "internal HP/GL-to-SVG converter" mechanism from
-/// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration" section.
+/// docs/design/features/stream-content-detection.md's "Raster/convert tool integration" section.
 /// No external dependency, no network call, and (unlike the not-yet-built HPGL/PostScript/PCL
 /// rendering presenter from docs/design/presenters.md §3, which aims at a live on-screen preview)
 /// this only ever needs to produce one static SVG string for export.

@@ -1,16 +1,16 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│  Send as:               ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal          ▲│
+│── Presentation ──                                                           ▲│
+│  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ░│
+│                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     ░│
+│                         ☐ de5000 ☐ nmea                                     ░│
+│  Send as:               ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal          ░│
 │                         ○ binary  ○ k8055  ○ busylight  ○ scpi  ○ radexone  ░│
 │                         ○ zoomh4n  ○ de5000  ○ nmea                         ░│
 │  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          ░│
 │  ASCII max line length: 4096                                                ░│
 │                                                                             ░│
 │── Timing ──                                                                 ░│
-│  Write byte delay (ms): -1                                                  ░│
-│                                                                             ░│
-│── Stream Monitor ──                                                         ░│
-│  Converter tools: ⟦ Edit tools... (No converter tools registered) ⟧         ░│
-│                                                                             ░│
+│  Write byte delay (ms): -1                                                  █│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧                 █│
 │                                                                             █│

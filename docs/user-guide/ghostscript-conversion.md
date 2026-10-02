@@ -36,8 +36,7 @@ Set the mode to **External tool**, point at the executable and give it an argume
 ```
 
 (JSON needs the backslashes doubled.) The same names work as command-line flags in lower case, for example
-`--streamconvertmode externaltool`, and appear under **Stream Monitor** in the TUI's Configure screen. The WPF
-profile editor has no Stream Monitor section yet.
+`--streamconvertmode externaltool`. Neither profile editor has fields for these settings; edit the profile JSON or `appsettings.Local.json`.
 
 | Placeholder | Replaced with |
 |---|---|
@@ -67,12 +66,13 @@ its path, for example `-dBATCH -dNOPAUSE -sDEVICE=png16m -r{dpi} -sOutputFile={o
 
 ## Several tools at once
 
-Register each converter under `StreamConvertTools` instead of the single External tool settings. Each entry names the
-formats it handles, so Ghostscript takes PostScript and GhostPCL takes PCL:
+Register each converter in the app-wide list instead of the single External tool settings: **Device > Converter
+Tools...** (next to Stream Monitor, in both the TUI and WPF) edits it, and every profile and device shares it. Each
+entry names the formats it handles, so Ghostscript takes PostScript and GhostPCL takes PCL. The list is stored in
+`~/.dev-term/converter-tools.json`, so you can also edit the file directly:
 
 ```json
-"StreamConvertMode": "auto",
-"StreamConvertTools": [
+[
   {
     "Name": "gs",
     "Path": "C:\Program Files\gs\gs10.04.0\bin\gswin64c.exe",
@@ -90,13 +90,17 @@ formats it handles, so Ghostscript takes PostScript and GhostPCL takes PCL:
 ]
 ```
 
+(A profile's own `StreamConvertTools` still works and is added to this list; an app-wide tool with the same name wins.)
+
 `Formats` is a comma-separated list of format names (`ps`, `pcl`, `hpgl`, `image`) or file extensions (`bmp`); empty
 means any. With **Auto (by format)** selected, Convert... runs the first registered tool whose formats include the
-selected capture's. Picking a tool by its name in the conversion list (`"StreamConvertMode": "tool:gs"`) runs it
+selected capture's. Picking a tool by its name in the conversion list (a profile's `"StreamConvertMode": "tool:gs"`) runs it
 whatever the capture's format. The conversion list shows Auto and each tool by name once any are registered.
-Design: [stream-converter-tools](../design/proposals/stream-converter-tools.md).
+Design: [stream-converter-tools](../design/features/stream-converter-tools.md).
 
-## Not verified
+## Verified
 
-These steps are written from Ghostscript's documented command line and dev-term's converter settings. They
-haven't been run against a real PostScript capture from a device yet.
+Both converters were run for real by `RealGhostscriptConversionTests` (2026-10-02): a PostScript sample through
+Ghostscript's `gswin64c.exe` and a PCL sample through GhostPCL's `gpcl6win64.exe`, each producing a PNG. The tests report
+Inconclusive on a machine without the tool. A PostScript or PCL capture straight from a device has not been run through
+them yet.

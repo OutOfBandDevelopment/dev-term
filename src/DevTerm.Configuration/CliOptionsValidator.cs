@@ -65,10 +65,9 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             case var named when named.StartsWith("tool:", StringComparison.Ordinal):
-                var toolName = named["tool:".Length..].Trim();
-                if (!options.StreamConvertTools.Any(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase)))
+                if (named["tool:".Length..].Trim().Length == 0)
                 {
-                    return ValidateOptionsResult.Fail($"'--streamconvertmode' names the tool '{toolName}', which is not in StreamConvertTools.");
+                    return ValidateOptionsResult.Fail("'--streamconvertmode' 'tool:' needs a tool name. The name may be an app-wide tool, which the validator cannot see; an unknown name is reported when Convert... runs.");
                 }
 
                 break;

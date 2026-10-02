@@ -57,6 +57,7 @@
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />
                 <MenuItem x:Name="StreamMonitorMenuItem" Header="S_tream Monitor..." Click="StreamMonitor_Click" />
+                <MenuItem x:Name="ConverterToolsMenuItem" Header="Converter _Tools..." Click="ConverterTools_Click" />
             </MenuItem>
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">

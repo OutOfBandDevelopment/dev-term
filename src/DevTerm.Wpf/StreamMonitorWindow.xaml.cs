@@ -56,13 +56,13 @@ public partial class StreamMonitorWindow : Window
     private readonly StreamCaptureConverterOptions _converterOptions;
     private readonly IReadOnlyList<StreamConversionChoice> _choices;
 
-    public StreamMonitorWindow(StreamMonitor monitor, CliOptions? cliOptions = null)
+    public StreamMonitorWindow(StreamMonitor monitor, CliOptions? cliOptions = null, IEnumerable<StreamConvertToolOptions>? globalTools = null)
     {
         ArgumentNullException.ThrowIfNull(monitor);
         InitializeComponent();
         WpfTheme.Attach(this);
         _monitor = monitor;
-        _converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions);
+        _converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions, globalTools);
         _converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(_converterOptions));
         _choices = StreamConversionChoice.For(_converterOptions);
         foreach (var choice in _choices)

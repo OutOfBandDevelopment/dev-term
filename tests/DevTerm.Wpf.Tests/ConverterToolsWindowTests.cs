@@ -117,45 +117,47 @@ public sealed class ConverterToolsWindowTests
     }
 
     [TestMethod]
-    public void EditToolsButton_ReplacesTheProfilesTools_WhenTheDialogIsAccepted_AndLeavesThemWhenCancelled()
+    public void DeviceMenu_ConverterTools_SavesTheAppWideList_AndCancelLeavesItAlone()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools-wpf", Path.GetRandomFileName());
-        Directory.CreateDirectory(directory);
+        var path = Path.Combine(Path.GetTempPath(), "devterm-converter-tools-wpf", Path.GetRandomFileName(), "converter-tools.json");
         try
         {
             StaTestRunner.Run(() =>
             {
-                var window = new DeviceProfilesWindow(new ConnectionProfileStore(directory), new CliOptions { Transport = "loopback", StreamConvertTools = [Tool("gs")] }) { ShowInTaskbar = false };
-                StaTestRunner.DoEvents();
-                IReadOnlyList<StreamConvertToolOptions>? seenByDialog = null;
-
-                window.ShowConverterToolsDialog = editor =>
+                var ascii = new DevTerm.Presenters.Text.AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new DevTerm.Presenters.Text.AsciiPresenterOptions()));
+                var window = new MainWindow(new DevTerm.Core.Sessions.Session(new FakeTransport(), new DevTerm.Core.Presenters.Pipeline([ascii])), new DevTerm.Core.Presenters.PresenterCatalog([ascii]), new CliOptions { Transport = "loopback", Parser = "ascii" }, IsolatedProfiles.Empty())
                 {
-                    seenByDialog = editor.ToList();
-                    editor.Add();
-                    return null;
+                    ShowInTaskbar = false,
+                    ConverterToolsStore = new ConverterToolsStore(path),
                 };
-                window.EditConverterToolsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                Assert.AreEqual("gs", seenByDialog!.Single().Name);
-                Assert.AreEqual(1, window.ViewModel.ConverterTools.Count);
+                StaTestRunner.DoEvents();
 
+                window.ShowConverterToolsDialog = _ => null;
+                window.EditConverterTools();
+                Assert.IsFalse(File.Exists(path));
+
+                IReadOnlyList<StreamConvertToolOptions>? offered = null;
                 window.ShowConverterToolsDialog = editor =>
                 {
+                    offered = editor.ToList();
                     editor.Add();
+                    editor.Tools[0].Name = "gs";
+                    editor.Tools[0].Path = "gs.exe";
                     return editor.ToList();
                 };
-                window.EditConverterToolsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-                StaTestRunner.DoEvents();
+                window.EditConverterTools();
 
-                Assert.AreEqual(2, window.ViewModel.ConverterTools.Count);
-                Assert.IsTrue(window.ViewModel.IsDirty);
-                StringAssert.Contains(window.ViewModel.ConverterToolsSummary, "2 converter tools");
+                Assert.AreEqual(0, offered!.Count);
+                Assert.AreEqual("gs", new ConverterToolsStore(path).Load().Single().Name);
                 return Task.CompletedTask;
             });
         }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            if (Path.GetDirectoryName(path) is { } dir && Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
         }
     }
 

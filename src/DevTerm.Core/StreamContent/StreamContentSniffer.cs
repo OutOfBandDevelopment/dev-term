@@ -31,7 +31,7 @@ public enum BlockHeaderStatus
 
 /// <summary>
 /// Pure, allocation-free signature matching for the Stream Monitor (see
-/// docs/design/proposals/stream-content-detection.md): recognizes PNG, JPEG, GIF, BMP and TIFF
+/// docs/design/features/stream-content-detection.md): recognizes PNG, JPEG, GIF, BMP and TIFF
 /// magic bytes, PostScript's <c>%!PS</c> header (and the binary EPS preview header), PCL job
 /// starts (<c>ESC E ESC …</c>, the PJL universal exit language <c>ESC%-12345X</c>, and the
 /// HP-GL/2-in-PCL mode switch), HP-GL's two-letter mnemonic instructions, and SCPI/IEEE 488.2

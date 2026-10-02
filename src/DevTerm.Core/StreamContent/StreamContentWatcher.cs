@@ -19,7 +19,7 @@ public sealed class StreamContentWatcherOptions
 }
 
 /// <summary>
-/// The Stream Monitor's detector (docs/design/proposals/stream-content-detection.md): an
+/// The Stream Monitor's detector (docs/design/features/stream-content-detection.md): an
 /// <see cref="IPresenter"/> bound into a session's live <see cref="Pipeline"/> that watches the raw
 /// incoming bytes for renderable/binary content, captures each detected stream in full, and raises
 /// <see cref="ContentDetected"/> once it's complete. It never emits any rendered text itself

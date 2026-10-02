@@ -35,7 +35,7 @@ public sealed class ScpiCommandDefinition
     /// anything but <see cref="StreamContentFormat.Text"/> (the default), <see cref="ScpiControlSurface"/>
     /// tells a running Stream Monitor to expect it just before sending, so the reply is captured and
     /// saved as a file instead of the monitor having to recognize it from its bytes alone (see
-    /// docs/design/proposals/stream-content-detection.md). Declared per command rather than per
+    /// docs/design/features/stream-content-detection.md). Declared per command rather than per
     /// profile because it's a property of the command — a command whose output format is itself
     /// configurable (a hard copy whose format is set by another command) is better left to sniffing.
     /// </summary>

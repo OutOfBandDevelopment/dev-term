@@ -2,7 +2,7 @@ namespace DevTerm.Core.StreamContent;
 
 /// <summary>
 /// What a device reply is expected (or detected) to contain, as far as the Stream Monitor cares —
-/// see docs/design/proposals/stream-content-detection.md. <see cref="Text"/> (the default) means
+/// see docs/design/features/stream-content-detection.md. <see cref="Text"/> (the default) means
 /// "an ordinary reply, nothing to capture"; every other value is something worth capturing and
 /// saving as a file rather than only showing as text/hex.
 /// </summary>
