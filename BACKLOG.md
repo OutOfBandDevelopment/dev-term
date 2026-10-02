@@ -45,22 +45,13 @@ the rest.
 
 ### Tektronix TDS2024
 
-- **Every `TRIGger:...?` query (including the unqualified `TRIGger?` form) gets no reply at all
-  against this specific real TDS2024 unit** — real-hardware confirmed 2026-09-25
-  (`docs/test/2026-09-25-18-57-22.md`) and extended 2026-09-30
-  (`docs/test/2026-09-30-21-51-12.md`): `TRIGger:MAIn:FREQuency?`, `TRIGger:STATE?` (a much cheaper
-  status query, ruling out "expensive measurement" as the cause), and plain `TRIGger?` all get no
-  reply, while every non-`TRIGger` query tried (`*IDN?`, `CH1?`, `CH2?`) answers normally, including
-  immediately after a dropped `TRIGger` query (ruling out a stuck/corrupted link or a queued stale
-  reply bleeding into the next command). `*CLS` + `ALLEv?` right after a dropped query shows an
-  empty event queue — the device isn't posting an IEEE 488.2 command-error event (410/420-class)
-  for it either, so this looks like the firmware never generating a reply at all, not rejecting the
-  command as malformed. `tektronix-tds2024.json`'s own `Name` field notes this unit is specifically
-  "NOT the TDS2024B" — still an unconfirmed hypothesis that the `TRIGger` query family needs that
-  variant's firmware. `RealHardwareTcpTests`'s TDS2024 test avoids the whole `TRIGger` family for now
-  (uses `CH1?`/`CH2?` instead). Not investigated further — needs a packet capture of a known-working
-  `TRIGger` query (e.g. from a Tek-provided tool) against this exact unit to compare framing, similar
-  to the USBTMC framing bugs above.
+- **Re-enable the `TRIGger` family in `RealHardwareTcpTests`'s TDS2024 test.** The "no reply to every
+  `TRIGger...?` query" finding (`docs/test/2026-09-25-18-57-22.md`, `2026-09-30-21-51-12.md`) was a
+  write-pacing problem: the unit/bridge has no input FIFO, and with `--writebytedelayms 50` the queries
+  answer (`docs/test/2026-10-02-07-01-24.md`; the profile `Notes` now say so). The test still uses
+  `CH1?`/`CH2?` to dodge it; switch it to a `TRIGger:STATE?` with the delay set and confirm against
+  hardware. Also open: the bridge can surface a reply one connection late, so a test should discard
+  anything that doesn't match what it just sent.
 
 ### Plugin architecture, decoders & presenters
 
