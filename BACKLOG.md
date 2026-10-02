@@ -33,13 +33,8 @@ the rest.
 
 ### Tektronix TDS2024
 
-- **Re-enable the `TRIGger` family in `RealHardwareTcpTests`'s TDS2024 test.** The "no reply to every
-  `TRIGger...?` query" finding (`docs/test/2026-09-25-18-57-22.md`, `2026-09-30-21-51-12.md`) was a
-  write-pacing problem: the unit/bridge has no input FIFO, and with `--writebytedelayms 50` the queries
-  answer (`docs/test/2026-10-02-07-01-24.md`; the profile `Notes` now say so). The test still uses
-  `CH1?`/`CH2?` to dodge it; switch it to a `TRIGger:STATE?` with the delay set and confirm against
-  hardware. Also open: the bridge can surface a reply one connection late, so a test should discard
-  anything that doesn't match what it just sent.
+- **A TDS2024 bridge can surface a reply one connection late**, so a real-hardware test should discard anything
+  that doesn't match what it just sent. Observed 2026-10-02; the test still passes without it, so low priority.
 
 ### Plugin architecture, decoders & presenters
 

@@ -41,21 +41,19 @@ public sealed class RealHardwareTcpTests
     private string? GetProperty(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 
     /// <summary>
-    /// Tektronix TDS2024: identity plus two read-only channel-settings queries (CH1, CH2) — neither
-    /// mutates acquisition/trigger state, safe regardless of what's connected to the input channels.
+    /// Tektronix TDS2024: identity, two read-only channel-settings queries (CH1, CH2) and a
+    /// <c>TRIGger:STATE?</c> — none mutates acquisition/trigger state, safe regardless of what's
+    /// connected to the input channels.
     ///
-    /// NOT any <c>TRIGger:...?</c> query — real-hardware confirmed that every <c>TRIGger</c>-family
-    /// query tried (<c>TRIGger:MAIn:FREQuency?</c>, then <c>TRIGger:STATE?</c>) hangs the full step
-    /// timeout on this specific unit (docs/test/2026-09-25-18-57-22.md), even though both are real
-    /// commands in tektronix-tds2024.json and every non-Trigger query tried answered normally
-    /// (including as the 3rd command in the sequence, ruling out a simple "3rd command" positional
-    /// issue). Root cause not identified — tracked in BACKLOG.md rather than investigated further
-    /// here; avoid the whole <c>TRIGger</c> command family against this device until it's understood.
+    /// Written with <c>WriteByteDelayMs = 50</c>: the unit (and its serial-to-Ethernet bridge) has no
+    /// input FIFO, so a command written as one burst loses bytes. Without the pacing every
+    /// <c>TRIGger...?</c> query was silent (docs/test/2026-09-25-18-57-22.md); with it they answer
+    /// (docs/test/2026-10-02-07-01-24.md).
     /// </summary>
     [TestMethod]
     [TestCategory(TestCategories.Tektronix_Tds2024)]
     [TestCategory(TestCategories.Hardware)]
-    public Task CliMode_AgainstTektronixTds2024_AnswersIdentityAndQueriesChannel1() =>
+    public Task CliMode_AgainstTektronixTds2024_AnswersIdentityChannelsAndTriggerState() =>
         RunAsync(
             "RealTcpDeviceHost3",
             "\n",
@@ -63,7 +61,9 @@ public sealed class RealHardwareTcpTests
                 ("*IDN?", true),
                 ("CH1?", true),
                 ("CH2?", true),
-            ]);
+                ("TRIGger:STATE?", true),
+            ],
+            writeByteDelayMs: 50);
 
     /// <summary>
     /// Tektronix 2230 (.107, <c>RealTcpDeviceHost1</c>): pre-SCPI identity plus a read-only CH1
@@ -99,7 +99,7 @@ public sealed class RealHardwareTcpTests
                 ("HORizontal?", true),
             ]);
 
-    private async Task RunAsync(string parameterPrefix, string commandTerminator, (string Command, bool ExpectsReply)[] steps)
+    private async Task RunAsync(string parameterPrefix, string commandTerminator, (string Command, bool ExpectsReply)[] steps, int writeByteDelayMs = -1)
     {
         var host = GetProperty(parameterPrefix);
         var portText = GetProperty("RealTcpDevicePort");
@@ -125,6 +125,7 @@ public sealed class RealHardwareTcpTests
             Mode = TcpTransportMode.Client,
             Host = host,
             Port = port,
+            WriteByteDelayMs = writeByteDelayMs,
         });
 
         await using var transport = new TcpTransport(new SystemTcpConnectionSource(), options);
