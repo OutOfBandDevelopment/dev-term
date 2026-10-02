@@ -63,8 +63,10 @@ M -> U : ValuesChanged
 
 `KsyImporter.Import(text)` returns a `FrameSchema` and warnings. Handled: `meta.endian`, `seq` attributes of numeric
 types (with `le`/`be` suffix), `str` with `size`, untyped `size` byte runs, `contents` magic (becomes `Expect`; leading
-magic also becomes `Sync`), and `doc` as the label. A dynamic attribute (`repeat`, `if`, `switch-on`, a user type,
-`size-eos`) ends the frame there with a warning, since later offsets are unknown. Uses YamlDotNet for the YAML.
+magic also becomes `Sync`), and `doc` as the label. A user type from `types` is flattened into dotted names (`header.length`, up to 8 levels
+deep), and `repeat: expr` with a literal count (1 to 256) becomes indexed names (`samples[0]`, `points[1].x`). Both
+read in expressions as `{header.length}` / `{samples[0]}`. A dynamic attribute (`repeat-until`, `repeat: eos`, a
+computed repeat count, `if`, `switch-on`, `size-eos`) ends the frame there with a warning, since later offsets are unknown. Uses YamlDotNet for the YAML.
 
 ## Status
 
@@ -72,6 +74,5 @@ Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`Value
 JSON/XML round trip, importer. Unit-tested only; **no real device has been used**. Not built:
 
 - a manifest-editor UI to import a `.ksy` or edit a frame (today: author `Inbound.Frame` in `device.json`, or call the importer);
-- dotted/indexed paths (`header.length`, `samples[0]`) for nested `.ksy` types and arrays;
 - bit fields, length-prefixed or variable-size frames, checksums;
 - a generated JSON Schema for the frame (see [format-schema-files.md](format-schema-files.md)).

@@ -16,6 +16,7 @@ namespace DevTerm.Console.Tests;
 /// </summary>
 [TestCategory(TestCategories.Unit)]
 [TestClass]
+[DoNotParallelize]
 public sealed class LoopbackChartsScreenshotTests
 {
     private const int _intervalMs = 150;

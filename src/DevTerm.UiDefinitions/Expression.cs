@@ -645,7 +645,7 @@ public sealed partial class Expression
             throw new ExpressionParseException("a string literal has no closing quote.");
         }
 
-        [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_.]*$")]
+        [GeneratedRegex(@"^[A-Za-z_](?:[A-Za-z0-9_.]|\[[0-9]+\])*$")]
         public static partial Regex VariableId();
     }
 

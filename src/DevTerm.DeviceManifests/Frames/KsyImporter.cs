@@ -13,13 +13,14 @@ public sealed record KsyImportResult(FrameSchema? Schema, IReadOnlyList<string> 
 /// reading of the format, no Kaitai runtime). Handled: <c>meta.endian</c>; <c>seq</c> attributes of <c>u1..u8</c>,
 /// <c>s1..s8</c>, <c>f4</c>, <c>f8</c> (with an <c>le</c>/<c>be</c> suffix), <c>str</c> and untyped <c>size</c> byte runs;
 /// <c>contents</c> (a magic number, which becomes an <see cref="FrameField.Expect"/> and, when leading, the frame's
-/// <see cref="FrameSchema.Sync"/>); and <c>doc</c> as a label. Anything dynamic (<c>repeat</c>, <c>if</c>, <c>switch-on</c>,
-/// user types, <c>size-eos</c>) ends the frame there with a warning, since later offsets are no longer known.
+/// <see cref="FrameSchema.Sync"/>); and <c>doc</c> as a label; user types from <c>types</c> (flattened to <c>parent.child</c> names) and <c>repeat: expr</c> with a
+/// literal count (<c>name[0]</c>, <c>name[1]</c>, ...). Anything dynamic (<c>repeat-until</c>, <c>repeat: eos</c>, a computed
+/// count, <c>if</c>, <c>switch-on</c>, <c>size-eos</c>) ends the frame there with a warning, since later offsets are no longer known.
 /// See docs/design/proposals/ksy-importer.md.
 /// </summary>
 public static class KsyImporter
 {
-    private static readonly string[] _unsupported = ["repeat", "repeat-expr", "repeat-until", "if", "size-eos", "terminator", "process", "pos", "io"];
+    private static readonly string[] _unsupported = ["repeat-until", "if", "size-eos", "terminator", "process", "pos", "io"];
 
     public static KsyImportResult Import(string ksy)
     {
@@ -55,24 +56,88 @@ public static class KsyImporter
             }
         }
 
-        var leadingMagic = true;
-        var sync = new List<byte>();
-        foreach (var item in seq)
+        var types = map.TryGetValue("types", out var typesValue) && typesValue is Dictionary<object, object> typeMap ? typeMap : [];
+        var walk = new Walk(schema, warnings, types);
+        walk.Sequence(seq, string.Empty, 0);
+        if (walk.Sync.Count > 0)
         {
-            if (item is not Dictionary<object, object> attr)
+            schema.Sync = Convert.ToHexString([.. walk.Sync]);
+        }
+
+        if (schema.Fields.Count == 0)
+        {
+            warnings.Add("No attribute could be imported.");
+            return new KsyImportResult(null, warnings);
+        }
+
+        return new KsyImportResult(schema, warnings);
+    }
+
+    /// <summary>One import in progress: appends fields to the schema, naming nested user types <c>parent.child</c> and repeated attributes <c>name[0]</c>.</summary>
+    private sealed class Walk(FrameSchema schema, List<string> warnings, Dictionary<object, object> types)
+    {
+        private const int _maxRepeat = 256;
+        private const int _maxDepth = 8;
+        private bool _leadingMagic = true;
+
+        public List<byte> Sync { get; } = [];
+
+        /// <summary>Adds each attribute in turn; false once one stops the frame (everything after it has an unknown offset).</summary>
+        public bool Sequence(List<object> seq, string prefix, int depth)
+        {
+            foreach (var item in seq)
             {
-                warnings.Add("A seq entry is not a mapping; the frame stops there.");
-                break;
+                if (item is not Dictionary<object, object> attr)
+                {
+                    warnings.Add("A seq entry is not a mapping; the frame stops there.");
+                    return false;
+                }
+
+                var id = Text(attr, "id") ?? string.Empty;
+                if (UnsupportedKey(attr) is { } key)
+                {
+                    warnings.Add($"Attribute '{prefix}{id}' uses '{key}', which the frame model cannot express; the frame stops before it.");
+                    return false;
+                }
+
+                if (!Repeated(attr, prefix + id, out var count))
+                {
+                    return false;
+                }
+
+                for (var i = 0; i < count; i++)
+                {
+                    var name = attr.ContainsKey("repeat") ? $"{prefix}{id}[{i}]" : prefix + id;
+                    if (!Attribute(attr, name, depth))
+                    {
+                        return false;
+                    }
+                }
             }
 
-            var id = Text(attr, "id") ?? string.Empty;
-            if (UnsupportedKey(attr) is { } key)
+            return true;
+        }
+
+        private bool Repeated(Dictionary<object, object> attr, string name, out int count)
+        {
+            count = 1;
+            if (!attr.ContainsKey("repeat"))
             {
-                warnings.Add($"Attribute '{id}' uses '{key}', which the frame model cannot express; the frame stops before it.");
-                break;
+                return true;
             }
 
-            var field = new FrameField { Name = id, Label = Text(attr, "doc") };
+            if (Text(attr, "repeat") != "expr" || !int.TryParse(Text(attr, "repeat-expr"), NumberStyles.None, CultureInfo.InvariantCulture, out count) || count is < 1 or > _maxRepeat)
+            {
+                warnings.Add($"Attribute '{name}' repeats a count the frame model cannot fix (only 'repeat: expr' with a literal 1 to {_maxRepeat}); the frame stops before it.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool Attribute(Dictionary<object, object> attr, string name, int depth)
+        {
+            var field = new FrameField { Name = name, Label = Text(attr, "doc") };
             var contents = Contents(attr);
             var type = Text(attr, "type");
             int? size = int.TryParse(Text(attr, "size"), NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : null;
@@ -82,14 +147,19 @@ public static class KsyImporter
                 field.Type = "skip";
                 field.Size = contents.Length;
                 field.Expect = Convert.ToHexString(contents);
-                if (leadingMagic)
+                if (_leadingMagic)
                 {
-                    sync.AddRange(contents);
+                    Sync.AddRange(contents);
                 }
             }
             else
             {
-                leadingMagic = false;
+                if (type is not null && size is null && types.TryGetValue(type, out var nested))
+                {
+                    return Nested(nested, name, type, depth);
+                }
+
+                _leadingMagic = false;
                 if (type is not null && TryNumber(type, out var baseType, out var fieldEndian))
                 {
                     field.Type = baseType;
@@ -107,26 +177,31 @@ public static class KsyImporter
                 }
                 else
                 {
-                    warnings.Add($"Attribute '{id}' has type '{type ?? "(none)"}' without a fixed size the frame model can use; the frame stops before it.");
-                    break;
+                    warnings.Add($"Attribute '{name}' has type '{type ?? "(none)"}' without a fixed size the frame model can use; the frame stops before it.");
+                    return false;
                 }
             }
 
             schema.Fields.Add(field);
+            return true;
         }
 
-        if (sync.Count > 0)
+        private bool Nested(object definition, string name, string typeName, int depth)
         {
-            schema.Sync = Convert.ToHexString([.. sync]);
-        }
+            if (depth >= _maxDepth)
+            {
+                warnings.Add($"Attribute '{name}' nests user types more than {_maxDepth} deep; the frame stops before it.");
+                return false;
+            }
 
-        if (schema.Fields.Count == 0)
-        {
-            warnings.Add("No attribute could be imported.");
-            return new KsyImportResult(null, warnings);
-        }
+            if (definition is not Dictionary<object, object> map || !map.TryGetValue("seq", out var seq) || seq is not List<object> list)
+            {
+                warnings.Add($"User type '{typeName}' (attribute '{name}') has no 'seq' list; the frame stops before it.");
+                return false;
+            }
 
-        return new KsyImportResult(schema, warnings);
+            return Sequence(list, name + ".", depth + 1);
+        }
     }
 
     private static string? UnsupportedKey(Dictionary<object, object> attr)

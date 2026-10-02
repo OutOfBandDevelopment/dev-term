@@ -207,6 +207,6 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
     private static bool TryParseFinite(string? raw, out double number) =>
         double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out number) && double.IsFinite(number);
 
-    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_.]*)\}")]
+    [GeneratedRegex(@"\{([A-Za-z_](?:[A-Za-z0-9_.]|\[[0-9]+\])*)\}")]
     private static partial Regex TemplatePlaceholder();
 }

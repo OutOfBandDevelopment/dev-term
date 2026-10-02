@@ -1,5 +1,6 @@
 using System.Buffers;
 using DevTerm.Test.Utilities;
+using DevTerm.UiDefinitions;
 
 namespace DevTerm.DeviceManifests.Tests;
 
@@ -135,6 +136,93 @@ public sealed class FrameTests
         Assert.IsNotNull(result.Schema);
         Assert.AreEqual(1, result.Schema.Fields.Count);
         StringAssert.Contains(result.Warnings.Single(), "repeat");
+    }
+
+    private const string _nestedKsy = """
+        meta:
+          endian: le
+        seq:
+          - id: header
+            type: header
+          - id: samples
+            type: u2
+            repeat: expr
+            repeat-expr: 3
+          - id: points
+            type: point
+            repeat: expr
+            repeat-expr: 2
+        types:
+          header:
+            seq:
+              - id: length
+                type: u1
+              - id: kind
+                type: u1
+          point:
+            seq:
+              - id: x
+                type: s1
+              - id: y
+                type: s1
+        """;
+
+    [TestMethod]
+    public void KsyImporter_FlattensNestedTypesAndFixedRepeats_IntoDottedAndIndexedNames()
+    {
+        var result = KsyImporter.Import(_nestedKsy);
+
+        Assert.IsNotNull(result.Schema);
+        Assert.AreEqual(0, result.Warnings.Count);
+        CollectionAssert.AreEqual(
+            new[] { "header.length", "header.kind", "samples[0]", "samples[1]", "samples[2]", "points[0].x", "points[0].y", "points[1].x", "points[1].y" },
+            result.Schema.Fields.Select(f => f.Name).ToArray());
+        Assert.AreEqual(12, result.Schema.Length);
+        Assert.AreEqual(0, result.Schema.Validate().Count);
+    }
+
+    [TestMethod]
+    public void KsyImporter_NestedFrame_DecodesIntoTheFlattenedValues()
+    {
+        var schema = KsyImporter.Import(_nestedKsy).Schema!;
+        var decoder = new FrameDecoder(schema);
+        var values = new Dictionary<string, string>();
+
+        Assert.IsTrue(decoder.TryDecode([12, 7, 1, 0, 2, 0, 3, 0, 5, 0xFE, 6, 0xFD], values));
+
+        Assert.AreEqual("12", values["header.length"]);
+        Assert.AreEqual("2", values["samples[1]"]);
+        Assert.AreEqual("-2", values["points[0].y"]);
+        Assert.AreEqual("6", values["points[1].x"]);
+    }
+
+    [TestMethod]
+    public void KsyImporter_IndexedAndDottedPaths_AreUsableInAnExpression()
+    {
+        var values = new Dictionary<string, double> { ["header.length"] = 12, ["samples[1]"] = 2 };
+
+        Assert.AreEqual(14, Expression.Parse("{header.length} + {samples[1]}").Evaluate(values));
+    }
+
+    [TestMethod]
+    public void KsyImporter_UserTypeThatRecurses_StopsWithAWarning()
+    {
+        var result = KsyImporter.Import("""
+            seq:
+              - id: a
+                type: u1
+              - id: loop
+                type: node
+            types:
+              node:
+                seq:
+                  - id: inner
+                    type: node
+            """);
+
+        Assert.IsNotNull(result.Schema);
+        Assert.AreEqual(1, result.Schema.Fields.Count);
+        StringAssert.Contains(result.Warnings.Single(), "deep");
     }
 
     [TestMethod]
