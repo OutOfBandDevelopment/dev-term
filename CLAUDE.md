@@ -158,7 +158,7 @@ Seven kinds of doc, each with a distinct job — don't blend them:
   confidence, the date and full git commit it was found at, location, failure scenario, suggested fix, tests to
   add. File and update them with the `bug-report` skill (`.claude/skills/bug-report/SKILL.md`). When a fix lands, set its Status to `Fixed`
   with a `## Resolution` section (commit + regression test) and update its row in `docs/bugs/README.md` in the same
-  change; the fix's detail still goes in `docs/changes/`. Keep fixed reports (numbers aren't reused).
+  change; the fix's detail still goes in `docs/changes/`. Closed reports (Fixed, Won't fix, duplicate) move to `docs/bugs/resolved/`, so `docs/bugs/` holds only open work; numbers aren't reused. The `work-docs-audit` skill (`.claude/skills/work-docs-audit/SKILL.md`) is the periodic sweep that checks TODO, BACKLOG, bugs, proposals and the changelog against the code.
 
 **Keep docs focused and one concern per file** — a transport, a presenter, a device profile/proposal,
 a screen, a flow, each gets its own file rather than being folded into a bigger one. If a file has
