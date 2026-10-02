@@ -386,4 +386,34 @@ public sealed class CliOptions
     [Category("Stream Monitor")]
     [DisplayName("Converted output extension")]
     public string? StreamConvertOutputExtension { get; set; }
+
+    /// <summary>
+    /// External converter tools registered by name (docs/design/proposals/stream-converter-tools.md). Set in
+    /// the profile JSON; <see cref="StreamConvertMode"/> <c>auto</c> picks the first whose formats match a
+    /// capture, <c>tool:Name</c> runs one by name.
+    /// </summary>
+    [Browsable(false)]
+    public List<StreamConvertToolOptions> StreamConvertTools { get; set; } = [];
+}
+
+/// <summary>One registered Stream Monitor converter tool - see <see cref="CliOptions.StreamConvertTools"/>.</summary>
+public sealed class StreamConvertToolOptions
+{
+    /// <summary>Shown in the conversion list and used by <c>tool:Name</c>.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The executable.</summary>
+    public string? Path { get; set; }
+
+    /// <summary>Argument template; <c>{input}</c>, <c>{output}</c>, <c>{dpi}</c> are substituted per token.</summary>
+    public string Arguments { get; set; } = string.Empty;
+
+    /// <summary>Comma-separated capture formats it accepts (<c>ps</c>, <c>pcl</c>, <c>hpgl</c>, <c>image</c> or an extension such as <c>bmp</c>); empty means any.</summary>
+    public string Formats { get; set; } = string.Empty;
+
+    /// <summary>Extension (no dot) of the file the tool writes.</summary>
+    public string OutputExtension { get; set; } = "png";
+
+    /// <summary>The value substituted for <c>{dpi}</c>.</summary>
+    public int Dpi { get; set; } = 150;
 }

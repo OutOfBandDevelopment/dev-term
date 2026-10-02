@@ -59,7 +59,7 @@ public sealed class StreamCaptureConverterTests
 
         Assert.IsFalse(result.Success);
         Assert.IsNull(result.OutputPath);
-        StringAssert.Contains(result.Error, "none");
+        StringAssert.Contains(result.Error, "No conversion mechanism");
     }
 
     [TestMethod]
@@ -360,6 +360,123 @@ public sealed class StreamCaptureConverterTests
     }
 
     /// <summary>A minimal <see cref="HttpMessageHandler"/> stub — no fake-HTTP pattern existed yet in this repo's tests.</summary>
+    private static StreamConvertToolOptions CopyTool(string name, string formats, string extension) => new()
+    {
+        Name = name,
+        Path = "cmd.exe",
+        Arguments = "/c copy /y {input} {output}",
+        Formats = formats,
+        OutputExtension = extension,
+    };
+
+    [TestMethod]
+    public async Task ConvertAsync_Auto_PicksTheFirstToolThatHandlesTheCaptureFormat()
+    {
+        var options = new StreamCaptureConverterOptions
+        {
+            Mode = StreamConversionMode.Auto,
+            Tools = [CopyTool("gs", "ps", "psout"), CopyTool("gpcl", "pcl", "pclout")],
+        };
+        var converter = Converter(options);
+
+        var pcl = await converter.ConvertAsync(SavedCapture(StreamContentKind.Pcl, StreamContentSamples.PjlPcl()));
+        var ps = await converter.ConvertAsync(SavedCapture(StreamContentKind.PostScript, StreamContentSamples.PostScript()));
+
+        Assert.IsTrue(pcl.Success, pcl.Error);
+        Assert.IsTrue(pcl.OutputPath!.EndsWith(".pclout", StringComparison.Ordinal));
+        Assert.IsTrue(ps.Success, ps.Error);
+        Assert.IsTrue(ps.OutputPath!.EndsWith(".psout", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task ConvertAsync_Auto_NoToolHandlesTheFormat_FailsNamingIt()
+    {
+        var options = new StreamCaptureConverterOptions
+        {
+            Mode = StreamConversionMode.Auto,
+            Tools = [CopyTool("gs", "ps", "psout")],
+        };
+
+        var result = await Converter(options).ConvertAsync(SavedCapture(StreamContentKind.Pcl, StreamContentSamples.PjlPcl()));
+
+        Assert.IsFalse(result.Success);
+        StringAssert.Contains(result.Error, "PCL");
+    }
+
+    [TestMethod]
+    public async Task ConvertAsync_ToolByName_RunsThatToolEvenIfItsFormatsDontMatch()
+    {
+        var options = new StreamCaptureConverterOptions
+        {
+            Mode = StreamConversionMode.Tool,
+            ToolName = "GS",
+            Tools = [CopyTool("gs", "ps", "psout")],
+        };
+
+        var result = await Converter(options).ConvertAsync(SavedCapture(StreamContentKind.Pcl, StreamContentSamples.PjlPcl()));
+
+        Assert.IsTrue(result.Success, result.Error);
+        Assert.IsTrue(result.OutputPath!.EndsWith(".psout", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task ConvertAsync_ToolByName_UnknownName_Fails()
+    {
+        var options = new StreamCaptureConverterOptions { Mode = StreamConversionMode.Tool, ToolName = "nope" };
+
+        var result = await Converter(options).ConvertAsync(SavedCapture(StreamContentKind.Pcl, StreamContentSamples.PjlPcl()));
+
+        Assert.IsFalse(result.Success);
+        StringAssert.Contains(result.Error, "nope");
+    }
+
+    [TestMethod]
+    public void Handles_EmptyFormatsAcceptsAnything_AndTokensMatchFormatOrExtension()
+    {
+        Assert.IsTrue(StreamCaptureConverter.Handles(new StreamConvertToolOptions(), StreamContentKind.Bmp));
+        Assert.IsTrue(StreamCaptureConverter.Handles(new StreamConvertToolOptions { Formats = "PostScript, eps" }, StreamContentKind.PostScript));
+        Assert.IsTrue(StreamCaptureConverter.Handles(new StreamConvertToolOptions { Formats = "bmp" }, StreamContentKind.Bmp));
+        Assert.IsTrue(StreamCaptureConverter.Handles(new StreamConvertToolOptions { Formats = "image" }, StreamContentKind.Png));
+        Assert.IsFalse(StreamCaptureConverter.Handles(new StreamConvertToolOptions { Formats = "pcl" }, StreamContentKind.PostScript));
+    }
+
+    [TestMethod]
+    public void CopyFrom_ReadsAutoAndToolModes_AndTheToolList()
+    {
+        var tools = new List<StreamConvertToolOptions> { CopyTool("gs", "ps", "png") };
+
+        var auto = StreamCaptureConverterOptions.FromCliOptions(new CliOptions { StreamConvertMode = "auto", StreamConvertTools = tools });
+        var named = StreamCaptureConverterOptions.FromCliOptions(new CliOptions { StreamConvertMode = "tool:gs", StreamConvertTools = tools });
+
+        Assert.AreEqual(StreamConversionMode.Auto, auto.Mode);
+        Assert.AreEqual(StreamConversionMode.Tool, named.Mode);
+        Assert.AreEqual("gs", named.ToolName);
+        Assert.HasCount(1, named.Tools);
+    }
+
+    [TestMethod]
+    public void Choices_ListFixedModesThenAutoAndEachTool_AndRoundTripTheSelection()
+    {
+        var options = new StreamCaptureConverterOptions { Tools = [CopyTool("gs", "ps", "png"), CopyTool("gpcl", "pcl", "png")] };
+
+        var choices = StreamConversionChoice.For(options);
+
+        CollectionAssert.AreEqual(
+            new[] { "None", "HP-GL to SVG", "Auto (by format)", "gs", "gpcl", "External tool", "Web service" },
+            choices.Select(c => c.DisplayName).ToArray());
+        choices[4].ApplyTo(options);
+        Assert.AreEqual(StreamConversionMode.Tool, options.Mode);
+        Assert.AreEqual(4, StreamConversionChoice.IndexOf(choices, options));
+    }
+
+    [TestMethod]
+    public void Choices_WithNoTools_AreJustTheFixedModes()
+    {
+        var choices = StreamConversionChoice.For(new StreamCaptureConverterOptions());
+
+        CollectionAssert.AreEqual(new[] { "None", "HP-GL to SVG", "External tool", "Web service" }, choices.Select(c => c.DisplayName).ToArray());
+    }
+
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

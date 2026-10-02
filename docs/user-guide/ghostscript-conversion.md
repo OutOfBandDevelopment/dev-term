@@ -65,11 +65,36 @@ Ghostscript's PCL interpreter is a separate program (**GhostPCL**, `gpcl6win64.e
 may not include it. Install a GhostPCL build from the same Artifex downloads page and use the same settings with
 its path, for example `-dBATCH -dNOPAUSE -sDEVICE=png16m -r{dpi} -sOutputFile={output} {input}`.
 
-## One tool at a time, for now
+## Several tools at once
 
-dev-term runs the single tool configured above for every capture. To convert PostScript and PCL both, change
-the path and arguments between conversions. Registering several tools, each for the formats it handles, is
-planned (see `BACKLOG.md`).
+Register each converter under `StreamConvertTools` instead of the single External tool settings. Each entry names the
+formats it handles, so Ghostscript takes PostScript and GhostPCL takes PCL:
+
+```json
+"StreamConvertMode": "auto",
+"StreamConvertTools": [
+  {
+    "Name": "gs",
+    "Path": "C:\Program Files\gs\gs10.04.0\bin\gswin64c.exe",
+    "Arguments": "-dBATCH -dNOPAUSE -dSAFER -sDEVICE=png16m -r{dpi} -sOutputFile={output} {input}",
+    "Formats": "ps",
+    "OutputExtension": "png",
+    "Dpi": 150
+  },
+  {
+    "Name": "gpcl",
+    "Path": "C:\gpcl\gpcl6win64.exe",
+    "Arguments": "-dBATCH -dNOPAUSE -sDEVICE=png16m -r{dpi} -sOutputFile={output} {input}",
+    "Formats": "pcl"
+  }
+]
+```
+
+`Formats` is a comma-separated list of format names (`ps`, `pcl`, `hpgl`, `image`) or file extensions (`bmp`); empty
+means any. With **Auto (by format)** selected, Convert... runs the first registered tool whose formats include the
+selected capture's. Picking a tool by its name in the conversion list (`"StreamConvertMode": "tool:gs"`) runs it
+whatever the capture's format. The conversion list shows Auto and each tool by name once any are registered.
+Design: [stream-converter-tools](../design/proposals/stream-converter-tools.md).
 
 ## Not verified
 

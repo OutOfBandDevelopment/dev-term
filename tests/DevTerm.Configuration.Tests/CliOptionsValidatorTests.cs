@@ -248,4 +248,37 @@ public sealed class CliOptionsValidatorTests
 
         Assert.IsTrue(result.Failed);
     }
+
+    private static CliOptions WithTools(string mode, params string[] names) => new()
+    {
+        Transport = "serial",
+        Port = "COM3",
+        StreamConvertMode = mode,
+        StreamConvertTools = [.. names.Select(n => new StreamConvertToolOptions { Name = n, Path = "gs" })],
+    };
+
+    [TestMethod]
+    public void Validate_StreamConvertModeAuto_Succeeds() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("auto")).Succeeded);
+
+    [TestMethod]
+    public void Validate_StreamConvertModeToolNamingARegisteredTool_Succeeds() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("tool:GS", "gs")).Succeeded);
+
+    [TestMethod]
+    public void Validate_StreamConvertModeToolNamingAnUnknownTool_Fails() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("tool:nope", "gs")).Failed);
+
+    [TestMethod]
+    public void Validate_DuplicateToolNames_Fail() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("none", "gs", "GS")).Failed);
+
+    [TestMethod]
+    public void Validate_ToolWithoutAPath_Fails()
+    {
+        var options = WithTools("none", "gs");
+        options.StreamConvertTools[0].Path = string.Empty;
+
+        Assert.IsTrue(_validator.Validate(null, options).Failed);
+    }
 }

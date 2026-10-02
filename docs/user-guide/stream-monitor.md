@@ -96,7 +96,7 @@ selected a capture. It runs whichever conversion mechanism the connection is con
 writes the result next to the capture's saved file (same folder and name, a new extension).
 
 Choose the mechanism right in the window, next to Convert...: a **conversion** drop-down in WPF
-(None, HP-GL to SVG, External tool, Web service) and a **Convert as:** button in the TUI that opens the
+(None, HP-GL to SVG, Auto, each registered tool, External tool, Web service) and a **Convert as:** button in the TUI that opens the
 same list. The choice applies to that window; the profile's saved mode is just where it starts. For
 HP-GL captures, **HP-GL to SVG** needs nothing else. External tool and Web service also need their
 path or URL, which come from the profile.
@@ -111,6 +111,9 @@ To save the choice and those settings, use **File > Device Profiles... > Edit** 
   Ghostscript's `gswin64c.exe`) and give it an argument template with `{input}`, `{output}` and
   `{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`. dev-term doesn't bundle
   any converter — this just runs the one you point it at. [Installing and configuring Ghostscript](ghostscript-conversion.md) walks through it.
+- **Registered tools** (`StreamConvertTools`, with `auto` or `tool:<name>`) — several converters, each declaring
+  the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL). **Auto** picks by the capture's
+  format. See [the Ghostscript guide](ghostscript-conversion.md#several-tools-at-once).
 - **Web service** (`webservice`) — POSTs the capture's raw bytes to a URL you configure (there's no
   default) and saves whatever comes back.
 
