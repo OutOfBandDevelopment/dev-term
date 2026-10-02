@@ -28,6 +28,13 @@ logged as single characters (`docs/test/2026-09-25-15-02-44.md`, a harness readi
 `+550 "Command not allowed in local"` entry (a missing `SYSTem:REMote`). So the hypothesis rests on the instrument class
 and the TDS2024 precedent, not on a recorded failure.
 
+## Update 2026-10-02: the 34401A does use DTR/DSR handshake
+Through bridge 192.168.0.109 the meter sent nothing until the bridge's CTS was wired to the meter's DSR; it suspends
+output while its DSR input is false (`docs/test/2026-10-02-11-21-45.md`). So "no hardware handshake in the documented
+setup" above is not true for every path, and a silent or partial reply may be handshake, not byte timing. That run used
+`--writebytedelayms 50` and did not isolate whether the delay was needed, so this report is still open and still
+unreproduced. Step 1 of the suggested fix should be run on the DSR-wired path.
+
 ## Failure scenario
 Expected, to be confirmed: with default pacing, a command sent right after connect, or several sent back to back, is
 sometimes partly lost, giving a missing reply, a `-102 Syntax error` or `-113 Undefined header` in `SYST:ERR?`, or a

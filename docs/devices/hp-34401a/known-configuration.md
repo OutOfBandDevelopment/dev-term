@@ -4,7 +4,7 @@
 |---|---|
 | Profile | `hp-agilent-keysight-34401a.json` |
 | Transport | Serial, COM5 |
-| Framing | 9600 baud, 8 data bits, no parity, **2 stop bits**, no handshake |
+| Framing | 9600 baud, 8 data bits, no parity, **2 stop bits**; DTR/DSR handshake (the meter sends nothing while its DSR input is false, see "Through bridge" below) |
 | Line ending | `--lineending Lf` |
 | Presenter | `ascii` (it buffers to the LF terminator) |
 
