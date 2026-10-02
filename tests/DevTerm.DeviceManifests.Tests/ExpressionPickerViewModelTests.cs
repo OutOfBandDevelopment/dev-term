@@ -123,6 +123,7 @@ public sealed class ExpressionPickerViewModelTests
             ["max"] = "max(1, 2)",
             ["abs"] = "abs(-1)",
             ["if"] = "if(1, 2, 3)",
+            ["matches"] = "matches('abc', '^a')",
         };
 
         foreach (var function in ExpressionPickerViewModel.Functions)
@@ -288,5 +289,19 @@ public sealed class ExpressionPickerViewModelTests
         var picker = Create("startsWith({banner}, 'sample') ? 'ok' : 'no'");
 
         Assert.AreEqual("\"ok\"", picker.ResultText);
+    }
+
+    [TestMethod]
+    public void MatchesFunction_InsertsATemplate_WithTheCaretOnTheTextArgument()
+    {
+        var picker = new ExpressionPickerViewModel([new ValuePath("model", ValuePathType.Text, ValuePathSource.ResponsePattern, "id")]);
+        var matches = ExpressionPickerViewModel.Functions.Single(f => f.Name == "matches");
+
+        picker.InsertFunction(matches);
+        Assert.AreEqual("matches(, '')", picker.Text);
+        Assert.AreEqual(8, picker.CaretIndex);
+
+        picker.InsertPath(picker.AllPaths[0]);
+        Assert.AreEqual("matches({model}, '')", picker.Text);
     }
 }

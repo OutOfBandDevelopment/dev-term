@@ -51,17 +51,9 @@ internal static class ExpressionPickerDialog
             previous = button;
         }
 
-        var nextSample = new Button { X = Pos.Right(previous!), Y = Pos.AnchorEnd(4), Text = "Next sample", ShadowStyle = ShadowStyles.None };
-        nextSample.Accepting += (_, e) =>
-        {
-            e.Handled = true;
-            viewModel.NextSample();
-        };
-
         dialog.Title = viewModel.Title;
         expressionLabel.Text = viewModel.Prompt;
         result.Visible = viewModel.ShowsResult;
-        nextSample.Visible = viewModel.ShowsResult;
         functionLabel.Visible = viewModel.ShowsFunctions;
         foreach (var button in functionButtons)
         {
@@ -82,6 +74,15 @@ internal static class ExpressionPickerDialog
             e.Handled = true;
             app.RequestStop();
         };
+
+        var nextSample = new Button { X = Pos.Right(cancel) + 1, Y = Pos.AnchorEnd(2), Text = "Next sample", ShadowStyle = ShadowStyles.None };
+        nextSample.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            viewModel.NextSample();
+        };
+
+        nextSample.Visible = viewModel.ShowsResult;
 
         var syncing = false;
 

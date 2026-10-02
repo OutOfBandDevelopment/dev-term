@@ -4,7 +4,7 @@ using DevTerm.UiDefinitions;
 namespace DevTerm.DeviceManifests.Editing;
 
 /// <summary>One function the expression language offers, with the snippet the picker inserts for it.</summary>
-public sealed record ExpressionFunction(string Name, string Signature, string Description, string Snippet);
+public sealed record ExpressionFunction(string Name, string Signature, string Description, string Snippet, int CaretFromEnd = 1);
 
 /// <summary>One row of the picker's path list: a <see cref="ValuePath"/> plus how to show it.</summary>
 public sealed record PickerPath(ValuePath Path, string Detail, string? Example)
@@ -40,6 +40,7 @@ public sealed class ExpressionPickerViewModel
         new("max", "max(a, b, ...)", "The largest argument.", "max()"),
         new("abs", "abs(x)", "The absolute value.", "abs()"),
         new("if", "if(cond, a, b)", "a when cond is non-zero, otherwise b.", "if()"),
+        new("matches", "matches(text, regex)", "1 when the text matches the regular expression (a literal regex is checked as you type).", "matches(, '')", CaretFromEnd: 5),
     ];
 
     private readonly IReadOnlyList<PickerPath> _allPaths;
@@ -238,11 +239,11 @@ public sealed class ExpressionPickerViewModel
         InsertAtCaret(path.Reference, path.Reference.Length);
     }
 
-    /// <summary>Inserts a function's snippet at the caret and leaves the caret between its parentheses.</summary>
+    /// <summary>Inserts a function's snippet at the caret and leaves the caret where the function's first argument goes.</summary>
     public void InsertFunction(ExpressionFunction function)
     {
         ArgumentNullException.ThrowIfNull(function);
-        InsertAtCaret(function.Snippet, function.Snippet.Length - 1);
+        InsertAtCaret(function.Snippet, function.Snippet.Length - function.CaretFromEnd);
     }
 
     /// <summary>Inserts an operator or literal at the caret (spaced when it is a binary operator).</summary>

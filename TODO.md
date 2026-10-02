@@ -24,7 +24,7 @@ Completed work is logged by date under `docs/changes/`.
 
   **Remaining:**
   - From the proposals' own "not built" lists: the sample-data generator's playback-log
-    tier (the declared-example tier is built), regex-building in the picker, `.ksy` bit fields / variable-length frames /
+    tier (the declared-example tier is built), `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
     - Bench passes for the K8055, Busylight and Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for

@@ -35,7 +35,7 @@ compute and send a derived value. See [`docs/specs/manifest-editor.md`](../specs
 Fields table for the exact grammar and syntax.
 
 An indicator's Expression field has a **Pick...** button that opens the expression picker: choose from the
-manifest's own values (with type, unit and range), insert `round`/`min`/`max`/`abs`/`if`, and watch the
+manifest's own values (with type, unit and range), insert `round`/`min`/`max`/`abs`/`if`/`matches`, and watch the
 diagnostics and the result against sample data update as you type. **OK** puts the expression back in the field.
 Every field that names a value has a **Pick...** button too: a bar graph or strip chart's **Channels** (choosing a value
 adds a channel), a button's **Parameter expressions**, a vector's coordinate ids, a color control's hue/saturation/brightness ids
