@@ -140,7 +140,7 @@ Lang --> Val
 
 - Keep `{id}` as the canonical syntax or migrate manifests to bare CEL identifiers? Proposed: accept both, write
   bare, with a one-time load-time upgrade.
-- Time-series sample data needs a notion of sample rate; reuse [loopback sample rate](loopback-sample-rate.md) (now built, so a paced loopback stream can feed it).
+- Time-series sample data needs a notion of sample rate; reuse [loopback sample rate](../features/loopback-sample-rate.md) (now built, so a paced loopback stream can feed it).
 - Does the picker need to build regex (a tester pane with a sample line), or only insert `matches()`?
 
 ## Status
