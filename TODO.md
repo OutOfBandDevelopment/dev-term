@@ -27,7 +27,6 @@ Completed work is logged by date under `docs/changes/`.
     tier (the declared-example tier is built), regex-building in the picker, `.ksy` bit fields / variable-length frames /
     checksums.
   - Small gaps found 2026-10-02:
-    - Real-device run of the Radex One's Write Settings (changes a device setting, so ask first; Reset Accumulated is done).
     - Bench passes for the K8055, Busylight and Zoom H4n, whose `known-configuration.md` pages lean on earlier docs for
       what was hardware-tested; the DE-5000 has never been run against a real meter here.
 
