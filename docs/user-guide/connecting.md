@@ -190,8 +190,16 @@ The WPF window, same stream:
 
 ![Animation of six paced loopback samples arriving in the WPF window](images/wpf-loopback-stream.gif)
 
-The stills are real captures from the two `LoopbackSampleStreamScreenshotTests` classes (Console and Wpf test
-projects); `scripts/make_loopback_gif.py` assembles each front end's stills into its GIF.
+To watch the charts fill, open the bundled sensor manifest (**Device > Device Manifest...**, "Loopback Sensor Demo")
+and press **Stream Samples**. Its bar graph, strip chart and vector displays update as each paced sample arrives
+(one frame per four samples here):
+
+![TUI control panel: bar graph, strip chart and vectors filling as samples arrive](images/tui-loopback-charts.gif)
+
+![WPF control panel: bar graph, strip chart and vectors filling as samples arrive](images/wpf-loopback-charts.gif)
+
+The stills are real captures from the `LoopbackSampleStreamScreenshotTests` and `LoopbackChartsScreenshotTests`
+classes (Console and Wpf test projects); `scripts/make_loopback_gif.py` assembles each front end's stills into its GIF.
 
 **BLE** (Windows only today — see [`docs/design/transports.md`](../design/transports.md)'s BLE
 section): device id plus the three GATT UUIDs (service/write/notify — blank uses the Nordic UART
