@@ -52,3 +52,5 @@ open; after that `*IDN?` returned
 [hp-34401a](../hp-34401a/known-configuration.md). A DTR-to-DSR loopback jumper does not work (the meter drops DTR after
 each query).
 
+
+**Tip: watching idle.** The Stream Monitor ends an HP-GL capture after 2 s of silence, and a bridge only forwards bytes once its buffer fills or its gap timer fires. A smaller buffer (512 on .107) makes packets arrive sooner and keeps gaps short on a slow serial link, which is why a plot that split at 4800 baud now captures whole (bug 065).
