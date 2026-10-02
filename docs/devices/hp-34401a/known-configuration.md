@@ -20,7 +20,10 @@ dotnet run --project src/DevTerm.Console -- --transport tcp --host 192.168.0.109
 
 Bridge UART 9600 8/None/2 (matches the meter). Sent `SYST:REM`, `*IDN?`, `SYST:ERR?`, `MEAS:VOLT:DC?`; replies:
 `HEWLETT-PACKARD,34401A,0,5-1-1`, `-410,"Query INTERRUPTED"` (left over from the earlier blocked queries),
-`+1.26283000E-04` (input open). Repeated on a second run. No error beep.
+`+1.26283000E-04` (leads plugged in, no source: offset only). Repeated on a second run. No error beep.
+A third run with the scope probes removed gave `HEWLETT-PACKARD,34401A,0,5-1-1`, `+0,"No error"` and
+`+6.28130000E-05`; the front panel showed `0.0628 mV DC` with Rmt lit and ERROR dark, matching the bridge reply. Tester
+switches for that run: DSR open, CTS jumpered to DSR, all others closed.
 
 **What made it work is the DB-9 wiring, not the baud.** The meter is a DTE and uses a DTR/DSR handshake (programming
 manual, "RS-232 Interface Configuration"): it drops DTR after receiving a query's newline until the reply is read, and
