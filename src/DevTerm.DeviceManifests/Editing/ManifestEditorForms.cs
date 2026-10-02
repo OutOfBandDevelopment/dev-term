@@ -434,6 +434,20 @@ public sealed class PatternForm : EditorForm
         }
     }
 
+    [Category("Pattern")]
+    [DisplayName("Example")]
+    [Description("An example reply line this regex matches. Previews and the expression picker use the values in it.")]
+    [FormField(Order = 2)]
+    public string Example
+    {
+        get => Pattern.Example ?? string.Empty;
+        set
+        {
+            Pattern.Example = NullIfBlank(value);
+            Changed();
+        }
+    }
+
     [Category("Try it")]
     [DisplayName("Sample line")]
     [Description("Not saved: a reply line to test the regex on.")]

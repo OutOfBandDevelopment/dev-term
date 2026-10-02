@@ -138,6 +138,12 @@ public static partial class DeviceManifestValidator
             catch (ArgumentException ex)
             {
                 errors.Add($"{which}: its regular expression doesn't compile ({ex.Message}).");
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(pattern.Example) && !Regex.IsMatch(pattern.Example, pattern.Match, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)))
+            {
+                warnings.Add($"{which}: its example line doesn't match its regular expression, so previews ignore it.");
             }
         }
 

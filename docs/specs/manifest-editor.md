@@ -112,7 +112,7 @@ In the real form the template shows its placeholder in curly braces; the wirefra
 | | Replies end in CR/LF, Kaitai layout file | `Inbound.LineTerminated`, `Inbound.KaitaiFile` | |
 | Command | Name, Id, Template (escapes), Is a query, Reply id | `OutboundCommand` | **Sends** (read-only) shows the wire text with default parameter values and the terminator, and the reply id a query lands in |
 | Parameter | Name, Type (`string`/`number`/`integer`), Minimum, Maximum, Unit, Default value, Number format | `CommandParameter` | Minimum/Maximum/Number format shown only for a numeric type |
-| Pattern | Name, Regex | `ResponsePattern` | **Try it**: a *Sample line* (not saved) and **Publishes** — the values a match would publish (`name=… chA=…`), `no match`, or the regex error |
+| Pattern | Name, Regex, Example (an optional sample reply line the preview and picker draw values from) | `ResponsePattern` | **Try it**: a *Sample line* (not saved) and **Publishes** — the values a match would publish (`name=… chA=…`), `no match`, or the regex error |
 | Frame | Sync bytes, Byte order, Layout | `Inbound.Frame.Sync`, `Endian` | **Layout** (read-only) shows the field count, the frame length (or "length unknown"), and the first validation problem if any |
 | Frame field | Name, Type (`u1`..`u8`, `s1`..`s8`, `f4`, `f8`, `str`, `bytes`, `skip`), Size, Byte order, Scale, Offset, Unit, Label, Must equal | `FrameField` | Size shown only for `str`/`bytes`/`skip`; Byte order/Scale/Offset only for a number; Name/Unit/Label hidden for `skip`; Name may be dotted (`header.length`) or indexed (`samples[0]`) |
 | Panel | Panel name, Notes | `Ui.Name`, `Ui.Description` | |
