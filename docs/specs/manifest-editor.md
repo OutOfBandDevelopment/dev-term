@@ -137,7 +137,7 @@ part itself — the condition a live control panel and the preview evaluate — 
   same id; a parameter with no name or a duplicate one; a response pattern with no name, no regex, or
   a regex that doesn't compile; a panel control with no id) block Save and make the loader reject the
   file. *Warnings* (a button or field whose command id no command declares, a button reading a
-  parameter field the panel lacks, a template placeholder no parameter fills) are shown after Open,
+  parameter field the panel lacks, a template placeholder no parameter fills, an expression reading an id nothing in the manifest publishes) are shown after Open,
   Check and Save but don't block anything.
 - **Preview**: rebuilt from a copy of the manifest after every edit (WPF, coalesced to one rebuild per
   burst of keystrokes) or each time it's shown (TUI). Building a panel can fill in its Notes from the

@@ -20,7 +20,8 @@ Completed work is logged by date under `docs/changes/`.
   `InboundProtocol.Patterns`' regex-to-named-values path) rather than a separate decoding stack. Nothing built yet.
   **Scoped 2026-10-02** ([proposal](docs/design/proposals/expression-picker-paths-and-cel.md)): build order is a
   value-path catalog (also used by the validator), a sample-data generator for realistic previews, a picker control in
-  both front ends, then a CEL-style language (spike a .NET CEL library first).
+  both front ends, then a CEL-style language (spike a .NET CEL library first). **Step 1 (value-path catalog for
+  manifests) landed 2026-10-02**; next: SCPI-profile input to the catalog, then the sample-data generator.
 - **Triage the ~22 regenerated `docs/user-guide/images/*` screenshots left uncommitted**, using the
   improved `scripts/image-diff/image_diff.py` (mask real content changes, restore pure noise).
 
