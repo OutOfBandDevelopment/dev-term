@@ -60,6 +60,15 @@ functions, and `matches()` for regex, plus maps and lists that map onto dotted a
 - **B. Adopt a .NET CEL library.** Full spec compliance, but a new dependency, and the picker and validator would
   need its type-checker API. Only worth it if a maintained library passes a spike.
 
+**Spike result (2026-10-02): build A.** The two candidates on NuGet are `Cel` 0.3.3 (telus-oss/cel-net, Apache-2.0, pre-1.0)
+and `Cel.NET` (rayokota, which also pulls Avro). Tried `Cel` in a throwaway console project: it parses and evaluates
+well (arithmetic, `?:`, `&&`, `has()`, `size()`, dotted map access, double*int in non-strict mode), reports a parse
+error with line/column, and throws `CelUndeclaredReferenceException` for an unknown name. But it has no type-check API
+(`CelEnvironment.Parse` hands back a raw ANTLR `StartContext`), no way to list its functions or their signatures, and it
+drags in `Google.Protobuf` and the ANTLR runtime. The picker needs exactly the pieces it lacks (type information before
+evaluating, a function list), so route B would mean wrapping the parse tree ourselves anyway. Extend our own
+`Expression`.
+
 Decision: spike B briefly against the picker's needs (type-check without evaluating, enumerate functions); otherwise
 build A. Either way the language stays non-Turing-complete: no loops, no assignment, bounded evaluation.
 
@@ -123,7 +132,7 @@ Lang --> Val
 1. Path catalog (patterns, controls, parameters); the validator uses it. Smallest useful piece, unblocks the rest.
 2. Sample-data generator, wired into the manifest editor preview.
 3. Picker view-model plus TUI and WPF forms (with `docs/specs/` and `docs/user-guide/` entries when it ships).
-4. CEL spike, then the language extension (regex `matches()`, strings, lists, `has()`, dotted/indexed paths).
+4. CEL spike (done: build our own), then the language extension (regex `matches()`, strings, lists, `has()`, dotted/indexed paths).
 5. Binary-frame paths join the catalog once a profile can declare a binary-frame section. A `.ksy` is never read by the
    catalog: the `.ksy` importer (`TODO.md`) only generates that section into a profile, and the catalog reads the profile.
 
