@@ -71,7 +71,7 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 
 | # | Bug | Area | Status |
 |---|---|---|---|
-| 068 | [The Tektronix 2230 bridge runs at 4800 baud; it can probably run at 9600 if dev-term paces its writes](068-tek2230-bridge-runs-at-4800-baud.md) | `tektronix-2230.json`, DevTerm.Transports.Tcp | Open |
+| 068 | [The Tektronix 2230 bridge runs at 4800 baud; it can probably run at 9600 if dev-term paces its writes](resolved/068-tek2230-bridge-runs-at-4800-baud.md) | `tektronix-2230.json`, DevTerm.Transports.Tcp | Fixed |
 | 067 | [HP 34401A over RS-232 is not driven with write pacing, and probably needs a per-byte delay to be reliable](resolved/067-hp34401a-rs232-no-write-pacing.md) | DevTerm.Transports.Serial, `hp-agilent-keysight-34401a.json` | Fixed |
 | 066 | [DS1102E omits the terminating zero-length packet when a reply ends on a 64-byte boundary (pyvisa-py #472)](resolved/066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md) | DevTerm.Transports.Usbtmc | Won't fix |
 | 064 | [View > Echo Sent Commands doesn't echo a device-profile control panel's button/field sends](064-control-panel-sends-skip-echo.md) | DevTerm.Console (ControlPanelMode), DevTerm.Wpf (ControlPanelWindow) | Open |

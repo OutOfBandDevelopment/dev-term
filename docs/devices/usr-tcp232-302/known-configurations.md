@@ -34,7 +34,7 @@ router reservation, not the module. If the router lease changes, the profiles in
 
 | Behind the bridge | dev-term arguments | Bridge UART must equal the instrument's | Source |
 | --- | --- | --- | --- |
-| Tektronix 2230 (.108) | `--transport tcp --host 192.168.0.108 --port 23 --presenter ascii --lineending Cr` | its PARAMETERS baud setting. Runs at 4800; bug 068 asks whether 9600 works with write pacing | [068](../../bugs/068-tek2230-bridge-runs-at-4800-baud.md) |
+| Tektronix 2230 (.108) | `--transport tcp --host 192.168.0.108 --port 23 --presenter ascii --lineending Cr` | its PARAMETERS baud setting. Runs at 4800; bug 068 asks whether 9600 works with write pacing | [068](../../bugs/resolved/068-tek2230-bridge-runs-at-4800-baud.md) |
 | Tektronix TDS2024 (.110) | `--transport tcp --host 192.168.0.110 --port 23 --presenter ascii --lineending Lf --writebytedelayms 50` | the scope's RS-232 baud (19200 as read) | [2026-09-25](../../changes/2026-09-25.md) |
 
 The TDS2024 hangs on `TRIGger...?` queries; use `CH1?`/`CH2?`. Earlier reports ran it with `Cr`; the profile and the

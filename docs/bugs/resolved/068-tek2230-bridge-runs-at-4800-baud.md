@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Severity** | Low |
-| **Status** | Open |
-| **Confidence** | Reproduced informally (2026-10-02 user report: 9600 works well enough with a 175 ms write delay; no measured failure counts yet) |
+| **Status** | Fixed |
+| **Confidence** | Reproduced on the bench (2026-10-02 user report); no per-delay failure counts were measured |
 | **Area** | `tektronix-2230.json`, DevTerm.Transports.Tcp (`WriteByteDelayMs`), the 2230 serial-to-Ethernet bridge setup |
 | **Created** | 2026-10-02 |
 | **Found at commit** | `7a4544a378eee851002ee755ad1c01c758906048` (`dev/hardware-review`) |
@@ -41,7 +41,7 @@ lost or garbled; with `WriteByteDelayMs` set (try 10 to 50 ms) it is reliable at
 Hardware-category tests for both 2230 hosts that run the query loop at 9600 with the chosen delay.
 
 ## Related
-[065](resolved/065-hpgl-no-end-detection-splits-one-plot.md), [067](resolved/067-hp34401a-rs232-no-write-pacing.md).
+[065](065-hpgl-no-end-detection-splits-one-plot.md), [067](067-hp34401a-rs232-no-write-pacing.md).
 
 ## Update 2026-10-02
 User report from the bench: at 9600 baud with a **175 ms** write delay the 2230 is "working good enough"; it was
@@ -56,3 +56,6 @@ Bridge check, same day: re-reading .107 with `Get-UsrBridgeSettings.ps1` shows i
 4800 earlier today), so the bench result above is on .107; .108 was not re-read and is assumed still 4800. The bridge's
 "Similar RFC2217" box is on. `docs/devices/usr-tcp232-302/known-configurations.md` and
 `docs/devices/tektronix-2230/known-configuration.md` are updated to match.
+
+## Resolution
+Fixed 2026-10-02 by configuration, with no code change: the 2230's link works at **9600 baud** when dev-term paces writes with `WriteByteDelayMs` = **175** (`--writebytedelayms 175`) and the bridge's read buffer is reduced to **512** characters, so output progresses sooner during a long reply. Found by the user on the bench (unit .107); a complete HP-GL plot then captured whole ([065](065-hpgl-no-end-detection-splits-one-plot.md)). The speed, delay and buffer are recorded in `tektronix-2230.json` Notes, `docs/devices/tektronix-2230/known-configuration.md` and `docs/devices/usr-tcp232-302/known-configurations.md`. Not done: no failure counts per delay value, no change to the 2230 real-hardware tests (they still run unpaced at the bridge's existing speed), and .108 was not re-read and is assumed still at 4800.

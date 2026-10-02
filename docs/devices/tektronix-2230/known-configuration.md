@@ -14,6 +14,6 @@ dotnet run --project src/DevTerm.Console -- --transport tcp --host 192.168.0.108
 ```
 
 The bridge UART must equal the scope's own PARAMETERS baud. The scope acts on a command as soon as it is recognised,
-so bursts can be dropped; bug 068 tracks whether 9600 works with write pacing, bug 065 an HP-GL plot reply split.
+so bursts can be dropped; bug 068 (fixed) found that 9600 works with a 175 ms write delay, bug 065 an HP-GL plot reply split.
 The bench has one spare network cable, so usually only one of the two 2230s is online. Bridge details:
 [usr-tcp232-302](../usr-tcp232-302/known-configurations.md).
