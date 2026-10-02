@@ -33,7 +33,7 @@ namespace DevTerm.Devices.ZoomH4n;
 /// <see cref="DevTerm.DeviceManifests.ManifestPanel"/>'s own Attach/Dispose pattern for its reply
 /// presenter) so a front end's panel-closing code can remove it from the session's live pipeline —
 /// without this, reopening the panel stacks up another watcher scanning every received byte for the
-/// rest of the session (see docs/bugs/020-zoomh4n-wake-watcher-leak.md).
+/// rest of the session (see docs/bugs/fixed/020-zoomh4n-wake-watcher-leak.md).
 /// </summary>
 public sealed class ZoomH4nControlSurface : IControlSurface, ICommandPreview, IDisposable
 {

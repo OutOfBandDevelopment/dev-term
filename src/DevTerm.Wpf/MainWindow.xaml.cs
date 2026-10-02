@@ -58,7 +58,7 @@ public partial class MainWindow : Window
         // Mirrors the window-level _switchCts this replaced: a slow-to-fail connect on THIS tab can
         // still be pending when the user switches THIS tab's profile again - without a per-tab token,
         // the earlier attempt's failure handler would stomp the newer one's UI once it finally
-        // resolved. See docs/bugs/017-wpf-profile-switch-no-supersede.md.
+        // resolved. See docs/bugs/fixed/017-wpf-profile-switch-no-supersede.md.
         public CancellationTokenSource? SwitchCts { get; set; }
 
         // Per-tab logging/Stream Monitor (docs/design/multi-session-ui.md's Step 4) - each tab owns
@@ -89,7 +89,7 @@ public partial class MainWindow : Window
     // structured presenter from that tab's Catalog - both go stale the moment that tab's session is
     // replaced or closed, so a panel gets closed along with the tab it belongs to instead of being
     // left to fail silently against a dead transport. Each panel's owning WindowTab is stashed in its
-    // own Window.Tag. See docs/bugs/016-wpf-panels-bound-to-old-session.md.
+    // own Window.Tag. See docs/bugs/fixed/016-wpf-panels-bound-to-old-session.md.
     private readonly List<Window> _openControlPanels = [];
 
     /// <summary>Every currently open control panel window, for tests to assert against.</summary>
@@ -1006,7 +1006,7 @@ public partial class MainWindow : Window
         // Captured so that if SwitchProfileAsync replaces this tab's Session/Catalog while this
         // detection is in flight, the completion below can tell and not open a panel pairing the NEW
         // session with structuredSource from the OLD catalog - part of bug 016, see
-        // docs/bugs/016-wpf-panels-bound-to-old-session.md's "Related" note.
+        // docs/bugs/fixed/016-wpf-panels-bound-to-old-session.md's "Related" note.
         var sessionAtStart = tab.Tab.Session;
         var timeout = TimeSpan.FromMilliseconds(tab.Tab.CliOptions.ScpiAutoDetectTimeoutMs);
         AppendOutput(tab, ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);

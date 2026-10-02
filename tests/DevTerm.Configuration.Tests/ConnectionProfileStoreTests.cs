@@ -376,7 +376,7 @@ public sealed class ConnectionProfileStoreTests
         // Regression test for bug 012: "..\..\Desktop\x" escaped the profiles directory, "a:b" became
         // an NTFS alternate data stream on a file named "a" (List() never shows it, so the saved
         // profile silently vanishes), and reserved device names like "CON" fail on Windows. See
-        // docs/bugs/012-profile-names-not-validated.md.
+        // docs/bugs/fixed/012-profile-names-not-validated.md.
         var directory = CreateTempDirectory();
         try
         {
