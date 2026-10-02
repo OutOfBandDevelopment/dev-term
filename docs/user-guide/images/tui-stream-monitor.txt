@@ -20,6 +20,6 @@
 │                                                                              │
 │BMP image, 70 bytes, complete (declared by the command).                      │
 │Saved as Rigol_DG1062Z_20260925-143708.bmp in the folder above.               │
-│⟦ Stop Monitoring ⟧▖  ⟦ Convert... ⟧▖  ⟦► Close ◄⟧▖                           │
-│▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▘                           │
+│⟦ Stop Monitoring ⟧▖  ⟦ Convert as: None ⟧▖  ⟦ Convert... ⟧▖  ⟦► Close ◄⟧▖    │
+│▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▘    │
 └──────────────────────────────────────────────────────────────────────────────┘
