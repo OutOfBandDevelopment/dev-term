@@ -28,3 +28,4 @@ artifacts/
 
 # Claude Code agent worktrees (temporary git worktrees) - never committed.
 .claude/worktrees/
+.scratchpad/
