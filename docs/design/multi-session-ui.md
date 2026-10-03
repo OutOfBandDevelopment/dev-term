@@ -162,7 +162,7 @@ W -> W : add tab to Tabs/TabControl, make it active
 
 **Decided 2026-10-03 (owner interview):** `SendHistory` is **per tab**. Closing the last tab leaves the window open and empty (no
 forced exit). Logging and the Stream Monitor are **both** per tab by default **and** available as one merged, time-ordered view
-across tabs (the shared timecode). Tab switching uses **Alt+Left / Alt+Right** in TUI and WPF (built 2026-10-03, alongside Ctrl+Tab). Per-tab `SendHistory`, per-tab logging and the empty window after the last tab closes were already built; the merged time-ordered log/Stream Monitor view is not.
+across tabs (the shared timecode). Tab switching uses **Alt+Left / Alt+Right** in TUI and WPF (built 2026-10-03, alongside Ctrl+Tab). Per-tab `SendHistory`, per-tab logging and the empty window after the last tab closes were already built; the merged view is built (2026-10-03): the Stream Monitor already lists every tab's captures in one list, and View > All Sessions Log shows `MergedSessionLog`'s time-ordered raw traffic of every tab (WPF live, TUI a refreshable snapshot).
  the bullets below keep the original reasoning. Still open: keyboard shortcuts for New/Close tab.
 
 - **What stays window-scoped vs. becomes per-tab.** Candidates that are almost certainly

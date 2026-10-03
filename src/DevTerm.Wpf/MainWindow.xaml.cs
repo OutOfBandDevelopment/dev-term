@@ -405,6 +405,7 @@ public partial class MainWindow : Window
         }
 
         _streamMonitor?.Untrack(tab);
+        _mergedLog?.Untrack(tab);
         StopLogging(tab, report: false);
 
         tab.Tab.Session.Output -= tab.OutputHandler;
@@ -1108,8 +1109,46 @@ public partial class MainWindow : Window
     private StreamMonitor? _streamMonitor;
     private StreamMonitorWindow? _monitorWindow;
 
-    private void TrackInMonitor(WindowTab tab) =>
-        _streamMonitor?.Track(tab, tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
+    private void TrackInMonitor(WindowTab tab)
+    {
+        var device = StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore);
+        _streamMonitor?.Track(tab, tab.Tab.Session, device, tab.Tab.CliOptions.EffectiveExportDirectory);
+        _mergedLog?.Track(tab, tab.Tab.Session, device);
+    }
+
+    // The merged, time-ordered traffic of every tab, created the first time View > All Sessions Log opens
+    // (tracked/untracked alongside the Stream Monitor) - docs/design/multi-session-ui.md.
+    private MergedSessionLog? _mergedLog;
+    private MergedLogWindow? _mergedLogWindow;
+
+    internal MergedSessionLog EnsureMergedLog()
+    {
+        if (_mergedLog is null)
+        {
+            _mergedLog = new MergedSessionLog();
+            foreach (var tab in _tabs)
+            {
+                TrackInMonitor(tab);
+            }
+        }
+
+        return _mergedLog;
+    }
+
+    private void MergedLog_Click(object sender, RoutedEventArgs e)
+    {
+        var log = EnsureMergedLog();
+        if (_mergedLogWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        var window = new MergedLogWindow(log) { Owner = this };
+        window.Closed += (_, _) => _mergedLogWindow = null;
+        _mergedLogWindow = window;
+        window.Show();
+    }
 
     /// <summary>
     /// The window's Stream Monitor, tracking every open tab's session and started - opening the window

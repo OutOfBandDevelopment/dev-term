@@ -190,6 +190,7 @@ public static class TuiMode
         // The window's one Stream Monitor, created the first time Device > Stream Monitor... opens; it tracks every tab's
         // session (keyed by the tab), so captures from all open sessions land in one list.
         StreamMonitor? streamMonitor = null;
+        MergedSessionLog? mergedLog = null;
         MenuItem? newSessionMenuItem = null;
         MenuItem? closeSessionMenuItem = null;
         MenuItem? deviceProfilesMenuItem = null;
@@ -763,6 +764,7 @@ public static class TuiMode
             new MenuBarItem("_View",
             [
                 themeMenu.ThemeMenuItem,
+                new MenuItem("_All Sessions Log...", string.Empty, Guarded(OpenMergedLog)),
 
                 // Always available: building/editing a theme needs no connection (see ThemeBuilderMode).
                 new MenuItem("_Build/Edit Theme...", string.Empty, Guarded(() => ThemeBuilderMode.Run(app))),
@@ -1097,6 +1099,7 @@ public static class TuiMode
 
             StopLoggingForTab(windowTab, report: false);
             streamMonitor?.Untrack(windowTab);
+            mergedLog?.Untrack(windowTab);
             windowTab.Tab.Session.Output -= windowTab.OutputHandler;
             windowTab.Tab.Session.Disconnected -= windowTab.DisconnectedHandler;
             try
@@ -1170,8 +1173,29 @@ public static class TuiMode
             }
         }
 
-        void TrackInMonitor(TuiWindowTab windowTab) =>
-            streamMonitor?.Track(windowTab, windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
+        void TrackInMonitor(TuiWindowTab windowTab)
+        {
+            var device = StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore);
+            streamMonitor?.Track(windowTab, windowTab.Tab.Session, device, windowTab.Tab.CliOptions.EffectiveExportDirectory);
+            mergedLog?.Track(windowTab, windowTab.Tab.Session, device);
+        }
+
+        // View > All Sessions Log...: created on first use; every tab is tracked from then on.
+        void OpenMergedLog()
+        {
+            if (mergedLog is null)
+            {
+                mergedLog = new MergedSessionLog();
+                foreach (var t in tabs)
+                {
+                    TrackInMonitor(t);
+                }
+            }
+
+            var dialog = MergedLogMode.BuildDialog(app, mergedLog);
+            app.Run(dialog);
+            dialog.Dispose();
+        }
 
         void OpenStreamMonitor()
         {

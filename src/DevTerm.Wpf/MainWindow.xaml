@@ -63,6 +63,7 @@
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">
                 <MenuItem x:Name="ThemeMenuItem" Header="_Theme" />
+                <MenuItem x:Name="MergedLogMenuItem" Header="_All Sessions Log..." Click="MergedLog_Click" />
                 <MenuItem x:Name="BuildEditThemeMenuItem" Header="_Build/Edit Theme..." Click="BuildEditTheme_Click" />
                 <MenuItem x:Name="EchoSentCommandsMenuItem" Header="_Echo Sent Commands" IsCheckable="True" Click="EchoSentCommandsMenuItem_Click" />
                 <!-- Only meaningful for a TCP transport; RefreshConnectionUi enables/disables and
