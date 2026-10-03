@@ -83,8 +83,7 @@ Built 2026-10-03 (the loading mechanism; built-in devices still register by hand
 @startuml
 participant "AddDevTermPresenters" as A
 participant PluginLoader as L
-participant "PluginLoadContext
-(per plugin)" as C
+participant "PluginLoadContext\n(per plugin)" as C
 participant IPluginModule as M
 A -> L : LoadAll(dir, services)
 loop each folder with plugin.json

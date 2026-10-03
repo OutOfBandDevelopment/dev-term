@@ -153,8 +153,7 @@ the host starts with **no connection arguments**, and everything is done at runt
 @startuml
 actor Browser
 participant "Blazor UI" as UI
-participant "Device / Project
-services (REST)" as Api
+participant "Device / Project\nservices (REST)" as Api
 participant "Connection service" as Conn
 participant "/ws/{id} tunnel" as Ws
 participant Session
