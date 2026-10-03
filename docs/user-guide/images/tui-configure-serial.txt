@@ -9,7 +9,7 @@
 │⟦ Export Selected ⟧  ⟦ Export All ⟧  ⟦ Delete Selected ⟧                     █│
 │                                                                             █│
 │                                                                             █│
-│  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217            ░│
+│  Transport:   ◉ serial  ○ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217  ○ mqtt    ░│
 │               ○ loopback                                                    ░│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
