@@ -64,7 +64,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module (2026-10-03)
 - [ ] Phase 2: VXI-11 client, only if a real instrument needs it
 - [x] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries (Phase 1 picker)
-- [ ] Real-hardware pass (`docs/test/`): discovery was run against the bench DG1062Z, but no formal report yet
+- [x] Real-hardware pass: see the latest `docs/test/` report for the DG1062Z (discovery plus read-only SCPI over TCP, 2026-10-03)
 
 ## Status
 
