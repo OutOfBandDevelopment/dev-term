@@ -78,6 +78,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 
 ## Status
 
-**Not started — design only.** No code exists yet, and no concrete target broker/device has been
-identified — the biggest open question (per-topic routing) should be resolved against a real use case,
+**Not started — design only; unlocked 2026-10-02, MQTT first** (queued in `TODO.md`). No code exists yet. A
+concrete target now exists for testing: Mosquitto and RabbitMQ containers in `containers/`. No real device target has
+been identified — the biggest open question (per-topic routing) should be resolved against a real use case,
 not speculatively.

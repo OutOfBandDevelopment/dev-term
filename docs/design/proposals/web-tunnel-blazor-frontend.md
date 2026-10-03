@@ -80,6 +80,6 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 
 ## Status
 
-**Not started — research/early design only.** No code exists yet, and unlike most proposals here this
+**Not started — research/early design only; unlocked 2026-10-02** (queued after MQTT in `TODO.md`). No code exists yet, and unlike most proposals here this
 isn't gated on acquiring a piece of hardware — it's gated on answering the security/access-control
 questions above and picking a Blazor hosting model before any real design work is worth doing.
