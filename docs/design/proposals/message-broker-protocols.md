@@ -53,7 +53,51 @@ neither of those has: per-message **topic addressing**, not just message boundar
 - ~~Does topic-addressed traffic need a `Pipeline`/`Session` change?~~ **No** (resolved 2026-10-02): topic-prefixed text, see Status.
 - ~~No concrete target broker.~~ **Resolved**: the `containers/` Mosquitto and RabbitMQ brokers; a real device is not needed.
 - ~~Are all three protocols wanted?~~ **Built** (MQTT 2026-10-02; AMQP and STOMP 2026-10-03).
-- **Owner direction 2026-10-03 (not started, see BACKLOG):** this is meant as a **routing proxy**, not only a device interface. A device message that matches a rule is published to a broker, and an inbound broker message can trigger a device action, with mapping rules in both directions. Presenters must be addable and removable **without reconnecting** the device. It is a proof of concept: no real hardware is needed, and it counts as complete once a message detected over the loopback transport is published to a broker (and the reverse), with the mapping shaped so other profiles can plug in later. Message history across several channels should share one timecode (the clock tick when the message was posted).
+- **Owner direction 2026-10-03 (proof of concept built, see "Routing proxy"):** this is meant as a **routing proxy**, not only a device interface. A device message that matches a rule is published to a broker, and an inbound broker message can trigger a device action, with mapping rules in both directions. Presenters must be addable and removable **without reconnecting** the device. It is a proof of concept: no real hardware is needed, and it counts as complete once a message detected over the loopback transport is published to a broker (and the reverse), with the mapping shaped so other profiles can plug in later. Message history across several channels should share one timecode (the clock tick when the message was posted).
+
+## Routing proxy (proof of concept, 2026-10-03)
+
+`DevTerm.Core.Routing` adds a `MessageRouter`: an `IOriginatingPresenter` added to a **live** `Session` (no reconnect). Rules are JSON:
+
+```json
+{ "rules": [
+  { "direction": "DeviceToBroker", "match": "^A=(?<a>[0-9.]+) B=(?<b>[0-9.]+)", "topic": "devterm/loopback/sensor", "payload": "a=${a};b=${b}" },
+  { "direction": "BrokerToDevice", "topic": "devterm/loopback/cmd", "match": "^(?<cmd>[A-Za-z]+)$", "send": "${cmd}?" }
+] }
+```
+
+- **Device to broker:** `match` is a regex over each device line; named groups fill `${name}` in `topic` and `payload` (default payload: the whole line). The first matching rule publishes through an `IMessageSink`.
+- **Broker to device:** `topic` is an exact topic or a trailing-`#` prefix; `match` runs over the payload text; `send` (plus the terminator) goes to the device via `Originated`.
+- **Timecode:** every routed message lands in `MessageRouter.History` stamped from one `TimeProvider`, so channels share a clock.
+- **Tested** over the loopback transport with an in-memory broker (`MessageRouterTests`): a broker `MEAS` becomes a device `MEAS?`, and the sample reply is published back. Not yet wired to the real MQTT/AMQP/STOMP connections or a front-end UI.
+
+```plantuml
+@startuml
+participant Broker
+participant MessageRouter as R
+participant Session as S
+participant Device
+Broker -> R : OnBrokerMessage(cmd, "MEAS")
+R -> S : Originated("MEAS?")
+S -> Device : SendAsync
+Device -> S : "A=50.00 B=90.00 ..."
+S -> R : Render(bytes)
+R -> Broker : PublishAsync(sensor, "a=50.00;b=90.00")
+@enduml
+```
+
+```plantuml
+@startsalt
+{
+  Rules (JSON)
+  { Direction | DeviceToBroker }
+  { Match | ^A=(?<a>..) }
+  { Topic | devterm/loopback/sensor }
+  { Payload | a=${a} }
+  [Add rule] | [Remove]
+}
+@endsalt
+```
 
 ## Completion checklist
 
@@ -65,6 +109,8 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] MQTT in both front ends, plus `docs/specs/` and `docs/user-guide/` entries
 - [x] MQTT real-broker verification (Mosquitto container: an automated Integration test and a CLI round trip)
 - [x] AMQP 0-9-1 and STOMP 1.2 (`DevTerm.Transports.Brokers`, one project for both; reuse the generic `--subscribe`/`--publish`/`--username`/`--password` options), verified against the Docker RabbitMQ
+- [x] Routing proxy proof of concept over loopback (rules, router, live add, shared timecode)
+- [ ] Wire the router to a real broker connection and a front-end rule editor
 - [ ] A real device or home-automation broker check for MQTT
 
 ## Status
