@@ -169,7 +169,11 @@ it doesn't throw.
 
 ## Open questions
 
-- **Why the batch/program-mode write had no visible effect** despite matching the source trace's
+- **Update 2026-10-03 (user-observed, `docs/test/2026-10-03-19-30-00.md`):** the batch write works when step 0 begins
+  with `0x10` (V1/V2 went green); the same frame with `0x00` there did nothing. The multi-step sequences, the jump/Repeat
+  semantics and the `06 04 55` footer bytes are unverified, and the 0-100 versus 0-255 colour range is open.
+- **Why the batch/program-mode write had no visible effect** (resolved above for a
+  single step; the original text follows) despite matching the source trace's
   own checksummed example byte-for-byte and not erroring — plausible explanations: the batch
   format needs a separate "start sequence" trigger the trace didn't capture, the six-steps-plus-gap
   layout assumed here is wrong, or this device/firmware revision simply doesn't support that mode

@@ -51,7 +51,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
   [bytecc-bt-up01](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md)
 - **Z-Wave:** declare the node's command classes or query them; how the `.ksy` runtime wires into a device module. —
   [z-wave-support](docs/design/proposals/z-wave-support.md)
-- **Kuando Busylight:** why the batch/program-mode write has no visible effect; on/off time units (consistent with 100 ms, untimed, 2026-10-03); meaning of the
+- **Kuando Busylight:** multi-step batch sequences, jump/Repeat semantics and the footer bytes (a single-step batch works with opcode `0x10`, 2026-10-03); on/off time units (consistent with 100 ms, untimed, 2026-10-03); meaning of the
   poll reply's two strings. — [kuando-busylight-protocol](docs/design/features/kuando-busylight-protocol.md)
 - **K8055:** units of the two trailing Set bytes; I3 to I5 bit mapping; why the DAC-to-ADC loop reads about
   0.16 of the sent value; PID mask support in `HidTransportOptions`. —
