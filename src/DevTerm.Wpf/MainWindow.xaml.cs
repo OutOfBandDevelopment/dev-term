@@ -1212,6 +1212,7 @@ public partial class MainWindow : Window
         if (ActiveWindowTabOrNull is not { } tab)
         {
             RoutingStatusText.Text = string.Empty;
+            RoutingStatusItem.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -1219,6 +1220,7 @@ public partial class MainWindow : Window
         RoutingStatusText.Text = !tab.Tab.HasRouting && routing.State == RoutingState.Stopped
             ? string.Empty
             : new RoutingViewModel(tab.Tab).StatusText;
+        RoutingStatusItem.Visibility = RoutingStatusText.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void StreamMonitor_Click(object sender, RoutedEventArgs e)

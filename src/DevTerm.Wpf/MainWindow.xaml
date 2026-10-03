@@ -88,7 +88,7 @@
                 <TextBlock x:Name="LoggingStatusText" Foreground="{DynamicResource DevTerm.Recording}" FontWeight="SemiBold" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
             </StatusBarItem>
             <!-- "Broker: Connected" while the profile has routing rules (MainWindow.RefreshRoutingStatus). -->
-            <StatusBarItem>
+            <StatusBarItem x:Name="RoutingStatusItem" Visibility="Collapsed">
                 <TextBlock x:Name="RoutingStatusText" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
             </StatusBarItem>
         </StatusBar>

@@ -1,8 +1,9 @@
 # Routing Window
 
-**Status: designed 2026-10-03, not yet built.** The engine exists (`MessageRouter`, `MqttRouterBridge`, `BrokerRouterBridge`;
-see [message-broker-protocols](../design/proposals/message-broker-protocols.md)); this spec fixes the screen's behavior from a UX
-interview so the WPF and TUI builds start from decisions, not guesses.
+**Status: built 2026-10-03 in WPF (`RoutingWindow`, Device menu > Routing...) and the TUI (`RoutingMode`, Device > Routing...), both over the
+shared `RoutingViewModel`.** Verified with unit tests, real screenshots and a fake broker link; not yet exercised by the windows against the
+Mosquitto/RabbitMQ containers. The engine is `MessageRouter`, `MqttRouterBridge` and `BrokerRouterBridge` (see
+[message-broker-protocols](../design/proposals/message-broker-protocols.md)); walkthrough: [routing](../user-guide/routing.md).
 
 ## Purpose
 
@@ -103,6 +104,13 @@ Failed --> Connecting : Start
 
 - **WPF:** a tool window opened from the main menu (like the Stream Monitor), history in a grid, rules in a list with a detail form.
 - **TUI:** a dialog with the same sections stacked; history in a scrolling pane; the Confirm prompt is a modal dialog. Keep each label shorter than its width (a wrapping label drops its tail).
+
+## As built
+
+- Both windows edit a draft copy of the tab's routing section; **Apply** validates it and hands it to the tab (routing restarts if the device is connected), **Save to profile** writes it into the saved profile the connection came from.
+- The main window's status line shows `Broker: <state>` while the profile has rules or routing has run; the WPF indicator refreshes once a second.
+- The confirm prompt is a modal (WPF dialog, TUI message box) with Send once / Always this session / Drop.
+- TUI: the sample-test result is one line, so with several rules its tail is cut off; WPF shows one line per rule.
 
 ## Open items
 

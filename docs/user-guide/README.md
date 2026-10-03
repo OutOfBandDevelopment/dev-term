@@ -35,6 +35,8 @@ test class's own doc comment.
   Connect/Disconnect** toggle in TUI/WPF, distinct from switching profiles.
 - [Running multiple sessions at once](multiple-sessions.md) — **File > New Session...**/**File >
   Close Session** in TUI/WPF, each session in its own tab.
+- [Routing device messages to a broker](routing.md) — **Device > Routing...** in TUI/WPF: rules
+  that publish device lines to MQTT/AMQP/STOMP and send broker messages to the device.
 - [Logging and playing back a session](logging-and-playback.md) — recording everything sent and
   received (`--log`, **File > Start Logging...**) and replaying it through any presenters, with
   transport controls, trimming and notes (`--playback`, **File > Open Log for Playback...**).

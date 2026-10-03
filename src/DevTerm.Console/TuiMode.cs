@@ -325,6 +325,7 @@ public static class TuiMode
             };
 
             var windowTab = new TuiWindowTab { Tab = sessionTab, Output = editor };
+            sessionTab.RoutingConfirm = (rule, text) => RoutingMode.ConfirmAsync(app, rule, text);
             windowTab.OutputLines.AddRange(outputLines);
             editor.Data = windowTab;
 
@@ -756,6 +757,7 @@ public static class TuiMode
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
                 streamMonitorMenuItem = new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
+                new MenuItem("_Routing...", string.Empty, Guarded(OpenRouting)),
 
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
@@ -870,7 +872,7 @@ public static class TuiMode
             window.Title = windowTab.Tab.Title(profileStore);
             loggingMenuItem.Title = windowTab.Logger is null ? TuiLogging.StartTitle : TuiLogging.StopTitle;
 
-            statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{TuiLogging.StatusSuffixFor(windowTab.Logger)}";
+            statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{TuiLogging.StatusSuffixFor(windowTab.Logger)}{RoutingSuffix(windowTab)}";
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
 
             // Re-enables chrome HandleZeroTabs disabled, for whenever a tab becomes active again
@@ -1210,6 +1212,19 @@ public static class TuiMode
             var dialog = MergedLogMode.BuildDialog(app, mergedLog);
             app.Run(dialog);
             dialog.Dispose();
+        }
+
+        static string RoutingSuffix(TuiWindowTab windowTab) =>
+            !windowTab.Tab.HasRouting && windowTab.Tab.Routing.State == RoutingState.Stopped
+                ? string.Empty
+                : "  |  " + new RoutingViewModel(windowTab.Tab).StatusText;
+
+        void OpenRouting()
+        {
+            var windowTab = ActiveTab();
+            var routingParts = RoutingMode.BuildWindow(app, new RoutingViewModel(windowTab.Tab, profileStore));
+            app.Run(routingParts.Window);
+            routingParts.Window.Dispose();
         }
 
         void OpenStreamMonitor()
