@@ -104,6 +104,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
+        _routingTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _routingTimer.Tick += (_, _) => RefreshRoutingStatus();
+        _routingTimer.Start();
         _lastCliOptions = cliOptions;
         ShowConverterToolsDialog = ShowConverterToolsWindow;
 
@@ -269,6 +272,8 @@ public partial class MainWindow : Window
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(headerText);
         header.Children.Add(closeButton);
+
+        tab.RoutingConfirm = (rule, text) => Dispatcher.Invoke(() => RoutingWindow.ConfirmAsync(this, rule, text));
 
         var item = new TabItem { Header = header, Content = outputList };
 
@@ -531,6 +536,7 @@ public partial class MainWindow : Window
         Title = TitleText;
 
         ConnectionStatusText.Text = ConnectionDescription.StatusText(tab.Tab.CliOptions, state);
+        RefreshRoutingStatus();
         ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(connected
             ? ThemeRole.StatusConnected
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
@@ -1182,6 +1188,39 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
     // alongside this window. A second click brings the already-open one forward.
+    private RoutingWindow? _routingWindow;
+    private readonly System.Windows.Threading.DispatcherTimer _routingTimer;
+
+    private void Routing_Click(object sender, RoutedEventArgs e)
+    {
+        if (_routingWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        var tab = ActiveWindowTab;
+        var window = new RoutingWindow(new RoutingViewModel(tab.Tab, _profileStore)) { Owner = this };
+        window.Closed += (_, _) => _routingWindow = null;
+        _routingWindow = window;
+        window.Show();
+    }
+
+    /// <summary>The status line's routing indicator for the active tab; blank when the profile has no routing and it never ran.</summary>
+    private void RefreshRoutingStatus()
+    {
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            RoutingStatusText.Text = string.Empty;
+            return;
+        }
+
+        var routing = tab.Tab.Routing;
+        RoutingStatusText.Text = !tab.Tab.HasRouting && routing.State == RoutingState.Stopped
+            ? string.Empty
+            : new RoutingViewModel(tab.Tab).StatusText;
+    }
+
     private void StreamMonitor_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;

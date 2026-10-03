@@ -57,6 +57,7 @@
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />
                 <MenuItem x:Name="StreamMonitorMenuItem" Header="S_tream Monitor..." Click="StreamMonitor_Click" />
+                <MenuItem x:Name="RoutingMenuItem" Header="_Routing..." Click="Routing_Click" />
                 <MenuItem x:Name="ConverterToolsMenuItem" Header="Converter _Tools..." Click="ConverterTools_Click" />
                 <MenuItem x:Name="PluginsMenuItem" Header="_Plugins..." Click="Plugins_Click" />
             </MenuItem>
@@ -85,6 +86,10 @@
             <!-- "● REC capture.jsonl" while logging (MainWindow.Logging.cs). -->
             <StatusBarItem>
                 <TextBlock x:Name="LoggingStatusText" Foreground="{DynamicResource DevTerm.Recording}" FontWeight="SemiBold" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
+            </StatusBarItem>
+            <!-- "Broker: Connected" while the profile has routing rules (MainWindow.RefreshRoutingStatus). -->
+            <StatusBarItem>
+                <TextBlock x:Name="RoutingStatusText" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
             </StatusBarItem>
         </StatusBar>
         <DockPanel Margin="8">
