@@ -21,12 +21,6 @@ the rest.
 - RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
-- **RFC 2217 client real-server verification** — `Rfc2217Transport` (landed 2026-09-30, see
-  `docs/changes/2026-09-30.md`) is only unit-tested against a fake server so far. Run it against a
-  real RFC 2217 server (`ser2net`, or pyserial's `rfc2217_server.py`) once one is available, per
-  `docs/design/rfc2217.md`'s Testing strategy section, and flip its Status note once that's done.
-  Deferred 2026-09-30; a ser2net container now exists (`containers/`) and a manual smoke run passed
-  2026-10-02. Still open: an automated Integration test against it (skipping when the port is closed).
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
@@ -34,11 +28,6 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` importer gaps (queued in `TODO.md` 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
-  `docs/changes/2026-10-02.md`): **bit fields** (the Zoom H4n status `.ksy` fails to import until then), **variable-length
-  frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
-  so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
-  separate, already-built path.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
