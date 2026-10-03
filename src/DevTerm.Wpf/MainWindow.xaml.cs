@@ -1134,9 +1134,19 @@ public partial class MainWindow : Window
     {
         if (ShowConverterToolsDialog(new ConverterToolsEditor(ConverterToolsStore.Load())) is { } edited)
         {
-            ConverterToolsStore.Save(edited);
+            try
+            {
+                ConverterToolsStore.Save(edited);
+            }
+            catch (Exception ex)
+            {
+                // A read-only folder or a locked file is an expected failure, not a reason to take the app down.
+                ReportConverterToolsError($"Could not save the converter tools: {ex.Message}");
+            }
         }
     }
+
+    internal Action<string> ReportConverterToolsError { get; set; } = message => MessageBox.Show(message, "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
 
     private void ConverterTools_Click(object sender, RoutedEventArgs e) => EditConverterTools();
 

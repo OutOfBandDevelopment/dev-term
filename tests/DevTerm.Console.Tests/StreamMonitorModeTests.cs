@@ -175,6 +175,21 @@ public sealed class StreamMonitorModeTests
     }
 
     [TestMethod]
+    public async Task BuildWindow_OffersTheAppWideConverterTools_AheadOfAProfilesOwn()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("scope");
+        var cliOptions = new CliOptions { StreamConvertTools = [new StreamConvertToolOptions { Name = "old", Path = "old.exe" }, new StreamConvertToolOptions { Name = "gs", Path = "profile-gs.exe" }] };
+        StreamConvertToolOptions[] globalTools = [new() { Name = "gs", Path = "global-gs.exe" }];
+
+        StreamMonitorWindowParts? captured = null;
+        TuiTestRunner.RunHeadlessApp(app => captured = StreamMonitorMode.BuildWindow(app, bench.Monitor, cliOptions, globalTools));
+
+        var tools = captured!.ConverterOptions.Tools;
+        CollectionAssert.AreEqual(new[] { "gs", "old" }, tools.Select(t => t.Name).ToArray());
+        Assert.AreEqual("global-gs.exe", tools[0].Path);
+    }
+
+    [TestMethod]
     public async Task ConvertButton_WithNoModeConfigured_ReportsTheFailure()
     {
         await using var bench = await StreamMonitorBench.StartAsync("scope");

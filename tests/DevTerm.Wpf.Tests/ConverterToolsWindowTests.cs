@@ -162,6 +162,44 @@ public sealed class ConverterToolsWindowTests
     }
 
     [TestMethod]
+    public void DeviceMenu_ConverterTools_ASaveFailure_IsReportedNotThrown()
+    {
+        var blocker = Path.Combine(Path.GetTempPath(), "devterm-converter-tools-blocker-" + Path.GetRandomFileName());
+        File.WriteAllText(blocker, "a file where the settings folder would have to be");
+        try
+        {
+            StaTestRunner.Run(() =>
+            {
+                var ascii = new DevTerm.Presenters.Text.AsciiPresenter(Microsoft.Extensions.Options.Options.Create(new DevTerm.Presenters.Text.AsciiPresenterOptions()));
+                string? reported = null;
+                var window = new MainWindow(new DevTerm.Core.Sessions.Session(new FakeTransport(), new DevTerm.Core.Presenters.Pipeline([ascii])), new DevTerm.Core.Presenters.PresenterCatalog([ascii]), new CliOptions { Transport = "loopback", Parser = "ascii" }, IsolatedProfiles.Empty())
+                {
+                    ShowInTaskbar = false,
+                    ConverterToolsStore = new ConverterToolsStore(Path.Combine(blocker, "converter-tools.json")),
+                    ReportConverterToolsError = message => reported = message,
+                };
+                StaTestRunner.DoEvents();
+                window.ShowConverterToolsDialog = editor =>
+                {
+                    editor.Add();
+                    editor.Tools[0].Name = "gs";
+                    editor.Tools[0].Path = "gs.exe";
+                    return editor.ToList();
+                };
+
+                window.EditConverterTools();
+
+                StringAssert.StartsWith(reported, "Could not save the converter tools:");
+                return Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            File.Delete(blocker);
+        }
+    }
+
+    [TestMethod]
     public void Accept_WithAnInvalidList_ShowsTheProblemInsteadOfClosing()
     {
         StaTestRunner.Run(() =>
