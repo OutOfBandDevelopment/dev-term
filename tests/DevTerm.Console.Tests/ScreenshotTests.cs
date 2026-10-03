@@ -87,7 +87,7 @@ public sealed class ScreenshotTests
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-serial");
 
             Assert.Contains("Transport:", dump);
-            Assert.Contains("── Serial ──", dump);
+            Assert.Contains("[-] Serial", dump);
             Assert.Contains("Port:", dump);
             Assert.Contains("COM99", dump);
             Assert.Contains("Baud:", dump);
@@ -108,7 +108,7 @@ public sealed class ScreenshotTests
             var initial = new CliOptions { Transport = "tcp", Host = "192.168.0.107", Port = "23", Presenter = ["ascii"], Description = "Tektronix 2230 bench scope" };
             var dump = CaptureConfigureMode(initial, new ConnectionProfileStore(directory), "tui-configure-tcp");
 
-            Assert.Contains("── TCP ──", dump);
+            Assert.Contains("[-] TCP", dump);
             Assert.Contains("Host:", dump);
             Assert.Contains("192.168.0.107", dump);
             Assert.Contains("Port:", dump);

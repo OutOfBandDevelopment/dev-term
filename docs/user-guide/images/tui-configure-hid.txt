@@ -1,5 +1,5 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│── USB Device ──                                                             ▲│
+│[-] USB Device                                                               ▲│
 │  Vendor ID:            4216                                                 ░│
 │  Product ID:           63560                                                ░│
 │  Serial number:                                                             ░│
@@ -9,7 +9,7 @@
 │                        (not found — no connected device matches this        ░│
 │                        vendor/product/serial)                               █│
 │                                                                             █│
-│── Presentation ──                                                           █│
+│[-] Presentation                                                             █│
 │  Presenters:            ☐ ascii ☐ utf8 ☑ hex ☐ decimal ☐ octal ☐ binary     █│
 │                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     █│
 │                         ☐ de5000 ☐ nmea                                     █│

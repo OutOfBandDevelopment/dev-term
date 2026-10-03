@@ -1,5 +1,5 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
-│── BLE ──                                                                    ▲│
+│[-] BLE                                                                      ▲│
 │  Device ID:                         4-1234-5678-9abc-def012345678           ░│
 │  Service UUID:                                                              ░│
 │  Write characteristic UUID:                                                 ░│
@@ -11,7 +11,7 @@
 │  Detected characteristics (notify): ⟦ Pick... ⟧                             █│
 │                                                                             █│
 │                                                                             █│
-│── Presentation ──                                                           █│
+│[-] Presentation                                                             █│
 │  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     █│
 │                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     █│
 │                         ☐ de5000 ☐ nmea                                     █│

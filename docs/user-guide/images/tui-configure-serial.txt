@@ -13,7 +13,7 @@
 │               ○ loopback                                                    ░│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
-│── Serial ──                                                                 ░│
+│[-] Serial                                                                   ░│
 │  Port:               COM99                                                  ░│
 │  Detected ports:     ⟦ Detect... ⟧                                          ░│
 │                                                                             ░│

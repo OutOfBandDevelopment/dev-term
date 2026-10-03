@@ -13,13 +13,13 @@
 │               ◉ loopback                                                    █│
 │  Description:                                                               █│
 │                                                                             ░│
-│── Loopback ──                                                               ░│
+│[-] Loopback                                                                 ░│
 │  Sample interval (ms): 0                                                    ░│
 │                        No configuration needed — a scripted fake device.    ░│
 │                        Try "hello", "Send Stream: N, ascii", "Send Events:  ░│
 │                        N", or "help"/"?".                                   ░│
 │                                                                             ░│
-│── Presentation ──                                                           ░│
+│[-] Presentation                                                             ░│
 │  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ░│
 │                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
