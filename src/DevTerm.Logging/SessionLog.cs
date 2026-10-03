@@ -8,7 +8,8 @@ namespace DevTerm.Logging;
 /// </summary>
 public sealed class SessionLog
 {
-    private readonly List<SessionLogRecord> _records;
+    // A list (editable) for a log held in memory, or an index over the file (read-only until a mutation materialises it).
+    private IReadOnlyList<SessionLogRecord> _records;
 
     public SessionLog(SessionLogHeader header, IEnumerable<SessionLogRecord> records)
     {
@@ -17,6 +18,15 @@ public sealed class SessionLog
         Header = header;
         _records = [.. records];
     }
+
+    private SessionLog(SessionLogHeader header, IndexedRecordList records)
+    {
+        Header = header;
+        _records = records;
+    }
+
+    /// <summary>True while the records are read from disk on demand rather than held in memory (see <see cref="OpenIndexed"/>).</summary>
+    public bool IsIndexed => _records is IndexedRecordList;
 
     public SessionLogHeader Header { get; }
 
@@ -36,6 +46,12 @@ public sealed class SessionLog
     {
         get
         {
+            if (_records is IndexedRecordList indexed)
+            {
+                var first = indexed.FirstStartIndex();
+                return first < 0 ? Header.Created : indexed.TimestampAt(first);
+            }
+
             foreach (var record in _records)
             {
                 if (record.Kind != SessionLogRecordKind.Unknown || record.Timestamp != DateTimeOffset.MinValue)
@@ -51,7 +67,8 @@ public sealed class SessionLog
     /// <summary>How far into the log <paramref name="index"/>'s record is — never negative, even if a hand-edited file's timestamps go backwards.</summary>
     public TimeSpan OffsetOf(int index)
     {
-        var offset = _records[index].Timestamp - Start;
+        var timestamp = _records is IndexedRecordList indexed ? indexed.TimestampAt(index) : _records[index].Timestamp;
+        var offset = timestamp - Start;
         return offset < TimeSpan.Zero ? TimeSpan.Zero : offset;
     }
 
@@ -66,6 +83,20 @@ public sealed class SessionLog
         // writing, and should still be viewable.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         return Read(stream);
+    }
+
+    /// <summary>
+    /// Opens <paramref name="path"/> without loading it: one pass indexes every record's position and time, and
+    /// records are then parsed on demand, so a very large capture opens fast and uses flat memory, and a seek
+    /// reads only the page it lands on. Behaves like <see cref="Load"/> otherwise; an edit (<see cref="InsertNote"/>)
+    /// brings the records into memory first.
+    /// </summary>
+    /// <exception cref="SessionLogFormatException">As <see cref="Load"/>.</exception>
+    public static SessionLog OpenIndexed(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var (header, records, warnings) = IndexedRecordList.Scan(path);
+        return new SessionLog(header, records) { Warnings = warnings };
     }
 
     /// <inheritdoc cref="Load"/>
@@ -158,7 +189,7 @@ public sealed class SessionLog
             throw new ArgumentOutOfRangeException(nameof(start), $"The range [{start}, {end}) must select at least one of the {_records.Count} records.");
         }
 
-        return new SessionLog(Header with { TrimmedFrom = trimmedFrom ?? Header.TrimmedFrom }, _records.GetRange(start, end - start));
+        return new SessionLog(Header with { TrimmedFrom = trimmedFrom ?? Header.TrimmedFrom }, _records.Skip(start).Take(end - start));
     }
 
     /// <summary>
@@ -174,7 +205,9 @@ public sealed class SessionLog
 
         var timestamp = index > 0 ? _records[index - 1].Timestamp : Start;
         var note = SessionLogRecord.Note(timestamp, text);
-        _records.Insert(index, note);
+        var list = _records as List<SessionLogRecord> ?? [.. _records];
+        list.Insert(index, note);
+        _records = list;
         return note;
     }
 }

@@ -56,9 +56,9 @@ public sealed class PlaybackController
         SelectionEnd = log.Records.Count;
     }
 
-    /// <summary>Loads <paramref name="path"/> (see <see cref="SessionLog.Load"/>).</summary>
+    /// <summary>Loads <paramref name="path"/> (see <see cref="SessionLog.OpenIndexed"/>: indexed and streamed from disk, not loaded).</summary>
     public static PlaybackController Open(string path, Func<IReadOnlyList<string>, Pipeline> pipelineFor, IReadOnlyList<string> availablePresenters, TimeProvider? clock = null) =>
-        new(path, SessionLog.Load(path), pipelineFor, availablePresenters, clock);
+        new(path, SessionLog.OpenIndexed(path), pipelineFor, availablePresenters, clock);
 
     public string Path { get; }
 

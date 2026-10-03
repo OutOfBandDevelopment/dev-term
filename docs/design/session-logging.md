@@ -222,14 +222,21 @@ front end.
 plus every presenter and **no transport**. `DevTerm.Logging` references `DevTerm.Core` only.
 Playback has no way to open a connection.
 
+## Indexed, streamed playback
+
+Playback opens a log with `SessionLog.OpenIndexed(path)`, not `Load`. One pass over the file keeps each
+record's byte offset and timestamp (about 17 bytes a record), then records are parsed on demand in pages of
+256 (8 pages cached), so a multi-hour K8055-rate capture opens quickly, memory stays flat and a seek reads only
+the page it lands on. The file is opened per page and never held, so a note saved in place (atomic replace)
+and a log still being captured both keep working. It tolerates the same torn last line, BOM, CRLF and blank
+lines as `Load`. Editing (`InsertNote`) brings the records into memory first; `Trim` copies only the selected
+range. `Load` stays for code that wants everything in memory (saving, the manifest editor's sample import).
+Decided 2026-10-03.
+
 ## Open questions
 
 - A note can't be added to a log that this same process is still recording. The recorder holds the
   file open, so the atomic replace fails and the error is reported. Stop logging first.
-- **Decided 2026-10-03:** index and stream from disk (a time/record index so seeks are instant and memory stays flat). Not built yet.
-- Very large logs are loaded fully into memory (`SessionLog.Load`). That's fine for console-scale
-  traffic, and would need an index or seekable reader for long high-rate captures, such as a K8055
-  streaming hundreds of reports a second for hours.
 - Seeking backward replays from record 0, so its cost grows with the log. Presenter snapshots at
   intervals would fix that, but `IPresenter` has no snapshot/restore contract today.
 - No "skip silence" option yet (capping long idle gaps during realtime playback).
