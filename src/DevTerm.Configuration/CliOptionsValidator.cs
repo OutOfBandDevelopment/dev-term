@@ -1,3 +1,4 @@
+using DevTerm.Observability;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
@@ -24,6 +25,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
         if (options.WriteTimeoutMs < -1)
         {
             return ValidateOptionsResult.Fail("'--writetimeoutms' must be -1 (infinite) or a non-negative timeout in milliseconds.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Otlp) && !string.Equals(options.Otlp, "false", StringComparison.OrdinalIgnoreCase) && TelemetryExporter.ParseEndpoint(options.Otlp) is null)
+        {
+            return ValidateOptionsResult.Fail("'--otlp' must be 'true' or an http(s) URL such as http://localhost:4317.");
         }
 
         if (options.PlaybackSpeed < 0)
@@ -179,11 +185,29 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
+            case "mqtt":
+                if (string.IsNullOrWhiteSpace(options.Host))
+                {
+                    return ValidateOptionsResult.Fail("Missing required '--host' for the MQTT transport.");
+                }
+
+                if (!int.TryParse(options.Port, out var mqttPort) || mqttPort is < 1 or > 65535)
+                {
+                    return ValidateOptionsResult.Fail("Missing or invalid '--port' for the MQTT transport (expected 1-65535, usually 1883).");
+                }
+
+                if (string.IsNullOrWhiteSpace(options.Subscribe) && string.IsNullOrWhiteSpace(options.Publish))
+                {
+                    return ValidateOptionsResult.Fail("The MQTT transport needs '--subscribe', '--publish', or both.");
+                }
+
+                break;
+
             case "loopback":
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'mqtt', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

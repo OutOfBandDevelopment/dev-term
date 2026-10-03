@@ -111,14 +111,17 @@ Validator ..> [DeviceManifest] : loads and checks meaning
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
 
-- [ ] Spike `JsonSchemaExporter` on `DeviceManifest`; check the `UiControl` discriminator output
-- [ ] Decide whether the schema is generated at build time or checked in
-- [ ] Generate the schema for `DeviceManifest` / `UiDefinition`
+- [x] Spike `JsonSchemaExporter` on `DeviceManifest`; check the `UiControl` discriminator output (it emits `anyOf` branches, each with `kind` as a `const`; no overlay needed)
+- [x] Decide whether the schema is generated at build time or checked in (both: a Debug build regenerates `schemas/`, the output is committed so editors can reference it, and a test fails on drift)
+- [x] Generate the schema for `DeviceManifest` / `UiDefinition` (and the connection profile)
 - [ ] Generate the schema for the `.ksy`-derived frame (see `ksy-importer.md`)
-- [ ] A test that fails when the schema drifts from the types
-- [ ] Reference the schema from manifest docs and editors
+- [x] A test that fails when the schema drifts from the types (`SchemaDriftTests`)
+- [x] Reference the schema from manifest docs (editor completion in an IDE is untested)
 
 ## Status
 
-**Proposal, not started.** Nothing generated yet. First step: spike `JsonSchemaExporter` on `DeviceManifest`
-and check the `UiControl` discriminator output.
+**Implemented (2026-10-02)** for the device manifest, UI definition and connection profile: `src/DevTerm.Schemas`
+exports each from the C# model with `JsonSchemaExporter` into `schemas/*.schema.json` on every Debug build, and
+`SchemaDriftTests` fails when the committed files differ. The profile schema omits `Password` (never saved). Not done:
+the `.ksy`-derived frame schema (waits on the `.ksy` importer work), XSD, SCPI device profile, and checking a real
+file against the schema in an editor or with a validator library.

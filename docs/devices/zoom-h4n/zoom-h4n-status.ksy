@@ -5,8 +5,8 @@ meta:
 doc: |
   Each unsolicited byte is a complete, independent status snapshot, per
   src/DevTerm.Devices.ZoomH4n/ZoomH4nDecoder.cs and docs/design/features/zoom-h4n-remote-protocol.md.
-  Bits are listed most significant first. dev-term's importer does not read bit fields yet, so this
-  file documents the layout and is not importable as a frame.
+  Bits are listed most significant first. dev-term imports this as a one-byte frame of eight bit
+  fields (checked against the decoder's documented masks, not yet against a live recorder).
 seq:
   - id: handshake_wake
     type: b1

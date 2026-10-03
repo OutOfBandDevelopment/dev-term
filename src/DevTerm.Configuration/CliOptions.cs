@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -186,6 +186,25 @@ public sealed class CliOptions
     [DisplayName("Listen (server mode)")]
     public bool Listen { get; set; }
 
+    // MQTT transport (also uses Host/Port above).
+    [Category("MQTT")]
+    [DisplayName("Subscribe topics")]
+    [Description("Comma-separated MQTT topic filters to subscribe to (wildcards allowed).")]
+    public string? Subscribe { get; set; }
+
+    [Category("MQTT")]
+    [DisplayName("Publish topic")]
+    [Description("Where a typed line is published unless it is written as topic<TAB>payload.")]
+    public string? Publish { get; set; }
+
+    [Category("MQTT")]
+    [DisplayName("User name")]
+    public string? Username { get; set; }
+
+    /// <summary>Command line or environment only: never written to a saved profile or shown in the editor.</summary>
+    [Browsable(false)]
+    public string? Password { get; set; }
+
     // USB HID and USBTMC transports share the same "vendor/product/serial" identity fields below —
     // both select a physical USB device the same way, so a saved profile's Vendor/Product ID
     // carries over if you switch Transport between "hid" and "usbtmc" instead of needing two
@@ -319,6 +338,15 @@ public sealed class CliOptions
     [Category("Mode")]
     [DisplayName("Log to file")]
     public string? Log { get; set; }
+
+    /// <summary>
+    /// Opt-in OpenTelemetry export of dev-term's own traces and metrics (connection open spans, bytes
+    /// sent/received, disconnects) over OTLP/gRPC: <c>--otlp http://localhost:4317</c>, or <c>--otlp true</c> for that
+    /// default. Off when unset. See docs/design/observability.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("OTLP endpoint")]
+    public string? Otlp { get; set; }
 
     /// <summary>
     /// Plays a session log back through the presenters (<c>--presenter</c>, or the log's own) and

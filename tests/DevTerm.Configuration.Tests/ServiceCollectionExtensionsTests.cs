@@ -4,6 +4,7 @@ using DevTerm.Presenters.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
+using DevTerm.Transports.Mqtt;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -48,6 +49,23 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.AreEqual(TcpTransportMode.Client, options.Mode);
         Assert.AreEqual("device.local", options.Host);
         Assert.AreEqual(502, options.Port);
+    }
+
+    [TestMethod]
+    public void AddDevTermFrontEnd_MqttTransport_ResolvesMqttTransportConfiguredFromCliOptions()
+    {
+        var cliOptions = new CliOptions { Transport = "mqtt", Host = "broker", Port = "1883", Subscribe = "a/#, b/+", Publish = "cmd", Username = "u" };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<MqttTransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<MqttTransport>(transport);
+        Assert.AreEqual("broker", options.Host);
+        Assert.AreEqual(1883, options.Port);
+        CollectionAssert.AreEqual(new[] { "a/#", "b/+" }, options.SubscribeTopics);
+        Assert.AreEqual("cmd", options.PublishTopic);
+        Assert.AreEqual("u", options.Username);
     }
 
     [TestMethod]

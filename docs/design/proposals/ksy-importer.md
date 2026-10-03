@@ -77,6 +77,43 @@ M -> U : ValuesChanged
 - One `ValuesChanged` per decoded frame, so a chart sees every sample of a burst.
 - Never throws on wire data.
 
+## Bit fields, variable length and checksums
+
+- **Bit fields**: `Type` `b1` to `b64` is an unsigned value of that many bits, packed most significant bit first
+  (Kaitai's default). A byte-sized field after bit fields starts on the next byte boundary. They publish like numbers
+  (`Scale`/`Offset` apply); `Expect` is not allowed on them.
+- **Variable length**: `LengthField` names an earlier integer field; the frame is that value plus `LengthAdjust` bytes
+  long, and the last field (`bytes`/`str`, no `Size`) takes what is left. `Probe` says `NeedMore` until the length
+  field and then the whole frame have arrived, and `Invalid` for a length shorter than the fixed part or over 64 KB, so
+  the presenter drops a byte and re-syncs instead of waiting for it.
+- **Checksum**: a trailer (`Kind`, optional `Start` offset and `Endian`) covering the frame from `Start` up to itself.
+  A mismatch discards the frame like a failed `Expect`.
+- **Importer**: `bN` types become bit fields, and `size: other_field` on a final bytes/str attribute becomes the
+  length field (`LengthAdjust` is the fixed bytes before it). An attribute after a variable-size one stops the frame
+  with a warning. Kaitai has no checksum syntax, so a checksum is added by hand. `meta.bit-endian: le` warns.
+
+```plantuml
+@startuml
+start
+:append read to buffer;
+repeat
+  :find Sync;
+  :Probe(buffer);
+  if (NeedMore?) then (yes)
+    :wait for the next read;
+    stop
+  elseif (Invalid?) then (yes)
+    :drop one byte;
+  elseif (Expect and checksum ok?) then (yes)
+    :publish values, advance by frame length;
+  else (no)
+    :drop one byte;
+  endif
+repeat while (enough bytes left?)
+stop
+@enduml
+```
+
 ## Importer
 
 `KsyImporter.Import(text)` returns a `FrameSchema` and warnings. Handled: `meta.endian`, `seq` attributes of numeric
@@ -96,15 +133,19 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Unit and screenshot tests
 - [x] Live check: Radex One frame on COM8 (`docs/test/2026-10-02-14-42-26.md`)
 - [ ] Check DE-5000, K8055 and Zoom H4n `.ksy` layouts against live captures (documented bytes only so far)
-- [ ] Bit fields (not built)
-- [ ] Length-prefixed or variable-size frames (not built)
-- [ ] Checksums (not built)
-- [ ] Generated JSON Schema for the frame (`format-schema-files.md`)
+- [x] Bit fields (`b1`..`b64`, MSB first; the Zoom H4n status `.ksy` imports and decodes)
+- [x] Length-prefixed or variable-size frames (`LengthField` + `LengthAdjust`, last field `bytes`/`str` with no size)
+- [x] Checksums (`sum8`, `xor8`, `crc8`, `crc16-modbus`, `crc16-ccitt`; standard vectors tested)
+- [x] Generated JSON Schema for the frame (part of `schemas/device-manifest.schema.json`, see `format-schema-files.md`)
+- [ ] Editor forms for `LengthField`, `LengthAdjust` and `Checksum` (set in the manifest file for now)
 
 ## Status
 
 Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`ValuePathSource.Frame`), validator checks,
 JSON/XML round trip, importer, and (2026-10-02) the manifest editors' **Binary frame** outline entry with field forms and an **Import** button in both front ends ([spec](../../specs/manifest-editor.md)). Unit- and screenshot-tested, plus one live check: the imported Radex One read-data frame was run through `ManifestFramePresenter` against a real unit on COM8 (every field published, three runs; `docs/test/2026-10-02-14-42-26.md`). The other devices' `.ksy` layouts (DE-5000, K8055, Zoom H4n) are checked against captured or documented bytes only. Not built:
 
-- bit fields, length-prefixed or variable-size frames, checksums;
-- a generated JSON Schema for the frame (see [format-schema-files.md](format-schema-files.md)).
+- the live check of the Zoom H4n status `.ksy` against a real recorder (it decodes the documented masks only), and of the
+  DE-5000 and K8055 layouts against captures;
+- editor forms for `LengthField`, `LengthAdjust` and `Checksum`.
+
+Built 2026-10-02: bit fields, length-prefixed frames and checksums (`FrameAdvancedTests`, 12 tests, standard CRC vectors).

@@ -41,6 +41,7 @@ namespace DevTerm.Configuration;
 [FormSection("TCP", Order = 2, VisibleWhen = nameof(IsTcpLikeTransport))]
 [FormSection("USB Device", Order = 3, VisibleWhen = nameof(IsUsbDeviceTransport))]
 [FormSection("BLE", Order = 4, VisibleWhen = nameof(IsBleTransport))]
+[FormSection("MQTT", Order = 4, VisibleWhen = nameof(IsMqttTransport))]
 [FormSection("Loopback", Order = 5, VisibleWhen = nameof(IsLoopbackTransport))]
 [FormSection("Presentation", Order = 6)]
 [FormSection("Timing", Order = 7, VisibleWhen = nameof(SupportsWriteByteDelay))]
@@ -76,6 +77,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _bleServiceUuid = string.Empty;
     private string _bleWriteCharacteristicUuid = string.Empty;
     private string _bleNotifyCharacteristicUuid = string.Empty;
+    private string _mqttSubscribe = string.Empty;
+    private string _mqttPublish = string.Empty;
+    private string _mqttUser = string.Empty;
     private string _loopbackSampleIntervalMs = "0";
     private string _parser = CliOptions.DefaultPresenter;
     private string _lineEndingText = "None";
@@ -121,6 +125,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsBleTransport),
         nameof(IsLoopbackTransport),
         nameof(IsRfc2217Transport),
+        nameof(IsMqttTransport),
         nameof(IsSerialLikeTransport),
         nameof(IsTcpLikeTransport),
         nameof(SupportsWriteByteDelay),
@@ -429,7 +434,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "loopback"];
 
     /// <summary>
     /// Every presenter name a saved profile can check, in registration order (built-ins first, then
@@ -561,6 +566,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsBleTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
             OnPropertyChanged(nameof(IsRfc2217Transport));
+            OnPropertyChanged(nameof(IsMqttTransport));
             OnPropertyChanged(nameof(IsSerialLikeTransport));
             OnPropertyChanged(nameof(IsTcpLikeTransport));
             OnPropertyChanged(nameof(SupportsWriteByteDelay));
@@ -579,6 +585,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public bool IsBleTransport => string.Equals(Transport, "ble", StringComparison.OrdinalIgnoreCase);
 
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsMqttTransport => string.Equals(Transport, "mqtt", StringComparison.OrdinalIgnoreCase);
 
     public bool IsRfc2217Transport => string.Equals(Transport, "rfc2217", StringComparison.OrdinalIgnoreCase);
 
@@ -600,7 +608,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// Gates the "TCP" <see cref="FormSectionAttribute"/>; <see cref="Listen"/> stays TCP-only via its
     /// own field-level <c>VisibleWhen</c>, since RFC 2217 has no listen/server mode.
     /// </summary>
-    public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport;
+    public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport || IsMqttTransport;
 
     /// <summary>
     /// <see langword="true"/> for the serial, TCP, and RFC 2217 transports — the only ones whose
@@ -767,6 +775,21 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [DisplayName("Port")]
     [FormField(Order = 1, ValueKind = ValueKind.Integer, Minimum = 0, Maximum = 65535)]
     public string TcpPort { get => _tcpPort; set => SetField(ref _tcpPort, value); }
+
+    [Category("MQTT")]
+    [DisplayName("Subscribe topics")]
+    [FormField(Order = 0)]
+    public string Subscribe { get => _mqttSubscribe; set => SetField(ref _mqttSubscribe, value); }
+
+    [Category("MQTT")]
+    [DisplayName("Publish topic")]
+    [FormField(Order = 1)]
+    public string Publish { get => _mqttPublish; set => SetField(ref _mqttPublish, value); }
+
+    [Category("MQTT")]
+    [DisplayName("User name")]
+    [FormField(Order = 2)]
+    public string Username { get => _mqttUser; set => SetField(ref _mqttUser, value); }
 
     [Category("TCP")]
     [DisplayName("Listen (server mode)")]
@@ -1233,6 +1256,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         Host = options.Host ?? string.Empty;
         TcpPort = options.Port ?? "0";
         Listen = options.Listen;
+        Subscribe = options.Subscribe ?? string.Empty;
+        Publish = options.Publish ?? string.Empty;
+        Username = options.Username ?? string.Empty;
         VendorId = options.VendorId.ToString();
         ProductId = options.ProductId.ToString();
         SerialNumber = options.SerialNumber ?? string.Empty;
@@ -1313,6 +1339,10 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             ScpiProfile = ScpiProfile.Trim() is { Length: > 0 } sp ? sp : null,
             SerialNumber = SerialNumber.Trim() is { Length: > 0 } sn ? sn : null,
             DevicePath = DevicePath.Trim() is { Length: > 0 } dp ? dp : null,
+            Subscribe = Subscribe.Trim() is { Length: > 0 } ms ? ms : null,
+            Publish = Publish.Trim() is { Length: > 0 } mp ? mp : null,
+            Username = Username.Trim() is { Length: > 0 } mu ? mu : null,
+            Password = _loadedOptions.Password,
             BleDeviceId = BleDeviceId.Trim() is { Length: > 0 } bdi ? bdi : null,
             BleServiceUuid = BleServiceUuid.Trim() is { Length: > 0 } bsu ? bsu : null,
             BleWriteCharacteristicUuid = BleWriteCharacteristicUuid.Trim() is { Length: > 0 } bwu ? bwu : null,

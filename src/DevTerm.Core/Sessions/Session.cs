@@ -141,7 +141,23 @@ public sealed class Session : IAsyncDisposable
                 return;
             }
 
-            await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+            var transportName = _transport.GetType().Name;
+            using (var activity = DevTermTelemetry.Source.StartActivity("devterm.session.open"))
+            {
+                activity?.SetTag("devterm.transport", transportName);
+                try
+                {
+                    await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    activity?.SetTag("error.type", ex.GetType().FullName);
+                    throw;
+                }
+            }
+
+            DevTermTelemetry.SessionsOpened.Add(1, new KeyValuePair<string, object?>("devterm.transport", transportName));
 
             // A presenter (a pending SCPI/manifest reply queue, a partial ASCII line) survives
             // Close/OpenAsync on this same Session instance - without this, a stale pending id or a
@@ -211,6 +227,7 @@ public sealed class Session : IAsyncDisposable
         if (wasOpen)
         {
             Notify(o => o.OnSent(data));
+            DevTermTelemetry.BytesSent.Add(data.Length);
         }
 
         try
@@ -239,6 +256,7 @@ public sealed class Session : IAsyncDisposable
                 if (!buffer.IsEmpty)
                 {
                     Notify(o => o.OnReceived(buffer));
+                    DevTermTelemetry.BytesReceived.Add(buffer.Length);
                     foreach (var output in _pipeline.Render(buffer))
                     {
                         Output?.Invoke(this, output);
@@ -364,6 +382,10 @@ public sealed class Session : IAsyncDisposable
         if (wasOpen)
         {
             Notify(o => o.OnClosed(requested, error));
+            DevTermTelemetry.SessionsClosed.Add(
+                1,
+                new KeyValuePair<string, object?>("devterm.requested", requested),
+                new KeyValuePair<string, object?>("error.type", error?.GetType().FullName));
         }
     }
 

@@ -203,12 +203,14 @@ menu) are themed too. Each attached window gets a merged `ThemeDictionary`:
   see `BuiltInThemes.Dark`'s doc comment and
   `DevTerm.Console.Tests.LegacyConsole16ColorTests`, which calls the real
   `Color.GetClosestNamedColor16()` (not a reimplementation) to lock this in. `light`'s equivalent roles
-  have a similar, more severe collapse under the same downgrade (`background`/`fieldBackground`/
-  `selectionBackground` all land on "White" - `light`'s field/selection colors are much closer to white
-  than `dark`'s are to black) - not fixed here, since it would mean darkening `light`'s field/selection
-  colors enough to change its look in the WPF app too, and a legacy black-background console running
-  the *light* theme is a narrower case than the *dark* theme (dev-term's default) doing it. Tracked in
-  `BACKLOG.md`.
+  collapse more severely under the same downgrade (`background`/`fieldBackground`/`selectionBackground`
+  all landed on "White"). Fixed 2026-10-02 for the TUI only: `DevTermTheme.ForSixteenColors()` returns a variant
+  of a light theme with `fieldBackground` `#C0C0C0` (Gray), `controlHoverBackground` `#808080` (DarkGray) and
+  `selectionBackground` `#00FFFF` (BrightCyan), which `TuiTheme.Apply` uses once `TuiMode` sees the driver's
+  `Force16Colors` (detected after `Application.Init`, then the theme is re-applied). The WPF palette and
+  truecolor terminals are untouched; a dark theme is returned as is. Locked in by
+  `LegacyConsole16ColorTests` (real `GetClosestNamedColor16`, plus the contrast check). Not seen on a real
+  legacy conhost yet.
 - Colors dev-term draws itself are looked up per role where they're drawn:
   - The status line: `TuiTheme.StatusAttribute`.
   - The Stream Monitor's state line.

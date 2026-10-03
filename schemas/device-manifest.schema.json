@@ -1,0 +1,1099 @@
+{
+  "type": [
+    "object",
+    "null"
+  ],
+  "properties": {
+    "Name": {
+      "type": "string"
+    },
+    "Vendor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Transport": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "Options": {
+          "type": "array",
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "Key": {
+                "type": "string"
+              },
+              "Value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Key",
+              "Value"
+            ]
+          }
+        }
+      },
+      "required": [
+        "Type"
+      ]
+    },
+    "Inbound": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "KaitaiFile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Patterns": {
+          "type": "array",
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "Name": {
+                "type": "string"
+              },
+              "Match": {
+                "type": "string"
+              },
+              "Example": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "Name",
+              "Match"
+            ]
+          }
+        },
+        "Frame": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "Sync": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Endian": {
+              "type": "string"
+            },
+            "Fields": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "Name": {
+                    "type": "string"
+                  },
+                  "Type": {
+                    "type": "string"
+                  },
+                  "Endian": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "Size": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "Scale": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "Offset": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "Unit": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "Label": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "Minimum": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "Maximum": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "Expect": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "LengthField": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "LengthAdjust": {
+              "type": "integer"
+            },
+            "Checksum": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "Kind": {
+                  "type": "string"
+                },
+                "Start": {
+                  "type": "integer"
+                },
+                "Endian": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "LineTerminated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "OutboundCommands": {
+      "type": "array",
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "Name": {
+            "type": "string"
+          },
+          "Id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "Parameters": {
+            "type": "array",
+            "items": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "Name": {
+                  "type": "string"
+                },
+                "Type": {
+                  "type": "string"
+                },
+                "Minimum": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "Maximum": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "Unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "DefaultValue": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "Format": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name"
+              ]
+            }
+          },
+          "Template": {
+            "type": "string"
+          },
+          "IsQuery": {
+            "type": "boolean"
+          },
+          "ReplyId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "Name",
+          "Template"
+        ]
+      }
+    },
+    "Terminator": {
+      "type": "string"
+    },
+    "Ui": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Sections": {
+          "type": "array",
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "Label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "VisibleWhen": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "Id": {
+                    "type": "string"
+                  },
+                  "Values": {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "Id"
+                ]
+              },
+              "Controls": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "required": [
+                    "kind"
+                  ],
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "button"
+                        },
+                        "CommandId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ColorPickerTargetCommandId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ColorPickerChoiceOption": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ParameterFieldIds": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "items": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "ParameterExpressions": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "items": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "toggle"
+                        },
+                        "DefaultValue": {
+                          "type": "boolean"
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "slider"
+                        },
+                        "Minimum": {
+                          "type": "number"
+                        },
+                        "Maximum": {
+                          "type": "number"
+                        },
+                        "Step": {
+                          "type": "number"
+                        },
+                        "DefaultValue": {
+                          "type": "number"
+                        },
+                        "Unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "numeric"
+                        },
+                        "Minimum": {
+                          "type": "number"
+                        },
+                        "Maximum": {
+                          "type": "number"
+                        },
+                        "DefaultValue": {
+                          "type": "number"
+                        },
+                        "Unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "choice"
+                        },
+                        "Options": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "DefaultValue": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Style": {
+                          "enum": [
+                            "Dropdown",
+                            "RadioGroup",
+                            "CheckList"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "textField"
+                        },
+                        "DefaultValue": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "MaxLength": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "Constraint": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Kind": {
+                              "enum": [
+                                "Text",
+                                "Integer",
+                                "Number"
+                              ]
+                            },
+                            "Minimum": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "Maximum": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "ClampToRange": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "indicator"
+                        },
+                        "DefaultValue": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Style": {
+                          "enum": [
+                            "Plain",
+                            "Warning"
+                          ]
+                        },
+                        "Expression": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "barGraph"
+                        },
+                        "Channels": {
+                          "type": "array",
+                          "items": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "Id": {
+                                "type": "string"
+                              },
+                              "Label": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "Color": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "Expression": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "Id"
+                            ]
+                          }
+                        },
+                        "Minimum": {
+                          "type": "number"
+                        },
+                        "Maximum": {
+                          "type": "number"
+                        },
+                        "Unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "stripChart"
+                        },
+                        "Channels": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/properties/Ui/properties/Sections/items/properties/Controls/items/anyOf/7/properties/Channels/items"
+                          }
+                        },
+                        "Minimum": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "Maximum": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "HistoryLength": {
+                          "type": "integer"
+                        },
+                        "Unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "vector"
+                        },
+                        "Coordinates": {
+                          "enum": [
+                            "XY",
+                            "XYZ",
+                            "Polar"
+                          ]
+                        },
+                        "XId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "YId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ZId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "RadiusId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "AngleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "AngleUnit": {
+                          "enum": [
+                            "Degrees",
+                            "Radians"
+                          ]
+                        },
+                        "Range": {
+                          "type": "number"
+                        },
+                        "TrailLength": {
+                          "type": "integer"
+                        },
+                        "HueId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "SaturationId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "BrightnessId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Label": {
+                          "type": "string"
+                        },
+                        "Description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "VisibleWhen": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "Id": {
+                              "type": "string"
+                            },
+                            "Values": {
+                              "$ref": "#/properties/Ui/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                            }
+                          },
+                          "required": [
+                            "Id"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Id",
+                        "Label"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "Name"
+      ]
+    },
+    "UiFile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "Name"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

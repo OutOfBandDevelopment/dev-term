@@ -70,14 +70,20 @@ neither of those has: per-message **topic addressing**, not just message boundar
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
 
-- [ ] Identify a concrete target broker/device (none yet)
-- [ ] Resolve the per-topic routing question against that real use case
-- [ ] Transport design and unit tests
-- [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
-- [ ] Real-broker verification
+- [x] Identify a concrete target for MQTT (the `containers/` Mosquitto broker; no real device yet)
+- [x] Resolve the per-topic routing question for MQTT: topic-prefixed text (`topic<TAB>payload`), no `Session`/`Pipeline` change
+- [x] MQTT transport design and unit tests (`DevTerm.Transports.Mqtt`, 10 unit tests)
+- [x] MQTT in both front ends, plus `docs/specs/` and `docs/user-guide/` entries
+- [x] MQTT real-broker verification (Mosquitto container: an automated Integration test and a CLI round trip)
+- [ ] AMQP and STOMP (wait for a real target; reuse the generic `--subscribe`/`--publish`/`--username`/`--password` options)
+- [ ] A real device or home-automation broker check for MQTT
 
 ## Status
 
-**Not started — design only.** No code exists yet, and no concrete target broker/device has been
-identified — the biggest open question (per-topic routing) should be resolved against a real use case,
-not speculatively.
+**MQTT implemented 2026-10-02; AMQP and STOMP not started.** `DevTerm.Transports.Mqtt` (MQTTnet 5.x) turns each
+inbound message into one `topic<TAB>payload` line and publishes a typed line to `--publish`, or to its own topic when
+typed as `topic<TAB>payload`, so no `Session`/`Pipeline` change was needed. Verified against the `containers/`
+Mosquitto broker (Integration test plus a CLI round trip); no real device or TLS broker yet. The connection options
+are deliberately unprefixed (`--subscribe`, `--publish`, `--username`, `--password`) so AMQP and STOMP reuse them.
+The password is command-line/environment only: never saved to a profile or shown in the editor. Not yet built: TLS,
+MQTT 5 properties, retained/will messages.

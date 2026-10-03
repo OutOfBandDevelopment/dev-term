@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DevTerm.Core\DevTerm.Core.csproj" />
     <ProjectReference Include="..\DevTerm.Logging\DevTerm.Logging.csproj" />
+    <ProjectReference Include="..\DevTerm.Observability\DevTerm.Observability.csproj" />
     <ProjectReference Include="..\DevTerm.Presenters.Text\DevTerm.Presenters.Text.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Serial\DevTerm.Transports.Serial.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Tcp\DevTerm.Transports.Tcp.csproj" />
@@ -20,6 +21,7 @@
     <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Rfc2217\DevTerm.Transports.Rfc2217.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Mqtt\DevTerm.Transports.Mqtt.csproj" />
   </ItemGroup>
 
   <ItemGroup>

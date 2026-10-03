@@ -46,6 +46,7 @@ test class's own doc comment.
   of the panel, in TUI/WPF.
 - [Expressions and the expression picker](expression-builder.md) — the expression language (indicator,
   chart channels, button parameters) and the **Pick...** dialog that builds and checks one, in TUI/WPF.
+- [Using dev-term from a browser](web-terminal.md) — the `DevTerm.Web` host and its access rules.
 - [Capturing screen dumps, plots and print jobs](stream-monitor.md) — **Device > Stream
   Monitor...**: auto-saving images, HP-GL, PostScript and PCL a device sends, with a live image
   preview in WPF.

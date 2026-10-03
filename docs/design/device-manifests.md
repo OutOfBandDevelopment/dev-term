@@ -12,6 +12,12 @@ device-control-modules.md's open questions already anticipated, for devices simp
 need a real code plugin (most bench/hobbyist gear with a fixed command set — SCPI-like or the
 Tektronix-codes case are exactly this).
 
+## Schema
+
+`schemas/device-manifest.schema.json` (and `ui-definition` / `connection-profile`) are generated from the C# model by
+`src/DevTerm.Schemas` on a Debug build; add `"$schema": "../schemas/device-manifest.schema.json"` to a hand-written
+`device.json` for editor completion. `DeviceManifestValidator` still owns the rules a schema cannot express.
+
 ## Two packaging shapes, one loading path
 
 - **Single file** — a JSON manifest with everything inline: identity, transport hints, outbound

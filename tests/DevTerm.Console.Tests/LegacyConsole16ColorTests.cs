@@ -37,6 +37,24 @@ public sealed class LegacyConsole16ColorTests
     }
 
     [TestMethod]
+    public void Light_SixteenColorVariant_KeepsFieldHoverSelectionAndBackgroundDistinct()
+    {
+        var theme = BuiltInThemes.Light.ForSixteenColors();
+        var roles = new[] { ThemeRole.Background, ThemeRole.FieldBackground, ThemeRole.ControlHoverBackground, ThemeRole.SelectionBackground };
+        var rendered = roles.Select(role => Closest(theme, role)).ToList();
+
+        CollectionAssert.AreEqual(rendered.Distinct().ToList(), rendered, "Each role must render as its own ANSI color.");
+        Assert.AreEqual(0, theme.ContrastWarnings().Count, string.Join("; ", theme.ContrastWarnings()));
+    }
+
+    [TestMethod]
+    public void SixteenColorVariant_LeavesDarkAndWpfLightUnchanged()
+    {
+        Assert.AreSame(BuiltInThemes.Dark, BuiltInThemes.Dark.ForSixteenColors());
+        Assert.AreEqual(ThemeColor.Parse("#E4E4E4"), BuiltInThemes.Light[ThemeRole.FieldBackground]);
+    }
+
+    [TestMethod]
     public void Dark_FocusedFieldBackground_AlsoDiffersFromTheWindowBackground()
     {
         var selection = Closest(BuiltInThemes.Dark, ThemeRole.SelectionBackground);

@@ -25,7 +25,8 @@ the rest.
   `docs/changes/2026-09-30.md`) is only unit-tested against a fake server so far. Run it against a
   real RFC 2217 server (`ser2net`, or pyserial's `rfc2217_server.py`) once one is available, per
   `docs/design/rfc2217.md`'s Testing strategy section, and flip its Status note once that's done.
-  Deferred 2026-09-30 — no such server was reachable this session.
+  Deferred 2026-09-30; a ser2net container now exists (`containers/`) and a manual smoke run passed
+  2026-10-02. Still open: an automated Integration test against it (skipping when the port is closed).
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
@@ -33,12 +34,12 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` importer gaps (set aside by choice 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
+- `.ksy` importer gaps (queued in `TODO.md` 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
   `docs/changes/2026-10-02.md`): **bit fields** (the Zoom H4n status `.ksy` fails to import until then), **variable-length
   frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
-- Dynamic plugin loading (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
+- Dynamic plugin loading (queued in `TODO.md`; decoders and rendering presenters to move out of the core references) (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
   `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
   `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
@@ -71,29 +72,6 @@ the rest.
   `ITransport` implementation must no-op on an empty write, not throw" (see `CLAUDE.md`'s
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
-
-### Observability
-
-- **OpenTelemetry / general app-logging support** — `DevTerm.Logging` today is device-session
-  transcript recording (`SessionLogger`/`SessionLogWriter`/playback), not application diagnostics.
-  There's no structured logging, tracing, or metrics for dev-term's own internals (connection
-  lifecycle, transport faults, presenter errors) beyond ad-hoc output-pane messages. Scope: decide
-  whether to wire `Microsoft.Extensions.Logging` + an OTel exporter (console/OTLP) through DI
-  (`AddDevTermCore`/`AddDevTermFrontEnd`), what's worth instrumenting first (`Session`
-  open/close/fault, `ITransport` connect/disconnect), and whether it's opt-in (a CLI flag/config
-  section) given most users won't have a collector running. Not started — raised 2026-10-01, no
-  priority set yet.
-
-### TUI theming
-
-- **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
-  ANSI-16 color ("White") under Terminal.Gui's legacy-conhost 16-color downgrade** — worse than the
-  `dark` theme's equivalent collision fixed 2026-09-30 (see `docs/design/theming.md`'s "TUI" section),
-  since all three roles collapse here, not just two. Not fixed yet: `light`'s field/selection colors
-  are deliberately close to white for the WPF app's look, and darkening them enough to separate under
-  16-color legacy conhost would change that look too, for a narrower case (a legacy black-background
-  console running the *light* theme, rather than `dark`, dev-term's default). Needs a decision on
-  whether to accept a WPF-visible palette change, or scope a TUI-only override instead.
 
 ### Proposed Ideas
 

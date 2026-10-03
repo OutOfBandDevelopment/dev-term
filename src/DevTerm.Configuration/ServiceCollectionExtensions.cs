@@ -6,10 +6,12 @@ using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
+using DevTerm.Observability;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
+using DevTerm.Transports.Mqtt;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -29,6 +31,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDevTermFrontEnd(this IServiceCollection services, CliOptions cliOptions)
     {
         services.AddDevTermPresenters(cliOptions);
+        StartTelemetry(cliOptions);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
@@ -111,6 +114,20 @@ public static class ServiceCollectionExtensions
                 o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
             });
         }
+        else if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddMqttTransport();
+            services.Configure<MqttTransportOptions>(o =>
+            {
+                o.Host = cliOptions.Host ?? string.Empty;
+                o.Port = int.TryParse(cliOptions.Port, out var mqttPort) ? mqttPort : 0;
+                o.SubscribeTopics = [.. (cliOptions.Subscribe ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+                o.PublishTopic = cliOptions.Publish;
+                o.Username = cliOptions.Username;
+                o.Password = cliOptions.Password;
+                o.TimeoutMs = cliOptions.WriteTimeoutMs;
+            });
+        }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             services.AddLoopbackTransport();
@@ -143,6 +160,19 @@ public static class ServiceCollectionExtensions
     /// transport. What <see cref="AddDevTermFrontEnd"/> builds on, and all playback composes
     /// (<see cref="PlaybackPresenters"/>), so replaying a log can't reach a real device.
     /// </summary>
+    // Opt-in (--otlp). Started here rather than as a hosted service because the WPF and console front ends build their
+    // host but never start it; flushed when the process exits.
+    private static void StartTelemetry(CliOptions cliOptions)
+    {
+        if (TelemetryExporter.ParseEndpoint(cliOptions.Otlp) is not { } endpoint)
+        {
+            return;
+        }
+
+        var exporter = TelemetryExporter.Start(endpoint, "devterm");
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => exporter.Dispose();
+    }
+
     public static IServiceCollection AddDevTermPresenters(this IServiceCollection services, CliOptions cliOptions)
     {
         ArgumentNullException.ThrowIfNull(cliOptions);

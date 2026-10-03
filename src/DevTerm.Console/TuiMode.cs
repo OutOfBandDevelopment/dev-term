@@ -95,6 +95,7 @@ public static class TuiMode
         }
 
         var app = Application.Create().Init();
+        TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;
         TuiTheme.Apply(ActiveTheme.Current);
         TuiWindowParts parts;
         try
