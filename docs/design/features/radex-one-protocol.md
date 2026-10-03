@@ -243,6 +243,8 @@ hardware — the mutating pair deliberately wasn't run without being explicitly 
 - Whether "Read Data" should be a one-shot query (as the source protocol treats it) or polled on
   an interval to behave like a live telemetry stream for a future rendering presenter/plot — the
   device itself doesn't push data unsolicited, so any "live" view means dev-term driving the polling.
+- **Units of the ambient reading (tentative, 2026-10-03):** display 0.12 uSv/h against a raw ambient of 12 suggests
+  0.01 uSv/h per count; one data point (`docs/test/2026-10-03-19-50-00.md`), still to confirm with paired readings.
 - The Read Serial/Version reply's exact reserved-byte layout past its first 4 bytes — see the
   "Command extensions" section above; deliberately not re-validated against its own inner checksum
   (unlike Read Data/Read Settings/the Write Settings ack, which now are), since the source trace's
