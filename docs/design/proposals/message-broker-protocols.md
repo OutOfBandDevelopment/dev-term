@@ -95,4 +95,6 @@ address). The same `address<TAB>payload` line model applies: the address is an A
 RabbitMQ.Client 7 (0-9-1 only; AMQP 1.0 is not supported). STOMP is a small hand-written 1.2 client (`StompFrame`
 encoder/parser, no heart-beats, auto-ack) since no maintained .NET client was worth a dependency. Verified against the
 `containers/` RabbitMQ: Integration tests for both, a wrong STOMP password failing the open, and a CLI round trip each.
-Not built: TLS, STOMP heart-beating and client acks, AMQP 1.0, durable queues.
+TLS (`--tls true`, optional `--cacertificate <file>` for a private CA) is built for both and verified against the
+`containers/` RabbitMQ's TLS listeners (AMQPS 5671, STOMP 21614) with a generated CA: a client trusting the CA connects,
+one that does not is refused. Not built: TLS for MQTT, STOMP heart-beating and client acks, AMQP 1.0, durable queues.

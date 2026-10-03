@@ -165,6 +165,16 @@ public static class DevTermConfiguration
                 profile[nameof(CliOptions.Username)] = options.Username;
             }
 
+            if (options.Tls)
+            {
+                profile[nameof(CliOptions.Tls)] = true;
+            }
+
+            if (options.CaCertificate is not null)
+            {
+                profile[nameof(CliOptions.CaCertificate)] = options.CaCertificate;
+            }
+
             // Password deliberately never persisted: a profile is plain JSON on disk.
         }
         else if (string.Equals(options.Transport, "loopback", StringComparison.OrdinalIgnoreCase))

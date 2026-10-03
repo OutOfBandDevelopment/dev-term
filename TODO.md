@@ -8,8 +8,8 @@ Completed work is logged by date under `docs/changes/`.
 
 Queue from your 2026-10-02 answers, in the order I'm taking them. Nothing below is built yet.
 
-1. **Message brokers and the web tunnel** (unlocked). MQTT, AMQP and STOMP are built and verified (see `docs/changes/2026-10-02.md` and `2026-10-03.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel). Left: a real home-automation broker check, TLS for the brokers, and Blazor rendering of control panels as a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
-3. **Observability**: built (see `docs/changes/2026-10-02.md`). Metrics now export every 10 s (see `docs/changes/2026-10-03.md`). Left: check it against the Aspire dashboard container, and `ILogger` export if wanted.
+1. **Message brokers and the web tunnel** (unlocked). MQTT, AMQP and STOMP are built and verified (see `docs/changes/2026-10-02.md` and `2026-10-03.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel). Left: a real home-automation broker check and Blazor rendering of control panels as a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
+3. **Observability**: built (see `docs/changes/2026-10-02.md`). Metrics now export every 10 s (see `docs/changes/2026-10-03.md`). Left: check it against the Aspire dashboard container. `ILogger` export has nothing to export yet (no code logs through `ILogger`), so it waits until something does.
 4. **TUI-only palette option** for the light theme on 16-color consoles: built (see `docs/changes/2026-10-02.md`). Left: look at it on a real legacy conhost.
 5. **Plugin loading**: the loader is built (see `docs/changes/2026-10-03.md`). Left: move the built-in decoders (NMEA, RadexOne, ...) out of the core references into plugin folders, and a Plugins list in the TUI/WPF (the console has `--listplugins true`).
 

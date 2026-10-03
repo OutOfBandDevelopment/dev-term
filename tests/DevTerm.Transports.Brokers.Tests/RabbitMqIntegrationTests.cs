@@ -53,6 +53,58 @@ public sealed class RabbitMqIntegrationTests
         Assert.AreEqual(ConnectionState.Faulted, transport.State);
     }
 
+    [TestMethod]
+    public async Task Amqps_WithTheTestCa_RoundTrips()
+    {
+        var ca = await RequireTlsAsync(5671);
+        var options = new BrokerTransportOptions { Host = "localhost", Port = 5671, Username = "devterm", Password = "devterm", UseTls = true, TlsCaCertificatePath = ca, SubscribeTopics = ["devterm-tls.#"], PublishTopic = "devterm-tls.out" };
+        await using var transport = new BrokerTransport(new AmqpConnectionFactory(), Options.Create(options));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await transport.WriteAsync("hello amqps\n"u8.ToArray(), TestContext.CancellationToken);
+
+        Assert.AreEqual("devterm-tls.out\thello amqps\n", await ReadAsync(transport));
+    }
+
+    [TestMethod]
+    public async Task StompOverTls_WithTheTestCa_RoundTrips()
+    {
+        var ca = await RequireTlsAsync(21614);
+        var options = new BrokerTransportOptions { Host = "localhost", Port = 21614, Username = "devterm", Password = "devterm", UseTls = true, TlsCaCertificatePath = ca, SubscribeTopics = ["/topic/devterm-tls"], PublishTopic = "/topic/devterm-tls" };
+        await using var transport = new BrokerTransport(new StompConnectionFactory(), Options.Create(options));
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        await transport.WriteAsync("hello stomps\n"u8.ToArray(), TestContext.CancellationToken);
+
+        Assert.AreEqual("/topic/devterm-tls\thello stomps\n", await ReadAsync(transport));
+    }
+
+    [TestMethod]
+    public async Task StompOverTls_WithoutTrustingTheCa_RefusesTheServerCertificate()
+    {
+        await RequireTlsAsync(21614);
+        var options = new BrokerTransportOptions { Host = "localhost", Port = 21614, Username = "devterm", Password = "devterm", UseTls = true };
+        await using var transport = new BrokerTransport(new StompConnectionFactory(), Options.Create(options));
+
+        await Assert.ThrowsAsync<System.Security.Authentication.AuthenticationException>(() => transport.OpenAsync(TestContext.CancellationToken));
+    }
+
+    private async Task<string> RequireTlsAsync(int port)
+    {
+        await RequireAsync(port);
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var ca = Path.Combine(dir.FullName, "containers", "certs", "ca.pem");
+            if (File.Exists(ca))
+            {
+                return ca;
+            }
+        }
+
+        Assert.Inconclusive("No containers/certs/ca.pem; run containers/make-test-certs.sh and recreate the rabbitmq container.");
+        return string.Empty;
+    }
+
     private async Task<string> ReadAsync(BrokerTransport transport)
     {
         var result = await transport.Input.ReadAsync(TestContext.CancellationToken);

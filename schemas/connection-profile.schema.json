@@ -121,6 +121,15 @@
         "null"
       ]
     },
+    "Tls": {
+      "type": "boolean"
+    },
+    "CaCertificate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Username": {
       "type": [
         "string",

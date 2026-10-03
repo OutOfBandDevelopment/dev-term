@@ -112,7 +112,12 @@ dotnet run --project src/DevTerm.Console -- --transport amqp --host 127.0.0.1 --
 [ascii] cli.out	hi amqp
 ```
 
-The Connection Editor offers both under Transport, with the same MQTT group of fields.
+For an encrypted connection add `--tls true` (AMQPS on 5671, STOMP over TLS on the broker's TLS port); the broker's
+certificate must be trusted by the system, or by `--cacertificate <file>` for a private CA. A certificate that does not
+validate is refused. `containers/make-test-certs.sh` makes a throwaway CA for the test RabbitMQ.
+
+The Connection Editor offers both under Transport, with the same MQTT group of fields; `Tls` and `CaCertificate` are
+kept in a saved profile and preserved when the editor saves it, but are not editor fields yet.
 
 ### Errors
 

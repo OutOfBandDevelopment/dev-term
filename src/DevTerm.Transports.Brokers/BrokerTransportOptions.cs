@@ -32,6 +32,12 @@ public sealed class BrokerTransportOptions
     /// <summary>Where a sent line goes unless it names its own address (<c>address&lt;TAB&gt;payload</c>).</summary>
     public string? PublishTopic { get; set; }
 
+    /// <summary>Encrypt the connection (AMQPS / STOMP over TLS). The server certificate must validate against the system trust store or <see cref="TlsCaCertificatePath"/>.</summary>
+    public bool UseTls { get; set; }
+
+    /// <summary>Optional PEM/CER file of an extra CA to trust for the server certificate (a private or test CA).</summary>
+    public string? TlsCaCertificatePath { get; set; }
+
     /// <summary>Milliseconds a connect, subscribe or publish may take before it fails.</summary>
     [Range(1, int.MaxValue)]
     public int TimeoutMs { get; set; } = 5000;

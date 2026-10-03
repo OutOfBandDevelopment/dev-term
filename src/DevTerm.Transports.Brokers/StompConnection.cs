@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,7 +16,7 @@ internal sealed class StompConnection : IBrokerConnection
     private readonly TaskCompletionSource _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _readCts = new();
     private TcpClient? _client;
-    private NetworkStream? _stream;
+    private Stream? _stream;
     private Task? _readTask;
     private int _subscriptionId;
     private bool _closing;
@@ -29,6 +30,13 @@ internal sealed class StompConnection : IBrokerConnection
         _client = new TcpClient();
         await _client.ConnectAsync(options.Host, options.Port, cancellationToken);
         _stream = _client.GetStream();
+        if (options.UseTls)
+        {
+            var tls = new SslStream(_stream, leaveInnerStreamOpen: false, BrokerTls.Validator(options));
+            _stream = tls;
+            await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = options.Host }, cancellationToken);
+        }
+
         _readTask = Task.Run(() => ReadLoopAsync(_readCts.Token), CancellationToken.None);
 
         var headers = new List<KeyValuePair<string, string>>

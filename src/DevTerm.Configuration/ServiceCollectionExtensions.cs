@@ -149,6 +149,8 @@ public static class ServiceCollectionExtensions
                 o.PublishTopic = cliOptions.Publish;
                 o.Username = cliOptions.Username;
                 o.Password = cliOptions.Password;
+                o.UseTls = cliOptions.Tls;
+                o.TlsCaCertificatePath = cliOptions.CaCertificate;
                 o.TimeoutMs = cliOptions.WriteTimeoutMs;
             });
         }

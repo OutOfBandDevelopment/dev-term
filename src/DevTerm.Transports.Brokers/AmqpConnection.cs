@@ -31,6 +31,14 @@ internal sealed class AmqpConnection : IBrokerConnection
             Password = string.IsNullOrEmpty(options.Password) ? "guest" : options.Password,
             RequestedConnectionTimeout = TimeSpan.FromMilliseconds(options.TimeoutMs),
         };
+        if (options.UseTls)
+        {
+            factory.Ssl = new SslOption(options.Host, enabled: true)
+            {
+                CertificateValidationCallback = BrokerTls.Validator(options),
+            };
+        }
+
         _exchange = string.IsNullOrWhiteSpace(options.Exchange) ? _defaultExchange : options.Exchange;
         _connection = await factory.CreateConnectionAsync(cancellationToken);
         _connection.ConnectionShutdownAsync += (_, e) =>

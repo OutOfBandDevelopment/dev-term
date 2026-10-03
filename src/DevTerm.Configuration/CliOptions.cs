@@ -197,6 +197,16 @@ public sealed class CliOptions
     [Description("Where a typed line is published unless it is written as topic<TAB>payload.")]
     public string? Publish { get; set; }
 
+    /// <summary>AMQP and STOMP only: encrypt the broker connection.</summary>
+    [Category("MQTT")]
+    [DisplayName("Use TLS")]
+    public bool Tls { get; set; }
+
+    /// <summary>AMQP and STOMP only: an extra CA certificate file to trust for the broker's TLS certificate.</summary>
+    [Category("MQTT")]
+    [DisplayName("CA certificate")]
+    public string? CaCertificate { get; set; }
+
     [Category("MQTT")]
     [DisplayName("User name")]
     public string? Username { get; set; }

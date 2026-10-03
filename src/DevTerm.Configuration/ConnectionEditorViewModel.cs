@@ -1369,6 +1369,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Publish = Publish.Trim() is { Length: > 0 } mp ? mp : null,
             Username = Username.Trim() is { Length: > 0 } mu ? mu : null,
             Password = _loadedOptions.Password,
+            Tls = _loadedOptions.Tls,
+            CaCertificate = _loadedOptions.CaCertificate,
             BleDeviceId = BleDeviceId.Trim() is { Length: > 0 } bdi ? bdi : null,
             BleServiceUuid = BleServiceUuid.Trim() is { Length: > 0 } bsu ? bsu : null,
             BleWriteCharacteristicUuid = BleWriteCharacteristicUuid.Trim() is { Length: > 0 } bwu ? bwu : null,
