@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using DevTerm.Configuration;
 using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
@@ -96,6 +97,41 @@ public sealed class FormRendererTests
 
             await Task.CompletedTask;
         });
+    }
+
+    [TestMethod]
+    public void CollapsibleSections_ExpandersHideTheRows_AndAreRemembered()
+    {
+        var model = new Model();
+        var definition = FormDefinitionGenerator.Generate(model);
+        SectionExpansionState.Forget(definition.Name);
+        try
+        {
+            StaTestRunner.Run(async () =>
+            {
+                using var binding = new FormBinding(model);
+                var parts = FormRenderer.Build(definition, binding, new WpfFormOptions { CollapsibleSections = true });
+
+                var main = parts.SectionExpanders["Main"];
+                Assert.IsTrue(main.IsExpanded);
+                Assert.AreSame(((StackPanel)main.Content).Children[0], parts.Rows[nameof(Model.Name)], "The rows sit inside the expander.");
+
+                main.IsExpanded = false;
+                Assert.IsFalse(SectionExpansionState.IsExpanded(definition.Name, "Main"));
+
+                var rebuilt = FormRenderer.Build(definition, binding, new WpfFormOptions { CollapsibleSections = true });
+                Assert.IsFalse(rebuilt.SectionExpanders["Main"].IsExpanded, "Reopening the form restores what was collapsed.");
+
+                var plain = FormRenderer.Build(definition, binding);
+                Assert.IsEmpty(plain.SectionExpanders, "Collapsing is opt-in; other forms keep plain headers.");
+
+                await Task.CompletedTask;
+            });
+        }
+        finally
+        {
+            SectionExpansionState.Forget(definition.Name);
+        }
     }
 
     [TestMethod]

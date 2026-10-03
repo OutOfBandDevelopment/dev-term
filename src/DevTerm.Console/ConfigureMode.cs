@@ -156,7 +156,7 @@ public static class ConfigureMode
         var detectBleButton = new Button { Text = "Detect BLE...", ShadowStyle = ShadowStyles.None };
         var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics...", ShadowStyle = ShadowStyles.None };
         var pickBleNotifyCharacteristicButton = new Button { Text = "Pick...", ShadowStyle = ShadowStyles.None };
-        var formOptions = new TuiFormOptions();
+        var formOptions = new TuiFormOptions { CollapsibleSections = true };
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => new TuiCustomWidget(detectUsbtmcButton, 2);

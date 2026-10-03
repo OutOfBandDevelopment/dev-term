@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
+using DevTerm.Configuration;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
 using Terminal.Gui.App;
@@ -70,7 +71,35 @@ internal static class FormRenderer
             var block = new SectionRows(section);
             if (!string.IsNullOrWhiteSpace(section.Label))
             {
-                var header = new Label { X = 0, Text = $"── {section.Label} ──" };
+                View header;
+                if (options.CollapsibleSections)
+                {
+                    // A focusable header (Enter/click toggles), like the control panel's; remembered per definition.
+                    block.Expanded = SectionExpansionState.IsExpanded(definition.Name, section.Label);
+                    var button = new Button
+                    {
+                        X = 0,
+                        Text = block.HeaderText,
+                        NoDecorations = true,
+                        NoPadding = true,
+                        ShadowStyle = ShadowStyles.None,
+                        HotKeySpecifier = (Rune)0xFFFF,
+                    };
+                    var captured = block;
+                    button.Accepting += (_, e) =>
+                    {
+                        captured.Expanded = !captured.Expanded;
+                        SectionExpansionState.Set(definition.Name, section.Label, captured.Expanded);
+                        parts.Relayout();
+                        e.Handled = true;
+                    };
+                    header = button;
+                }
+                else
+                {
+                    header = new Label { X = 0, Text = block.HeaderText };
+                }
+
                 parts.Root.Add(header);
                 parts.SectionHeaderLabels[section.Label] = header;
                 block.Header = header;
@@ -586,6 +615,9 @@ internal sealed class TuiFormOptions
 
     /// <summary>The columns the form may use (for wrapping choices and indicator text); the screen width less the window's frame by default.</summary>
     public int? AvailableWidth { get; set; }
+
+    /// <summary>Section headers become toggles that collapse their rows ("[-] Serial"), remembered per definition; off, headers are plain "── Serial ──" labels.</summary>
+    public bool CollapsibleSections { get; set; }
 }
 
 /// <summary>A host-built widget and how many lines it takes.</summary>
@@ -637,7 +669,7 @@ internal sealed class TuiFormParts
     /// <summary>The inline <c>! message</c> after a text field whose value fails its constraint.</summary>
     public Dictionary<string, Label> ErrorLabels { get; } = new(StringComparer.Ordinal);
 
-    public Dictionary<string, Label> SectionHeaderLabels { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, View> SectionHeaderLabels { get; } = new(StringComparer.Ordinal);
 
     /// <summary>The form's height as last laid out.</summary>
     public int Rows { get; private set; }
@@ -707,6 +739,9 @@ internal sealed class TuiFormParts
         }
     }
 
+    /// <summary>Re-lays out after a section header was toggled.</summary>
+    internal void Relayout() => Reflow();
+
     private void Reflow()
     {
         var y = 0;
@@ -740,7 +775,22 @@ internal sealed class TuiFormParts
             if (section.Header is { } shownHeader)
             {
                 shownHeader.Y = y;
+                if (shownHeader is Button button)
+                {
+                    button.Text = section.HeaderText;
+                }
+
                 y++;
+            }
+
+            if (!section.Expanded)
+            {
+                foreach (var row in section.Rows)
+                {
+                    row.SetVisible(false);
+                }
+
+                continue;
             }
 
             // The widget column follows the longest label among the rows actually shown, so a hidden
@@ -792,7 +842,17 @@ internal sealed class SectionRows(UiSection section)
 {
     public UiSection Section { get; } = section;
 
-    public Label? Header { get; set; }
+    public View? Header { get; set; }
+
+    /// <summary>Whether the rows show; only ever false for a collapsible form's section the user collapsed.</summary>
+    public bool Expanded { get; set; } = true;
+
+    /// <summary>True when the header is a toggle button (<see cref="TuiFormOptions.CollapsibleSections"/>).</summary>
+    public bool Collapsible => Header is Button;
+
+    public string HeaderText => Collapsible
+        ? $"[{(Expanded ? '-' : '+')}] {Section.Label}"
+        : $"── {Section.Label} ──";
 
     public List<FormRow> Rows { get; } = [];
 }

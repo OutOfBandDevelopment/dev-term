@@ -156,7 +156,7 @@ public partial class DeviceProfilesWindow : Window
         bleWriteCharacteristicRow.Children.Add(DetectBleCharacteristicsButton);
         bleWriteCharacteristicRow.Children.Add(DetectedBleWriteCharacteristicBox);
 
-        var options = new WpfFormOptions();
+        var options = new WpfFormOptions { CollapsibleSections = true };
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => DetectedPortsBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => DetectedHidDevicesBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => DetectedUsbtmcDevicesBox;

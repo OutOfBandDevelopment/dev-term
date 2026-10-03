@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using DevTerm.Configuration;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
 
@@ -51,13 +52,31 @@ internal static class FormRenderer
         foreach (var section in definition.Sections)
         {
             var panel = new StackPanel();
+            var body = panel;
             if (!string.IsNullOrWhiteSpace(section.Label))
             {
                 // Suppressed for the first section when its label just repeats a title the host already
                 // shows above the whole form (e.g. the manifest editor's PaneTitle) — otherwise a
                 // single-category form (ManifestIdentityForm) reads "Identity" / "Identity".
                 var repeatsHostTitle = first && string.Equals(section.Label, options.HideFirstSectionHeaderIfEquals, StringComparison.Ordinal);
-                if (!repeatsHostTitle)
+                if (!repeatsHostTitle && options.CollapsibleSections)
+                {
+                    // The header becomes an Expander over the rows (remembered per definition, like a control panel's).
+                    body = new StackPanel();
+                    var label = section.Label;
+                    var expander = new Expander
+                    {
+                        Header = new TextBlock { Text = label, FontWeight = FontWeights.Bold },
+                        IsExpanded = SectionExpansionState.IsExpanded(definition.Name, label),
+                        Margin = new Thickness(0, first ? 0 : 8, 0, 2),
+                        Content = body,
+                    };
+                    expander.Expanded += (_, _) => SectionExpansionState.Set(definition.Name, label, expanded: true);
+                    expander.Collapsed += (_, _) => SectionExpansionState.Set(definition.Name, label, expanded: false);
+                    panel.Children.Add(expander);
+                    parts.SectionExpanders[label] = expander;
+                }
+                else if (!repeatsHostTitle)
                 {
                     panel.Children.Add(new TextBlock { Text = section.Label, FontWeight = FontWeights.Bold, Margin = new Thickness(0, first ? 0 : 8, 0, 2) });
                 }
@@ -69,7 +88,7 @@ internal static class FormRenderer
             foreach (var control in section.Controls)
             {
                 var row = BuildRow(parts, control, options);
-                panel.Children.Add(row.Element);
+                body.Children.Add(row.Element);
                 parts.Rows[control.Id] = row.Element;
                 parts.RowList.Add(row);
             }
@@ -340,6 +359,9 @@ internal sealed class WpfFormOptions
     /// <summary>The label column's minimum width - it grows, across the whole form, to fit the longest label; null sizes each row's own label column to its label.</summary>
     public double? LabelColumnWidth { get; set; } = 140;
 
+    /// <summary>Each labeled section's header becomes an Expander that collapses its rows, remembered per definition; off, headers are plain bold text.</summary>
+    public bool CollapsibleSections { get; set; }
+
     /// <summary>When the form's first section's label equals this (ordinal), that section's own bold header is left off — the host already shows this text as the form's title.</summary>
     public string? HideFirstSectionHeaderIfEquals { get; set; }
 }
@@ -366,6 +388,9 @@ internal sealed class WpfFormParts
 
     /// <summary>Each labeled section's panel (header plus rows) — what's collapsed when the section's condition fails.</summary>
     public Dictionary<string, StackPanel> SectionPanels { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Each section's collapse toggle, for a form built with <see cref="WpfFormOptions.CollapsibleSections"/>.</summary>
+    public Dictionary<string, Expander> SectionExpanders { get; } = new(StringComparer.Ordinal);
 
     public Dictionary<string, TextBox> TextBoxes { get; } = new(StringComparer.Ordinal);
 
