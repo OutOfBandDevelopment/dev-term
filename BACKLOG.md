@@ -73,7 +73,7 @@ the rest.
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
-- [LXI support](docs/design/proposals/lxi-support.md).
+- [LXI VXI-11 client](docs/design/proposals/lxi-support.md): phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
 - [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
   route inbound messages and trigger outbound events to external services.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
