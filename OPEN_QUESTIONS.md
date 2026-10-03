@@ -28,8 +28,6 @@ Choices only the project owner can make (scope, direction, priorities).
   2026-10-03). — [multi-session-ui](docs/design/multi-session-ui.md)
 - **RFC 2217 server mode:** low priority; if built, project layout, CLI surface, multi-client policy, and whether a
   TCP listener proxy or virtual serial port (WSL) is the real need. — [rfc2217](docs/design/rfc2217.md)
-- **Safety/interlocks:** confirming a destructive command, core or per module (rate limits are decided). —
-  [device-control-modules](docs/design/device-control-modules.md)
 - **Config namespacing for plugin options** and whether named `--profile <name>` profiles are needed. —
   [platform](docs/design/platform.md)
 
@@ -113,7 +111,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 - **Connection Editor:** `ManifestName` and `ScpiAutoDetectTimeoutMs` are carried over but not shown. —
   [connection-editor](docs/specs/connection-editor.md)
-- **Control panel:** expand/collapse not persisted; a profile's `ManifestName` does not open its panel; charts lack
+- **Control panel:** expand/collapse not persisted; charts lack
   hover readout, table view and export; chart sizes are fixed. —
   [device-control-panel](docs/specs/device-control-panel.md)
 - **Expression picker:** no picking inside a channel segment or a button's parameter fields; no operators/regex
@@ -124,8 +122,6 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   declare a format. — [stream-monitor](docs/specs/stream-monitor.md)
 - **Theme builder:** no delete for saved themes; the TUI role list has no scroll indicator; no manual-use verification
   pass. — [theme-builder](docs/specs/theme-builder.md)
-- **TUI main screen:** the "Send as" parser menu is not rebuilt per tab. —
-  [tui-main-screen](docs/specs/tui-main-screen.md)
 - **Playback window:** the TUI has no seek control beyond Rewind/+10s/End/Step. —
   [playback-window](docs/specs/playback-window.md)
 

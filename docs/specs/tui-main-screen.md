@@ -124,4 +124,4 @@ points:
 ## Open items
 
 - **The "Send as" parser menu is built once, not rebuilt per tab.** Switching tabs does not change
-  which parser is selected for the newly active tab's `Send:` field.
+  which parser is selected for the newly active tab's `Send:` field. **Decided 2026-10-03:** the menu follows the active tab (its presenters and chosen parser), as WPF does. Not built yet.

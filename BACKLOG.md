@@ -64,6 +64,14 @@ the rest.
 - [Network device discovery](docs/design/proposals/network-device-discovery.md) and [in-app config editors for network bridges](docs/design/proposals/network-device-config-editors.md) (proposed 2026-10-03): one Detect button for any network device with prefill, and a Device > Configure device menu for the USR-TCP232-302 and EByte E810-DTU.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 
+### Decided 2026-10-03 (owner interview), not started
+
+- **Multi-session tabs:** per-tab `SendHistory`; last tab leaves an empty window; per-tab log and Stream Monitor plus a merged time-ordered view; Alt+Left/Right switch tabs ([multi-session-ui](docs/design/multi-session-ui.md)).
+- **Offer a profile's control panel on connect** (hint or button, remembered per profile) ([device-control-panel spec](docs/specs/device-control-panel.md)).
+- **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
+- **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
+- **TUI "Send as" menu follows the active tab** ([tui-main-screen spec](docs/specs/tui-main-screen.md)).
+
 ## Research (not backlog-ready)
 
 - [BYTECC BT-UP01 USB-over-network bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) —
