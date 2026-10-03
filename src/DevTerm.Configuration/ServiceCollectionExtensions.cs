@@ -6,6 +6,7 @@ using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
+using DevTerm.Core.Plugins;
 using DevTerm.Observability;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
@@ -155,11 +156,15 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// The core engine and every presenter, configured from <paramref name="cliOptions"/> — but no
-    /// transport. What <see cref="AddDevTermFrontEnd"/> builds on, and all playback composes
-    /// (<see cref="PlaybackPresenters"/>), so replaying a log can't reach a real device.
-    /// </summary>
+    /// <summary>Loads plugins from <see cref="CliOptions.Plugins"/> (default: <c>plugins</c> next to the app) and registers their <see cref="PluginLoadResult"/>s.</summary>
+    public static IServiceCollection AddPlugins(this IServiceCollection services, CliOptions cliOptions)
+    {
+        var directory = string.IsNullOrWhiteSpace(cliOptions.Plugins) ? Path.Combine(AppContext.BaseDirectory, "plugins") : cliOptions.Plugins;
+        var results = PluginLoader.LoadAll(directory, services);
+        services.AddSingleton<IReadOnlyList<PluginLoadResult>>(results);
+        return services;
+    }
+
     // Opt-in (--otlp). Started here rather than as a hosted service because the WPF and console front ends build their
     // host but never start it; flushed when the process exits.
     private static void StartTelemetry(CliOptions cliOptions)
@@ -173,6 +178,11 @@ public static class ServiceCollectionExtensions
         AppDomain.CurrentDomain.ProcessExit += (_, _) => exporter.Dispose();
     }
 
+    /// <summary>
+    /// The core engine and every presenter, configured from <paramref name="cliOptions"/> — but no
+    /// transport. What <see cref="AddDevTermFrontEnd"/> builds on, and all playback composes
+    /// (<see cref="PlaybackPresenters"/>), so replaying a log can't reach a real device.
+    /// </summary>
     public static IServiceCollection AddDevTermPresenters(this IServiceCollection services, CliOptions cliOptions)
     {
         ArgumentNullException.ThrowIfNull(cliOptions);
@@ -185,6 +195,7 @@ public static class ServiceCollectionExtensions
         services.AddZoomH4nPresenter();
         services.AddDe5000Presenter();
         services.AddNmeaGpsPresenter();
+        services.AddPlugins(cliOptions);
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
         services.AddStreamCaptureConverter(cliOptions);
         return services;

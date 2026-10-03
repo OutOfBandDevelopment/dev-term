@@ -39,9 +39,6 @@ the rest.
   frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
-- Dynamic plugin loading (queued in `TODO.md`; decoders and rendering presenters to move out of the core references) (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
-  `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
-  `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual

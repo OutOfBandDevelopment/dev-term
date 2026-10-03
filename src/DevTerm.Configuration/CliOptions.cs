@@ -340,6 +340,14 @@ public sealed class CliOptions
     public string? Log { get; set; }
 
     /// <summary>
+    /// Folder of plugins (<c>&lt;folder&gt;/&lt;plugin&gt;/plugin.json</c> + assemblies) loaded at startup. Defaults to a <c>plugins</c>
+    /// folder next to the app when that exists. See docs/design/plugin-model.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("Plugins folder")]
+    public string? Plugins { get; set; }
+
+    /// <summary>
     /// Opt-in OpenTelemetry export of dev-term's own traces and metrics (connection open spans, bytes
     /// sent/received, disconnects) over OTLP/gRPC: <c>--otlp http://localhost:4317</c>, or <c>--otlp true</c> for that
     /// default. Off when unset. See docs/design/observability.md.

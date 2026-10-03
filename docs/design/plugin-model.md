@@ -59,6 +59,42 @@ The initial text-encoding and numeric-base presenters, and the initial transport
 
 A separate, no-code path exists alongside this one for simple devices: see [device-manifests.md](device-manifests.md) — a declarative JSON manifest (or folder/zip of one) rather than a compiled plugin. The two aren't competing mechanisms; a device manifest is for gear simple enough not to need real code at all, and still needs *this* plugin model (once built) to actually load/discover the manifest files themselves.
 
+## Status
+
+Built 2026-10-03 (the loading mechanism; built-in devices still register by hand and have not moved out):
+
+- `DevTerm.Core.Plugins`: `IPluginModule`, `PluginManifest` (`plugin.json`: `name`, `version`, `contract`, `assembly`),
+  `PluginLoader.LoadAll(dir, services)`. Contract version is `PluginLoader.ContractVersion` (1).
+- Layout: `<plugins>/<name>/plugin.json` plus the plugin's assemblies. Each plugin gets its own `AssemblyLoadContext`; an
+  assembly the host already loaded (`DevTerm.Core` and the BCL) is never loaded twice, so `IPresenter` in the plugin is the
+  host's own type.
+- A plugin is skipped and reported (never thrown) for a bad or missing manifest, another contract version, an assembly outside
+  its folder, or no `IPluginModule`. A module's registrations are staged and only added if the whole module configures, so a
+  half-registered plugin can't leak in. Skips print to stderr in the console app.
+- Where: `plugins` next to the app, or `--plugins <folder>` (`CliOptions.Plugins`, also `DEVTERM_PLUGINS`). Loaded from
+  `AddDevTermPresenters`, so playback sees presenters from plugins too.
+- Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
+  with `--plugins <folder> --presenter sample`.
+- Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing/trust, a plugin
+  registry, moving the built-in decoders (NMEA, RadexOne, ...) into plugin folders, a Plugins menu or list in the TUI/WPF.
+
+```plantuml
+@startuml
+participant "AddDevTermPresenters" as A
+participant PluginLoader as L
+participant "PluginLoadContext
+(per plugin)" as C
+participant IPluginModule as M
+A -> L : LoadAll(dir, services)
+loop each folder with plugin.json
+  L -> L : check contract, assembly path
+  L -> C : LoadFromAssemblyPath
+  L -> M : ConfigureServices(staged)
+  L -> A : copy staged registrations (or report a skip)
+end
+@enduml
+```
+
 ## Open questions
 
 - In-process vs. out-of-process plugin hosting (isolation/crash-resilience vs. complexity/perf).

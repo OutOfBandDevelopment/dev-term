@@ -1,5 +1,6 @@
 using DevTerm.Configuration;
 using DevTerm.Console;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
@@ -232,6 +233,11 @@ var host = hostBuilder.Build();
 
 using (host)
 {
+    foreach (var plugin in host.Services.GetRequiredService<IReadOnlyList<PluginLoadResult>>().Where(p => !p.Loaded))
+    {
+        Console.Error.WriteLine($"Plugin '{plugin.Name}' skipped: {plugin.Message}");
+    }
+
     var catalog = host.Services.GetRequiredService<PresenterCatalog>();
     IReadOnlyList<IPresenter> presenters;
     try

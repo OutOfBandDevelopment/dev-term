@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.5.0" />
     <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="MSTest" Version="4.4.1" />
@@ -20,6 +21,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevTerm.Core\DevTerm.Core.csproj" />
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
+    <!-- Built first (not referenced as code): the loader tests load its output from plugins/sample like a real plugin. -->
+    <ProjectReference Include="..\..\src\DevTerm.Plugins.Sample\DevTerm.Plugins.Sample.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="CopySamplePlugin" AfterTargets="Build">
+    <ItemGroup>
+      <SamplePluginFile Include="..\..\src\DevTerm.Plugins.Sample\bin\$(Configuration)\net10.0\DevTerm.Plugins.Sample.*" />
+      <SamplePluginFile Include="..\..\src\DevTerm.Plugins.Sample\bin\$(Configuration)\net10.0\plugin.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SamplePluginFile)" DestinationFolder="$(OutDir)plugins\sample" />
+  </Target>
 
 </Project>

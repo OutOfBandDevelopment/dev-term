@@ -217,6 +217,12 @@
         "null"
       ]
     },
+    "Plugins": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Otlp": {
       "type": [
         "string",

@@ -23,6 +23,7 @@
     <Project Path="src/DevTerm.Devices.Scpi/DevTerm.Devices.Scpi.csproj" />
     <Project Path="src/DevTerm.Devices.ZoomH4n/DevTerm.Devices.ZoomH4n.csproj" />
     <Project Path="src/DevTerm.Logging/DevTerm.Logging.csproj" />
+    <Project Path="src/DevTerm.Plugins.Sample/DevTerm.Plugins.Sample.csproj" />
     <Project Path="src/DevTerm.Presenters.Text/DevTerm.Presenters.Text.csproj" />
     <Project Path="src/DevTerm.Transports.Ble/DevTerm.Transports.Ble.csproj" />
     <Project Path="src/DevTerm.Transports.Ble.Windows/DevTerm.Transports.Ble.Windows.csproj" />
