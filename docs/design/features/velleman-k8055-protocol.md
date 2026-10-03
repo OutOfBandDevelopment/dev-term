@@ -180,10 +180,10 @@ the board rewired one pin at a time — see the open questions below).
 - **Now the more interesting question, given the device streams unprompted**: what `0x06` actually
   does, if anything — request an immediate report out of cycle? Change the streaming rate? Needs a
   real test (send it, see if anything changes) rather than assuming it's a "read command" at all.
-- Byte-for-byte confirmation of the input report's first two bytes (digital inputs) — not exercised
+- **Answered 2026-10-03** (`docs/test/2026-10-03-17-10-00.md`, two boards wired together): digital in I1 = `0x10`, I2 = `0x20` in byte 1, combining to `0x30`; I3 to I5 still unexercised. Original question: byte-for-byte confirmation of the input report's first two bytes (digital inputs) — not exercised
   in the real test above since nothing was wired to the digital input pins; needs the board rewired
   one pin at a time, which only the user can do.
-- **New 2026-09-22**: byte 2 of the input frame read a constant `0x01` this session (PID `0x5500`)
+- **Answered 2026-10-03:** byte 2 is the board address + 1 (`0x01` for PID 0x5500, `0x03` for 0x5502, `0x04` for 0x5503). The DAC-to-ADC loop read 20 for 128 and 41 for 255, unexplained scaling. Original note: byte 2 of the input frame read a constant `0x01` this session (PID `0x5500`)
   versus the constant `0x03` recorded in the original 2026-09-15 note (PID `0x5502`, a different
   physical board) — not yet explained, and not currently decoded into anything (`digitalInRaw` reads
   byte 1, not byte 2), so not blocking, but worth resolving alongside the digital-in bit mapping above.
