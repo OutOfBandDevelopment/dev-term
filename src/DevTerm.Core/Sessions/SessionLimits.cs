@@ -22,6 +22,9 @@ public sealed record SessionLimits
     /// <summary>Milliseconds a single connect attempt may take before it is abandoned; 0 means no limit beyond the transport's own.</summary>
     public int ConnectTimeoutMs { get; init; }
 
+    /// <summary>Milliseconds <see cref="Session.QueryAsync"/> waits for a reply before throwing <see cref="TimeoutException"/>; 0 means the two-minute default.</summary>
+    public int ResponseTimeoutMs { get; init; }
+
     /// <summary>Extra connect attempts after the first one fails; 0 means a single attempt.</summary>
     public int ConnectRetries { get; init; }
 

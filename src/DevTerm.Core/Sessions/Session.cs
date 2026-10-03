@@ -264,6 +264,41 @@ public sealed class Session : IAsyncDisposable
         }
     }
 
+    /// <summary>Default wait for a reply in <see cref="QueryAsync"/> when <see cref="SessionLimits.ResponseTimeoutMs"/> is 0.</summary>
+    public static readonly TimeSpan DefaultResponseTimeout = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Sends <paramref name="data"/> and waits for the next presenter output. A device that is offline or did not
+    /// understand the request never answers, so after the response timeout this throws <see cref="TimeoutException"/>
+    /// instead of waiting forever.
+    /// </summary>
+    /// <exception cref="TimeoutException">No output arrived within the response timeout.</exception>
+    public async Task<PresenterOutput> QueryAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
+    {
+        var wait = Limits.ResponseTimeoutMs > 0 ? TimeSpan.FromMilliseconds(Limits.ResponseTimeoutMs) : DefaultResponseTimeout;
+        var reply = new TaskCompletionSource<PresenterOutput>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnOutput(object? sender, PresenterOutput output) => reply.TrySetResult(output);
+        Output += OnOutput;
+        try
+        {
+            await SendAsync(data, cancellationToken).ConfigureAwait(false);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(wait);
+            try
+            {
+                return await reply.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"No reply within {wait.TotalMilliseconds:0} ms: the device may be offline or did not understand the request.");
+            }
+        }
+        finally
+        {
+            Output -= OnOutput;
+        }
+    }
+
     /// <summary>
     /// Sends <paramref name="data"/>. A failure here is a device I/O failure (the bytes are
     /// already encoded - input validation happens before this), so the session closes itself,
