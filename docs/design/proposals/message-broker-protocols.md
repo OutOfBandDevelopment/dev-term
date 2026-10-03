@@ -69,7 +69,7 @@ neither of those has: per-message **topic addressing**, not just message boundar
 - **Device to broker:** `match` is a regex over each device line; named groups fill `${name}` in `topic` and `payload` (default payload: the whole line). The first matching rule publishes through an `IMessageSink`.
 - **Broker to device:** `topic` is an exact topic or a trailing-`#` prefix; `match` runs over the payload text; `send` (plus the terminator) goes to the device via `Originated`.
 - **Timecode:** every routed message lands in `MessageRouter.History` stamped from one `TimeProvider`, so channels share a clock.
-- **Tested** over the loopback transport with an in-memory broker (`MessageRouterTests`): a broker `MEAS` becomes a device `MEAS?`, and the sample reply is published back. Wired to a real MQTT broker by `MqttRouterBridge` (verified against Mosquitto); AMQP/STOMP and a front-end UI are not yet.
+- **Tested** over the loopback transport with an in-memory broker (`MessageRouterTests`): a broker `MEAS` becomes a device `MEAS?`, and the sample reply is published back. Wired to a real MQTT broker by `MqttRouterBridge` (verified against Mosquitto); AMQP and STOMP by `BrokerRouterBridge` (verified against RabbitMQ); a front-end UI is not yet.
 
 ```plantuml
 @startuml
@@ -111,7 +111,8 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] AMQP 0-9-1 and STOMP 1.2 (`DevTerm.Transports.Brokers`, one project for both; reuse the generic `--subscribe`/`--publish`/`--username`/`--password` options), verified against the Docker RabbitMQ
 - [x] Routing proxy proof of concept over loopback (rules, router, live add, shared timecode)
 - [x] Wire the router to a real MQTT broker (`MqttRouterBridge`, verified against Mosquitto 2026-10-03)
-- [ ] Wire the router to AMQP and STOMP connections, a front-end rule editor, and loading rules from a profile or manifest
+- [x] Wire the router to AMQP and STOMP (`BrokerRouterBridge`, verified against RabbitMQ 2026-10-03)
+- [ ] A front-end rule editor, and loading rules from a profile or manifest
 - [ ] A real device or home-automation broker check for MQTT
 
 ## Status
