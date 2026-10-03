@@ -49,7 +49,7 @@ public sealed class ConnectionEditorFormTests
             Assert.AreSequenceEqual(
                 [null, nameof(ConnectionEditorViewModel.IsSerialLikeTransport), nameof(ConnectionEditorViewModel.IsTcpLikeTransport), nameof(ConnectionEditorViewModel.IsUsbDeviceTransport), nameof(ConnectionEditorViewModel.IsMqttTransport), nameof(ConnectionEditorViewModel.IsBleTransport), nameof(ConnectionEditorViewModel.IsLoopbackTransport), null, nameof(ConnectionEditorViewModel.SupportsWriteByteDelay)],
                 [.. definition.Sections.Select(s => s.VisibleWhen?.Id)]);
-            Assert.AreSequenceEqual(["Transport", "Description"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
+            Assert.AreSequenceEqual(["Transport", "Description", "Device manifest"], [.. definition.Sections[0].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
                 ["Port", "Detected ports", "", "Baud", "Data bits", "Parity", "Stop bits", "Handshake", "DTR", "RTS", "Write timeout (ms)", "Read timeout (ms)"],
                 [.. definition.Sections[1].Controls.Select(c => c.Label)]);
@@ -57,7 +57,7 @@ public sealed class ConnectionEditorFormTests
             Assert.AreSequenceEqual(
                 ["Vendor ID", "Product ID", "Serial number", "Show as hex", "Detected HID devices", "Detected USBTMC devices", ""],
                 [.. definition.Sections[3].Controls.Select(c => c.Label)]);
-            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "Send as", "Line ending", "ASCII max line length"], [.. definition.Sections[7].Controls.Select(c => c.Label)]);
+            Assert.AreSequenceEqual(["Presenters", "SCPI profile", "SCPI auto-detect timeout (ms)", "Send as", "Line ending", "ASCII max line length"], [.. definition.Sections[7].Controls.Select(c => c.Label)]);
 
             var transport = (ChoiceControl)definition.Sections[0].Controls[0];
             Assert.AreSequenceEqual(viewModel.TransportOptions, transport.Options);

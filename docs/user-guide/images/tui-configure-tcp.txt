@@ -9,9 +9,10 @@
 │⟦ Export Selected ⟧  ⟦ Export All ⟧  ⟦ Delete Selected ⟧                     █│
 │                                                                             █│
 │                                                                             █│
-│  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217  ○ mqtt    █│
-│               ○ amqp  ○ stomp  ○ loopback                                   ░│
-│  Description: Tektronix 2230 bench scope                                    ░│
+│  Transport:       ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217        █│
+│                   ○ vxi11  ○ mqtt  ○ amqp  ○ stomp  ○ loopback              ░│
+│  Description:     Tektronix 2230 bench scope                                ░│
+│  Device manifest:                                                           ░│
 │                                                                             ░│
 │[-] TCP                                                                      ░│
 │  Host:                     192.168.0.107                                    ░│
@@ -20,6 +21,5 @@
 │                                                                             ░│
 │                            ☐ Listen (server mode)                           ░│
 │                                                                             ░│
-│[-] Presentation                                                             ░│
-│  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ▼│
+│[-] Presentation                                                             ▼│
 └──────────────────────────────────────────────────────────────────────────────┘
