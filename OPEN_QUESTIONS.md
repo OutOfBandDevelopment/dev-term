@@ -51,7 +51,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
   [bytecc-bt-up01](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md)
 - **Z-Wave:** declare the node's command classes or query them; how the `.ksy` runtime wires into a device module. —
   [z-wave-support](docs/design/proposals/z-wave-support.md)
-- **Kuando Busylight:** multi-step batch sequences, jump/Repeat semantics and the footer bytes (a single-step batch works with opcode `0x10`, 2026-10-03); on/off time units (consistent with 100 ms, untimed, 2026-10-03); meaning of the
+- **Kuando Busylight:** multi-step batch sequences, jump/Repeat semantics and the footer bytes (a single-step batch works with opcode `0x10`, 2026-10-03); on/off time units (100 ms, user-observed 2026-10-03, untimed); meaning of the
   poll reply's two strings. — [kuando-busylight-protocol](docs/design/features/kuando-busylight-protocol.md)
 - **K8055:** units of the two trailing Set bytes; I3 to I5 bit mapping; why the DAC-to-ADC loop reads about
   0.16 of the sent value; PID mask support in `HidTransportOptions`. —
@@ -68,7 +68,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 - **USBTMC:** do the DG1022/DS1102E need a Zadig swap; is USB488 SRQ/serial-poll worth building; does the Zadig step
   belong in `docs/user-guide/`; GPIB is out of scope. —
   [usbtmc-transport](docs/design/usbtmc-transport.md)
-- **Stream Monitor against real hardware:** the DG1062Z BMP works in the Stream Monitor over LXI (user-reported 2026-10-03; the USB/USBTMC path is not recorded); the TDS2024 `HARDCopy` raw capture was valid but has not been run through it. —
+- **Stream Monitor against real hardware:** the DG1062Z BMP works in the Stream Monitor over LXI (user-reported 2026-10-03; the USB/USBTMC path is not recorded); the user reports the TDS2024 `HARDCopy` gives a BMP and a DG1062Z capture worked (2026-10-03, which path not stated). —
   [stream-monitor spec](docs/specs/stream-monitor.md)
 - **Capture correlation:** more than one simultaneous capture, and a detected-but-unsolicited stream. —
   [stream-content-detection](docs/design/features/stream-content-detection.md)
