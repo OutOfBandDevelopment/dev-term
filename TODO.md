@@ -40,8 +40,6 @@ Things I can't decide or verify alone. Answer inline after each **Your call:**; 
    **Your call:**
 10. **EByte E810 / UDP transport:** the `FD00`/`FD01` byte-count discrepancy needs a fresh deliberate capture of the real unit before any code. Can you take one?
     **Your call:**
-11. **LXI:** needs a real LXI instrument on the bench (which one?) before Phase 2; Phase 1 discovery could start without one. Start Phase 1?
-    **Your call:**
 12. **Z-Wave** (no controller) and **BYTECC BT-UP01** (needs the two cheap checks: does the vendor client make the device look local, does it speak USB/IP): keep, defer, or close each as won't-do?
     **Your call:**
 
