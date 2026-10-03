@@ -66,14 +66,14 @@ Host --> Go : stdin/stdout
 ## Completion checklist
 
 - [x] Host presenter (`ExternalProcessPresenter`) with handshake, reply timeout and fault handling
-- [x] Python and Java examples verified through the host; tests for a silent and a dying plugin
-- [ ] Go example run (needs a working `go`; the one on this machine is a container shim)
+- [x] Python, Java and Go examples verified through the host; tests for a silent and a dying plugin
+- [x] Go example run through the host (go 1.27.1, 2026-10-03)
 - [ ] `plugin.json` discovery of out-of-process plugins in `PluginLoader`
 - [ ] Transport and device-module variants
 - [ ] Signing and trust model
 
 ## Status
 
-Built 2026-10-03 and tested against real child processes (`ExternalProcessPresenterTests`, Integration): Python and
-Java pass; the Go case is Inconclusive here, so the Go example is written but unrun. Not yet loaded through
+Built 2026-10-03 and tested against real child processes (`ExternalProcessPresenterTests`, Integration): Python, Java
+and Go all pass (Go run with go 1.27.1 once installed; each case is Inconclusive when its toolchain is missing). Not yet loaded through
 `PluginLoader` or selectable from a front end.
