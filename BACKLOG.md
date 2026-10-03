@@ -82,7 +82,7 @@ the rest.
 - **Dockable MDI layout (WPF).** Sessions and Stream Monitor windows that can be snapped/docked around and
   onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
   library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
-- **Cross-process session channel, remaining work:** expose `SessionPipeServer` through a `--pipe <name>` flag in the front ends, an `--attach <name>` tail client, then the read-write and localhost web-service variants. Phase 1 (the read-only pipe) is built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
+- **Cross-process session channel, remaining work:** the read-write channel and the localhost web-service variant. The read-only pipe, `--pipe <name>` (all three front ends) and the `--attach <name>` tail client are built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
 - **Project (workspace) state: save and restore all open sessions.** Save the set of open tabs (each one's connection profile, plus as much state as is practical: presenter choices, send history, Stream Monitor/log settings, window layout) as one project file, and reopen it on launch or from a menu so closing the program with several devices attached comes back to the same connections. Builds on the multi-tab sessions; needs a decision on connection-only versus full state, and whether to auto-restore the last project.
 - **PCX (and PCL raster) preview in the Stream Monitor.** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
