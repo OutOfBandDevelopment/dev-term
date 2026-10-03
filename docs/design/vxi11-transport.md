@@ -57,7 +57,7 @@ T -> C : destroy_link
 **Implemented 2026-10-03** (`src/DevTerm.Transports.Vxi11`, 6 unit tests against a fake portmapper plus
 core server, plus a real-hardware test). **Verified against the Rigol DG1062Z at 192.168.0.87**: `*IDN?`
 returned `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12` through both the test and the console CLI.
-No other instrument has been tried; instruments that need device_clear, SRQ or locking are not covered.
+A fuller pass (queries, writes with readback, error queue, rapid-fire, reconnects) is in `docs/test/2026-10-03-15-20-00.md`; one `-410 Query INTERRUPTED` after an unanswered first `*IDN?` was seen once and not reproduced. No other instrument has been tried; instruments that need device_clear, SRQ or locking are not covered.
 
 ## Completion checklist
 
