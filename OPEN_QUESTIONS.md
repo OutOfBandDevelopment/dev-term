@@ -24,9 +24,8 @@ Choices only the project owner can make (scope, direction, priorities).
   [plugin-model](docs/design/plugin-model.md), [architecture](docs/design/architecture.md),
   [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md),
   [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
-- **Multi-session tabs:** per-tab versus shared `SendHistory` (a shared timecode across channels is wanted); per-tab
-  logging and Stream Monitor; whether closing the last tab closes the window; keyboard shortcuts for New/Close/next/prev
-  tab. — [multi-session-ui](docs/design/multi-session-ui.md)
+- **Multi-session tabs:** keyboard shortcuts for New/Close tab only (history, last tab, logging and next/prev keys decided
+  2026-10-03). — [multi-session-ui](docs/design/multi-session-ui.md)
 - **RFC 2217 server mode:** low priority; if built, project layout, CLI surface, multi-client policy, and whether a
   TCP listener proxy or virtual serial port (WSL) is the real need. — [rfc2217](docs/design/rfc2217.md)
 - **Safety/interlocks:** confirming a destructive command, core or per module (rate limits are decided). —

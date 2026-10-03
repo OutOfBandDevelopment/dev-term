@@ -160,6 +160,11 @@ W -> W : add tab to Tabs/TabControl, make it active
 
 ## Open questions
 
+**Decided 2026-10-03 (owner interview):** `SendHistory` is **per tab**. Closing the last tab leaves the window open and empty (no
+forced exit). Logging and the Stream Monitor are **both** per tab by default **and** available as one merged, time-ordered view
+across tabs (the shared timecode). Tab switching uses **Alt+Left / Alt+Right** in TUI and WPF. None of this is built yet beyond what
+the Status section says; the bullets below keep the original reasoning. Still open: keyboard shortcuts for New/Close tab.
+
 - **What stays window-scoped vs. becomes per-tab.** Candidates that are almost certainly
   window-scoped regardless of session count: theme (`View > Theme` already applies to "every open
   dev-term window", per both specs — one session tab isn't a window), the app preference file. Less
