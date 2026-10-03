@@ -175,6 +175,7 @@ than silence. Matching is case-insensitive (`HELLO`, `Hello`, and `hello` all ma
 - `Send Stream: N, ascii` → a deterministic N-character ASCII run
 - `Send Events: N` → N separate lines, `Event 1` through `Event N`
 - `MEAS?` → the next simulated sensor sample (`A=50.00 B=90.00 C=0.00 X=0.80 Y=0.00 Z=0.00 R=0.50 T=0.00 H=0.00` first); `Samples: N` → the next N, one per line. The sample counter is per connection, so the sequence is deterministic from connect (`LoopbackGenerators.SensorSample(index)`); the bundled "Loopback Sensor Demo" [device manifest](device-manifests.md) charts it
+- `STATUS?` → a labelled reading with units (`temp=21.50 C volts=3.30 V state=OK` first; the temperature drifts and `state` is `WARN` every fifth reading). The example input for the `keyvalue` plugin and `StructuredMessage`.
 - `help` or `?` → the command list above (`LoopbackScript.HelpLines`)
 
 The script is fixed today — no user-configurable custom script via the profile editor — and the
