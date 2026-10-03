@@ -42,6 +42,38 @@ public class WebRolesTests
     }
 
     [TestMethod]
+    public async Task BlazorPanelPage_RendersTheUiDefinitionGenerically_AndDisablesControlsForAReadOnlyViewer()
+    {
+        var (built, url) = await StartAsync("busylight");
+        await using (built.Hub)
+        {
+            using var operatorClient = Client("secret");
+            using var watcher = Client("watch");
+            var full = await operatorClient.GetStringAsync(url + "/panel");
+            var readOnly = await watcher.GetStringAsync(url + "/panel");
+
+            StringAssert.Contains(full, "<fieldset>");
+            StringAssert.Contains(full, "data-control=");
+            Assert.IsFalse(full.Contains("Read-only viewer", StringComparison.Ordinal));
+            StringAssert.Contains(readOnly, "Read-only viewer");
+            StringAssert.Contains(readOnly, "disabled");
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task BlazorPanelPage_WithoutAPanel_SaysSo()
+    {
+        var (built, url) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var operatorClient = Client("secret");
+            StringAssert.Contains(await operatorClient.GetStringAsync(url + "/panel"), "No control panel is configured");
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ReadOnlyToken_IsAccepted_AndReportedAsReadOnly()
     {
         var (built, url) = await StartAsync();

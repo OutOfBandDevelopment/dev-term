@@ -23,3 +23,7 @@ shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with
 
 It listens on loopback only unless you set `Web:AllowRemote`, `Web:Token`, `Web:CertificatePath` and an `https` URL.
 Every browser tab shares the one session. Field reference: [web terminal spec](../specs/web-terminal.md).
+
+## The Blazor panel page
+
+With `--Web:Panel busylight` (or `k8055`), open `/panel` for a server-rendered control panel; it is the same panel the main page shows, using the same token. A read-only token shows it with the controls disabled.

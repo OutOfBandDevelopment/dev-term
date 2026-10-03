@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>dev-term panel</title>
+    <style>
+        body { font: 14px system-ui, sans-serif; margin: 0; padding: 16px; background: #14181d; color: #dde3ea; }
+        fieldset { border: 1px solid #38424f; margin-bottom: 12px; }
+        legend { color: #8fb4d8; }
+        .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+        .row > label { min-width: 12em; }
+        .note { color: #8a96a3; }
+        .error { color: #ff8a80; }
+    </style>
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

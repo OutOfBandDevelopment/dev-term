@@ -1,0 +1,126 @@
+@page "/panel"
+@using DevTerm.UiDefinitions
+@using Microsoft.AspNetCore.Components.Web
+@inject PanelHostHolder Host
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+@if (Host.Definition is null)
+{
+    <p class="note">No control panel is configured (set Web:Panel).</p>
+    return;
+}
+
+<h2>@Host.Definition.Name</h2>
+@if (!string.IsNullOrEmpty(Host.Definition!.Description)) { <p class="note">@Host.Definition!.Description</p> }
+@if (_readOnly) { <p class="note">Read-only viewer: controls are disabled.</p> }
+@if (_error is not null) { <p class="error">@_error</p> }
+
+@foreach (var section in Host.Definition!.Sections)
+{
+    <fieldset>
+        @if (!string.IsNullOrEmpty(section.Label)) { <legend>@section.Label</legend> }
+        @foreach (var c in section.Controls)
+        {
+            <div class="row" data-control="@c.Id">
+                @switch (c)
+                {
+                    case ButtonControl b:
+                        <button disabled="@_readOnly" @onclick="() => InvokeAsync(b.CommandId ?? b.Id, null)">@b.Label</button>
+                        break;
+                    case ToggleControl t:
+                        <label>@t.Label</label>
+                        <input type="checkbox" checked="@t.DefaultValue" disabled="@_readOnly"
+                               @onchange="e => InvokeAsync(t.Id, Flag(e.Value))" />
+                        break;
+                    case SliderControl s:
+                        <label>@s.Label</label>
+                        <input type="range" min="@s.Minimum" max="@s.Maximum" step="@s.Step" value="@s.DefaultValue" disabled="@_readOnly"
+                               @onchange="e => InvokeAsync(s.Id, e.Value?.ToString())" />
+                        <span class="note">@s.Unit</span>
+                        break;
+                    case NumericControl n:
+                        <label>@n.Label</label>
+                        <input type="number" min="@n.Minimum" max="@n.Maximum" step="any" value="@n.DefaultValue" disabled="@_readOnly"
+                               @onchange="e => InvokeAsync(n.Id, e.Value?.ToString())" />
+                        <span class="note">@n.Unit</span>
+                        break;
+                    case ChoiceControl ch:
+                        <label>@ch.Label</label>
+                        <select disabled="@_readOnly" @onchange="e => InvokeAsync(ch.Id, e.Value?.ToString())">
+                            @foreach (var option in ch.Options)
+                            {
+                                <option value="@option" selected="@(option == ch.DefaultValue)">@option</option>
+                            }
+                        </select>
+                        break;
+                    case TextFieldControl tf:
+                        <label>@tf.Label</label>
+                        <input type="text" value="@tf.DefaultValue" maxlength="@tf.MaxLength" disabled="@_readOnly"
+                               @onchange="e => InvokeAsync(tf.Id, e.Value?.ToString())" />
+                        break;
+                    case IndicatorControl i:
+                        <label>@i.Label</label>
+                        <span>@i.DefaultValue</span>
+                        break;
+                    default:
+                        <label>@c.Label</label>
+                        <span class="note">(@c.GetType().Name is not shown on the web yet)</span>
+                        break;
+                }
+            </div>
+        }
+    </fieldset>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _error;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // The read-only flag is known only while prerendering (the request); carry it into the interactive circuit.
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else if (PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted))
+        {
+            _readOnly = persisted;
+        }
+        else
+        {
+            _readOnly = true; // unknown means no controls
+        }
+    }
+
+    private static string Flag(object? value) => value is true ? "1" : "0";
+
+    private async Task InvokeAsync(string commandId, string? value)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            await Host.Surface!.InvokeAsync(commandId, value);
+            _error = null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    public void Dispose() => _subscription.Dispose();
+}
