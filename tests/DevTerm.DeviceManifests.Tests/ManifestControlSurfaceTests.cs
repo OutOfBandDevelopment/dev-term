@@ -317,6 +317,19 @@ public sealed class ManifestControlSurfaceTests
     }
 
     [TestMethod]
+    public void UiBuilder_CarriesACommandsConfirmMessageToItsButton()
+    {
+        var manifest = BuildPowerSupply();
+        manifest.Ui = null;
+        manifest.OutboundCommands.Single(c => c.EffectiveId == "vset").ConfirmMessage = "Change the voltage?";
+
+        var controls = ManifestUiBuilder.Build(manifest).Sections.Single().Controls;
+
+        Assert.AreEqual("Change the voltage?", ((ButtonControl)controls.Single(c => c.Id == "vset.send")).ConfirmMessage);
+        Assert.IsNull(((ButtonControl)controls.Single(c => c.Id == "read.send")).ConfirmMessage);
+    }
+
+    [TestMethod]
     public void Catalog_FindsFoldersJsonFilesAndZips_UsingEachManifestsOwnName()
     {
         var root = Path.Combine(Path.GetTempPath(), "devterm-manifest-catalog", Path.GetRandomFileName());

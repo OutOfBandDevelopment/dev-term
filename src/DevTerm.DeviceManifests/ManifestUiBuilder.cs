@@ -63,6 +63,7 @@ public static class ManifestUiBuilder
             Id = $"{command.EffectiveId}.send",
             Label = command.Name,
             CommandId = command.EffectiveId,
+            ConfirmMessage = command.ConfirmMessage,
             ParameterFieldIds = command.Parameters.Count > 0 ? [.. command.Parameters.Select(p => ParameterFieldId(command, p))] : null,
         };
 

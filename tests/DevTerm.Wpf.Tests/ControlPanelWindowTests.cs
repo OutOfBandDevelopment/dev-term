@@ -199,6 +199,40 @@ public sealed class ControlPanelWindowTests
     }
 
     [TestMethod]
+    public void ButtonWithConfirmMessage_SendsOnlyWhenConfirmed()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var surface = new FakeControlSurface();
+            var definition = new UiDefinition
+            {
+                Name = "Confirm Device",
+                Sections = [new UiSection { Controls = [new ButtonControl { Id = "erase", Label = "Erase", ConfirmMessage = "Erase all?" }] }],
+            };
+            var window = new ControlPanelWindow(definition, surface, null) { ShowInTaskbar = false };
+            var asked = new List<string>();
+            var answer = false;
+            window.ConfirmSend = message =>
+            {
+                asked.Add(message);
+                return answer;
+            };
+            StaTestRunner.DoEvents();
+
+            var button = (Button)window.ControlViews["erase"];
+            button.RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+            Assert.IsEmpty(surface.Invocations);
+
+            answer = true;
+            button.RaiseEvent(new System.Windows.RoutedEventArgs(Button.ClickEvent));
+            Assert.HasCount(1, surface.Invocations);
+            Assert.AreSequenceEqual(["Erase all?", "Erase all?"], asked);
+
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestMethod]
     public void ButtonWithParameterFieldIds_WhenClicked_InvokesWithJoinedSiblingValues()
     {
         StaTestRunner.Run(async () =>

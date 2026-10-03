@@ -746,7 +746,7 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     parameterButtonView.Accepting += (_, e) =>
                     {
-                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions))
+                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions) && Confirmed(app, button))
                         {
                             Invoke(app, surface, panel.EchoSent, commandId, joined);
                         }
@@ -769,7 +769,11 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     buttonView.Accepting += (_, e) =>
                     {
-                        Invoke(app, surface, panel.EchoSent, commandId, null);
+                        if (Confirmed(app, button))
+                        {
+                            Invoke(app, surface, panel.EchoSent, commandId, null);
+                        }
+
                         e.Handled = true;
                     };
                     body.Add(buttonView);
@@ -1062,6 +1066,13 @@ internal static class ControlPanelMode
     /// disconnected itself) is shown in an error dialog over this panel - which, being modal, hides
     /// the main window's output pane where the disconnect is also reported.
     /// </summary>
+    /// <summary>Asks a button's <see cref="ButtonControl.ConfirmMessage"/>; replaceable so tests needn't open a modal.</summary>
+    internal static Func<IApplication, string, bool> ConfirmSend { get; set; } = (app, message) =>
+        MessageBox.Query(app, "dev-term — confirm", message, "Yes", "No") == 0;
+
+    private static bool Confirmed(IApplication app, ButtonControl button) =>
+        string.IsNullOrEmpty(button.ConfirmMessage) || ConfirmSend(app, button.ConfirmMessage);
+
     private static void Invoke(IApplication app, IControlSurface surface, Action<string>? echoSent, string commandId, string? value)
     {
         void Report(Exception ex) =>

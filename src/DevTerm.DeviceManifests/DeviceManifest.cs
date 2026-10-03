@@ -116,6 +116,9 @@ public sealed class OutboundCommand
     /// <summary>Whether the next reply line belongs to this command — shown by the indicator <see cref="EffectiveReplyId"/>.</summary>
     public bool IsQuery { get; set; }
 
+    /// <summary>A question the control panel asks before sending this command (Yes/No), for one that is hard to undo; null sends at once.</summary>
+    public string? ConfirmMessage { get; set; }
+
     /// <summary>The indicator id a query's reply publishes to; <c>{EffectiveId}.reply</c> when unset (the SCPI module's convention).</summary>
     public string? ReplyId { get; set; }
 
