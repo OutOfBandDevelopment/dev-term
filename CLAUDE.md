@@ -59,6 +59,8 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` / `DevTerm.Transports.Hid` — `ITransport`
   implementations. Each is independently testable via a fake stream (see "Testing" below), never
   real hardware/sockets.
+- `DevTerm.Transports.Vxi11` — VXI-11 (ONC-RPC over TCP) for LXI instruments, `--transport vxi11 --host <ip>`;
+  see docs/design/vxi11-transport.md. Verified against the Rigol DG1062Z.
 - `DevTerm.Transports.Loopback` — a zero-configuration, in-process fake-device `ITransport`
   (`Pipe`-backed, no real I/O/hardware involved) selectable in either front end so a user with no
   hardware attached can still exercise the UI end-to-end against a scripted device. See
