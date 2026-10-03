@@ -30,6 +30,7 @@
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
     <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
     <Project Path="src/DevTerm.Transports.Rfc2217/DevTerm.Transports.Rfc2217.csproj" />
+    <Project Path="src/DevTerm.Transports.Vxi11/DevTerm.Transports.Vxi11.csproj" />
     <Project Path="src/DevTerm.Transports.Mqtt/DevTerm.Transports.Mqtt.csproj" />
     <Project Path="src/DevTerm.Transports.Brokers/DevTerm.Transports.Brokers.csproj" />
     <Project Path="src/DevTerm.Observability/DevTerm.Observability.csproj" />
@@ -61,6 +62,7 @@
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Rfc2217.Tests/DevTerm.Transports.Rfc2217.Tests.csproj" />
+    <Project Path="tests/DevTerm.Transports.Vxi11.Tests/DevTerm.Transports.Vxi11.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Mqtt.Tests/DevTerm.Transports.Mqtt.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Brokers.Tests/DevTerm.Transports.Brokers.Tests.csproj" />
     <Project Path="tests/DevTerm.Observability.Tests/DevTerm.Observability.Tests.csproj" />

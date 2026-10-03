@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used by every test project unless dotnet test is given another settings file (see tests/Directory.Build.props).
+     Keeps a test run out of the real ~/.dev-term (profiles, preferences, logs, exports): DEVTERM_HOME is relative, so it
+     resolves under each test host's own output folder. devterm.runsettings (real hardware) sets the same variable. -->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <DEVTERM_HOME>devterm-test-home</DEVTERM_HOME>
+    </EnvironmentVariables>
+  </RunConfiguration>
+  <!-- No test may wait longer than two minutes: a missing reply is a failure, never a hang. A test that really needs
+       longer (real hardware) says so with its own [Timeout]. -->
+  <MSTest>
+    <TestTimeout>120000</TestTimeout>
+    <CooperativeCancellation>true</CooperativeCancellation>
+  </MSTest>
+</RunSettings>

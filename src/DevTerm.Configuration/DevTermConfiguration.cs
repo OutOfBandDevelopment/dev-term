@@ -90,6 +90,26 @@ public static class DevTermConfiguration
             [nameof(CliOptions.AsciiMaxLineLength)] = options.AsciiMaxLineLength,
         };
 
+        // Session limits are transport-independent; written only when set so existing profiles stay unchanged.
+        foreach (var (name, value) in new (string, int)[]
+        {
+            (nameof(CliOptions.SendIntervalMs), options.SendIntervalMs),
+            (nameof(CliOptions.ReadIntervalMs), options.ReadIntervalMs),
+            (nameof(CliOptions.ConnectTimeoutMs), options.ConnectTimeoutMs),
+            (nameof(CliOptions.ConnectRetries), options.ConnectRetries),
+        })
+        {
+            if (value != 0)
+            {
+                profile[name] = value;
+            }
+        }
+
+        if (options.ConnectRetryDelayMs != 1000)
+        {
+            profile[nameof(CliOptions.ConnectRetryDelayMs)] = options.ConnectRetryDelayMs;
+        }
+
         if (string.Equals(options.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
             profile[nameof(CliOptions.Host)] = options.Host;
@@ -146,7 +166,17 @@ public static class DevTermConfiguration
             // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
             // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
         }
-        else if (options.Transport is { } brokerKind && brokerKind.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
+        else if (string.Equals(options.Transport, "vxi11", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.Host)] = options.Host;
+            if (options.Port is not null)
+            {
+                profile[nameof(CliOptions.Port)] = options.Port;
+            }
+
+            profile[nameof(CliOptions.WriteTimeoutMs)] = options.WriteTimeoutMs;
+        }
+        else if (options.Transport is { } brokerKind&& brokerKind.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
         {
             profile[nameof(CliOptions.Host)] = options.Host;
             profile[nameof(CliOptions.Port)] = options.Port;
@@ -220,6 +250,11 @@ public static class DevTermConfiguration
         }
 
         // Stream Monitor converter settings, written only when set so a plain profile stays small.
+        if (!options.StreamAutoConvertHpgl)
+        {
+            profile[nameof(CliOptions.StreamAutoConvertHpgl)] = false;
+        }
+
         if (!string.IsNullOrWhiteSpace(options.StreamConvertMode))
         {
             profile[nameof(CliOptions.StreamConvertMode)] = options.StreamConvertMode;

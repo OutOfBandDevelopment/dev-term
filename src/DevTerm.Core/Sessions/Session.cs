@@ -54,6 +54,15 @@ public sealed class Session : IAsyncDisposable
         _pipeline = pipeline;
     }
 
+    /// <summary>
+    /// Pacing and connect-retry limits; <see cref="SessionLimits.None"/> by default. Set before <see cref="OpenAsync"/>;
+    /// a change takes effect on the next send, read or open.
+    /// </summary>
+    public SessionLimits Limits { get; set; } = SessionLimits.None;
+
+    private readonly SemaphoreSlim _sendGate = new(1, 1);
+    private long _lastSendTicks;
+
     public ConnectionState State => _transport.State;
 
     /// <summary>
@@ -73,10 +82,53 @@ public sealed class Session : IAsyncDisposable
     /// built can still have its replies decoded/correlated, without requiring the presenter to have
     /// been part of the connection's original <c>CliOptions.EffectivePresenters</c> selection.
     /// </summary>
-    public void AddPresenter(IPresenter presenter) => _pipeline.AddPresenter(presenter);
+    public void AddPresenter(IPresenter presenter)
+    {
+        _pipeline.AddPresenter(presenter);
+        if (presenter is IOriginatingPresenter originator)
+        {
+            originator.Originated -= OnOriginated;
+            originator.Originated += OnOriginated;
+        }
+    }
 
     /// <summary>Unbinds a presenter previously bound with <see cref="AddPresenter"/> (see <see cref="Pipeline.RemovePresenter"/>).</summary>
-    public void RemovePresenter(IPresenter presenter) => _pipeline.RemovePresenter(presenter);
+    public void RemovePresenter(IPresenter presenter)
+    {
+        if (presenter is IOriginatingPresenter originator)
+        {
+            originator.Originated -= OnOriginated;
+        }
+
+        _pipeline.RemovePresenter(presenter);
+    }
+
+    // Fire-and-forget on purpose: Originated can fire inside Render on the read loop, which must not
+    // await a send (SendAsync from the read loop is fine, awaiting it inline is not). A failed send
+    // already faults the session and raises Disconnected, so nothing more to report here.
+    private void OnOriginated(object? sender, ReadOnlyMemory<byte> data)
+    {
+        if (State != ConnectionState.Open)
+        {
+            return;
+        }
+
+        var copy = data.ToArray();
+        using (ExecutionContext.SuppressFlow())
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await SendAsync(copy).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Originated send failed: {ex.Message}");
+                }
+            }, CancellationToken.None);
+        }
+    }
 
     public event EventHandler<PresenterOutput>? Output;
 
@@ -147,7 +199,7 @@ public sealed class Session : IAsyncDisposable
                 activity?.SetTag("devterm.transport", transportName);
                 try
                 {
-                    await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+                    await OpenTransportWithLimitsAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -212,6 +264,41 @@ public sealed class Session : IAsyncDisposable
         }
     }
 
+    /// <summary>Default wait for a reply in <see cref="QueryAsync"/> when <see cref="SessionLimits.ResponseTimeoutMs"/> is 0.</summary>
+    public static readonly TimeSpan DefaultResponseTimeout = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Sends <paramref name="data"/> and waits for the next presenter output. A device that is offline or did not
+    /// understand the request never answers, so after the response timeout this throws <see cref="TimeoutException"/>
+    /// instead of waiting forever.
+    /// </summary>
+    /// <exception cref="TimeoutException">No output arrived within the response timeout.</exception>
+    public async Task<PresenterOutput> QueryAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
+    {
+        var wait = Limits.ResponseTimeoutMs > 0 ? TimeSpan.FromMilliseconds(Limits.ResponseTimeoutMs) : DefaultResponseTimeout;
+        var reply = new TaskCompletionSource<PresenterOutput>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnOutput(object? sender, PresenterOutput output) => reply.TrySetResult(output);
+        Output += OnOutput;
+        try
+        {
+            await SendAsync(data, cancellationToken).ConfigureAwait(false);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(wait);
+            try
+            {
+                return await reply.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"No reply within {wait.TotalMilliseconds:0} ms: the device may be offline or did not understand the request.");
+            }
+        }
+        finally
+        {
+            Output -= OnOutput;
+        }
+    }
+
     /// <summary>
     /// Sends <paramref name="data"/>. A failure here is a device I/O failure (the bytes are
     /// already encoded - input validation happens before this), so the session closes itself,
@@ -232,12 +319,74 @@ public sealed class Session : IAsyncDisposable
 
         try
         {
+            await ThrottleSendAsync(cancellationToken).ConfigureAwait(false);
             await _transport.WriteAsync(data, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (wasOpen && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             await FaultAsync(generation, ex).ConfigureAwait(false);
             throw;
+        }
+    }
+
+    private async Task OpenTransportWithLimitsAsync(CancellationToken cancellationToken)
+    {
+        var limits = Limits;
+        var attempts = 1 + Math.Max(0, limits.ConnectRetries);
+        for (var attempt = 1; ; attempt++)
+        {
+            using var timeout = limits.ConnectTimeoutMs > 0
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                : null;
+            timeout?.CancelAfter(limits.ConnectTimeoutMs);
+            try
+            {
+                await _transport.OpenAsync(timeout?.Token ?? cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (timeout is not null && !cancellationToken.IsCancellationRequested)
+            {
+                if (attempt >= attempts)
+                {
+                    throw new TimeoutException($"Connecting did not complete within {limits.ConnectTimeoutMs} ms.");
+                }
+            }
+            catch (Exception) when (attempt < attempts && !cancellationToken.IsCancellationRequested)
+            {
+                // Retry below.
+            }
+
+            await Task.Delay(Math.Max(0, limits.ConnectRetryDelayMs), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Serializes sends so the minimum gap holds between concurrent callers too.
+    private async Task ThrottleSendAsync(CancellationToken cancellationToken)
+    {
+        var interval = Limits.MinSendIntervalMs;
+        if (interval <= 0)
+        {
+            return;
+        }
+
+        await _sendGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var last = Interlocked.Read(ref _lastSendTicks);
+            if (last != 0)
+            {
+                var wait = interval - (int)Stopwatch.GetElapsedTime(last).TotalMilliseconds;
+                if (wait > 0)
+                {
+                    await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            Interlocked.Exchange(ref _lastSendTicks, Stopwatch.GetTimestamp());
+        }
+        finally
+        {
+            _sendGate.Release();
         }
     }
 
@@ -275,6 +424,11 @@ public sealed class Session : IAsyncDisposable
                     // The transport's input ended without StopAsync asking it to - the device or
                     // peer closed the connection.
                     break;
+                }
+
+                if (Limits.MinReadIntervalMs > 0 && !buffer.IsEmpty)
+                {
+                    await Task.Delay(Limits.MinReadIntervalMs, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

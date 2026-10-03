@@ -122,6 +122,30 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_Vxi11WithHostOnly_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "vxi11", Host = "192.168.0.87" });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    public void Validate_Vxi11WithoutHost_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "vxi11" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_Vxi11WithBadPort_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "vxi11", Host = "x", Port = "abc" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
     public void Validate_Rfc2217WithHostAndPort_Succeeds()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217" });

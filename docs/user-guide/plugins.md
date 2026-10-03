@@ -1,0 +1,30 @@
+# Seeing which plugins loaded
+
+A plugin is a folder `<plugins>/<name>/plugin.json` plus its assemblies (see
+[`docs/design/plugin-model.md`](../design/plugin-model.md)). The plugins folder is `plugins` next to the app, or whatever
+`--plugins <folder>` (or `DEVTERM_PLUGINS`) points at. Plugins are loaded once, at startup.
+
+## CLI
+
+```bash
+dotnet run --project src/DevTerm.Console -- --listplugins true
+```
+
+One line per plugin folder, then exit:
+
+```
+alpha  loaded  (C:\apps\devterm\plugins\alpha)
+beta  skipped: no plugin.json  (C:\apps\devterm\plugins\beta)
+```
+
+With no plugins it prints `No plugins found.`
+
+## TUI and WPF
+
+**Device > Plugins...** shows the same lines in a message box. It is always enabled (no connection needed) and does not
+rescan: restart dev-term after adding or removing a plugin folder.
+
+A skipped plugin never stops the app; the reason (bad manifest, another contract version, an assembly outside its folder,
+no plugin module) is the text after `skipped:`.
+
+Reference: [`tui-main-screen.md`](../specs/tui-main-screen.md), [`wpf-main-window.md`](../specs/wpf-main-window.md).

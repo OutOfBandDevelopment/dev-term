@@ -248,13 +248,8 @@ own repeated practice of not trusting a fix until checked against real hardware:
   transport yet to document a user-facing flow for).
 - Whether USB488's `READ_STATUS_BYTE`/service-request handling is worth building in v1, or whether a
   simple synchronous send/query cycle (no serial-poll, no SRQ) is enough for how these instruments
-  are actually used from dev-term today (matching how GPIB-via-Prologix's own v1 scope in
-  `docs/design/transports.md` also skips SRQ handling).
-- Whether this transport can share any code with a possible future GPIB-via-Prologix controller
-  layer (both ultimately drive SCPI-speaking bench instruments) — likely not much, since GPIB's
-  framing (Prologix's `++` ASCII layer over serial/TCP) and USBTMC's (binary headers over raw USB
-  bulk transfers) don't overlap; probably two independent implementations sharing only the SCPI
-  profile data above them, the same way Serial/TCP/HID share no decoder code with each other today.
+  are actually used from dev-term today.
+- ~~Whether this transport can share code with a GPIB controller layer~~ **Moot (2026-10-03):** GPIB is out of scope.
 - **Resolved**: bulk-endpoint stall recovery (`CLEAR_FEATURE` mentioned above) is now implemented —
   `SystemUsbtmcDevice.Open()` calls `ClearHalt()` on both endpoints before first use, and
   `WriteBulkOut`/`ReadBulkIn` each clear-and-retry once on `Error.Pipe` — see

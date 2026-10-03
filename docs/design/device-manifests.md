@@ -157,7 +157,7 @@ to `~/.dev-term/manifests` by default.
   open the panel by itself yet.
 - **Not a Kaitai Struct reimplementation** — a `.ksy` file is *not* run. `KsyImporter` instead reads a fixed-layout
   `.ksy` (numbers, strings, byte runs, magic `contents`) into a `FrameSchema`, stored as `Inbound.Frame` (see
-  [the importer proposal](proposals/ksy-importer.md)); anything dynamic (`repeat`, `if`, `switch-on`, user types) is
+  [the importer feature doc](features/ksy-importer.md)); anything dynamic (`repeat`, `if`, `switch-on`, user types) is
   reported and ends the frame. The manifest's own `KaitaiFile` is still just a reference.
 
 ## Open questions
@@ -170,12 +170,8 @@ to `~/.dev-term/manifests` by default.
   2026-09-25** for the synchronous case: pairing is per *command* (`IsQuery`/`ReplyId`, FIFO like
   SCPI), and patterns stay independent, always-on matches against every line, which is what lets
   them decode streamed telemetry too. Interleaved/concurrent replies remain unsupported.
-- Where package-mode manifests actually live on disk once loaded from a `.zip` — still extracted to
-  a fresh temp folder per load (`%TEMP%\devterm-manifests\…`) and never cleaned up; a per-user cache
-  keyed by the zip's hash would avoid re-extracting and the leak.
-- Whether a single-file manifest should be allowed to *also* reference an external `.ksy` (accepting
-  that it's then not really "single file" in practice) or whether that combination should be
-  rejected outright to keep the two modes' guarantees clean and unambiguous.
+- ~~Where package-mode manifests live on disk once loaded from a `.zip`~~ **Decided 2026-10-03:** default to a folder under the app data folder (`DevTermHome.Root`) rather than `%TEMP%`, **Built 2026-10-03:** `DevTermHome.Root/manifest-cache/<hash of path, size and mtime>`, so an unchanged zip is re-extracted into the same folder. Offering the user a choice of location is not built.
+- ~~Whether a single-file manifest may also reference an external `.ksy`~~ **Decided 2026-10-03:** allowed. Referenced files already resolve relative to the manifest's own location, so a lone `device.json` with a sibling `.ksy` just works; it is simply not self-contained. Rejecting it would add a check and a failure mode for no benefit.
 
 See [connection-profiles.md](connection-profiles.md) for how a manifest gets *reached* in practice
 — a saved connection profile references one by path, so picking a profile from a menu is what

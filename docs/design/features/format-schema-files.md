@@ -1,6 +1,6 @@
 # Schema files for dev-term's custom formats
 
-Raised 2026-10-02 alongside the `.ksy` work ([manifest expression builder follow-up](../features/manifest-editor-expression-builder.md)):
+Raised 2026-10-02 alongside the `.ksy` work ([manifest expression builder follow-up](manifest-editor-expression-builder.md)):
 dev-term now has several hand-authored, no-code file formats, and none has a machine-readable schema. The
 planned `.ksy` importer will also emit one of them, so a generated file and a hand-written one need to
 be checked against the same definition.

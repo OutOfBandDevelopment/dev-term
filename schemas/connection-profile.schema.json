@@ -88,6 +88,47 @@
     "WriteByteDelayMs": {
       "type": "integer"
     },
+    "SendIntervalMs": {
+      "type": "integer"
+    },
+    "ReadIntervalMs": {
+      "type": "integer"
+    },
+    "ConnectTimeoutMs": {
+      "type": "integer"
+    },
+    "ConnectRetries": {
+      "type": "integer"
+    },
+    "ConnectRetryDelayMs": {
+      "type": "integer"
+    },
+    "SessionLimits": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "MinSendIntervalMs": {
+          "type": "integer"
+        },
+        "MinReadIntervalMs": {
+          "type": "integer"
+        },
+        "ConnectTimeoutMs": {
+          "type": "integer"
+        },
+        "ResponseTimeoutMs": {
+          "type": "integer"
+        },
+        "ConnectRetries": {
+          "type": "integer"
+        },
+        "ConnectRetryDelayMs": {
+          "type": "integer"
+        }
+      }
+    },
     "ReadTimeoutMs": {
       "type": "integer"
     },
@@ -187,6 +228,30 @@
     "ListLxiDevices": {
       "type": "boolean"
     },
+    "Pipe": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Attach": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ListCaptures": {
+      "type": "integer"
+    },
+    "ExportCaptures": {
+      "type": "integer"
+    },
+    "ExportTo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ListPlugins": {
       "type": "boolean"
     },
@@ -252,6 +317,9 @@
     },
     "PlaybackSpeed": {
       "type": "number"
+    },
+    "StreamAutoConvertHpgl": {
+      "type": "boolean"
     },
     "StreamConvertMode": {
       "type": [

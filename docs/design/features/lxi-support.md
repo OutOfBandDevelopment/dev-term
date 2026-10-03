@@ -1,6 +1,6 @@
 # LXI support
 
-Sourced from `BACKLOG.md`'s "Proposed Ideas" section (added 2026-09-30): "LXI support."
+Started as a proposal (from `BACKLOG.md`, 2026-09-30); moved to features 2026-10-03 once built and verified.
 
 LXI (LAN eXtensions for Instrumentation) is the network-connected-bench-equipment counterpart to
 USBTMC/GPIB — most LXI instruments expose raw SCPI over a TCP socket (conventionally port 5025,
@@ -12,13 +12,11 @@ broadcast.
 
 The common case — an instrument that just speaks SCPI over a raw TCP socket — needs **no new
 transport**. [Transports.md](../transports.md)'s existing TCP client mode plus
-[`DevTerm.Devices.Scpi`](../features/scpi-instrument-control.md) already do exactly this: connect out
-to `host:5025`, send `*IDN?`/whatever profile commands, get a line back. This is the same shape as
-GPIB-via-Prologix (`transports.md`'s "Extensibility" section): "most inexpensive adapters... layer a
-simple protocol over what the OS sees as a plain serial port or plain TCP socket, so the existing
-transports already do the I/O." An LXI instrument with a raw-socket SCPI port is, from dev-term's
+[`DevTerm.Devices.Scpi`](scpi-instrument-control.md) already do exactly this: connect out
+to `host:5025`, send `*IDN?`/whatever profile commands, get a line back. This needs no new
+transport: the existing TCP transport already does the I/O. An LXI instrument with a raw-socket SCPI port is, from dev-term's
 point of view, already supported today via `--transport tcp --host <ip> --port 5025` plus an SCPI
-profile — this proposal is about the parts that aren't covered yet.
+profile — this doc covers the parts that weren't covered.
 
 ## What's actually new
 
@@ -48,27 +46,27 @@ profile — this proposal is about the parts that aren't covered yet.
 
 ## Open questions
 
-- Whether any of the project's existing bench instruments (currently profiled over serial/USBTMC —
+- ~~Whether any of the project's existing bench instruments (currently profiled over serial/USBTMC —
   Rigol/Tektronix/HP gear) actually has a LAN interface at all; none of the existing SCPI profiles
   target one. Needs a real LXI-capable instrument confirmed on hand before Phase 2 is worth starting,
-  per this project's real-hardware-grounding convention.
+  per this project's real-hardware-grounding convention.~~ **Answered 2026-10-03:** the Rigol DG1062Z is on the LAN (192.168.0.87) and Phase 2 (VXI-11) was built and verified against it; see `docs/test/2026-10-03-15-20-00.md`.
 - Whether LXI discovery belongs in `DevTerm.Transports.Tcp` itself or as a separate optional scanner
   component the TCP transport doesn't depend on (mirroring how BLE's scanner is a separate,
   on-demand-invoked piece rather than baked into `BleTransport` itself).
 
 ## Completion checklist
 
-What is needed before this proposal can be closed. Tick items as they land, in the same change.
+What was needed to close this out. Tick items as they land, in the same change.
 
 - [x] Confirm a real LXI instrument on the bench: Rigol DG1062Z at 192.168.0.87 (2026-10-02)
 - [x] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module (2026-10-03)
-- [x] Phase 2: VXI-11 client deliberately not built (2026-10-03): the only LXI instrument on hand speaks raw SCPI; add it when one needs it
+- [x] Phase 2: VXI-11 client built (2026-10-03) as `--transport vxi11`, verified against the DG1062Z: see [VXI-11 transport](../vxi11-transport.md)
 - [x] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries (Phase 1 picker)
 - [x] Real-hardware pass: see the latest `docs/test/` report for the DG1062Z (discovery plus read-only SCPI over TCP, 2026-10-03)
 
 ## Status
 
-**Done 2026-10-03: Phase 1 built; Phase 2 (VXI-11) deliberately deferred until an instrument needs it.** A VXI-11 client would add device_clear, the status byte, SRQs, locking and explicit end-of-message framing; none has been needed on the bench. Discovery is `DevTerm.Transports.Tcp.LxiDiscovery`: it broadcasts an
+**Done 2026-10-03: Phase 1 and Phase 2 built.** Phase 2 is the core-channel VXI-11 client (`--transport vxi11`, see [VXI-11 transport](../vxi11-transport.md)), added when asked to test against the DG1062Z; device_clear, status byte, SRQs and locking are still not built. Discovery is `DevTerm.Transports.Tcp.LxiDiscovery`: it broadcasts an
 ONC-RPC portmapper `GETPORT` for the VXI-11 core program to UDP 111 on every up IPv4 interface and keeps hosts that answer with
 a non-zero port, then asks each for `*IDN?` on raw ports 5025 and 5555. mDNS (`_lxi._tcp`) was tried first and the DG1062Z
 never answered it, so it is not used. Run against the bench network it found the DG1062Z
@@ -99,4 +97,4 @@ Earlier note, before Phase 1 (2026-10-02): the Rigol DG1062Z
 answers raw SCPI** (`*IDN?` -> `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`), so the existing TCP
 transport plus the DG1062Z profile already covers it (`--transport tcp --host 192.168.0.87 --port 5555`);
 Rigol uses 5555, not the conventional 5025. TCP 111 (ONC-RPC portmapper, i.e. VXI-11) and 80 (web) are
-also open, so a Phase 2 VXI-11 client has a real target. No VXI-11 code exists, by decision.
+also open; the Phase 2 client connected there and read `*IDN?` back (2026-10-03).

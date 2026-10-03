@@ -21,12 +21,6 @@ the rest.
 - RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
-- **RFC 2217 client real-server verification** — `Rfc2217Transport` (landed 2026-09-30, see
-  `docs/changes/2026-09-30.md`) is only unit-tested against a fake server so far. Run it against a
-  real RFC 2217 server (`ser2net`, or pyserial's `rfc2217_server.py`) once one is available, per
-  `docs/design/rfc2217.md`'s Testing strategy section, and flip its Status note once that's done.
-  Deferred 2026-09-30; a ser2net container now exists (`containers/`) and a manual smoke run passed
-  2026-10-02. Still open: an automated Integration test against it (skipping when the port is closed).
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs
@@ -34,19 +28,13 @@ the rest.
 
 ### Plugin architecture, decoders & presenters
 
-- `.ksy` importer gaps (queued in `TODO.md` 2026-10-02; the importer, binary frames and the Radex One layouts are built, see
-  `docs/changes/2026-10-02.md`): **bit fields** (the Zoom H4n status `.ksy` fails to import until then), **variable-length
-  frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
-  so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
-  separate, already-built path.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
   drawing/rendering half, for the HPGL/PostScript/PCL the Stream Monitor ([proposal](docs/design/features/stream-content-detection.md))
   already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 - Stream Monitor leftovers ([feature](docs/design/features/stream-content-detection.md)): direct in-window preview of
-  PostScript and PCL (needs the rendering presenter above), SVG drawing in the TUI (it only lists the converted file),
-  a CLI-mode "export last N captures", and a retention/cleanup policy for the exports folder (low priority).
+  PostScript and PCL (needs the rendering presenter above), and SVG drawing in the TUI (it only lists the converted file).
 
 ### Device control modules & hardware profiles
 
@@ -73,10 +61,21 @@ the rest.
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
-- [LXI VXI-11 client](docs/design/proposals/lxi-support.md): phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
+- [Network device discovery](docs/design/proposals/network-device-discovery.md) and [in-app config editors for network bridges](docs/design/proposals/network-device-config-editors.md) (proposed 2026-10-03): one Detect button for any network device with prefill, and a Device > Configure device menu for the USR-TCP232-302 and EByte E810-DTU.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
-- [Schema files for custom formats](docs/design/proposals/format-schema-files.md) — generated JSON Schemas for manifests,
-  UI definitions and profiles (proposed 2026-10-02; spike `JsonSchemaExporter` first).
+
+### Decided 2026-10-03 (owner interview), not started
+
+- **Multi-session tabs:** per-tab `SendHistory`; last tab leaves an empty window; per-tab log and Stream Monitor plus a merged time-ordered view; Alt+Left/Right switch tabs ([multi-session-ui](docs/design/multi-session-ui.md)).
+- **Offer a profile's control panel on connect** (hint or button, remembered per profile) ([device-control-panel spec](docs/specs/device-control-panel.md)).
+- **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
+- **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
+- **Connection Editor shows `ManifestName` and `ScpiAutoDetectTimeoutMs`** ([spec](docs/specs/connection-editor.md)).
+- **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
+- **TUI Playback jump-to-time-or-record field** ([spec](docs/specs/playback-window.md)).
+- **TUI terminal-palette theme, and a live-following `system` theme** ([theming](docs/design/theming.md)).
+- **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **manifest-declared reply correlation** ([device-control-modules](docs/design/device-control-modules.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).
+- **TUI "Send as" menu follows the active tab** ([tui-main-screen spec](docs/specs/tui-main-screen.md)).
 
 ## Research (not backlog-ready)
 
@@ -95,11 +94,12 @@ the rest.
 - **Dockable MDI layout (WPF).** Sessions and Stream Monitor windows that can be snapped/docked around and
   onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
   library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
-- **Watch a session over a named pipe.** Expose a live session's traffic (rx/tx, presenter output) on a named
-  pipe so another process can tail it in real time. Needs a read-only vs. read-write decision, a pipe naming
-  scheme per session, and a design doc with PlantUML.
+- **Cross-process session channel, remaining work:** the read-write channel and the localhost web-service variant. The read-only pipe, `--pipe <name>` (all three front ends) and the `--attach <name>` tail client are built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
 - **Project (workspace) state: save and restore all open sessions.** Save the set of open tabs (each one's connection profile, plus as much state as is practical: presenter choices, send history, Stream Monitor/log settings, window layout) as one project file, and reopen it on launch or from a menu so closing the program with several devices attached comes back to the same connections. Builds on the multi-tab sessions; needs a decision on connection-only versus full state, and whether to auto-restore the last project.
-- **PCX (and PCL raster) preview in the Stream Monitor.** WPF has no PCX decoder, so a captured PCX is saved but not
+- **PCX (and PCL raster) preview in the Stream Monitor (rejected).** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
+  **Decision 2026-10-03: the PCX decoder and the PCL raster preview are both rejected for now** (BMP and TIFF hardcopy already preview); a captured PCX or PCL job stays saved, and PCL still converts through GhostPCL. Revisit only if asked.
+- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above.
 
+- **Routing proxy follow-ups:** wire `MessageRouter` to a real MQTT/AMQP/STOMP connection (an `IMessageSink` plus feeding `OnBrokerMessage`), a rule editor in the front ends, and loading rules from a profile or manifest. The proof of concept is built; see [message-broker-protocols](docs/design/proposals/message-broker-protocols.md).

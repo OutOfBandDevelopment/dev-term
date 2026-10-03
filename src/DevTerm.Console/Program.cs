@@ -32,6 +32,7 @@ const string Usage =
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    + "\n   or: dev-term --transport vxi11 --host <host> [--port <core-port>] [--presenter <name[,name...]>] [--lineending <None|Cr|Lf|CrLf>] [--cli <bool>]"
     + "\n   or: dev-term --transport amqp|stomp --host <host> --port <port> [--subscribe <key[,key...]>] [--publish <key>] [--username <name>] [--password <pw>]"
     + "\n   or: dev-term --transport mqtt--host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
     + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
@@ -106,6 +107,43 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
     return 0;
 }
 
+if (earlyConfig.GetValue<int>(nameof(CliOptions.ListCaptures)) > 0 || earlyConfig.GetValue<int>(nameof(CliOptions.ExportCaptures)) > 0)
+{
+    using var captureMonitor = new StreamMonitor();
+    captureMonitor.LoadFromDisk();
+    var exportCount = earlyConfig.GetValue<int>(nameof(CliOptions.ExportCaptures));
+    var chosen = CaptureExport.Newest(captureMonitor.Captures, exportCount > 0 ? exportCount : earlyConfig.GetValue<int>(nameof(CliOptions.ListCaptures)));
+    if (exportCount > 0)
+    {
+        if (earlyConfig[nameof(CliOptions.ExportTo)] is not { Length: > 0 } exportTo)
+        {
+            Console.Error.WriteLine("--exportcaptures needs --exportto <folder>.");
+            return 1;
+        }
+
+        var written = CaptureExport.CopyTo(chosen, exportTo);
+        foreach (var path in written)
+        {
+            Console.WriteLine(path);
+        }
+
+        Console.Error.WriteLine($"Copied {written.Count} of {chosen.Count} capture(s) to {exportTo}.");
+        return 0;
+    }
+
+    foreach (var capture in chosen)
+    {
+        Console.WriteLine($"{capture.LocalStartedAt:yyyy-MM-dd HH:mm:ss}  {capture.SavedPath}");
+    }
+
+    if (chosen.Count == 0)
+    {
+        Console.Error.WriteLine("No saved captures found.");
+    }
+
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
 {
     foreach (var device in LxiDeviceScanner.Scan())
@@ -116,19 +154,43 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
     return 0;
 }
 
+if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
+{
+    using var attachStop = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        attachStop.Cancel();
+    };
+
+    try
+    {
+        await foreach (var line in SessionPipeClient.ReadLinesAsync(attachName, cancellationToken: attachStop.Token))
+        {
+            Console.WriteLine(SessionPipeClient.Describe(line));
+        }
+
+        return 0;
+    }
+    catch (OperationCanceledException)
+    {
+        return 0;
+    }
+    catch (TimeoutException)
+    {
+        Console.Error.WriteLine($"No session named '{attachName}' is publishing. Start one with --pipe {attachName}.");
+        return 1;
+    }
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
 {
     var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
     var pluginServices = new ServiceCollection().AddPlugins(pluginOptions);
     var pluginResults = pluginServices.BuildServiceProvider().GetRequiredService<IReadOnlyList<PluginLoadResult>>();
-    foreach (var plugin in pluginResults)
+    foreach (var line in PluginReport.Lines(pluginResults))
     {
-        Console.WriteLine(plugin.Loaded ? $"{plugin.Name}  loaded  ({plugin.Folder})" : $"{plugin.Name}  skipped: {plugin.Message}  ({plugin.Folder})");
-    }
-
-    if (pluginResults.Count == 0)
-    {
-        Console.WriteLine("No plugins found.");
+        Console.WriteLine(line);
     }
 
     return 0;
@@ -207,6 +269,9 @@ var useTui = (layeredConfig.GetValue<bool?>(nameof(CliOptions.Tui)) ?? true) && 
 // else the saved View > Theme choice (~/.dev-term/preferences.json), else "system". Applied before
 // any TUI screen (including the startup Connection Editor below) - Terminal.Gui's scheme overrides
 // are process-wide and survive Application.Init. Problems are shown in the main window's output.
+// Housekeeping: drop old logs/exports per the saved retention rules (keeps everything unless a rule is set).
+RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+
 if (useTui)
 {
     ActiveTheme.Initialize(layeredConfig);
@@ -291,6 +356,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions)
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>())
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

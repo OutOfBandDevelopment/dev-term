@@ -357,7 +357,7 @@ public sealed class TuiModeTests
         var (session, transport, presenter) = CreateSession();
         await session.OpenAsync(TestContext.CancellationToken);
         var exportDirectory = Path.Combine(Path.GetTempPath(), "devterm-tests-streammonitor-" + Guid.NewGuid().ToString("N"));
-        var cliOptions = new CliOptions { Transport = "loopback", ExportDirectory = exportDirectory };
+        var cliOptions = new CliOptions { Transport = "loopback", ExportDirectory = exportDirectory, StreamAutoConvertHpgl = false };
 
         StreamMonitor? monitor = null;
         try

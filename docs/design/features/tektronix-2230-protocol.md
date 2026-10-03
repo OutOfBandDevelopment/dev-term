@@ -128,8 +128,7 @@ confirmed:
 
 ## Proposed next steps (not started)
 
-1. Connect to a real 2230 (RS-232 or GPIB-via-Prologix, once a GPIB transport exists — see
-   `BACKLOG.md`'s GPIB transport entry) and send `ID?` to confirm the exact byte-for-byte framing
+1. Connect to a real 2230 over RS-232 and send `ID?` to confirm the exact byte-for-byte framing
    (trailing newline? `\r`? just `;`?) — this determines whether `ScpiReplyPresenter`'s line-buffer
    can be reused as-is or needs its own `;`-based variant.
 2. Probe a small set of likely-supported queries from period Tektronix documentation (channel
@@ -149,7 +148,7 @@ confirmed:
 
 - Whether the 2230's remote interface (as actually fitted/configured on the two owned units) is
   RS-232, GPIB, or both — affects whether any real testing can happen before a GPIB transport
-  exists.
+  exists.  (As of 2026-10-03 GPIB is out of scope, so only RS-232 matters.)
 - Whether this model supports *any* remote configuration (vs. read-only status/measurement query)
   — many instruments of this era and class only expose acquisition data remotely, leaving all
   front-panel settings physical-only, which would make an `IControlSurface` here mostly a read-only

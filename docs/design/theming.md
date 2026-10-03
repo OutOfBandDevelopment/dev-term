@@ -237,6 +237,7 @@ menu) are themed too. Each attached window gets a merged `ThemeDictionary`:
 - The TUI Connection Editor's "(not found)" hints aren't colored; WPF's use `error`. Coloring the
   TUI's needs `ConfigureMode` changes, which were deliberately left alone while that screen's layout
   is being rewritten.
+- **Decided 2026-10-03:** offer the terminal theme and make the TUI's `system` follow the terminal live (both below). Not built yet.
 - A "terminal" theme for the TUI would keep Terminal.Gui's `None` colors and follow the terminal's
   own palette, as the TUI did before theming. It's not offered. `system` follows the OS setting
   instead, which can differ from the terminal's background.

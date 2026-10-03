@@ -41,6 +41,8 @@ public static class WebHost
             return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines);
         });
 
+        builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
             var certificate = string.IsNullOrWhiteSpace(webOptions.CertificatePath)
@@ -65,7 +67,9 @@ public static class WebHost
 
         app.UseMiddleware<AccessTokenMiddleware>(token, webOptions.ReadOnlyToken ?? string.Empty);
         app.UseWebSockets();
+        app.UseAntiforgery();
         app.Map("/ws", (HttpContext context) => WebSocketTunnel.HandleAsync(context, hub));
+        app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
 
@@ -79,6 +83,7 @@ public static class WebHost
         {
             var panelJson = UiDefinitionSerializer.ToJson(definition);
             app.MapGet("/api/panel", () => Results.Content(panelJson, "application/json"));
+            app.Services.GetRequiredService<Components.PanelHostHolder>().Set(definition, surface);
             app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, surface, request));
         }
         else

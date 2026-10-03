@@ -22,7 +22,7 @@ internal sealed class StreamMonitorBench : IAsyncDisposable
         Transport = new FakeTransport();
         Session = new Session(Transport, new Pipeline([]));
         Time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 25, 14, 35, 12, TimeSpan.Zero));
-        Monitor = new StreamMonitor(Time, new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
+        Monitor = new StreamMonitor(Time, new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromSeconds(2) }) { AutoConvertHpgl = false };
     }
 
     public string ExportDirectory { get; }

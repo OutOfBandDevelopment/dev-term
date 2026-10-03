@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, amqp, stomp, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, vxi11, mqtt, amqp, stomp, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -146,6 +146,41 @@ public sealed class CliOptions
     [Category("Timing")]
     [DisplayName("Write byte delay (ms)")]
     public int WriteByteDelayMs { get; set; } = -1;
+
+    /// <summary>Minimum milliseconds between two sends, enforced by the session for any transport; 0 (the default) disables it. See <see cref="DevTerm.Core.Sessions.SessionLimits"/>.</summary>
+    [Category("Timing")]
+    [DisplayName("Min send interval (ms)")]
+    public int SendIntervalMs { get; set; }
+
+    /// <summary>Minimum milliseconds between handling two received chunks; 0 (the default) disables it. Nothing is dropped; the backlog waits in the transport's pipe.</summary>
+    [Category("Timing")]
+    [DisplayName("Min read interval (ms)")]
+    public int ReadIntervalMs { get; set; }
+
+    /// <summary>Milliseconds one connect attempt may take before it is abandoned; 0 (the default) leaves it to the transport.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect timeout (ms)")]
+    public int ConnectTimeoutMs { get; set; }
+
+    /// <summary>Extra connect attempts after the first fails; 0 (the default) is a single attempt.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect retries")]
+    public int ConnectRetries { get; set; }
+
+    /// <summary>Milliseconds between connect attempts.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect retry delay (ms)")]
+    public int ConnectRetryDelayMs { get; set; } = 1000;
+
+    /// <summary>The session limits these options describe.</summary>
+    public DevTerm.Core.Sessions.SessionLimits SessionLimits => new()
+    {
+        MinSendIntervalMs = SendIntervalMs,
+        MinReadIntervalMs = ReadIntervalMs,
+        ConnectTimeoutMs = ConnectTimeoutMs,
+        ConnectRetries = ConnectRetries,
+        ConnectRetryDelayMs = ConnectRetryDelayMs,
+    };
 
     /// <summary>
     /// Milliseconds a read blocks before timing out. Kept finite by default: SerialPort's
@@ -281,6 +316,26 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListLxiDevices { get; set; }
 
+    /// <summary>Publish this session's traffic read-only on a local named pipe of this name, for <see cref="Attach"/> from another process.</summary>
+    [Category("Session")]
+    public string? Pipe { get; set; }
+
+    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
+    [Category("Mode")]
+    public string? Attach { get; set; }
+
+    /// <summary>Print the newest N saved Stream Monitor captures (the exports folder) and exit.</summary>
+    [Category("Mode")]
+    public int ListCaptures { get; set; }
+
+    /// <summary>Copy the newest N saved Stream Monitor captures into the folder named by <see cref="ExportTo"/> and exit.</summary>
+    [Category("Mode")]
+    public int ExportCaptures { get; set; }
+
+    /// <summary>The destination folder for <see cref="ExportCaptures"/>.</summary>
+    [Category("Mode")]
+    public string? ExportTo { get; set; }
+
     /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
     [Category("Mode")]
     public bool ListPlugins { get; set; }
@@ -397,6 +452,11 @@ public sealed class CliOptions
     /// converter tool), or <c>internalhpgltosvg</c> (dev-term's own HP-GL-to-SVG converter -
     /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
     /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Convert HP-GL automatically")]
+    [Description("When Stream Monitor captures an HP-GL plot, also write an SVG next to it with dev-term's own converter. On by default.")]
+    public bool StreamAutoConvertHpgl { get; set; } = true;
+
     [Category("Stream Monitor")]
     [DisplayName("Convert mode")]
     [Description("How Stream Monitor's Convert action works: none, externaltool, auto, tool:<name>, or internalhpgltosvg.")]

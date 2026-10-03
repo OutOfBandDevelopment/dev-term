@@ -215,9 +215,8 @@ recomputed on every live profile switch. Details in `docs/specs/tui-main-screen.
   Connect/Disconnect's own no-confirmation precedent. Worth revisiting now that dirty-field
   confirmation has landed (2026-09-16 — see `docs/changes/2026-09-16.md`), if the same "are you
   sure" pattern should extend to mid-session profile switching too.
+- **Decided 2026-10-03:** mid-session profile switching **confirms** before tearing down a live connection, like the dirty-field confirmation. **Built 2026-10-03** (WPF and TUI menu handlers; the profile is saved either way).
 - Whether the Configure screen and the menu should share one underlying "profile picker" component
   (a list + load action) rather than two separate implementations of the same idea — likely yes,
   worth designing that way from the start once actually built.
-- Whether a profile's `ManifestPath` should be validated (the manifest actually loads) at save
-  time, at profile-list time, or only when the profile is actually picked to connect — affects how
-  early a broken reference surfaces to the user.
+- ~~Whether a profile's `ManifestName` should be validated~~ **Decided 2026-10-03:** validate at connect, not when listing profiles. **Already built** as `ManifestNameWarning` (a warning, not a failure). A save-time check has nothing to attach to: the Connection Editor does not show `ManifestName` yet (see its spec's open items); add one with that field.

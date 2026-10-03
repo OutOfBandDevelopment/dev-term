@@ -81,7 +81,7 @@ public sealed class StreamMonitorTests
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        Assert.AreEqual(Path.Combine("~", ".dev-term", "exports"), StreamMonitor.DisplayPath(DevTermUserDataPaths.ExportsDirectory));
+        Assert.AreEqual(Path.Combine("~", ".dev-term", "exports"), StreamMonitor.DisplayPath(Path.Combine(home, ".dev-term", "exports")));
         Assert.AreEqual("~", StreamMonitor.DisplayPath(home));
         Assert.AreEqual(home + "-other", StreamMonitor.DisplayPath(home + "-other"));
         Assert.AreEqual(@"D:\captures", StreamMonitor.DisplayPath(@"D:\captures"));
@@ -313,5 +313,86 @@ public sealed class StreamMonitorTests
         Assert.IsFalse(string.IsNullOrEmpty(capture.SaveError));
         StringAssert.Contains(capture.Describe(), "could not save it");
         Assert.AreEqual(ConnectionState.Open, live.Session.State);
+    }
+
+    [TestMethod]
+    public async Task LoadFromDisk_ListsEarlierExports_OnceAndOldestFirst()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        File.WriteAllBytes(Path.Combine(_exportDirectory, "scope_20260102-030405.bmp"), [1, 2, 3]);
+        File.WriteAllBytes(Path.Combine(_exportDirectory, "scope_20250102-030405-2.png"), [4, 5]);
+
+        Assert.AreEqual(2, monitor.LoadFromDisk());
+        Assert.AreEqual(0, monitor.LoadFromDisk());
+
+        var captures = monitor.Captures;
+        Assert.HasCount(2, captures);
+        Assert.AreEqual("scope", captures[0].DeviceName);
+        Assert.AreEqual(2025, captures[0].LocalStartedAt.Year);
+        Assert.AreEqual("PNG image", captures[0].Capture.Kind.DisplayName);
+        Assert.AreEqual(3, captures[1].Capture.Data.Length);
+    }
+
+    [TestMethod]
+    [DataRow(true, 2)]
+    [DataRow(false, 1)]
+    public async Task HpglCapture_IsConvertedToSvgAutomatically_WhenEnabled(bool auto, int expectedCaptures)
+    {
+        await using var live = new LiveSession();
+        var options = new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(100), HpglIdleTimeout = TimeSpan.FromMilliseconds(100) };
+        using var monitor = new StreamMonitor(FixedTime(), options) { AutoConvertHpgl = auto };
+        monitor.SetSession(live.Session, "plotter", _exportDirectory);
+        monitor.Start();
+        await live.Session.OpenAsync(TestContext.CancellationToken);
+
+        var first = NextCaptureAsync(monitor);
+        await live.SendFromDeviceAsync("ok\r\nIN;SP1;PU0,0;PD1000,1000;PD2000,0;SP0;"u8.ToArray(), TestContext.CancellationToken);
+        var plot = await first;
+        await Task.Delay(300, TestContext.CancellationToken);
+
+        Assert.AreEqual(StreamContentKind.Hpgl, plot.Capture.Kind);
+        Assert.HasCount(expectedCaptures, monitor.Captures);
+        Assert.AreEqual(auto, File.Exists(Path.ChangeExtension(plot.SavedPath!, "svg")));
+    }
+
+    [TestMethod]
+    public async Task CaptureExport_Newest_TakesTheLastN_OldestFirst()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        foreach (var day in new[] { "01", "02", "03" })
+        {
+            File.WriteAllText(Path.Combine(_exportDirectory, $"scope_202601{day}-100000.png"), day);
+        }
+
+        monitor.LoadFromDisk();
+        var newest = CaptureExport.Newest(monitor.Captures, 2);
+
+        CollectionAssert.AreEqual(new[] { "scope_20260102-100000.png", "scope_20260103-100000.png" }, newest.Select(c => Path.GetFileName(c.SavedPath)).ToArray());
+        Assert.AreEqual(0, CaptureExport.Newest(monitor.Captures, 0).Count);
+    }
+
+    [TestMethod]
+    public async Task CaptureExport_CopyTo_CopiesFiles_AndNeverOverwrites()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        File.WriteAllText(Path.Combine(_exportDirectory, "scope_20260101-100000.png"), "x");
+        monitor.LoadFromDisk();
+        var target = Path.Combine(Path.GetTempPath(), "devterm-export-out-" + Guid.NewGuid().ToString("N"));
+
+        var first = CaptureExport.CopyTo(monitor.Captures, target);
+        var second = CaptureExport.CopyTo(monitor.Captures, target);
+
+        Assert.AreEqual(1, first.Count);
+        StringAssert.EndsWith(second.Single(), "scope_20260101-100000-2.png");
+        Assert.AreEqual(2, Directory.GetFiles(target).Length);
     }
 }

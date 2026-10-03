@@ -89,13 +89,4 @@ decoder --> decoder : Human-readable text baseline\n(e.g. "R:6 L:12 1:00 | Green
 
 ## Open questions
 
-- What the unhandled `"C00:0"` message type actually is — needs either the original ScoreMachine
-  project's fuller source, a fresh capture with more variety, or a real device to test against.
-- Whether the short and detailed score/clock forms are both always sent (as the capture's repeating
-  cycle suggests) or situationally different — matters for whether a decoder needs to reconcile two
-  sources of the same fact or can just pick one.
-- Whether "Saint George" and Favero apparatus ever appear on the same physical bus/session in a
-  real ScoreMachine deployment (the source project's shared `Common` state model across both brands
-  suggests the production system treats them as interchangeable inputs to one state) — if so,
-  whether dev-term's presenter model needs a way to say "these two decoders produce the same
-  logical state," not just two independent decoders.
+None. Rejected and kept as history only (decided 2026-10-03): no hardware to test against.

@@ -21,6 +21,7 @@
     <ProjectReference Include="..\DevTerm.Transports.Ble\DevTerm.Transports.Ble.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Loopback\DevTerm.Transports.Loopback.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Rfc2217\DevTerm.Transports.Rfc2217.csproj" />
+    <ProjectReference Include="..\DevTerm.Transports.Vxi11\DevTerm.Transports.Vxi11.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Mqtt\DevTerm.Transports.Mqtt.csproj" />
     <ProjectReference Include="..\DevTerm.Transports.Brokers\DevTerm.Transports.Brokers.csproj" />
   </ItemGroup>

@@ -69,6 +69,20 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
+    public void AddDevTermFrontEnd_Vxi11Transport_ResolvesVxi11TransportWithPortmapperWhenNoPort()
+    {
+        var cliOptions = new CliOptions { Transport = "vxi11", Host = "192.168.0.87" };
+        var provider = new ServiceCollection().AddDevTermFrontEnd(cliOptions).BuildServiceProvider();
+
+        var transport = provider.GetRequiredService<ITransport>();
+        var options = provider.GetRequiredService<IOptions<DevTerm.Transports.Vxi11.Vxi11TransportOptions>>().Value;
+
+        Assert.IsInstanceOfType<DevTerm.Transports.Vxi11.Vxi11Transport>(transport);
+        Assert.AreEqual("192.168.0.87", options.Host);
+        Assert.AreEqual(0, options.Port);
+    }
+
+    [TestMethod]
     public void AddDevTermFrontEnd_Rfc2217Transport_ResolvesRfc2217TransportConfiguredFromCliOptions()
     {
         var cliOptions = new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217", Baud = 4800 };

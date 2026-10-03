@@ -56,6 +56,7 @@ and send line, sharing one `File` menu and one status line for whichever tab is 
   profile switch.
   A saved profile is recognised at startup too — the untracked default profile a run starts from
   counts if it matches a saved one.
+- **Device > Plugins...** is always enabled (it needs no connection) and shows the same text as `--listplugins true` (`PluginReport`): one line per plugin folder found, loaded or skipped with why, or "No plugins found." It is a message box; plugins are loaded once at startup, so it does not rescan.
 - **One refresh for everything connection-dependent** (`RefreshConnectionUi(TuiWindowTab)`, inside
   `BuildWindow`): the File menu label, `Send:`, the title, the status line, and which **Device** menu
   items are enabled (see [`device-control-panel.md`](device-control-panel.md)) are all derived from
@@ -123,4 +124,4 @@ points:
 ## Open items
 
 - **The "Send as" parser menu is built once, not rebuilt per tab.** Switching tabs does not change
-  which parser is selected for the newly active tab's `Send:` field.
+  which parser is selected for the newly active tab's `Send:` field. **Decided 2026-10-03:** the menu follows the active tab (its presenters and chosen parser), as WPF does. Not built yet.

@@ -1,6 +1,6 @@
 ---
 name: work-docs-audit
-description: Use periodically, or after a burst of work, to audit that dev-term's work-tracking documents (TODO.md, BACKLOG.md, docs/bugs, docs/design proposals, docs/changes, docs/devices, docs/test) are current and correct against the code and git history, fix what is stale, and commit the fixes. Not for syncing a single change (use docs-sync) or filing one bug (use bug-report).
+description: Use periodically, or after a burst of work, to audit that dev-term's work-tracking documents (TODO.md, BACKLOG.md, OPEN_QUESTIONS.md, docs/bugs, docs/design proposals, docs/changes, docs/devices, docs/test) are current and correct against the code and git history, fix what is stale, and commit the fixes. Not for syncing a single change (use docs-sync) or filing one bug (use bug-report).
 ---
 
 # Auditing the work-tracking documents
@@ -17,6 +17,7 @@ against another doc's say-so. Fix what is wrong in place; report what needs a de
 | `BACKLOG.md` | No item that has since been built (grep the code). No item that is really in progress. Referenced proposals and bugs exist. |
 | `docs/bugs/` | Each `Open` / `In progress` report re-verified against the code at HEAD: still reproduces, already fixed, or obsolete. Closed reports have `## Resolution` and live in `docs/bugs/resolved/`; every row and inbound link in `docs/bugs/README.md`, code comments, specs and tests resolves; severity tables match each file's Status. A claim contradicted by newer evidence (bench reports, `docs/changes/`) gets a dated update note. |
 | `docs/design/proposals/*` and `docs/design/README.md` | Each proposal's Status section and the README one-liner agree with each other and with what is built and verified. "Not started" must be true; "built" needs the code to exist; hardware claims need a `docs/test/` or `docs/changes/` source. |
+| `OPEN_QUESTIONS.md` | Re-sweep every `## Open questions` / `## Open items` section (`grep -rn "^## Open" docs`) plus TODO "Manual review", BACKLOG and open bugs. Every unanswered, still-true question has a line here; every line points at a question that is still open (strike-through or "resolved" in the source means delete the line). Questions answered by code or `docs/changes/` since the last sweep get struck in their source doc first. Update the "Last swept" date. |
 | `docs/changes/YYYY-MM-DD.md` | Every day with commits has an entry; entries match what the commits did. Never rewrite earlier days' substance; append a correction instead. |
 | `docs/devices/*`, `docs/test/*` | Current-state sections are filled in (no "to fill in"), match the latest bench report, include the literal commands, and no credentials. Profile `Notes` that the latest evidence contradicts are flagged. |
 

@@ -26,6 +26,7 @@ public static class TestCategories
     public const string Ble = nameof(Ble);
     public const string Loopback = nameof(Loopback);
     public const string Rfc2217 = nameof(Rfc2217);
+    public const string Vxi11 = nameof(Vxi11);
     public const string Mqtt = nameof(Mqtt);
     public const string Brokers = nameof(Brokers);
     public const string Web = nameof(Web);

@@ -114,7 +114,7 @@ For simple query/response devices (most bench gear — a command string in, a fo
   and shown via an `IndicatorControl` — no reply-pattern matching needed since SCPI replies are
   just the next line, not something requiring recognition. This doesn't generalize to a device
   whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
-  that case is still open. A related but distinct question — whether a command can also declare
+  that case is **Decided 2026-10-03:** each command declares in its manifest the reply pattern or frame type that answers it; anything else is shown as unsolicited telemetry. Not built yet. A related but distinct question — whether a command can also declare
   its reply's *content type* (plain text vs. HPGL/PostScript/PCL/a binary image), so a front end
   can render or export it properly instead of just showing text/hex — is **built for SCPI commands
   (2026-09-25)** as `ScpiCommandDefinition.ExpectedResponseFormat`, consumed by the Stream Monitor;
@@ -127,4 +127,4 @@ For simple query/response devices (most bench gear — a command string in, a fo
   [scpi-instrument-control.md](features/scpi-instrument-control.md). It's SCPI-specific, not the
   general Kaitai-Struct-backed binary-response schema also sketched above, which remains
   unimplemented for genuinely binary devices.
-- Safety/interlock concerns specific to controlling real equipment (e.g., confirming a destructive command, rate-limiting) — a core concern, or left to each module?
+- Safety/interlock concerns specific to controlling real equipment. **Partly decided 2026-10-03:** read/write **rate limits** are wanted, as a core, configurable option (like the existing write byte delay). **Built 2026-10-03** as `SessionLimits` (`--sendintervalms`, `--readintervalms`). **Decided 2026-10-03:** confirming a destructive command lives **per device module** (a manifest or profile marks the commands that need confirmation); no core name list. Not built yet.

@@ -46,6 +46,7 @@ public static class DevTermSessionBuilder
         var transport = provider.GetRequiredService<ITransport>();
         var sessionFactory = provider.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.Create(transport, new Pipeline(presenters));
+        session.Limits = cliOptions.SessionLimits;
 
         return new Result(session, catalog, provider);
     }

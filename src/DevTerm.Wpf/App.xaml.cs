@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using DevTerm.Configuration;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
@@ -76,6 +77,7 @@ public partial class App : Application
         // The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this
         // run, else the saved View > Theme choice, else "system" - applied before the first window
         // (even the startup Device Profiles editor below). Problems show in MainWindow's output.
+        RetentionSweeper.Sweep(new AppPreferencesStore().Load());
         ActiveTheme.Initialize(layeredConfig);
         WpfTheme.AttachApplication(this);
 
@@ -134,14 +136,26 @@ public partial class App : Application
         var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.Create(transport, new Pipeline(presenters));
 
-        var window = new MainWindow(session, catalog, cliOptions);
+        // --pipe publishes the first tab's session read-only for `--attach` (the main window's other tabs are not published).
+        if (!string.IsNullOrWhiteSpace(cliOptions.Pipe))
+        {
+            _pipeServer = new SessionPipeServer(cliOptions.Pipe);
+            _pipeRegistration = session.AddObserver(_pipeServer);
+        }
+
+        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>() };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 
+    private SessionPipeServer? _pipeServer;
+    private IDisposable? _pipeRegistration;
+
     protected override void OnExit(ExitEventArgs e)
     {
+        _pipeRegistration?.Dispose();
+        _pipeServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _host?.Dispose();
         base.OnExit(e);
     }

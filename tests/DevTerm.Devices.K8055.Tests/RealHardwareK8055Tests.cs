@@ -37,9 +37,6 @@ public sealed class RealHardwareK8055Tests
 
     [TestMethod]
     [DataRow("K8055-1")]
-    [DataRow("K8055-2")]
-    [DataRow("K8055-3")]
-    [DataRow("K8055-4")]
     public async Task RealDevice_ResetCounter1_CompletesWithoutFaultOrTimeout(string name)
     {
         var vendorIdText = GetProperty($"RealHid{name}-VendorId");
@@ -86,9 +83,6 @@ public sealed class RealHardwareK8055Tests
 
     [TestMethod]
     [DataRow("K8055-1")]
-    [DataRow("K8055-2")]
-    [DataRow("K8055-3")]
-    [DataRow("K8055-4")]
     public async Task RealDevice_SetOutputs_AllCommandsCompleteWithoutFaultOrTimeout(string name)
     {
         var vendorIdText = GetProperty($"RealHid{name}-VendorId");

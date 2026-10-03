@@ -166,12 +166,8 @@ Configuration lives alongside the existing Stream Monitor settings (per-profile 
   `ScpiReplyPresenter`'s FIFO already handles plain replies, or whether one-capture-at-a-time is
   good enough for how these commands are actually used in practice (a screen-dump command is
   usually a deliberate, single, waited-for action, unlike telemetry streaming).
-- Retention/cleanup policy for `~/.dev-term/captures/` — nothing today prunes old files there
-  automatically; low priority until real usage shows it matters.
-- Whether the external-tool and web-service converters are worth building at all before the internal
-  HP/GL-to-SVG converter and the rendering presenter exist — they only ever operate on an
-  already-saved capture file, so they have no dependency on Phase 2's harder rendering work and could
-  ship independently, ahead of everything else in Phase 2, if that's a more useful order.
+- ~~Retention/cleanup policy for the exports folder~~ **Built 2026-10-03:** `ExportRetention` (`MaxAgeDays`, `MaxFiles`) in `preferences.json`, applied at startup; see [retention](../../user-guide/retention.md). Size-based pruning is not built.  **Owner input 2026-10-03:** also wants the option to enumerate files already on disk, so earlier exports are listed after a restart. **Built 2026-10-03:** `StreamMonitor.LoadFromDisk`.
+- ~~Whether the external-tool and web-service converters are worth building~~ **Decided 2026-10-03:** dropped. A script can front them if one is ever needed, and no converter is required out of the box. The internal HP-GL to SVG converter is the one to build, optionally automatic by default. **Built 2026-10-03:** `StreamMonitor.AutoConvertHpgl` (profile `StreamAutoConvertHpgl`, default on).
 
 ## Completion checklist
 
@@ -186,8 +182,6 @@ What was needed to close this out. The unbuilt items moved to `BACKLOG.md`.
 - Not built, now in `BACKLOG.md`:
   - Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
   - SVG drawing in the TUI (it only lists the converted file)
-  - CLI-mode "export last N captures" (Stream Monitor has no CLI support)
-  - Retention/cleanup policy for the exports folder (low priority)
 - [x] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
 
 ## Status
@@ -244,7 +238,7 @@ What was built, and where it differs from the text above:
   19200 baud TCP bridge) each arrive as one capture, saved as `.bmp`; see `docs/test/2026-10-02-18-20-00.md`.
 - **Open questions, as answered so far**: unsolicited captures work (sniffing needs no tracked
   query). One capture at a time: a second stream starting mid-capture is appended to the first.
-  No retention/cleanup.
+  No retention/cleanup at the time (built 2026-10-03, see above).
 
 **Phase 2, conversion (built 2026-10-01/02):** the external-tool and internal HP/GL-to-SVG mechanisms are
 `DevTerm.Configuration.StreamCaptureConverter`, wired into both Stream Monitor windows as "Convert..." next to
@@ -255,4 +249,4 @@ Verified against a real Tektronix 2230 HP-GL plot converted to SVG and drawn, an
 (`RealGhostscriptConversionTests`). The web-service mechanism was removed. Detail in `docs/changes/2026-10-02.md`.
 
 **Not built** (tracked in `BACKLOG.md`): direct in-window preview of PostScript and PCL (needs the rendering presenter),
-SVG drawing in the TUI, a CLI "export last N captures", and a retention policy for the exports folder.
+and SVG drawing in the TUI. (The CLI "export last N captures" was built 2026-10-03 as `--listcaptures`/`--exportcaptures`.)

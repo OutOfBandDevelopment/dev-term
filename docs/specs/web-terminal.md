@@ -40,3 +40,7 @@ redirects). Missing or wrong: 401. A browser `Origin` that differs from the host
 All viewers share one session. Output goes to everyone; sends are serialized. A failed startup connect is shown in the
 page and the next sent line retries, as in the TUI/WPF. Input that the parser cannot encode is reported to the sender
 only.
+
+## Blazor panel page (`/panel`)
+
+Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator; other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using DevTerm.Configuration;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -744,6 +745,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Asks before a profile switch closes a live connection. Replaceable so tests never open a real modal.</summary>
+    internal Func<string, bool> ProfileSwitchConfirmation { get; set; } = message =>
+        MessageBox.Show(message, "dev-term", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+
+    private bool ConfirmProfileSwitch(CliOptions current, CliOptions chosen) =>
+        ProfileSwitchConfirmation($"Switch to {ConnectionDescription.Definition(chosen)}? This closes the current connection ({ConnectionDescription.Definition(current)}). The new profile is saved either way.");
+
     private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;
@@ -753,6 +761,11 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
+            if (tab.Tab.Session.State == ConnectionState.Open && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
+            {
+                return;
+            }
+
             Observe(SwitchProfileAsync(chosen));
         }
     }
@@ -922,6 +935,12 @@ public partial class MainWindow : Window
         editor.Show();
     }
 
+    /// <summary>The plugin folders found at startup (set by <c>App</c>), shown by Device &gt; Plugins.</summary>
+    public IReadOnlyList<PluginLoadResult>? Plugins { get; set; }
+
+    private void Plugins_Click(object sender, RoutedEventArgs e) =>
+        MessageBox.Show(this, PluginReport.Text(Plugins), "dev-term — plugins", MessageBoxButton.OK, MessageBoxImage.Information);
+
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;
@@ -1090,7 +1109,7 @@ public partial class MainWindow : Window
     {
         if (_streamMonitor is null)
         {
-            var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(ActiveWindowTab.Tab.CliOptions.StreamIdleTimeoutMs) });
+            var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(ActiveWindowTab.Tab.CliOptions.StreamIdleTimeoutMs) }) { AutoConvertHpgl = ActiveWindowTab.Tab.CliOptions.StreamAutoConvertHpgl };
             monitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() =>
             {
                 if (capture.Source is WindowTab source && _tabs.Contains(source))

@@ -17,7 +17,7 @@ public sealed record LxiDevice(string Host, int Vxi11Port, int ScpiPort, string 
 }
 
 /// <summary>
-/// Finds LXI/VXI-11 instruments on the local network (docs/design/proposals/lxi-support.md, phase 1). Broadcasts an ONC-RPC
+/// Finds LXI/VXI-11 instruments on the local network (docs/design/features/lxi-support.md, phase 1). Broadcasts an ONC-RPC
 /// portmapper <c>GETPORT</c> for the VXI-11 core program to UDP 111 and keeps the hosts that answer with a non-zero port, then
 /// asks each for <c>*IDN?</c> on the usual raw-SCPI ports so the result can feed the existing TCP transport directly.
 /// mDNS (<c>_lxi._tcp</c>) was tried against a real Rigol DG1062Z and got no reply, so it is not used.

@@ -59,6 +59,8 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` / `DevTerm.Transports.Hid` — `ITransport`
   implementations. Each is independently testable via a fake stream (see "Testing" below), never
   real hardware/sockets.
+- `DevTerm.Transports.Vxi11` — VXI-11 (ONC-RPC over TCP) for LXI instruments, `--transport vxi11 --host <ip>`;
+  see docs/design/vxi11-transport.md. Verified against the Rigol DG1062Z.
 - `DevTerm.Transports.Loopback` — a zero-configuration, in-process fake-device `ITransport`
   (`Pipe`-backed, no real I/O/hardware involved) selectable in either front end so a user with no
   hardware attached can still exercise the UI end-to-end against a scripted device. See
@@ -120,7 +122,7 @@ the doc tree and how to keep it in sync.
 
 ## Documentation
 
-Seven kinds of doc, each with a distinct job — don't blend them:
+Eight kinds of doc, each with a distinct job — don't blend them:
 
 - **[`TODO.md`](TODO.md)** — in-progress work, one detailed narrative entry per item, updated (not
   left stale) as work completes. A finished entry is **deleted outright, not replaced with a "done,
@@ -130,6 +132,12 @@ Seven kinds of doc, each with a distinct job — don't blend them:
   full detail already exists under `docs/changes/`; if it doesn't yet, write it there first, then
   delete the `TODO.md` entry in the same change. **[`BACKLOG.md`](BACKLOG.md)** is the same idea for
   not-yet-started work.
+- **[`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md)** — the one index of every genuinely undecided question across the design docs,
+  proposals, specs, `TODO.md` and `BACKLOG.md`, grouped by what answering it needs (your decision, hardware/a capture,
+  design work, known screen gaps). It only *points* at the source doc, which keeps the reasoning. **Whenever you add an
+  "Open questions"/"Open items" entry anywhere, add its one-line pointer here in the same change; whenever one is
+  answered, strike it in the source doc (with the decision and date) and delete its line here.** A finished question is
+  removed, not left behind as "resolved". The `work-docs-audit` skill re-sweeps it against the docs.
 - **`docs/changes/YYYY-MM-DD.md`** — the authoritative, detailed changelog. Append to today's file as
   work lands within a day; don't rewrite prior days'. This is where a real root cause, a fix's actual
   detail, or a "verified against real hardware" note belongs — `TODO.md`/proposal docs cross-reference

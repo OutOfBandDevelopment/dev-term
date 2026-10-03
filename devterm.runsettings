@@ -110,7 +110,7 @@
              docs/design/features/zoom-h4n-remote-protocol.md). Real-hardware confirmed 2026-10-01
              at COM5 (docs/test/2026-10-01-08-15-06.md) - previously reported on COM3
              (2026-09-25), reassigned since. -->
-        <Parameter name="RealSerialZoomH4nPort" value="COM10" />
+        <Parameter name="RealSerialZoomH4nPort" value="COM11" />
 
         <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
              DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback
@@ -118,15 +118,6 @@
         <Parameter name="RealHidK8055-1-VendorId" value="4303" />
         <Parameter name="RealHidK8055-1-ProductId" value="21760" />
         <Parameter name="RealHidK8055-1-DevicePath" value="" />
-        <Parameter name="RealHidK8055-2-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-2-ProductId" value="21761" />
-        <Parameter name="RealHidK8055-2-DevicePath" value="" />
-        <Parameter name="RealHidK8055-3-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-3-ProductId" value="21762" />
-        <Parameter name="RealHidK8055-3-DevicePath" value="" />
-        <Parameter name="RealHidK8055-4-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-4-ProductId" value="21763" />
-        <Parameter name="RealHidK8055-4-DevicePath" value="" />
         <Parameter name="RealHidBusylightVendorId" value="1240" />
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
@@ -202,6 +193,11 @@
     <RunConfiguration>
         <MaxCpuCount>0</MaxCpuCount>
         <!-- 0 = use all available cores; or set a specific number like 4 -->
+        <EnvironmentVariables>
+            <!-- Keep test runs out of the real ~/.dev-term (profiles, preferences, logs, exports). Relative, so
+                 it resolves under each test host's own output folder. -->
+            <DEVTERM_HOME>devterm-test-home</DEVTERM_HOME>
+        </EnvironmentVariables>
     </RunConfiguration>
 
     <!-- Controls parallelism within MSTest (across classes/methods in the same assembly) -->

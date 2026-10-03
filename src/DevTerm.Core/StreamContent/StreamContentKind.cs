@@ -53,6 +53,9 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
         "bmp" => Bmp,
         "pcx" => Pcx,
         "tif" or "tiff" => Tiff,
+        "hpgl" or "plt" => Hpgl,
+        "ps" => PostScript,
+        "pcl" => Pcl,
         _ => Binary,
     };
 

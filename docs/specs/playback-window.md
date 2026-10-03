@@ -84,4 +84,4 @@ warning is its first output line.
 - Notes can be added but not edited or deleted here.
 - No "skip silence" (capping long idle gaps) yet.
 - Backward seeks replay from the start, so they get slower as the log grows.
-- The TUI has no seek control besides Rewind/+10s/End/Step.
+- The TUI has no seek control besides Rewind/+10s/End/Step. **Decided 2026-10-03:** add a jump-to-time-or-record field. Not built yet.

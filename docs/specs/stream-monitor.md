@@ -89,6 +89,9 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
+| **CLI** | `--listcaptures <n>` prints the newest n saved captures (oldest first); `--exportcaptures <n> --exportto <folder>` copies them out without overwriting (`CaptureExport`). Both read the same folders as the window and exit without connecting |
+| **Earlier exports** | When the window opens, files already in the export folders (the profile's folder and `~/.dev-term/exports`) that match `{device}_{yyyyMMdd-HHmmss}[-n].{ext}` are listed too, oldest first, so earlier captures survive a restart (`StreamMonitor.LoadFromDisk`) |
+| **Automatic HP-GL to SVG** | An HP-GL capture is also written as an `.svg` beside it and listed as a second capture, with dev-term's own converter. On by default; profile setting `StreamAutoConvertHpgl` (`false` turns it off) |
 | **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, Auto, each registered tool (`StreamConvertTools`), or External tool (`StreamConversionChoice.For`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool still reads its path from the profile |
 | **Convert...** (TUI + WPF) | Runs the configured conversion mechanism (below) against the selected capture, writing the result next to its saved file (same folder and name, a new extension). Enabled when a capture is selected. TUI reports the outcome in the detail label; WPF reports success in the detail text and a failure via a message box |
 | Selecting a capture | Shows its detail (and, in WPF, its preview) |
@@ -152,7 +155,7 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   selected list entry (`converted from HP-GL plot` in its detail; `StreamMonitor.AddConverted`). WPF draws
   `.svg` itself (`SvgPreview`: path, line, polyline, polygon, rect, circle, ellipse with stroke/fill/viewBox;
   no transforms, gradients, text or CSS) and shows `Could not draw this SVG: …` otherwise; the TUI lists it
-  but still can't draw. The list entry is for this session only (it isn't re-found after a restart). Live
+  but still can't draw (an accepted limit, 2026-10-03: the TUI will not render graphics). The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
@@ -161,6 +164,8 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   can't yet.
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress
   is appended to the first, not captured separately (the proposal's open question on correlation).
+  **Decided 2026-10-03:** keep one list view rather than parallel captures, and add filter, search and sort by device, content
+  type, time and similar fields. Not built yet; the correlation question itself stays open.
 - **No retention/cleanup** of the export folder.
 - **Not verified against real hardware** yet — the DG1062Z screen capture (a real BMP in a
   definite-length block) and the TDS2024's `HARDCopy STARt` output (BMP/TIFF/EPS/PCL depending on

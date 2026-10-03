@@ -58,6 +58,7 @@
                 <Separator />
                 <MenuItem x:Name="StreamMonitorMenuItem" Header="S_tream Monitor..." Click="StreamMonitor_Click" />
                 <MenuItem x:Name="ConverterToolsMenuItem" Header="Converter _Tools..." Click="ConverterTools_Click" />
+                <MenuItem x:Name="PluginsMenuItem" Header="_Plugins..." Click="Plugins_Click" />
             </MenuItem>
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">

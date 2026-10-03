@@ -118,6 +118,8 @@ Optional sections, when they apply: `## Evidence` (captured output, a trace), `#
 
 ## After filing
 
+4. If the report leaves a real design question open (for example "which of two fixes"), add a one-line pointer to
+   `OPEN_QUESTIONS.md`, and delete it when the report is fixed or closed.
 1. Add its row to the right severity table in `docs/bugs/README.md`:
    `| NNN | [title](NNN-slug.md) | area | Open |`, in number order.
 2. For a batch (a review), add a short `docs/changes/YYYY-MM-DD.md` entry naming the source, the commit reviewed,

@@ -83,7 +83,7 @@ matching `docs/changes/2026-09-24.md`'s bench-test entry:
 
 ## Step 5 — Follow-up
 
-This step alone does not update `TODO.md`, `BACKLOG.md`, or `docs/changes/`. If the session
+This step alone does not update `TODO.md`, `BACKLOG.md`, `OPEN_QUESTIONS.md`, or `docs/changes/`. A bench result that answers (or raises) an open question still gets its `OPEN_QUESTIONS.md` line removed (or added) as separate follow-up. If the session
 surfaced something that needs a real code fix, a profile correction, or a new backlog item, say so
 and handle it as separate follow-up work (use the `docs-sync` skill's guidance for where that lands) —
 don't fold it silently into the `docs/test/` report itself. If the pass is routine and uneventful,
