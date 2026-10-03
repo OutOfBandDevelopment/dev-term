@@ -20,3 +20,12 @@ services:
   ser2net:
     build: ./ser2net
     ports: ["127.0.0.1:2217:2217"]   # RFC 2217; bytes sent come back (virtual echo port)
+  # Not a test dependency: a local OpenTelemetry viewer for `dev-term --otlp true` (see docs/design/observability.md).
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    environment:
+      DASHBOARD__FRONTEND__AUTHMODE: Unsecured
+      DASHBOARD__OTLP__AUTHMODE: Unsecured
+    ports:
+      - "127.0.0.1:18888:18888"   # dashboard UI
+      - "127.0.0.1:4317:18889"    # OTLP/gRPC

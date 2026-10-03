@@ -42,6 +42,7 @@ const string Usage =
     + "\n(e.g. for automation/CI), or --tui false, equivalently."
     + "\nAdd --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any"
     + "\nconnection to record everything sent and received."
+    + "\nAdd --otlp <http://host:4317> (or --otlp true for localhost) to export dev-term's own traces and metrics over OTLP."
     + "\nAdd --theme <light|dark|system|name> to pick the TUI's colors for this run (View > Theme saves a choice;"
     + "\ncustom themes are JSON files under ~/.dev-term/themes)."
     + "\nSettings can also come from environment variables (DEVTERM_PORT, DEVTERM_BAUD, ...) or"

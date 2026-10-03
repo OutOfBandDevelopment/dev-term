@@ -73,18 +73,6 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-### Observability
-
-- **OpenTelemetry / general app-logging support** — `DevTerm.Logging` today is device-session
-  transcript recording (`SessionLogger`/`SessionLogWriter`/playback), not application diagnostics.
-  There's no structured logging, tracing, or metrics for dev-term's own internals (connection
-  lifecycle, transport faults, presenter errors) beyond ad-hoc output-pane messages. Scope: decide
-  whether to wire `Microsoft.Extensions.Logging` + an OTel exporter (console/OTLP) through DI
-  (`AddDevTermCore`/`AddDevTermFrontEnd`), what's worth instrumenting first (`Session`
-  open/close/fault, `ITransport` connect/disconnect), and whether it's opt-in (a CLI flag/config
-  section) given most users won't have a collector running. Not started — raised 2026-10-01; queued in
-  `TODO.md` 2026-10-02 as opt-in, with a collector container under `containers/`.
-
 ### TUI theming
 
 - **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest

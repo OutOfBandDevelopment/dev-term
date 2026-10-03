@@ -9,6 +9,26 @@ public sealed class CliOptionsValidatorTests
     private readonly CliOptionsValidator _validator = new();
 
     [TestMethod]
+    [DataRow(null)]
+    [DataRow("true")]
+    [DataRow("false")]
+    [DataRow("http://localhost:4317")]
+    public void Validate_OtlpOffOrAValidEndpoint_Succeeds(string? otlp)
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", Otlp = otlp });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    public void Validate_OtlpThatIsNotAnHttpUrl_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3", Otlp = "localhost:4317" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
     public void Validate_SerialWithPort_Succeeds()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "serial", Port = "COM3" });
