@@ -48,10 +48,12 @@ public sealed class TelemetryExporter : IDisposable
         var meter = Sdk.CreateMeterProviderBuilder()
             .SetResourceBuilder(resource)
             .AddMeter(DevTermTelemetry.Name)
-            .AddOtlpExporter(o =>
+            .AddOtlpExporter((o, reader) =>
             {
                 o.Endpoint = endpoint;
                 o.Protocol = OtlpExportProtocol.Grpc;
+                // The default is 60 s, which makes a short interactive session look like it exported nothing.
+                reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
             })
             .Build();
         return new TelemetryExporter(tracer, meter);
