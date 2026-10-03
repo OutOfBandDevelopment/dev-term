@@ -17,3 +17,6 @@ services:
       - "127.0.0.1:1884:1883"     # MQTT (plugin)
       - "127.0.0.1:15672:15672"   # management UI
     volumes: ["./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro"]
+  ser2net:
+    build: ./ser2net
+    ports: ["127.0.0.1:2217:2217"]   # RFC 2217; bytes sent come back (virtual echo port)
