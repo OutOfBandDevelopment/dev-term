@@ -31,7 +31,7 @@ and shows what flowed. It acts on the active session and never changes the devic
 |---|---|---|---|---|
 | Protocol | choice: MQTT / AMQP / STOMP | MQTT | required | Picks `MqttRouterBridge` or `BrokerRouterBridge` with the matching connection factory |
 | Host / Port | text / int | blank / protocol default | host required, port 1-65535 | Same options as the matching transport |
-| Username / Password | text / masked | blank | none | Saved with the profile (see Open items) |
+| Username / Password | text / masked | blank | none | Saved in the profile as plain text; `DEVTERM_ROUTING__PASSWORD` overrides it when set |
 | Rule: Direction | choice | DeviceToBroker | required | DeviceToBroker or BrokerToDevice |
 | Rule: Match | regex | blank | must compile; named groups listed beside the field | Applies to the device line (DeviceToBroker) or the payload (BrokerToDevice) |
 | Rule: Topic | text | blank | required; BrokerToDevice allows a trailing `#`; `${name}` allowed for DeviceToBroker | |
@@ -106,7 +106,7 @@ Failed --> Connecting : Start
 
 ## Open items
 
-- **Passwords in the profile.** The decision is to store broker details with the rules, but the MQTT transport deliberately never saves a password to a profile or shows it in the editor. Which wins here (plain, obfuscated, or OS-protected storage) is undecided; see [OPEN_QUESTIONS](../../OPEN_QUESTIONS.md).
+- ~~Passwords in the profile~~ Decided 2026-10-03: the password is saved in the profile as plain text (this is a development tool; dev passwords such as `DevPass1` are fine to commit), and an environment variable overrides it when set (`DEVTERM_ROUTING__PASSWORD`, via the normal `DEVTERM_` layering).
 - Bounded queue/replay after an outage was rejected for now; dropped messages are only counted.
 - No CLI flags (`--routing <rules.json>`) in the first release.
 - ~~Auto-start on connect~~ Decided 2026-10-03: connecting a profile that has routing rules starts routing automatically. A failed start (broker unreachable) is reported in the Routing state and the status line, and never blocks or closes the device connection; the user can still press Stop to opt out for the session.
