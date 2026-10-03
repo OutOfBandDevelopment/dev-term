@@ -48,6 +48,11 @@ public static class ConnectionDescription
                 + (string.IsNullOrWhiteSpace(cliOptions.Publish) ? string.Empty : $" publishing to {cliOptions.Publish}");
         }
 
+        if (string.Equals(cliOptions.Transport, "vxi11", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"VXI-11 {cliOptions.Host}" + (string.IsNullOrWhiteSpace(cliOptions.Port) ? string.Empty : $":{cliOptions.Port}");
+        }
+
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
         {
             var rfc2217StopBits = cliOptions.StopBits switch
@@ -119,6 +124,11 @@ public static class ConnectionDescription
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
         {
             return $"rfc2217://{cliOptions.Host}:{cliOptions.Port}";
+        }
+
+        if (string.Equals(cliOptions.Transport, "vxi11", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"vxi11://{cliOptions.Host}" + (string.IsNullOrWhiteSpace(cliOptions.Port) ? string.Empty : $":{cliOptions.Port}");
         }
 
         var stopBits = cliOptions.StopBits switch

@@ -15,6 +15,7 @@ using DevTerm.Transports.Loopback;
 using DevTerm.Transports.Brokers;
 using DevTerm.Transports.Mqtt;
 using DevTerm.Transports.Rfc2217;
+using DevTerm.Transports.Vxi11;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
 using DevTerm.Transports.Usbtmc;
@@ -114,6 +115,16 @@ public static class ServiceCollectionExtensions
                 o.RtsEnable = cliOptions.Rts;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
                 o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
+            });
+        }
+        else if (string.Equals(cliOptions.Transport, "vxi11", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddVxi11Transport();
+            services.Configure<Vxi11TransportOptions>(o =>
+            {
+                o.Host = cliOptions.Host ?? string.Empty;
+                o.Port = int.TryParse(cliOptions.Port, out var vxi11Port) ? vxi11Port : 0;
+                o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))

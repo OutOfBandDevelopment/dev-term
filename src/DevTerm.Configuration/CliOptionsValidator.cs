@@ -196,6 +196,19 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
 
                 break;
 
+            case "vxi11":
+                if (!string.IsNullOrWhiteSpace(options.Port) && (!int.TryParse(options.Port, out var vxi11Port) || vxi11Port is < 0 or > 65535))
+                {
+                    return ValidateOptionsResult.Fail("Invalid '--port' for the VXI-11 transport (expected 1-65535, or omit it to ask the instrument's portmapper).");
+                }
+
+                if (string.IsNullOrWhiteSpace(options.Host))
+                {
+                    return ValidateOptionsResult.Fail("Missing required '--host' for the VXI-11 transport.");
+                }
+
+                break;
+
             case "mqtt":
             case "amqp":
             case "stomp":
@@ -220,7 +233,7 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'mqtt', 'amqp', 'stomp', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'vxi11', 'mqtt', 'amqp', 'stomp', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

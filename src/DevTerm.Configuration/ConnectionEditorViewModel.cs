@@ -127,6 +127,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         nameof(IsBleTransport),
         nameof(IsLoopbackTransport),
         nameof(IsRfc2217Transport),
+        nameof(IsVxi11Transport),
         nameof(IsMqttTransport),
         nameof(IsSerialLikeTransport),
         nameof(IsTcpLikeTransport),
@@ -436,7 +437,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "amqp", "stomp", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "vxi11", "mqtt", "amqp", "stomp", "loopback"];
 
     /// <summary>
     /// Every presenter name a saved profile can check, in registration order (built-ins first, then
@@ -571,6 +572,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             OnPropertyChanged(nameof(IsBleTransport));
             OnPropertyChanged(nameof(IsLoopbackTransport));
             OnPropertyChanged(nameof(IsRfc2217Transport));
+            OnPropertyChanged(nameof(IsVxi11Transport));
             OnPropertyChanged(nameof(IsMqttTransport));
             OnPropertyChanged(nameof(IsSerialLikeTransport));
             OnPropertyChanged(nameof(IsTcpLikeTransport));
@@ -595,6 +597,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public bool IsRfc2217Transport => string.Equals(Transport, "rfc2217", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>VXI-11 reuses the TCP field group: a host, plus an optional port (blank asks the portmapper).</summary>
+    public bool IsVxi11Transport => string.Equals(Transport, "vxi11", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// <see langword="true"/> for <see cref="IsSerialTransport"/> or <see cref="IsRfc2217Transport"/> —
     /// RFC 2217 is "a serial port, reached over TCP", so it reuses the Serial field group
@@ -613,7 +618,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// Gates the "TCP" <see cref="FormSectionAttribute"/>; <see cref="Listen"/> stays TCP-only via its
     /// own field-level <c>VisibleWhen</c>, since RFC 2217 has no listen/server mode.
     /// </summary>
-    public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport || IsMqttTransport;
+    public bool IsTcpLikeTransport => IsTcpTransport || IsRfc2217Transport || IsVxi11Transport || IsMqttTransport;
 
     /// <summary>
     /// <see langword="true"/> for the serial, TCP, and RFC 2217 transports — the only ones whose

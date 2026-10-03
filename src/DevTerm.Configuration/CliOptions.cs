@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, amqp, stomp, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, vxi11, mqtt, amqp, stomp, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -333,6 +333,7 @@ public sealed class CliOptions
     public int ExportCaptures { get; set; }
 
     /// <summary>The destination folder for <see cref="ExportCaptures"/>.</summary>
+    [Category("Mode")]
     public string? ExportTo { get; set; }
 
     /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>

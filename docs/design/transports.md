@@ -75,6 +75,10 @@ enabled only when the active tab's transport is `TcpTransport` — see
 [`docs/specs/tui-main-screen.md`](../specs/tui-main-screen.md) and
 [`docs/specs/wpf-main-window.md`](../specs/wpf-main-window.md).
 
+### VXI-11
+
+A client for LXI instruments with no raw SCPI socket (ONC-RPC over TCP, built on the TCP connection source). Selected with `--transport vxi11 --host <ip>`; see [VXI-11 transport](vxi11-transport.md).
+
 ### UDP
 
 Datagram-oriented; no connection lifecycle in the traditional sense, but still modeled as open/close for consistency with other transports. Also supports both directions:

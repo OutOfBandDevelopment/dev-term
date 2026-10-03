@@ -290,7 +290,7 @@ button opening a list in the TUI). The scan takes about three seconds and lists 
 ```
 
 (Real output from the bench Rigol DG1062Z.) An instrument that only speaks VXI-11, with no raw SCPI port on 5025 or 5555,
-is listed as "VXI-11 only" and falls back to port 5025; dev-term has no VXI-11 client yet.
+is listed as "VXI-11 only" and falls back to port 5025, which will not work for it; connect with `--transport vxi11 --host <ip>` instead (the portmapper finds the port, no `--port` needed). The same works for the DG1062Z: `--transport vxi11 --host 192.168.0.87 --presenter ascii --lineending Lf --cli true`, then `*IDN?`.
 
 ### Picking a detected serial port, HID device, or USBTMC device
 

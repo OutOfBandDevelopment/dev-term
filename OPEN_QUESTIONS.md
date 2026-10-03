@@ -54,8 +54,6 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
   [bytecc-bt-up01](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md)
 - **Z-Wave:** declare the node's command classes or query them; how the `.ksy` runtime wires into a device module. —
   [z-wave-support](docs/design/proposals/z-wave-support.md)
-- **LXI:** does any owned instrument have a LAN interface needing VXI-11 (Phase 2 is deliberately not started)? —
-  [lxi-support](docs/design/features/lxi-support.md)
 - **Kuando Busylight:** why the batch/program-mode write has no visible effect; on/off time units; meaning of the
   poll reply's two strings. — [kuando-busylight-protocol](docs/design/features/kuando-busylight-protocol.md)
 - **K8055:** units of the two trailing Set bytes; what command `0x06` does; digital-input bit mapping; the constant
