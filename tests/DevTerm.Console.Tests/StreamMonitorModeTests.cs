@@ -45,6 +45,43 @@ public sealed class StreamMonitorModeTests
     }
 
     [TestMethod]
+    public async Task SearchAndSort_NarrowAndReorderTheList()
+    {
+        await using var bench = await StreamMonitorBench.StartAsync("Bench scope");
+        await bench.CaptureAsync(StreamContentSamples.Bmp());
+        await bench.CaptureAsync(StreamContentSamples.Png());
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = StreamMonitorMode.BuildWindow(app, bench.Monitor);
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+            try
+            {
+                Assert.AreEqual(2, parts.CaptureList.Source!.Count);
+
+                parts.SearchField.Text = "png";
+                Assert.AreEqual(1, parts.CaptureList.Source!.Count);
+                Assert.Contains("PNG", parts.DetailLabel.Text);
+
+                parts.SearchField.Text = "no such thing";
+                Assert.AreEqual(0, parts.CaptureList.Source!.Count);
+                Assert.AreEqual("No capture matches the search.", parts.DetailLabel.Text);
+
+                parts.SearchField.Text = string.Empty;
+                parts.SortButton.InvokeCommand(Command.Accept);
+                Assert.AreEqual(StreamMonitorMode.SortText(StreamCaptureSort.Newest), parts.SortButton.Text);
+                Assert.AreEqual(2, parts.CaptureList.Source!.Count);
+            }
+            finally
+            {
+                app.End(token);
+                parts.Window.Dispose();
+            }
+        });
+    }
+
+    [TestMethod]
     public async Task Captures_AreListedNewestLast_WithTheSavedFileName()
     {
         await using var bench = await StreamMonitorBench.StartAsync("Bench scope");

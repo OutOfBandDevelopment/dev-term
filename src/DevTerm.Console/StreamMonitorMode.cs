@@ -52,11 +52,13 @@ internal static class StreamMonitorMode
         var statusLabel = new Label { X = 0, Y = 0, Width = Dim.Fill(), HotKeySpecifier = noHotKey };
         var folderLabel = new Label { X = 0, Y = 1, Width = Dim.Fill(), Height = 1, HotKeySpecifier = noHotKey };
         var explanationLabel = new Label { X = 0, Y = 2, Width = Dim.Fill(), Height = 2, Text = ExplanationText };
-        var capturesLabel = new Label { X = 0, Y = 5, Text = "Captures (newest last):" };
+        var capturesLabel = new Label { X = 0, Y = 5, Text = "Search:" };
+        var searchField = new TextField { X = Pos.Right(capturesLabel) + 1, Y = 5, Width = 24 };
+        var sortButton = new Button { X = Pos.Right(searchField) + 2, Y = 5, Text = SortText(StreamCaptureSort.Oldest), ShadowStyle = ShadowStyles.None };
         var captureList = new ListView
         {
             X = 0,
-            Y = 6,
+            Y = 7,
             Width = Dim.Fill(),
             Height = Dim.Fill(4),
         };
@@ -69,17 +71,29 @@ internal static class StreamMonitorMode
         var rows = new ObservableCollection<string>();
         captureList.SetSource(rows);
 
+        // The captures the list currently shows (StreamCaptureView over the monitor's own list), in the order shown.
+        IReadOnlyList<StreamMonitorCapture> shown = [];
+        var sort = StreamCaptureSort.Oldest;
+
+        StreamMonitorCapture? Selected()
+        {
+            if (shown.Count == 0)
+            {
+                return null;
+            }
+
+            return captureList.SelectedItem is int selected && selected >= 0 && selected < shown.Count ? shown[selected] : shown.MaxBy(c => c.LocalStartedAt);
+        }
+
         void ShowDetail()
         {
-            var captures = monitor.Captures;
-            if (captures.Count == 0)
+            if (Selected() is not { } capture)
             {
-                detailLabel.Text = "Nothing captured yet.";
+                detailLabel.Text = monitor.Captures.Count == 0 ? "Nothing captured yet." : "No capture matches the search.";
                 return;
             }
 
-            var index = captureList.SelectedItem is int selected && selected >= 0 && selected < captures.Count ? selected : captures.Count - 1;
-            detailLabel.Text = Detail(captures[index]);
+            detailLabel.Text = Detail(capture);
         }
 
         // Rebuilds everything from the monitor's own state - called on the UI thread, directly while
@@ -101,16 +115,16 @@ internal static class StreamMonitorMode
             folderLabel.Text = $"Saving to: {TuiText.CompactPath(monitor.ExportDirectory, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 14 - more.Length, 20))}{more}";
             toggleButton.Text = running ? "Stop Monitoring" : "Start Monitoring";
 
-            var captures = monitor.Captures;
+            shown = StreamCaptureView.Apply(monitor.Captures, searchField.Text, sort: sort);
             rows.Clear();
-            foreach (var capture in captures)
+            foreach (var capture in shown)
             {
                 rows.Add(Row(capture));
             }
 
-            if (captures.Count > 0)
+            if (shown.Count > 0)
             {
-                captureList.SelectedItem = captures.Count - 1;
+                captureList.SelectedItem = shown.Select((c, i) => (c, i)).MaxBy(x => (x.c.LocalStartedAt, x.i)).i;
             }
 
             ShowDetail();
@@ -127,6 +141,15 @@ internal static class StreamMonitorMode
         };
 
         captureList.ValueChanged += (_, _) => ShowDetail();
+        searchField.TextChanged += (_, _) => Refresh();
+        sortButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            var all = Enum.GetValues<StreamCaptureSort>();
+            sort = all[(Array.IndexOf(all, sort) + 1) % all.Length];
+            sortButton.Text = SortText(sort);
+            Refresh();
+        };
 
         toggleButton.Accepting += (_, e) =>
         {
@@ -160,14 +183,11 @@ internal static class StreamMonitorMode
         convertButton.Accepting += (_, e) =>
         {
             e.Handled = true;
-            var captures = monitor.Captures;
-            if (captures.Count == 0)
+            if (Selected() is not { } capture)
             {
                 return;
             }
 
-            var index = captureList.SelectedItem is int selected && selected >= 0 && selected < captures.Count ? selected : captures.Count - 1;
-            var capture = captures[index];
             detailLabel.Text = "Converting...";
 
             _ = converter.ConvertAsync(capture).ContinueWith(
@@ -195,10 +215,10 @@ internal static class StreamMonitorMode
             app.RequestStop();
         };
 
-        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, captureList, detailLabel, toggleButton, modeButton, convertButton, closeButton);
+        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, searchField, sortButton, captureList, detailLabel, toggleButton, modeButton, convertButton, closeButton);
         Refresh();
 
-        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, convertButton, closeButton, Refresh, modeButton, converterOptions);
+        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, convertButton, closeButton, Refresh, modeButton, converterOptions, searchField, sortButton);
     }
 
     /// <summary>
@@ -216,6 +236,9 @@ internal static class StreamMonitorMode
         return $"{time}  {type,-4} {size,11}  {capture.EndLabel,-10}  {file}";
     }
 
+    /// <summary>The sort button's label; pressing it cycles to the next order.</summary>
+    internal static string SortText(StreamCaptureSort sort) => $"Sort: {sort}";
+
     /// <summary>The two detail lines under the list for the selected capture: what it is, then where it went.</summary>
     internal static string Detail(StreamMonitorCapture capture)
     {
@@ -228,4 +251,4 @@ internal static class StreamMonitorMode
 }
 
 /// <summary>The Stream Monitor window's controls, for tests to drive/inspect headlessly — <see cref="Refresh"/> is what the window runs whenever the monitor changes.</summary>
-internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button ConvertButton, Button CloseButton, Action Refresh, Button ModeButton, StreamCaptureConverterOptions ConverterOptions);
+internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button ConvertButton, Button CloseButton, Action Refresh, Button ModeButton, StreamCaptureConverterOptions ConverterOptions, TextField SearchField, Button SortButton);
