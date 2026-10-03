@@ -137,5 +137,76 @@ public sealed class RealHardwareStreamMonitorTests
         }
     }
 
+    /// <summary>
+    /// The TDS2024's <c>HARDCopy:FORMat</c> picks what <c>HARDCopy START</c> streams, so one scope yields several
+    /// real captures: EPSIMAGE is PostScript, LASERJET is PCL, PCX/TIFF/RLE are rasters. The format is restored to
+    /// BMP afterwards. LASERJET and PCX are left out: they produce no capture on the real scope (bug 069). Logs what the sniffer called each capture and keeps the bytes under the test results folder.
+    /// </summary>
+    [TestMethod]
+    [TestCategory(TestCategories.Hardware)]
+    [TestCategory(TestCategories.Tektronix_Tds2024)]
+    [Timeout(360000)]
+    [DataRow("EPSIMAGE")]
+    [DataRow("TIFF")]
+    public async Task Tds2024_HardCopy_OtherFormats_AreCaptured(string format)
+    {
+        var host = Parameter("RealTcpDeviceHost3");
+        var portText = Parameter("RealTcpDevicePort3") ?? "23";
+        if (string.IsNullOrEmpty(host) || !int.TryParse(portText, out var port))
+        {
+            Assert.Inconclusive("No RealTcpDeviceHost3 parameter - run with 'dotnet test --settings devterm.runsettings'.");
+            return;
+        }
+
+        if (!await RealDeviceReachability.IsTcpReachableAsync(host, port, TestContext.CancellationToken))
+        {
+            Assert.Inconclusive("The TDS2024 bridge isn't reachable.");
+            return;
+        }
+
+        var exportDirectory = Path.Combine(Path.GetTempPath(), "devterm-hw-streammonitor-" + format + "-" + Guid.NewGuid().ToString("N"));
+        var transport = new TcpTransport(
+            new SystemTcpConnectionSource(),
+            Options.Create(new TcpTransportOptions { Host = host, Port = port, WriteByteDelayMs = 50 }));
+        await using var session = new Session(transport, new Pipeline([new RawPresenter()]));
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(session, "TDS2024", exportDirectory);
+        monitor.Start();
+        var captured = new TaskCompletionSource<StreamMonitorCapture>(TaskCreationOptions.RunContinuationsAsynchronously);
+        monitor.CaptureAdded += (_, c) => captured.TrySetResult(c);
+
+        try
+        {
+            await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            await session.SendAsync(Encoding.ASCII.GetBytes("HARDCopy:FORMat " + format + "\n"), TestContext.CancellationToken);
+            await Task.Delay(500, TestContext.CancellationToken);
+            await session.SendAsync(Encoding.ASCII.GetBytes("HARDCopy START\n"), TestContext.CancellationToken);
+            var capture = await captured.Task.WaitAsync(TimeSpan.FromMinutes(5), TestContext.CancellationToken);
+
+            var head = Convert.ToHexString(capture.Capture.Data.AsSpan(0, Math.Min(24, capture.Capture.Data.Length)));
+            TestContext.WriteLine($"Format={format} Kind={capture.Capture.Kind.DisplayName} Bytes={capture.Capture.Data.Length} End={capture.Capture.EndReason} Declared={capture.Capture.WasDeclared} Head={head} Saved={capture.SavedPath} Error={capture.SaveError}");
+            var keep = Path.Combine(Path.GetTempPath(), "devterm-tds2024-" + format.ToLowerInvariant() + ".bin");
+            File.WriteAllBytes(keep, capture.Capture.Data);
+            TestContext.WriteLine("Raw bytes kept at " + keep);
+            Assert.IsNull(capture.SaveError);
+        }
+        finally
+        {
+            try
+            {
+                await session.SendAsync(Encoding.ASCII.GetBytes("HARDCopy:FORMat BMP\n"), CancellationToken.None);
+            }
+            catch (Exception)
+            {
+                // Best effort: report below if the scope was left in this format.
+            }
+
+            if (Directory.Exists(exportDirectory))
+            {
+                Directory.Delete(exportDirectory, recursive: true);
+            }
+        }
+    }
+
     private string? Parameter(string name) => TestContext.Properties.TryGetValue(name, out var value) ? value as string : null;
 }

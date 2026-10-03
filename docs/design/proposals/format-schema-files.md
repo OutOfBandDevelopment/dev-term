@@ -45,34 +45,44 @@ with a `$schema` property, so editors (VS Code etc.) validate and complete as th
 
 ```plantuml
 @startuml
-title Schema files: one source of truth
+title Schema files: generated from the model
 
 package "DevTerm C# model" {
   [DeviceManifest]
-  [UiDefinition / UiControl]
+  [UiDefinition]
   [CliOptions profile]
 }
-[JsonSchemaExporter\n(DevTerm.Schemas tool)] as Exporter
-folder "schemas/" {
-  [device-manifest.schema.json]
-  [ui-definition.schema.json]
-  [connection-profile.schema.json]
+component "JsonSchemaExporter" as Exporter
+folder "schemas" {
+  [device-manifest.schema.json] as ManifestSchema
+  [ui-definition.schema.json] as UiSchema
+  [connection-profile.schema.json] as ProfileSchema
 }
-[DeviceManifestValidator\n(semantic rules)] as Validator
-[.ksy importer] as Ksy
-[Editor (VS Code)] as Editor
-[CI: regenerate + diff] as CI
+component "CI regenerate and diff" as CI
 
 [DeviceManifest] --> Exporter
-[UiDefinition / UiControl] --> Exporter
+[UiDefinition] --> Exporter
 [CliOptions profile] --> Exporter
-Exporter --> [device-manifest.schema.json]
-Exporter --> [ui-definition.schema.json]
-Exporter --> [connection-profile.schema.json]
-[device-manifest.schema.json] ..> Editor : "$schema" completion
-[device-manifest.schema.json] ..> Ksy : validates output
+Exporter --> ManifestSchema
+Exporter --> UiSchema
+Exporter --> ProfileSchema
 CI ..> Exporter : fails on drift
-Validator ..> [DeviceManifest] : loads + checks meaning
+@enduml
+```
+
+```plantuml
+@startuml
+title Schema files: who uses them
+
+[device-manifest.schema.json] as ManifestSchema
+component "Editor (VS Code)" as Editor
+component "ksy importer" as Ksy
+component "DeviceManifestValidator" as Validator
+[DeviceManifest]
+
+ManifestSchema ..> Editor : $schema completion
+ManifestSchema ..> Ksy : validates output
+Validator ..> [DeviceManifest] : loads and checks meaning
 @enduml
 ```
 
@@ -80,12 +90,10 @@ Validator ..> [DeviceManifest] : loads + checks meaning
 @startsalt
 {
   <b>device.json in an editor
-  {+
-    "$schema": "../schemas/device-manifest.schema.json",
-    "Name": "Acme Meter",
-    "Inbound": { "Patt|<i>(completion list)</i>
-    .  | "Patterns"
-  }
+  ----
+  "$schema": "../schemas/device-manifest.schema.json"
+  "Name": "Acme Meter"
+  "Inbound": "Patt  <i>(completion list: Patterns)</i>
 }
 @endsalt
 ```

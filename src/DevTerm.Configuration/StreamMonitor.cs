@@ -59,7 +59,7 @@ public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceNa
 }
 
 /// <summary>
-/// The Stream Monitor's front-end-independent half (docs/design/proposals/stream-content-detection.md,
+/// The Stream Monitor's front-end-independent half (docs/design/features/stream-content-detection.md,
 /// docs/specs/stream-monitor.md): owns one <see cref="StreamContentWatcher"/> bound into the
 /// current session's live pipeline while running, auto-saves every capture as
 /// <c>{device}_{yyyyMMdd-HHmmss}.{ext}</c> under the connection's export directory, and keeps a

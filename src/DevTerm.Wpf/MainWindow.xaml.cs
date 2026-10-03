@@ -107,6 +107,7 @@ public partial class MainWindow : Window
         WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
         _lastCliOptions = cliOptions;
+        ShowConverterToolsDialog = ShowConverterToolsWindow;
 
         var tab = AddTab(new SessionTab(session, catalog, cliOptions));
 
@@ -1110,11 +1111,44 @@ public partial class MainWindow : Window
             return;
         }
 
-        var window = new StreamMonitorWindow(monitor, tab.Tab.CliOptions) { Owner = this };
+        var window = new StreamMonitorWindow(monitor, tab.Tab.CliOptions, ConverterToolsStore.Load()) { Owner = this };
         window.Closed += (_, _) => tab.MonitorWindow = null;
         tab.MonitorWindow = window;
         window.Show();
     }
+
+    /// <summary>The app-wide converter tools (~/.dev-term/converter-tools.json); tests point it at a temp file.</summary>
+    internal ConverterToolsStore ConverterToolsStore { get; set; } = new();
+
+    /// <summary>Opens the converter tools dialog; returns the edited list, or null when cancelled. Replaced by tests.</summary>
+    internal Func<ConverterToolsEditor, IReadOnlyList<StreamConvertToolOptions>?> ShowConverterToolsDialog { get; set; }
+
+    private IReadOnlyList<StreamConvertToolOptions>? ShowConverterToolsWindow(ConverterToolsEditor editor)
+    {
+        var dialog = new ConverterToolsWindow(editor) { Owner = this };
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
+    // Device > Converter Tools...: app-wide, so it needs no session. Takes effect the next time a Stream Monitor window opens.
+    internal void EditConverterTools()
+    {
+        if (ShowConverterToolsDialog(new ConverterToolsEditor(ConverterToolsStore.Load())) is { } edited)
+        {
+            try
+            {
+                ConverterToolsStore.Save(edited);
+            }
+            catch (Exception ex)
+            {
+                // A read-only folder or a locked file is an expected failure, not a reason to take the app down.
+                ReportConverterToolsError($"Could not save the converter tools: {ex.Message}");
+            }
+        }
+    }
+
+    internal Action<string> ReportConverterToolsError { get; set; } = message => MessageBox.Show(message, "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+
+    private void ConverterTools_Click(object sender, RoutedEventArgs e) => EditConverterTools();
 
     /// <summary>
     /// Tears down the active tab's current session/transport and opens a new one composed from

@@ -99,7 +99,6 @@ public sealed class ConverterToolsEditorTests
             var initial = new CliOptions { Transport = "loopback", StreamConvertMode = "auto", StreamConvertDpi = 300, StreamConvertTools = [Tool("gs")] };
             var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), initial);
             Assert.IsFalse(vm.IsDirty);
-            StringAssert.Contains(vm.ConverterToolsSummary, "gs");
 
             vm.ConverterTools = [Tool("gs"), Tool("gpcl")];
 
@@ -108,30 +107,6 @@ public sealed class ConverterToolsEditorTests
             Assert.AreEqual("auto", built.StreamConvertMode);
             Assert.AreEqual(300, built.StreamConvertDpi);
             CollectionAssert.AreEqual(new[] { "gs", "gpcl" }, built.StreamConvertTools.Select(t => t.Name).ToArray());
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [TestMethod]
-    public void ConnectionEditor_RaisesSummaryChanged_WhenTheToolsAreReplaced()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools", Path.GetRandomFileName());
-        Directory.CreateDirectory(directory);
-        try
-        {
-            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions { Transport = "loopback" });
-            StringAssert.Contains(vm.ConverterToolsSummary, "No converter tools");
-            var raised = new List<string?>();
-            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
-
-            vm.ConverterTools = [Tool("gs"), Tool("gpcl")];
-
-            CollectionAssert.Contains(raised, nameof(ConnectionEditorViewModel.ConverterToolsSummary));
-            StringAssert.Contains(vm.ConverterToolsSummary, "2 converter tools");
-            StringAssert.Contains(vm.ConverterToolsSummary, "gpcl");
         }
         finally
         {

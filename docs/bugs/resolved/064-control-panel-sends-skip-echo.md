@@ -69,3 +69,5 @@ Thread an echo callback into the control-panel send path, mirroring `TuiMode.Sen
 
 ## Resolution
 Fixed on 2026-10-02: both control panels take an echo callback (`ControlPanelMode.BuildWindow(..., echoSent)`, `ControlPanelWindow.EchoSent`) that the owning window points at its `Out> ...` output when View > Echo Sent Commands is on. The text is the surface's `ICommandPreview.PreviewCommand`, echoed only after the send started, so a rejected value leaves no line. Covers the device panels, SCPI (manual and auto-detect) and manifest panels in the TUI, and every panel `MainWindow` tracks in WPF. Regression tests: `ControlPanelModeTests.Button_WhenClicked_EchoesTheSentCommandsPreview`, `ControlPanelWindowTests.Button_WhenClicked_EchoesTheSentCommandsPreview_ButNotWhenTheSurfaceRejectsIt`. The TUI rejected-value case isn't tested: its failure path opens a modal `MessageBox`, which hangs a headless test.
+
+Manually checked against a real SCPI device on 2026-10-02: the echoed command looks right.

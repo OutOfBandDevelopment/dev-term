@@ -98,41 +98,4 @@ public sealed class ConverterToolsDialogTests
             Assert.AreEqual(300, accepted[1].Dpi);
         });
     }
-
-    [TestMethod]
-    public void ConfigureScreen_EditToolsButton_AppliesTheDialogsResult_AndShowsTheSummary()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "devterm-converter-tools-tui", Path.GetRandomFileName());
-        Directory.CreateDirectory(directory);
-        try
-        {
-            TuiTestRunner.RunHeadlessApp(app =>
-            {
-                var parts = ConfigureMode.BuildWindow(app, new CliOptions { Transport = "loopback", StreamConvertTools = [Tool("gs")] }, null, new ConnectionProfileStore(directory));
-                StringAssert.Contains(parts.EditConverterToolsButton.Text, "gs");
-
-                parts.ShowConverterToolsDialog = _ => null;
-                Press(parts.EditConverterToolsButton);
-                Assert.AreEqual(1, parts.ViewModel.ConverterTools.Count);
-                Assert.IsFalse(parts.ViewModel.IsDirty);
-
-                IReadOnlyList<StreamConvertToolOptions>? offered = null;
-                parts.ShowConverterToolsDialog = tools =>
-                {
-                    offered = tools;
-                    return [Tool("gs"), Tool("gpcl")];
-                };
-                Press(parts.EditConverterToolsButton);
-
-                Assert.AreEqual("gs", offered!.Single().Name);
-                Assert.AreEqual(2, parts.ViewModel.ConverterTools.Count);
-                Assert.IsTrue(parts.ViewModel.IsDirty);
-                StringAssert.Contains(parts.EditConverterToolsButton.Text, "2 converter tools");
-            });
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
 }

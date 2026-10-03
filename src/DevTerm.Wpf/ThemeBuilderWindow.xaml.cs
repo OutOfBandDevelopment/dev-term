@@ -13,7 +13,7 @@ namespace DevTerm.Wpf;
 /// framework-agnostic <see cref="ThemeBuilderState"/> for color tracking, live-preview building
 /// (<see cref="ActiveTheme.Preview"/>), and saving. Per-role color editing reuses
 /// <see cref="ColorPickerWindow"/> (RGB/HSV/hex) instead of a plain hex field, since WPF already has
-/// that control. See docs/design/proposals/theme-builder.md.
+/// that control. See docs/design/features/theme-builder.md.
 /// </summary>
 public partial class ThemeBuilderWindow : Window
 {

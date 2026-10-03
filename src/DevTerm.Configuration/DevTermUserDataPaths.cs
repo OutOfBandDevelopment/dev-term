@@ -20,7 +20,7 @@ public static class DevTermUserDataPaths
     /// <summary>
     /// <c>~/.dev-term/exports</c> — the default destination for auto-saved captures (e.g. the Stream
     /// Monitor's detected binary/image data, named <c>{device}_{timestamp}.{ext}</c>; see
-    /// docs/design/proposals/stream-content-detection.md) when <see cref="CliOptions.ExportDirectory"/>
+    /// docs/design/features/stream-content-detection.md) when <see cref="CliOptions.ExportDirectory"/>
     /// isn't set to something else.
     /// </summary>
     public static string ExportsDirectory => Path.Combine(_userRootDirectory, "exports");
@@ -44,6 +44,13 @@ public static class DevTermUserDataPaths
     /// switching profile never changes the theme. See <see cref="AppPreferencesStore"/>.
     /// </summary>
     public static string PreferencesFile => Path.Combine(_userRootDirectory, "preferences.json");
+
+    /// <summary>
+    /// <c>~/.dev-term/converter-tools.json</c> - the Stream Monitor's registered converter tools, shared by every
+    /// profile and front end (Device &gt; Converter Tools...). See <see cref="ConverterToolsStore"/> and
+    /// docs/design/features/stream-converter-tools.md.
+    /// </summary>
+    public static string ConverterToolsFile => Path.Combine(_userRootDirectory, "converter-tools.json");
 
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");

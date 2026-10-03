@@ -715,6 +715,9 @@ public static class TuiMode
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
                 new MenuItem("_Edit Device Manifest...", string.Empty, Guarded(() => ManifestEditorMode.Run(app))),
                 streamMonitorMenuItem = new MenuItem("S_tream Monitor...", string.Empty, Guarded(OpenStreamMonitor)),
+
+                // Always available, and app-wide: the registered tools serve every device and profile.
+                new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
             ]),
             new MenuBarItem("_View",
             [
@@ -1111,6 +1114,17 @@ public static class TuiMode
         // status line here, against the tab it belongs to - while the user is back in this window
         // sending commands, possibly on a different tab by then. A later profile switch on that same
         // tab moves it via SwitchProfileAsync's own windowTab.Monitor.SetSession call.
+        // Device > Converter Tools...: the app-wide list (~/.dev-term/converter-tools.json) the Stream Monitor's
+        // Convert as: choice draws from. Takes effect the next time a Stream Monitor window opens.
+        void EditConverterTools()
+        {
+            var store = new ConverterToolsStore();
+            if (ConverterToolsDialog.Show(app, store.Load()) is { } edited)
+            {
+                store.Save(edited);
+            }
+        }
+
         void OpenStreamMonitor()
         {
             var windowTab = ActiveTab();
@@ -1124,7 +1138,7 @@ public static class TuiMode
             windowTab.Monitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
             windowTab.Monitor.Start();
 
-            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor, windowTab.Tab.CliOptions);
+            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor, windowTab.Tab.CliOptions, new ConverterToolsStore().Load());
             app.Run(monitorParts.Window);
             monitorParts.Window.Dispose();
         }

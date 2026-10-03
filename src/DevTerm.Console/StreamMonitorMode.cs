@@ -29,12 +29,12 @@ internal static class StreamMonitorMode
         return $"Convert as: {choices[StreamConversionChoice.IndexOf(choices, options)].DisplayName}";
     }
 
-    internal static StreamMonitorWindowParts BuildWindow(IApplication app, StreamMonitor monitor, CliOptions? cliOptions = null)
+    internal static StreamMonitorWindowParts BuildWindow(IApplication app, StreamMonitor monitor, CliOptions? cliOptions = null, IEnumerable<StreamConvertToolOptions>? globalTools = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(monitor);
 
-        var converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions);
+        var converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions, globalTools);
         var converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(converterOptions));
 
         var window = new Window

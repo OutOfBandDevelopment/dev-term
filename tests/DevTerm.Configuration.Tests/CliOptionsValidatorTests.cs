@@ -266,8 +266,12 @@ public sealed class CliOptionsValidatorTests
         Assert.IsTrue(_validator.Validate(null, WithTools("tool:GS", "gs")).Succeeded);
 
     [TestMethod]
-    public void Validate_StreamConvertModeToolNamingAnUnknownTool_Fails() =>
-        Assert.IsTrue(_validator.Validate(null, WithTools("tool:nope", "gs")).Failed);
+    public void Validate_StreamConvertModeToolNamingAToolNotInTheProfile_Succeeds() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("tool:nope", "gs")).Succeeded);
+
+    [TestMethod]
+    public void Validate_StreamConvertModeToolWithoutAName_Fails() =>
+        Assert.IsTrue(_validator.Validate(null, WithTools("tool:", "gs")).Failed);
 
     [TestMethod]
     public void Validate_DuplicateToolNames_Fail() =>

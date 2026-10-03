@@ -1,8 +1,8 @@
 # Converter tools editor
 
-The dialog that manages the Stream Monitor's registered converter tools (`CliOptions.StreamConvertTools`). It is
-opened from the **Stream Monitor** section of the connection editor (File > Device Profiles... > Edit in WPF, the
-Configure screen in the TUI) by **Edit tools...**. Design: [stream-converter-tools](../design/proposals/stream-converter-tools.md).
+The dialog that manages the app-wide list of converter tools the Stream Monitor can run. The list is shared by every
+profile, device and front end, and is stored in `~/.dev-term/converter-tools.json`. It is opened by **Device > Converter
+Tools...** (next to **Stream Monitor...**) in both the TUI and WPF. Design: [stream-converter-tools](../design/features/stream-converter-tools.md).
 
 Logic is shared: `DevTerm.Configuration.ConverterToolsEditor` (a working copy of the list). WPF renders it as
 `ConverterToolsWindow`, the TUI as `ConverterToolsDialog`.
@@ -34,6 +34,9 @@ Captured by `ConverterToolsScreenshotTests` (TUI, 80x25) and `ScreenshotTests.Co
   open. Checks: blank name, duplicate name, blank path, DPI not above zero, blank output extension.
 - **Cancel** discards every change (the dialog edits copies).
 
-The connection editor shows a read-only **Converter tools** summary ("2 converter tools: gs, gpcl"). Accepting the dialog
-replaces the list and marks the profile dirty; saving writes `StreamConvertTools` (and the other `StreamConvert*`
-settings, which are now carried through the editor rather than dropped) to the profile JSON.
+Accepting the dialog replaces the list and writes it to `converter-tools.json` at once; Cancel writes nothing. A missing
+or unreadable file reads as an empty list. The Stream Monitor windows load the list when they open, so a change shows
+the next time one is opened.
+
+A profile's own `StreamConvertTools` (older profiles) still load and are added to the list, unless an app-wide tool has
+the same name, in which case the app-wide one wins. They have no editing screen any more; saving a profile keeps them.

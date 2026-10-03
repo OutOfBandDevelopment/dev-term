@@ -9,7 +9,7 @@ answer (or spontaneously send) something other than a short text line: an oscill
 screen dump, a plotter's HP-GL stream, a hard copy in a printer language. Without it, those bytes
 only show up as garbage in the text presenters. The TUI shows a capture list only (Terminal.Gui can't
 draw images); WPF adds a live preview for the image formats it decodes natively. Design intent:
-[`docs/design/proposals/stream-content-detection.md`](../design/proposals/stream-content-detection.md).
+[`docs/design/features/stream-content-detection.md`](../design/features/stream-content-detection.md).
 How to use it: [`docs/user-guide/stream-monitor.md`](../user-guide/stream-monitor.md).
 
 The shared behavior lives outside both front ends: detection in `DevTerm.Core.StreamContent`
@@ -123,8 +123,9 @@ quiet, hit the size limit, or was stopped mid-capture), or `…, but could not s
 
 ## Converting a capture
 
-"Convert..." wraps three mechanisms, configured per connection profile (Connection Editor's
-"Stream Monitor" section) and offered as alternatives — one mode is active at a time, never all
+"Convert..." wraps three mechanisms, configured per connection profile (the `StreamConvert*` settings; the app-wide
+converter tools list is edited from **Device > Converter Tools...**, see [converter-tools-editor](converter-tools-editor.md))
+and offered as alternatives — one mode is active at a time, never all
 three. `DevTerm.Configuration.StreamCaptureConverter` picks the mode and never throws: every failure
 (nothing configured, the selected capture was never saved, a process error, a failed HTTP request)
 reports an explanatory message instead.
@@ -134,8 +135,8 @@ reports an explanatory message instead.
 | (blank/unrecognized) | Convert... always fails with "no conversion mechanism is selected" | — |
 | `internalhpgltosvg` | dev-term's own HP-GL-to-SVG converter (`HpglToSvgConverter`) — HP-GL captures only, fails for any other kind | `Stream Convert Output Extension` (default `svg`) |
 | `externaltool` | Runs a configured executable against the capture's saved file as a child process | `Stream Convert External Tool Path`, `Stream Convert External Tool Arguments` (a template with `{input}`/`{output}`/`{dpi}` placeholders, e.g. `-sDEVICE=png16m -r{dpi} -o{output} {input}`), `Stream Convert Dpi` (default 150), `Stream Convert Output Extension` (default `png`) |
-| `auto` | Runs the first registered tool whose `Formats` include the capture's (empty `Formats` accepts anything); fails naming the format if none does | `Stream Convert Tools` (a list: `Name`, `Path`, `Arguments`, `Formats`, `OutputExtension` default `png`, `Dpi` default 150), `Stream Convert Output Extension` if set overrides the tool's |
-| `tool:<name>` | Runs the registered tool of that name regardless of format; the validator rejects an unknown name | as `auto` |
+| `auto` | Runs the first registered tool (app-wide tools first, then the profile's own) whose `Formats` include the capture's (empty `Formats` accepts anything); fails naming the format if none does | `Stream Convert Tools` (a list: `Name`, `Path`, `Arguments`, `Formats`, `OutputExtension` default `png`, `Dpi` default 150), `Stream Convert Output Extension` if set overrides the tool's |
+| `tool:<name>` | Runs the registered tool of that name regardless of format; an unknown name is reported when Convert... runs (the validator cannot see app-wide tools) | as `auto` |
 
 The argument template is split on whitespace before `{input}`/`{output}`/`{dpi}` substitution, and
 each resulting token becomes its own process argument (`ProcessStartInfo.ArgumentList`, no shell

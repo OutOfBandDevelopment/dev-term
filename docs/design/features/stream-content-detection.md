@@ -100,15 +100,10 @@ fare better than color did). So, as the user already anticipated and accepted:
 - WPF: native-image-format live preview (BMP/PNG/JPEG/GIF/TIFF) using WPF's own decoders — no new
   parsing code.
 
-**Phase 2 (depends on the HPGL/PostScript/PCL rendering presenter — genuinely new parsing/rendering
-work, already backlogged in presenters.md §3 and `BACKLOG.md`, not rushed here):**
-- Live vector/raster preview of HPGL/PostScript/PCL captures in the Stream Monitor window, reusing
-  that presenter's canvas.
-- A manual "Convert/Rasterize to PNG at DPI N" export action wrapping that presenter's own
-  `IExportable` implementation, once it exists — for TUI too, as a non-graphical "export the last
-  N captures to PNG" command even though it can't preview them.
-- Three conversion mechanisms (see "Raster/convert tool integration" below), any of which can back
-  the export action above without depending on each other.
+**Phase 2 (conversion built; live rendering still ahead):** a manual "Convert" export action wrapping external tools or
+the internal HP-GL-to-SVG converter, built 2026-10-01/02 (see the next section and Status). Live vector/raster preview of
+PostScript/PCL in the window depends on the HPGL/PostScript/PCL rendering presenter (`presenters.md` section 3, in
+`BACKLOG.md`), which is not built.
 
 ## Raster/convert tool integration (proposed 2026-09-30)
 
@@ -117,10 +112,9 @@ call [a] raster tool — something like ghostscript where path to the tool and a
 mapped, or use a web service like Apache Tika by configuring a web request for conversion — also
 support internal conversion tools like a simple HP/GL to SVG tool."
 
-This extends Phase 2's "Convert/Rasterize" export action above with a concrete mechanism — the
-`IExportable` interface it's proposed against still doesn't exist, so this section only fixes what
-the export action calls into once it does, not when Phase 2 starts. Three mechanisms, offered as
-alternatives (a capture can be converted by whichever is configured/available, not all three at
+This is the concrete mechanism behind Phase 2's "Convert/Rasterize" export action. As built it does not use
+`IExportable` (which was never needed): `StreamCaptureConverter` runs the chosen mechanism against the saved capture file.
+Three mechanisms were proposed, offered as alternatives (a capture can be converted by whichever is configured/available, not all three at
 once):
 
 1. **External tool invocation** (Ghostscript-style). A new `ExternalConverterOptions` (a per-format
@@ -134,7 +128,7 @@ once):
    template must be built from a fixed placeholder-substitution scheme, never raw user/device data
    concatenated into a shell string, to avoid command injection from a captured file name or a
    device-supplied value.
-2. **Web-service conversion** (Apache-Tika-style). A configured HTTP endpoint + method the capture's
+2. **Web-service conversion** (Apache-Tika-style). *Not built; removed 2026-10-02, a registered script or `curl` covers it.* A configured HTTP endpoint + method the capture's
    bytes are POSTed to, with the converted result read back from the response. Needs explicit
    per-profile opt-in (this sends a capture's raw bytes to an external, user-configured host — no
    default endpoint, ever), and reuses whatever HTTP client/timeout/retry conventions the rest of
@@ -152,9 +146,9 @@ once):
    larger grammars); those stay dependent on the external-tool or web-service paths, or on the full
    rendering presenter once it exists.
 
-Configuration for all three lives alongside the existing Stream Monitor settings
-(`DevTermUserDataPaths`-rooted, per-profile override the same way `CliOptions.EffectiveExportDirectory`
-already is) rather than a new top-level settings surface.
+Configuration lives alongside the existing Stream Monitor settings (per-profile override the same way
+`CliOptions.EffectiveExportDirectory` is); the list of registered tools is app-wide, see
+[stream-converter-tools.md](stream-converter-tools.md).
 
 ## Open questions
 
@@ -181,23 +175,24 @@ already is) rather than a new top-level settings surface.
 
 ## Completion checklist
 
-What is needed before this proposal can be closed. Tick items as they land, in the same change.
+What was needed to close this out. The unbuilt items moved to `BACKLOG.md`.
 
 - [x] Phase 1: sniffer, end finder, `StreamContentWatcher`, declared hint, Stream Monitor in both front ends, WPF native-image preview
 - [x] Phase 1 verified on real hardware: DG1062Z BMP and TDS2024 BMP (`docs/test/2026-10-02-18-20-00.md`)
 - [x] Conversion: internal HP-GL to SVG, external tool, multiple named tools (`stream-converter-tools.md`)
 - [x] WPF SVG preview, verified on a real Tektronix 2230 plot
 - [x] Real Ghostscript (PostScript) and GhostPCL (PCL) conversion runs (`RealGhostscriptConversionTests`, 2026-10-02)
-- [ ] Rewrite the stale Phase 2 and Status text (web service removed; "Phase 2: not started" header is wrong)
-- [ ] Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
-- [ ] SVG drawing in the TUI (it only lists the converted file)
-- [ ] CLI-mode "export last N captures" (Stream Monitor has no CLI support)
-- [ ] Retention/cleanup policy for the exports folder (low priority)
-- [ ] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
+- [x] Rewrite the stale Phase 2 and Status text (web service removed; "Phase 2: not started" header was wrong)
+- Not built, now in `BACKLOG.md`:
+  - Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
+  - SVG drawing in the TUI (it only lists the converted file)
+  - CLI-mode "export last N captures" (Stream Monitor has no CLI support)
+  - Retention/cleanup policy for the exports folder (low priority)
+- [x] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
 
 ## Status
 
-**Phase 1: implemented 2026-09-25. Phase 2: not started.** Screen reference:
+**Implemented: Phase 1 on 2026-09-25, conversion (Phase 2) on 2026-10-01/02. Live PostScript/PCL rendering was not built (see `BACKLOG.md`).** Screen reference:
 [docs/specs/stream-monitor.md](../../specs/stream-monitor.md); walkthrough:
 [docs/user-guide/stream-monitor.md](../../user-guide/stream-monitor.md).
 
@@ -251,60 +246,13 @@ What was built, and where it differs from the text above:
   query). One capture at a time: a second stream starting mid-capture is appended to the first.
   No retention/cleanup.
 
-**Phase 2 (partially built 2026-10-01):** the three conversion mechanisms proposed above (external
-tool invocation, web-service conversion, internal HP/GL-to-SVG) are now built as
-`DevTerm.Configuration.StreamCaptureConverter`, wired into both front ends' Stream Monitor windows
-as a "Convert..." action next to Start/Stop Monitoring. Still ahead: live vector/raster preview of
-HP-GL/PostScript/PCL captures in the window itself (the harder rendering-presenter work from
-[presenters.md](../presenters.md) §3) — "Convert..." writes a file but doesn't show it.
-**Update 2026-10-02:** a converted file now joins the capture list as its own entry (`ConvertedFrom`, `StreamMonitor.AddConverted`), the mechanism is chosen in the window next to Convert..., and WPF draws an SVG in the preview pane (`SvgPreview`: paths, lines, polygons, rectangles, circles; no transforms, text or CSS). Verified against a real Tektronix 2230 HP-GL plot converted to SVG and drawn. Still ahead: direct preview of PostScript/PCL, and any SVG drawing in the TUI (it lists the converted file only). Detail in docs/changes/2026-10-02.md.
+**Phase 2, conversion (built 2026-10-01/02):** the external-tool and internal HP/GL-to-SVG mechanisms are
+`DevTerm.Configuration.StreamCaptureConverter`, wired into both Stream Monitor windows as "Convert..." next to
+Start/Stop Monitoring, with the mechanism chosen in the window. A converted file joins the capture list as its own entry
+(`ConvertedFrom`, `StreamMonitor.AddConverted`), and WPF draws an SVG in the preview pane (`SvgPreview`: paths, lines,
+polygons, rectangles, circles; no transforms, text or CSS). Several named tools: [stream-converter-tools.md](stream-converter-tools.md).
+Verified against a real Tektronix 2230 HP-GL plot converted to SVG and drawn, and Ghostscript and GhostPCL runs
+(`RealGhostscriptConversionTests`). The web-service mechanism was removed. Detail in `docs/changes/2026-10-02.md`.
 
-What was built, and where it differs from the proposal text above:
-
-- **`StreamCaptureConverter.ConvertAsync(StreamMonitorCapture)`** picks one of the three mechanisms
-  by a single `StreamConversionMode` (`None`/`ExternalTool`/`WebService`/`InternalHpglToSvg`) rather
-  than offering all three per capture — matching the proposal's "offered as alternatives, not all
-  three at once" framing. Never throws; every failure path (nothing configured, a never-saved
-  capture, a process that won't start or exits non-zero, a failed HTTP request) returns a
-  `StreamConversionResult(Success, OutputPath, Error)`, the same tolerant result-object convention
-  `StreamMonitor.Save` already uses.
-- **External tool**: the argument template is split on whitespace *before* `{input}`/`{output}`/
-  `{dpi}` substitution, and each resulting token is added individually to
-  `ProcessStartInfo.ArgumentList` (`UseShellExecute = false`) — never a shell-parsed command string —
-  so a captured file name or a substituted path containing spaces can't break out of the intended
-  argument boundaries. `StreamConvertDpi` (default 150) is the only non-path placeholder.
-- **Web service** (removed 2026-10-02, see [stream-converter-tools.md](stream-converter-tools.md)): POSTed (method configurable) the capture's raw bytes with its detected
-  `StreamContentKind.MediaType` as `Content-Type`, via a named `IHttpClientFactory` client
-  (`StreamCaptureConverter.HttpClientName`) when running under DI, or an owned, per-call `HttpClient`
-  (disposed after) when constructed ad hoc outside DI — the same ad-hoc-construction accommodation
-  `StreamMonitor` itself already needs for the TUI/WPF front ends.
-- **Internal HP/GL-to-SVG**: calls the already-built, unmodified `HpglToSvgConverter.ConvertToSvg`
-  against the capture's bytes; fails (rather than attempting it) for any non-HP-GL capture.
-- **Output path**: always the saved capture's own directory and file-name stem with a new extension
-  (`StreamConvertOutputExtension`, or a per-mechanism default — `svg` for the internal converter,
-  `png` for external tool/web service) — never a separately configured output directory, so a
-  conversion always lands next to the file it came from.
-- **Configuration**: seven new `CliOptions` properties, all `[Category("Stream Monitor")]` —
-  `StreamConvertMode`, `StreamConvertExternalToolPath`, `StreamConvertExternalToolArguments`,
-  `StreamConvertDpi`, `StreamConvertWebServiceUrl`, `StreamConvertWebServiceMethod`,
-  `StreamConvertOutputExtension` — carried per-connection-profile the same way every other
-  `CliOptions` setting is, and automatically surfaced as a new "Stream Monitor" section in the
-  Connection Editor's generated form (`FormDefinitionGenerator`) in both front ends. Bound into
-  `StreamCaptureConverterOptions` via `FromCliOptions`/`CopyFrom`, mirroring
-  `StreamCaptureConverterOptions.FromCliOptions(cliOptions)`'s ad-hoc-construction path for the
-  TUI/WPF windows (which don't go through DI) and `ServiceCollectionExtensions.AddDevTermFrontEnd`'s
-  `IOptions<StreamCaptureConverterOptions>` registration for DI.
-- **Front ends**: both Stream Monitor windows gained a "Convert..." action next to Start/Stop
-  Monitoring, enabled only when a capture is selected. TUI: a button beside the toggle, reporting
-  "Converting..." then the result in the detail label. WPF: a button beside the toggle,
-  `ConvertSelectedAsync` (internal, directly callable from tests) reporting into the detail text on
-  success and a `MessageBox.Show` on failure (matching the existing, also-untested `ExportAs_Click`
-  failure-path convention — a real modal, deliberately left untested).
-- **Not built this pass**: live preview of the converted output (the file is written but not shown
-  in-window — that's still gated on the rendering presenter), and no CLI-mode "export the last N
-  captures" command (the proposal's own aside under Phase 2's bullet) — Stream Monitor still has no
-  CLI-mode support at all, so this wasn't added in isolation.
-- **Verified**: unit tests only — all three mechanisms (including a real child-process round trip and
-  a fake-`HttpMessageHandler`-backed web-service round trip), placeholder-substitution safety, and
-  both front ends' wiring. **Not verified against real hardware / a real external tool (Ghostscript)
-  or a real web conversion service.**
+**Not built** (tracked in `BACKLOG.md`): direct in-window preview of PostScript and PCL (needs the rendering presenter),
+SVG drawing in the TUI, a CLI "export last N captures", and a retention policy for the exports folder.

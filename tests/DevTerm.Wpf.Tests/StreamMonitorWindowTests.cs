@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DevTerm.Configuration;
@@ -307,6 +308,24 @@ public sealed class StreamMonitorWindowTests
 
             Assert.IsTrue(File.Exists(Path.ChangeExtension(capture.SavedPath, "svg")));
             Assert.Contains("Converted to", window.DetailText.Text);
+            window.Close();
+        });
+    }
+
+    [TestMethod]
+    public void ConvertModeBox_OffersTheAppWideConverterTools()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("plotter");
+            var withoutTools = new StreamMonitorWindow(bench.Monitor);
+            var window = new StreamMonitorWindow(bench.Monitor, null, [new StreamConvertToolOptions { Name = "gs", Path = "gs.exe" }]);
+            StaTestRunner.DoEvents();
+
+            // The first registered tool adds Auto and the tool itself.
+            Assert.AreEqual(withoutTools.ConvertModeBox.Items.Count + 2, window.ConvertModeBox.Items.Count);
+            Assert.IsTrue(window.ConvertModeBox.Items.Cast<ComboBoxItem>().Any(i => i.Content?.ToString()?.Contains("gs", StringComparison.Ordinal) == true));
+            withoutTools.Close();
             window.Close();
         });
     }

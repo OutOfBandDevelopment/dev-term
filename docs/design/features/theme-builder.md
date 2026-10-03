@@ -126,17 +126,17 @@ note right : no-op after Save (Select already\nre-resolved to the same theme)
 
 ## Completion checklist
 
-What is needed before this proposal can be closed. Tick items as they land, in the same change.
+What was needed to close this out. Tick items as they land, in the same change.
 
 - [x] Shared model (`ThemeFile.Save`, `ThemeBuilderState`, `ActiveTheme.Preview`)
 - [x] TUI `ThemeBuilderMode`
 - [x] WPF seed picker and builder windows
 - [x] Unit tests, spec (`docs/specs/theme-builder.md`) and user guide
-- [ ] Manual-use pass in both front ends (no device dependency; optional)
+- [x] Manual-use pass in both front ends (reviewed by the maintainer 2026-10-02: "looks great")
 
 ## Status
 
-**Implemented 2026-10-01.** Both front ends ship the full flow described above:
+**Implemented 2026-10-01; reviewed by hand in both front ends 2026-10-02.** Both front ends ship the full flow described above:
 
 - **Shared model** (`DevTerm.Configuration`): `ThemeFile.Save`, `ThemeBuilderState`,
   `ActiveTheme.Preview`/`CancelPreview` — unit-tested in
@@ -153,8 +153,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
   improvement over the TUI screen, which needs a nested `Application.Run` to exercise the equivalent
   branches.
 
-Verified: whole-solution `dotnet build` (0 warnings/errors) and `dotnet test --filter
-"TestCategory=Unit"` (every project green). **Not yet verified**: no real-hardware/manual-use pass —
-this is a pure UI feature with no device dependency, so that verification gap is expected, not a gap
-in testing coverage. See `docs/specs/theme-builder.md` for the field/action reference and
+Verified: whole-solution `dotnet build` (0 warnings/errors), `dotnet test` (every project green), and a manual-use
+pass in both front ends (the maintainer, 2026-10-02: "looks great"). It is a pure UI feature with no device
+dependency, so there is no hardware pass. See `docs/specs/theme-builder.md` for the field/action reference and
 `docs/user-guide/themes.md`'s "Building a theme in the app" section for the walkthrough.

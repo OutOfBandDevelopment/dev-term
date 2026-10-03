@@ -5,7 +5,7 @@ namespace DevTerm.Configuration;
 /// <see cref="StreamConvertToolOptions"/> that can be added to, removed from and reordered (order matters,
 /// since Auto picks the first tool whose formats match), plus the validation the dialog's OK button runs.
 /// Edits go to copies, so cancelling leaves the profile's tools untouched.
-/// See docs/design/proposals/stream-converter-tools.md.
+/// See docs/design/features/stream-converter-tools.md.
 /// </summary>
 public sealed class ConverterToolsEditor
 {

@@ -60,7 +60,7 @@ profile — this proposal is about the parts that aren't covered yet.
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
 
-- [ ] Confirm a real LXI instrument on the bench (needed before Phase 2)
+- [x] Confirm a real LXI instrument on the bench: Rigol DG1062Z at 192.168.0.87 (2026-10-02)
 - [ ] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module
 - [ ] Phase 2: VXI-11 client, only if a real instrument needs it
 - [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
@@ -68,5 +68,9 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 
 ## Status
 
-**Not started — design only.** No code exists yet, and Phase 2 in particular needs a confirmed real
-instrument before implementation.
+**Not started — design only, but a real LXI instrument is now on hand** (2026-10-02): the Rigol DG1062Z
+(`TCPIP0::192.168.0.87::INSTR`, LXI logo on its Utility screen). Probed from the dev machine: **TCP 5555
+answers raw SCPI** (`*IDN?` -> `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`), so the existing TCP
+transport plus the DG1062Z profile already covers it (`--transport tcp --host 192.168.0.87 --port 5555`);
+Rigol uses 5555, not the conventional 5025. TCP 111 (ONC-RPC portmapper, i.e. VXI-11) and 80 (web) are
+also open, so a Phase 2 VXI-11 client has a real target. No code exists yet.

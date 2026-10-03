@@ -1,8 +1,7 @@
 # Registering several converter tools for the Stream Monitor
 
-Proposed and first built 2026-10-02. Extends the single "External tool" mechanism in
-[stream-content-detection.md](stream-content-detection.md) so a profile can register more than one
-converter, each declaring the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL 5,
+Built 2026-10-02. Extends the single "External tool" mechanism in
+[stream-content-detection.md](stream-content-detection.md) so more than one converter can be registered, each declaring the capture formats it handles (Ghostscript for PostScript, GhostPCL for PCL 5,
 anything else a user has).
 
 ## Why
@@ -13,7 +12,11 @@ tools, so a user with both had to edit the profile between captures. The
 
 ## Shape
 
-A profile gets a list, `StreamConvertTools`, of tool entries (a `List<T>`, never a dictionary, so JSON and XML
+The list of tools is **app-wide**: every profile, device and front end shares it, and it is edited from
+**Device > Converter Tools...**, next to Stream Monitor, in both front ends. It lives in `~/.dev-term/converter-tools.json`
+(`ConverterToolsStore`). A profile's own `StreamConvertTools` (the first design put the list per profile) still loads
+and merges in, but has no editing screen; on a name clash the app-wide tool wins. The effective list is app-wide tools
+first, then the profile's. The list is made of tool entries (a `List<T>`, never a dictionary, so JSON and XML
 both serialize it, see `CLAUDE.md`):
 
 | Field | Meaning |
@@ -82,25 +85,34 @@ end
 @enduml
 ```
 
-Selection is stored as `StreamConvertMode`: the existing values, plus `auto` and `tool:<Name>`.
+Selection is stored as `StreamConvertMode`: the existing values, plus `auto` and `tool:<Name>`. The validator accepts any
+non-empty `tool:<name>`, since the name may belong to an app-wide tool it cannot see; an unknown name is reported when
+Convert... runs. `StreamCaptureConverter.FromCliOptions` takes the app-wide tools from its caller and never reads the
+disk itself, so tests never touch a user's own file.
 
 ## Completion checklist
 
-What is needed before this proposal can be closed. Tick items as they land, in the same change.
+What was needed to close this out.
 
 - [x] Options, Auto and by-name selection, conversion list in both windows
-- [x] Tool-list editor in both profile forms (`docs/specs/converter-tools-editor.md`)
+- [x] Tool-list editor, app-wide, from Device > Converter Tools... in both front ends (`docs/specs/converter-tools-editor.md`)
 - [x] Settings persist through profile save/load
 - [x] Web service mode removed
 - [x] Screenshots of both editors in the user guide
 - [x] Real Ghostscript and GhostPCL runs (`RealGhostscriptConversionTests`, 2026-10-02)
-- [ ] Update this Status and the `docs/design/README.md` one-liner (both still say no real tool run)
+- [x] Status and the `docs/design/README.md` one-liner updated
 
 ## Status
 
-- **Built 2026-10-02**: the options, `StreamCaptureConverter` selection (Auto and by name), the conversion list
-  in both windows, and tests. Real-tool verification is the same open item as the Ghostscript guide.
-- **Built 2026-10-02**: the tool-list editor, reached by **Edit tools...** in the Stream Monitor section of both profile
-  forms ([spec](../../specs/converter-tools-editor.md)); the `StreamConvert*` settings now persist through profile save/load.
-- **Built 2026-10-02**: Web service mode removed (`StreamConvertWebService*`, the `webservice` mode, its validator
-  case, the HTTP client registration and its tests).
+**Implemented 2026-10-02.**
+
+- The options, `StreamCaptureConverter` selection (Auto and by name), and the conversion list in both Stream Monitor
+  windows.
+- The tool list is app-wide (`ConverterToolsStore`, `~/.dev-term/converter-tools.json`), edited from **Device > Converter
+  Tools...** in both front ends ([spec](../../specs/converter-tools-editor.md)). The earlier per-profile "Edit tools..."
+  button was removed; a profile's own `StreamConvertTools` still loads and merges in.
+- Web service mode removed (`StreamConvertWebService*`, the `webservice` mode, its validator case, the HTTP client
+  registration and its tests).
+- Verified against real tools: Ghostscript (PostScript to PNG) and GhostPCL (PCL to PNG) through the registered-tool path
+  (`RealGhostscriptConversionTests`); both skip as Inconclusive where the tool isn't installed. Everything else is unit
+  and screenshot tested. A PostScript or PCL capture straight from a device hasn't been converted yet.

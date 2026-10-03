@@ -14,7 +14,7 @@ per-role overrides, live-preview building, contrast checking, save/validation) l
 - **WPF**: `DevTerm.Wpf.ThemeSeedPickerWindow` (seed + name) followed by `DevTerm.Wpf.ThemeBuilderWindow`
   (the builder), run via `ThemeBuilderWindow.Run(owner)` and two chained `ShowDialog()` calls.
 
-See [`docs/design/proposals/theme-builder.md`](../design/proposals/theme-builder.md) for the design
+See [`docs/design/features/theme-builder.md`](../design/features/theme-builder.md) for the design
 rationale (including a sequence diagram and a wireframe) and
 [`docs/design/theming.md`](../design/theming.md) for the underlying `ThemeFile`/`ThemeCatalog`/
 `DevTermTheme` model this screen edits.

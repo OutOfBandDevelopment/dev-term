@@ -38,7 +38,7 @@ public sealed class StreamCaptureConverterOptions
     /// <summary>The registered tool run when <see cref="Mode"/> is <see cref="StreamConversionMode.Tool"/>.</summary>
     public string? ToolName { get; set; }
 
-    /// <summary>Registered converter tools - see docs/design/proposals/stream-converter-tools.md.</summary>
+    /// <summary>Registered converter tools - see docs/design/features/stream-converter-tools.md.</summary>
     public List<StreamConvertToolOptions> Tools { get; set; } = [];
 
     public string? ExternalToolPath { get; set; }
@@ -49,8 +49,8 @@ public sealed class StreamCaptureConverterOptions
 
     public string? OutputExtension { get; set; }
 
-    /// <summary>Builds a fresh <see cref="StreamCaptureConverterOptions"/> from <paramref name="cliOptions"/> (or all-defaults/<see cref="StreamConversionMode.None"/> when null) - for ad hoc construction outside DI (TUI/WPF, which build <see cref="StreamMonitor"/> the same ad hoc way).</summary>
-    public static StreamCaptureConverterOptions FromCliOptions(CliOptions? cliOptions)
+    /// <summary>Builds a fresh <see cref="StreamCaptureConverterOptions"/> from <paramref name="cliOptions"/> (or all-defaults/<see cref="StreamConversionMode.None"/> when null) plus <paramref name="globalTools"/>, the app-wide list the caller loaded from <see cref="ConverterToolsStore"/> (not read here, so tests never touch the user's own file) - for ad hoc construction outside DI (TUI/WPF, which build <see cref="StreamMonitor"/> the same ad hoc way).</summary>
+    public static StreamCaptureConverterOptions FromCliOptions(CliOptions? cliOptions, IEnumerable<StreamConvertToolOptions>? globalTools = null)
     {
         var options = new StreamCaptureConverterOptions();
         if (cliOptions is not null)
@@ -58,6 +58,8 @@ public sealed class StreamCaptureConverterOptions
             CopyFrom(cliOptions, options);
         }
 
+        // The app-wide tools (ConverterToolsStore) come first; a profile's own, older ones fill in any names they lack.
+        options.Tools = ConverterToolsStore.Merge(globalTools, options.Tools);
         return options;
     }
 
@@ -156,7 +158,7 @@ public sealed record StreamConversionResult(bool Success, string? OutputPath, st
 
 /// <summary>
 /// Wraps the "Convert/Rasterize" mechanisms proposed in
-/// docs/design/proposals/stream-content-detection.md's "Raster/convert tool integration" section —
+/// docs/design/features/stream-content-detection.md's "Raster/convert tool integration" section —
 /// registered external tools, a single legacy external tool, and the internal HP-GL-to-SVG converter — behind
 /// one call so the Stream Monitor windows' "Convert..." action doesn't need to know which is active.
 /// </summary>

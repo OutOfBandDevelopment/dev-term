@@ -115,6 +115,12 @@ Shown in two situations:
   see `docs/design/rfc2217.md`). The Serial section's Port/Detected-ports row has no such guard and
   still renders for `rfc2217` (harmless, unused clutter — `BuildOptions` routes the TCP group's Port
   into `CliOptions.Port` for `rfc2217` via `IsTcpLikeTransport`, never the Serial group's).
+  **Sections collapse** (both front ends): each labeled section header toggles its rows. The TUI header is a
+  focusable `[-] Serial` / `[+] Serial` button (Enter or click), the WPF one an `Expander`. The state is remembered
+  per form while the app runs (`SectionExpansionState`, the same store the control panels use) and is not saved to
+  a profile. A collapsed section's header stays; its rows take no space. The unlabeled General section has no
+  header and always shows. Only the connection editors opt in (`CollapsibleSections`); other generated forms keep
+  plain headers.
   **Timing is a fourth, independent section**, shown whenever `SupportsWriteByteDelay`
   (= `IsSerialTransport || IsTcpTransport || IsRfc2217Transport`) — overlapping Serial/TCP/rfc2217's
   own visibility rather than nesting inside any one of them, since the same one field (Write byte

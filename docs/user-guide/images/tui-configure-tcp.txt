@@ -10,15 +10,15 @@
 │                                                                             █│
 │                                                                             █│
 │  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217            █│
-│               ○ loopback                                                    ░│
+│               ○ loopback                                                    █│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
-│── TCP ──                                                                    ░│
+│[-] TCP                                                                      ░│
 │  Host: 192.168.0.107                                                        ░│
 │  Port: 23                                                                   ░│
 │        ☐ Listen (server mode)                                               ░│
 │                                                                             ░│
-│── Presentation ──                                                           ░│
+│[-] Presentation                                                             ░│
 │  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ░│
 │                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     ░│
 │                         ☐ de5000 ☐ nmea                                     ▼│

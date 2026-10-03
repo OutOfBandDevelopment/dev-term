@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using DevTerm.Configuration;
 using DevTerm.Test.Utilities;
 using DevTerm.UiDefinitions;
 using DevTerm.UiDefinitions.Forms;
 using Terminal.Gui.App;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -143,6 +145,61 @@ public sealed class FormRendererTests
             parts.Choices[nameof(Model.Long)].Value = "option number 5";
             Assert.AreEqual("option number 5", model.Long);
         });
+    }
+
+    [TestMethod]
+    public void CollapsibleSections_ToggleHidePullLaterSectionsUp_AndAreRemembered()
+    {
+        var model = new Model { ShowExtra = true };
+        var definition = FormDefinitionGenerator.Generate(model);
+        SectionExpansionState.Forget(definition.Name);
+        try
+        {
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                using var binding = new FormBinding(model);
+                var parts = FormRenderer.Build(app, definition, binding, new TuiFormOptions { AvailableWidth = 76, CollapsibleSections = true });
+                var window = new Window { Width = Dim.Fill(), Height = Dim.Fill() };
+                window.Add(parts.Root);
+                var token = app.Begin(window) ?? throw new NotSupportedException();
+                app.LayoutAndDraw(true);
+                try
+                {
+                    var main = (Button)parts.SectionHeaderLabels["Main"];
+                    var extra = parts.SectionHeaderLabels["Extra"];
+                    var name = parts.ControlViews[nameof(Model.Name)];
+                    Assert.AreEqual("[-] Main", main.Text);
+                    Assert.IsTrue(name.Visible);
+                    var expandedTop = extra.Frame.Y;
+                    var expandedRows = parts.Rows;
+
+                    main.InvokeCommand(Command.Accept);
+                    app.LayoutAndDraw(true);
+
+                    Assert.AreEqual("[+] Main", main.Text);
+                    Assert.IsFalse(name.Visible, "A collapsed section's rows are hidden.");
+                    Assert.IsLessThan(expandedTop, extra.Frame.Y, "The next section moves up into the freed rows.");
+                    Assert.IsLessThan(expandedRows, parts.Rows);
+                    Assert.IsFalse(SectionExpansionState.IsExpanded(definition.Name, "Main"));
+
+                    main.InvokeCommand(Command.Accept);
+                    app.LayoutAndDraw(true);
+
+                    Assert.AreEqual("[-] Main", main.Text);
+                    Assert.IsTrue(name.Visible);
+                    Assert.AreEqual(expandedTop, extra.Frame.Y);
+                }
+                finally
+                {
+                    app.End(token);
+                    window.Dispose();
+                }
+            });
+        }
+        finally
+        {
+            SectionExpansionState.Forget(definition.Name);
+        }
     }
 
     [TestMethod]
