@@ -17,6 +17,9 @@ public static class BuiltInThemes
     /// <summary>Not a theme of its own: resolves to <see cref="Light"/> or <see cref="Dark"/> by the OS setting (<see cref="SystemThemeDetector"/>).</summary>
     public const string SystemName = "system";
 
+    /// <summary>The TUI-only "terminal" selection: keep the terminal's own colors (see <c>TuiTheme.ApplyActive</c>); dev-term's own role colors (status line, charts) use light or dark by the terminal's <c>COLORFGBG</c> hint.</summary>
+    public const string TerminalName = "terminal";
+
     public static DevTermTheme Light { get; } = Build(LightName, ChartPaletteVariant.Light, new()
     {
         [ThemeRole.Background] = "#FFFFFF",
@@ -99,7 +102,8 @@ public static class BuiltInThemes
     public static bool IsReservedName(string name) =>
         string.Equals(name, LightName, StringComparison.OrdinalIgnoreCase)
         || string.Equals(name, DarkName, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(name, SystemName, StringComparison.OrdinalIgnoreCase);
+        || string.Equals(name, SystemName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(name, TerminalName, StringComparison.OrdinalIgnoreCase);
 
     private static DevTermTheme Build(string name, ChartPaletteVariant chartPalette, Dictionary<ThemeRole, string> colors) =>
         new(name, colors.ToDictionary(pair => pair.Key, pair => ThemeColor.Parse(pair.Value)), chartPalette);

@@ -15,6 +15,15 @@ public static class LoopbackGenerators
         Enumerable.Range(1, count).Select(i => $"Event {i}");
 
     /// <summary>
+    /// Status reading number <paramref name="index"/>, with units: <c>temp=21.50 C volts=3.30 V state=OK</c>. A pure function of
+    /// the index (the temperature drifts, <c>state</c> reads <c>WARN</c> every fifth reading); the example for a decoder that
+    /// emits a <c>StructuredMessage</c>.
+    /// </summary>
+    public static string Status(int index) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"temp={21.5 + (0.25 * (index % 8)):0.00} C volts={3.3 - (0.01 * (index % 5)):0.00} V state={(index % 5 == 4 ? "WARN" : "OK")}");
+
+    /// <summary>
     /// Simulated sensor sample number <paramref name="index"/> — a pure function of the index:
     /// three 0–100 channels (<c>A</c> a sine, <c>B</c> a slower cosine, <c>C</c> a sawtooth), an x/y/z
     /// point circling inside ±1 (<c>X</c>, <c>Y</c>, <c>Z</c>), a polar r/theta (<c>R</c> 0–1,

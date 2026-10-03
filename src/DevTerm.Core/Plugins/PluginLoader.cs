@@ -51,6 +51,11 @@ public static class PluginLoader
             return new(folder, manifest.Name, false, $"built for plugin contract {manifest.Contract}; this dev-term implements {ContractVersion}.");
         }
 
+        if (manifest.Process is { } process)
+        {
+            return LoadProcess(folder, manifest, process, services);
+        }
+
         var assemblyPath = Path.GetFullPath(Path.Combine(folder, manifest.Assembly));
         if (!assemblyPath.StartsWith(Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase) || !File.Exists(assemblyPath))
         {
@@ -86,6 +91,23 @@ public static class PluginLoader
         {
             return new(folder, manifest.Name, false, $"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    /// <summary>An out-of-process plugin: approved by the user (or by a remembered approval for this exact content), then registered as a lazily started presenter.</summary>
+    private static PluginLoadResult LoadProcess(string folder, PluginManifest manifest, PluginProcess process, IServiceCollection services)
+    {
+        var root = Path.GetFullPath(folder);
+        var command = process.Command.Replace("{folder}", root, StringComparison.Ordinal);
+        var arguments = process.Arguments.Select(a => a.Replace("{folder}", root, StringComparison.Ordinal)).ToArray();
+        var request = new PluginApprovalRequest(manifest.Name, manifest.Version, root, string.Join(' ', new[] { command }.Concat(arguments)), PluginHash.Compute(root));
+        if (!PluginTrust.Authorise(request))
+        {
+            return new(folder, manifest.Name, false, $"needs your approval to run: {request.CommandLine}");
+        }
+
+        var timeout = TimeSpan.FromMilliseconds(Math.Clamp(process.ReplyTimeoutMs, 100, 60000));
+        services.AddTransient<Presenters.IPresenter>(_ => new LazyExternalPresenter(manifest.Name, command, arguments, timeout));
+        return new(folder, manifest.Name, true, $"approved {manifest.Name} {manifest.Version} (runs: {request.CommandLine}).");
     }
 
     /// <summary>Resolves a plugin's own dependencies from its folder, but never a second copy of what the host already loaded (so contract types unify).</summary>

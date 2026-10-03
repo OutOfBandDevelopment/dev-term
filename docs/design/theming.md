@@ -76,7 +76,7 @@ theme model.
   there, short of the 4.5:1 text threshold; deepened to `#2E6DA4`/`#8F6A09` (2026-09-29), which clear
   it with margin while keeping the same hue. `ReadablePairs` checks both against `background` at
   4.5:1 now, not the 3:1 "indicator fill" rate other roles like `recording` use, so a future palette
-  edit can't reopen this silently. `system` isn't a theme of its own. It resolves to `light` or
+  edit can't reopen this silently. `terminal` is TUI-only (see Open questions). `system` isn't a theme of its own. It resolves to `light` or
   `dark` through `SystemThemeDetector`. On Windows that reads `HKCU\…\Themes\Personalize\AppsUseLightTheme`
   (0 = dark); elsewhere it uses the terminal's `COLORFGBG` hint. Undetectable means light.
 - **`ThemeFile`**: user themes, as `*.json` under `~/.dev-term/themes`
@@ -237,8 +237,8 @@ menu) are themed too. Each attached window gets a merged `ThemeDictionary`:
 - The TUI Connection Editor's "(not found)" hints aren't colored; WPF's use `error`. Coloring the
   TUI's needs `ConfigureMode` changes, which were deliberately left alone while that screen's layout
   is being rewritten.
-- **Decided 2026-10-03:** offer the terminal theme and make the TUI's `system` follow the terminal live (both below). Not built yet.
-- A "terminal" theme for the TUI would keep Terminal.Gui's `None` colors and follow the terminal's
-  own palette, as the TUI did before theming. It's not offered. `system` follows the OS setting
-  instead, which can differ from the terminal's background.
-- WPF's `system` follows the OS live. The TUI's resolves once, at startup or at selection.
+- **Built 2026-10-03:** the TUI-only **`terminal`** selection (View > Theme > Terminal, `--theme terminal`) leaves
+  Terminal.Gui's own schemes in place (`TuiTheme.ApplyActive` calls `Restore`), so the TUI keeps the terminal's palette as
+  it did before theming. dev-term's own role colors (status line, highlighting, charts) use light or dark by the
+  terminal's `COLORFGBG` hint (light when unset). WPF doesn't list it; selected there it behaves as `light`/`dark` by that hint.
+  The TUI's `system` now follows the OS live too: a 2-second timer calls `ActiveTheme.RefreshSystem()`.

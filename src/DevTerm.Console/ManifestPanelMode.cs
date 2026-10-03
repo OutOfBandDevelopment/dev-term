@@ -26,7 +26,9 @@ internal static class ManifestPanelMode
             return;
         }
 
-        Run(app, session, DeviceManifestLoader.Load(path), echoSent);
+        var manifest = DeviceManifestLoader.Load(path);
+        ManifestPanelHint.MarkUsed(manifest.Name);
+        Run(app, session, manifest, echoSent);
     }
 
     /// <summary>Opens <paramref name="manifest"/>'s panel on <paramref name="session"/> until it's closed.</summary>

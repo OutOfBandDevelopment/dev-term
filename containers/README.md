@@ -12,6 +12,7 @@ docker compose -f containers/docker-compose.yml down      # stop and discard
 | mosquitto | `1883` MQTT, anonymous | MQTT transport |
 | rabbitmq | `5672` AMQP 0-9-1, `21613` STOMP (61613 is in a Windows reserved range), `1884` MQTT, `15672` UI, `5671` AMQPS and `21614` STOMP over TLS; user/password `devterm` | AMQP / STOMP transports |
 | ser2net | `2217` RFC 2217 | RFC 2217 client; the port behind it echoes every byte |
+| loopback-device | `7777` TCP | An example line device (`hello`, `STATUS?`, `help`) for trying the TCP transport and the `keyvalue` example plugin without hardware |
 
 | aspire-dashboard | `18888` UI, `4317` OTLP/gRPC, no auth | Viewing `dev-term --otlp true` traces and metrics; not used by tests |
 

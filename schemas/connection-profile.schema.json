@@ -49,6 +49,76 @@
         "null"
       ]
     },
+    "Routing": {
+      "type": "object",
+      "properties": {
+        "Protocol": {
+          "type": "string"
+        },
+        "Host": {
+          "type": "string"
+        },
+        "Port": {
+          "type": "integer"
+        },
+        "Username": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Password": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Tls": {
+          "type": "boolean"
+        },
+        "Rules": {
+          "type": "array",
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "Direction": {
+                "type": "integer"
+              },
+              "Topic": {
+                "type": "string"
+              },
+              "Match": {
+                "type": "string"
+              },
+              "Payload": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "Send": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "Confirm": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "IsConfigured": {
+          "type": "boolean"
+        },
+        "EffectivePort": {
+          "type": "integer"
+        }
+      }
+    },
     "EffectiveParser": {
       "type": [
         "string",

@@ -49,6 +49,15 @@ opened them. Two tabs can log to two different files, or have two Stream Monitor
 the same time, independently — switching tabs switches which log/monitor the File/Device menu items
 say is running, and closing a tab stops that tab's own log/monitor without touching any other tab's.
 
+## All Sessions Log
+
+**View > All Sessions Log...** (both front ends) shows one time-ordered log of every open tab's raw traffic: a line per
+chunk, `HH:mm:ss.fff [device] > received` or `< sent`, with control bytes shown as `\r`, `\n`, `\xNN`, plus a
+`-- connected --` / `-- disconnected --` note when a tab's connection changes. Recording starts the first time you open it
+(it keeps the last 5,000 lines, across all tabs, and follows tabs opened, closed or re-pointed after that). WPF's window
+follows the log live and has Copy and Clear; the TUI dialog is a snapshot with Refresh, Clear and Close. This is separate from
+per-tab file logging, which is unchanged. The [Stream Monitor](stream-monitor.md) already lists captures from every tab in one list.
+
 ## Zero tabs
 
 Closing the last open tab (File > Close Session, or its "✕") leaves the window open rather than

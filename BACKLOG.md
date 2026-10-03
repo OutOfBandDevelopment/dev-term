@@ -60,19 +60,12 @@ the rest.
 
 ### Proposed Ideas
 
-- [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
+- [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md) (the host, `/ws` tunnel and `/panel` page are already built and in `TODO.md` item 1; this line is the rest).
 - [Network device discovery](docs/design/proposals/network-device-discovery.md) and [in-app config editors for network bridges](docs/design/proposals/network-device-config-editors.md) (proposed 2026-10-03): one Detect button for any network device with prefill, and a Device > Configure device menu for the USR-TCP232-302 and EByte E810-DTU.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 
 ### Decided 2026-10-03 (owner interview), not started
 
-- **Multi-session tabs:** the merged time-ordered view of logging and the Stream Monitor across tabs (per-tab history, logging, empty window and Alt+Left/Right already built; [multi-session-ui](docs/design/multi-session-ui.md)).
-- **Remember a dismissed/used control-panel hint per profile** (the hint itself shipped 2026-10-03) ([device-control-panel spec](docs/specs/device-control-panel.md)).
-- **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
-- **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
-- **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
-- **TUI terminal-palette theme, and a live-following `system` theme** ([theming](docs/design/theming.md)).
-- **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **manifest-declared reply correlation** ([device-control-modules](docs/design/device-control-modules.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).
 
 ## Research (not backlog-ready)
 
@@ -99,4 +92,3 @@ the rest.
   **Decision 2026-10-03: the PCX decoder and the PCL raster preview are both rejected for now** (BMP and TIFF hardcopy already preview); a captured PCX or PCL job stays saved, and PCL still converts through GhostPCL. Revisit only if asked.
 - **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above.
 
-- **Routing proxy follow-ups:** wire `MessageRouter` to a real MQTT/AMQP/STOMP connection (an `IMessageSink` plus feeding `OnBrokerMessage`), a rule editor in the front ends, and loading rules from a profile or manifest. The proof of concept is built; see [message-broker-protocols](docs/design/proposals/message-broker-protocols.md).

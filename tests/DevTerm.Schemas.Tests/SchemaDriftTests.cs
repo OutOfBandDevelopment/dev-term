@@ -39,7 +39,11 @@ public class SchemaDriftTests
         CollectionAssert.IsSubsetOf(new[] { "button", "toggle", "slider", "numeric", "choice", "textField", "indicator" }, kinds);
     }
 
+    /// <summary>The connection's own password is never a profile field; only the Routing section's broker password is (plain text by decision, 2026-10-03).</summary>
     [TestMethod]
-    public void ConnectionProfileSchema_NeverContainsThePassword() =>
-        Assert.IsFalse(SchemaGenerator.Generate()["connection-profile.schema.json"].Contains("\"Password\"", StringComparison.Ordinal));
+    public void ConnectionProfileSchema_HasNoTopLevelPassword()
+    {
+        var schema = JsonNode.Parse(SchemaGenerator.Generate()["connection-profile.schema.json"])!;
+        Assert.IsNull(schema["properties"]!["Password"]);
+    }
 }

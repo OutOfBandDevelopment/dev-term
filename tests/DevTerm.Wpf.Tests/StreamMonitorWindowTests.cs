@@ -98,6 +98,47 @@ public sealed class StreamMonitorWindowTests
     }
 
     [TestMethod]
+    public void FilterSearchAndSort_NarrowTheOneList()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            await using var bench = await StreamMonitorBench.StartAsync("Bench scope");
+            await bench.CaptureAsync(StreamContentSamples.Hpgl());
+            await bench.CaptureAsync(ScopeScreenPng());
+
+            var window = new StreamMonitorWindow(bench.Monitor);
+            StaTestRunner.DoEvents();
+            var (search, kind, device, sort) = window.Criteria;
+            Assert.HasCount(2, window.Items);
+            Assert.Contains("PNG image", kind.Items.Cast<string>().ToList());
+
+            kind.SelectedItem = "PNG image";
+            StaTestRunner.DoEvents();
+            Assert.HasCount(1, window.Items);
+            Assert.AreEqual("PNG image", window.Items[0].Capture.Capture.Kind.DisplayName);
+
+            kind.SelectedIndex = 0;
+            search.Text = "hp-gl";
+            StaTestRunner.DoEvents();
+            Assert.HasCount(1, window.Items);
+            Assert.AreEqual("HP-GL plot", window.Items[0].Capture.Capture.Kind.DisplayName);
+
+            search.Text = "no such thing";
+            StaTestRunner.DoEvents();
+            Assert.IsEmpty(window.Items);
+            Assert.IsFalse(window.ExportAsButton.IsEnabled);
+
+            search.Text = string.Empty;
+            sort.SelectedItem = StreamCaptureSort.Largest;
+            StaTestRunner.DoEvents();
+            Assert.HasCount(2, window.Items);
+            Assert.IsGreaterThanOrEqualTo(window.Items[1].Capture.Capture.Data.Length, window.Items[0].Capture.Capture.Data.Length);
+            Assert.AreEqual(1, device.Items.Count - 1, "One device, so one choice besides 'All devices'.");
+            window.Close();
+        });
+    }
+
+    [TestMethod]
     public void HpglCapture_SaysPreviewIsNotAvailableYet()
     {
         StaTestRunner.Run(async () =>

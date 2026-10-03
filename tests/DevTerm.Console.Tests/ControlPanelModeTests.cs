@@ -147,6 +147,45 @@ public sealed class ControlPanelModeTests
     }
 
     [TestMethod]
+    public void ButtonWithConfirmMessage_SendsOnlyWhenConfirmed()
+    {
+        var surface = new FakeControlSurface();
+        var previous = ControlPanelMode.ConfirmSend;
+        var asked = new List<string>();
+        var answer = false;
+        ControlPanelMode.ConfirmSend = (_, message) =>
+        {
+            asked.Add(message);
+            return answer;
+        };
+        try
+        {
+            TuiTestRunner.RunHeadlessApp(app =>
+            {
+                var definition = new UiDefinition
+                {
+                    Name = "Confirm Device",
+                    Sections = [new UiSection { Controls = [new ButtonControl { Id = "erase", Label = "Erase", ConfirmMessage = "Erase all?" }] }],
+                };
+                var parts = ControlPanelMode.BuildWindow(app, definition, surface, null, "Confirm Device");
+
+                Accept(parts.ControlViews["erase"]);
+                Assert.IsEmpty(surface.Invocations);
+
+                answer = true;
+                Accept(parts.ControlViews["erase"]);
+                Assert.HasCount(1, surface.Invocations);
+            });
+        }
+        finally
+        {
+            ControlPanelMode.ConfirmSend = previous;
+        }
+
+        Assert.AreSequenceEqual(["Erase all?", "Erase all?"], asked);
+    }
+
+    [TestMethod]
     public void Button_WhenClicked_EchoesTheSentCommandsPreview()
     {
         // Bug 064: View > Echo Sent Commands used to cover only the typed send box.

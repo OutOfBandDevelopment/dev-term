@@ -45,6 +45,7 @@ The control set is data-driven (one row per `UiControl` in the definition), not 
 |---|---|---|---|
 | `ButtonControl` | `Button` (shadowless in the TUI: every row is one line, and a shadow drawn on the line below covered the next row - the "... Reply:" values of a SCPI panel) | `Button` | Sends `CommandId ?? Id` with a `null` value on click, unless one of the two variants below applies |
 | `ButtonControl` with `ColorPickerTargetCommandId` | `Button` that opens a nested RGB/HSV color-picker `Dialog` | `Button` that opens `ColorPickerWindow` | Sends the picked color as `"{r},{g},{b}"` to the *target* command id, not the button's own id. The picker opens on the color last picked for that button (`LastPickedColors`, keyed by the button's control id), including after closing and reopening the panel. It starts on white until a color has been picked, and it's kept only for the life of the process. Next to the button, a swatch shows that color's `#RRGGBB` hex value, with the color as its background and black or white text, whichever has the higher WCAG contrast against it (`LastPickedColors.UseDarkText`; an orange like `#FF6600` gets black text). It's hidden until a color has been set; WPF uses a `Border` (`ColorSwatches`), the TUI a `Label` registered as `"{id}.swatch"` in `ControlViews`. With `ColorPickerChoiceOption` set (the Busylight: `"Custom"`), the button is linked to that option of its target choice (`CustomColorChoices`): a pick selects the option without resending, and selecting the option sends the last picked `"r,g,b"` instead of the option text, opening the picker if none has been picked yet. The WPF picker opens sized to its content, is resizable, and scrolls its controls, with OK/Cancel always visible |
+| `ButtonControl` with `ConfirmMessage` (any button) | `Button` | `Button` | Before sending, asks the message (Yes/No: a `MessageBox` in each front end); No sends nothing. Declared per command in a manifest (`ConfirmMessage`) or directly on the button |
 | `ButtonControl` with `ParameterFieldIds` | `Button` | `Button` | On click, reads each named sibling control's *current* value (see below), joins with `,`, sends that as one value to `CommandId ?? Id` — this is how a command with parameters (e.g. a SCPI command taking a frequency) gets a "fill in fields, press one button" flow without a bespoke form per command |
 | `ToggleControl` | `CheckBox` | `CheckBox` | Sends `"1"`/`"0"` on every change |
 | `SliderControl` | Bounded `TextField` (no drag widget in the installed Terminal.Gui) + a `[min-max]unit` hint label | Real `Slider` + a live value label | Commits on Enter (TUI) / on every drag (WPF). TUI: validated on commit (see Validation) — a number is clamped to `[Minimum, Maximum]`, anything else is rejected and not sent |
@@ -364,9 +365,13 @@ any command not in the curated list.
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
   only way in. Since 2026-10-03 connecting with such a profile prints a status line pointing at
   Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.
-  **Still open:** the hint repeats on every connect; "remembered per profile once chosen" (decided
-  2026-10-03) isn't built.
-- **Charts have no hover readout or table view** (**Decided 2026-10-03:** build the hover readout, a table view and history export; not built yet) — the WPF charts show the latest values in their
-  legend/labels but no per-point tooltip, and neither front end exports the history.
+  The hint stops once the user has opened that manifest's panel from the menu (remembered by manifest
+  name in `preferences.json` as `UsedPanelHints`; there is no separate dismiss action, 2026-10-03).
+- **Strip charts have a hover readout, a history table and CSV export (2026-10-03).** WPF: hover the plot for
+  a tooltip with each channel's value at that point (`now`, `-1`, `-2`, ... samples back; samples carry no
+  timestamps); right-click for *Show history table*, *Copy history as CSV* and *Save history as CSV...*.
+  TUI (no hover): click the chart to open a history dialog (a read-only table, newest row last) with *Save CSV*, which
+  writes `<id>-<timestamp>.csv` under `exports` in the per-user data folder. Both come from `StripChartHistory`
+  (`DevTerm.UiDefinitions`). Bar graphs and vector plots have neither (a bar shows its current value; a vector has one point and a trail).
 - **Chart sizes are fixed per front end** (not declared in the model) — fine for the controls so
   far; a `Width`/`Height` hint could come later if a device needs a bigger plot.

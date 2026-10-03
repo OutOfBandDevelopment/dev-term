@@ -26,6 +26,9 @@ public static class ActiveTheme
     /// <summary>What was selected - <c>system</c> stays <c>system</c> here while <see cref="Current"/> is whichever built-in it resolved to.</summary>
     public static string Selection { get; private set; } = BuiltInThemes.LightName;
 
+    /// <summary>True while the TUI-only <c>terminal</c> selection is active: the TUI keeps the terminal's own colors rather than applying <see cref="Current"/>'s.</summary>
+    public static bool IsTerminal => string.Equals(Selection, BuiltInThemes.TerminalName, StringComparison.OrdinalIgnoreCase);
+
     public static ThemeCatalog Catalog { get; private set; } = ThemeCatalog.BuiltInOnly;
 
     /// <summary>Where <see cref="Select"/> persists a choice; null means don't persist (the default, and under test).</summary>
@@ -164,5 +167,6 @@ public static class ActiveTheme
     }
 
     private static string CanonicalName(string selection) =>
+        string.Equals(selection, BuiltInThemes.TerminalName, StringComparison.OrdinalIgnoreCase) ? BuiltInThemes.TerminalName :
         Catalog.SelectionNames.FirstOrDefault(name => string.Equals(name, selection, StringComparison.OrdinalIgnoreCase)) ?? selection;
 }

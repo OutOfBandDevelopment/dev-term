@@ -294,6 +294,18 @@
           "IsQuery": {
             "type": "boolean"
           },
+          "ConfirmMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ReplyPattern": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "ReplyId": {
             "type": [
               "string",
@@ -379,6 +391,12 @@
                           "const": "button"
                         },
                         "CommandId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ConfirmMessage": {
                           "type": [
                             "string",
                             "null"

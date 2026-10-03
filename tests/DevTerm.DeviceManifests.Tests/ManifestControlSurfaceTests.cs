@@ -255,6 +255,63 @@ public sealed class ManifestControlSurfaceTests
     }
 
     [TestMethod]
+    public void ReplyPattern_ClaimsOnlyAMatchingLine_AndOtherLinesStayUnsolicited()
+    {
+        var manifest = new DeviceManifest
+        {
+            Name = "Pattern",
+            OutboundCommands = [new OutboundCommand { Id = "volts", Name = "Volts", Template = "V?", IsQuery = true, ReplyPattern = @"^V=" }],
+        };
+        var presenter = new ManifestReplyPresenter(manifest);
+        var seen = new List<IReadOnlyDictionary<string, string>>();
+        presenter.ValuesChanged += (_, values) => seen.Add(values);
+
+        presenter.QuerySent("volts.reply");
+        _ = presenter.Render(new System.Buffers.ReadOnlySequence<byte>("TEMP=21\nV=5.0\n"u8.ToArray()));
+
+        Assert.HasCount(1, seen);
+        Assert.AreEqual("V=5.0", seen[0]["volts.reply"]);
+    }
+
+    [TestMethod]
+    public void ReplyPattern_AMatchingLineBeatsAnOlderNextLineQuery()
+    {
+        var manifest = new DeviceManifest
+        {
+            Name = "Mixed",
+            OutboundCommands =
+            [
+                new OutboundCommand { Id = "any", Name = "Any", Template = "A?", IsQuery = true },
+                new OutboundCommand { Id = "volts", Name = "Volts", Template = "V?", IsQuery = true, ReplyPattern = @"^V=" },
+            ],
+        };
+        var presenter = new ManifestReplyPresenter(manifest);
+        var seen = new List<IReadOnlyDictionary<string, string>>();
+        presenter.ValuesChanged += (_, values) => seen.Add(values);
+
+        presenter.QuerySent("any.reply");
+        presenter.QuerySent("volts.reply");
+        _ = presenter.Render(new System.Buffers.ReadOnlySequence<byte>("V=5.0\nhello\n"u8.ToArray()));
+
+        Assert.AreEqual("V=5.0", seen[0]["volts.reply"]);
+        Assert.AreEqual("hello", seen[1]["any.reply"]);
+    }
+
+    [TestMethod]
+    public void Validator_RejectsAReplyPatternThatDoesNotCompile()
+    {
+        var manifest = new DeviceManifest
+        {
+            Name = "Bad",
+            OutboundCommands = [new OutboundCommand { Id = "x", Name = "X", Template = "X?", IsQuery = true, ReplyPattern = "(" }],
+        };
+
+        var result = DeviceManifestValidator.Validate(manifest);
+
+        Assert.IsTrue(result.Errors.Any(e => e.Contains("reply pattern", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
     public async Task QueryReply_IsCorrelated_AndResponsePatternsPublishNamedGroups()
     {
         var (session, transport, panel) = await OpenAsync(BuildPowerSupply(), TestContext.CancellationToken);
@@ -314,6 +371,19 @@ public sealed class ManifestControlSurfaceTests
         Assert.AreSequenceEqual(["vset.volts"], [.. button.ParameterFieldIds!]);
         Assert.IsInstanceOfType<IndicatorControl>(controls.Single(c => c.Id == "read.reply"));
         Assert.IsNull(((ButtonControl)controls.Single(c => c.Id == "read.send")).ParameterFieldIds);
+    }
+
+    [TestMethod]
+    public void UiBuilder_CarriesACommandsConfirmMessageToItsButton()
+    {
+        var manifest = BuildPowerSupply();
+        manifest.Ui = null;
+        manifest.OutboundCommands.Single(c => c.EffectiveId == "vset").ConfirmMessage = "Change the voltage?";
+
+        var controls = ManifestUiBuilder.Build(manifest).Sections.Single().Controls;
+
+        Assert.AreEqual("Change the voltage?", ((ButtonControl)controls.Single(c => c.Id == "vset.send")).ConfirmMessage);
+        Assert.IsNull(((ButtonControl)controls.Single(c => c.Id == "read.send")).ConfirmMessage);
     }
 
     [TestMethod]

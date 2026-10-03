@@ -2,10 +2,12 @@ using System.Drawing;
 using System.Globalization;
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.UiDefinitions;
 using Terminal.Gui.App;
+using Terminal.Gui.Editor;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -746,7 +748,7 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     parameterButtonView.Accepting += (_, e) =>
                     {
-                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions))
+                        if (panel.TryReadParameters(parameterFieldIds, reportErrors: true, out var joined, button.ParameterExpressions) && Confirmed(app, button))
                         {
                             Invoke(app, surface, panel.EchoSent, commandId, joined);
                         }
@@ -769,7 +771,11 @@ internal static class ControlPanelMode
                     var commandId = button.CommandId ?? button.Id;
                     buttonView.Accepting += (_, e) =>
                     {
-                        Invoke(app, surface, panel.EchoSent, commandId, null);
+                        if (Confirmed(app, button))
+                        {
+                            Invoke(app, surface, panel.EchoSent, commandId, null);
+                        }
+
                         e.Handled = true;
                     };
                     body.Add(buttonView);
@@ -936,6 +942,18 @@ internal static class ControlPanelMode
                         _ => () => new CellGrid(1, 1),
                     };
                     var canvas = new CellCanvasView(state, render) { X = columnX, Y = row };
+                    if (state is StripChartState historyState)
+                    {
+                        canvas.MouseEvent += (_, mouse) =>
+                        {
+                            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonClicked))
+                            {
+                                ShowHistory(app, historyState);
+                                mouse.Handled = true;
+                            }
+                        };
+                    }
+
                     body.Add(canvas);
                     panel.DisplayViews[control.Id] = canvas;
                     panel.ControlViews[control.Id] = canvas;
@@ -1062,6 +1080,13 @@ internal static class ControlPanelMode
     /// disconnected itself) is shown in an error dialog over this panel - which, being modal, hides
     /// the main window's output pane where the disconnect is also reported.
     /// </summary>
+    /// <summary>Asks a button's <see cref="ButtonControl.ConfirmMessage"/>; replaceable so tests needn't open a modal.</summary>
+    internal static Func<IApplication, string, bool> ConfirmSend { get; set; } = (app, message) =>
+        MessageBox.Query(app, "dev-term — confirm", message, "Yes", "No") == 0;
+
+    private static bool Confirmed(IApplication app, ButtonControl button) =>
+        string.IsNullOrEmpty(button.ConfirmMessage) || ConfirmSend(app, button.ConfirmMessage);
+
     private static void Invoke(IApplication app, IControlSurface surface, Action<string>? echoSent, string commandId, string? value)
     {
         void Report(Exception ex) =>
@@ -1440,6 +1465,51 @@ internal static class ControlPanelMode
         SetFromRgb(initialR, initialG, initialB);
         app.Run(dialog);
         return picked;
+    }
+
+    /// <summary>
+    /// Where "Save CSV" writes a strip chart's history (<c>exports</c> under the per-user data folder), as a
+    /// property so tests can point it at a temp folder.
+    /// </summary>
+    internal static Func<string> ExportFolder { get; set; } = () => Path.Combine(DevTermHome.Root, "exports");
+
+    /// <summary>Writes the chart's history as a timestamped CSV in <see cref="ExportFolder"/> and returns its path.</summary>
+    internal static string SaveHistoryCsv(StripChartState strip)
+    {
+        var folder = ExportFolder();
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"{strip.Control.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
+        File.WriteAllText(path, StripChartHistory.ToCsv(strip));
+        return path;
+    }
+
+    /// <summary>The strip chart's kept samples as a table (age 0 is the newest), with a Save CSV button; opened by clicking the chart.</summary>
+    private static void ShowHistory(IApplication app, StripChartState strip)
+    {
+        var dialog = new Dialog { Title = $"{strip.Control.Label ?? strip.Control.Id} - history", Width = Dim.Percent(80), Height = Dim.Percent(80) };
+        var table = new Editor { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2), ReadOnly = true, Text = StripChartHistory.ToText(strip) };
+        var status = new Label { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Text = string.Empty, HotKeySpecifier = (Rune)0xFFFF };
+        var save = new Button { X = 0, Y = Pos.AnchorEnd(1), Text = "Save CSV" };
+        save.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            try
+            {
+                status.Text = $"Saved {SaveHistoryCsv(strip)}";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                status.Text = $"Could not save: {ex.Message}";
+            }
+        };
+        var close = new Button { X = Pos.Right(save) + 1, Y = Pos.AnchorEnd(1), Text = "Close", IsDefault = true };
+        close.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            app.RequestStop();
+        };
+        dialog.Add(table, status, save, close);
+        app.Run(dialog);
     }
 
     /// <summary>Standard RGB→HSV conversion; hue in degrees [0,360), saturation/value in [0,1] — see <c>DevTerm.Wpf.ColorPickerWindow</c>'s identical WPF-side helper.</summary>

@@ -412,7 +412,10 @@ public partial class ControlPanelWindow : Window
                         if (TryReadParameters(parameterFieldIds, out var joined, out var error, button.ParameterExpressions))
                         {
                             ClearValidationError();
-                            Invoke(commandId, joined);
+                            if (Confirmed(button))
+                            {
+                                Invoke(commandId, joined);
+                            }
                         }
                         else
                         {
@@ -430,7 +433,13 @@ public partial class ControlPanelWindow : Window
                 {
                     var view = new Button { Content = control.Label, Padding = new Thickness(8, 2, 8, 2), HorizontalAlignment = HorizontalAlignment.Left };
                     var commandId = button.CommandId ?? button.Id;
-                    view.Click += (_, _) => Invoke(commandId, null);
+                    view.Click += (_, _) =>
+                    {
+                        if (Confirmed(button))
+                        {
+                            Invoke(commandId, null);
+                        }
+                    };
                     return (view, view, () => SendsText(commandId, null), (commandId, null));
                 }
 
@@ -682,6 +691,13 @@ public partial class ControlPanelWindow : Window
     /// disconnected itself, and the main window reports that too) is shown in this panel's status
     /// line. Not a message box: a modal dialog would block the panel's own automated tests.
     /// </summary>
+    /// <summary>Asks a button's <see cref="ButtonControl.ConfirmMessage"/>; replaceable so tests needn't open a modal.</summary>
+    internal Func<string, bool> ConfirmSend { get; set; } = message =>
+        MessageBox.Show(message, "dev-term", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    private bool Confirmed(ButtonControl button) =>
+        string.IsNullOrEmpty(button.ConfirmMessage) || ConfirmSend(button.ConfirmMessage);
+
     private void Invoke(string commandId, string? value)
     {
         void Report(Exception ex) =>

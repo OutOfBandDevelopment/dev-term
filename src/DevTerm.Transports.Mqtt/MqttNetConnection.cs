@@ -80,7 +80,7 @@ internal sealed class MqttNetConnection : IMqttConnection
     }
 }
 
-internal sealed class MqttNetConnectionFactory : IMqttConnectionFactory
+public sealed class MqttNetConnectionFactory : IMqttConnectionFactory
 {
     public IMqttConnection Create() => new MqttNetConnection();
 }

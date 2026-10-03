@@ -20,7 +20,7 @@ How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-d
 Choices only the project owner can make (scope, direction, priorities).
 
 - **Plugin isolation:** plugins written in other languages (a stdio JSON-lines prototype with Python/Java/Go examples exists). Out-of-process
-  hosting is wanted over a named pipe or localhost-only web service (2026-10-03); a read-only pipe prototype exists; read-write trust and discovery are open. —
+  hosting is wanted over a named pipe or localhost-only web service (2026-10-03); a read-only pipe prototype exists; read-write transport/device-module variants are open (approval and discovery built 2026-10-03). —
   [plugin-model](docs/design/plugin-model.md), [architecture](docs/design/architecture.md),
   [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md),
   [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)

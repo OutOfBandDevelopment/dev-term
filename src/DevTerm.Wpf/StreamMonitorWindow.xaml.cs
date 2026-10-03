@@ -72,12 +72,17 @@ public partial class StreamMonitorWindow : Window
 
         ConvertModeBox.SelectedIndex = StreamConversionChoice.IndexOf(_choices, _converterOptions);
 
+        foreach (var sort in Enum.GetValues<StreamCaptureSort>())
+        {
+            SortBox.Items.Add(sort);
+        }
+
+        SortBox.SelectedItem = StreamCaptureSort.Oldest;
+
         monitor.LoadFromDisk();
         CaptureList.ItemsSource = Items;
-        foreach (var capture in monitor.Captures)
-        {
-            Items.Add(new StreamMonitorCaptureItem(capture));
-        }
+        _captures.AddRange(monitor.Captures);
+        RefreshList();
 
         monitor.CaptureAdded += OnCaptureAdded;
         monitor.StateChanged += OnStateChanged;
@@ -91,8 +96,63 @@ public partial class StreamMonitorWindow : Window
         SelectNewest();
     }
 
-    /// <summary>The capture list's rows, oldest first.</summary>
+    private readonly List<StreamMonitorCapture> _captures = [];
+    private bool _refreshing;
+
+    /// <summary>The capture list's rows: <see cref="StreamCaptureView.Apply"/> of every capture, oldest first unless the sort says otherwise.</summary>
     internal ObservableCollection<StreamMonitorCaptureItem> Items { get; } = [];
+
+    /// <summary>The filter, search and sort choices, exposed for tests.</summary>
+    internal (TextBox Search, ComboBox Kind, ComboBox Device, ComboBox Sort) Criteria => (SearchBox, KindFilterBox, DeviceFilterBox, SortBox);
+
+    private void ListCriteria_Changed(object sender, EventArgs e)
+    {
+        if (!_refreshing && IsInitialized)
+        {
+            RefreshList();
+        }
+    }
+
+    /// <summary>Rebuilds <see cref="Items"/> from the retained captures and the current filter/search/sort, keeping the filter choices current.</summary>
+    internal void RefreshList()
+    {
+        _refreshing = true;
+        try
+        {
+            RefillChoices(KindFilterBox, "All types", StreamCaptureView.Kinds(_captures));
+            RefillChoices(DeviceFilterBox, "All devices", StreamCaptureView.Devices(_captures));
+            var shown = StreamCaptureView.Apply(
+                _captures,
+                SearchBox.Text,
+                KindFilterBox.SelectedIndex > 0 ? (string)KindFilterBox.SelectedItem : null,
+                DeviceFilterBox.SelectedIndex > 0 ? (string)DeviceFilterBox.SelectedItem : null,
+                SortBox.SelectedItem is StreamCaptureSort sort ? sort : StreamCaptureSort.Oldest);
+            Items.Clear();
+            foreach (var capture in shown)
+            {
+                Items.Add(new StreamMonitorCaptureItem(capture));
+            }
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+
+        SelectNewest();
+    }
+
+    private static void RefillChoices(ComboBox box, string any, IReadOnlyList<string> choices)
+    {
+        var keep = box.SelectedIndex > 0 ? box.SelectedItem as string : null;
+        box.Items.Clear();
+        box.Items.Add(any);
+        foreach (var choice in choices)
+        {
+            box.Items.Add(choice);
+        }
+
+        box.SelectedItem = keep is not null && choices.Contains(keep) ? keep : any;
+    }
 
     /// <summary>
     /// Decodes <paramref name="data"/> with WPF's built-in codecs (BMP, PNG, JPEG, GIF, TIFF, ICO,
@@ -166,13 +226,13 @@ public partial class StreamMonitorWindow : Window
     private void OnCaptureAdded(object? sender, StreamMonitorCapture capture) =>
         Dispatcher.BeginInvoke(() =>
         {
-            Items.Add(new StreamMonitorCaptureItem(capture));
-            while (Items.Count > StreamMonitor.MaxRetainedCaptures)
+            _captures.Add(capture);
+            while (_captures.Count > StreamMonitor.MaxRetainedCaptures)
             {
-                Items.RemoveAt(0);
+                _captures.RemoveAt(0);
             }
 
-            SelectNewest();
+            RefreshList();
         });
 
     private void OnStateChanged(object? sender, EventArgs e) => Dispatcher.BeginInvoke(RefreshState);
@@ -197,9 +257,10 @@ public partial class StreamMonitorWindow : Window
             return;
         }
 
-        CaptureList.SelectedIndex = Items.Count - 1;
-        CaptureList.ScrollIntoView(Items[^1]);
-        ShowCapture(Items[^1]);
+        var newest = Items.MaxBy(i => (i.Capture.LocalStartedAt, _captures.IndexOf(i.Capture)))!;
+        CaptureList.SelectedItem = newest;
+        CaptureList.ScrollIntoView(newest);
+        ShowCapture(newest);
     }
 
     private void CaptureList_SelectionChanged(object sender, SelectionChangedEventArgs e) =>

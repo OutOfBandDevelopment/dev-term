@@ -19,6 +19,7 @@ namespace DevTerm.DeviceManifests;
 public sealed class ManifestReplyPresenter : LineReplyPresenter
 {
     private readonly List<(ResponsePattern Pattern, Regex Regex)> _patterns = [];
+    private readonly Dictionary<string, Regex> _replyPatterns = new(StringComparer.Ordinal);
 
     public ManifestReplyPresenter(DeviceManifest manifest)
     {
@@ -29,12 +30,37 @@ public sealed class ManifestReplyPresenter : LineReplyPresenter
             _patterns.Add((pattern, new Regex(pattern.Match, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250))));
         }
 
+        foreach (var command in manifest.OutboundCommands)
+        {
+            if (command.EffectiveReplyId is { } replyId && !string.IsNullOrWhiteSpace(command.ReplyPattern))
+            {
+                _replyPatterns[replyId] = new Regex(command.ReplyPattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
+            }
+        }
+
         ConfigureTerminator(manifest.Inbound?.LineTerminated == false ? string.Empty : "\n");
     }
 
     public override string Name => "manifest";
 
     protected override bool RendersLines => false;
+
+    protected override ReplyMatch Classify(string replyId, string line)
+    {
+        if (!_replyPatterns.TryGetValue(replyId, out var regex))
+        {
+            return ReplyMatch.NextLine;
+        }
+
+        try
+        {
+            return regex.IsMatch(line) ? ReplyMatch.Matches : ReplyMatch.Rejects;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return ReplyMatch.Rejects;
+        }
+    }
 
     /// <summary>Publishes values as if a device had sent them. Used to fill a preview with sample data.</summary>
     public void PublishSampleValues(IReadOnlyDictionary<string, string> values) => PublishValues(values);

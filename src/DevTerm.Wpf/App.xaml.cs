@@ -112,6 +112,8 @@ public partial class App : Application
             cliOptions = editor.Result;
         }
 
+        PluginTrust.Approver = new MessageBoxPluginApprover();
+
         var hostBuilder = Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
             .ConfigureServices((_, services) => services.AddDevTermFrontEnd(cliOptions));

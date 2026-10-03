@@ -116,6 +116,18 @@ public static partial class DeviceManifestValidator
             }
         }
 
+        foreach (var command in manifest.OutboundCommands.Where(c => !string.IsNullOrWhiteSpace(c.ReplyPattern)))
+        {
+            try
+            {
+                _ = new Regex(command.ReplyPattern!, RegexOptions.CultureInvariant);
+            }
+            catch (ArgumentException ex)
+            {
+                errors.Add($"Command '{command.EffectiveId}': its reply pattern doesn't compile ({ex.Message}).");
+            }
+        }
+
         for (var i = 0; i < (manifest.Inbound?.Patterns.Count ?? 0); i++)
         {
             var pattern = manifest.Inbound!.Patterns[i];

@@ -7,6 +7,12 @@ public sealed class ButtonControl : UiControl
     public string? CommandId { get; set; }
 
     /// <summary>
+    /// When set, both front-end panels ask this question (Yes/No) before sending the button's command,
+    /// and send nothing on No. For commands that are hard to undo (a reset, a calibration, an erase).
+    /// </summary>
+    public string? ConfirmMessage { get; set; }
+
+    /// <summary>
     /// When set, clicking this button opens a modal RGB/HSV color picker (both front-end renderers
     /// support this generically — not tied to any one device) instead of invoking <see cref="Id"/>/
     /// <see cref="CommandId"/> directly; on confirm, the picked color is sent as an

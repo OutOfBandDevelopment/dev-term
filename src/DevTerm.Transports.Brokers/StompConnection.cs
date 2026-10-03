@@ -171,7 +171,7 @@ internal sealed class StompConnection : IBrokerConnection
     }
 }
 
-internal sealed class StompConnectionFactory : IBrokerConnectionFactory
+public sealed class StompConnectionFactory : IBrokerConnectionFactory
 {
     public IBrokerConnection Create() => new StompConnection();
 }

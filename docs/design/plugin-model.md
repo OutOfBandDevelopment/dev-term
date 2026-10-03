@@ -73,7 +73,7 @@ Built 2026-10-03 (the loading mechanism; built-in devices still register by hand
   half-registered plugin can't leak in. Skips print to stderr in the console app.
 - Where: `plugins` next to the app, or `--plugins <folder>` (`CliOptions.Plugins`, also `DEVTERM_PLUGINS`). Loaded from
   `AddDevTermPresenters`, so playback sees presenters from plugins too.
-- Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
+- Second example, `src/DevTerm.Plugins.KeyValue`: a "keyvalue" presenter that decodes `name=value [unit]` lines into a `StructuredMessage` (try it on the loopback `STATUS?`). Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
   with `--plugins <folder> --presenter sample`.
 - Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing/trust, a plugin
   registry, moving the built-in decoders (NMEA, RadexOne, ...) into plugin folders, a Plugins menu or list in the TUI/WPF.
@@ -98,5 +98,5 @@ end
 ## Open questions
 
 - In-process vs. out-of-process plugin hosting (isolation/crash-resilience vs. complexity/perf).
-- ~~Signing/trust model for third-party plugins, if any.~~ **Decided 2026-10-03:** third-party plugins run **out of process** and only after the user approves them; the user may optionally approve once per hash so an unchanged plugin isn't asked about again. No signing infrastructure. Not built yet. In-process plugins stay as they are.
+- ~~Signing/trust model for third-party plugins, if any.~~ **Decided 2026-10-03:** third-party plugins run **out of process** and only after the user approves them; the user may optionally approve once per hash so an unchanged plugin isn't asked about again. No signing infrastructure. **Built 2026-10-03** for out-of-process plugins (`PluginTrust`; see the proposal). In-process plugins stay as they are.
 - Whether plugins can be authored in languages other than C#/.NET (e.g., via a process/IPC boundary) for teams that want to write a decoder in Python/Rust.

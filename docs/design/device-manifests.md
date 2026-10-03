@@ -101,7 +101,7 @@ a generic renderer needs:
   the panel is open (`Session.AddPresenter`/`RemovePresenter`).
 
 Manifest fields added for this (all optional, so existing manifests load unchanged):
-`DeviceManifest.Terminator`; `OutboundCommand.Id`, `IsQuery`, `ReplyId`; `CommandParameter.DefaultValue`
+`DeviceManifest.Terminator`; `OutboundCommand.Id`, `IsQuery`, `ReplyId`, `ConfirmMessage` (the panel asks it before sending); `CommandParameter.DefaultValue`
 and `Format` (a .NET numeric format, e.g. `"00.00"` for `VSET1:05.00`; `Type` `number`/`integer`
 values are parsed, clamped to `Minimum`/`Maximum`, and formatted, `string` is sent as typed); and
 `InboundProtocol.LineTerminated` (false for a device whose replies have no terminator). JSON is read

@@ -72,6 +72,8 @@ decodes itself (PNG, JPEG, GIF, BMP, TIFF):
 
 ![WPF Stream Monitor previewing a captured PNG screen dump](images/wpf-stream-monitor.png)
 
+In the TUI, type in **Search:** to narrow the list and press the **Sort:** button to cycle the order. In WPF the box above the list searches captures by device, type, file name or time; the two drop-downs below it filter by content type and device, and the last one sorts (oldest, newest, largest, by type or by device).
+
 HP-GL, PostScript and PCL are captured and saved, but can't be previewed directly:
 
 ![WPF Stream Monitor with an HP-GL capture selected](images/wpf-stream-monitor-hpgl.png)

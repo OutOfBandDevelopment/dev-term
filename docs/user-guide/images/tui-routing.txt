@@ -1,0 +1,25 @@
+┌┤dev-term — Routing├──────────────────────────────────────────────────────────┐
+│ Broker: Connected                                                            │
+│                                                                              │
+│⟦ mqtt ⟧  Host: localhost              Port:                                  │
+│                                                                              │
+│User:                  Password:                                              │
+│1 -> ^T=(?<t>\d+)$ bench/temp hits 2                                          │
+│2 <- (?<payload>.*) bench/cmd hits 0                                          │
+│                                                                              │
+│⟦ Add ⟧ ⟦ Remove ⟧ ⟦ Up ⟧ ⟦ Down ⟧                                            │
+│                                                                              │
+│⟦ device->broker ⟧   ☐ Confirm sends                                          │
+│                                                                              │
+│Match:   ^T=(?<t>\d+)$                                                        │
+│Topic:   bench/temp                                                           │
+│Payload: ${t}                                                                 │
+│Sample:  T=21                                                       ⟦ Test ⟧  │
+│Rule 1: matches -> topic bench/temp, payload 21; Rule 2: matches -> send SET T│
+│12:00:00 -> bench/temp 21                                                     │
+│12:00:00 -> bench/temp 22                                                     │
+│                                                                              │
+│Unmatched: 1   Dropped: 0                                                     │
+│⟦ Apply ⟧ ⟦ Stop ⟧ ⟦ Save ⟧ ⟦► Close ◄⟧                                       │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘

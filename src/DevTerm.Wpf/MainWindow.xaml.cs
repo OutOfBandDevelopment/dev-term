@@ -104,6 +104,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         WpfTheme.Attach(this);
         _profileStore = profileStore ?? new ConnectionProfileStore();
+        _routingTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _routingTimer.Tick += (_, _) => RefreshRoutingStatus();
+        _routingTimer.Start();
         _lastCliOptions = cliOptions;
         ShowConverterToolsDialog = ShowConverterToolsWindow;
 
@@ -270,6 +273,8 @@ public partial class MainWindow : Window
         header.Children.Add(headerText);
         header.Children.Add(closeButton);
 
+        tab.RoutingConfirm = (rule, text) => Dispatcher.Invoke(() => RoutingWindow.ConfirmAsync(this, rule, text));
+
         var item = new TabItem { Header = header, Content = outputList };
 
         var windowTab = new WindowTab { Tab = tab, Item = item, OutputList = outputList, HeaderText = headerText };
@@ -405,6 +410,7 @@ public partial class MainWindow : Window
         }
 
         _streamMonitor?.Untrack(tab);
+        _mergedLog?.Untrack(tab);
         StopLogging(tab, report: false);
 
         tab.Tab.Session.Output -= tab.OutputHandler;
@@ -530,6 +536,7 @@ public partial class MainWindow : Window
         Title = TitleText;
 
         ConnectionStatusText.Text = ConnectionDescription.StatusText(tab.Tab.CliOptions, state);
+        RefreshRoutingStatus();
         ConnectionStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(connected
             ? ThemeRole.StatusConnected
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
@@ -933,6 +940,7 @@ public partial class MainWindow : Window
         var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
         if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
         {
+            ManifestPanelHint.MarkUsed(manifest.Name);
             TrackControlPanel(ManifestPickerWindow.OpenPanel(this, tab.Tab.Session, manifest), tab);
         }
     }
@@ -1107,8 +1115,46 @@ public partial class MainWindow : Window
     private StreamMonitor? _streamMonitor;
     private StreamMonitorWindow? _monitorWindow;
 
-    private void TrackInMonitor(WindowTab tab) =>
-        _streamMonitor?.Track(tab, tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
+    private void TrackInMonitor(WindowTab tab)
+    {
+        var device = StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore);
+        _streamMonitor?.Track(tab, tab.Tab.Session, device, tab.Tab.CliOptions.EffectiveExportDirectory);
+        _mergedLog?.Track(tab, tab.Tab.Session, device);
+    }
+
+    // The merged, time-ordered traffic of every tab, created the first time View > All Sessions Log opens
+    // (tracked/untracked alongside the Stream Monitor) - docs/design/multi-session-ui.md.
+    private MergedSessionLog? _mergedLog;
+    private MergedLogWindow? _mergedLogWindow;
+
+    internal MergedSessionLog EnsureMergedLog()
+    {
+        if (_mergedLog is null)
+        {
+            _mergedLog = new MergedSessionLog();
+            foreach (var tab in _tabs)
+            {
+                TrackInMonitor(tab);
+            }
+        }
+
+        return _mergedLog;
+    }
+
+    private void MergedLog_Click(object sender, RoutedEventArgs e)
+    {
+        var log = EnsureMergedLog();
+        if (_mergedLogWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        var window = new MergedLogWindow(log) { Owner = this };
+        window.Closed += (_, _) => _mergedLogWindow = null;
+        _mergedLogWindow = window;
+        window.Show();
+    }
 
     /// <summary>
     /// The window's Stream Monitor, tracking every open tab's session and started - opening the window
@@ -1142,6 +1188,41 @@ public partial class MainWindow : Window
 
     // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
     // alongside this window. A second click brings the already-open one forward.
+    private RoutingWindow? _routingWindow;
+    private readonly System.Windows.Threading.DispatcherTimer _routingTimer;
+
+    private void Routing_Click(object sender, RoutedEventArgs e)
+    {
+        if (_routingWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        var tab = ActiveWindowTab;
+        var window = new RoutingWindow(new RoutingViewModel(tab.Tab, _profileStore)) { Owner = this };
+        window.Closed += (_, _) => _routingWindow = null;
+        _routingWindow = window;
+        window.Show();
+    }
+
+    /// <summary>The status line's routing indicator for the active tab; blank when the profile has no routing and it never ran.</summary>
+    private void RefreshRoutingStatus()
+    {
+        if (ActiveWindowTabOrNull is not { } tab)
+        {
+            RoutingStatusText.Text = string.Empty;
+            RoutingStatusItem.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var routing = tab.Tab.Routing;
+        RoutingStatusText.Text = !tab.Tab.HasRouting && routing.State == RoutingState.Stopped
+            ? string.Empty
+            : new RoutingViewModel(tab.Tab).StatusText;
+        RoutingStatusItem.Visibility = RoutingStatusText.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void StreamMonitor_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;
