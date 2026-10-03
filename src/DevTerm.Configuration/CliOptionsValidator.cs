@@ -32,6 +32,12 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--otlp' must be 'true' or an http(s) URL such as http://localhost:4317.");
         }
 
+        if (options.SendIntervalMs < 0 || options.ReadIntervalMs < 0 || options.ConnectTimeoutMs < 0
+            || options.ConnectRetries < 0 || options.ConnectRetryDelayMs < 0)
+        {
+            return ValidateOptionsResult.Fail("'--sendintervalms', '--readintervalms', '--connecttimeoutms', '--connectretries' and '--connectretrydelayms' must be 0 or greater.");
+        }
+
         if (options.PlaybackSpeed < 0)
         {
             return ValidateOptionsResult.Fail("'--playbackspeed' must be 0 or greater.");

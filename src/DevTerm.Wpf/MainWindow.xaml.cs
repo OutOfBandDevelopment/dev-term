@@ -744,6 +744,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Asks before a profile switch closes a live connection. Replaceable so tests never open a real modal.</summary>
+    internal Func<string, bool> ProfileSwitchConfirmation { get; set; } = message =>
+        MessageBox.Show(message, "dev-term", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+
+    private bool ConfirmProfileSwitch(CliOptions current, CliOptions chosen) =>
+        ProfileSwitchConfirmation($"Switch to {ConnectionDescription.Definition(chosen)}? This closes the current connection ({ConnectionDescription.Definition(current)}). The new profile is saved either way.");
+
     private void DeviceProfiles_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;
@@ -753,6 +760,11 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
+            if (tab.Tab.Session.State == ConnectionState.Open && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
+            {
+                return;
+            }
+
             Observe(SwitchProfileAsync(chosen));
         }
     }

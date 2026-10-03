@@ -54,6 +54,15 @@ public sealed class Session : IAsyncDisposable
         _pipeline = pipeline;
     }
 
+    /// <summary>
+    /// Pacing and connect-retry limits; <see cref="SessionLimits.None"/> by default. Set before <see cref="OpenAsync"/>;
+    /// a change takes effect on the next send, read or open.
+    /// </summary>
+    public SessionLimits Limits { get; set; } = SessionLimits.None;
+
+    private readonly SemaphoreSlim _sendGate = new(1, 1);
+    private long _lastSendTicks;
+
     public ConnectionState State => _transport.State;
 
     /// <summary>
@@ -147,7 +156,7 @@ public sealed class Session : IAsyncDisposable
                 activity?.SetTag("devterm.transport", transportName);
                 try
                 {
-                    await _transport.OpenAsync(cancellationToken).ConfigureAwait(false);
+                    await OpenTransportWithLimitsAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -232,12 +241,74 @@ public sealed class Session : IAsyncDisposable
 
         try
         {
+            await ThrottleSendAsync(cancellationToken).ConfigureAwait(false);
             await _transport.WriteAsync(data, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (wasOpen && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             await FaultAsync(generation, ex).ConfigureAwait(false);
             throw;
+        }
+    }
+
+    private async Task OpenTransportWithLimitsAsync(CancellationToken cancellationToken)
+    {
+        var limits = Limits;
+        var attempts = 1 + Math.Max(0, limits.ConnectRetries);
+        for (var attempt = 1; ; attempt++)
+        {
+            using var timeout = limits.ConnectTimeoutMs > 0
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                : null;
+            timeout?.CancelAfter(limits.ConnectTimeoutMs);
+            try
+            {
+                await _transport.OpenAsync(timeout?.Token ?? cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (timeout is not null && !cancellationToken.IsCancellationRequested)
+            {
+                if (attempt >= attempts)
+                {
+                    throw new TimeoutException($"Connecting did not complete within {limits.ConnectTimeoutMs} ms.");
+                }
+            }
+            catch (Exception) when (attempt < attempts && !cancellationToken.IsCancellationRequested)
+            {
+                // Retry below.
+            }
+
+            await Task.Delay(Math.Max(0, limits.ConnectRetryDelayMs), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Serializes sends so the minimum gap holds between concurrent callers too.
+    private async Task ThrottleSendAsync(CancellationToken cancellationToken)
+    {
+        var interval = Limits.MinSendIntervalMs;
+        if (interval <= 0)
+        {
+            return;
+        }
+
+        await _sendGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var last = Interlocked.Read(ref _lastSendTicks);
+            if (last != 0)
+            {
+                var wait = interval - (int)Stopwatch.GetElapsedTime(last).TotalMilliseconds;
+                if (wait > 0)
+                {
+                    await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            Interlocked.Exchange(ref _lastSendTicks, Stopwatch.GetTimestamp());
+        }
+        finally
+        {
+            _sendGate.Release();
         }
     }
 
@@ -275,6 +346,11 @@ public sealed class Session : IAsyncDisposable
                     // The transport's input ended without StopAsync asking it to - the device or
                     // peer closed the connection.
                     break;
+                }
+
+                if (Limits.MinReadIntervalMs > 0 && !buffer.IsEmpty)
+                {
+                    await Task.Delay(Limits.MinReadIntervalMs, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

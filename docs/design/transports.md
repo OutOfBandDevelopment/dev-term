@@ -203,6 +203,6 @@ Verify which of these three a specific listing's adapter actually speaks before 
 ## Open questions
 
 - Exact shape of the internal BLE adapter contract (discovery, characteristic read/write/subscribe) that per-OS BLE backends implement — needs to be settled before the first (Windows) backend is built, so later platform adapters aren't retrofitted against something that only fits Windows.Devices.Bluetooth's shape by accident. HID stays a single cross-platform implementation (HidSharp already handles the OS differences) — the "how much can stay uniform" question is now BLE-specific, not both.
-- ~~Reconnect/retry policy: core or per transport?~~ **Decided 2026-10-03:** timeout and retry are **configurable options**, owned by the core with per-transport defaults. Not built.
+- ~~Reconnect/retry policy: core or per transport?~~ **Decided 2026-10-03:** timeout and retry are **configurable options**, owned by the core. **Built 2026-10-03** as `SessionLimits` (`--connecttimeoutms`, `--connectretries`, `--connectretrydelayms`); all default to off, so per-transport defaults are not set yet.
 - How a UDP listener's "first datagram" moment maps onto the `Session` model — same question as TCP, not yet resolved for the datagram case.
 - Whether a future version should support one session per accepted TCP connection (a real multi-peer listener) instead of v1's one-peer-at-a-time policy, and if so how that's surfaced (e.g., the session spawning child sessions per peer).

@@ -507,6 +507,12 @@ public static class TuiMode
                     if (configureParts.Result is { } chosen)
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
+                        if (windowTab.Tab.Session.State == ConnectionState.Open
+                            && MessageBox.Query(app, "dev-term", $"Switch to {ConnectionDescription.Definition(chosen)}? This closes the current connection. The new profile is saved either way.", ["Yes", "No"]) != 0)
+                        {
+                            return;
+                        }
+
                         Observe(SwitchProfileAsync(chosen), line => AppendOutput(windowTab, line));
                     }
                 })),

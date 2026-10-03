@@ -88,6 +88,44 @@
     "WriteByteDelayMs": {
       "type": "integer"
     },
+    "SendIntervalMs": {
+      "type": "integer"
+    },
+    "ReadIntervalMs": {
+      "type": "integer"
+    },
+    "ConnectTimeoutMs": {
+      "type": "integer"
+    },
+    "ConnectRetries": {
+      "type": "integer"
+    },
+    "ConnectRetryDelayMs": {
+      "type": "integer"
+    },
+    "SessionLimits": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "MinSendIntervalMs": {
+          "type": "integer"
+        },
+        "MinReadIntervalMs": {
+          "type": "integer"
+        },
+        "ConnectTimeoutMs": {
+          "type": "integer"
+        },
+        "ConnectRetries": {
+          "type": "integer"
+        },
+        "ConnectRetryDelayMs": {
+          "type": "integer"
+        }
+      }
+    },
     "ReadTimeoutMs": {
       "type": "integer"
     },

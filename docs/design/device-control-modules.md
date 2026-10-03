@@ -127,4 +127,4 @@ For simple query/response devices (most bench gear — a command string in, a fo
   [scpi-instrument-control.md](features/scpi-instrument-control.md). It's SCPI-specific, not the
   general Kaitai-Struct-backed binary-response schema also sketched above, which remains
   unimplemented for genuinely binary devices.
-- Safety/interlock concerns specific to controlling real equipment. **Partly decided 2026-10-03:** read/write **rate limits** are wanted, as a core, configurable option (like the existing write byte delay). Still open: confirming a destructive command, and whether that is core or per module.
+- Safety/interlock concerns specific to controlling real equipment. **Partly decided 2026-10-03:** read/write **rate limits** are wanted, as a core, configurable option (like the existing write byte delay). **Built 2026-10-03** as `SessionLimits` (`--sendintervalms`, `--readintervalms`). Still open: confirming a destructive command, and whether that is core or per module.

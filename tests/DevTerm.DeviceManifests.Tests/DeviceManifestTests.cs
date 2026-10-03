@@ -89,6 +89,36 @@ public sealed class DeviceManifestTests
     }
 
     [TestMethod]
+    [DoNotParallelize]
+    public void Load_Zip_ExtractsUnderTheAppDataFolder()
+    {
+        var directory = CreateTempDirectory();
+        var zipPath = directory + ".zip";
+        var home = CreateTempDirectory();
+        var previous = Environment.GetEnvironmentVariable("DEVTERM_HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("DEVTERM_HOME", home);
+            File.WriteAllText(
+                Path.Combine(directory, DeviceManifestLoader.ManifestFileName),
+                DeviceManifestSerializer.ToJson(BuildKoradManifest()));
+            ZipFile.CreateFromDirectory(directory, zipPath);
+
+            DeviceManifestLoader.Load(zipPath);
+            DeviceManifestLoader.Load(zipPath);
+
+            Assert.IsTrue(Directory.GetDirectories(Path.Combine(home, "manifest-cache")).Length >= 1);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DEVTERM_HOME", previous);
+            Directory.Delete(directory, recursive: true);
+            Directory.Delete(home, recursive: true);
+            File.Delete(zipPath);
+        }
+    }
+
+    [TestMethod]
     [TestCategory(TestCategories.BugRegression)]
     public void FromXml_DocumentWithAnInternalDtdEntity_DoesNotExpandIt()
     {

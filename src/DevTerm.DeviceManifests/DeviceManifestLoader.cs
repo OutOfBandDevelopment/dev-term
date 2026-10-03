@@ -1,3 +1,4 @@
+using DevTerm.Core;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -103,7 +104,7 @@ public static class DeviceManifestLoader
 
         var key = $"{Path.GetFullPath(path)}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
         var keyHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
-        var extractDirectory = Path.Combine(Path.GetTempPath(), "devterm-manifests", keyHash);
+        var extractDirectory = Path.Combine(DevTermHome.Root, "manifest-cache", keyHash);
         if (Directory.Exists(extractDirectory))
         {
             Directory.Delete(extractDirectory, recursive: true);

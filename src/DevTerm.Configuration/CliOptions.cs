@@ -147,6 +147,41 @@ public sealed class CliOptions
     [DisplayName("Write byte delay (ms)")]
     public int WriteByteDelayMs { get; set; } = -1;
 
+    /// <summary>Minimum milliseconds between two sends, enforced by the session for any transport; 0 (the default) disables it. See <see cref="DevTerm.Core.Sessions.SessionLimits"/>.</summary>
+    [Category("Timing")]
+    [DisplayName("Min send interval (ms)")]
+    public int SendIntervalMs { get; set; }
+
+    /// <summary>Minimum milliseconds between handling two received chunks; 0 (the default) disables it. Nothing is dropped; the backlog waits in the transport's pipe.</summary>
+    [Category("Timing")]
+    [DisplayName("Min read interval (ms)")]
+    public int ReadIntervalMs { get; set; }
+
+    /// <summary>Milliseconds one connect attempt may take before it is abandoned; 0 (the default) leaves it to the transport.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect timeout (ms)")]
+    public int ConnectTimeoutMs { get; set; }
+
+    /// <summary>Extra connect attempts after the first fails; 0 (the default) is a single attempt.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect retries")]
+    public int ConnectRetries { get; set; }
+
+    /// <summary>Milliseconds between connect attempts.</summary>
+    [Category("Timing")]
+    [DisplayName("Connect retry delay (ms)")]
+    public int ConnectRetryDelayMs { get; set; } = 1000;
+
+    /// <summary>The session limits these options describe.</summary>
+    public DevTerm.Core.Sessions.SessionLimits SessionLimits => new()
+    {
+        MinSendIntervalMs = SendIntervalMs,
+        MinReadIntervalMs = ReadIntervalMs,
+        ConnectTimeoutMs = ConnectTimeoutMs,
+        ConnectRetries = ConnectRetries,
+        ConnectRetryDelayMs = ConnectRetryDelayMs,
+    };
+
     /// <summary>
     /// Milliseconds a read blocks before timing out. Kept finite by default: SerialPort's
     /// BaseStream doesn't reliably honor cancellation on an in-flight read on all drivers, so a

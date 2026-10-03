@@ -90,6 +90,26 @@ public static class DevTermConfiguration
             [nameof(CliOptions.AsciiMaxLineLength)] = options.AsciiMaxLineLength,
         };
 
+        // Session limits are transport-independent; written only when set so existing profiles stay unchanged.
+        foreach (var (name, value) in new (string, int)[]
+        {
+            (nameof(CliOptions.SendIntervalMs), options.SendIntervalMs),
+            (nameof(CliOptions.ReadIntervalMs), options.ReadIntervalMs),
+            (nameof(CliOptions.ConnectTimeoutMs), options.ConnectTimeoutMs),
+            (nameof(CliOptions.ConnectRetries), options.ConnectRetries),
+        })
+        {
+            if (value != 0)
+            {
+                profile[name] = value;
+            }
+        }
+
+        if (options.ConnectRetryDelayMs != 1000)
+        {
+            profile[nameof(CliOptions.ConnectRetryDelayMs)] = options.ConnectRetryDelayMs;
+        }
+
         if (string.Equals(options.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
             profile[nameof(CliOptions.Host)] = options.Host;
