@@ -50,7 +50,7 @@ public sealed class StreamContentWatcherOptions
 /// watcher's own lock.
 /// </para>
 /// </remarks>
-public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, IDisposable
+public sealed class StreamContentWatcher : IContentCapturePresenter, IStreamContentHintSink, IDisposable
 {
     /// <summary>The name this watcher reports as a presenter.</summary>
     public const string PresenterName = "streamwatch";
@@ -58,6 +58,7 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
     private readonly StreamContentWatcherOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ITimer _idleTimer;
+    private long _completedCount;
     private readonly Lock _gate = new();
 
     // Idle-state scanning: the unmatched tail of earlier reads, rescanned with the next one so a
@@ -90,6 +91,18 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
     public event EventHandler<StreamCapture>? ContentDetected;
 
     public string Name => PresenterName;
+
+    /// <inheritdoc/>
+    public long CompletedCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _completedCount;
+            }
+        }
+    }
 
     /// <summary>Whether a capture is currently in progress.</summary>
     public bool IsCapturing
@@ -351,6 +364,7 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
             ?? StreamContentSniffer.Identify(data)
             ?? StreamContentKind.ForDeclaredFormat(_captureDeclaredFormat ?? StreamContentFormat.Binary);
 
+        _completedCount++;
         (_completed ??= []).Add(new StreamCapture(kind, data, _captureStartedAt, reason, _captureDeclaredFormat is not null));
         ResetCapture();
     }

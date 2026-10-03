@@ -344,7 +344,7 @@ public sealed class StreamContentWatcherTests
     }
 
     [TestMethod]
-    public async Task BoundIntoALiveSession_OtherPresentersSeeExactlyWhatTheyDidBefore()
+    public async Task BoundIntoALiveSession_OtherPresentersSeeTextButNotTheCapturedContent()
     {
         var pipe = new Pipe();
         var transport = new Mock<ITransport>();
@@ -375,17 +375,18 @@ public sealed class StreamContentWatcherTests
         };
 
         await session.OpenAsync(TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("hi"u8.ToArray(), TestContext.CancellationToken);
+        await sawOutput.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         var bmp = StreamContentSamples.Bmp();
         await pipe.Writer.WriteAsync(bmp, TestContext.CancellationToken);
         await captured.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
-        await sawOutput.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.HasCount(1, captures);
         lock (outputs)
         {
             Assert.HasCount(1, outputs);
-            Assert.AreEqual("raw", outputs[0].PresenterName, "the watcher itself never produced output");
+            Assert.AreEqual("raw", outputs[0].PresenterName, "only the text before the image reaches other presenters; the image bytes are withheld");
         }
 
         Assert.IsTrue(session.Presenters.Contains(watcher));

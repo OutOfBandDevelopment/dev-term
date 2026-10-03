@@ -138,4 +138,46 @@ public sealed class PipelineTests
         Assert.AreSequenceEqual([new PresenterOutput("kept", "k")], [.. pipeline.Render(new ReadOnlySequence<byte>([0x48]))]);
         Assert.HasCount(1, pipeline.Presenters);
     }
+
+    private sealed class LineBuffer : IPresenter
+    {
+        private readonly List<byte> _pending = [];
+
+        public string Name => "lines";
+
+        public IReadOnlyList<string> Render(ReadOnlySequence<byte> data)
+        {
+            var lines = new List<string>();
+            foreach (var b in data.ToArray())
+            {
+                if (b == (byte)'\n')
+                {
+                    lines.Add(System.Text.Encoding.ASCII.GetString([.. _pending]));
+                    _pending.Clear();
+                }
+                else
+                {
+                    _pending.Add(b);
+                }
+            }
+
+            return lines;
+        }
+    }
+
+    [TestMethod]
+    public void Render_WithholdsCapturedContentFromTextPresenters_SoNothingIsLeftInTheirBuffers()
+    {
+        var watcher = new DevTerm.Core.StreamContent.StreamContentWatcher();
+        var lines = new LineBuffer();
+        var pipeline = new Pipeline([lines, watcher]);
+        var png = StreamContentSamples.Png();
+
+        pipeline.Render(new ReadOnlySequence<byte>("*IDN?\n"u8.ToArray()));
+        var duringImage = pipeline.Render(new ReadOnlySequence<byte>(png));
+        var after = pipeline.Render(new ReadOnlySequence<byte>("OK\n"u8.ToArray()));
+
+        Assert.IsEmpty(duringImage, "The image's bytes must not be printed as text.");
+        Assert.AreSequenceEqual([new PresenterOutput("lines", "OK")], [.. after]);
+    }
 }
