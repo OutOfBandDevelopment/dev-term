@@ -319,6 +319,13 @@ if (bindError is not null)
     cliOptions = configured;
 }
 
+// Out-of-process plugins run only once approved; prompt for them here, before the UI takes over the terminal
+// (a script with redirected input is never prompted: only remembered approvals run there).
+if (!System.Console.IsInputRedirected)
+{
+    DevTerm.Core.Plugins.PluginTrust.Approver = new ConsolePluginApprover();
+}
+
 var hostBuilder = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
     .ConfigureServices((_, services) => services.AddDevTermFrontEnd(cliOptions));

@@ -68,12 +68,18 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [x] Host presenter (`ExternalProcessPresenter`) with handshake, reply timeout and fault handling
 - [x] Python, Java and Go examples verified through the host; tests for a silent and a dying plugin
 - [x] Go example run through the host (go 1.27.1, 2026-10-03)
-- [ ] `plugin.json` discovery of out-of-process plugins in `PluginLoader`
+- [x] `plugin.json` discovery of out-of-process plugins in `PluginLoader` (a `process` entry instead of an `assembly`; 2026-10-03)
 - [ ] Transport and device-module variants
-- [ ] Signing and trust model
+- [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)
 
 ## Status
 
 Built 2026-10-03 and tested against real child processes (`ExternalProcessPresenterTests`, Integration): Python, Java
-and Go all pass (Go run with go 1.27.1 once installed; each case is Inconclusive when its toolchain is missing). Not yet loaded through
-`PluginLoader` or selectable from a front end.
+and Go all pass (Go run with go 1.27.1 once installed; each case is Inconclusive when its toolchain is missing). Also found by
+`PluginLoader` (2026-10-03): a `plugin.json` with a `process` entry (`command`, `arguments`, `replyTimeoutMs`; `{folder}` expands to the plugin folder)
+registers a presenter that starts its program lazily on first use (`LazyExternalPresenter`). It runs only after approval (`PluginTrust`): the console asks
+`y`/`a`/`N` before the UI starts (never when input is redirected), WPF asks in a dialog (Yes = always, No = this time, Cancel = don't run). "Always" stores a SHA-256
+of every file in the plugin folder in `plugin-approvals.json` under the dev-term home, so an unchanged plugin isn't asked about again and any edit asks again.
+With no approver (a script) only remembered approvals run, and `--listplugins` shows "needs your approval". Covered by `PluginTrustTests` (unit) and a real
+Python run through the loader (`PluginTrustProcessTests`, Integration). Example: `examples/python/out-of-process-plugin/plugin.json`. Not built: the TUI has no
+in-app prompt (it uses the console one at startup), a screen to review or revoke approvals, and transport/device-module variants.

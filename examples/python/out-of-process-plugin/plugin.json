@@ -1,0 +1,7 @@
+{
+  "name": "py-shout",
+  "version": "1.0.0",
+  "contract": 1,
+  "description": "Upper-cases whatever text the device sent (an out-of-process Python presenter).",
+  "process": { "command": "python", "arguments": ["{folder}/shout.py"] }
+}

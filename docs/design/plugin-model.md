@@ -98,5 +98,5 @@ end
 ## Open questions
 
 - In-process vs. out-of-process plugin hosting (isolation/crash-resilience vs. complexity/perf).
-- ~~Signing/trust model for third-party plugins, if any.~~ **Decided 2026-10-03:** third-party plugins run **out of process** and only after the user approves them; the user may optionally approve once per hash so an unchanged plugin isn't asked about again. No signing infrastructure. Not built yet. In-process plugins stay as they are.
+- ~~Signing/trust model for third-party plugins, if any.~~ **Decided 2026-10-03:** third-party plugins run **out of process** and only after the user approves them; the user may optionally approve once per hash so an unchanged plugin isn't asked about again. No signing infrastructure. **Built 2026-10-03** for out-of-process plugins (`PluginTrust`; see the proposal). In-process plugins stay as they are.
 - Whether plugins can be authored in languages other than C#/.NET (e.g., via a process/IPC boundary) for teams that want to write a decoder in Python/Rust.

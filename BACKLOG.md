@@ -66,7 +66,6 @@ the rest.
 
 ### Decided 2026-10-03 (owner interview), not started
 
-- **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)).
 
 ## Research (not backlog-ready)
 

@@ -19,3 +19,7 @@ dev-term starts the program as a child process and talks to it in JSON lines, on
 
 The host waits at most a reply timeout for each answer. A plugin that exits, goes silent or answers bad JSON is marked faulted and shows nothing from then on; the session carries on. Host side: `ExternalProcessPresenter` in `src/DevTerm.Core/Plugins`; tests: `ExternalProcessPresenterTests`. Full design: [out-of-process-plugins](../../../docs/design/proposals/out-of-process-plugins.md).
 
+
+## Loading it as a plugin
+
+`plugin.json` here declares it as a plugin: `dev-term --plugins examples/python --presenter py-shout`. dev-term asks before running the program (console: `y`/`a`/`N`; WPF: a dialog), and "always" is remembered for this exact content only, so editing `shout.py` asks again.
