@@ -340,6 +340,15 @@ public sealed class CliOptions
     public string? Log { get; set; }
 
     /// <summary>
+    /// Opt-in OpenTelemetry export of dev-term's own traces and metrics (connection open spans, bytes
+    /// sent/received, disconnects) over OTLP/gRPC: <c>--otlp http://localhost:4317</c>, or <c>--otlp true</c> for that
+    /// default. Off when unset. See docs/design/observability.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("OTLP endpoint")]
+    public string? Otlp { get; set; }
+
+    /// <summary>
     /// Plays a session log back through the presenters (<c>--presenter</c>, or the log's own) and
     /// prints the decoded output, then exits — no connection is made. Console app only; the TUI/WPF
     /// have File &gt; Open Log for Playback... instead.

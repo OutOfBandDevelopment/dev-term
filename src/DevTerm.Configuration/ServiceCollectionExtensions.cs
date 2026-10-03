@@ -6,6 +6,7 @@ using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
 using DevTerm.Devices.ZoomH4n;
+using DevTerm.Observability;
 using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
@@ -30,6 +31,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDevTermFrontEnd(this IServiceCollection services, CliOptions cliOptions)
     {
         services.AddDevTermPresenters(cliOptions);
+        StartTelemetry(cliOptions);
 
         if (string.Equals(cliOptions.Transport, "tcp", StringComparison.OrdinalIgnoreCase))
         {
@@ -158,6 +160,19 @@ public static class ServiceCollectionExtensions
     /// transport. What <see cref="AddDevTermFrontEnd"/> builds on, and all playback composes
     /// (<see cref="PlaybackPresenters"/>), so replaying a log can't reach a real device.
     /// </summary>
+    // Opt-in (--otlp). Started here rather than as a hosted service because the WPF and console front ends build their
+    // host but never start it; flushed when the process exits.
+    private static void StartTelemetry(CliOptions cliOptions)
+    {
+        if (TelemetryExporter.ParseEndpoint(cliOptions.Otlp) is not { } endpoint)
+        {
+            return;
+        }
+
+        var exporter = TelemetryExporter.Start(endpoint, "devterm");
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => exporter.Dispose();
+    }
+
     public static IServiceCollection AddDevTermPresenters(this IServiceCollection services, CliOptions cliOptions)
     {
         ArgumentNullException.ThrowIfNull(cliOptions);

@@ -1,3 +1,4 @@
+using DevTerm.Observability;
 using Microsoft.Extensions.Options;
 
 namespace DevTerm.Configuration;
@@ -24,6 +25,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
         if (options.WriteTimeoutMs < -1)
         {
             return ValidateOptionsResult.Fail("'--writetimeoutms' must be -1 (infinite) or a non-negative timeout in milliseconds.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Otlp) && !string.Equals(options.Otlp, "false", StringComparison.OrdinalIgnoreCase) && TelemetryExporter.ParseEndpoint(options.Otlp) is null)
+        {
+            return ValidateOptionsResult.Fail("'--otlp' must be 'true' or an http(s) URL such as http://localhost:4317.");
         }
 
         if (options.PlaybackSpeed < 0)
