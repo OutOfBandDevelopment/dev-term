@@ -118,15 +118,6 @@
         <Parameter name="RealHidK8055-1-VendorId" value="4303" />
         <Parameter name="RealHidK8055-1-ProductId" value="21760" />
         <Parameter name="RealHidK8055-1-DevicePath" value="" />
-        <Parameter name="RealHidK8055-2-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-2-ProductId" value="21761" />
-        <Parameter name="RealHidK8055-2-DevicePath" value="" />
-        <Parameter name="RealHidK8055-3-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-3-ProductId" value="21762" />
-        <Parameter name="RealHidK8055-3-DevicePath" value="" />
-        <Parameter name="RealHidK8055-4-VendorId" value="4303" />
-        <Parameter name="RealHidK8055-4-ProductId" value="21763" />
-        <Parameter name="RealHidK8055-4-DevicePath" value="" />
         <Parameter name="RealHidBusylightVendorId" value="1240" />
         <Parameter name="RealHidBusylightProductId" value="63560" />
         <Parameter name="RealHidBusylightDevicePath" value="" />
