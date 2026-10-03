@@ -933,6 +933,7 @@ public partial class MainWindow : Window
         var picker = new ManifestPickerWindow(InstalledManifests.Discover()) { Owner = this };
         if (picker.ShowDialog() == true && picker.Chosen is { } manifest)
         {
+            ManifestPanelHint.MarkUsed(manifest.Name);
             TrackControlPanel(ManifestPickerWindow.OpenPanel(this, tab.Tab.Session, manifest), tab);
         }
     }

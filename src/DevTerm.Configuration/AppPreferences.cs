@@ -17,6 +17,9 @@ public sealed class AppPreferences
 
     /// <summary>How long exports are kept. Null (the default) keeps everything.</summary>
     public RetentionRule? ExportRetention { get; set; }
+
+    /// <summary>Manifest names whose control panel the user has already opened from Device > Device Manifest, so <see cref="ManifestPanelHint"/> stops offering it.</summary>
+    public List<string> UsedPanelHints { get; set; } = [];
 }
 
 /// <summary>

@@ -67,7 +67,6 @@ the rest.
 ### Decided 2026-10-03 (owner interview), not started
 
 - **Multi-session tabs:** the merged time-ordered view of logging and the Stream Monitor across tabs (per-tab history, logging, empty window and Alt+Left/Right already built; [multi-session-ui](docs/design/multi-session-ui.md)).
-- **Remember a dismissed/used control-panel hint per profile** (the hint itself shipped 2026-10-03) ([device-control-panel spec](docs/specs/device-control-panel.md)).
 - **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
 - **TUI terminal-palette theme, and a live-following `system` theme** ([theming](docs/design/theming.md)).
 - **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **manifest-declared reply correlation** ([device-control-modules](docs/design/device-control-modules.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).

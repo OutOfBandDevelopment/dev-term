@@ -365,8 +365,8 @@ any command not in the curated list.
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
   only way in. Since 2026-10-03 connecting with such a profile prints a status line pointing at
   Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.
-  **Still open:** the hint repeats on every connect; "remembered per profile once chosen" (decided
-  2026-10-03) isn't built.
+  The hint stops once the user has opened that manifest's panel from the menu (remembered by manifest
+  name in `preferences.json` as `UsedPanelHints`; there is no separate dismiss action, 2026-10-03).
 - **Charts have no hover readout or table view** (**Decided 2026-10-03:** build the hover readout, a table view and history export; not built yet) — the WPF charts show the latest values in their
   legend/labels but no per-point tooltip, and neither front end exports the history.
 - **Chart sizes are fixed per front end** (not declared in the model) — fine for the controls so
