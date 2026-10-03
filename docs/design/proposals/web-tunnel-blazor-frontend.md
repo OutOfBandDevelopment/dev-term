@@ -69,17 +69,74 @@ minimum, before real design work starts:
 - Whether this ever needs its own transport-like "session discovery" (list what's running, attach to
   one) or always starts a session itself from a connection profile the way the other front ends do.
 
+## Decisions (2026-10-02)
+
+- **Loopback by default.** `Web:Urls` defaults to `http://127.0.0.1:5080`. Any other address needs
+  `Web:AllowRemote=true`, an explicit `Web:Token`, a `Web:CertificatePath` (PFX) and an `https` URL;
+  `AccessPolicy.Validate` refuses to start otherwise. A generated token is only allowed on loopback.
+- **Authentication is one shared access token**, not user accounts: `Authorization: Bearer`, the
+  `devterm_auth` cookie, or a one-time `?token=` that sets an HttpOnly, SameSite=Strict cookie and
+  redirects. Compared in constant time. A browser `Origin` that differs from the request host is
+  refused (stops another site's script driving a loopback tunnel).
+- **No Blazor yet.** The first cut is a plain `/ws` WebSocket plus a single static page, because the
+  tunnel is the real requirement and a Blazor circuit would add a second channel with no gain. Blazor
+  remains the route for rendering `UiDefinition` generically later.
+- **One profile-started session shared by all viewers.** Output is broadcast (with a replayed backlog for
+  late joiners); sends are serialized through one lock, so concurrent senders interleave whole lines.
+  Typed input goes through `TypedInput.TryEncode`. No session discovery.
+
+```plantuml
+@startuml
+actor Browser
+participant "AccessTokenMiddleware" as Auth
+participant "/ws tunnel" as Ws
+participant SessionHub as Hub
+participant Session
+Browser -> Auth : GET /ws (Bearer or cookie)
+Auth -> Ws : token ok, Origin ok
+Ws -> Hub : subscribe, replay backlog
+Browser -> Ws : text frame "hello"
+Ws -> Hub : SendLineAsync (lock)
+Hub -> Session : TypedInput.TryEncode -> SendAsync
+Session --> Hub : Output / Disconnected
+Hub --> Ws : line (broadcast to every viewer)
+Ws --> Browser : text frame
+@enduml
+```
+
+```plantuml
+@startuml
+start
+:Validate Web options;
+if (every URL loopback?) then (yes)
+  :token optional (generated and printed);
+else (no)
+  if (AllowRemote and Token and PFX and https?) then (yes)
+  else (no)
+    :refuse to start;
+    stop
+  endif
+endif
+:listen;
+stop
+@enduml
+```
+
 ## Completion checklist
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
 
-- [ ] Answer the security and access-control questions above
-- [ ] Pick a Blazor hosting model
-- [ ] Real design doc (this is research only)
-- [ ] Prototype, tests, and `docs/specs/` / `docs/user-guide/` entries
+- [x] Answer the security and access-control questions above
+- [x] Pick a Blazor hosting model (none yet: WebSocket plus a static page; Blazor later for `UiDefinition`)
+- [x] Real design doc (the Decisions section above)
+- [x] Prototype, tests, and `docs/specs/` / `docs/user-guide/` entries
+- [ ] Blazor rendering of a `UiDefinition` control panel
+- [ ] Per-viewer read-only role; TLS verified with a real certificate
 
 ## Status
 
-**Not started — research/early design only; unlocked 2026-10-02** (queued after MQTT in `TODO.md`). No code exists yet, and unlike most proposals here this
-isn't gated on acquiring a piece of hardware — it's gated on answering the security/access-control
-questions above and picking a Blazor hosting model before any real design work is worth doing.
+**Implemented (2026-10-02): `DevTerm.Web`** with the decisions above. `AccessPolicyTests` and `WebHostTests`
+(13 unit tests, including a real WebSocket round trip against the loopback transport) pass, and a live
+run confirmed 401 without a token, a 302 with `?token=`, and a refused non-loopback `http` bind. Not verified:
+TLS with a real certificate, a real device through the page, more than one simultaneous browser. Not built:
+Blazor, user accounts, read-only viewers.
