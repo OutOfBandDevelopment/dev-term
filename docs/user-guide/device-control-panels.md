@@ -34,6 +34,9 @@ Every panel works the same way, whichever device it's for:
   button, and the line at the bottom of the panel reads, say, `Sends: CONF:VOLT:DC DEF\n`. Line
   endings and other control characters are shown escaped (`\n`, `\r`). For the K8055 and Busylight,
   which talk in binary HID reports, it shows the report bytes in hex.
+- **Read a strip chart's numbers.** In WPF, hover the plot to read each channel at that point, or right-click it to
+  show the history as a table, copy it as CSV, or save a CSV. In the TUI, click the chart: a dialog lists the
+  history (age 0 is the newest sample) and *Save CSV* writes it under `exports` in your dev-term data folder.
 - **Bad values are caught before they're sent.** Type something a field can't take (letters in a
   number field, a value outside the allowed range) and nothing is sent; the panel says why, e.g.
   `Channel: 9 is out of range (1 to 4). Not sent.` In the TUI that's the panel's bottom line; in WPF,

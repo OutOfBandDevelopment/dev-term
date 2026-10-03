@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using DevTerm.Configuration;
 using DevTerm.UiDefinitions;
@@ -128,13 +130,98 @@ internal sealed class StripChartElement : LiveDisplayElement
     private const double _plotHeight = 120;
     private const double _legendHeight = 22;
 
+    private readonly System.Windows.Controls.ToolTip _readout = new();
+
     public StripChartElement(StripChartState state)
         : base(state, _plotLeft + _plotWidth + 8, _plotHeight + _legendHeight + 6)
     {
         Strip = state;
+        ToolTip = _readout;
+        ToolTipService.SetInitialShowDelay(this, 0);
+        ToolTipService.SetPlacement(this, PlacementMode.Relative);
+        ContextMenu = BuildMenu();
+        MouseMove += (_, e) => ShowReadout(e.GetPosition(this));
+        MouseLeave += (_, _) => _readout.IsOpen = false;
     }
 
     public StripChartState Strip { get; }
+
+    /// <summary>The readout for the plot slot under <paramref name="point"/>, or null outside the plot or before any sample there.</summary>
+    internal string? ReadoutAt(Point point)
+    {
+        var capacity = Strip.Capacity;
+        if (point.X < _plotLeft || point.X > _plotLeft + _plotWidth || point.Y < 4 || point.Y > 4 + _plotHeight)
+        {
+            return null;
+        }
+
+        var slot = capacity <= 1 ? 0 : (int)Math.Round((point.X - _plotLeft) * (capacity - 1) / _plotWidth);
+        return StripChartHistory.ReadoutAt(Strip, slot);
+    }
+
+    private void ShowReadout(Point point)
+    {
+        if (ReadoutAt(point) is { } text)
+        {
+            _readout.Content = text;
+            _readout.HorizontalOffset = point.X + 12;
+            _readout.VerticalOffset = point.Y + 12;
+            _readout.IsOpen = true;
+        }
+        else
+        {
+            _readout.IsOpen = false;
+        }
+    }
+
+    private ContextMenu BuildMenu()
+    {
+        var menu = new ContextMenu();
+        var table = new MenuItem { Header = "Show history table" };
+        table.Click += (_, _) => ShowTable();
+        var copy = new MenuItem { Header = "Copy history as CSV" };
+        copy.Click += (_, _) => TryClipboard(StripChartHistory.ToCsv(Strip));
+        var save = new MenuItem { Header = "Save history as CSV..." };
+        save.Click += (_, _) => SaveCsv();
+        menu.Items.Add(table);
+        menu.Items.Add(copy);
+        menu.Items.Add(save);
+        return menu;
+    }
+
+    private static void TryClipboard(string text)
+    {
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            // The clipboard is briefly owned by another process; nothing useful to do.
+        }
+    }
+
+    private void SaveCsv()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "CSV (*.csv)|*.csv", FileName = $"{Strip.Control.Id}.csv" };
+        if (dialog.ShowDialog() == true)
+        {
+            System.IO.File.WriteAllText(dialog.FileName, StripChartHistory.ToCsv(Strip));
+        }
+    }
+
+    private void ShowTable()
+    {
+        var box = new TextBox
+        {
+            Text = StripChartHistory.ToText(Strip),
+            IsReadOnly = true,
+            FontFamily = new FontFamily("Consolas"),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+        };
+        new Window { Title = $"{Strip.Control.Label ?? Strip.Control.Id} - history", Width = 360, Height = 420, Content = box, Owner = Window.GetWindow(this) }.Show();
+    }
 
     protected override void OnRender(DrawingContext drawingContext)
     {

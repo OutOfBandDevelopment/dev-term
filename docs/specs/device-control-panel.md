@@ -367,7 +367,11 @@ any command not in the curated list.
   Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.
   The hint stops once the user has opened that manifest's panel from the menu (remembered by manifest
   name in `preferences.json` as `UsedPanelHints`; there is no separate dismiss action, 2026-10-03).
-- **Charts have no hover readout or table view** (**Decided 2026-10-03:** build the hover readout, a table view and history export; not built yet) — the WPF charts show the latest values in their
-  legend/labels but no per-point tooltip, and neither front end exports the history.
+- **Strip charts have a hover readout, a history table and CSV export (2026-10-03).** WPF: hover the plot for
+  a tooltip with each channel's value at that point (`now`, `-1`, `-2`, ... samples back; samples carry no
+  timestamps); right-click for *Show history table*, *Copy history as CSV* and *Save history as CSV...*.
+  TUI (no hover): click the chart to open a history dialog (a read-only table, newest row last) with *Save CSV*, which
+  writes `<id>-<timestamp>.csv` under `exports` in the per-user data folder. Both come from `StripChartHistory`
+  (`DevTerm.UiDefinitions`). Bar graphs and vector plots have neither (a bar shows its current value; a vector has one point and a trail).
 - **Chart sizes are fixed per front end** (not declared in the model) — fine for the controls so
   far; a `Width`/`Height` hint could come later if a device needs a bigger plot.
