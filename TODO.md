@@ -9,7 +9,7 @@ Completed work is logged by date under `docs/changes/`.
 Queue from your 2026-10-02 answers, in the order I'm taking them. Nothing below is built yet.
 
 1. **Message brokers and the web tunnel** (unlocked). MQTT is built and verified (see `docs/changes/2026-10-02.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel; see `docs/changes/2026-10-02.md`). AMQP and STOMP wait for a real target; Blazor rendering of control panels is a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
-2. **`.ksy` gaps**: bit fields, length-prefixed frames and checksums are built (see `docs/changes/2026-10-02.md`). Left: a live check of the Zoom H4n status `.ksy` (needs the recorder on) and editor forms for the new frame settings.
+2. **`.ksy` gaps**: bit fields, length-prefixed frames and checksums are built (see `docs/changes/2026-10-02.md`). Left: a live check of the Zoom H4n status `.ksy` (needs the recorder on) (the editor forms for the frame settings landed, see `docs/changes/2026-10-03.md`).
 3. **Observability**: built (see `docs/changes/2026-10-02.md`). Left: check it against the Aspire dashboard container, and `ILogger` export if wanted.
 4. **TUI-only palette option** for the light theme on 16-color consoles: built (see `docs/changes/2026-10-02.md`). Left: look at it on a real legacy conhost.
 5. **Plugin loading**: the loader is built (see `docs/changes/2026-10-03.md`). Left: move the built-in decoders (NMEA, RadexOne, ...) out of the core references into plugin folders, and a way to see loaded plugins in the TUI/WPF.

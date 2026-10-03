@@ -654,4 +654,38 @@ public sealed class ManifestEditorTests
 
         editor.PublishSampleData(null);
     }
+
+    [TestMethod]
+    public void FrameForm_LengthAndChecksumFields_WriteThroughToTheSchema()
+    {
+        var frame = new FrameSchema();
+        var edits = 0;
+        var form = new FrameForm(frame, () => edits++);
+
+        Assert.AreEqual("none", form.ChecksumKind);
+        Assert.IsFalse(form.HasChecksum);
+        form.ChecksumKind = "crc16-modbus";
+        Assert.IsTrue(form.HasChecksum);
+        Assert.IsTrue(form.HasWideChecksum);
+        form.ChecksumStart = 2;
+        form.ChecksumEndian = "be";
+        Assert.AreEqual("crc16-modbus", frame.Checksum!.Kind);
+        Assert.AreEqual(2, frame.Checksum.Start);
+        Assert.AreEqual("be", frame.Checksum.Endian);
+
+        form.ChecksumKind = "sum8";
+        Assert.IsFalse(form.HasWideChecksum);
+        form.ChecksumKind = "none";
+        Assert.IsNull(frame.Checksum);
+
+        Assert.IsFalse(form.HasLengthField);
+        form.LengthField = "len";
+        form.LengthAdjust = 4;
+        Assert.IsTrue(form.HasLengthField);
+        Assert.AreEqual("len", frame.LengthField);
+        Assert.AreEqual(4, frame.LengthAdjust);
+        form.LengthField = " ";
+        Assert.IsNull(frame.LengthField);
+        Assert.IsGreaterThan(0, edits);
+    }
 }

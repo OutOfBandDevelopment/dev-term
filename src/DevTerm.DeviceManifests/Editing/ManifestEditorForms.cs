@@ -651,8 +651,117 @@ public sealed class FrameForm : EditorForm
     public static IReadOnlyList<string> Endians { get; } = ["le", "be"];
 
     [Category("Frame")]
+    [DisplayName("Length field")]
+    [Description("Name of an integer field holding the frame's length, for a variable-size last bytes/str field; blank for fixed frames.")]
+    [FormField(Order = 2)]
+    public string? LengthField
+    {
+        get => Frame.LengthField;
+        set
+        {
+            Frame.LengthField = NullIfBlank(value);
+            Changed();
+            Notify(nameof(HasLengthField));
+            Notify(nameof(Summary));
+        }
+    }
+
+    [Category("Frame")]
+    [DisplayName("Length adjust")]
+    [Description("Added to the length field's value to get the whole frame's length in bytes (0 when it already counts everything).")]
+    [FormField(Order = 3, VisibleWhen = nameof(HasLengthField))]
+    public int LengthAdjust
+    {
+        get => Frame.LengthAdjust;
+        set
+        {
+            Frame.LengthAdjust = value;
+            Changed();
+            Notify(nameof(Summary));
+        }
+    }
+
+    [Browsable(false)]
+    public bool HasLengthField => !string.IsNullOrWhiteSpace(Frame.LengthField);
+
+    [Category("Frame")]
+    [DisplayName("Checksum")]
+    [Description("The checksum the frame ends with; a frame that fails it is discarded.")]
+    [FormField(Order = 4, OptionsFrom = nameof(ChecksumKinds))]
+    public string ChecksumKind
+    {
+        get => Frame.Checksum?.Kind ?? _noChecksum;
+        set
+        {
+            if (string.Equals(value, _noChecksum, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(value))
+            {
+                Frame.Checksum = null;
+            }
+            else
+            {
+                (Frame.Checksum ??= new FrameChecksum()).Kind = value;
+            }
+
+            Changed();
+            Notify(nameof(HasChecksum));
+            Notify(nameof(HasWideChecksum));
+            Notify(nameof(Summary));
+        }
+    }
+
+    [Category("Frame")]
+    [DisplayName("Checksum start")]
+    [Description("Bytes to skip before the covered data: 0 covers the sync bytes too.")]
+    [FormField(Order = 5, VisibleWhen = nameof(HasChecksum))]
+    public int ChecksumStart
+    {
+        get => Frame.Checksum?.Start ?? 0;
+        set
+        {
+            if (Frame.Checksum is { } checksum)
+            {
+                checksum.Start = value;
+                Changed();
+                Notify(nameof(Summary));
+            }
+        }
+    }
+
+    [Category("Frame")]
+    [DisplayName("Checksum byte order")]
+    [Description("Blank uses the kind's usual order.")]
+    [FormField(Order = 6, OptionsFrom = nameof(ChecksumEndians), VisibleWhen = nameof(HasWideChecksum))]
+    public string ChecksumEndian
+    {
+        get => Frame.Checksum?.Endian ?? string.Empty;
+        set
+        {
+            if (Frame.Checksum is { } checksum)
+            {
+                checksum.Endian = NullIfBlank(value);
+                Changed();
+                Notify(nameof(Summary));
+            }
+        }
+    }
+
+    [Browsable(false)]
+    public bool HasChecksum => Frame.Checksum is not null;
+
+    [Browsable(false)]
+    public bool HasWideChecksum => Frame.Checksum is { } checksum && FrameChecksum.SizeOf(checksum.Kind) == 2;
+
+    [Browsable(false)]
+    public static IReadOnlyList<string> ChecksumKinds { get; } = [_noChecksum, "sum8", "xor8", "crc8", "crc16-modbus", "crc16-ccitt"];
+
+    [Browsable(false)]
+    public static IReadOnlyList<string> ChecksumEndians { get; } = ["", "le", "be"];
+
+    private const string _noChecksum = "none";
+
+    [Category("Frame")]
     [DisplayName("Layout")]
-    [FormField(Order = 2, Kind = FormFieldKind.Indicator)]
+    [FormField(Order = 7, Kind = FormFieldKind.Indicator)]
     public string Summary
     {
         get
