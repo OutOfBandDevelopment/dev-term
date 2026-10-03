@@ -7,7 +7,7 @@ using DevTerm.Test.Utilities;
 namespace DevTerm.Core.Tests.Plugins;
 
 /// <summary>
-/// Out-of-process presenters written in Python, Java and Go (examples/plugins). Each language's case is Inconclusive when
+/// Out-of-process presenters written in Python, Java and Go (examples/{language}/out-of-process-plugin). Each language's case is Inconclusive when
 /// that toolchain is not installed. Real child processes, so Integration.
 /// </summary>
 [TestCategory(TestCategories.Integration)]
@@ -18,7 +18,7 @@ public sealed class ExternalProcessPresenterTests
 
     public required TestContext TestContext { get; set; }
 
-    private static string ExamplePath(params string[] parts)
+    private static string ExamplePath(string language, string file)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "DevTerm.slnx")))
@@ -26,7 +26,7 @@ public sealed class ExternalProcessPresenterTests
             dir = dir.Parent;
         }
 
-        return Path.Combine([dir?.FullName ?? throw new InvalidOperationException("repo root not found"), "examples", "plugins", .. parts]);
+        return Path.Combine([dir?.FullName ?? throw new InvalidOperationException("repo root not found"), "examples", language, "out-of-process-plugin", file]);
     }
 
     private static bool Works(string fileName, string argument)

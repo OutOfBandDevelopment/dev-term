@@ -1,6 +1,6 @@
 // Example out-of-process dev-term presenter in Go: reverses the text the device sent.
 // Protocol (JSON lines on stdin/stdout): see docs/design/proposals/out-of-process-plugins.md.
-// Run: go run examples/plugins/go/main.go
+// Run: go run examples/go/out-of-process-plugin/main.go
 package main
 
 import (

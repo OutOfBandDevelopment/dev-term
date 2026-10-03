@@ -110,7 +110,7 @@
              docs/design/features/zoom-h4n-remote-protocol.md). Real-hardware confirmed 2026-10-01
              at COM5 (docs/test/2026-10-01-08-15-06.md) - previously reported on COM3
              (2026-09-25), reassigned since. -->
-        <Parameter name="RealSerialZoomH4nPort" value="COM10" />
+        <Parameter name="RealSerialZoomH4nPort" value="COM11" />
 
         <!-- Real HID devices (RealHardwareK8055Tests/RealHardwareBusylightTests) - identified by
              DevicePath (preferred, per the user's request) with VendorId/ProductId as the fallback

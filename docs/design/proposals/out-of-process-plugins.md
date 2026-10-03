@@ -51,8 +51,8 @@ Host --> Go : stdin/stdout
 
 ## Examples
 
-`examples/plugins/python/shout.py` (upper-cases text), `examples/plugins/java/Shout.java` (single-file, counts bytes),
-`examples/plugins/go/main.go` (reverses text).
+`examples/python/out-of-process-plugin/` (upper-cases text), `examples/java/out-of-process-plugin/` (single-file, counts
+bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a README.
 
 ## Open questions
 
