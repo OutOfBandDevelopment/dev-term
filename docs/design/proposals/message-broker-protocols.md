@@ -112,7 +112,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Routing proxy proof of concept over loopback (rules, router, live add, shared timecode)
 - [x] Wire the router to a real MQTT broker (`MqttRouterBridge`, verified against Mosquitto 2026-10-03)
 - [x] Wire the router to AMQP and STOMP (`BrokerRouterBridge`, verified against RabbitMQ 2026-10-03)
-- [ ] A front-end rule editor, and loading rules from a profile or manifest
+- [ ] A front-end rule editor, and loading rules from a profile or manifest (screen designed 2026-10-03: [routing-window spec](../../specs/routing-window.md); WPF and TUI to build)
 - [ ] A real device or home-automation broker check for MQTT
 
 ## Status

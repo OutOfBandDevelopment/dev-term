@@ -31,6 +31,7 @@ Each spec follows the same shape:
 - [Converter tools editor](converter-tools-editor.md) — the dialog (WPF `ConverterToolsWindow`, TUI `ConverterToolsDialog`)
   that adds, edits, removes and reorders the Stream Monitor's registered converter tools.
 
+- [Routing Window](routing-window.md) — designed, not built: edits and runs the profile's broker routing rules, with a live rule test and history.
 - [Connection Editor](connection-editor.md) — the shared connection-editing screen
   (`DevTerm.Configuration.ConnectionEditorViewModel`), rendered as the TUI's `ConfigureMode` and
   WPF's `DeviceProfilesWindow`. Reachable at startup (invalid configuration) and from each front
