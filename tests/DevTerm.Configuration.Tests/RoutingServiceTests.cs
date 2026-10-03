@@ -128,6 +128,29 @@ public sealed class RoutingServiceTests
         Assert.IsFalse(json.Contains("Routing", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public async Task ASessionTab_StartsRoutingWhenItsSessionOpens_AndStopsWhenItCloses()
+    {
+        var options = new CliOptions { Transport = "loopback", Routing = Options() };
+        var tab = SessionTab.Build(options);
+        tab.RoutingLinkFactory = new FakeFactory();
+
+        await tab.Session.OpenAsync();
+        await WaitAsync(() => tab.Routing.State == RoutingState.Connected);
+
+        await tab.Session.CloseAsync();
+        await WaitAsync(() => tab.Routing.State == RoutingState.Stopped);
+    }
+
+    [TestMethod]
+    public async Task ASessionTab_WithoutRules_NeverStartsRouting()
+    {
+        var tab = SessionTab.Build(new CliOptions { Transport = "loopback" });
+        await tab.Session.OpenAsync();
+        Assert.AreEqual(RoutingState.Stopped, tab.Routing.State);
+        await tab.Session.CloseAsync();
+    }
+
     private sealed class FakeFactory : IRoutingLinkFactory
     {
         public List<FakeLink> Links { get; } = [];

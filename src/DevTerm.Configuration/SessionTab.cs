@@ -1,4 +1,6 @@
+using System.Buffers;
 using DevTerm.Core.Presenters;
+using DevTerm.Core.Routing;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 
@@ -14,6 +16,11 @@ namespace DevTerm.Configuration;
 /// </summary>
 public sealed class SessionTab
 {
+    private Session _session;
+    private readonly RoutingObserver _observer;
+    private IDisposable _observerHandle;
+    private RoutingService? _routing;
+
     /// <param name="services">
     /// The throwaway provider <see cref="DevTermSessionBuilder.Build"/> composed <paramref name="session"/>'s
     /// transport from, when this tab was built that way (a live profile switch, or a future "File &gt;
@@ -27,7 +34,9 @@ public sealed class SessionTab
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(cliOptions);
 
-        Session = session;
+        _session = session;
+        _observer = new RoutingObserver(this);
+        _observerHandle = session.AddObserver(_observer);
         Catalog = catalog;
         CliOptions = cliOptions;
         Services = services;
@@ -35,7 +44,21 @@ public sealed class SessionTab
     }
 
     /// <summary>Reassigned, not replaced-by-a-new-tab, on a live profile switch — mirrors today's <c>TuiMode</c>/<c>MainWindow</c> field reassignment exactly.</summary>
-    public Session Session { get; set; }
+    public Session Session
+    {
+        get => _session;
+        set
+        {
+            if (ReferenceEquals(_session, value))
+            {
+                return;
+            }
+
+            _observerHandle.Dispose();
+            _session = value;
+            _observerHandle = value.AddObserver(_observer);
+        }
+    }
 
     public PresenterCatalog Catalog { get; set; }
 
@@ -60,4 +83,70 @@ public sealed class SessionTab
     /// <summary>This tab's window/tab-label title, e.g. <c>dev-term — tek2230 (ascii; send as ascii)</c> — see <see cref="ConnectionDescription.WindowTitle"/>.</summary>
     public string Title(ConnectionProfileStore profileStore) =>
         ConnectionDescription.WindowTitle(CliOptions, Parser, profileStore, Session.State == ConnectionState.Open);
+
+    /// <summary>
+    /// Called when this tab's routing is about to deliver a confirm-flagged broker message to the device. A front end sets it to
+    /// show its prompt; unset, such messages are dropped rather than sent unasked. See docs/specs/routing-window.md.
+    /// </summary>
+    public Func<RoutingRule, string, Task<RoutingConfirmChoice>>? RoutingConfirm { get; set; }
+
+    /// <summary>Overrides how broker links are built (tests); null uses the real MQTT/AMQP/STOMP bridges.</summary>
+    public IRoutingLinkFactory? RoutingLinkFactory { get; set; }
+
+    /// <summary>Raised when <see cref="Routing"/> is created or replaced, so an open Routing window can rebind.</summary>
+    public event EventHandler? RoutingChanged;
+
+    /// <summary>The routing service for this tab's profile (<see cref="CliOptions.Routing"/>); started by itself whenever the session opens and the profile has rules.</summary>
+    public RoutingService Routing => _routing ??= new RoutingService(CliOptions.Routing, RoutingLinkFactory);
+
+    /// <summary>True when the profile has a broker and rules, so connecting should start routing.</summary>
+    public bool HasRouting => CliOptions.Routing.IsConfigured;
+
+    /// <summary>Starts routing on the current session now (the Routing window's Start); a no-op when already running.</summary>
+    public void StartRouting() => Routing.Start(Session, CliOptions.LineEnding.ToChars(), RoutingConfirm);
+
+    /// <summary>Replaces the routing service after the profile's routing section changed (the window's Apply): stops the old one, and starts the new one if the session is open.</summary>
+    public async Task ApplyRoutingAsync(RoutingOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (_routing is not null)
+        {
+            await _routing.StopAsync().ConfigureAwait(false);
+        }
+
+        CliOptions.Routing = options;
+        _routing = new RoutingService(options, RoutingLinkFactory);
+        RoutingChanged?.Invoke(this, EventArgs.Empty);
+        if (Session.State == Core.Transports.ConnectionState.Open && options.IsConfigured)
+        {
+            StartRouting();
+        }
+    }
+
+    private sealed class RoutingObserver(SessionTab owner) : ISessionObserver
+    {
+        public void OnOpened()
+        {
+            if (owner.HasRouting)
+            {
+                owner.StartRouting();
+            }
+        }
+
+        public void OnReceived(ReadOnlySequence<byte> data)
+        {
+        }
+
+        public void OnSent(ReadOnlyMemory<byte> data)
+        {
+        }
+
+        public void OnClosed(bool requested, Exception? error)
+        {
+            if (owner._routing is { } routing)
+            {
+                _ = Task.Run(routing.StopAsync);
+            }
+        }
+    }
 }
