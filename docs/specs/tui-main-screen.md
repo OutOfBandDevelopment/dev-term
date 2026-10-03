@@ -116,7 +116,7 @@ points:
   `SwitchProfileAsync` local function inside `BuildWindow` exposed via `TuiWindowParts`), no
   restart — see [`docs/design/connection-profiles.md`](../design/connection-profiles.md).
 - **Session-tab keyboard shortcuts** — Ctrl+T (File > New Session...), Ctrl+W (File > Close Session,
-  the active tab), Ctrl+Tab / Ctrl+Shift+Tab (next/previous tab, wrapping; a no-op below two tabs) —
+  the active tab), Ctrl+Tab / Ctrl+Shift+Tab, or Alt+Right / Alt+Left (next/previous tab, wrapping; a no-op below two tabs) —
   wired via a dedicated handler on the global `Application.KeyDown` event (same reasoning as Ctrl+Q
   above), gated on `app.TopRunnableView == window` so a nested dialog (New Session's own
   `ConfigureMode`, a control panel) gets the keys instead while one is open.

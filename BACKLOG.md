@@ -66,7 +66,7 @@ the rest.
 
 ### Decided 2026-10-03 (owner interview), not started
 
-- **Multi-session tabs:** per-tab `SendHistory`; last tab leaves an empty window; per-tab log and Stream Monitor plus a merged time-ordered view; Alt+Left/Right switch tabs ([multi-session-ui](docs/design/multi-session-ui.md)).
+- **Multi-session tabs:** the merged time-ordered view of logging and the Stream Monitor across tabs (per-tab history, logging, empty window and Alt+Left/Right already built; [multi-session-ui](docs/design/multi-session-ui.md)).
 - **Offer a profile's control panel on connect** (hint or button, remembered per profile) ([device-control-panel spec](docs/specs/device-control-panel.md)).
 - **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
 - **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).

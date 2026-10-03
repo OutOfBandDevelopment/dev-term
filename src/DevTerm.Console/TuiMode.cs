@@ -1243,7 +1243,7 @@ public static class TuiMode
             }
         };
 
-        // Ctrl+Tab/Ctrl+Shift+Tab cycle the active tab; a no-op below two tabs.
+        // Ctrl+Tab/Ctrl+Shift+Tab (and Alt+Right/Alt+Left) cycle the active tab; a no-op below two tabs.
         void SelectAdjacentTab(int direction)
         {
             if (tabs.Count < 2 || ActiveTabOrNull() is not { } activeTab)
@@ -1293,6 +1293,21 @@ public static class TuiMode
             }
 
             if (key == Key.Tab.WithCtrl.WithShift)
+            {
+                key.Handled = true;
+                SelectAdjacentTab(-1);
+                return;
+            }
+
+            // Alt+Right/Alt+Left: the other tab-switch pair (decided 2026-10-03), same wrap-around.
+            if (key == Key.CursorRight.WithAlt)
+            {
+                key.Handled = true;
+                SelectAdjacentTab(1);
+                return;
+            }
+
+            if (key == Key.CursorLeft.WithAlt)
             {
                 key.Handled = true;
                 SelectAdjacentTab(-1);

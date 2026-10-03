@@ -128,6 +128,30 @@ public sealed class TuiModeMultiSessionTests
     }
 
     [TestMethod]
+    public async Task AltLeftAndAltRight_SwitchBetweenTabs_Wrapping()
+    {
+        var (session, _, presenter) = CreateLoopbackSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
+
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+            OpenNewSessionWithDefaults(app, parts);
+            Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.AllSessions().Count == 2, _waitTimeout));
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.TabsView.Value != parts.Output), "The new tab starts active.");
+
+            TuiTestRunner.InvokeOnLoop(() => app.Keyboard.RaiseKeyDownEvent(Key.CursorRight.WithAlt));
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.TabsView.Value == parts.Output), "Alt+Right from the last tab wraps to the first.");
+
+            TuiTestRunner.InvokeOnLoop(() => app.Keyboard.RaiseKeyDownEvent(Key.CursorLeft.WithAlt));
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.TabsView.Value != parts.Output), "Alt+Left from the first tab wraps to the last.");
+        });
+
+        await session.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task CloseSessionMenuItem_WithMultipleTabs_ClosesTheActiveTabAndSwitchesToAnother()
     {
         var (session, _, presenter) = CreateLoopbackSession();
