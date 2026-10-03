@@ -113,6 +113,10 @@ public partial class MainWindow : Window
         {
             AppendOutput(tab, manifestWarning, OutputKind.Status);
         }
+        else if (ManifestPanelHint.For(cliOptions) is { } panelHint)
+        {
+            AppendOutput(tab, panelHint, OutputKind.Status);
+        }
 
         // View > Theme, and any problems loading themes/preferences at startup - MainWindow.Theme.cs.
         BuildThemeMenu();
@@ -1275,6 +1279,10 @@ public partial class MainWindow : Window
         if (ManifestNameWarning.For(newOptions) is { } manifestWarning)
         {
             AppendOutput(tab, manifestWarning, OutputKind.Status);
+        }
+        else if (ManifestPanelHint.For(newOptions) is { } panelHint)
+        {
+            AppendOutput(tab, panelHint, OutputKind.Status);
         }
 
         RefreshConnectionUi(tab, ConnectionState.Opening);

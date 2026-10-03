@@ -285,6 +285,10 @@ public static class TuiMode
             {
                 outputLines.Add(StatusLine(startupWarning));
             }
+            else if (ManifestPanelHint.For(sessionTab.CliOptions) is { } startupHint)
+            {
+                outputLines.Add(StatusLine(startupHint));
+            }
 
             if (tabs.Count == 0)
             {
@@ -1009,6 +1013,10 @@ public static class TuiMode
             if (ManifestNameWarning.For(windowTab.Tab.CliOptions) is { } manifestWarning)
             {
                 AppendStatus(windowTab, manifestWarning);
+            }
+            else if (ManifestPanelHint.For(windowTab.Tab.CliOptions) is { } panelHint)
+            {
+                AppendStatus(windowTab, panelHint);
             }
 
             try

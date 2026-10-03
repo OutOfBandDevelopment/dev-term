@@ -67,7 +67,7 @@ the rest.
 ### Decided 2026-10-03 (owner interview), not started
 
 - **Multi-session tabs:** the merged time-ordered view of logging and the Stream Monitor across tabs (per-tab history, logging, empty window and Alt+Left/Right already built; [multi-session-ui](docs/design/multi-session-ui.md)).
-- **Offer a profile's control panel on connect** (hint or button, remembered per profile) ([device-control-panel spec](docs/specs/device-control-panel.md)).
+- **Remember a dismissed/used control-panel hint per profile** (the hint itself shipped 2026-10-03) ([device-control-panel spec](docs/specs/device-control-panel.md)).
 - **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
 - **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
 - **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
