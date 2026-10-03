@@ -44,4 +44,44 @@ public sealed class SessionPipeServerTests
 
         Assert.IsNotNull(server.PipeName);
     }
+
+    [TestMethod]
+    public async Task SessionPipeClient_TailsTheServer_UntilItIsDisposed()
+    {
+        var name = "test-" + Guid.NewGuid().ToString("N");
+        var server = new SessionPipeServer(name);
+        var lines = new List<string>();
+        var reading = Task.Run(async () =>
+        {
+            await foreach (var line in SessionPipeClient.ReadLinesAsync(name, 5000, TestContext.CancellationToken))
+            {
+                lines.Add(line);
+            }
+        }, TestContext.CancellationToken);
+
+        await Task.Delay(500, TestContext.CancellationToken);
+        server.OnReceived(new System.Buffers.ReadOnlySequence<byte>(new byte[] { 0x48, 0x69 }));
+        await Task.Delay(200, TestContext.CancellationToken);
+        await server.DisposeAsync();
+        await reading.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
+
+        CollectionAssert.AreEqual(new[] { "rx 4869" }, lines);
+    }
+
+    [TestMethod]
+    public async Task SessionPipeClient_NoServer_TimesOut() =>
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+        {
+            await foreach (var unused in SessionPipeClient.ReadLinesAsync("absent-" + Guid.NewGuid().ToString("N"), 300, TestContext.CancellationToken))
+            {
+            }
+        });
+
+    [TestMethod]
+    public void Describe_AddsAsciiToTrafficLines_AndLeavesOthersAlone()
+    {
+        Assert.AreEqual("rx 48690A  |Hi.|", SessionPipeClient.Describe("rx 48690A"));
+        Assert.AreEqual("open", SessionPipeClient.Describe("open"));
+        Assert.AreEqual("rx zz", SessionPipeClient.Describe("rx zz"));
+    }
 }

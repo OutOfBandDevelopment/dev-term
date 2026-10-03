@@ -116,6 +116,35 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
     return 0;
 }
 
+if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
+{
+    using var attachStop = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        attachStop.Cancel();
+    };
+
+    try
+    {
+        await foreach (var line in SessionPipeClient.ReadLinesAsync(attachName, cancellationToken: attachStop.Token))
+        {
+            Console.WriteLine(SessionPipeClient.Describe(line));
+        }
+
+        return 0;
+    }
+    catch (OperationCanceledException)
+    {
+        return 0;
+    }
+    catch (TimeoutException)
+    {
+        Console.Error.WriteLine($"No session named '{attachName}' is publishing. Start one with --pipe {attachName}.");
+        return 1;
+    }
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
 {
     var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };

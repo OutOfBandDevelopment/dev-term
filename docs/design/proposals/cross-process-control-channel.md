@@ -57,12 +57,16 @@ pipe <- B
 ## Completion checklist
 
 - [x] Read-only pipe server (`SessionPipeServer`) with an Integration test over a real local named pipe
-- [ ] Wire it to a CLI flag and both front ends (`--pipe <name>`)
-- [ ] A `tail` client mode (`--attach <name>`)
+- [x] CLI flag `--pipe <name>` publishes the session (console CLI mode)
+- [ ] `--pipe` in the TUI and WPF front ends
+- [x] A `tail` client mode (`--attach <name>`, prints `open`/`rx`/`tx`/`closed` lines with the ASCII beside each)
 - [ ] Decide and build the read-write channel
 - [ ] Localhost web-service variant
 
 ## Status
 
-Phase 1 built 2026-10-03 (`DevTerm.Core.Sessions.SessionPipeServer`, `SessionPipeServerTests`); not yet exposed
-in any front end, and not verified outside the in-process test (no second real process yet).
+Phase 1 built 2026-10-03 (`DevTerm.Core.Sessions.SessionPipeServer`, `SessionPipeServerTests`). `--pipe <name>` (console CLI
+mode) and `--attach <name>` (`SessionPipeClient`) added the same day and checked across two real processes with the
+loopback transport: the attach side printed the `tx`, `rx` and `closed` lines of the host's session, and an unknown name
+exits 1 with a hint. A client sees only traffic from when it connects (no replay of `open`). The TUI and WPF front ends
+don't expose `--pipe` yet.

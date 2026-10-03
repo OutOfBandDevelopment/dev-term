@@ -316,6 +316,14 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListLxiDevices { get; set; }
 
+    /// <summary>Publish this session's traffic read-only on a local named pipe of this name, for <see cref="Attach"/> from another process.</summary>
+    [Category("Session")]
+    public string? Pipe { get; set; }
+
+    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
+    [Category("Mode")]
+    public string? Attach { get; set; }
+
     /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
     [Category("Mode")]
     public bool ListPlugins { get; set; }
