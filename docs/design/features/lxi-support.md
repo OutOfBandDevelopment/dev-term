@@ -46,10 +46,10 @@ profile — this doc covers the parts that weren't covered.
 
 ## Open questions
 
-- Whether any of the project's existing bench instruments (currently profiled over serial/USBTMC —
+- ~~Whether any of the project's existing bench instruments (currently profiled over serial/USBTMC —
   Rigol/Tektronix/HP gear) actually has a LAN interface at all; none of the existing SCPI profiles
   target one. Needs a real LXI-capable instrument confirmed on hand before Phase 2 is worth starting,
-  per this project's real-hardware-grounding convention.
+  per this project's real-hardware-grounding convention.~~ **Answered 2026-10-03:** the Rigol DG1062Z is on the LAN (192.168.0.87) and Phase 2 (VXI-11) was built and verified against it; see `docs/test/2026-10-03-15-20-00.md`.
 - Whether LXI discovery belongs in `DevTerm.Transports.Tcp` itself or as a separate optional scanner
   component the TCP transport doesn't depend on (mirroring how BLE's scanner is a separate,
   on-demand-invoked piece rather than baked into `BleTransport` itself).
