@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using DevTerm.Configuration;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
@@ -142,7 +143,7 @@ public partial class App : Application
             _pipeRegistration = session.AddObserver(_pipeServer);
         }
 
-        var window = new MainWindow(session, catalog, cliOptions);
+        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>() };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();

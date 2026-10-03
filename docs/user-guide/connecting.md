@@ -83,6 +83,12 @@ and
 [`docs/design/features/kuando-busylight-protocol.md`](../design/features/kuando-busylight-protocol.md)).
 Pass a listed vendor/product ID to `--transport hid --vendorid <n> --productid <n>` to connect.
 
+**Sending a fixed-length HID report by hand:** add `--lineending None`. The CLI appends a line ending to every typed line
+(default `Cr`), which makes a 9-byte report 10 bytes, and Windows rejects it with "Operation failed early: The parameter is
+incorrect." For example, the K8055: `--transport hid --vendorid 4303 --productid 21760 --presenter hex --parser hex
+--lineending None --cli true`, then `00 05 01 00 00 00 00 00 00` (digital output 1 on). The same applies to a serial device
+that expects exact bytes (the Zoom H4n remote port).
+
 ### MQTT broker
 
 `--transport mqtt` subscribes to topics and publishes lines. Each message that arrives is shown as one

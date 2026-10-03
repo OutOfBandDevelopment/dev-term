@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.StreamContent;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
@@ -78,7 +79,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -103,7 +104,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -159,7 +160,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -733,6 +734,7 @@ public static class TuiMode
 
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
+                new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
             ]),
             new MenuBarItem("_View",
             [

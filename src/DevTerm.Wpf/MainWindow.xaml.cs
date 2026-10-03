@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using DevTerm.Configuration;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -933,6 +934,12 @@ public partial class MainWindow : Window
         editor.Owner = this;
         editor.Show();
     }
+
+    /// <summary>The plugin folders found at startup (set by <c>App</c>), shown by Device &gt; Plugins.</summary>
+    public IReadOnlyList<PluginLoadResult>? Plugins { get; set; }
+
+    private void Plugins_Click(object sender, RoutedEventArgs e) =>
+        MessageBox.Show(this, PluginReport.Text(Plugins), "dev-term — plugins", MessageBoxButton.OK, MessageBoxImage.Information);
 
     private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
     {

@@ -188,14 +188,9 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
     var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
     var pluginServices = new ServiceCollection().AddPlugins(pluginOptions);
     var pluginResults = pluginServices.BuildServiceProvider().GetRequiredService<IReadOnlyList<PluginLoadResult>>();
-    foreach (var plugin in pluginResults)
+    foreach (var line in PluginReport.Lines(pluginResults))
     {
-        Console.WriteLine(plugin.Loaded ? $"{plugin.Name}  loaded  ({plugin.Folder})" : $"{plugin.Name}  skipped: {plugin.Message}  ({plugin.Folder})");
-    }
-
-    if (pluginResults.Count == 0)
-    {
-        Console.WriteLine("No plugins found.");
+        Console.WriteLine(line);
     }
 
     return 0;
@@ -361,6 +356,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions)
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>())
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }
