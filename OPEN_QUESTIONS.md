@@ -68,7 +68,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 - **USBTMC:** do the DG1022/DS1102E need a Zadig swap; is USB488 SRQ/serial-poll worth building; does the Zadig step
   belong in `docs/user-guide/`; GPIB is out of scope. —
   [usbtmc-transport](docs/design/usbtmc-transport.md)
-- **Stream Monitor against real hardware:** the DG1062Z and TDS2024 raw screen captures were both valid on 2026-10-03 but have not yet been run through the Stream Monitor. —
+- **Stream Monitor against real hardware:** the DG1062Z BMP works in the Stream Monitor (user-reported 2026-10-03); the TDS2024 `HARDCopy` raw capture was valid but has not been run through it. —
   [stream-monitor spec](docs/specs/stream-monitor.md)
 - **Capture correlation:** more than one simultaneous capture, and a detected-but-unsolicited stream. —
   [stream-content-detection](docs/design/features/stream-content-detection.md)
