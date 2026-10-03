@@ -10,7 +10,7 @@ Working on embedded or protocol-level code usually means switching between sever
 
 ## Goals
 
-- **Modular transports** — serial/UART, TCP (client and listener), UDP (target and listener), USB HID, and BLE out of the box, with a plugin contract so new transports (CAN, SPI/I2C bridges, custom sockets, etc.) can be added without touching the core.
+- **Modular transports** — serial/UART, TCP (client and listener), USB HID, USBTMC, BLE, RFC 2217, VXI-11 and message brokers out of the box, with UDP planned, with a plugin contract so new transports (CAN, SPI/I2C bridges, custom sockets, etc.) can be added without touching the core.
 - **Modular presenters** — view and send raw bytes as ASCII, UTF-8/UTF-16, and other text encodings, or as hexadecimal, decimal, octal, and binary; a decoder plugin contract for protocol-specific decoders (device protocols, network protocols) that always produce a human-readable text rendering; rendering presenters that turn a stream into a drawing or plot (e.g., HPGL, PostScript, PCL, telemetry plots) and export it as SVG/PNG/JPG; composite/channelized decoders for interlaced telemetry where different fields of the same frame are encoded differently (text, binary, hex, decimal, ...); and mappable presenters that use externally-supplied name/label/unit maps so one decoder serves many devices.
 - **Device control modules** — plugins that don't just decode a stream but actively drive equipment: a control surface for outbound commands/parameters (e.g., controlling serial-based test equipment) bundled with telemetry decode/present/plot for whatever comes back, built from the same transport/presenter contracts as everything else.
 - **Two front ends, one engine** — a console app providing both a scriptable CLI and a full-screen TUI, plus a WPF desktop GUI for richer graphical views (renderers, plots, device control panels) — both built on the same core engine via dependency injection.
@@ -22,20 +22,28 @@ Working on embedded or protocol-level code usually means switching between sever
 
 ## Status
 
-Actively under development. Serial and TCP transports, the text/numeric-base presenters, and the
-console CLI are built, unit-tested, and verified against real hardware (a bench oscilloscope over
-both a direct serial connection and a serial-to-Ethernet bridge). TUI and WPF front ends, dynamic
-plugin loading, protocol decoders, rendering presenters, device control modules, RFC 2217, and the
-UDP/HID/BLE transports are designed in [`docs/design/`](docs/design/) but not yet built — see
-[`TODO.md`](TODO.md) for current in-progress status, [`BACKLOG.md`](BACKLOG.md) for what's not
-started yet, [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) for every undecided question, and `docs/changes/` for a dated log of completed work.
+Actively under development; most of what the design docs describe is built. All three front ends work
+(scriptable CLI, full-screen TUI, WPF GUI), with a loopback transport so you can try them with no hardware.
+
+- **Transports:** serial, TCP, USB HID, USBTMC, BLE (Windows), RFC 2217 client, VXI-11 (LXI instruments),
+  MQTT/AMQP/STOMP brokers, and loopback. UDP, an RFC 2217 server, and BLE on Linux/macOS are not built.
+- **Presenters and devices:** text/numeric-base presenters, SCPI, NMEA, and device modules for the K8055,
+  Busylight, DE-5000, RadexOne and Zoom H4n; no-code device manifests (JSON/XML, `.ksy` import) with generic control panels.
+- **Around the edges:** session logging and playback, a Stream Monitor that captures and previews device output,
+  out-of-process and in-process plugins, a loopback-only web host, and OpenTelemetry export.
+- **Verified on real hardware:** serial and TCP bench instruments (scopes, a DMM, supplies), HID, USBTMC, BLE, RFC 2217
+  against ser2net, and VXI-11 against a Rigol DG1062Z. Each bench session is recorded under [`docs/test/`](docs/test/).
+
+See [`TODO.md`](TODO.md) for work in progress, [`BACKLOG.md`](BACKLOG.md) for what's not started,
+[`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) for every undecided question, and `docs/changes/` for a dated log of completed work.
 
 ## Documentation
 
+- [User guide](docs/user-guide/README.md) — task-oriented walkthroughs with real captured screens
+- [Screen specs](docs/specs/README.md) — the precise fields and actions of each screen
 - [Design docs index](docs/design/README.md)
 - [Architecture overview](docs/design/architecture.md)
-- [Transport layer](docs/design/transports.md)
-- [RFC 2217](docs/design/rfc2217.md)
+- [Transport layer](docs/design/transports.md), [RFC 2217](docs/design/rfc2217.md), [VXI-11](docs/design/vxi11-transport.md)
 - [Presenters & encodings](docs/design/presenters.md)
 - [Plugin model](docs/design/plugin-model.md)
 - [Device control modules](docs/design/device-control-modules.md)
