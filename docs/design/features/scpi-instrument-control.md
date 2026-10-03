@@ -45,7 +45,7 @@ docs/test/2026-09-24-09-54-39.md), Korad KA3005P, Korad KA6003P. See:
   docs/test/2026-09-24-09-54-39.md). Rigol DM3058E and DG1022/DG1022Z remain unverified against real
   hardware (DM3058E is blocked on the still-parked USBTMC bulk-IN stall — see BACKLOG.md) — a
   reasonable-effort starting point per each instrument's public SCPI reference, not confirmed
-  correct. GPIB-only paths (bare HP 34401A) remain unreachable, per the open question below.
+  correct. GPIB-only paths are out of scope.
 - **Four follow-ups from that real-hardware pass, also landed 2026-09-23**:
   - `ScpiInstrumentProfile.Notes` — free-text operational knowledge (required non-default connection
     settings, a mandatory preamble command) folded into `UiDefinition.Description` by
@@ -114,9 +114,7 @@ checking further:
   transports.
 - **Tektronix TDS2024** — confirmed to support **GPIB and serial** as fitted options; the
   Centronics module currently installed is for faster print/screen-capture output, not the only
-  interface available, just the one currently equipped in place of a GPIB module. Once
-  [GPIB via a Prologix-protocol controller](../transports.md) exists, this becomes a real target —
-  either by swapping in a GPIB option module, or via its serial option if that's easier to source.
+  interface available. dev-term reaches it over its serial option (GPIB is out of scope).
 - **Hitachi V-1150** (analog) and **DSO201/DSO Nano** (pocket DSO) — no remote interface exists on
   either by design.
 - **Digilent Analog Discovery 2** — USB, but via Digilent's own WaveForms SDK, not SCPI/USBTMC/a

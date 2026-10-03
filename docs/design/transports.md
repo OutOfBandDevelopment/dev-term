@@ -190,15 +190,7 @@ New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes,
 
 **USBTMC** (the USB device class most bench test equipment actually uses for local USB control, e.g. Rigol/Keysight instruments) is deliberately *not* in the initial transport list — it's neither HID nor a virtual COM port, but its own USB class with dedicated bulk endpoints and message framing, so it needs its own transport built against raw USB (WinUSB/LibUsbDotNet) rather than reusing HID or Serial, or an IVI/VISA driver (ruled out — Windows/.NET-Framework-oriented and a separate proprietary runtime install). See [usbtmc-transport.md](usbtmc-transport.md) for the design (protocol framing, library choice, why IVI.NET/VISA was rejected) and the [SCPI proposal](features/scpi-instrument-control.md) for target hardware; not yet built.
 
-**GPIB** is reachable without a new `ITransport` at all, for the common case: most inexpensive "IEEE-488 to USB/Ethernet" adapters (including cheap eBay clones, and DIY boards running the open-source [AR488](https://github.com/Twilight-Logic/AR488) firmware) implement the **Prologix** command protocol — a simple `++`-prefixed ASCII control language (`++addr`, `++mode`, `++read`, `++auto`, ...) layered over what the OS sees as a plain serial port (USB) or a plain TCP socket (Ethernet variants), so the existing Serial/TCP transports already do the I/O; only a thin Prologix-protocol controller layer (GPIB addressing, read-after-write/EOI handling) is new.
-
-Three distinct things get called "GPIB-USB adapter" on eBay, worth telling apart before buying:
-
-- **Genuine Prologix hardware** — the commercial reference implementation; if the controller layer is built against the published Prologix manual, this is the known-good target to validate against.
-- **AR488** (self-built: an Arduino Uno/Nano/Mega + a GPIB transceiver IC, e.g. SN75160/SN75161, running open-source firmware) — implements the *full* Prologix `++` command set except `++lon` (device/listen-only mode), plus its own extensions (a macro feature, Bluetooth support on some builds, and a different `++savecfg` behavior to reduce Arduino EEPROM wear). Being open source, any protocol question is answerable by reading the firmware directly rather than guessing — genuinely lower-risk than either commercial option below, at the cost of having to assemble it yourself. Pre-built eBay boards that are just AR488 flashed onto a ready-made Arduino+transceiver board exist too, giving turnkey convenience without losing the open-source-firmware guarantee.
-- **NI GPIB-USB-HS clones** (**not recommended**) — a different, proprietary, non-serial USB protocol requiring the NI-488.2 driver (or risky reverse-engineered access), with real reported compatibility problems even between genuine-NI-driver and clone hardware.
-
-Verify which of these three a specific listing's adapter actually speaks before buying against this design — "GPIB-USB adapter" alone doesn't imply Prologix-compatible.
+**GPIB** is out of scope (decided 2026-10-03): no GPIB hardware is on hand, so the Prologix-style adapter notes that used to be here were removed. It can be added back if it ever comes up; the existing serial and TCP transports would carry a Prologix adapter without a new `ITransport`.
 
 ## Open questions
 

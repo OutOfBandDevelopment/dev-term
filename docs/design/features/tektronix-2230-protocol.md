@@ -128,8 +128,7 @@ confirmed:
 
 ## Proposed next steps (not started)
 
-1. Connect to a real 2230 (RS-232 or GPIB-via-Prologix, once a GPIB transport exists — see
-   `BACKLOG.md`'s GPIB transport entry) and send `ID?` to confirm the exact byte-for-byte framing
+1. Connect to a real 2230 over RS-232 and send `ID?` to confirm the exact byte-for-byte framing
    (trailing newline? `\r`? just `;`?) — this determines whether `ScpiReplyPresenter`'s line-buffer
    can be reused as-is or needs its own `;`-based variant.
 2. Probe a small set of likely-supported queries from period Tektronix documentation (channel

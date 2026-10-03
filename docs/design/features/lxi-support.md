@@ -13,10 +13,8 @@ broadcast.
 The common case — an instrument that just speaks SCPI over a raw TCP socket — needs **no new
 transport**. [Transports.md](../transports.md)'s existing TCP client mode plus
 [`DevTerm.Devices.Scpi`](scpi-instrument-control.md) already do exactly this: connect out
-to `host:5025`, send `*IDN?`/whatever profile commands, get a line back. This is the same shape as
-GPIB-via-Prologix (`transports.md`'s "Extensibility" section): "most inexpensive adapters... layer a
-simple protocol over what the OS sees as a plain serial port or plain TCP socket, so the existing
-transports already do the I/O." An LXI instrument with a raw-socket SCPI port is, from dev-term's
+to `host:5025`, send `*IDN?`/whatever profile commands, get a line back. This needs no new
+transport: the existing TCP transport already does the I/O. An LXI instrument with a raw-socket SCPI port is, from dev-term's
 point of view, already supported today via `--transport tcp --host <ip> --port 5025` plus an SCPI
 profile — this doc covers the parts that weren't covered.
 
