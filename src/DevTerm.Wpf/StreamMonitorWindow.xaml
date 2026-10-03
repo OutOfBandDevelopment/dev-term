@@ -28,6 +28,22 @@
             </Grid.ColumnDefinitions>
             <DockPanel Grid.Column="0">
                 <TextBlock DockPanel.Dock="Top" Text="Captures" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <!-- Filter, search and sort of the one list (StreamCaptureView; StreamMonitorWindow.RefreshList). -->
+                <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,0,0,4" ToolTip="Search device, type, file name or time" TextChanged="ListCriteria_Changed" />
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ComboBox x:Name="KindFilterBox" Grid.Column="0" ToolTip="Show only this content type" SelectionChanged="ListCriteria_Changed" />
+                    <ComboBox x:Name="DeviceFilterBox" Grid.Column="2" ToolTip="Show only this device" SelectionChanged="ListCriteria_Changed" />
+                    <ComboBox x:Name="SortBox" Grid.Row="1" Grid.ColumnSpan="3" Margin="0,4,0,0" ToolTip="Sort order" SelectionChanged="ListCriteria_Changed" />
+                </Grid>
                 <ListBox x:Name="CaptureList" SelectionChanged="CaptureList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type local:StreamMonitorCaptureItem}">

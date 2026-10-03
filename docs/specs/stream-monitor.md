@@ -26,6 +26,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 | Explanation | Two fixed lines | One wrapped line | What's detected, and (TUI) that there's no preview |
 | Capture list | `ListView`, one row per capture: `HH:mm:ss  TYPE  size  end  file` | `ListBox`, two lines per capture: `HH:mm:ss — {kind}` / `{size} bytes · {end} · {file}` | Oldest first; the newest is selected whenever one arrives. Keeps the last 100 (`StreamMonitor.MaxRetainedCaptures`) — saved files are never deleted |
 | Detail | Two lines under the list: `{kind}, {size} bytes, {end}[ (declared by the command)].` / `Saved as {file} in the folder above.` or `Not saved: {reason}` | Same first line; second line `Saved to {path}` or `Not saved: {reason}` | For the selected capture |
+| List criteria | — (not built yet) | A search box (device, content type, file name or time, case-insensitive), a content-type filter, a device filter and a sort (Oldest, Newest, Largest, Kind, Device) above the list | One list, not parallel captures. `StreamCaptureView.Apply` (shared, in `DevTerm.Configuration`) does the work. The newest capture by time is selected after each change; nothing matching shows the empty message |
 | Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up) or a converted SVG (`SvgPreview`); otherwise a message | See States |
 
 "End" is how the capture finished (`StreamMonitorCapture.EndLabel`):
@@ -164,8 +165,8 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   can't yet.
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress
   is appended to the first, not captured separately (the proposal's open question on correlation).
-  **Decided 2026-10-03:** keep one list view rather than parallel captures, and add filter, search and sort by device, content
-  type, time and similar fields. Not built yet; the correlation question itself stays open.
+  **Decided 2026-10-03:** keep one list view rather than parallel captures, with filter, search and sort. Built in WPF
+  2026-10-03 (see List criteria); the TUI window doesn't have it yet; the correlation question itself stays open.
 - **No retention/cleanup** of the export folder.
 - **Not verified against real hardware** yet — the DG1062Z screen capture (a real BMP in a
   definite-length block) and the TDS2024's `HARDCopy STARt` output (BMP/TIFF/EPS/PCL depending on
