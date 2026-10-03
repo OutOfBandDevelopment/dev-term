@@ -55,6 +55,11 @@ public abstract class StreamContentEndFinder
             return new PostScriptEndFinder();
         }
 
+        if (kind == StreamContentKind.Hpgl)
+        {
+            return new HpglEndFinder();
+        }
+
         return kind == StreamContentKind.Pcl ? new PclEndFinder() : null;
     }
 
@@ -250,6 +255,27 @@ public abstract class StreamContentEndFinder
 
         private static int GlobalColorTableSize(byte packedFields) =>
             (packedFields & 0x80) != 0 ? 3 * (1 << ((packedFields & 0x07) + 1)) : 0;
+    }
+
+    // An instrument's plot finishes by stowing the pen: "SP0;" (select no pen). Everything after it (a
+    // "READY;" prompt, say) is not part of the plot. Without this the only end is an idle gap, and a slow
+    // link that stalls mid-plot gets one plot cut into several files.
+    private sealed class HpglEndFinder : StreamContentEndFinder
+    {
+        private long _scanFrom;
+
+        public override long? FindEnd(ReadOnlySpan<byte> content)
+        {
+            var window = content[(int)_scanFrom..];
+            var at = window.IndexOf("SP0;"u8);
+            if (at >= 0)
+            {
+                return _scanFrom + at + 4;
+            }
+
+            _scanFrom = Math.Max(_scanFrom, content.Length - 3);
+            return null;
+        }
     }
 
     private sealed class BmpEndFinder : StreamContentEndFinder

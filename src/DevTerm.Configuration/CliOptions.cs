@@ -424,6 +424,15 @@ public sealed class CliOptions
     public int StreamConvertDpi { get; set; } = 150;
 
     /// <summary>
+    /// How long (ms) the Stream Monitor waits with no bytes before a capture that has no in-band end (HP-GL, TIFF)
+    /// is considered finished and saved. The wait restarts on every byte, so only a pause this long splits a
+    /// capture in two; raise it for a slow link (a 4800 baud scope can stall mid-plot for longer than the 2000 default).
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Capture idle timeout (ms)")]
+    public int StreamIdleTimeoutMs { get; set; } = 2000;
+
+    /// <summary>
     /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible
     /// default per mechanism (<c>svg</c> for the internal HP-GL converter, <c>png</c> for the other two).
     /// </summary>

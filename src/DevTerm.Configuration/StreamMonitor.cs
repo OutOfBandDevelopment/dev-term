@@ -12,7 +12,8 @@ namespace DevTerm.Configuration;
 /// <param name="SavedPath">The file it was auto-saved to, or <see langword="null"/> if saving failed.</param>
 /// <param name="SaveError">Why saving failed, when it did.</param>
 /// <param name="ConvertedFrom">For an entry that is a converter's output, the display name of what it was converted from (e.g. <c>HP-GL plot</c>); otherwise <see langword="null"/>.</param>
-public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceName, DateTimeOffset LocalStartedAt, string? SavedPath, string? SaveError, string? ConvertedFrom = null)
+/// <param name="Source">The key the originating session was tracked under (see <see cref="StreamMonitor.Track"/>), so a front end can route a message to that session's tab; <see langword="null"/> if unknown.</param>
+public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceName, DateTimeOffset LocalStartedAt, string? SavedPath, string? SaveError, string? ConvertedFrom = null, object? Source = null)
 {
     /// <summary>The front ends' one-line status message for this capture, e.g. <c>Captured 4,213 bytes of BMP image to C:\…\hp34401a_20260923-143512.bmp.</c></summary>
     public string Describe()
@@ -60,12 +61,13 @@ public sealed record StreamMonitorCapture(StreamCapture Capture, string DeviceNa
 
 /// <summary>
 /// The Stream Monitor's front-end-independent half (docs/design/features/stream-content-detection.md,
-/// docs/specs/stream-monitor.md): owns one <see cref="StreamContentWatcher"/> bound into the
-/// current session's live pipeline while running, auto-saves every capture as
-/// <c>{device}_{yyyyMMdd-HHmmss}.{ext}</c> under the connection's export directory, and keeps a
-/// list of recent captures for a window to show. Both front ends drive the same instance shape:
-/// one per main window, told about every session the window switches to (<see cref="SetSession"/>),
-/// started/stopped explicitly — so monitoring follows a live profile switch instead of silently
+/// docs/specs/stream-monitor.md): owns one <see cref="StreamContentWatcher"/> per tracked session,
+/// each bound into that session's live pipeline while running, auto-saves every capture as
+/// <c>{device}_{yyyyMMdd-HHmmss}.{ext}</c> under that connection's export directory, and keeps one
+/// shared list of recent captures for a window to show. Both front ends drive the same instance
+/// shape: one per main window that tracks every session (tab) the window holds
+/// (<see cref="Track"/>/<see cref="Untrack"/>, re-tracked on a live profile switch), started/stopped
+/// explicitly — so monitoring covers all sessions and follows a profile switch instead of silently
 /// staying bound to a disposed session.
 /// </summary>
 /// <remarks>
@@ -86,10 +88,10 @@ public sealed class StreamMonitor : IDisposable
     private readonly Lock _gate = new();
     private readonly List<StreamMonitorCapture> _captures = [];
 
-    private Session? _session;
-    private StreamContentWatcher? _watcher;
-    private string _deviceName = "device";
-    private string _exportDirectory = DevTermUserDataPaths.ExportsDirectory;
+    // The key SetSession (the single-session shorthand) tracks under.
+    private readonly object _singleKey = new();
+    private readonly List<Entry> _entries = [];
+    private bool _running;
 
     public StreamMonitor(TimeProvider? timeProvider = null, StreamContentWatcherOptions? watcherOptions = null)
     {
@@ -109,29 +111,57 @@ public sealed class StreamMonitor : IDisposable
         {
             lock (_gate)
             {
-                return _watcher is not null;
+                return _running;
             }
         }
     }
 
+    /// <summary>The tracked connections' names, comma-separated (<c>device</c> when none is tracked yet).</summary>
     public string DeviceName
     {
         get
         {
             lock (_gate)
             {
-                return _deviceName;
+                return _entries.Count == 0 ? "device" : string.Join(", ", _entries.Select(e => e.DeviceName));
             }
         }
     }
 
+    /// <summary>The first tracked connection's export directory (the user's default when none is tracked); see <see cref="ExportDirectories"/> when sessions differ.</summary>
     public string ExportDirectory
     {
         get
         {
             lock (_gate)
             {
-                return _exportDirectory;
+                return _entries.Count == 0 ? DevTermUserDataPaths.ExportsDirectory : _entries[0].ExportDirectory;
+            }
+        }
+    }
+
+    /// <summary>The distinct folders captures are saved to — more than one when tracked sessions export elsewhere.</summary>
+    public IReadOnlyList<string> ExportDirectories
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _entries.Count == 0
+                    ? [DevTermUserDataPaths.ExportsDirectory]
+                    : [.. _entries.Select(e => e.ExportDirectory).Distinct(StringComparer.OrdinalIgnoreCase)];
+            }
+        }
+    }
+
+    /// <summary>How many sessions are being tracked.</summary>
+    public int SessionCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _entries.Count;
             }
         }
     }
@@ -209,78 +239,148 @@ public sealed class StreamMonitor : IDisposable
     }
 
     /// <summary>
-    /// Points the monitor at <paramref name="session"/> — call it with the main window's session
-    /// when the monitor is created and again after every profile switch. While running, the
-    /// watcher moves to the new session (any capture still in progress on the old one is flushed
-    /// and saved first).
+    /// Single-session shorthand: tracks <paramref name="session"/> under one default key, replacing whatever that key
+    /// tracked before. A front end holding several sessions uses <see cref="Track"/> with a key per session instead.
     /// </summary>
-    public void SetSession(Session session, string deviceName, string exportDirectory)
+    public void SetSession(Session session, string deviceName, string exportDirectory) => Track(_singleKey, session, deviceName, exportDirectory);
+
+    /// <summary>
+    /// Adds a session to watch under <paramref name="key"/> (a tab, say), or — when the key is already tracked — moves that
+    /// key to <paramref name="session"/> (a live profile switch): any capture still in progress on the old session is
+    /// flushed and saved first. While running, the new session is watched immediately.
+    /// </summary>
+    public void Track(object key, Session session, string deviceName, string exportDirectory)
     {
+        ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(session);
         ArgumentException.ThrowIfNullOrEmpty(deviceName);
         ArgumentException.ThrowIfNullOrEmpty(exportDirectory);
 
-        bool wasRunning;
+        Entry? existing;
         lock (_gate)
         {
-            wasRunning = _watcher is not null;
+            existing = _entries.Find(e => ReferenceEquals(e.Key, key));
         }
 
-        if (wasRunning)
+        if (existing is not null)
         {
-            Detach();
+            Detach(existing);
         }
 
+        Entry entry;
+        bool attach;
         lock (_gate)
         {
-            _session = session;
-            _deviceName = deviceName;
-            _exportDirectory = exportDirectory;
+            entry = existing ?? new Entry(key);
+            entry.Session = session;
+            entry.DeviceName = deviceName;
+            entry.ExportDirectory = exportDirectory;
+            if (existing is null)
+            {
+                _entries.Add(entry);
+            }
+
+            attach = _running;
         }
 
-        if (wasRunning)
+        if (attach)
         {
-            Attach();
+            Attach(entry);
         }
 
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Starts watching the current session (a no-op if already running). Requires <see cref="SetSession"/> first.</summary>
-    public void Start()
+    /// <summary>Stops watching the session tracked under <paramref name="key"/> (flushing a capture in progress) and forgets it. A no-op for an unknown key.</summary>
+    public void Untrack(object key)
     {
+        Entry? entry;
         lock (_gate)
         {
-            if (_session is null)
-            {
-                throw new InvalidOperationException("StreamMonitor.SetSession must be called before Start.");
-            }
-
-            if (_watcher is not null)
-            {
-                return;
-            }
+            entry = _entries.Find(e => ReferenceEquals(e.Key, key));
         }
 
-        Attach();
-        StateChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>Stops watching; a capture still in progress is flushed and saved. A no-op if not running.</summary>
-    public void Stop()
-    {
-        if (!IsRunning)
+        if (entry is null)
         {
             return;
         }
 
-        Detach();
+        Detach(entry);
+        lock (_gate)
+        {
+            _entries.Remove(entry);
+        }
+
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void Dispose() => Detach();
+    /// <summary>Starts watching every tracked session (a no-op if already running). Requires a session tracked first.</summary>
+    public void Start()
+    {
+        Entry[] toAttach;
+        lock (_gate)
+        {
+            if (_entries.Count == 0)
+            {
+                throw new InvalidOperationException("StreamMonitor.Track (or SetSession) must be called before Start.");
+            }
 
-    private void Attach()
+            if (_running)
+            {
+                return;
+            }
+
+            _running = true;
+            toAttach = [.. _entries];
+        }
+
+        foreach (var entry in toAttach)
+        {
+            Attach(entry);
+        }
+
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Stops watching every session; captures still in progress are flushed and saved. A no-op if not running.</summary>
+    public void Stop()
+    {
+        Entry[] toDetach;
+        lock (_gate)
+        {
+            if (!_running)
+            {
+                return;
+            }
+
+            _running = false;
+            toDetach = [.. _entries];
+        }
+
+        foreach (var entry in toDetach)
+        {
+            Detach(entry);
+        }
+
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Dispose()
+    {
+        Entry[] all;
+        lock (_gate)
+        {
+            _running = false;
+            all = [.. _entries];
+        }
+
+        foreach (var entry in all)
+        {
+            Detach(entry);
+        }
+    }
+
+    private void Attach(Entry entry)
     {
         var watcher = new StreamContentWatcher(_watcherOptions, _timeProvider);
         watcher.ContentDetected += OnContentDetected;
@@ -288,21 +388,21 @@ public sealed class StreamMonitor : IDisposable
         Session session;
         lock (_gate)
         {
-            session = _session!;
-            _watcher = watcher;
+            session = entry.Session!;
+            entry.Watcher = watcher;
         }
 
         session.AddPresenter(watcher);
     }
 
-    private void Detach()
+    private void Detach(Entry entry)
     {
         StreamContentWatcher? watcher;
         Session? session;
         lock (_gate)
         {
-            watcher = _watcher;
-            session = _session;
+            watcher = entry.Watcher;
+            session = entry.Session;
         }
 
         if (watcher is null)
@@ -312,12 +412,12 @@ public sealed class StreamMonitor : IDisposable
 
         session?.RemovePresenter(watcher);
 
-        // Still the current watcher while flushing, so a partial capture is saved, not dropped.
+        // Still the entry's current watcher while flushing, so a partial capture is saved, not dropped.
         watcher.Flush();
 
         lock (_gate)
         {
-            _watcher = null;
+            entry.Watcher = null;
         }
 
         watcher.ContentDetected -= OnContentDetected;
@@ -328,19 +428,22 @@ public sealed class StreamMonitor : IDisposable
     {
         string deviceName;
         string exportDirectory;
+        object key;
         lock (_gate)
         {
-            if (!ReferenceEquals(sender, _watcher))
+            var entry = _entries.Find(e => ReferenceEquals(e.Watcher, sender));
+            if (entry is null)
             {
                 // A late capture from a watcher already replaced/stopped.
                 return;
             }
 
-            deviceName = _deviceName;
-            exportDirectory = _exportDirectory;
+            deviceName = entry.DeviceName;
+            exportDirectory = entry.ExportDirectory;
+            key = entry.Key;
         }
 
-        var record = Save(capture, deviceName, exportDirectory);
+        var record = Save(capture, deviceName, exportDirectory, key);
         lock (_gate)
         {
             _captures.Add(record);
@@ -351,6 +454,19 @@ public sealed class StreamMonitor : IDisposable
         }
 
         CaptureAdded?.Invoke(this, record);
+    }
+
+    private sealed class Entry(object key)
+    {
+        public object Key { get; } = key;
+
+        public Session? Session { get; set; }
+
+        public StreamContentWatcher? Watcher { get; set; }
+
+        public string DeviceName { get; set; } = "device";
+
+        public string ExportDirectory { get; set; } = DevTermUserDataPaths.ExportsDirectory;
     }
 
     /// <summary>
@@ -375,7 +491,7 @@ public sealed class StreamMonitor : IDisposable
 
         var kind = StreamContentKind.ForExtension(Path.GetExtension(outputPath));
         var capture = new StreamCapture(kind, data, source.Capture.StartedAt, StreamCaptureEnd.Complete, WasDeclared: false);
-        var record = new StreamMonitorCapture(capture, source.DeviceName, source.LocalStartedAt, outputPath, null, source.Capture.Kind.DisplayName);
+        var record = new StreamMonitorCapture(capture, source.DeviceName, source.LocalStartedAt, outputPath, null, source.Capture.Kind.DisplayName, source.Source);
         lock (_gate)
         {
             _captures.Add(record);
@@ -389,7 +505,7 @@ public sealed class StreamMonitor : IDisposable
         return record;
     }
 
-    private StreamMonitorCapture Save(StreamCapture capture, string deviceName, string exportDirectory)
+    private StreamMonitorCapture Save(StreamCapture capture, string deviceName, string exportDirectory, object? source)
     {
         var localStart = TimeZoneInfo.ConvertTime(capture.StartedAt, _timeProvider.LocalTimeZone);
         try
@@ -406,7 +522,7 @@ public sealed class StreamMonitor : IDisposable
                 {
                     using var file = new FileStream(candidate, FileMode.CreateNew, FileAccess.Write, FileShare.None);
                     file.Write(capture.Data);
-                    return new StreamMonitorCapture(capture, deviceName, localStart, candidate, null);
+                    return new StreamMonitorCapture(capture, deviceName, localStart, candidate, null, Source: source);
                 }
                 catch (IOException) when (File.Exists(candidate) && attempt < 1000)
                 {
@@ -415,7 +531,7 @@ public sealed class StreamMonitor : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            return new StreamMonitorCapture(capture, deviceName, localStart, null, ex.Message);
+            return new StreamMonitorCapture(capture, deviceName, localStart, null, ex.Message, Source: source);
         }
     }
 }

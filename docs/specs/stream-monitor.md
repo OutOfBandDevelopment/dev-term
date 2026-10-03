@@ -33,7 +33,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 | Label | Meaning |
 |---|---|
 | `complete` | The content's own structure (or a SCPI block's declared length) said it was finished |
-| `went quiet` | No more bytes for the idle timeout (2 s) — the normal end for HP-GL, TIFF and undeclared-length data |
+| `went quiet` | No more bytes for the idle timeout (`StreamIdleTimeoutMs`, default 2 s; HP-GL waits at least 10 s) — the normal end for TIFF and undeclared-length data |
 | `size limit` | Cut off at 64 MiB — probably incomplete |
 | `stopped` | Monitoring was stopped (or moved to another connection) mid-capture — probably incomplete |
 

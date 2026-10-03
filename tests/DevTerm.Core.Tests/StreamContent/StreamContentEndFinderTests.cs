@@ -86,7 +86,6 @@ public sealed class StreamContentEndFinderTests
     [TestMethod]
     public void For_FormatsWithNoInBandEnd_HaveNoFinder()
     {
-        Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Hpgl));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Tiff));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Binary));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.UnknownImage));

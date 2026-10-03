@@ -274,6 +274,9 @@
     "StreamConvertDpi": {
       "type": "integer"
     },
+    "StreamIdleTimeoutMs": {
+      "type": "integer"
+    },
     "StreamConvertOutputExtension": {
       "type": [
         "string",

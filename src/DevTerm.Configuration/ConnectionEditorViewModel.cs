@@ -1358,6 +1358,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             StreamConvertExternalToolPath = _loadedOptions.StreamConvertExternalToolPath,
             StreamConvertExternalToolArguments = _loadedOptions.StreamConvertExternalToolArguments,
             StreamConvertDpi = _loadedOptions.StreamConvertDpi,
+            StreamIdleTimeoutMs = _loadedOptions.StreamIdleTimeoutMs,
             StreamConvertOutputExtension = _loadedOptions.StreamConvertOutputExtension,
             StreamConvertTools = [.. _converterTools.Select(StreamConvertToolOptions.Clone)],
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,

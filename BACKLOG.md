@@ -91,3 +91,15 @@ the rest.
   already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
   fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
   itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
+
+- **Dockable MDI layout (WPF).** Sessions and Stream Monitor windows that can be snapped/docked around and
+  onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
+  library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
+- **Watch a session over a named pipe.** Expose a live session's traffic (rx/tx, presenter output) on a named
+  pipe so another process can tail it in real time. Needs a read-only vs. read-write decision, a pipe naming
+  scheme per session, and a design doc with PlantUML.
+- **TDS2024 hardcopy leaves bytes behind after the BMP.** Reported by the user; the capture itself is complete,
+  so check what the unit sends after the image (and whether the Received/ASCII presenter, not the watcher, is
+  holding the binary bytes) with a bench capture of the raw stream.
+
+- **Project (workspace) state: save and restore all open sessions.** Save the set of open tabs (each one's connection profile, plus as much state as is practical: presenter choices, send history, Stream Monitor/log settings, window layout) as one project file, and reopen it on launch or from a menu so closing the program with several devices attached comes back to the same connections. Builds on the multi-tab sessions; needs a decision on connection-only versus full state, and whether to auto-restore the last project.

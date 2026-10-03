@@ -217,6 +217,82 @@ public sealed class StreamMonitorTests
     }
 
     [TestMethod]
+    public async Task Track_TwoSessions_WatchesBothAndLabelsEachCaptureWithItsOwnDeviceAndFolder()
+    {
+        await using var first = new LiveSession();
+        await using var second = new LiveSession();
+        var secondDirectory = Path.Combine(_exportDirectory, "second");
+        using var monitor = new StreamMonitor(FixedTime());
+        var firstKey = new object();
+        var secondKey = new object();
+        monitor.Track(firstKey, first.Session, "scope", _exportDirectory);
+        monitor.Track(secondKey, second.Session, "meter", secondDirectory);
+
+        monitor.Start();
+
+        Assert.HasCount(1, first.Session.Presenters);
+        Assert.HasCount(1, second.Session.Presenters);
+        Assert.AreEqual(2, monitor.SessionCount);
+        Assert.AreEqual("scope, meter", monitor.DeviceName);
+        Assert.HasCount(2, monitor.ExportDirectories);
+
+        await first.Session.OpenAsync(TestContext.CancellationToken);
+        await second.Session.OpenAsync(TestContext.CancellationToken);
+        var next = NextCaptureAsync(monitor);
+        await first.SendFromDeviceAsync(StreamContentSamples.Gif(), TestContext.CancellationToken);
+        var fromFirst = await next;
+        next = NextCaptureAsync(monitor);
+        await second.SendFromDeviceAsync(StreamContentSamples.Gif(), TestContext.CancellationToken);
+        var fromSecond = await next;
+
+        Assert.AreEqual("scope", fromFirst.DeviceName);
+        Assert.AreSame(firstKey, fromFirst.Source);
+        Assert.AreEqual(_exportDirectory, Path.GetDirectoryName(fromFirst.SavedPath));
+        Assert.AreEqual("meter", fromSecond.DeviceName);
+        Assert.AreSame(secondKey, fromSecond.Source);
+        Assert.AreEqual(secondDirectory, Path.GetDirectoryName(fromSecond.SavedPath));
+        Assert.HasCount(2, monitor.Captures);
+    }
+
+    [TestMethod]
+    public async Task Track_WhileRunning_WatchesTheNewSessionAtOnce_AndUntrackStopsWatchingIt()
+    {
+        await using var first = new LiveSession();
+        await using var second = new LiveSession();
+        using var monitor = new StreamMonitor(FixedTime());
+        monitor.Track("first", first.Session, "one", _exportDirectory);
+        monitor.Start();
+
+        monitor.Track("second", second.Session, "two", _exportDirectory);
+
+        Assert.HasCount(1, second.Session.Presenters);
+
+        monitor.Untrack("second");
+
+        Assert.IsEmpty(second.Session.Presenters);
+        Assert.HasCount(1, first.Session.Presenters);
+        Assert.AreEqual(1, monitor.SessionCount);
+        Assert.IsTrue(monitor.IsRunning);
+    }
+
+    [TestMethod]
+    public async Task StartAndStop_ApplyToEverySession()
+    {
+        await using var first = new LiveSession();
+        await using var second = new LiveSession();
+        using var monitor = new StreamMonitor(FixedTime());
+        monitor.Track("first", first.Session, "one", _exportDirectory);
+        monitor.Track("second", second.Session, "two", _exportDirectory);
+
+        monitor.Start();
+        monitor.Stop();
+
+        Assert.IsFalse(monitor.IsRunning);
+        Assert.IsEmpty(first.Session.Presenters);
+        Assert.IsEmpty(second.Session.Presenters);
+    }
+
+    [TestMethod]
     public async Task SaveFailure_IsReportedOnTheCapture_NotThrown()
     {
         Directory.CreateDirectory(_exportDirectory);

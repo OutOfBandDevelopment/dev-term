@@ -52,6 +52,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--streamconvertdpi' must be a positive number.");
         }
 
+        if (options.StreamIdleTimeoutMs <= 0)
+        {
+            return ValidateOptionsResult.Fail("'--streamidletimeoutms' must be a positive number.");
+        }
+
         var streamConvertMode = (options.StreamConvertMode ?? "none").Trim().ToLowerInvariant();
         switch (streamConvertMode)
         {

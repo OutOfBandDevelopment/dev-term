@@ -245,6 +245,11 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.StreamConvertDpi)] = options.StreamConvertDpi;
         }
 
+        if (options.StreamIdleTimeoutMs != new CliOptions().StreamIdleTimeoutMs)
+        {
+            profile[nameof(CliOptions.StreamIdleTimeoutMs)] = options.StreamIdleTimeoutMs;
+        }
+
         if (options.StreamConvertOutputExtension is not null)
         {
             profile[nameof(CliOptions.StreamConvertOutputExtension)] = options.StreamConvertOutputExtension;

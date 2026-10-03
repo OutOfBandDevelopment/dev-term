@@ -95,7 +95,9 @@ internal static class StreamMonitorMode
                 : TuiTheme.Attribute(theme, ThemeRole.MenuForeground, ThemeRole.MenuBackground)));
             // One line, the folder's middle elided if need be: a long path used to wrap onto the
             // explanation below it.
-            folderLabel.Text = $"Saving to: {TuiText.CompactPath(monitor.ExportDirectory, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 14, 20))}";
+            var otherFolders = monitor.ExportDirectories.Count - 1;
+            var more = otherFolders > 0 ? $" (+{otherFolders} more)" : string.Empty;
+            folderLabel.Text = $"Saving to: {TuiText.CompactPath(monitor.ExportDirectory, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 14 - more.Length, 20))}{more}";
             toggleButton.Text = running ? "Stop Monitoring" : "Start Monitoring";
 
             var captures = monitor.Captures;

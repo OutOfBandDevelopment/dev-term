@@ -14,6 +14,13 @@ public sealed class StreamContentWatcherOptions
     /// </summary>
     public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// The idle wait for an HP-GL capture (when it hasn't ended with its own <c>SP0;</c>): never shorter than
+    /// <see cref="IdleTimeout"/>. A plotter on a slow link can pause mid-plot for several seconds, and a cut there
+    /// splits one plot into several files.
+    /// </summary>
+    public TimeSpan HpglIdleTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
     /// <summary>A capture is cut off (and reported as <see cref="StreamCaptureEnd.SizeLimit"/>) at this many bytes, so a runaway stream can't grow without bound.</summary>
     public int MaxCaptureBytes { get; set; } = 64 * 1024 * 1024;
 }
@@ -328,9 +335,13 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
             return [];
         }
 
-        _idleTimer.Change(_options.IdleTimeout, Timeout.InfiniteTimeSpan);
+        _idleTimer.Change(CaptureIdleTimeout, Timeout.InfiniteTimeSpan);
         return [];
     }
+
+    // Caller holds _gate.
+    private TimeSpan CaptureIdleTimeout =>
+        _captureKind == StreamContentKind.Hpgl && _options.HpglIdleTimeout > _options.IdleTimeout ? _options.HpglIdleTimeout : _options.IdleTimeout;
 
     // Caller holds _gate.
     private void Complete(StreamCaptureEnd reason)
@@ -371,10 +382,11 @@ public sealed class StreamContentWatcher : IPresenter, IStreamContentHintSink, I
             }
 
             var quietFor = _timeProvider.GetElapsedTime(_lastDataTimestamp);
-            if (quietFor < _options.IdleTimeout)
+            var wait = CaptureIdleTimeout;
+            if (quietFor < wait)
             {
                 // More data arrived after this timer was armed - wait out the rest of the gap.
-                _idleTimer.Change(_options.IdleTimeout - quietFor, Timeout.InfiniteTimeSpan);
+                _idleTimer.Change(wait - quietFor, Timeout.InfiniteTimeSpan);
                 return;
             }
 
