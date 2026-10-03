@@ -76,6 +76,7 @@ public partial class App : Application
         // The theme is an app preference, not part of the connection: --theme / DEVTERM_THEME for this
         // run, else the saved View > Theme choice, else "system" - applied before the first window
         // (even the startup Device Profiles editor below). Problems show in MainWindow's output.
+        RetentionSweeper.Sweep(new AppPreferencesStore().Load());
         ActiveTheme.Initialize(layeredConfig);
         WpfTheme.AttachApplication(this);
 

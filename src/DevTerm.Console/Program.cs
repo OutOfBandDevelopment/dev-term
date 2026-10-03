@@ -207,6 +207,9 @@ var useTui = (layeredConfig.GetValue<bool?>(nameof(CliOptions.Tui)) ?? true) && 
 // else the saved View > Theme choice (~/.dev-term/preferences.json), else "system". Applied before
 // any TUI screen (including the startup Connection Editor below) - Terminal.Gui's scheme overrides
 // are process-wide and survive Application.Init. Problems are shown in the main window's output.
+// Housekeeping: drop old logs/exports per the saved retention rules (keeps everything unless a rule is set).
+RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+
 if (useTui)
 {
     ActiveTheme.Initialize(layeredConfig);
