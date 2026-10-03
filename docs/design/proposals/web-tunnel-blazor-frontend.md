@@ -122,6 +122,76 @@ stop
 @enduml
 ```
 
+## Direction (2026-10-03): connections are made through services, not startup arguments
+
+Today `DevTerm.Web` starts one session from the command line or saved profile, so the host has to be
+launched with connection arguments and serves exactly that session. The intended shape is the opposite:
+the host starts with **no connection arguments**, and everything is done at runtime through services.
+
+- **Device services** (REST): enumerate what the host can reach (serial ports, HID, USBTMC, LXI, BLE,
+  saved profiles, bundled device manifests), reusing the detection that the Connection Editor already
+  has.
+- **Project services** (REST): create, list, update and delete **projects**, each a named set of
+  connection profiles and their state. This is the web counterpart of the backlogged project (workspace)
+  state in `BACKLOG.md`, so both should share one model.
+- **Connection services**: open and close a connection to a device or profile from a project, and return
+  a short-lived **connection token**. The browser then opens `/ws/{connectionId}` presenting that token,
+  and the existing tunnel (backlog replay, serialized sends, read-only role) runs per connection, so many
+  connections can be open at once. The shared `Web:Token` stays the host-level credential for calling the
+  services; connection tokens are scoped to one connection and one role (control or read-only).
+- **Events over the WebSocket**: connection opened/closed/faulted, device list changed, project
+  changed, published on a host-level events stream, so a front end doesn't poll.
+- **Documented contracts**: every service has an **OpenAPI** document served with a **Scalar** UI
+  (`/scalar`), and the WebSocket/event channels have an **AsyncAPI** document served with an
+  **AsyncAPI** UI, since OpenAPI can't describe message channels. The Blazor front end and any other
+  client are generated against or checked against these documents.
+- **Blazor front end** for each service (device list, projects, open connection, terminal, control
+  panel), a client of the same services rather than a second code path. The earlier decision "no
+  Blazor yet" is superseded: a hosting model (Server vs WebAssembly) is to be chosen when this is built.
+
+```plantuml
+@startuml
+actor Browser
+participant "Blazor UI" as UI
+participant "Device / Project
+services (REST)" as Api
+participant "Connection service" as Conn
+participant "/ws/{id} tunnel" as Ws
+participant Session
+
+Browser -> UI : open app (host token)
+UI -> Api : GET /api/devices, /api/projects
+Api --> UI : devices, projects
+UI -> Conn : POST /api/connections {profile}
+Conn -> Session : open from profile
+Conn --> UI : connectionId + connection token
+UI -> Ws : connect (connection token)
+Ws -> Session : replay backlog, then live output
+Browser -> Ws : typed line
+Ws -> Session : TypedInput.TryEncode -> SendAsync
+Conn --> UI : event: connection faulted / closed
+@enduml
+```
+
+```plantuml
+@startsalt
+{+
+  { Projects | ^Bench A^ | [New] }
+  --
+  { Devices | Connections }
+  { ()TDS2024 192.168.0.110:23 | (X)Open: TDS2024 [Close] }
+  { ()DG1062Z 192.168.0.87:5555 | (X)Open: DG1062Z [Close] }
+  --
+  { API docs: [Scalar] | Events: [AsyncAPI] }
+}
+@endsalt
+```
+
+Open questions: how a connection token is issued and revoked (lifetime, one-time use); whether a
+project is stored on the host or only in the browser; how host-side hardware that is already open
+locally (WPF running on the same machine) is shared or refused; which of Scalar's and AsyncAPI UI's
+packages to use and how they are served without a CDN on an offline bench.
+
 ## Completion checklist
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
@@ -135,6 +205,10 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] TLS served and checked with a generated self-signed certificate (`Https_WithACertificate_ServesOverTls...`)
 - [x] TLS with a CA-issued certificate: a generated CA signs the server certificate; a client trusting only that CA connects and one without it is refused (`Https_WithACaIssuedCertificate...`)
 - [ ] A real device through the page, multiple browsers (needs user setup)
+- [ ] Start with no connection arguments; device, project and connection services (REST) plus a host events stream (2026-10-03 direction)
+- [ ] Per-connection tokens and `/ws/{id}` tunnels, several connections open at once
+- [ ] OpenAPI + Scalar UI for the services; AsyncAPI document + UI for the WebSocket/event channels
+- [ ] Blazor front end for those services
 
 ## Status
 
@@ -143,3 +217,5 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 run confirmed 401 without a token, a 302 with `?token=`, and a refused non-loopback `http` bind. Not verified:
 a real device through the page, more than one simultaneous browser. Not built:
 Blazor, user accounts, read-only viewers.
+
+**Direction change 2026-10-03:** the design above (service-driven connections, Scalar, AsyncAPI, Blazor) is agreed but not started; the implemented host still takes its connection from startup arguments or a profile.

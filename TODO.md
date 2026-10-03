@@ -19,15 +19,13 @@ Done from that round: the ser2net RFC 2217 container (`containers/`, see `docs/c
 
 Still waiting on you (hardware or a decision you've deferred). Answer inline after **Your call:**.
 
-1. **[069](docs/bugs/069-tds2024-laserjet-pcx-hardcopy-no-capture.md): TDS2024 LASERJET and PCX hardcopy give no capture.** Deferred: "continue to wait".
-   **Your call:** continue to wait
-2. **DE-5000 meter:** adapter GATT profile, `RealHardwareDe5000Tests`, and live-checking the DE-5000, K8055 and Zoom H4n `.ksy` layouts. Blocked on the meter being back on the bench. When?
+1. **DE-5000 meter:** adapter GATT profile, `RealHardwareDe5000Tests`, and live-checking the DE-5000, K8055 and Zoom H4n `.ksy` layouts. Blocked on the meter being back on the bench. When?
    **Your call:**
-3. **EByte E810 / UDP transport:** needs a fresh deliberate capture of the real unit (`FD00`/`FD01` byte-count discrepancy).
+2. **EByte E810 / UDP transport:** needs a fresh deliberate capture of the real unit (`FD00`/`FD01` byte-count discrepancy).
    **Your call:** continue to wait
-4. **Z-Wave** and **BYTECC BT-UP01**: no hardware, deferred.
+3. **Z-Wave** and **BYTECC BT-UP01**: no hardware, deferred.
    **Your call:** continue to wait
-5. **BLE on Linux/macOS:** no machine to test on.
+4. **BLE on Linux/macOS:** no machine to test on.
    **Your call:** continue to wait
 
 ## Backlog / research

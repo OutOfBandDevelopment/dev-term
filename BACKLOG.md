@@ -102,4 +102,5 @@ the rest.
 - **PCX (and PCL raster) preview in the Stream Monitor.** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
+- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above.
 
