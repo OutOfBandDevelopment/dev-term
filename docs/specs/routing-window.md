@@ -21,6 +21,7 @@ and shows what flowed. It acts on the active session and never changes the devic
 | Feedback while running | Live message history (both directions), broker connection state, unmatched-lines counter, per-rule hit counts |
 | Broker details | Stored in the profile alongside the rules |
 | Broker drops or a publish fails | Auto-reconnect with backoff; the device session keeps running; device-to-broker messages during an outage are dropped and counted |
+| Start | Automatic when the profile has rules and the device connects |
 | Safety for broker-to-device sends | Per-rule **Confirm** flag: the first matching message asks before it reaches the device |
 | First-release front ends | WPF and TUI (no CLI flags yet) |
 
@@ -37,7 +38,7 @@ and shows what flowed. It acts on the active session and never changes the devic
 | Rule: Payload / Send | text | whole line / required for BrokerToDevice | `${name}` must name a group in Match | "Payload" for DeviceToBroker, "Send" for BrokerToDevice |
 | Rule: Confirm | checkbox | off | BrokerToDevice only | Asks before the first matching send each session |
 | Test: Sample line | text | blank | none | Shows match yes/no, captured groups, resulting topic and payload or send text, per rule, without touching the broker or the device |
-| Armed switch | Start / Stop | Stopped | needs a connected session and a valid rule set | Routing is independent of the device connection state |
+| Start / Stop | button | Stopped, then auto-started on connect when the profile has rules | needs a connected session and a valid rule set | Routing starts by itself when the session connects; Stop opts out for the session |
 
 ## Actions
 
@@ -108,4 +109,4 @@ Failed --> Connecting : Start
 - **Passwords in the profile.** The decision is to store broker details with the rules, but the MQTT transport deliberately never saves a password to a profile or shows it in the editor. Which wins here (plain, obfuscated, or OS-protected storage) is undecided; see [OPEN_QUESTIONS](../../OPEN_QUESTIONS.md).
 - Bounded queue/replay after an outage was rejected for now; dropped messages are only counted.
 - No CLI flags (`--routing <rules.json>`) in the first release.
-- Auto-start on connect: the profile can carry the rules, but whether connecting starts routing automatically, or only arms it, is not decided.
+- ~~Auto-start on connect~~ Decided 2026-10-03: connecting a profile that has routing rules starts routing automatically. A failed start (broker unreachable) is reported in the Routing state and the status line, and never blocks or closes the device connection; the user can still press Stop to opt out for the session.
