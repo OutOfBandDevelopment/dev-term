@@ -72,6 +72,7 @@ public partial class StreamMonitorWindow : Window
 
         ConvertModeBox.SelectedIndex = StreamConversionChoice.IndexOf(_choices, _converterOptions);
 
+        monitor.LoadFromDisk();
         CaptureList.ItemsSource = Items;
         foreach (var capture in monitor.Captures)
         {

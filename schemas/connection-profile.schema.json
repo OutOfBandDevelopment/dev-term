@@ -291,6 +291,9 @@
     "PlaybackSpeed": {
       "type": "number"
     },
+    "StreamAutoConvertHpgl": {
+      "type": "boolean"
+    },
     "StreamConvertMode": {
       "type": [
         "string",

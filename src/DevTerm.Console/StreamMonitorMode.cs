@@ -33,6 +33,7 @@ internal static class StreamMonitorMode
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(monitor);
+        monitor.LoadFromDisk();
 
         var converterOptions = StreamCaptureConverterOptions.FromCliOptions(cliOptions, globalTools);
         var converter = new StreamCaptureConverter(Microsoft.Extensions.Options.Options.Create(converterOptions));

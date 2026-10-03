@@ -1354,6 +1354,12 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             // than reset to CliOptions' defaults.
             ManifestName = _loadedOptions.ManifestName,
             ScpiAutoDetectTimeoutMs = _loadedOptions.ScpiAutoDetectTimeoutMs,
+            SendIntervalMs = _loadedOptions.SendIntervalMs,
+            ReadIntervalMs = _loadedOptions.ReadIntervalMs,
+            ConnectTimeoutMs = _loadedOptions.ConnectTimeoutMs,
+            ConnectRetries = _loadedOptions.ConnectRetries,
+            ConnectRetryDelayMs = _loadedOptions.ConnectRetryDelayMs,
+            StreamAutoConvertHpgl = _loadedOptions.StreamAutoConvertHpgl,
             StreamConvertMode = _loadedOptions.StreamConvertMode,
             StreamConvertExternalToolPath = _loadedOptions.StreamConvertExternalToolPath,
             StreamConvertExternalToolArguments = _loadedOptions.StreamConvertExternalToolArguments,

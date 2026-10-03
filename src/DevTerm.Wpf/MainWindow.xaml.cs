@@ -1102,7 +1102,7 @@ public partial class MainWindow : Window
     {
         if (_streamMonitor is null)
         {
-            var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(ActiveWindowTab.Tab.CliOptions.StreamIdleTimeoutMs) });
+            var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(ActiveWindowTab.Tab.CliOptions.StreamIdleTimeoutMs) }) { AutoConvertHpgl = ActiveWindowTab.Tab.CliOptions.StreamAutoConvertHpgl };
             monitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() =>
             {
                 if (capture.Source is WindowTab source && _tabs.Contains(source))

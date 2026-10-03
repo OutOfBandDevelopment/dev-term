@@ -105,4 +105,4 @@ the rest.
 
 - **Message routing proxy over the brokers** (owner direction 2026-10-03, proof of concept, loopback-testable): rules that publish a matching device message to a broker and map an inbound broker message to a device action, with a shared timecode for history across channels. See [message-broker-protocols](docs/design/proposals/message-broker-protocols.md).
 - **Add and remove presenters on a live session** without reconnecting the device, and presenters that originate data (a simulation or virtual device). See [architecture](docs/design/architecture.md).
-- **Stream Monitor: list export files already on disk; automatic HP-GL to SVG conversion as an option.** The external-tool and web converters are dropped.
+

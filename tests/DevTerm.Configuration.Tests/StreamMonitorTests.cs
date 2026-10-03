@@ -314,4 +314,47 @@ public sealed class StreamMonitorTests
         StringAssert.Contains(capture.Describe(), "could not save it");
         Assert.AreEqual(ConnectionState.Open, live.Session.State);
     }
+
+    [TestMethod]
+    public async Task LoadFromDisk_ListsEarlierExports_OnceAndOldestFirst()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        File.WriteAllBytes(Path.Combine(_exportDirectory, "scope_20260102-030405.bmp"), [1, 2, 3]);
+        File.WriteAllBytes(Path.Combine(_exportDirectory, "scope_20250102-030405-2.png"), [4, 5]);
+
+        Assert.AreEqual(2, monitor.LoadFromDisk());
+        Assert.AreEqual(0, monitor.LoadFromDisk());
+
+        var captures = monitor.Captures;
+        Assert.HasCount(2, captures);
+        Assert.AreEqual("scope", captures[0].DeviceName);
+        Assert.AreEqual(2025, captures[0].LocalStartedAt.Year);
+        Assert.AreEqual("PNG image", captures[0].Capture.Kind.DisplayName);
+        Assert.AreEqual(3, captures[1].Capture.Data.Length);
+    }
+
+    [TestMethod]
+    [DataRow(true, 2)]
+    [DataRow(false, 1)]
+    public async Task HpglCapture_IsConvertedToSvgAutomatically_WhenEnabled(bool auto, int expectedCaptures)
+    {
+        await using var live = new LiveSession();
+        var options = new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(100), HpglIdleTimeout = TimeSpan.FromMilliseconds(100) };
+        using var monitor = new StreamMonitor(FixedTime(), options) { AutoConvertHpgl = auto };
+        monitor.SetSession(live.Session, "plotter", _exportDirectory);
+        monitor.Start();
+        await live.Session.OpenAsync(TestContext.CancellationToken);
+
+        var first = NextCaptureAsync(monitor);
+        await live.SendFromDeviceAsync("ok\r\nIN;SP1;PU0,0;PD1000,1000;PD2000,0;SP0;"u8.ToArray(), TestContext.CancellationToken);
+        var plot = await first;
+        await Task.Delay(300, TestContext.CancellationToken);
+
+        Assert.AreEqual(StreamContentKind.Hpgl, plot.Capture.Kind);
+        Assert.HasCount(expectedCaptures, monitor.Captures);
+        Assert.AreEqual(auto, File.Exists(Path.ChangeExtension(plot.SavedPath!, "svg")));
+    }
 }

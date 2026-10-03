@@ -433,6 +433,11 @@ public sealed class CliOptions
     /// HP-GL captures only). See <see cref="DevTerm.Configuration.StreamCaptureConverter"/>.
     /// </summary>
     [Category("Stream Monitor")]
+    [DisplayName("Convert HP-GL automatically")]
+    [Description("When Stream Monitor captures an HP-GL plot, also write an SVG next to it with dev-term's own converter. On by default.")]
+    public bool StreamAutoConvertHpgl { get; set; } = true;
+
+    [Category("Stream Monitor")]
     [DisplayName("Convert mode")]
     [Description("How Stream Monitor's Convert action works: none, externaltool, auto, tool:<name>, or internalhpgltosvg.")]
     public string? StreamConvertMode { get; set; }

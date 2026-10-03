@@ -166,6 +166,27 @@ public sealed class StreamMonitor : IDisposable
         }
     }
 
+    /// <summary>
+    /// When true (the default), a saved HP-GL capture is also converted to SVG next to its file with
+    /// <see cref="HpglToSvgConverter"/>, and the SVG is listed as a second capture. A conversion failure is ignored: the
+    /// original plot is already saved and the manual Convert action reports problems.
+    /// </summary>
+    public bool AutoConvertHpgl { get; set; } = true;
+
+    private void ConvertHpglToSvg(StreamMonitorCapture source)
+    {
+        try
+        {
+            var output = Path.ChangeExtension(source.SavedPath!, "svg");
+            File.WriteAllText(output, HpglToSvgConverter.ConvertToSvg(source.Capture.Data));
+            AddConverted(source, output);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or FormatException)
+        {
+            // See AutoConvertHpgl.
+        }
+    }
+
     /// <summary>The most recent captures, oldest first.</summary>
     public IReadOnlyList<StreamMonitorCapture> Captures
     {
@@ -176,6 +197,93 @@ public sealed class StreamMonitor : IDisposable
                 return [.. _captures];
             }
         }
+    }
+
+    /// <summary>
+    /// Adds every file already in the export folders (<see cref="ExportDirectories"/>) that this monitor does not
+    /// already list, so earlier exports show up after a restart. A file that does not match
+    /// <c>{device}_{yyyyMMdd-HHmmss}[-n].{extension}</c> is still listed, dated by its last write time. The list stays
+    /// ordered by start time and capped at <see cref="MaxRetainedCaptures"/> (the oldest drop first). Safe to call again.
+    /// </summary>
+    /// <returns>How many files were added.</returns>
+    public int LoadFromDisk()
+    {
+        var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        lock (_gate)
+        {
+            foreach (var c in _captures.Where(c => c.SavedPath is not null))
+            {
+                known.Add(c.SavedPath!);
+            }
+        }
+
+        var found = new List<StreamMonitorCapture>();
+        foreach (var directory in ExportDirectories.Append(DevTermUserDataPaths.ExportsDirectory).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.Exists(directory) ? Directory.EnumerateFiles(directory).ToList() : [];
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            foreach (var file in files)
+            {
+                if (!known.Add(file))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    found.Add(DescribeFile(file));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Unreadable or vanished: leave it out.
+                }
+            }
+        }
+
+        if (found.Count == 0)
+        {
+            return 0;
+        }
+
+        lock (_gate)
+        {
+            _captures.AddRange(found);
+            var ordered = _captures.OrderBy(c => c.LocalStartedAt).ToList();
+            _captures.Clear();
+            _captures.AddRange(ordered.Skip(Math.Max(0, ordered.Count - MaxRetainedCaptures)));
+        }
+
+        StateChanged?.Invoke(this, EventArgs.Empty);
+        return found.Count;
+    }
+
+    private StreamMonitorCapture DescribeFile(string path)
+    {
+        var data = File.ReadAllBytes(path);
+        var kind = StreamContentKind.ForExtension(Path.GetExtension(path));
+        var stem = Path.GetFileNameWithoutExtension(path);
+        var underscore = stem.LastIndexOf('_');
+        var deviceName = underscore > 0 ? stem[..underscore] : stem;
+        var stamp = underscore > 0 ? stem[(underscore + 1)..] : string.Empty;
+        var dash = stamp.IndexOf('-', stamp.IndexOf('-') + 1);
+        if (dash > 0)
+        {
+            stamp = stamp[..dash];
+        }
+
+        var started = DateTimeOffset.TryParseExact(stamp, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed)
+            ? parsed
+            : new DateTimeOffset(File.GetLastWriteTime(path));
+        var capture = new StreamCapture(kind, data, started.ToUniversalTime(), StreamCaptureEnd.Complete, WasDeclared: false);
+        return new StreamMonitorCapture(capture, deviceName, started, path, null);
     }
 
     /// <summary>
@@ -454,6 +562,11 @@ public sealed class StreamMonitor : IDisposable
         }
 
         CaptureAdded?.Invoke(this, record);
+
+        if (AutoConvertHpgl && record is { SavedPath: not null } && capture.Kind.Format == StreamContentFormat.Hpgl)
+        {
+            ConvertHpglToSvg(record);
+        }
     }
 
     private sealed class Entry(object key)

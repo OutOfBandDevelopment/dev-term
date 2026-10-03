@@ -240,6 +240,11 @@ public static class DevTermConfiguration
         }
 
         // Stream Monitor converter settings, written only when set so a plain profile stays small.
+        if (!options.StreamAutoConvertHpgl)
+        {
+            profile[nameof(CliOptions.StreamAutoConvertHpgl)] = false;
+        }
+
         if (!string.IsNullOrWhiteSpace(options.StreamConvertMode))
         {
             profile[nameof(CliOptions.StreamConvertMode)] = options.StreamConvertMode;

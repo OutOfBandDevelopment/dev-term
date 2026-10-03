@@ -1143,7 +1143,7 @@ public static class TuiMode
             var windowTab = ActiveTab();
             if (streamMonitor is null)
             {
-                var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(windowTab.Tab.CliOptions.StreamIdleTimeoutMs) });
+                var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(windowTab.Tab.CliOptions.StreamIdleTimeoutMs) }) { AutoConvertHpgl = windowTab.Tab.CliOptions.StreamAutoConvertHpgl };
                 monitor.CaptureAdded += (_, capture) =>
                 {
                     if (capture.Source is TuiWindowTab source && tabs.Contains(source))
