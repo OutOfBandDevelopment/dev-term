@@ -157,7 +157,7 @@ to `~/.dev-term/manifests` by default.
   open the panel by itself yet.
 - **Not a Kaitai Struct reimplementation** — a `.ksy` file is *not* run. `KsyImporter` instead reads a fixed-layout
   `.ksy` (numbers, strings, byte runs, magic `contents`) into a `FrameSchema`, stored as `Inbound.Frame` (see
-  [the importer proposal](proposals/ksy-importer.md)); anything dynamic (`repeat`, `if`, `switch-on`, user types) is
+  [the importer feature doc](features/ksy-importer.md)); anything dynamic (`repeat`, `if`, `switch-on`, user types) is
   reported and ends the frame. The manifest's own `KaitaiFile` is still just a reference.
 
 ## Open questions

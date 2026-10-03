@@ -7,7 +7,7 @@ namespace DevTerm.DeviceManifests;
 /// A fixed-layout binary frame a device sends: an optional sync prefix, then fields at consecutive offsets. Each field
 /// publishes a live value under its <see cref="FrameField.Name"/> (dotted names like <c>header.length</c> are fine), the
 /// binary counterpart to <see cref="InboundProtocol.Patterns"/>' regex captures. The <c>.ksy</c> importer
-/// (<see cref="KsyImporter"/>) generates one of these from a Kaitai Struct file. See docs/design/proposals/ksy-importer.md.
+/// (<see cref="KsyImporter"/>) generates one of these from a Kaitai Struct file. See docs/design/features/ksy-importer.md.
 /// </summary>
 public sealed class FrameSchema
 {

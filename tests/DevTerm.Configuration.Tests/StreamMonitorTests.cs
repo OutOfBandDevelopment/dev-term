@@ -81,7 +81,7 @@ public sealed class StreamMonitorTests
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        Assert.AreEqual(Path.Combine("~", ".dev-term", "exports"), StreamMonitor.DisplayPath(DevTermUserDataPaths.ExportsDirectory));
+        Assert.AreEqual(Path.Combine("~", ".dev-term", "exports"), StreamMonitor.DisplayPath(Path.Combine(home, ".dev-term", "exports")));
         Assert.AreEqual("~", StreamMonitor.DisplayPath(home));
         Assert.AreEqual(home + "-other", StreamMonitor.DisplayPath(home + "-other"));
         Assert.AreEqual(@"D:\captures", StreamMonitor.DisplayPath(@"D:\captures"));

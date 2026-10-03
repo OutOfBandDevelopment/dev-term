@@ -1,0 +1,10 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!-- Isolate test runs from the real ~/.dev-term by default (an explicit settings file on the command line still wins). -->
+    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory)default.runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+
+</Project>

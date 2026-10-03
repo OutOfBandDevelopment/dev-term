@@ -1,3 +1,5 @@
+using DevTerm.Core;
+
 namespace DevTerm.Configuration;
 
 /// <summary>
@@ -8,14 +10,11 @@ namespace DevTerm.Configuration;
 /// </summary>
 public static class DevTermUserDataPaths
 {
-    private static readonly string _userRootDirectory =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dev-term");
-
     /// <summary><c>~/.dev-term/profiles</c> — one JSON file per named connection profile.</summary>
-    public static string ProfilesDirectory => Path.Combine(_userRootDirectory, "profiles");
+    public static string ProfilesDirectory => Path.Combine(DevTermHome.Root, "profiles");
 
     /// <summary><c>~/.dev-term/manifests</c> — the user's own, personal device manifests.</summary>
-    public static string UserManifestsDirectory => Path.Combine(_userRootDirectory, "manifests");
+    public static string UserManifestsDirectory => Path.Combine(DevTermHome.Root, "manifests");
 
     /// <summary>
     /// <c>~/.dev-term/exports</c> — the default destination for auto-saved captures (e.g. the Stream
@@ -23,34 +22,34 @@ public static class DevTermUserDataPaths
     /// docs/design/features/stream-content-detection.md) when <see cref="CliOptions.ExportDirectory"/>
     /// isn't set to something else.
     /// </summary>
-    public static string ExportsDirectory => Path.Combine(_userRootDirectory, "exports");
+    public static string ExportsDirectory => Path.Combine(DevTermHome.Root, "exports");
 
     /// <summary>
     /// <c>~/.dev-term/logs</c> — where session logs (logger mode) go by default, named
     /// <c>{yyyyMMdd-HHmmss}_{connection}.jsonl</c> (see <see cref="SessionLogging.DefaultLogPath"/>),
     /// and where the Open Log for Playback dialogs start.
     /// </summary>
-    public static string LogsDirectory => Path.Combine(_userRootDirectory, "logs");
+    public static string LogsDirectory => Path.Combine(DevTermHome.Root, "logs");
 
     /// <summary>
     /// <c>~/.dev-term/themes</c> — user-defined theme files (<c>*.json</c>, see <see cref="ThemeFile"/>),
     /// listed in both front ends' View &gt; Theme menu after the built-ins. See docs/design/theming.md.
     /// </summary>
-    public static string ThemesDirectory => Path.Combine(_userRootDirectory, "themes");
+    public static string ThemesDirectory => Path.Combine(DevTermHome.Root, "themes");
 
     /// <summary>
     /// <c>~/.dev-term/preferences.json</c> — app-wide preferences that aren't part of any connection
     /// (the selected theme), shared by every front end. Deliberately separate from connection profiles:
     /// switching profile never changes the theme. See <see cref="AppPreferencesStore"/>.
     /// </summary>
-    public static string PreferencesFile => Path.Combine(_userRootDirectory, "preferences.json");
+    public static string PreferencesFile => Path.Combine(DevTermHome.Root, "preferences.json");
 
     /// <summary>
     /// <c>~/.dev-term/converter-tools.json</c> - the Stream Monitor's registered converter tools, shared by every
     /// profile and front end (Device &gt; Converter Tools...). See <see cref="ConverterToolsStore"/> and
     /// docs/design/features/stream-converter-tools.md.
     /// </summary>
-    public static string ConverterToolsFile => Path.Combine(_userRootDirectory, "converter-tools.json");
+    public static string ConverterToolsFile => Path.Combine(DevTermHome.Root, "converter-tools.json");
 
     /// <summary><c>./manifests</c> (relative to this app's own install/build output) — pre-packaged manifests that ship with dev-term itself.</summary>
     public static string AppManifestsDirectory => Path.Combine(AppContext.BaseDirectory, "manifests");

@@ -202,6 +202,11 @@
     <RunConfiguration>
         <MaxCpuCount>0</MaxCpuCount>
         <!-- 0 = use all available cores; or set a specific number like 4 -->
+        <EnvironmentVariables>
+            <!-- Keep test runs out of the real ~/.dev-term (profiles, preferences, logs, exports). Relative, so
+                 it resolves under each test host's own output folder. -->
+            <DEVTERM_HOME>devterm-test-home</DEVTERM_HOME>
+        </EnvironmentVariables>
     </RunConfiguration>
 
     <!-- Controls parallelism within MSTest (across classes/methods in the same assembly) -->

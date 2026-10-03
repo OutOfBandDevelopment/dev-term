@@ -187,8 +187,8 @@ Conn --> UI : event: connection faulted / closed
 @endsalt
 ```
 
-Open questions: how a connection token is issued and revoked (lifetime, one-time use); whether a
-project is stored on the host or only in the browser; how host-side hardware that is already open
+Projects and configuration are stored server-side, never in the browser (decided 2026-10-03). Open questions: how a connection token is issued and revoked (lifetime, one-time use); whether a
+how host-side hardware that is already open
 locally (WPF running on the same machine) is shared or refused; which of Scalar's and AsyncAPI UI's
 packages to use and how they are served without a CDN on an offline bench.
 

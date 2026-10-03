@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used by every test project unless dotnet test is given another settings file (see tests/Directory.Build.props).
+     Keeps a test run out of the real ~/.dev-term (profiles, preferences, logs, exports): DEVTERM_HOME is relative, so it
+     resolves under each test host's own output folder. devterm.runsettings (real hardware) sets the same variable. -->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <DEVTERM_HOME>devterm-test-home</DEVTERM_HOME>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

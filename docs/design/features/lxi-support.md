@@ -1,6 +1,6 @@
 # LXI support
 
-Sourced from `BACKLOG.md`'s "Proposed Ideas" section (added 2026-09-30): "LXI support."
+Started as a proposal (from `BACKLOG.md`, 2026-09-30); moved to features 2026-10-03 once built and verified.
 
 LXI (LAN eXtensions for Instrumentation) is the network-connected-bench-equipment counterpart to
 USBTMC/GPIB — most LXI instruments expose raw SCPI over a TCP socket (conventionally port 5025,
@@ -12,13 +12,13 @@ broadcast.
 
 The common case — an instrument that just speaks SCPI over a raw TCP socket — needs **no new
 transport**. [Transports.md](../transports.md)'s existing TCP client mode plus
-[`DevTerm.Devices.Scpi`](../features/scpi-instrument-control.md) already do exactly this: connect out
+[`DevTerm.Devices.Scpi`](scpi-instrument-control.md) already do exactly this: connect out
 to `host:5025`, send `*IDN?`/whatever profile commands, get a line back. This is the same shape as
 GPIB-via-Prologix (`transports.md`'s "Extensibility" section): "most inexpensive adapters... layer a
 simple protocol over what the OS sees as a plain serial port or plain TCP socket, so the existing
 transports already do the I/O." An LXI instrument with a raw-socket SCPI port is, from dev-term's
 point of view, already supported today via `--transport tcp --host <ip> --port 5025` plus an SCPI
-profile — this proposal is about the parts that aren't covered yet.
+profile — this doc covers the parts that weren't covered.
 
 ## What's actually new
 
@@ -58,7 +58,7 @@ profile — this proposal is about the parts that aren't covered yet.
 
 ## Completion checklist
 
-What is needed before this proposal can be closed. Tick items as they land, in the same change.
+What was needed to close this out. Tick items as they land, in the same change.
 
 - [x] Confirm a real LXI instrument on the bench: Rigol DG1062Z at 192.168.0.87 (2026-10-02)
 - [x] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module (2026-10-03)

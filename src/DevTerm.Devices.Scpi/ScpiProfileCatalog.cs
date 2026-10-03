@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using DevTerm.Core;
 
 namespace DevTerm.Devices.Scpi;
 
@@ -124,8 +125,7 @@ public static class ScpiProfileCatalog
     /// they're running (same rationale as <c>DevTermUserDataPaths.ProfilesDirectory</c>/
     /// <c>UserManifestsDirectory</c>).
     /// </summary>
-    internal static string UserProfilesDirectory { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dev-term", "scpi-profiles");
+    internal static string UserProfilesDirectory => Path.Combine(DevTermHome.Root, "scpi-profiles");
 
     private static void LoadFrom(string directory, List<ScpiInstrumentProfile> profiles, List<string> errors)
     {

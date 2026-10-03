@@ -8,7 +8,7 @@ ZWave RPi hat."
 Both named target devices are serial-attached — a Z-Stick (e.g. Aeotec's) is a USB-serial adapter
 exposing the Z-Wave Serial API over a virtual COM port, and Z-Wave Raspberry Pi HATs typically expose
 the same Serial API over UART. This needs **no new transport**: `DevTerm.Transports.Serial` as-is
-covers it, the same way GPIB-via-Prologix and (per the [LXI proposal](lxi-support.md)) raw-socket LXI
+covers it, the same way GPIB-via-Prologix and (per the [LXI proposal](../features/lxi-support.md)) raw-socket LXI
 instruments need no new transport either — the new work here is entirely the protocol/decoder/
 control-module layer above the byte stream, not how the bytes arrive.
 

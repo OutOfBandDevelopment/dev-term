@@ -73,10 +73,9 @@ the rest.
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
-- [LXI VXI-11 client](docs/design/proposals/lxi-support.md): phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
+- LXI VXI-11 client (not started, by decision): [LXI feature](docs/design/features/lxi-support.md) phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
+- [Network device discovery](docs/design/proposals/network-device-discovery.md) and [in-app config editors for network bridges](docs/design/proposals/network-device-config-editors.md) (proposed 2026-10-03): one Detect button for any network device with prefill, and a Device > Configure device menu for the USR-TCP232-302 and EByte E810-DTU.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
-- [Schema files for custom formats](docs/design/proposals/format-schema-files.md) — generated JSON Schemas for manifests,
-  UI definitions and profiles (proposed 2026-10-02; spike `JsonSchemaExporter` first).
 
 ## Research (not backlog-ready)
 
