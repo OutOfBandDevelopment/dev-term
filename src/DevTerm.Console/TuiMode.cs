@@ -194,6 +194,7 @@ public static class TuiMode
         MenuItem? closeSessionMenuItem = null;
         MenuItem? deviceProfilesMenuItem = null;
         MenuBarItem? sendAsMenuBarItem = null;
+        var sendAsItems = new List<(string Name, MenuItem Item)>();
 
         // View > Echo Sent Commands / Software Flow Control / Clear Output - predeclared for the same
         // reason as the Device menu items above: their own click actions (and, for Software Flow
@@ -475,6 +476,19 @@ public static class TuiMode
             }
         });
 
+        // The "Send as" items follow the active tab: "●" marks its chosen parser, and a format its
+        // presenters can't encode is greyed out. The item set itself is built once (Terminal.Gui has no
+        // live item replacement for a MenuBarItem), from the window-build-time tab.
+        void MarkSendAs(TuiWindowTab windowTab)
+        {
+            var names = windowTab.Tab.Catalog.InputNames;
+            foreach (var (name, item) in sendAsItems)
+            {
+                item.Enabled = names.Contains(name, StringComparer.OrdinalIgnoreCase);
+                item.Title = ToggleTitle(name, string.Equals(windowTab.Tab.Parser, name, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
         void SetParser(string name)
         {
             // Called from a menu item's action, already on the UI thread - no Application.Invoke
@@ -482,6 +496,7 @@ public static class TuiMode
             var windowTab = ActiveTab();
             windowTab.Tab.Parser = name;
             window.Title = windowTab.Tab.Title(profileStore);
+            MarkSendAs(windowTab);
         }
 
         // View > Theme: switching re-applies live through OnThemeChanged below.
@@ -577,7 +592,12 @@ public static class TuiMode
             // could realistically use here) rather than rebuilt live on every tab switch - Terminal.Gui
             // has no live-item-replacement story for a MenuBarItem the way WPF's ComboBox.ItemsSource
             // binding does.
-            sendAsMenuBarItem = new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name => new MenuItem(name, string.Empty, () => SetParser(name)))]),
+            sendAsMenuBarItem = new MenuBarItem("_Send as", [.. tab.Catalog.InputNames.Select(name =>
+            {
+                var item = new MenuItem(name, string.Empty, () => SetParser(name));
+                sendAsItems.Add((name, item));
+                return item;
+            })]),
             new MenuBarItem("_Device",
             [
                 // Reuses the current, already-open session/connection rather than opening a second
@@ -837,6 +857,7 @@ public static class TuiMode
             deviceProfilesMenuItem!.Enabled = true;
             streamMonitorMenuItem!.Enabled = true;
             sendAsMenuBarItem!.Enabled = true;
+            MarkSendAs(windowTab);
 
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
@@ -1233,7 +1254,7 @@ public static class TuiMode
         // Shared chrome (the File menu label, the send field, the window title, the status line, the
         // Device menu) rebinds to the newly active tab - mirrors MainWindow.xaml.cs's own
         // SessionTabs_SelectionChanged, simplified since there's no ParserBox/combobox to rebind here
-        // (the "_Send as" menu is intentionally not rebuilt per tab - see its own comment above).
+        // (the "_Send as" items are marked per tab by MarkSendAs).
         tabsView.ValueChanged += (_, _) =>
         {
             sendField.Text = string.Empty;
@@ -1357,7 +1378,8 @@ public static class TuiMode
             },
             echoSentCommandsMenuItem!,
             clearOutputMenuItem!,
-            softwareFlowControlMenuItem!);
+            softwareFlowControlMenuItem!,
+            () => [.. sendAsItems.Select(i => i.Item)]);
     }
 
     /// <summary>
@@ -1676,4 +1698,5 @@ internal sealed record TuiWindowParts(
     Action CleanupAllTabs,
     MenuItem EchoSentCommandsMenuItem,
     MenuItem ClearOutputMenuItem,
-    MenuItem SoftwareFlowControlMenuItem);
+    MenuItem SoftwareFlowControlMenuItem,
+    Func<IReadOnlyList<MenuItem>> SendAsItems);

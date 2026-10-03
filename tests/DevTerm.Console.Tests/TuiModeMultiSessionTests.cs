@@ -152,6 +152,40 @@ public sealed class TuiModeMultiSessionTests
     }
 
     [TestMethod]
+    public async Task SendAsMenu_FollowsTheActiveTabsParser()
+    {
+        var (session, _, presenter) = CreateLoopbackSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var cliOptions = new CliOptions { Transport = "loopback", Presenter = ["ascii"] };
+
+        TuiTestRunner.RunWithLoop(session, presenter, cliOptions, parts =>
+        {
+            var app = TuiTestRunner.CurrentApp;
+            string Marked() => TuiTestRunner.InvokeOnLoop(() => string.Join("|", parts.SendAsItems().Where(i => i.Title.StartsWith('●')).Select(i => i.Title.Trim('●', ' '))));
+
+            OpenNewSessionWithDefaults(app, parts);
+            Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.AllSessions().Count == 2, _waitTimeout));
+
+            // The test's startup tab only knows ascii, so that is the menu's one item; the second tab
+            // (a real catalog) picks hex, which has no item, so nothing is marked while it is active.
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                parts.SetParser("hex");
+                return true;
+            });
+            Assert.AreEqual(string.Empty, Marked(), "The second tab chose hex, so ascii isn't marked.");
+
+            TuiTestRunner.InvokeOnLoop(() => app.Keyboard.RaiseKeyDownEvent(Key.CursorLeft.WithAlt));
+            Assert.AreEqual("ascii", Marked(), "The first tab is on ascii.");
+
+            TuiTestRunner.InvokeOnLoop(() => app.Keyboard.RaiseKeyDownEvent(Key.CursorRight.WithAlt));
+            Assert.AreEqual(string.Empty, Marked(), "Returning to the second tab restores its choice.");
+        });
+
+        await session.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task CloseSessionMenuItem_WithMultipleTabs_ClosesTheActiveTabAndSwitchesToAnother()
     {
         var (session, _, presenter) = CreateLoopbackSession();
