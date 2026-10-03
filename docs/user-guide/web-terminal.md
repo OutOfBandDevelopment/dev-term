@@ -18,7 +18,7 @@ GET /?token=demo-token                           -> 302 to /, cookie set
 ```
 
 Set `Web:Panel` to `k8055` or `busylight` and the page shows that device's control panel above the output, rendered from its
-`UiDefinition` (buttons, toggles, sliders, numeric, choice and text fields; indicators, bar graphs and charts are listed as not
+`UiDefinition` (buttons, toggles, sliders, numeric, choice and text fields; indicators show live values when the panel's presenter is selected; bar graphs and charts are listed as not
 shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with every control disabled, and typed lines are refused.
 
 ![The terminal page with the Busylight panel above the output](images/web-terminal-page.png)

@@ -83,7 +83,13 @@ public static class WebHost
         {
             var panelJson = UiDefinitionSerializer.ToJson(definition);
             app.MapGet("/api/panel", () => Results.Content(panelJson, "application/json"));
-            app.Services.GetRequiredService<Components.PanelHostHolder>().Set(definition, surface);
+            var holder = app.Services.GetRequiredService<Components.PanelHostHolder>();
+            holder.Set(definition, surface);
+            if (hub.Catalog.TryGet(webOptions.Panel!.ToLowerInvariant(), out var source) && source is IStructuredPresenter structured)
+            {
+                structured.ValuesChanged += (_, values) => holder.Publish(values);
+            }
+
             app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, surface, request));
         }
         else

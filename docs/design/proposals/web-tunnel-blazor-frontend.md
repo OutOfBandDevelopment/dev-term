@@ -199,7 +199,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [ ] Start with no connection arguments; device, project and connection services (REST) plus a host events stream (2026-10-03 direction)
 - [ ] Per-connection tokens and `/ws/{id}` tunnels, several connections open at once
 - [ ] OpenAPI + Scalar UI for the services; AsyncAPI document + UI for the WebSocket/event channels
-- [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators are static defaults, charts/vectors not shown)
+- [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
 - [ ] Blazor front end for those services
 
 ## Status
