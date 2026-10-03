@@ -271,6 +271,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListLxiDevices { get; set; }
 
+    /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
+    [Category("Mode")]
+    public bool ListPlugins { get; set; }
+
     /// <summary>List paired BLE devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListBleDevices { get; set; }

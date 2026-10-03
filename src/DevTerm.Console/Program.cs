@@ -115,6 +115,24 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
     return 0;
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
+{
+    var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
+    var pluginServices = new ServiceCollection().AddPlugins(pluginOptions);
+    var pluginResults = pluginServices.BuildServiceProvider().GetRequiredService<IReadOnlyList<PluginLoadResult>>();
+    foreach (var plugin in pluginResults)
+    {
+        Console.WriteLine(plugin.Loaded ? $"{plugin.Name}  loaded  ({plugin.Folder})" : $"{plugin.Name}  skipped: {plugin.Message}  ({plugin.Folder})");
+    }
+
+    if (pluginResults.Count == 0)
+    {
+        Console.WriteLine("No plugins found.");
+    }
+
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
 {
     // Same reflection-based platform-adapter loading AddDevTermFrontEnd uses for a real connection

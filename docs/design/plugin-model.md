@@ -77,6 +77,7 @@ Built 2026-10-03 (the loading mechanism; built-in devices still register by hand
   with `--plugins <folder> --presenter sample`.
 - Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing/trust, a plugin
   registry, moving the built-in decoders (NMEA, RadexOne, ...) into plugin folders, a Plugins menu or list in the TUI/WPF.
+- `--listplugins true` (optionally with `--plugins <folder>`) prints each plugin folder as loaded or skipped with the reason, then exits (2026-10-03). A folder with no `plugin.json` isn't a plugin and is not listed.
 
 ```plantuml
 @startuml
