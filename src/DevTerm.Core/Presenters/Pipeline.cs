@@ -21,7 +21,14 @@ public sealed class Pipeline
     {
         ArgumentNullException.ThrowIfNull(presenters);
         _presenters = [.. presenters];
+        foreach (var presenter in _presenters)
+        {
+            Subscribe(presenter);
+        }
     }
+
+    /// <summary>Raised for every <see cref="StructuredMessage"/> a presenter in this pipeline decodes (presenters without one never raise it).</summary>
+    public event EventHandler<StructuredMessage>? MessageDecoded;
 
     public IReadOnlyList<IPresenter> Presenters
     {
@@ -51,6 +58,7 @@ public sealed class Pipeline
             if (!_presenters.Contains(presenter))
             {
                 _presenters.Add(presenter);
+                Subscribe(presenter);
             }
         }
     }
@@ -67,9 +75,22 @@ public sealed class Pipeline
         ArgumentNullException.ThrowIfNull(presenter);
         lock (_gate)
         {
-            _presenters.Remove(presenter);
+            if (_presenters.Remove(presenter) && presenter is IStructuredMessageSource source)
+            {
+                source.MessageDecoded -= OnMessageDecoded;
+            }
         }
     }
+
+    private void Subscribe(IPresenter presenter)
+    {
+        if (presenter is IStructuredMessageSource source)
+        {
+            source.MessageDecoded += OnMessageDecoded;
+        }
+    }
+
+    private void OnMessageDecoded(object? sender, StructuredMessage message) => MessageDecoded?.Invoke(this, message);
 
     public IReadOnlyList<PresenterOutput> Render(ReadOnlySequence<byte> data)
     {

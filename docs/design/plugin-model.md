@@ -73,7 +73,7 @@ Built 2026-10-03 (the loading mechanism; built-in devices still register by hand
   half-registered plugin can't leak in. Skips print to stderr in the console app.
 - Where: `plugins` next to the app, or `--plugins <folder>` (`CliOptions.Plugins`, also `DEVTERM_PLUGINS`). Loaded from
   `AddDevTermPresenters`, so playback sees presenters from plugins too.
-- Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
+- Second example, `src/DevTerm.Plugins.KeyValue`: a "keyvalue" presenter that decodes `name=value [unit]` lines into a `StructuredMessage` (try it on the loopback `STATUS?`). Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
   with `--plugins <folder> --presenter sample`.
 - Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing/trust, a plugin
   registry, moving the built-in decoders (NMEA, RadexOne, ...) into plugin folders, a Plugins menu or list in the TUI/WPF.

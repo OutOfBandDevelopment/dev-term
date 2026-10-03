@@ -25,6 +25,9 @@ services:
   ser2net:
     build: ./ser2net
     ports: ["127.0.0.1:2217:2217"]   # RFC 2217; bytes sent come back (virtual echo port)
+  loopback-device:
+    build: ./loopback-device
+    ports: ["127.0.0.1:7777:7777"]   # a scripted TCP device (hello, STATUS?, help); try `--transport tcp --host 127.0.0.1 --port 7777`
   # Not a test dependency: a local OpenTelemetry viewer for `dev-term --otlp true` (see docs/design/observability.md).
   aspire-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0

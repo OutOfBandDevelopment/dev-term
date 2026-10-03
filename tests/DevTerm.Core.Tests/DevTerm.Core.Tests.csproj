@@ -23,6 +23,8 @@
     <ProjectReference Include="..\DevTerm.Test.Utilities\DevTerm.Test.Utilities.csproj" />
     <!-- Built first (not referenced as code): the loader tests load its output from plugins/sample like a real plugin. -->
     <ProjectReference Include="..\..\src\DevTerm.Plugins.Sample\DevTerm.Plugins.Sample.csproj" ReferenceOutputAssembly="false" />
+    <!-- Referenced as code too: its presenter is the example for IStructuredMessageSource. -->
+    <ProjectReference Include="..\..\src\DevTerm.Plugins.KeyValue\DevTerm.Plugins.KeyValue.csproj" />
   </ItemGroup>
 
   <Target Name="CopySamplePlugin" AfterTargets="Build">

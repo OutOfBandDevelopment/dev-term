@@ -11,6 +11,7 @@ public static class LoopbackScript
         "  Send Stream: N, ascii  -> an N-character deterministic ASCII run",
         "  Send Events: N         -> N separate 'Event 1'..'Event N' lines",
         "  MEAS?                  -> the next simulated sensor sample (A=.. B=.. C=.. X=.. ...)",
+        "  STATUS?                -> a labelled reading with units (temp=21.50 C volts=3.30 V state=OK)",
         "  Samples: N             -> the next N simulated sensor samples, one per line",
         "  help or ?              -> this list",
     ];
@@ -24,12 +25,14 @@ public static class LoopbackScript
     public static IReadOnlyList<LoopbackRule> Default()
     {
         var nextSample = 0;
+        var nextStatus = 0;
         return
         [
             LoopbackRule.Literal("hello", "From Loopback test"),
             LoopbackRule.Match(@"^Send Stream: (\d+), (\w+)$", m => [LoopbackGenerators.AsciiStream(int.Parse(m.Groups[1].Value))]),
             LoopbackRule.Match(@"^Send Events: (\d+)$", m => LoopbackGenerators.Events(int.Parse(m.Groups[1].Value)), streaming: true),
             LoopbackRule.Match(@"^MEAS\?$", _ => [LoopbackGenerators.SensorSample(nextSample++)]),
+            LoopbackRule.Match(@"^STATUS\?$", _ => [LoopbackGenerators.Status(nextStatus++)]),
             LoopbackRule.Match(@"^Samples: (\d+)$", m =>
             {
                 var count = Math.Clamp(int.Parse(m.Groups[1].Value), 0, 1000);

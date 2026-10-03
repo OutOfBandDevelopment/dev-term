@@ -178,6 +178,21 @@ public sealed class LoopbackTransportTests
     }
 
     [TestMethod]
+    public async Task Status_RepliesWithLabelledValuesAndUnits_AndAdvancesPerQuery()
+    {
+        var transport = CreateTransport();
+        await transport.OpenAsync(TestContext.CancellationToken);
+        var reader = CreateReader(transport);
+
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("STATUS?\n"), TestContext.CancellationToken);
+        Assert.AreEqual("temp=21.50 C volts=3.30 V state=OK", await ReadLineAsync(reader));
+
+        await transport.WriteAsync(Encoding.ASCII.GetBytes("STATUS?\n"), TestContext.CancellationToken);
+        Assert.AreEqual("temp=21.75 C volts=3.29 V state=OK", await ReadLineAsync(reader));
+        Assert.EndsWith("state=WARN", LoopbackGenerators.Status(4));
+    }
+
+    [TestMethod]
     public async Task WriteAsync_WithHelpCommand_PushesTheCommandList()
     {
         var transport = CreateTransport();
