@@ -20,8 +20,9 @@ How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-d
 Choices only the project owner can make (scope, direction, priorities).
 
 - **Plugin isolation:** a signing/trust model for third-party plugins; plugins written in other languages. Out-of-process
-  hosting is wanted over a named pipe or localhost-only web service (2026-10-03); the shape is not designed. —
-  [plugin-model](docs/design/plugin-model.md), [architecture](docs/design/architecture.md)
+  hosting is wanted over a named pipe or localhost-only web service (2026-10-03); a read-only pipe prototype exists; read-write trust and discovery are open. —
+  [plugin-model](docs/design/plugin-model.md), [architecture](docs/design/architecture.md),
+  [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)
 - **Multi-session tabs:** per-tab versus shared `SendHistory` (a shared timecode across channels is wanted); per-tab
   logging and Stream Monitor; whether closing the last tab closes the window; keyboard shortcuts for New/Close/next/prev
   tab. — [multi-session-ui](docs/design/multi-session-ui.md)
