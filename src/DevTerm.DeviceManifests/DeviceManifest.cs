@@ -119,6 +119,12 @@ public sealed class OutboundCommand
     /// <summary>A question the control panel asks before sending this command (Yes/No), for one that is hard to undo; null sends at once.</summary>
     public string? ConfirmMessage { get; set; }
 
+    /// <summary>
+    /// A regular expression the reply line must match to answer this query. Without it the next line is the reply (FIFO);
+    /// with it, only a matching line is, and any other line is shown as unsolicited telemetry. Ignored unless the command is a query.
+    /// </summary>
+    public string? ReplyPattern { get; set; }
+
     /// <summary>The indicator id a query's reply publishes to; <c>{EffectiveId}.reply</c> when unset (the SCPI module's convention).</summary>
     public string? ReplyId { get; set; }
 

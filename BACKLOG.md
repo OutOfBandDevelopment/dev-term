@@ -66,7 +66,7 @@ the rest.
 
 ### Decided 2026-10-03 (owner interview), not started
 
-- **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **manifest-declared reply correlation** ([device-control-modules](docs/design/device-control-modules.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).
+- **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).
 
 ## Research (not backlog-ready)
 

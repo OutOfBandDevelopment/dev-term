@@ -300,6 +300,12 @@
               "null"
             ]
           },
+          "ReplyPattern": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "ReplyId": {
             "type": [
               "string",

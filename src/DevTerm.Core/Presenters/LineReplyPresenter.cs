@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -30,7 +29,11 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
     private const int _maxBufferLength = 4096;
 
     private readonly List<byte> _buffer = [];
-    private readonly ConcurrentQueue<string> _pendingReplyIds = new();
+    // A reply id nobody answers (a pattern that never matches) must not pile up forever.
+    private const int _maxPending = 64;
+
+    private readonly List<string> _pendingReplyIds = [];
+    private readonly Lock _pendingGate = new();
     private bool _pendingCr;
     private bool _pendingLf;
     private bool _terminatorless;
@@ -51,31 +54,30 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
         }
     }
 
-    public void QuerySent(string replyIndicatorId) => _pendingReplyIds.Enqueue(replyIndicatorId);
+    public void QuerySent(string replyIndicatorId)
+    {
+        lock (_pendingGate)
+        {
+            _pendingReplyIds.Add(replyIndicatorId);
+            if (_pendingReplyIds.Count > _maxPending)
+            {
+                _pendingReplyIds.RemoveAt(0);
+            }
+        }
+    }
 
     public void Cancel(string replyIndicatorId)
     {
         // Removes the most recently registered occurrence of this id - the one QuerySent just
         // added - rather than the oldest, since a caller cancels the query it just sent, not
         // necessarily an older one still legitimately pending ahead of it.
-        var items = _pendingReplyIds.ToArray();
-        for (var i = items.Length - 1; i >= 0; i--)
+        lock (_pendingGate)
         {
-            if (items[i] != replyIndicatorId)
+            var index = _pendingReplyIds.LastIndexOf(replyIndicatorId);
+            if (index >= 0)
             {
-                continue;
+                _pendingReplyIds.RemoveAt(index);
             }
-
-            _pendingReplyIds.Clear();
-            for (var j = 0; j < items.Length; j++)
-            {
-                if (j != i)
-                {
-                    _pendingReplyIds.Enqueue(items[j]);
-                }
-            }
-
-            return;
         }
     }
 
@@ -85,7 +87,10 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
         _buffer.Clear();
         _pendingCr = false;
         _pendingLf = false;
-        _pendingReplyIds.Clear();
+        lock (_pendingGate)
+        {
+            _pendingReplyIds.Clear();
+        }
     }
 
     /// <summary>Whether the device's replies will ever contain a CR/LF terminator at all — an empty <paramref name="terminator"/> switches to one-line-per-read mode (see remarks).</summary>
@@ -148,6 +153,45 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
         return RendersLines ? lines : [];
     }
 
+    /// <summary>
+    /// Whether <paramref name="line"/> answers the pending query <paramref name="replyId"/>: <see cref="ReplyMatch.NextLine"/>
+    /// (no pattern: whatever line comes next, the FIFO default), <see cref="ReplyMatch.Matches"/> or <see cref="ReplyMatch.Rejects"/>.
+    /// A line goes to the oldest query it matches, else the oldest <c>NextLine</c> one, else it is unsolicited.
+    /// </summary>
+    protected virtual ReplyMatch Classify(string replyId, string line) => ReplyMatch.NextLine;
+
+    private bool TryTakePending(string line, out string replyId)
+    {
+        lock (_pendingGate)
+        {
+            var index = -1;
+            for (var i = 0; i < _pendingReplyIds.Count; i++)
+            {
+                var match = Classify(_pendingReplyIds[i], line);
+                if (match == ReplyMatch.Matches)
+                {
+                    index = i;
+                    break;
+                }
+
+                if (match == ReplyMatch.NextLine && index < 0)
+                {
+                    index = i;
+                }
+            }
+
+            if (index < 0)
+            {
+                replyId = string.Empty;
+                return false;
+            }
+
+            replyId = _pendingReplyIds[index];
+            _pendingReplyIds.RemoveAt(index);
+            return true;
+        }
+    }
+
     /// <summary>Adds any values <paramref name="line"/> carries beyond its correlated reply (none by default).</summary>
     protected virtual void AddLineValues(string line, Dictionary<string, string> values)
     {
@@ -165,7 +209,7 @@ public abstract class LineReplyPresenter : IPresenter, IStructuredPresenter, IRe
         }
 
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (_pendingReplyIds.TryDequeue(out var replyId))
+        if (TryTakePending(line, out var replyId))
         {
             values[replyId] = line;
         }

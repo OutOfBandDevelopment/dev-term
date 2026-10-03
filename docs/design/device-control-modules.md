@@ -114,7 +114,7 @@ For simple query/response devices (most bench gear — a command string in, a fo
   and shown via an `IndicatorControl` — no reply-pattern matching needed since SCPI replies are
   just the next line, not something requiring recognition. This doesn't generalize to a device
   whose replies aren't simple ordered lines (interleaved/unsolicited binary telemetry, for one) —
-  that case is **Decided 2026-10-03:** each command declares in its manifest the reply pattern or frame type that answers it; anything else is shown as unsolicited telemetry. Not built yet. A related but distinct question — whether a command can also declare
+  that case is **Decided 2026-10-03:** each command declares in its manifest the reply pattern or frame type that answers it; anything else is shown as unsolicited telemetry. **Built 2026-10-03** as `OutboundCommand.ReplyPattern` (a regex): a line goes to the oldest pending query whose pattern matches it, else the oldest query with no pattern (the FIFO default), else it is unsolicited (response patterns still see it). A frame-type reply is not built. A related but distinct question — whether a command can also declare
   its reply's *content type* (plain text vs. HPGL/PostScript/PCL/a binary image), so a front end
   can render or export it properly instead of just showing text/hex — is **built for SCPI commands
   (2026-09-25)** as `ScpiCommandDefinition.ExpectedResponseFormat`, consumed by the Stream Monitor;
