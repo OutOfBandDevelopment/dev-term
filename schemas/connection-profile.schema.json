@@ -1,0 +1,290 @@
+{
+  "type": [
+    "object",
+    "null"
+  ],
+  "properties": {
+    "Transport": {
+      "type": "string"
+    },
+    "Description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ListPorts": {
+      "type": "boolean"
+    },
+    "Tui": {
+      "type": "boolean"
+    },
+    "Cli": {
+      "type": "boolean"
+    },
+    "Presenter": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "EffectivePresenters": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "Parser": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EffectiveParser": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "LineEnding": {
+      "type": "integer"
+    },
+    "AsciiMaxLineLength": {
+      "type": "integer"
+    },
+    "Port": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Baud": {
+      "type": "integer"
+    },
+    "DataBits": {
+      "type": "integer"
+    },
+    "Parity": {
+      "type": "integer"
+    },
+    "StopBits": {
+      "type": "integer"
+    },
+    "Handshake": {
+      "type": "integer"
+    },
+    "WriteTimeoutMs": {
+      "type": "integer"
+    },
+    "WriteByteDelayMs": {
+      "type": "integer"
+    },
+    "ReadTimeoutMs": {
+      "type": "integer"
+    },
+    "Dtr": {
+      "type": "boolean"
+    },
+    "Rts": {
+      "type": "boolean"
+    },
+    "LoopbackSampleIntervalMs": {
+      "type": "integer"
+    },
+    "Host": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Listen": {
+      "type": "boolean"
+    },
+    "Subscribe": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Publish": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Username": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "VendorId": {
+      "type": "integer"
+    },
+    "ProductId": {
+      "type": "integer"
+    },
+    "SerialNumber": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "DevicePath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ListHidDevices": {
+      "type": "boolean"
+    },
+    "ListUsbtmcDevices": {
+      "type": "boolean"
+    },
+    "BleDeviceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "BleServiceUuid": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "BleWriteCharacteristicUuid": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "BleNotifyCharacteristicUuid": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ListBleDevices": {
+      "type": "boolean"
+    },
+    "ListBleCharacteristics": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ManifestName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ScpiProfile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ScpiAutoDetectTimeoutMs": {
+      "type": "integer"
+    },
+    "ExportDirectory": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EffectiveExportDirectory": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Log": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Playback": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "PlaybackSpeed": {
+      "type": "number"
+    },
+    "StreamConvertMode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "StreamConvertExternalToolPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "StreamConvertExternalToolArguments": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "StreamConvertDpi": {
+      "type": "integer"
+    },
+    "StreamConvertOutputExtension": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "StreamConvertTools": {
+      "type": "array",
+      "items": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "Name": {
+            "type": "string"
+          },
+          "Path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "Arguments": {
+            "type": "string"
+          },
+          "Formats": {
+            "type": "string"
+          },
+          "OutputExtension": {
+            "type": "string"
+          },
+          "Dpi": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
