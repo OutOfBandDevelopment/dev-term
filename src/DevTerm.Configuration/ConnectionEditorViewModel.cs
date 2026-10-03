@@ -66,6 +66,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private string _readTimeoutMs = "1000";
     private string _asciiMaxLineLength = DevTerm.Presenters.Text.AsciiPresenter.DefaultMaxLineLength.ToString(CultureInfo.InvariantCulture);
     private string _scpiProfile = string.Empty;
+    private string _scpiAutoDetectTimeoutMs = CliOptions.DefaultScpiAutoDetectTimeoutMs.ToString(CultureInfo.InvariantCulture);
+    private string _manifestName = string.Empty;
     private string _host = string.Empty;
     private string _tcpPort = "0";
     private bool _listen;
@@ -769,6 +771,18 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [FormField(Order = 1, OptionsFrom = nameof(ScpiProfileOptions), VisibleWhen = nameof(IsScpiPresenterSelected))]
     public string ScpiProfile { get => _scpiProfile; set => SetField(ref _scpiProfile, value); }
 
+    /// <summary>See <see cref="CliOptions.ScpiAutoDetectTimeoutMs"/> (100 to 60000). Only meaningful with the SCPI presenter, which is the only user of auto-detect.</summary>
+    [Category("Presentation")]
+    [DisplayName("SCPI auto-detect timeout (ms)")]
+    [FormField(Order = 2, ValueKind = ValueKind.Integer, Minimum = 100, Maximum = 60000, VisibleWhen = nameof(IsScpiPresenterSelected))]
+    public string ScpiAutoDetectTimeoutMs { get => _scpiAutoDetectTimeoutMs; set => SetField(ref _scpiAutoDetectTimeoutMs, value); }
+
+    /// <summary>See <see cref="CliOptions.ManifestName"/>: a manifest name, not a path. Blank means none.</summary>
+    [Category("General")]
+    [DisplayName("Device manifest")]
+    [FormField(Order = 2)]
+    public string ManifestName { get => _manifestName; set => SetField(ref _manifestName, value); }
+
     /// <summary>
     /// Whether the "scpi" presenter is currently checked in <see cref="PresenterChoices"/> — gates a
     /// front end's SCPI-profile row the same way <see cref="IsSerialTransport"/>/etc. gate their own
@@ -1284,6 +1298,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         WriteByteDelayMs = options.WriteByteDelayMs.ToString(CultureInfo.InvariantCulture);
         AsciiMaxLineLength = options.AsciiMaxLineLength.ToString(CultureInfo.InvariantCulture);
         ScpiProfile = options.ScpiProfile ?? string.Empty;
+        ScpiAutoDetectTimeoutMs = options.ScpiAutoDetectTimeoutMs.ToString(CultureInfo.InvariantCulture);
+        ManifestName = options.ManifestName ?? string.Empty;
         Host = options.Host ?? string.Empty;
         TcpPort = options.Port ?? "0";
         Listen = options.Listen;
@@ -1357,8 +1373,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
             // Settings this form still doesn't expose, carried over from whatever was loaded rather
             // than reset to CliOptions' defaults.
-            ManifestName = _loadedOptions.ManifestName,
-            ScpiAutoDetectTimeoutMs = _loadedOptions.ScpiAutoDetectTimeoutMs,
+            ManifestName = ManifestName.Trim() is { Length: > 0 } mn ? mn : null,
             SendIntervalMs = _loadedOptions.SendIntervalMs,
             ReadIntervalMs = _loadedOptions.ReadIntervalMs,
             ConnectTimeoutMs = _loadedOptions.ConnectTimeoutMs,
@@ -1434,6 +1449,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             options.AsciiMaxLineLength = asciiMaxLineLength;
         }
 
+        if (int.TryParse(ScpiAutoDetectTimeoutMs, out var scpiAutoDetectTimeoutMs))
+        {
+            options.ScpiAutoDetectTimeoutMs = scpiAutoDetectTimeoutMs;
+        }
+
         if (int.TryParse(VendorId, out var vendorId))
         {
             options.VendorId = vendorId;
@@ -1496,6 +1516,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
         if (!int.TryParse(WriteByteDelayMs, out _))
         {
             return ValidateOptionsResult.Fail($"'{WriteByteDelayMs}' isn't a valid write byte delay.");
+        }
+
+        if (!int.TryParse(ScpiAutoDetectTimeoutMs, out _))
+        {
+            return ValidateOptionsResult.Fail($"'{ScpiAutoDetectTimeoutMs}' isn't a valid SCPI auto-detect timeout.");
         }
 
         if (!int.TryParse(AsciiMaxLineLength, out _))

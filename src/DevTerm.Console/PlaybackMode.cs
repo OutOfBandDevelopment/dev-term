@@ -105,6 +105,8 @@ public static class PlaybackMode
             Width = 28,
             Text = string.Join(", ", controller.Presenters),
         };
+        var jumpLabel = new Label { X = Pos.Right(presentersField) + 2, Y = 1, Text = "Jump to:" };
+        var jumpField = new TextField { X = Pos.Right(jumpLabel) + 1, Y = 1, Width = 14 };
         var availableLabel = new Label
         {
             X = 0,
@@ -259,8 +261,14 @@ public static class PlaybackMode
             e.Handled = true;
         };
 
+        jumpField.Accepting += (_, e) =>
+        {
+            Do(() => controller.JumpTo(jumpField.Text));
+            e.Handled = true;
+        };
+
         window.Add(
-            description, presentersLabel, presentersField, availableLabel, output, positionLabel,
+            description, presentersLabel, presentersField, jumpLabel, jumpField, availableLabel, output, positionLabel,
             rewindButton, stepButton, playButton, forwardButton, endButton, slowerButton, fasterButton,
             markInButton, markOutButton, saveButton, noteButton, closeButton);
 
@@ -279,7 +287,7 @@ public static class PlaybackMode
             }
         }
 
-        return new PlaybackWindowParts(window, controller, output, positionLabel, presentersField, playButton, Pump, Do);
+        return new PlaybackWindowParts(window, controller, output, positionLabel, presentersField, jumpField, playButton, Pump, Do);
     }
 
     /// <summary>A small modal asking for one line of text; <see langword="null"/> if cancelled.</summary>
@@ -322,4 +330,4 @@ public static class PlaybackMode
 }
 
 /// <summary>The Playback window's controls, for tests: <see cref="Pump"/> is one timer tick; <see cref="Do"/> runs an action and renders its batch, exactly as a button does.</summary>
-internal sealed record PlaybackWindowParts(Window Window, PlaybackController Controller, Editor Output, Label PositionLabel, TextField PresentersField, Button PlayButton, Action Pump, Action<Func<PlaybackBatch>> Do);
+internal sealed record PlaybackWindowParts(Window Window, PlaybackController Controller, Editor Output, Label PositionLabel, TextField PresentersField, TextField JumpField, Button PlayButton, Action Pump, Action<Func<PlaybackBatch>> Do);

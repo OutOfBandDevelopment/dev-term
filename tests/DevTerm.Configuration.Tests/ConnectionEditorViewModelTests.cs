@@ -1297,6 +1297,35 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void ManifestNameAndScpiAutoDetectTimeout_RoundTripThroughTheFields()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(
+                new ConnectionProfileStore(directory),
+                new CliOptions { ManifestName = "rigol-dg1062z", ScpiAutoDetectTimeoutMs = 5000 });
+
+            Assert.AreEqual("rigol-dg1062z", vm.ManifestName);
+            Assert.AreEqual("5000", vm.ScpiAutoDetectTimeoutMs);
+
+            vm.ManifestName = "  other  ";
+            vm.ScpiAutoDetectTimeoutMs = "1500";
+            var options = vm.BuildOptions();
+
+            Assert.AreEqual("other", options.ManifestName);
+            Assert.AreEqual(1500, options.ScpiAutoDetectTimeoutMs);
+
+            vm.ManifestName = "   ";
+            Assert.IsNull(vm.BuildOptions().ManifestName, "A blank manifest name means none, not an empty string.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void LoadIntoFields_BlanksScpiProfile_WhenTheProfileHasNoneSaved()
     {
         var directory = CreateTempDirectory();

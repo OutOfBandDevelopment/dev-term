@@ -23,7 +23,7 @@ group", instead of one per front end. See
 
 | Part | Generated or hand-built | Why |
 |---|---|---|
-| Transport, Description, every Serial/TCP/USB Device/Loopback field, the "not found" hints, the loopback note, Presenters, SCPI profile, Send as, Line ending, ASCII max line length | **Generated** (`FormDefinition`) | Plain fields bound to view-model properties — exactly what the form vocabulary covers |
+| Transport, Description, every Serial/TCP/USB Device/Loopback field, the "not found" hints, the loopback note, Device manifest, Presenters, SCPI profile, SCPI auto-detect timeout, Send as, Line ending, ASCII max line length | **Generated** (`FormDefinition`) | Plain fields bound to view-model properties — exactly what the form vocabulary covers |
 | The "Detected ports" / "Detected HID devices" / "Detected USBTMC devices" rows | **Generated row, hand-built widget** (`TuiFormOptions`/`WpfFormOptions.CustomWidgets`) | The form places, labels and shows/hides the row with its transport; the widget needs the view model's rich device objects (a description-bearing `Display` over a short `Name`, a live-filtered list whose selection survives filtering), which a `ChoiceControl`'s plain option strings can't carry. WPF: the same bound `ComboBox`es as before; TUI: the same `Detect...` buttons and pick list |
 | Saved-profiles list and its buttons, Save as profile, the import/export path and its buttons, Connect/Close/Quit | **Hand-built** | Commands and list management (multi-select, double-click, native file dialogs), not fields of a model |
 
@@ -44,6 +44,7 @@ Shown in two situations:
 |---|---|---|---|---|
 | Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`rfc2217`/`vxi11`/`mqtt`/`amqp`/`stomp`/`loopback` | `serial` | Must be one of the eleven | Selecting a value shows only that transport's field group (see States); `rfc2217` reuses the Serial and TCP groups together rather than a group of its own — see States |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
+| Device manifest | free text (a manifest name, not a path) | empty | none | Names a manifest under `~/.dev-term/manifests/` or the app's `./manifests/` to load with the connection; blank means none (`CliOptions.ManifestName`) |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Declared `Integer`, at least 1: a value that isn't shows an inline message under/next to the field (`'96x' is not a whole number.`) while typing. The text is still kept as typed; on Connect/Save, `int.TryParse` ignores an unparseable value (keeps the previous one), as before | |
 | Data bits (serial) | integer, typed as text | `8` | Declared `Integer`, 5 to 8 (same inline message); same parse behavior as Baud | |
@@ -70,6 +71,7 @@ Shown in two situations:
 | Show as hex (hid, usbtmc) | boolean | off (decimal) | n/a | Toggles Vendor ID/Product ID's display and typed-input format between decimal and 4-digit uppercase hex (no `0x` prefix, matching `--listhiddevices`/`--listusbtmcdevices`'s own formatting) — a display preference only, not part of a saved profile, and doesn't mark the editor dirty by itself |
 | Presenters | any non-empty subset of `ascii`/`utf8`/`hex`/`decimal`/`octal`/`binary`/`k8055`/`busylight`/`scpi`/`radexone`/`zoomh4n`/`de5000` (a row of checkboxes, a `ChoiceStyle.CheckList` bound to `PresentersText`, the checked names comma-joined) | `hex` | At least one must be checked — "Select at least one presenter." (n/a otherwise: fixed set — the six generic text presenters `AddTextPresenters` registers, plus one per device module that registers its own `IPresenter`) | **Display only**: every checked presenter renders each incoming chunk, side by side, each output line tagged `[name]`. Stored as `CliOptions.Presenter`, a JSON array in a saved profile (`"Presenter": ["ascii", "hex"]`); a profile saved before this became a list (`"Presenter": "hex"`) still loads, as does the command-line/environment form `--presenter ascii,hex` — see `DevTermConfiguration.Bind`. Nothing here affects what is *sent* — see Send as. `ConnectionEditorViewModel.PresenterOptions` is a hardcoded list, not resolved from the live `PresenterCatalog` (see that property's doc comment) — a new device module's presenter must be added there by hand or it silently won't appear in this picker, as happened with `radexone`/`zoomh4n`/`de5000` until 2026-09-25 |
 | SCPI profile | one of the SCPI profile choices (Auto-detect, Generic, every bundled instrument), or empty | empty (always ask) | n/a | Shown only while the `scpi` presenter is checked (`IsScpiPresenterSelected`). Preselects the Device > SCPI Instrument... choice |
+| SCPI auto-detect timeout (ms) | whole number | `3000` | 100 to 60000 | Shown only while the `scpi` presenter is checked; how long auto-detect waits for `*IDN?` (`CliOptions.ScpiAutoDetectTimeoutMs`) |
 | Send as | one of the presenters above | the first checked presenter (a profile with no `Parser`, i.e. one saved before this existed, sends as its first presenter — what it always did) | n/a (fixed set) | The **parser**: which presenter's input encoding (`IPresenterInput.Parse`) turns a typed line into bytes. Independent of Presenters. Stored as `CliOptions.Parser` (`--parser`). This is only the *starting* value: the main windows can switch it per typed line — see Per-front-end notes |
 | Line ending | one of `None`/`Cr`/`Lf`/`CrLf` | `None` | n/a (fixed set) | Appended to each typed line before sending |
 | ASCII max line length | integer, typed as text | `4096` (`AsciiPresenter.DefaultMaxLineLength`) | Declared `Integer`, at least 0 (same inline-message behavior as Baud) | How long a line the ASCII presenter buffers before flushing anyway, in case a terminator never arrives; `0` means unbounded |
@@ -424,11 +426,9 @@ Shown in two situations:
 
 ## Open items
 
-- The generated form shows only the fields the view model declares; the saved-profile settings the
-  editor still never exposes (`ManifestName`, `ScpiAutoDetectTimeoutMs`) are still carried over
-  untouched rather than shown. **Decided 2026-10-03:** show both as fields. Not built yet. Exposing them is now a matter of annotating view-model properties for
-  them (the form would render them with no front-end change), not of hand-building two more field
-  groups.
+- The generated form shows only the fields the view model declares. Every saved-profile setting the editor shows is now
+  carried through `BuildOptions`; the settings still never exposed (`SendIntervalMs`, `ReadIntervalMs`, `ConnectTimeoutMs`,
+  the stream-conversion settings) are carried over untouched rather than shown.
 
 Everything requested 2026-09-16 has landed: the presenter picker and per-input-line parser on
 2026-09-18, serial-port descriptions on Linux/macOS on 2026-09-25, BLE's field group on 2026-09-25,

@@ -362,8 +362,10 @@ any command not in the curated list.
 - **Expand/collapse state lasts only for the process** — it isn't saved across restarts (same as
   the last picked colors).
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
-  only way in. **Decided 2026-10-03:** offer, don't force: connecting with such a profile shows a hint or button to open the
-  panel (remembered per profile once chosen); it never opens on its own. Not built yet.
+  only way in. Since 2026-10-03 connecting with such a profile prints a status line pointing at
+  Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.
+  **Still open:** the hint repeats on every connect; "remembered per profile once chosen" (decided
+  2026-10-03) isn't built.
 - **Charts have no hover readout or table view** (**Decided 2026-10-03:** build the hover readout, a table view and history export; not built yet) — the WPF charts show the latest values in their
   legend/labels but no per-point tooltip, and neither front end exports the history.
 - **Chart sizes are fixed per front end** (not declared in the model) — fine for the controls so

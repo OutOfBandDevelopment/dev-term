@@ -58,6 +58,45 @@ public sealed class PlaybackControllerTests
     }
 
     [TestMethod]
+    public void JumpTo_ARecordNumber_SeeksToThatPosition_AndClampsPastTheEnd()
+    {
+        var controller = Open();
+
+        controller.JumpTo("4");
+        Assert.AreEqual(4, controller.Engine.Position);
+
+        controller.JumpTo("99");
+        Assert.AreEqual(6, controller.Engine.Position);
+
+        var back = controller.JumpTo("1");
+        Assert.IsTrue(back.Reset, "A backward jump replays from the start.");
+        Assert.AreEqual(1, controller.Engine.Position);
+    }
+
+    [TestMethod]
+    public void JumpTo_ATime_PlaysEveryRecordAtOrBeforeIt()
+    {
+        var controller = Open();
+
+        controller.JumpTo("0:02.5");
+        Assert.AreEqual(3, controller.Engine.Position, "Records at 0, 1 and 2 seconds are at or before 2.5 s.");
+
+        controller.JumpTo("0:05");
+        Assert.AreEqual(6, controller.Engine.Position);
+    }
+
+    [TestMethod]
+    public void JumpTo_Gibberish_ThrowsAFormatExceptionNamingTheText()
+    {
+        var controller = Open();
+
+        var ex = Assert.Throws<FormatException>(() => controller.JumpTo("soon"));
+
+        Assert.Contains("'soon'", ex.Message);
+        Assert.AreEqual(0, controller.Engine.Position, "A rejected jump doesn't move.");
+    }
+
+    [TestMethod]
     public void SetPresenters_IgnoresUnknownNames_AndReplaysThroughTheNewOnes()
     {
         var controller = Open();

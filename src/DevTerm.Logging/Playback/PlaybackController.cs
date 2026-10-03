@@ -133,6 +133,17 @@ public sealed class PlaybackController
 
     public PlaybackBatch SeekTo(int position) => Engine.SeekTo(position);
 
+    /// <summary>Jumps to what <see cref="PlaybackText.TryParseJump"/> accepts: a record position or a log time. Throws <see cref="FormatException"/> for text it can't read.</summary>
+    public PlaybackBatch JumpTo(string text)
+    {
+        if (!PlaybackText.TryParseJump(text, out var record, out var time))
+        {
+            throw new FormatException($"'{text}' isn't a record number (e.g. 120) or a time (e.g. 1:23.5).");
+        }
+
+        return record is { } position ? Engine.SeekTo(position) : Engine.SeekToTime(time!.Value);
+    }
+
     public void SetSpeed(PlaybackSpeed speed)
     {
         ArgumentNullException.ThrowIfNull(speed);

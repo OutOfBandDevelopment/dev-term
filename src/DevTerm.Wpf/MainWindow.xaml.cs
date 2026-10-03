@@ -113,6 +113,10 @@ public partial class MainWindow : Window
         {
             AppendOutput(tab, manifestWarning, OutputKind.Status);
         }
+        else if (ManifestPanelHint.For(cliOptions) is { } panelHint)
+        {
+            AppendOutput(tab, panelHint, OutputKind.Status);
+        }
 
         // View > Theme, and any problems loading themes/preferences at startup - MainWindow.Theme.cs.
         BuildThemeMenu();
@@ -127,7 +131,9 @@ public partial class MainWindow : Window
         // handler too.
         PreviewKeyDown += (_, e) =>
         {
-            if (HandleGlobalKeyDown(e.Key, Keyboard.Modifiers))
+            // With Alt held WPF reports Key.System and puts the real key in SystemKey.
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (HandleGlobalKeyDown(key, Keyboard.Modifiers))
             {
                 e.Handled = true;
             }
@@ -170,6 +176,11 @@ public partial class MainWindow : Window
         else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.Tab)
         {
             SelectAdjacentTab(-1);
+            return true;
+        }
+        else if (modifiers == ModifierKeys.Alt && key is Key.Left or Key.Right)
+        {
+            SelectAdjacentTab(key == Key.Right ? 1 : -1);
             return true;
         }
 
@@ -1268,6 +1279,10 @@ public partial class MainWindow : Window
         if (ManifestNameWarning.For(newOptions) is { } manifestWarning)
         {
             AppendOutput(tab, manifestWarning, OutputKind.Status);
+        }
+        else if (ManifestPanelHint.For(newOptions) is { } panelHint)
+        {
+            AppendOutput(tab, panelHint, OutputKind.Status);
         }
 
         RefreshConnectionUi(tab, ConnectionState.Opening);

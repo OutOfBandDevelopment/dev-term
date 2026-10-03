@@ -116,12 +116,14 @@ points:
   `SwitchProfileAsync` local function inside `BuildWindow` exposed via `TuiWindowParts`), no
   restart — see [`docs/design/connection-profiles.md`](../design/connection-profiles.md).
 - **Session-tab keyboard shortcuts** — Ctrl+T (File > New Session...), Ctrl+W (File > Close Session,
-  the active tab), Ctrl+Tab / Ctrl+Shift+Tab (next/previous tab, wrapping; a no-op below two tabs) —
+  the active tab), Ctrl+Tab / Ctrl+Shift+Tab, or Alt+Right / Alt+Left (next/previous tab, wrapping; a no-op below two tabs) —
   wired via a dedicated handler on the global `Application.KeyDown` event (same reasoning as Ctrl+Q
   above), gated on `app.TopRunnableView == window` so a nested dialog (New Session's own
   `ConfigureMode`, a control panel) gets the keys instead while one is open.
 
 ## Open items
 
-- **The "Send as" parser menu is built once, not rebuilt per tab.** Switching tabs does not change
-  which parser is selected for the newly active tab's `Send:` field. **Decided 2026-10-03:** the menu follows the active tab (its presenters and chosen parser), as WPF does. Not built yet.
+- **The "Send as" item set is built once, from the startup tab, not rebuilt per tab.** Since 2026-10-03 the
+  items follow the active tab: `●` marks its chosen parser and formats its presenters can't encode are
+  greyed out. A tab whose catalog offers a format the startup tab lacked has no item for it yet (Terminal.Gui
+  has no live item replacement for a `MenuBarItem`). In practice every tab uses the same installed set.

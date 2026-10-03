@@ -169,12 +169,18 @@ it doesn't throw.
 
 ## Open questions
 
-- **Why the batch/program-mode write had no visible effect** despite matching the source trace's
+- **Update 2026-10-03 (user-observed, `docs/test/2026-10-03-19-30-00.md`):** the batch write works when step 0 begins
+  with `0x10` (V1/V2 went green); the same frame with `0x00` there did nothing. The multi-step sequences, the jump/Repeat
+  semantics and the `06 04 55` footer bytes are unverified, and the 0-100 versus 0-255 colour range is open.
+- **Why the batch/program-mode write had no visible effect** (resolved above for a
+  single step; the original text follows) despite matching the source trace's
   own checksummed example byte-for-byte and not erroring — plausible explanations: the batch
   format needs a separate "start sequence" trigger the trace didn't capture, the six-steps-plus-gap
   layout assumed here is wrong, or this device/firmware revision simply doesn't support that mode
   the way the source's trace (captured from a possibly different unit) suggests. Needs more
   real-device experimentation before trusting this mode for anything.
+- **Update 2026-10-03:** the user's observations of 10/10, 1/1, 5/20 and 50/50 are consistent with 100 ms units
+  (`docs/test/2026-10-03-19-00-00.md`); untimed, so still to be confirmed with a stopwatch or video.
 - On/Off time units aren't documented in the source — needs a real device to measure against
   (confirmed only that `On=0x01, Off=0x00` produces a solid, non-blinking color).
 - Whether the ASCII poll reply's fields (what looks like two concatenated strings, "PLENOM..." and

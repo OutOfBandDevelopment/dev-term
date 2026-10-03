@@ -3,6 +3,7 @@ using DevTerm.Configuration;
 using DevTerm.Logging;
 using DevTerm.Logging.Playback;
 using DevTerm.Test.Utilities;
+using Terminal.Gui.Input;
 
 namespace DevTerm.Console.Tests;
 
@@ -143,6 +144,23 @@ public sealed class PlaybackModeTests
             Assert.AreEqual("hex, ascii", parts.PresentersField.Text);
             Assert.Contains("[hex] 49442054454B2F323233302C", parts.Output.Text);
             Assert.StartsWith("Paused  4/8", parts.PositionLabel.Text);
+        });
+    }
+
+    [TestMethod]
+    public void JumpField_AcceptingARecordNumber_SeeksThere_AndATimeJumpPlaysUpToIt()
+    {
+        var controller = new PlaybackPresenters().Open(WriteSampleLog(_directory), new ManualTimeProvider());
+
+        RunWindow(controller, parts =>
+        {
+            parts.JumpField.Text = "4";
+            parts.JumpField.InvokeCommand(Command.Accept);
+
+            Assert.StartsWith("Paused  4/8", parts.PositionLabel.Text);
+
+            parts.Do(() => controller.JumpTo("0:00.000"));
+            Assert.StartsWith("Paused  1/8", parts.PositionLabel.Text, "A time jump plays every record at or before it.");
         });
     }
 
