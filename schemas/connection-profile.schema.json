@@ -240,6 +240,18 @@
         "null"
       ]
     },
+    "ListCaptures": {
+      "type": "integer"
+    },
+    "ExportCaptures": {
+      "type": "integer"
+    },
+    "ExportTo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ListPlugins": {
       "type": "boolean"
     },

@@ -324,6 +324,17 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? Attach { get; set; }
 
+    /// <summary>Print the newest N saved Stream Monitor captures (the exports folder) and exit.</summary>
+    [Category("Mode")]
+    public int ListCaptures { get; set; }
+
+    /// <summary>Copy the newest N saved Stream Monitor captures into the folder named by <see cref="ExportTo"/> and exit.</summary>
+    [Category("Mode")]
+    public int ExportCaptures { get; set; }
+
+    /// <summary>The destination folder for <see cref="ExportCaptures"/>.</summary>
+    public string? ExportTo { get; set; }
+
     /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
     [Category("Mode")]
     public bool ListPlugins { get; set; }

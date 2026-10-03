@@ -106,6 +106,43 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
     return 0;
 }
 
+if (earlyConfig.GetValue<int>(nameof(CliOptions.ListCaptures)) > 0 || earlyConfig.GetValue<int>(nameof(CliOptions.ExportCaptures)) > 0)
+{
+    using var captureMonitor = new StreamMonitor();
+    captureMonitor.LoadFromDisk();
+    var exportCount = earlyConfig.GetValue<int>(nameof(CliOptions.ExportCaptures));
+    var chosen = CaptureExport.Newest(captureMonitor.Captures, exportCount > 0 ? exportCount : earlyConfig.GetValue<int>(nameof(CliOptions.ListCaptures)));
+    if (exportCount > 0)
+    {
+        if (earlyConfig[nameof(CliOptions.ExportTo)] is not { Length: > 0 } exportTo)
+        {
+            Console.Error.WriteLine("--exportcaptures needs --exportto <folder>.");
+            return 1;
+        }
+
+        var written = CaptureExport.CopyTo(chosen, exportTo);
+        foreach (var path in written)
+        {
+            Console.WriteLine(path);
+        }
+
+        Console.Error.WriteLine($"Copied {written.Count} of {chosen.Count} capture(s) to {exportTo}.");
+        return 0;
+    }
+
+    foreach (var capture in chosen)
+    {
+        Console.WriteLine($"{capture.LocalStartedAt:yyyy-MM-dd HH:mm:ss}  {capture.SavedPath}");
+    }
+
+    if (chosen.Count == 0)
+    {
+        Console.Error.WriteLine("No saved captures found.");
+    }
+
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
 {
     foreach (var device in LxiDeviceScanner.Scan())

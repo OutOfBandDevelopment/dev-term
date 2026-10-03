@@ -182,7 +182,6 @@ What was needed to close this out. The unbuilt items moved to `BACKLOG.md`.
 - Not built, now in `BACKLOG.md`:
   - Direct in-window preview of PostScript and PCL (needs the rendering presenter, `presenters.md` section 3)
   - SVG drawing in the TUI (it only lists the converted file)
-  - CLI-mode "export last N captures" (Stream Monitor has no CLI support)
 - [x] Move the unbuilt items above into `BACKLOG.md`, then mark the proposal complete
 
 ## Status
@@ -250,4 +249,4 @@ Verified against a real Tektronix 2230 HP-GL plot converted to SVG and drawn, an
 (`RealGhostscriptConversionTests`). The web-service mechanism was removed. Detail in `docs/changes/2026-10-02.md`.
 
 **Not built** (tracked in `BACKLOG.md`): direct in-window preview of PostScript and PCL (needs the rendering presenter),
-SVG drawing in the TUI, and a CLI "export last N captures".
+and SVG drawing in the TUI. (The CLI "export last N captures" was built 2026-10-03 as `--listcaptures`/`--exportcaptures`.)

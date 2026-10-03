@@ -8,6 +8,10 @@ one as a file, automatically, the moment it has arrived.
 The exact behavior (what's detected, how a capture ends, file naming) is in
 [`docs/specs/stream-monitor.md`](../specs/stream-monitor.md).
 
+## Without the window: list or copy captures from a script
+
+`dev-term --listcaptures 5` prints the five newest saved captures; `dev-term --exportcaptures 5 --exportto ./out` copies them into `./out` (an existing file there is never overwritten; a numeric suffix is added). Neither connects to a device.
+
 ## Turning it on
 
 Connect as usual, then pick **Device > Stream Monitor...**. Opening it starts monitoring the current

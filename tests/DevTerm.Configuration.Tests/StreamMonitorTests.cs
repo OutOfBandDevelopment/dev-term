@@ -357,4 +357,42 @@ public sealed class StreamMonitorTests
         Assert.HasCount(expectedCaptures, monitor.Captures);
         Assert.AreEqual(auto, File.Exists(Path.ChangeExtension(plot.SavedPath!, "svg")));
     }
+
+    [TestMethod]
+    public async Task CaptureExport_Newest_TakesTheLastN_OldestFirst()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        foreach (var day in new[] { "01", "02", "03" })
+        {
+            File.WriteAllText(Path.Combine(_exportDirectory, $"scope_202601{day}-100000.png"), day);
+        }
+
+        monitor.LoadFromDisk();
+        var newest = CaptureExport.Newest(monitor.Captures, 2);
+
+        CollectionAssert.AreEqual(new[] { "scope_20260102-100000.png", "scope_20260103-100000.png" }, newest.Select(c => Path.GetFileName(c.SavedPath)).ToArray());
+        Assert.AreEqual(0, CaptureExport.Newest(monitor.Captures, 0).Count);
+    }
+
+    [TestMethod]
+    public async Task CaptureExport_CopyTo_CopiesFiles_AndNeverOverwrites()
+    {
+        await using var live = new LiveSession();
+        using var monitor = new StreamMonitor();
+        monitor.SetSession(live.Session, "scope", _exportDirectory);
+        Directory.CreateDirectory(_exportDirectory);
+        File.WriteAllText(Path.Combine(_exportDirectory, "scope_20260101-100000.png"), "x");
+        monitor.LoadFromDisk();
+        var target = Path.Combine(Path.GetTempPath(), "devterm-export-out-" + Guid.NewGuid().ToString("N"));
+
+        var first = CaptureExport.CopyTo(monitor.Captures, target);
+        var second = CaptureExport.CopyTo(monitor.Captures, target);
+
+        Assert.AreEqual(1, first.Count);
+        StringAssert.EndsWith(second.Single(), "scope_20260101-100000-2.png");
+        Assert.AreEqual(2, Directory.GetFiles(target).Length);
+    }
 }
