@@ -149,6 +149,8 @@ is send-oriented, and whether it echoes anything back for this physical unit sti
 
 ## Open questions
 
+- 2026-10-03 (`docs/test/2026-10-03-14-42-02.md`): the real-hardware test passes again on COM11, but a raw CLI probe of the handshake saw no inbound bytes at all, so status echo from this unit is still unconfirmed.
+
 - Whether the fuller per-recording-mode LED blink-timing detail (from the two public sources) is
   worth encoding as real decoder logic, or whether the raw status bitmask plus a text note about
   mode-dependent blink timing is enough for a first version.

@@ -172,6 +172,8 @@ the board rewired one pin at a time — see the open questions below).
 
 ## Open questions
 
+- **Answered 2026-10-03:** `0x06` has no visible effect (accepted without error, the stream and its rate unchanged); it is not a read command. A raw 9-byte write failing with "The parameter is incorrect" was the CLI's default line ending making the report 10 bytes: use `--lineending None`. See `docs/test/2026-10-03-14-42-02.md`.
+
 - The exact meaning/units of the two trailing bytes on the Set Analog/Digital command (labeled
   duration/debounce above, per the source notes' own inline comments like "(10ms, 0ms)" — needs
   confirming against the real board, not just the informal notes.

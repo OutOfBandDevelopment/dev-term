@@ -56,7 +56,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
   [z-wave-support](docs/design/proposals/z-wave-support.md)
 - **Kuando Busylight:** why the batch/program-mode write has no visible effect; on/off time units; meaning of the
   poll reply's two strings. — [kuando-busylight-protocol](docs/design/features/kuando-busylight-protocol.md)
-- **K8055:** units of the two trailing Set bytes; what command `0x06` does; digital-input bit mapping; the constant
+- **K8055:** units of the two trailing Set bytes; digital-input bit mapping; the constant
   byte 2 (`0x01` versus `0x03`); PID mask support in `HidTransportOptions`. —
   [velleman-k8055-protocol](docs/design/features/velleman-k8055-protocol.md)
 - **NMEA/Earthmate BT-20:** exact HID report framing (decoder strips NULs defensively); gate serial/TCP receivers? —
