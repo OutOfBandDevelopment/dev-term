@@ -175,6 +175,8 @@ it doesn't throw.
   layout assumed here is wrong, or this device/firmware revision simply doesn't support that mode
   the way the source's trace (captured from a possibly different unit) suggests. Needs more
   real-device experimentation before trusting this mode for anything.
+- **Update 2026-10-03:** the user's observations of 10/10, 1/1, 5/20 and 50/50 are consistent with 100 ms units
+  (`docs/test/2026-10-03-19-00-00.md`); untimed, so still to be confirmed with a stopwatch or video.
 - On/Off time units aren't documented in the source — needs a real device to measure against
   (confirmed only that `On=0x01, Off=0x00` produces a solid, non-blinking color).
 - Whether the ASCII poll reply's fields (what looks like two concatenated strings, "PLENOM..." and
