@@ -41,6 +41,13 @@ public static class ConnectionDescription
                 : "Loopback";
         }
 
+        if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"MQTT {cliOptions.Host}:{cliOptions.Port}"
+                + (string.IsNullOrWhiteSpace(cliOptions.Subscribe) ? string.Empty : $" subscribed to {cliOptions.Subscribe}")
+                + (string.IsNullOrWhiteSpace(cliOptions.Publish) ? string.Empty : $" publishing to {cliOptions.Publish}");
+        }
+
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))
         {
             var rfc2217StopBits = cliOptions.StopBits switch
@@ -102,6 +109,11 @@ public static class ConnectionDescription
         if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             return "loopback://";
+        }
+
+        if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"mqtt://{cliOptions.Host}:{cliOptions.Port}";
         }
 
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))

@@ -83,6 +83,23 @@ and
 [`docs/design/features/kuando-busylight-protocol.md`](../design/features/kuando-busylight-protocol.md)).
 Pass a listed vendor/product ID to `--transport hid --vendorid <n> --productid <n>` to connect.
 
+### MQTT broker
+
+`--transport mqtt` subscribes to topics and publishes lines. Each message that arrives is shown as one
+`topic<TAB>payload` line; a typed line goes to `--publish`, or type `topic<TAB>payload` to choose the topic.
+Real capture against the `containers/` Mosquitto broker (`docker compose -f containers/docker-compose.yml up -d mosquitto`),
+having typed `smoke/out<TAB>hello from devterm`:
+
+```
+dotnet run --project src/DevTerm.Console -- --transport mqtt --host 127.0.0.1 --port 1883 --subscribe "smoke/#" --publish smoke/out --presenter ascii --cli true
+Connected to MQTT 127.0.0.1:1883 subscribed to smoke/# publishing to smoke/out using 'ascii' (send as 'ascii').
+Type a line and press Enter to send; Ctrl+C to exit.
+[ascii] smoke/out	hello from devterm
+```
+
+Add `--username` and `--password` for an authenticated broker. In the Connection Editor, pick `mqtt`: Host and Port
+come from the TCP group, plus an MQTT group for the topics and user name. The password is never saved.
+
 ### Errors
 
 An unrecognized transport, or missing required arguments, print usage text to stderr and exit 1

@@ -29,6 +29,7 @@
     <Project Path="src/DevTerm.Transports.Hid/DevTerm.Transports.Hid.csproj" />
     <Project Path="src/DevTerm.Transports.Loopback/DevTerm.Transports.Loopback.csproj" />
     <Project Path="src/DevTerm.Transports.Rfc2217/DevTerm.Transports.Rfc2217.csproj" />
+    <Project Path="src/DevTerm.Transports.Mqtt/DevTerm.Transports.Mqtt.csproj" />
     <Project Path="src/DevTerm.Transports.Serial/DevTerm.Transports.Serial.csproj" />
     <Project Path="src/DevTerm.Transports.Tcp/DevTerm.Transports.Tcp.csproj" />
     <Project Path="src/DevTerm.Transports.Usbtmc/DevTerm.Transports.Usbtmc.csproj" />
@@ -55,6 +56,7 @@
     <Project Path="tests/DevTerm.Transports.Hid.Tests/DevTerm.Transports.Hid.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Loopback.Tests/DevTerm.Transports.Loopback.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Rfc2217.Tests/DevTerm.Transports.Rfc2217.Tests.csproj" />
+    <Project Path="tests/DevTerm.Transports.Mqtt.Tests/DevTerm.Transports.Mqtt.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Serial.Tests/DevTerm.Transports.Serial.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Tcp.Tests/DevTerm.Transports.Tcp.Tests.csproj" />
     <Project Path="tests/DevTerm.Transports.Usbtmc.Tests/DevTerm.Transports.Usbtmc.Tests.csproj" />

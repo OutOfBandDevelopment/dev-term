@@ -57,6 +57,30 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    public void Validate_MqttWithHostPortAndTopic_Succeeds()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "mqtt", Host = "broker", Port = "1883", Subscribe = "a/#" });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    public void Validate_MqttWithoutAnyTopic_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "mqtt", Host = "broker", Port = "1883" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
+    public void Validate_MqttWithoutHost_Fails()
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = "mqtt", Host = null, Port = "1883", Publish = "x" });
+
+        Assert.IsTrue(result.Failed);
+    }
+
+    [TestMethod]
     public void Validate_Rfc2217WithHostAndPort_Succeeds()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217" });

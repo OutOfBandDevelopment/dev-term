@@ -146,6 +146,27 @@ public static class DevTermConfiguration
             // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
             // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
         }
+        else if (string.Equals(options.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        {
+            profile[nameof(CliOptions.Host)] = options.Host;
+            profile[nameof(CliOptions.Port)] = options.Port;
+            if (options.Subscribe is not null)
+            {
+                profile[nameof(CliOptions.Subscribe)] = options.Subscribe;
+            }
+
+            if (options.Publish is not null)
+            {
+                profile[nameof(CliOptions.Publish)] = options.Publish;
+            }
+
+            if (options.Username is not null)
+            {
+                profile[nameof(CliOptions.Username)] = options.Username;
+            }
+
+            // Password deliberately never persisted: a profile is plain JSON on disk.
+        }
         else if (string.Equals(options.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
         {
             if (options.LoopbackSampleIntervalMs != 0)

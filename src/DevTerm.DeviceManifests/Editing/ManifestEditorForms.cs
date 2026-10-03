@@ -20,7 +20,7 @@ public sealed class ManifestIdentityForm : EditorForm
         _manifest = manifest;
     }
 
-    public static IReadOnlyList<string> TransportTypes { get; } = ["", "serial", "tcp", "hid", "usbtmc", "rfc2217", "loopback"];
+    public static IReadOnlyList<string> TransportTypes { get; } = ["", "serial", "tcp", "hid", "usbtmc", "rfc2217", "mqtt", "loopback"];
 
     [Category("Identity")]
     [DisplayName("Name")]

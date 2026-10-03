@@ -10,6 +10,7 @@ using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
+using DevTerm.Transports.Mqtt;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
 using DevTerm.Transports.Tcp;
@@ -109,6 +110,20 @@ public static class ServiceCollectionExtensions
                 o.RtsEnable = cliOptions.Rts;
                 o.WriteTimeoutMs = cliOptions.WriteTimeoutMs;
                 o.WriteByteDelayMs = cliOptions.WriteByteDelayMs;
+            });
+        }
+        else if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddMqttTransport();
+            services.Configure<MqttTransportOptions>(o =>
+            {
+                o.Host = cliOptions.Host ?? string.Empty;
+                o.Port = int.TryParse(cliOptions.Port, out var mqttPort) ? mqttPort : 0;
+                o.SubscribeTopics = [.. (cliOptions.Subscribe ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+                o.PublishTopic = cliOptions.Publish;
+                o.Username = cliOptions.Username;
+                o.Password = cliOptions.Password;
+                o.TimeoutMs = cliOptions.WriteTimeoutMs;
             });
         }
         else if (string.Equals(cliOptions.Transport, "loopback", StringComparison.OrdinalIgnoreCase))
