@@ -72,6 +72,12 @@
                         "null"
                       ]
                     },
+                    "ConfirmMessage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "ColorPickerTargetCommandId": {
                       "type": [
                         "string",
