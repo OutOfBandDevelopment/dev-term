@@ -19,7 +19,7 @@ How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-d
 
 Choices only the project owner can make (scope, direction, priorities).
 
-- **Plugin isolation:** a signing/trust model for third-party plugins; plugins written in other languages (a stdio JSON-lines prototype with Python/Java/Go examples exists). Out-of-process
+- **Plugin isolation:** plugins written in other languages (a stdio JSON-lines prototype with Python/Java/Go examples exists). Out-of-process
   hosting is wanted over a named pipe or localhost-only web service (2026-10-03); a read-only pipe prototype exists; read-write trust and discovery are open. —
   [plugin-model](docs/design/plugin-model.md), [architecture](docs/design/architecture.md),
   [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md),
@@ -77,12 +77,12 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 
 Answerable by thinking and a prototype; no owner decision or hardware needed.
 
-- **Presenters:** a standard structured-message model all textual decoders emit; shared drawing/canvas/plot models;
+- **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live; whether raster export is a core service. —
   [presenters](docs/design/presenters.md)
 - **Cross-session scripting model for the CLI.** (Presenters may originate traffic: decided 2026-10-03.) —
   [architecture](docs/design/architecture.md)
-- **Control modules:** reply correlation for interleaved/unsolicited binary telemetry; a manifest command schema
+- **Control modules:** a manifest command schema
   declaring `ExpectedResponseFormat`; a general Kaitai-backed binary response schema. —
   [device-control-modules](docs/design/device-control-modules.md),
   [stream-content-detection](docs/design/features/stream-content-detection.md)
@@ -97,7 +97,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   [rfc2217](docs/design/rfc2217.md)
 - **Network config editors:** `DevTerm.Devices.*` projects versus manifests with a config UI. —
   [network-device-config-editors](docs/design/proposals/network-device-config-editors.md)
-- **Session logging:** adding a note to a log still being recorded; very large logs held in memory; backward seek
+- **Session logging:** adding a note to a log still being recorded; backward seek
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
 - **Theming:** color the TUI Connection Editor's "(not found)" hints. — [theming](docs/design/theming.md)

@@ -226,6 +226,7 @@ Playback has no way to open a connection.
 
 - A note can't be added to a log that this same process is still recording. The recorder holds the
   file open, so the atomic replace fails and the error is reported. Stop logging first.
+- **Decided 2026-10-03:** index and stream from disk (a time/record index so seeks are instant and memory stays flat). Not built yet.
 - Very large logs are loaded fully into memory (`SessionLog.Load`). That's fine for console-scale
   traffic, and would need an index or seekable reader for long high-rate captures, such as a K8055
   streaming hundreds of reports a second for hours.
