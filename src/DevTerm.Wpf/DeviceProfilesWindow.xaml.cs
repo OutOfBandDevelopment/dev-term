@@ -81,6 +81,10 @@ public partial class DeviceProfilesWindow : Window
 
     internal ComboBox DetectedUsbtmcDevicesBox { get; }
 
+    internal ComboBox DetectedLxiDevicesBox { get; }
+
+    internal Button DetectLxiButton { get; }
+
     internal ComboBox DetectedBleDevicesBox { get; }
 
     internal Button DetectBleButton { get; }
@@ -118,6 +122,18 @@ public partial class DeviceProfilesWindow : Window
         DetectedUsbtmcDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.UsbtmcDeviceOptions)));
         DetectedUsbtmcDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)));
         MakeFilterable(DetectedUsbtmcDevicesBox, nameof(UsbtmcDeviceOption.Display));
+
+        // Starts empty like the BLE box: an LXI scan is a few seconds of network broadcast, run by the button.
+        DetectedLxiDevicesBox = new ComboBox { ItemTemplate = TrimmedDisplayTemplate(nameof(LxiDeviceOption.Display)) };
+        DetectedLxiDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.LxiDeviceOptions)));
+        DetectedLxiDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedLxiDevice)));
+        MakeFilterable(DetectedLxiDevicesBox, nameof(LxiDeviceOption.Display));
+        DetectLxiButton = new Button { Content = "Detect LXI...", Margin = new Thickness(4, 0, 0, 0) };
+        DetectLxiButton.Click += DetectLxi_Click;
+        var lxiRow = new DockPanel();
+        DockPanel.SetDock(DetectLxiButton, Dock.Right);
+        lxiRow.Children.Add(DetectLxiButton);
+        lxiRow.Children.Add(DetectedLxiDevicesBox);
 
         // Unlike the boxes above, this one starts empty: BLE discovery is a live several-second
         // radio scan (see BleDeviceScanner.Scan), not the fast, eager enumeration HidDeviceOptions/
@@ -160,6 +176,7 @@ public partial class DeviceProfilesWindow : Window
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => DetectedPortsBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => DetectedHidDevicesBox;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => DetectedUsbtmcDevicesBox;
+        options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedLxiDevice)] = _ => lxiRow;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleDevice)] = _ => bleRow;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)] = _ => bleWriteCharacteristicRow;
         options.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)] = _ => DetectedBleNotifyCharacteristicBox;
@@ -291,6 +308,20 @@ public partial class DeviceProfilesWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             ViewModel.ImportExportPath = dialog.FileName;
+        }
+    }
+
+    private async void DetectLxi_Click(object sender, RoutedEventArgs e)
+    {
+        DetectLxiButton.IsEnabled = false;
+        try
+        {
+            var devices = await Task.Run(LxiDeviceScanner.Scan);
+            ViewModel.SetLxiDeviceOptions(devices);
+        }
+        finally
+        {
+            DetectLxiButton.IsEnabled = true;
         }
     }
 

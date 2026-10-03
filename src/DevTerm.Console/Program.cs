@@ -105,6 +105,16 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
     return 0;
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
+{
+    foreach (var device in LxiDeviceScanner.Scan())
+    {
+        Console.WriteLine($"{device.Host}:{device.Port}  {device.Display}");
+    }
+
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
 {
     // Same reflection-based platform-adapter loading AddDevTermFrontEnd uses for a real connection

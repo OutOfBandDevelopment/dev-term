@@ -100,6 +100,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private UsbtmcDeviceOption? _selectedUsbtmcDevice;
     private IReadOnlyList<UsbtmcDeviceOption> _detectedUsbtmcDevices = [];
     private readonly ObservableCollection<UsbtmcDeviceOption> _usbtmcDeviceOptions = [];
+    private LxiDeviceOption? _selectedLxiDevice;
+    private readonly ObservableCollection<LxiDeviceOption> _lxiDeviceOptions = [];
     private BleDeviceOption? _selectedBleDevice;
     private readonly ObservableCollection<BleDeviceOption> _bleDeviceOptions = [];
     private BleCharacteristicOption? _selectedBleWriteCharacteristic;
@@ -527,6 +529,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// model running one eagerly at construction the way <see cref="HidDeviceOptions"/> does. Starts empty.
     /// </summary>
     public IReadOnlyList<BleDeviceOption> BleDeviceOptions => _bleDeviceOptions;
+
+    /// <summary>LAN instruments found by a front end's own LXI scan (see <see cref="SetLxiDeviceOptions"/>); empty until one runs.</summary>
+    public IReadOnlyList<LxiDeviceOption> LxiDeviceOptions => _lxiDeviceOptions;
 
     /// <summary>
     /// The GATT services/characteristics ("sub-device" UUIDs) found by a front end's own scan of
@@ -961,6 +966,27 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     [DisplayName("Notify characteristic UUID")]
     [FormField(Order = 3)]
     public string BleNotifyCharacteristicUuid { get => _bleNotifyCharacteristicUuid; set => SetField(ref _bleNotifyCharacteristicUuid, value); }
+
+    /// <summary>
+    /// A LAN instrument found by a front end's LXI scan: writes its address and raw SCPI port into <see cref="Host"/> and
+    /// <see cref="TcpPort"/>. A front end must call <see cref="SetLxiDeviceOptions"/> first, since the scan takes seconds.
+    /// </summary>
+    [Category("TCP")]
+    [DisplayName("Detected LXI instruments")]
+    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpTransport))]
+    public LxiDeviceOption? SelectedLxiDevice
+    {
+        get => _selectedLxiDevice;
+        set
+        {
+            SetField(ref _selectedLxiDevice, value);
+            if (value is not null)
+            {
+                Host = value.Host;
+                TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+    }
 
     /// <summary>
     /// Same idea as <see cref="SelectedHidDevice"/>, for a BLE peripheral found by a front end's own
@@ -1778,6 +1804,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// its own to run eagerly (see <see cref="BleDeviceOptions"/>'s doc comment), so a front end calls
     /// this once its scan completes.
     /// </summary>
+    public void SetLxiDeviceOptions(IReadOnlyList<LxiDeviceOption> devices)
+    {
+        _lxiDeviceOptions.Clear();
+        foreach (var device in devices)
+        {
+            _lxiDeviceOptions.Add(device);
+        }
+
+        OnPropertyChanged(nameof(LxiDeviceOptions));
+    }
+
     public void SetBleDeviceOptions(IReadOnlyList<BleDeviceOption> devices)
     {
         _bleDeviceOptions.Clear();

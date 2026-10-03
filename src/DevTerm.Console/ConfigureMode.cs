@@ -154,12 +154,14 @@ public static class ConfigureMode
         var detectHidButton = new Button { Text = "Detect HID...", ShadowStyle = ShadowStyles.None };
         var detectUsbtmcButton = new Button { Text = "Detect USBTMC...", ShadowStyle = ShadowStyles.None };
         var detectBleButton = new Button { Text = "Detect BLE...", ShadowStyle = ShadowStyles.None };
+        var detectLxiButton = new Button { Text = "Detect LXI...", ShadowStyle = ShadowStyles.None };
         var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics...", ShadowStyle = ShadowStyles.None };
         var pickBleNotifyCharacteristicButton = new Button { Text = "Pick...", ShadowStyle = ShadowStyles.None };
         var formOptions = new TuiFormOptions { CollapsibleSections = true };
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedSerialPort)] = _ => new TuiCustomWidget(detectPortButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedHidDevice)] = _ => new TuiCustomWidget(detectHidButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedUsbtmcDevice)] = _ => new TuiCustomWidget(detectUsbtmcButton, 2);
+        formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedLxiDevice)] = _ => new TuiCustomWidget(detectLxiButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleDevice)] = _ => new TuiCustomWidget(detectBleButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleWriteCharacteristic)] = _ => new TuiCustomWidget(detectBleCharacteristicsButton, 2);
         formOptions.CustomWidgets[nameof(ConnectionEditorViewModel.SelectedBleNotifyCharacteristic)] = _ => new TuiCustomWidget(pickBleNotifyCharacteristicButton, 2);
@@ -468,6 +470,19 @@ public static class ConfigureMode
             if (index is int i)
             {
                 viewModel.SelectedUsbtmcDevice = devices[i];
+            }
+
+            e.Handled = true;
+        };
+
+        // An LXI scan is a live network broadcast (about three seconds), so like BLE it runs when the button is pressed.
+        detectLxiButton.Accepting += (_, e) =>
+        {
+            viewModel.SetLxiDeviceOptions(LxiDeviceScanner.Scan());
+            var devices = viewModel.LxiDeviceOptions;
+            if (FormRenderer.PickFromList(app, "Detected LXI instruments", [.. devices.Select(d => d.Display)], "Nothing was detected.") is int i)
+            {
+                viewModel.SelectedLxiDevice = devices[i];
             }
 
             e.Handled = true;

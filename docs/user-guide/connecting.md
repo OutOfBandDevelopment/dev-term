@@ -259,6 +259,20 @@ How to press it:
 Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
 changes away.
 
+### Finding a LAN instrument (LXI)
+
+For an instrument on the network, choose the `tcp` transport and press **Detect LXI...** (a dropdown plus button in WPF, a
+button opening a list in the TUI). The scan takes about three seconds and lists each instrument that answered, with its
+`*IDN?` and raw SCPI port; picking one fills Host and Port. From a script:
+
+```
+> dotnet run --project src/DevTerm.Console -- --listlxidevices true
+192.168.0.87:5555  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (192.168.0.87:5555)
+```
+
+(Real output from the bench Rigol DG1062Z.) An instrument that only speaks VXI-11, with no raw SCPI port on 5025 or 5555,
+is listed as "VXI-11 only" and falls back to port 5025; dev-term has no VXI-11 client yet.
+
 ### Picking a detected serial port, HID device, or USBTMC device
 
 The Serial port field and the Vendor/Product ID fields — shared by the HID and USBTMC transports,

@@ -61,14 +61,40 @@ profile — this proposal is about the parts that aren't covered yet.
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
 
 - [x] Confirm a real LXI instrument on the bench: Rigol DG1062Z at 192.168.0.87 (2026-10-02)
-- [ ] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module
+- [x] Phase 1: LXI discovery scanner and picker feeding the existing TCP transport and SCPI module (2026-10-03)
 - [ ] Phase 2: VXI-11 client, only if a real instrument needs it
-- [ ] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries
-- [ ] Real-hardware pass (`docs/test/`)
+- [x] Both front ends, plus `docs/specs/` and `docs/user-guide/` entries (Phase 1 picker)
+- [ ] Real-hardware pass (`docs/test/`): discovery was run against the bench DG1062Z, but no formal report yet
 
 ## Status
 
-**Not started — design only, but a real LXI instrument is now on hand** (2026-10-02): the Rigol DG1062Z
+**Phase 1 built 2026-10-03; Phase 2 not started.** Discovery is `DevTerm.Transports.Tcp.LxiDiscovery`: it broadcasts an
+ONC-RPC portmapper `GETPORT` for the VXI-11 core program to UDP 111 on every up IPv4 interface and keeps hosts that answer with
+a non-zero port, then asks each for `*IDN?` on raw ports 5025 and 5555. mDNS (`_lxi._tcp`) was tried first and the DG1062Z
+never answered it, so it is not used. Run against the bench network it found the DG1062Z
+(`192.168.0.87:5555  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`) and ignored a second host at 192.168.0.67 whose
+portmapper answered port 0 (no VXI-11). Surfaces: `--listlxidevices true`, a "Detect LXI..." picker under the TCP section in the
+TUI and WPF Connection Editor (`LxiDeviceScanner`, `ConnectionEditorViewModel.SelectedLxiDevice` fills Host and TCP port). Unit
+tests cover the request bytes, the real captured reply and the rejects; the scan itself is only hardware-verified.
+
+```plantuml
+@startuml
+participant "Detect LXI..." as UI
+participant LxiDiscovery as D
+participant "LAN hosts" as H
+UI -> D : ScanAsync
+D -> H : UDP 111 broadcast: GETPORT(VXI-11 core, TCP)
+H --> D : port (non-zero = VXI-11 present)
+loop each responder
+  D -> H : TCP 5025 / 5555: *IDN?
+  H --> D : identity
+end
+D --> UI : host, SCPI port, identity
+UI -> UI : Host and TCP port filled in
+@enduml
+```
+
+Earlier note, before Phase 1 (2026-10-02): the Rigol DG1062Z
 (`TCPIP0::192.168.0.87::INSTR`, LXI logo on its Utility screen). Probed from the dev machine: **TCP 5555
 answers raw SCPI** (`*IDN?` -> `Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12`), so the existing TCP
 transport plus the DG1062Z profile already covers it (`--transport tcp --host 192.168.0.87 --port 5555`);

@@ -267,6 +267,10 @@ public sealed class CliOptions
     [DisplayName("Notify characteristic UUID")]
     public string? BleNotifyCharacteristicUuid { get; set; }
 
+    /// <summary>Scan the LAN for LXI/VXI-11 instruments, print each with its raw SCPI port and <c>*IDN?</c>, and exit.</summary>
+    [Category("Mode")]
+    public bool ListLxiDevices { get; set; }
+
     /// <summary>List paired BLE devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListBleDevices { get; set; }

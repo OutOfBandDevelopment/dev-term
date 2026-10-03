@@ -175,6 +175,9 @@
         "null"
       ]
     },
+    "ListLxiDevices": {
+      "type": "boolean"
+    },
     "ListBleDevices": {
       "type": "boolean"
     },
