@@ -159,4 +159,59 @@ public class WebRolesTests
             File.Delete(pfx);
         }
     }
+
+    [TestMethod]
+    public async Task Https_WithACaIssuedCertificate_IsTrustedOnlyByAClientThatTrustsTheCa()
+    {
+        using var caKey = RSA.Create(2048);
+        var caRequest = new CertificateRequest("CN=DevTerm Test CA", caKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        caRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        caRequest.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+        using var ca = caRequest.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(2));
+
+        using var leafKey = RSA.Create(2048);
+        var leafRequest = new CertificateRequest("CN=localhost", leafKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var san = new SubjectAlternativeNameBuilder();
+        san.AddIpAddress(IPAddress.Loopback);
+        san.AddDnsName("localhost");
+        leafRequest.CertificateExtensions.Add(san.Build());
+        leafRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        leafRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1")], false));
+        using var issued = leafRequest.Create(ca, DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1), RandomNumberGenerator.GetBytes(8));
+        using var leaf = issued.CopyWithPrivateKey(leafKey);
+        var pfx = Path.Combine(Path.GetTempPath(), "devterm-web-ca-" + Guid.NewGuid().ToString("N") + ".pfx");
+        await File.WriteAllBytesAsync(pfx, leaf.Export(X509ContentType.Pfx));
+        try
+        {
+            var (built, url) = await StartAsync(scheme: "https", certificatePath: pfx);
+            await using (built.Hub)
+            {
+                // A client trusting only this CA validates the chain for real (no thumbprint shortcut).
+                using var trusting = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (_, cert, _, _) =>
+                    {
+                        using var chain = new X509Chain();
+                        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+                        chain.ChainPolicy.CustomTrustStore.Add(ca);
+                        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+                        return cert is not null && chain.Build(cert);
+                    },
+                };
+                using (var client = Client("secret", trusting))
+                {
+                    StringAssert.Contains(await client.GetStringAsync(url + "/api/status"), "Open");
+                }
+
+                // The default trust store has never heard of the test CA, so the same server is refused.
+                using var untrusting = Client("secret", new HttpClientHandler());
+                await Assert.ThrowsExactlyAsync<HttpRequestException>(() => untrusting.GetStringAsync(url + "/api/status"));
+                await built.App.StopAsync();
+            }
+        }
+        finally
+        {
+            File.Delete(pfx);
+        }
+    }
 }
