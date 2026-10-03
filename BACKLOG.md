@@ -73,17 +73,6 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-### TUI theming
-
-- **`light`'s `background`/`fieldBackground`/`selectionBackground` all collapse onto the same nearest
-  ANSI-16 color ("White") under Terminal.Gui's legacy-conhost 16-color downgrade** — worse than the
-  `dark` theme's equivalent collision fixed 2026-09-30 (see `docs/design/theming.md`'s "TUI" section),
-  since all three roles collapse here, not just two. Not fixed yet: `light`'s field/selection colors
-  are deliberately close to white for the WPF app's look, and darkening them enough to separate under
-  16-color legacy conhost would change that look too, for a narrower case (a legacy black-background
-  console running the *light* theme, rather than `dark`, dev-term's default). Decided 2026-10-02: a
-  TUI-only palette option, WPF unchanged (queued in `TODO.md`).
-
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).

@@ -35,10 +35,14 @@ internal static class TuiTheme
     public static Attribute Attribute(DevTermTheme theme, ThemeRole foreground, ThemeRole background) =>
         new(ToColor(theme[foreground]), ToColor(theme[background]));
 
+    /// <summary>True once the driver is known to be limited to 16 colors; <see cref="Apply"/> then uses the theme's 16-color variant.</summary>
+    public static bool SixteenColors { get; set; }
+
     /// <summary>Overrides Terminal.Gui's schemes from <paramref name="theme"/>. Callers redraw afterwards.</summary>
     public static void Apply(DevTermTheme theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
+        theme = SixteenColors ? theme.ForSixteenColors() : theme;
         lock (_lock)
         {
             _originals ??= SchemeManager.GetSchemesForCurrentTheme()

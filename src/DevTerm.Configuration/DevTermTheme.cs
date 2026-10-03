@@ -149,6 +149,22 @@ public sealed class DevTermTheme
     public bool IsDark => this[ThemeRole.Background].RelativeLuminance() < 0.25;
 
     /// <summary>A copy with <paramref name="overrides"/> applied on top and a new name.</summary>
+    /// <summary>
+    /// A variant for consoles limited to the 16 ANSI colors (Terminal.Gui's legacy-conhost downgrade snaps every color to
+    /// the nearest of 16): a light theme's field, hover and selection backgrounds are all near white and would collapse
+    /// onto "White", so this spreads them over Gray, DarkGray and BrightCyan instead (dark text stays readable on all
+    /// three). A dark theme is returned unchanged (its roles were separated in the theme itself). TUI-only; the WPF
+    /// palette is untouched. See docs/design/theming.md.
+    /// </summary>
+    public DevTermTheme ForSixteenColors() => IsDark
+        ? this
+        : With(Name, new Dictionary<ThemeRole, ThemeColor>
+        {
+            [ThemeRole.FieldBackground] = ThemeColor.Parse("#C0C0C0"),
+            [ThemeRole.ControlHoverBackground] = ThemeColor.Parse("#808080"),
+            [ThemeRole.SelectionBackground] = ThemeColor.Parse("#00FFFF"),
+        });
+
     public DevTermTheme With(string name, IReadOnlyDictionary<ThemeRole, ThemeColor> overrides, ChartPaletteVariant? chartPalette = null)
     {
         ArgumentNullException.ThrowIfNull(overrides);
