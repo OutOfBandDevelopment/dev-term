@@ -6,8 +6,8 @@
 │                                                                              │
 │Captures (newest last):                                                       │
 │14:35:12  PNG         65 B  complete    Rigol_DG1062Z_20260925-143512.png     │
-│14:35:53  HPGL        47 B  went quiet  Rigol_DG1062Z_20260925-143553.hpgl    │
-│14:37:08  BMP         70 B  complete    Rigol_DG1062Z_20260925-143708.bmp     │
+│14:35:53  HPGL        47 B  complete    Rigol_DG1062Z_20260925-143553.hpgl    │
+│14:37:06  BMP         70 B  complete    Rigol_DG1062Z_20260925-143706.bmp     │
 │                                                                              │
 │                                                                              │
 │                                                                              │
@@ -19,7 +19,7 @@
 │                                                                              │
 │                                                                              │
 │BMP image, 70 bytes, complete (declared by the command).                      │
-│Saved as Rigol_DG1062Z_20260925-143708.bmp in the folder above.               │
+│Saved as Rigol_DG1062Z_20260925-143706.bmp in the folder above.               │
 │⟦ Stop Monitoring ⟧▖  ⟦ Convert as: None ⟧▖  ⟦ Convert... ⟧▖  ⟦► Close ◄⟧▖    │
 │▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▘  ▝▀▀▀▀▀▀▀▀▀▀▘    │
 └──────────────────────────────────────────────────────────────────────────────┘

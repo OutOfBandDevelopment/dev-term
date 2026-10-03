@@ -135,14 +135,26 @@ public partial class App : Application
         var sessionFactory = host.Services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.Create(transport, new Pipeline(presenters));
 
+        // --pipe publishes the first tab's session read-only for `--attach` (the main window's other tabs are not published).
+        if (!string.IsNullOrWhiteSpace(cliOptions.Pipe))
+        {
+            _pipeServer = new SessionPipeServer(cliOptions.Pipe);
+            _pipeRegistration = session.AddObserver(_pipeServer);
+        }
+
         var window = new MainWindow(session, catalog, cliOptions);
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 
+    private SessionPipeServer? _pipeServer;
+    private IDisposable? _pipeRegistration;
+
     protected override void OnExit(ExitEventArgs e)
     {
+        _pipeRegistration?.Dispose();
+        _pipeServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _host?.Dispose();
         base.OnExit(e);
     }

@@ -10,7 +10,7 @@
 │  ASCII max line length: 4096                                                ░│
 │                                                                             ░│
 │[-] Timing                                                                   ░│
-│  Write byte delay (ms): -1                                                  █│
+│  Write byte delay (ms): -1                                                  ░│
 │                                                                             █│
 │Save as profile named:                      ⟦ Save Profile ⟧                 █│
 │                                                                             █│

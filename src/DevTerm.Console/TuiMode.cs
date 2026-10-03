@@ -93,6 +93,10 @@ public static class TuiMode
             startupError = $"{ConnectionErrorMessages.For(cliOptions.Transport, ex)} Use File > Connect to retry, or File > Device Profiles... to choose another connection.";
         }
 
+        // --pipe publishes the first tab's session read-only for `--attach` (tabs added later are not published).
+        await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(cliOptions.Pipe);
+        using var pipeRegistration = pipeServer is null ? null : session.AddObserver(pipeServer);
+
         var app = Application.Create().Init();
         TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;
         TuiTheme.Apply(ActiveTheme.Current);

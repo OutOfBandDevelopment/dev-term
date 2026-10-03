@@ -10,7 +10,7 @@
 │                                                                             █│
 │                                                                             █│
 │  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217  ○ mqtt    █│
-│               ○ loopback                                                    ░│
+│               ○ amqp  ○ stomp  ○ loopback                                   ░│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
 │[-] TCP                                                                      ░│
