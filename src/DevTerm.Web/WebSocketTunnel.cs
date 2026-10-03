@@ -18,6 +18,7 @@ internal static class WebSocketTunnel
             return;
         }
 
+        var readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
         using var socket = await context.WebSockets.AcceptWebSocketAsync();
         var outgoing = Channel.CreateUnbounded<string>();
         void OnLine(string line) => outgoing.Writer.TryWrite(line);
@@ -58,7 +59,11 @@ internal static class WebSocketTunnel
                     break;
                 }
 
-                if (result.MessageType == WebSocketMessageType.Text)
+                if (result.MessageType == WebSocketMessageType.Text && readOnly)
+                {
+                    outgoing.Writer.TryWrite("! read-only viewer: sending is not allowed.");
+                }
+                else if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var error = await hub.SendLineAsync(Encoding.UTF8.GetString(buffer, 0, length), abort);
                     if (error is not null)

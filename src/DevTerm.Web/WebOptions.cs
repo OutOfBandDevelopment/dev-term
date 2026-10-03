@@ -11,6 +11,12 @@ public sealed class WebOptions
     /// <summary>Shared access token. When empty a random one is generated at startup and printed once.</summary>
     public string? Token { get; set; }
 
+    /// <summary>A second token that may watch but not send: its viewers get output and the control panel's layout, and every send or invoke is refused.</summary>
+    public string? ReadOnlyToken { get; set; }
+
+    /// <summary>Which device control panel to serve at <c>/api/panel</c> and show in the page: <c>k8055</c> or <c>busylight</c>. Blank serves none.</summary>
+    public string? Panel { get; set; }
+
     /// <summary>Permit a non-loopback bind. Also requires a token and a certificate.</summary>
     public bool AllowRemote { get; set; }
 

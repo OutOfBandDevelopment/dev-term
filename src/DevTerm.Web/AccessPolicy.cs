@@ -15,6 +15,16 @@ public static class AccessPolicy
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        if (!string.IsNullOrWhiteSpace(options.ReadOnlyToken) && string.Equals(options.ReadOnlyToken, options.Token, StringComparison.Ordinal))
+        {
+            return "Web:ReadOnlyToken must differ from Web:Token.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Panel) && options.Panel.ToLowerInvariant() is not ("k8055" or "busylight"))
+        {
+            return $"Web:Panel '{options.Panel}' must be k8055 or busylight.";
+        }
+
         var urls = options.Urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (urls.Length == 0)
         {

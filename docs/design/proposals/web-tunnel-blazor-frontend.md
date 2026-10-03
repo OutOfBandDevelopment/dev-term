@@ -130,8 +130,10 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Pick a Blazor hosting model (none yet: WebSocket plus a static page; Blazor later for `UiDefinition`)
 - [x] Real design doc (the Decisions section above)
 - [x] Prototype, tests, and `docs/specs/` / `docs/user-guide/` entries
-- [ ] Blazor rendering of a `UiDefinition` control panel
-- [ ] Per-viewer read-only role; TLS verified with a real certificate
+- [x] Rendering of a `UiDefinition` control panel (done as JSON at `/api/panel` plus a generic renderer in the page, not a Blazor circuit: no Razor/SignalR dependency for what a small script does; live indicators and charts not shown yet)
+- [x] Read-only role (`Web:ReadOnlyToken`)
+- [x] TLS served and checked with a generated self-signed certificate (`Https_WithACertificate_ServesOverTls...`)
+- [ ] TLS with a CA-issued certificate, a real device through the page, multiple browsers (needs user setup)
 
 ## Status
 

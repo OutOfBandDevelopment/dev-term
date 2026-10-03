@@ -4,9 +4,15 @@ namespace DevTerm.Web;
 /// Requires the shared token on every request: <c>Authorization: Bearer</c>, the <c>devterm_auth</c> cookie, or a one-time
 /// <c>?token=</c> that sets the cookie and redirects to the clean URL.
 /// </summary>
-internal sealed class AccessTokenMiddleware(RequestDelegate next, string token)
+internal sealed class AccessTokenMiddleware(RequestDelegate next, string token, string readOnlyToken)
 {
     internal const string CookieName = "devterm_auth";
+
+    /// <summary><see cref="HttpContext.Items"/> key holding <see langword="true"/> when the request authenticated with the read-only token.</summary>
+    internal const string ReadOnlyItem = "devterm.readonly";
+
+    private bool IsReadOnlyToken(string? presented) =>
+        !string.IsNullOrWhiteSpace(readOnlyToken) && AccessPolicy.TokenMatches(readOnlyToken, presented);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -19,15 +25,24 @@ internal sealed class AccessTokenMiddleware(RequestDelegate next, string token)
 
         var header = request.Headers.Authorization.ToString();
         var bearer = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : null;
-        if (AccessPolicy.TokenMatches(token, bearer) || AccessPolicy.TokenMatches(token, request.Cookies[CookieName]))
+        var cookie = request.Cookies[CookieName];
+        if (AccessPolicy.TokenMatches(token, bearer) || AccessPolicy.TokenMatches(token, cookie))
         {
             await next(context);
             return;
         }
 
-        if (HttpMethods.IsGet(request.Method) && AccessPolicy.TokenMatches(token, request.Query["token"]))
+        if (IsReadOnlyToken(bearer) || IsReadOnlyToken(cookie))
         {
-            context.Response.Cookies.Append(CookieName, token, new CookieOptions
+            context.Items[ReadOnlyItem] = true;
+            await next(context);
+            return;
+        }
+
+        var query = request.Query["token"].ToString();
+        if (HttpMethods.IsGet(request.Method) && (AccessPolicy.TokenMatches(token, query) || IsReadOnlyToken(query)))
+        {
+            context.Response.Cookies.Append(CookieName, query, new CookieOptions
             {
                 HttpOnly = true,
                 SameSite = SameSiteMode.Strict,
