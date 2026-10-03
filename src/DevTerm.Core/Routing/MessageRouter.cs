@@ -22,6 +22,15 @@ public sealed class MessageRouter : IOriginatingPresenter
     private readonly StringBuilder _line = new();
     private readonly List<RoutedMessage> _history = [];
     private readonly Lock _gate = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<RoutingRule, Counter> _hits = new();
+    private readonly HashSet<RoutingRule> _always = [];
+    private int _unmatched;
+    private int _dropped;
+
+    private sealed class Counter
+    {
+        public int Value;
+    }
 
     public MessageRouter(RoutingRuleSet rules, IMessageSink sink, TimeProvider? time = null, string terminator = "\r\n")
     {
@@ -32,6 +41,21 @@ public sealed class MessageRouter : IOriginatingPresenter
         _time = time ?? TimeProvider.System;
         _terminator = terminator;
     }
+
+    /// <summary>Asked before the first message of a <see cref="RoutingRule.Confirm"/> rule reaches the device. With none set such a message is dropped, never sent unasked.</summary>
+    public Func<RoutingRule, string, Task<RoutingConfirmChoice>>? Confirm { get; set; }
+
+    /// <summary>Raised after a message is routed, dropped or counted as unmatched, so a window can refresh.</summary>
+    public event EventHandler? Changed;
+
+    /// <summary>Device lines that matched no device-to-broker rule.</summary>
+    public int Unmatched => Volatile.Read(ref _unmatched);
+
+    /// <summary>Broker messages a confirm-flagged rule declined to send.</summary>
+    public int Dropped => Volatile.Read(ref _dropped);
+
+    /// <summary>How many messages <paramref name="rule"/> has matched.</summary>
+    public int HitCount(RoutingRule rule) => _hits.TryGetValue(rule, out var n) ? Volatile.Read(ref n.Value) : 0;
 
     public string Name => "router";
 
@@ -84,11 +108,75 @@ public sealed class MessageRouter : IOriginatingPresenter
                 continue;
             }
 
-            Record(RoutingDirection.BrokerToDevice, topic, payload);
-            Originated?.Invoke(this, Encoding.ASCII.GetBytes(RoutingRule.Expand(rule.Send, match) + _terminator));
+            var text = RoutingRule.Expand(rule.Send, match);
+            Hit(rule);
+            if (!rule.Confirm || IsAlways(rule))
+            {
+                Deliver(topic, payload, text);
+            }
+            else if (Confirm is null)
+            {
+                Drop();
+            }
+            else
+            {
+                _ = ConfirmThenDeliverAsync(rule, topic, payload, text);
+            }
+
             return;
         }
     }
+
+    private bool IsAlways(RoutingRule rule)
+    {
+        lock (_gate)
+        {
+            return _always.Contains(rule);
+        }
+    }
+
+    private async Task ConfirmThenDeliverAsync(RoutingRule rule, string topic, string payload, string text)
+    {
+        RoutingConfirmChoice choice;
+        try
+        {
+            choice = await Confirm!(rule, text).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            choice = RoutingConfirmChoice.Drop;
+        }
+
+        if (choice == RoutingConfirmChoice.Drop)
+        {
+            Drop();
+            return;
+        }
+
+        if (choice == RoutingConfirmChoice.Always)
+        {
+            lock (_gate)
+            {
+                _always.Add(rule);
+            }
+        }
+
+        Deliver(topic, payload, text);
+    }
+
+    private void Deliver(string topic, string payload, string text)
+    {
+        Record(RoutingDirection.BrokerToDevice, topic, payload);
+        Originated?.Invoke(this, Encoding.ASCII.GetBytes(text + _terminator));
+    }
+
+    private void Drop()
+    {
+        Interlocked.Increment(ref _dropped);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Hit(RoutingRule rule) => Interlocked.Increment(ref _hits.GetOrAdd(rule, _ => new Counter()).Value);
 
     private void RouteDeviceLine(string line)
     {
@@ -107,11 +195,15 @@ public sealed class MessageRouter : IOriginatingPresenter
 
             var topic = RoutingRule.Expand(rule.Topic, match);
             var payload = rule.Payload is null ? line : RoutingRule.Expand(rule.Payload, match);
+            Hit(rule);
             Record(RoutingDirection.DeviceToBroker, topic, payload);
             // Fire-and-forget: Render runs on the session's read loop, which must not block on a broker.
             _ = PublishAsync(topic, payload);
             return;
         }
+
+        Interlocked.Increment(ref _unmatched);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task PublishAsync(string topic, string payload)
@@ -132,5 +224,7 @@ public sealed class MessageRouter : IOriginatingPresenter
         {
             _history.Add(new RoutedMessage(_time.GetUtcNow(), direction, topic, payload));
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 }

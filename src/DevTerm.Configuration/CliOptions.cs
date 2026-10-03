@@ -88,6 +88,10 @@ public sealed class CliOptions
     public string? Parser { get; set; }
 
     /// <summary><see cref="Parser"/> with the older-profile fallback applied (the first of <see cref="EffectivePresenters"/>).</summary>
+    /// <summary>The routing proxy's broker and rules (docs/specs/routing-window.md); <c>DEVTERM_ROUTING__PASSWORD</c> overrides the saved password.</summary>
+    [Browsable(false)]
+    public RoutingOptions Routing { get; set; } = new();
+
     [Browsable(false)]
     public string EffectiveParser => Parser is { Length: > 0 } parser ? parser : EffectivePresenters[0];
 

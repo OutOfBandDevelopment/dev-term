@@ -30,6 +30,9 @@ public sealed class MqttRouterBridge : IMessageSink, IAsyncDisposable
     /// <summary>The sink to give the <see cref="MessageRouter"/>.</summary>
     public IMessageSink Sink => this;
 
+    /// <summary>The broker connection ended after a successful start; the argument is the failure, or null for a clean close.</summary>
+    public event Action<Exception?>? Lost;
+
     /// <summary>Connects, subscribes to every broker-to-device rule's topic, and starts handing broker messages to <paramref name="router"/>.</summary>
     public async Task StartAsync(MessageRouter router, CancellationToken cancellationToken = default)
     {
@@ -37,6 +40,7 @@ public sealed class MqttRouterBridge : IMessageSink, IAsyncDisposable
         _router = router;
         var connection = _factory.Create();
         connection.MessageReceived += OnMessage;
+        connection.Disconnected += OnLost;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -54,6 +58,7 @@ public sealed class MqttRouterBridge : IMessageSink, IAsyncDisposable
         catch
         {
             connection.MessageReceived -= OnMessage;
+            connection.Disconnected -= OnLost;
             await connection.DisposeAsync().ConfigureAwait(false);
             throw;
         }
@@ -79,6 +84,7 @@ public sealed class MqttRouterBridge : IMessageSink, IAsyncDisposable
         }
 
         connection.MessageReceived -= OnMessage;
+        connection.Disconnected -= OnLost;
         try
         {
             await connection.DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
@@ -90,6 +96,8 @@ public sealed class MqttRouterBridge : IMessageSink, IAsyncDisposable
 
         await connection.DisposeAsync().ConfigureAwait(false);
     }
+
+    private void OnLost(Exception? error) => Lost?.Invoke(error);
 
     private void OnMessage(string topic, byte[] payload) => _router?.OnBrokerMessage(topic, Encoding.UTF8.GetString(payload));
 }

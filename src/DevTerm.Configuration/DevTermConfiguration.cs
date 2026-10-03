@@ -290,6 +290,12 @@ public static class DevTermConfiguration
             profile[nameof(CliOptions.StreamConvertOutputExtension)] = options.StreamConvertOutputExtension;
         }
 
-        return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
+        // The routing section is written only when there is something to route, so existing profiles stay unchanged.
+        if (options.Routing.IsConfigured)
+        {
+            profile[nameof(CliOptions.Routing)] = options.Routing;
+        }
+
+        return JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
     }
 }

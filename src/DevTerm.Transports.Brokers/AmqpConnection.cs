@@ -97,7 +97,7 @@ internal sealed class AmqpConnection : IBrokerConnection
     }
 }
 
-internal sealed class AmqpConnectionFactory : IBrokerConnectionFactory
+public sealed class AmqpConnectionFactory : IBrokerConnectionFactory
 {
     public IBrokerConnection Create() => new AmqpConnection();
 }
