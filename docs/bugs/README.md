@@ -66,11 +66,14 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 032 | [A bad value on the command line or in the saved default crashes startup instead of opening the editor](resolved/032-startup-bind-failure-crash.md) | DevTerm.Console (Program), DevTerm.Wpf (App) | Fixed |
 | 062 | [WPF Up/Down history recall stops working on SendBox after clicking "Send"](resolved/062-sendbox-arrow-keys-lose-focus-after-send.md) | DevTerm.Wpf (MainWindow) | Fixed |
 | 065 | [HP-GL plots with any pause longer than the idle timeout are split into multiple Stream Monitor captures](resolved/065-hpgl-no-end-detection-splits-one-plot.md) | DevTerm.Core (StreamContent) | Won't fix |
+| 070 | [HP-GL from the Tektronix 2230 at 4800 baud is still split into several captures](resolved/070-hpgl-split-by-idle-timer-at-4800-baud.md) | DevTerm.Core (StreamContent) | Fixed |
+| 071 | [A text presenter prints the tail of a captured image after the capture ends](resolved/071-captured-image-tail-leaks-into-text-presenters.md) | DevTerm.Core (Pipeline, StreamContent) | Fixed |
 
 ## Low
 
 | # | Bug | Area | Status |
 |---|---|---|---|
+| 069 | [TDS2024 LASERJET and PCX hardcopy produce no Stream Monitor capture](resolved/069-tds2024-laserjet-pcx-hardcopy-no-capture.md) | Stream Monitor sniffer, TDS2024 bridge | Fixed |
 | 068 | [The Tektronix 2230 bridge runs at 4800 baud; it can probably run at 9600 if dev-term paces its writes](resolved/068-tek2230-bridge-runs-at-4800-baud.md) | `tektronix-2230.json`, DevTerm.Transports.Tcp | Fixed |
 | 067 | [HP 34401A over RS-232 is not driven with write pacing, and probably needs a per-byte delay to be reliable](resolved/067-hp34401a-rs232-no-write-pacing.md) | DevTerm.Transports.Serial, `hp-agilent-keysight-34401a.json` | Fixed |
 | 066 | [DS1102E omits the terminating zero-length packet when a reply ends on a 64-byte boundary (pyvisa-py #472)](resolved/066-ds1102e-usbtmc-missing-zlp-at-packet-boundary.md) | DevTerm.Transports.Usbtmc | Won't fix |
@@ -103,5 +106,4 @@ reproduced by running it yet. Six were found independently by two reviewers (001
 | 058 | [Two close requests during a slow cleanup run OnClosing twice](resolved/058-wpf-onclosing-reentry.md) | WPF (MainWindow) | Fixed |
 | 059 | [CLI Ctrl+C may not interrupt a pending read on Linux/macOS](resolved/059-cli-ctrl-c-non-windows.md) | CLI (CliMode) | Fixed |
 | 060 | [A TUI profile switch can close/reassign the wrong session under overlap](resolved/060-tui-profile-switch-session-race.md) | TUI (Console) | Fixed |
-| 069 | [TDS2024 LASERJET and PCX hardcopy produce no Stream Monitor capture](069-tds2024-laserjet-pcx-hardcopy-no-capture.md) | Stream Monitor sniffer, TDS2024 bridge | Open |
 

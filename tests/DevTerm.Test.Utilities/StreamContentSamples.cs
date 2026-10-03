@@ -73,6 +73,32 @@ public static class StreamContentSamples
         return bytes;
     }
 
+    /// <summary>An 8x4 8-bit PCX (version 5): a 128-byte header, four run-length-coded scanlines, then the 0x0C marker and a 768-byte palette.</summary>
+    public static byte[] Pcx()
+    {
+        var bytes = new List<byte>(new byte[128]);
+        bytes[0] = 0x0A;
+        bytes[1] = 5;
+        bytes[2] = 1;
+        bytes[3] = 8;
+        bytes[8] = 7;
+        bytes[10] = 3;
+        bytes[65] = 1;
+        bytes[66] = 8;
+        for (var line = 0; line < 4; line++)
+        {
+            bytes.AddRange([0xC8, (byte)(line * 40)]);
+        }
+
+        bytes.Add(0x0C);
+        for (var i = 0; i < 768; i++)
+        {
+            bytes.Add((byte)i);
+        }
+
+        return [.. bytes];
+    }
+
     /// <summary>A little-endian TIFF header (no end marker - ends on idle).</summary>
     public static byte[] Tiff() => [(byte)'I', (byte)'I', 42, 0, 8, 0, 0, 0, 0, 0];
 
@@ -84,6 +110,9 @@ public static class StreamContentSamples
 
     /// <summary>A PJL-wrapped PCL job: universal exit language, a reset, some text, reset, closing UEL.</summary>
     public static byte[] PjlPcl() => Encoding.ASCII.GetBytes("\u001b%-12345X@PJL ENTER LANGUAGE=PCL\r\n\u001bE\u001b&l0OHello\u001bE\u001b%-12345X");
+
+    /// <summary>A scope-style LaserJet raster job: orientation and resolution, three one-byte rows, end graphics, form feed, reset.</summary>
+    public static byte[] PclRaster() => Encoding.ASCII.GetBytes("\u001b&l0O\u001b*t150R\u001b*r0A\u001b*b1W\u0000\u001b*b1W\u0000\u001b*b1W\u0000\u001b*rB\u001b&l0H\u001bE");
 
     /// <summary>Wraps <paramref name="payload"/> in an IEEE 488.2 definite-length block (<c>#&lt;n&gt;&lt;length&gt;</c>), the way a SCPI instrument returns a screen dump.</summary>
     public static byte[] ScpiBlock(byte[] payload)

@@ -14,6 +14,9 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
 
     public static readonly StreamContentKind Bmp = new(StreamContentFormat.Image, "BMP image", "bmp", "image/bmp");
 
+    /// <summary>ZSoft PCX, what a Tektronix TDS2000 scope sends for <c>HARDCOPY:FORMAT PCX</c>; WPF has no decoder for it.</summary>
+    public static readonly StreamContentKind Pcx = new(StreamContentFormat.Image, "PCX image", "pcx", "image/vnd.zbrush.pcx");
+
     public static readonly StreamContentKind Tiff = new(StreamContentFormat.Image, "TIFF image", "tif", "image/tiff");
 
     /// <summary>A vector image a converter wrote (never sniffed from a stream); WPF has no built-in decoder for it, so a front end draws it itself.</summary>
@@ -35,7 +38,7 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
     /// <c>System.Windows.Media.Imaging</c> decodes all five) — HP-GL/PostScript/PCL need the
     /// not-yet-built rendering presenter (presenters.md §3) before they can be previewed.
     /// </summary>
-    public bool IsNativeImage => Format == StreamContentFormat.Image && this != UnknownImage && this != Svg;
+    public bool IsNativeImage => Format == StreamContentFormat.Image && this != UnknownImage && this != Svg && this != Pcx;
 
     /// <summary>Whether this is <see cref="Svg"/>, which a front end previews with its own drawing code rather than a raster decoder.</summary>
     public bool IsSvg => this == Svg;
@@ -48,6 +51,7 @@ public sealed record StreamContentKind(StreamContentFormat Format, string Displa
         "jpg" or "jpeg" => Jpeg,
         "gif" => Gif,
         "bmp" => Bmp,
+        "pcx" => Pcx,
         "tif" or "tiff" => Tiff,
         _ => Binary,
     };

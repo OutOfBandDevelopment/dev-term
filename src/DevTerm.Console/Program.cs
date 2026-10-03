@@ -1,5 +1,6 @@
 using DevTerm.Configuration;
 using DevTerm.Console;
+using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
@@ -31,7 +32,8 @@ const string Usage =
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
-    + "\n   or: dev-term --transport mqtt --host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
+    + "\n   or: dev-term --transport amqp|stomp --host <host> --port <port> [--subscribe <key[,key...]>] [--publish <key>] [--username <name>] [--password <pw>]"
+    + "\n   or: dev-term --transport mqtt--host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
     + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
@@ -99,6 +101,34 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListUsbtmcDevices)))
         var manufacturer = device.Manufacturer is null ? string.Empty : $"{device.Manufacturer} ";
         var location = device.DevicePath is null ? string.Empty : $"  at {device.DevicePath}";
         Console.WriteLine($"{device.VendorId:X4}:{device.ProductId:X4}  {manufacturer}{device.Product ?? "(unknown)"}{serial}{location}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
+{
+    foreach (var device in LxiDeviceScanner.Scan())
+    {
+        Console.WriteLine($"{device.Host}:{device.Port}  {device.Display}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
+{
+    var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
+    var pluginServices = new ServiceCollection().AddPlugins(pluginOptions);
+    var pluginResults = pluginServices.BuildServiceProvider().GetRequiredService<IReadOnlyList<PluginLoadResult>>();
+    foreach (var plugin in pluginResults)
+    {
+        Console.WriteLine(plugin.Loaded ? $"{plugin.Name}  loaded  ({plugin.Folder})" : $"{plugin.Name}  skipped: {plugin.Message}  ({plugin.Folder})");
+    }
+
+    if (pluginResults.Count == 0)
+    {
+        Console.WriteLine("No plugins found.");
     }
 
     return 0;
@@ -232,6 +262,11 @@ var host = hostBuilder.Build();
 
 using (host)
 {
+    foreach (var plugin in host.Services.GetRequiredService<IReadOnlyList<PluginLoadResult>>().Where(p => !p.Loaded))
+    {
+        Console.Error.WriteLine($"Plugin '{plugin.Name}' skipped: {plugin.Message}");
+    }
+
     var catalog = host.Services.GetRequiredService<PresenterCatalog>();
     IReadOnlyList<IPresenter> presenters;
     try

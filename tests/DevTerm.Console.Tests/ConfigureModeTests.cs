@@ -564,7 +564,7 @@ public sealed class ConfigureModeTests
                 TuiTestRunner.CurrentApp.LayoutAndDraw(true);
 
                 var tcpHeader = parts.Form.SectionHeaderLabels["TCP"];
-                Assert.AreEqual(parts.Form.SectionHeaderLabels["Presentation"].Frame.Y, tcpHeader.Frame.Y + 5, "TCP: its header, three rows, then a blank line, then Presentation.");
+                Assert.AreEqual(parts.Form.SectionHeaderLabels["Presentation"].Frame.Y, tcpHeader.Frame.Y + 7, "TCP: its header, Host, Port, the two-row Detect LXI button, Listen, then a blank line, then Presentation.");
                 Assert.IsLessThan(serialTop, presentation.Frame.Y, "Presentation moved up into the space the Serial fields left.");
                 Assert.AreEqual(serialSaveTop - (serialTop - presentation.Frame.Y), parts.SaveNameField.Frame.Y, "The hand-built rows below the form follow it.");
             });

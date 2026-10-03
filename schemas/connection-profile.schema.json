@@ -121,6 +121,15 @@
         "null"
       ]
     },
+    "Tls": {
+      "type": "boolean"
+    },
+    "CaCertificate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Username": {
       "type": [
         "string",
@@ -175,6 +184,12 @@
         "null"
       ]
     },
+    "ListLxiDevices": {
+      "type": "boolean"
+    },
+    "ListPlugins": {
+      "type": "boolean"
+    },
     "ListBleDevices": {
       "type": "boolean"
     },
@@ -217,6 +232,12 @@
         "null"
       ]
     },
+    "Plugins": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Otlp": {
       "type": [
         "string",
@@ -251,6 +272,9 @@
       ]
     },
     "StreamConvertDpi": {
+      "type": "integer"
+    },
+    "StreamIdleTimeoutMs": {
       "type": "integer"
     },
     "StreamConvertOutputExtension": {

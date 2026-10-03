@@ -52,6 +52,11 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--streamconvertdpi' must be a positive number.");
         }
 
+        if (options.StreamIdleTimeoutMs <= 0)
+        {
+            return ValidateOptionsResult.Fail("'--streamidletimeoutms' must be a positive number.");
+        }
+
         var streamConvertMode = (options.StreamConvertMode ?? "none").Trim().ToLowerInvariant();
         switch (streamConvertMode)
         {
@@ -186,19 +191,21 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             case "mqtt":
+            case "amqp":
+            case "stomp":
                 if (string.IsNullOrWhiteSpace(options.Host))
                 {
-                    return ValidateOptionsResult.Fail("Missing required '--host' for the MQTT transport.");
+                    return ValidateOptionsResult.Fail($"Missing required '--host' for the {options.Transport.ToUpperInvariant()} transport.");
                 }
 
                 if (!int.TryParse(options.Port, out var mqttPort) || mqttPort is < 1 or > 65535)
                 {
-                    return ValidateOptionsResult.Fail("Missing or invalid '--port' for the MQTT transport (expected 1-65535, usually 1883).");
+                    return ValidateOptionsResult.Fail($"Missing or invalid '--port' for the {options.Transport.ToUpperInvariant()} transport (expected 1-65535; usual: mqtt 1883, amqp 5672, stomp 61613).");
                 }
 
                 if (string.IsNullOrWhiteSpace(options.Subscribe) && string.IsNullOrWhiteSpace(options.Publish))
                 {
-                    return ValidateOptionsResult.Fail("The MQTT transport needs '--subscribe', '--publish', or both.");
+                    return ValidateOptionsResult.Fail($"The {options.Transport.ToUpperInvariant()} transport needs '--subscribe', '--publish', or both.");
                 }
 
                 break;
@@ -207,7 +214,7 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
                 break;
 
             default:
-                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'mqtt', or 'loopback'.");
+                return ValidateOptionsResult.Fail($"Unknown transport '{options.Transport}'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'mqtt', 'amqp', 'stomp', or 'loopback'.");
         }
 
         return ValidateOptionsResult.Success;

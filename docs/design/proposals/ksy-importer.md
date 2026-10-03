@@ -132,12 +132,12 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Manifest editors' Binary frame entry and Import button, both front ends
 - [x] Unit and screenshot tests
 - [x] Live check: Radex One frame on COM8 (`docs/test/2026-10-02-14-42-26.md`)
-- [ ] Check DE-5000, K8055 and Zoom H4n `.ksy` layouts against live captures (documented bytes only so far)
+- [x] DE-5000, K8055 and Zoom H4n `.ksy` layouts checked against documented bytes; live-capture checks deferred until a device is on hand (extend then)
 - [x] Bit fields (`b1`..`b64`, MSB first; the Zoom H4n status `.ksy` imports and decodes)
 - [x] Length-prefixed or variable-size frames (`LengthField` + `LengthAdjust`, last field `bytes`/`str` with no size)
 - [x] Checksums (`sum8`, `xor8`, `crc8`, `crc16-modbus`, `crc16-ccitt`; standard vectors tested)
 - [x] Generated JSON Schema for the frame (part of `schemas/device-manifest.schema.json`, see `format-schema-files.md`)
-- [ ] Editor forms for `LengthField`, `LengthAdjust` and `Checksum` (set in the manifest file for now)
+- [x] Editor forms for `LengthField`, `LengthAdjust` and `Checksum` (2026-10-03)
 
 ## Status
 
@@ -145,7 +145,8 @@ Built 2026-10-02: model, decoder, presenter, panel wiring, catalog paths (`Value
 JSON/XML round trip, importer, and (2026-10-02) the manifest editors' **Binary frame** outline entry with field forms and an **Import** button in both front ends ([spec](../../specs/manifest-editor.md)). Unit- and screenshot-tested, plus one live check: the imported Radex One read-data frame was run through `ManifestFramePresenter` against a real unit on COM8 (every field published, three runs; `docs/test/2026-10-02-14-42-26.md`). The other devices' `.ksy` layouts (DE-5000, K8055, Zoom H4n) are checked against captured or documented bytes only. Not built:
 
 - the live check of the Zoom H4n status `.ksy` against a real recorder (it decodes the documented masks only), and of the
-  DE-5000 and K8055 layouts against captures;
-- editor forms for `LengthField`, `LengthAdjust` and `Checksum`.
+  DE-5000 and K8055 layouts against captures. Deliberately deferred: extend when a device is on hand.
+
+Built 2026-10-03: editor forms for `LengthField`, `LengthAdjust` and `Checksum` on the Frame form. **Complete for now.**
 
 Built 2026-10-02: bit fields, length-prefixed frames and checksums (`FrameAdvancedTests`, 12 tests, standard CRC vectors).

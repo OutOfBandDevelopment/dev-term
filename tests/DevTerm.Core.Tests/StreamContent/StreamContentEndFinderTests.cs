@@ -14,8 +14,10 @@ public sealed class StreamContentEndFinderTests
         [StreamContentSamples.Jpeg(), StreamContentKind.Jpeg],
         [StreamContentSamples.Gif(), StreamContentKind.Gif],
         [StreamContentSamples.Bmp(), StreamContentKind.Bmp],
+        [StreamContentSamples.Pcx(), StreamContentKind.Pcx],
         [StreamContentSamples.PostScript(), StreamContentKind.PostScript],
         [StreamContentSamples.PjlPcl(), StreamContentKind.Pcl],
+        [StreamContentSamples.PclRaster(), StreamContentKind.Pcl],
     ];
 
     [TestMethod]
@@ -86,7 +88,6 @@ public sealed class StreamContentEndFinderTests
     [TestMethod]
     public void For_FormatsWithNoInBandEnd_HaveNoFinder()
     {
-        Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Hpgl));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Tiff));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.Binary));
         Assert.IsNull(StreamContentEndFinder.For(StreamContentKind.UnknownImage));

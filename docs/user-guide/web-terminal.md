@@ -17,5 +17,9 @@ GET /?token=demo-token                           -> 302 to /, cookie set
 --Web:Urls http://0.0.0.0:5081                   -> 'http://0.0.0.0:5081' is not loopback, so it must use https.
 ```
 
+Set `Web:Panel` to `k8055` or `busylight` and the page shows that device's control panel above the output, rendered from its
+`UiDefinition` (buttons, toggles, sliders, numeric, choice and text fields; indicators, bar graphs and charts are listed as not
+shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with every control disabled, and typed lines are refused.
+
 It listens on loopback only unless you set `Web:AllowRemote`, `Web:Token`, `Web:CertificatePath` and an `https` URL.
 Every browser tab shares the one session. Field reference: [web terminal spec](../specs/web-terminal.md).

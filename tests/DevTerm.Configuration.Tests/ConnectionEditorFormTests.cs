@@ -53,7 +53,7 @@ public sealed class ConnectionEditorFormTests
             Assert.AreSequenceEqual(
                 ["Port", "Detected ports", "", "Baud", "Data bits", "Parity", "Stop bits", "Handshake", "DTR", "RTS", "Write timeout (ms)", "Read timeout (ms)"],
                 [.. definition.Sections[1].Controls.Select(c => c.Label)]);
-            Assert.AreSequenceEqual(["Host", "Port", "Listen (server mode)"], [.. definition.Sections[2].Controls.Select(c => c.Label)]);
+            Assert.AreSequenceEqual(["Host", "Port", "Detected LXI instruments", "Listen (server mode)"], [.. definition.Sections[2].Controls.Select(c => c.Label)]);
             Assert.AreSequenceEqual(
                 ["Vendor ID", "Product ID", "Serial number", "Show as hex", "Detected HID devices", "Detected USBTMC devices", ""],
                 [.. definition.Sections[3].Controls.Select(c => c.Label)]);
@@ -146,7 +146,7 @@ public sealed class ConnectionEditorFormTests
         Assert.AreEqual("Read timeout (ms)", Controls(definition).Single(c => c.Id == nameof(CliOptions.ReadTimeoutMs)).Label);
         Assert.IsTrue(((ToggleControl)Controls(definition).Single(c => c.Id == nameof(CliOptions.Dtr))).DefaultValue);
         Assert.AreEqual(
-            "Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, or loopback.",
+            "Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, amqp, stomp, or loopback.",
             Controls(definition).Single(c => c.Id == nameof(CliOptions.Transport)).Description);
     }
 }

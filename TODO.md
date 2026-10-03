@@ -8,12 +8,10 @@ Completed work is logged by date under `docs/changes/`.
 
 Queue from your 2026-10-02 answers, in the order I'm taking them. Nothing below is built yet.
 
-1. **Message brokers and the web tunnel** (unlocked). MQTT is built and verified (see `docs/changes/2026-10-02.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel; see `docs/changes/2026-10-02.md`). AMQP and STOMP wait for a real target; Blazor rendering of control panels is a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
-2. **`.ksy` gaps**: bit fields, length-prefixed frames and checksums are built (see `docs/changes/2026-10-02.md`). Left: a live check of the Zoom H4n status `.ksy` (needs the recorder on) and editor forms for the new frame settings.
-3. **Observability**: built (see `docs/changes/2026-10-02.md`). Left: check it against the Aspire dashboard container, and `ILogger` export if wanted.
+1. **Message brokers and the web tunnel** (unlocked). MQTT, AMQP and STOMP are built and verified (see `docs/changes/2026-10-02.md` and `2026-10-03.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel). Left: a real home-automation broker check and Blazor rendering of control panels as a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
+3. **Observability**: built (see `docs/changes/2026-10-02.md`). Metrics now export every 10 s (see `docs/changes/2026-10-03.md`). Left: check it against the Aspire dashboard container. `ILogger` export has nothing to export yet (no code logs through `ILogger`), so it waits until something does.
 4. **TUI-only palette option** for the light theme on 16-color consoles: built (see `docs/changes/2026-10-02.md`). Left: look at it on a real legacy conhost.
-5. **Plugin loading** (`AssemblyLoadContext`): move protocol decoders and rendering presenters out of the core references so they load as plugins.
-6. **LXI Phase 1** (discovery picker): the DG1062Z at 192.168.0.87 is the real target (raw SCPI on 5555, VXI-11 portmapper open).
+5. **Plugin loading**: the loader is built (see `docs/changes/2026-10-03.md`). Left: move the built-in decoders (NMEA, RadexOne, ...) out of the core references into plugin folders, and a Plugins list in the TUI/WPF (the console has `--listplugins true`).
 
 Done from that round: the ser2net RFC 2217 container (`containers/`, see `docs/changes/2026-10-02.md`). `DevTerm.Analyzers` stays parked.
 

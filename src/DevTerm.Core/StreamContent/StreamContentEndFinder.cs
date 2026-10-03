@@ -50,9 +50,19 @@ public abstract class StreamContentEndFinder
             return new BmpEndFinder();
         }
 
+        if (kind == StreamContentKind.Pcx)
+        {
+            return new PcxEndFinder();
+        }
+
         if (kind == StreamContentKind.PostScript)
         {
             return new PostScriptEndFinder();
+        }
+
+        if (kind == StreamContentKind.Hpgl)
+        {
+            return new HpglEndFinder();
         }
 
         return kind == StreamContentKind.Pcl ? new PclEndFinder() : null;
@@ -252,6 +262,27 @@ public abstract class StreamContentEndFinder
             (packedFields & 0x80) != 0 ? 3 * (1 << ((packedFields & 0x07) + 1)) : 0;
     }
 
+    // An instrument's plot finishes by stowing the pen: "SP0;" (select no pen). Everything after it (a
+    // "READY;" prompt, say) is not part of the plot. Without this the only end is an idle gap, and a slow
+    // link that stalls mid-plot gets one plot cut into several files.
+    private sealed class HpglEndFinder : StreamContentEndFinder
+    {
+        private long _scanFrom;
+
+        public override long? FindEnd(ReadOnlySpan<byte> content)
+        {
+            var window = content[(int)_scanFrom..];
+            var at = window.IndexOf("SP0;"u8);
+            if (at >= 0)
+            {
+                return _scanFrom + at + 4;
+            }
+
+            _scanFrom = Math.Max(_scanFrom, content.Length - 3);
+            return null;
+        }
+    }
+
     private sealed class BmpEndFinder : StreamContentEndFinder
     {
         public override long? FindEnd(ReadOnlySpan<byte> content)
@@ -263,6 +294,81 @@ public abstract class StreamContentEndFinder
 
             var fileSize = BinaryPrimitives.ReadUInt32LittleEndian(content[2..]);
             return fileSize > 0 && content.Length >= fileSize ? fileSize : null;
+        }
+    }
+
+    // PCX: a 128-byte header (window, planes, bytes per line), then run-length-coded scanlines - a byte with
+    // its top two bits set is a run count (low six bits) for the next byte, anything else is one literal - and,
+    // for a version-5 8-bit single-plane image, a 0x0C marker plus a 768-byte palette. The end is known only by
+    // decoding the runs until the declared number of bytes has been produced.
+    private sealed class PcxEndFinder : StreamContentEndFinder
+    {
+        private const int _headerLength = 128;
+        private long _need = -1;
+        private long _produced;
+        private int _position = _headerLength;
+        private bool _hasPalette;
+
+        public override long? FindEnd(ReadOnlySpan<byte> content)
+        {
+            if (_need < 0)
+            {
+                if (content.Length < _headerLength)
+                {
+                    return null;
+                }
+
+                var lines = (long)BinaryPrimitives.ReadUInt16LittleEndian(content[10..]) - BinaryPrimitives.ReadUInt16LittleEndian(content[6..]) + 1;
+                var perLine = (long)content[65] * BinaryPrimitives.ReadUInt16LittleEndian(content[66..]);
+                if (lines <= 0 || perLine <= 0)
+                {
+                    return null;
+                }
+
+                _need = lines * perLine;
+                _hasPalette = content[1] == 5 && content[3] == 8 && content[65] == 1;
+            }
+
+            while (_produced < _need)
+            {
+                if (_position >= content.Length)
+                {
+                    return null;
+                }
+
+                if (content[_position] >= 0xC0)
+                {
+                    if (_position + 1 >= content.Length)
+                    {
+                        return null;
+                    }
+
+                    _produced += content[_position] & 0x3F;
+                    _position += 2;
+                }
+                else
+                {
+                    _produced++;
+                    _position++;
+                }
+            }
+
+            if (!_hasPalette)
+            {
+                return _position;
+            }
+
+            if (_position >= content.Length)
+            {
+                return null;
+            }
+
+            if (content[_position] != 0x0C)
+            {
+                return _position;
+            }
+
+            return content.Length >= _position + 769 ? _position + 769 : null;
         }
     }
 
@@ -320,6 +426,92 @@ public abstract class StreamContentEndFinder
     {
         private static readonly byte[] _uel = "\u001b%-12345X"u8.ToArray();
         private long _scanFrom = -1;
+        private bool _raster;
+
+        // ESC*rB / ESC*rC end raster graphics. A printer's job then usually closes with a form feed
+        // (ESC&l0H, or FF) and a reset (ESC E), so those are part of the job and a capture ends after them.
+        private long? FindRasterEnd(ReadOnlySpan<byte> content)
+        {
+            var from = (int)_scanFrom;
+            var window = content[from..];
+            var at = window.IndexOf("\u001b*rB"u8);
+            var atC = window.IndexOf("\u001b*rC"u8);
+            if (at < 0 || (atC >= 0 && atC < at))
+            {
+                at = atC;
+            }
+
+            if (at < 0)
+            {
+                _scanFrom = Math.Max(_scanFrom, content.Length - 3);
+                return null;
+            }
+
+            var end = from + at + 4;
+            while (end < content.Length)
+            {
+                var rest = content[end..];
+                if (rest[0] == 0x0C)
+                {
+                    end++;
+                }
+                else if (rest[0] == 0x1B)
+                {
+                    if (rest.Length < 2)
+                    {
+                        return null;
+                    }
+
+                    if (rest[1] == (byte)'E')
+                    {
+                        return end + 2;
+                    }
+
+                    if (rest[1] != (byte)'&')
+                    {
+                        return end;
+                    }
+
+                    // ESC & l <digits> H
+                    var i = 2;
+                    if (rest.Length <= i)
+                    {
+                        return null;
+                    }
+
+                    if (rest[i] != (byte)'l')
+                    {
+                        return end;
+                    }
+
+                    i++;
+                    while (i < rest.Length && rest[i] is >= (byte)'0' and <= (byte)'9')
+                    {
+                        i++;
+                    }
+
+                    if (i >= rest.Length)
+                    {
+                        return null;
+                    }
+
+                    if (rest[i] != (byte)'H')
+                    {
+                        return end;
+                    }
+
+                    end += i + 1;
+                }
+                else
+                {
+                    return end;
+                }
+            }
+
+            // Everything so far is the job; a form feed/reset may still follow, so wait for the idle timeout
+            // rather than cutting the capture here.
+            return null;
+        }
 
         public override long? FindEnd(ReadOnlySpan<byte> content)
         {
@@ -332,12 +524,20 @@ public abstract class StreamContentEndFinder
 
                 if (!content.StartsWith(_uel))
                 {
-                    // A job that starts with a bare reset has no closing marker to look for.
-                    _scanFrom = long.MaxValue;
-                    return null;
+                    // A job that starts with a bare reset or raster setup has no closing UEL; a raster
+                    // job (a scope's LaserJet hard copy) ends at its end-graphics escape instead.
+                    _raster = true;
+                    _scanFrom = 0;
                 }
+                else
+                {
+                    _scanFrom = _uel.Length;
+                }
+            }
 
-                _scanFrom = _uel.Length;
+            if (_raster)
+            {
+                return FindRasterEnd(content);
             }
 
             if (_scanFrom >= content.Length)

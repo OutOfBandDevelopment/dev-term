@@ -1,0 +1,6 @@
+{
+  "name": "Sample",
+  "version": "1.0.0",
+  "contract": 1,
+  "assembly": "DevTerm.Plugins.Sample.dll"
+}

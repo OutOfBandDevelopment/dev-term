@@ -4,15 +4,15 @@
 │                                                                              │
 │╭┤Outline├───────────────────╮╭┤voltage (u2)├────────────────────────────────╮│
 ││Identity                    ││  Name:       voltage                         ││
-││Commands (3)                ││  Type:       ○ u1  ◉ u2  ○ u4  ○ u8  ○ s1    ││
-││  Measure                   ││              ○ s2  ○ s4  ○ s8  ○ f4  ○ f8    ││
-││  Stream Samples            ││              ○ str  ○ bytes  ○ skip          ││
-││    count (integer)         ││  Byte order: ◉ (none)  ○ le  ○ be            ││
-││  Hello                     ││  Scale:                                      ││
-││Response patterns (1)       ││  Offset:                                     ││
-││  sample                    ││  Unit:                                       ││
-││Binary frame (4)            ││  Label:      Battery voltage                 ││
-││  (skip 2)                  ││  Must equal:                                 ││
+││Commands (3)                ││  Type:       u2               ⟦ Pick... ⟧▖   ││
+││  Measure                   ││                               ▝▀▀▀▀▀▀▀▀▀▀▘   ││
+││  Stream Samples            ││  Byte order: ◉ (none)  ○ le  ○ be            ││
+││    count (integer)         ││  Scale:                                      ││
+││  Hello                     ││  Offset:                                     ││
+││Response patterns (1)       ││  Unit:                                       ││
+││  sample                    ││  Label:      Battery voltage                 ││
+││Binary frame (4)            ││  Must equal:                                 ││
+││  (skip 2)                  ││                                              ││
 ││  voltage (u2)              ││                                              ││
 ││  current (s2)              ││                                              ││
 ││  name (str)                ││                                              ││

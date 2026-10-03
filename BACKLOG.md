@@ -39,9 +39,6 @@ the rest.
   frames**, and **checksums** (the Radex One reply's is skipped). Kaitai is read/parse-only,
   so it only ever covers the response half; the SCPI baseline in `docs/design/device-control-modules.md` is a
   separate, already-built path.
-- Dynamic plugin loading (queued in `TODO.md`; decoders and rendering presenters to move out of the core references) (`AssemblyLoadContext`, `IPluginModule`, manifest/versioning) per
-  `docs/design/plugin-model.md`. Today's built-in transports/presenters are wired by hand in
-  `Program.cs`, not actually loaded as plugins yet, despite already using the same contracts.
 - Protocol decoders with a human-readable text baseline; composite/channelized decoders;
   mappable presenters.
 - Rendering presenters (HPGL/PostScript/PCL, telemetry plots) + export (SVG/PNG/JPG) — the actual
@@ -76,9 +73,7 @@ the rest.
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
-- [LXI support](docs/design/proposals/lxi-support.md).
-- [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
-  route inbound messages and trigger outbound events to external services.
+- [LXI VXI-11 client](docs/design/proposals/lxi-support.md): phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 - [Schema files for custom formats](docs/design/proposals/format-schema-files.md) — generated JSON Schemas for manifests,
   UI definitions and profiles (proposed 2026-10-02; spike `JsonSchemaExporter` first).
@@ -96,3 +91,15 @@ the rest.
   already speak the open USB/IP protocol. If it turns out to need real protocol work, it's a
   fundamentally bigger kind of thing than any transport/decoder proposal above — tunneling USB
   itself (enumeration, control/bulk/interrupt transfers), not decoding one device's byte protocol.
+
+- **Dockable MDI layout (WPF).** Sessions and Stream Monitor windows that can be snapped/docked around and
+  onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
+  library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
+- **Watch a session over a named pipe.** Expose a live session's traffic (rx/tx, presenter output) on a named
+  pipe so another process can tail it in real time. Needs a read-only vs. read-write decision, a pipe naming
+  scheme per session, and a design doc with PlantUML.
+- **Project (workspace) state: save and restore all open sessions.** Save the set of open tabs (each one's connection profile, plus as much state as is practical: presenter choices, send history, Stream Monitor/log settings, window layout) as one project file, and reopen it on launch or from a menu so closing the program with several devices attached comes back to the same connections. Builds on the multi-tab sessions; needs a decision on connection-only versus full state, and whether to auto-restore the last project.
+- **PCX (and PCL raster) preview in the Stream Monitor.** WPF has no PCX decoder, so a captured PCX is saved but not
+  shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
+  package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
+

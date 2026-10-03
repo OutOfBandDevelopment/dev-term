@@ -36,6 +36,8 @@ public sealed class SessionHub : IAsyncDisposable
     /// <summary>Raised for every output or status line.</summary>
     public event Action<string>? LineReceived;
 
+    internal Session Session => _session;
+
     public ConnectionState State => _session.State;
 
     public string Description => ConnectionDescription.For(_options);

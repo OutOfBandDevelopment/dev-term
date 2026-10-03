@@ -25,7 +25,7 @@ public sealed class CliOptions
 {
     [Category("General")]
     [DisplayName("Transport")]
-    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, or loopback.")]
+    [Description("Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, amqp, stomp, or loopback.")]
     public string Transport { get; set; } = "serial";
 
     /// <summary>A free-text note about this connection/profile — purely descriptive, never read by any transport or validated.</summary>
@@ -197,6 +197,16 @@ public sealed class CliOptions
     [Description("Where a typed line is published unless it is written as topic<TAB>payload.")]
     public string? Publish { get; set; }
 
+    /// <summary>AMQP and STOMP only: encrypt the broker connection.</summary>
+    [Category("MQTT")]
+    [DisplayName("Use TLS")]
+    public bool Tls { get; set; }
+
+    /// <summary>AMQP and STOMP only: an extra CA certificate file to trust for the broker's TLS certificate.</summary>
+    [Category("MQTT")]
+    [DisplayName("CA certificate")]
+    public string? CaCertificate { get; set; }
+
     [Category("MQTT")]
     [DisplayName("User name")]
     public string? Username { get; set; }
@@ -266,6 +276,14 @@ public sealed class CliOptions
     [Category("BLE")]
     [DisplayName("Notify characteristic UUID")]
     public string? BleNotifyCharacteristicUuid { get; set; }
+
+    /// <summary>Scan the LAN for LXI/VXI-11 instruments, print each with its raw SCPI port and <c>*IDN?</c>, and exit.</summary>
+    [Category("Mode")]
+    public bool ListLxiDevices { get; set; }
+
+    /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
+    [Category("Mode")]
+    public bool ListPlugins { get; set; }
 
     /// <summary>List paired BLE devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
@@ -340,6 +358,14 @@ public sealed class CliOptions
     public string? Log { get; set; }
 
     /// <summary>
+    /// Folder of plugins (<c>&lt;folder&gt;/&lt;plugin&gt;/plugin.json</c> + assemblies) loaded at startup. Defaults to a <c>plugins</c>
+    /// folder next to the app when that exists. See docs/design/plugin-model.md.
+    /// </summary>
+    [Category("Mode")]
+    [DisplayName("Plugins folder")]
+    public string? Plugins { get; set; }
+
+    /// <summary>
     /// Opt-in OpenTelemetry export of dev-term's own traces and metrics (connection open spans, bytes
     /// sent/received, disconnects) over OTLP/gRPC: <c>--otlp http://localhost:4317</c>, or <c>--otlp true</c> for that
     /// default. Off when unset. See docs/design/observability.md.
@@ -396,6 +422,15 @@ public sealed class CliOptions
     [Category("Stream Monitor")]
     [DisplayName("External tool DPI")]
     public int StreamConvertDpi { get; set; } = 150;
+
+    /// <summary>
+    /// How long (ms) the Stream Monitor waits with no bytes before a capture that has no in-band end (HP-GL, TIFF)
+    /// is considered finished and saved. The wait restarts on every byte, so only a pause this long splits a
+    /// capture in two; raise it for a slow link (a 4800 baud scope can stall mid-plot for longer than the 2000 default).
+    /// </summary>
+    [Category("Stream Monitor")]
+    [DisplayName("Capture idle timeout (ms)")]
+    public int StreamIdleTimeoutMs { get; set; } = 2000;
 
     /// <summary>
     /// File extension (no leading dot) for a converted output file. Unset falls back to a sensible

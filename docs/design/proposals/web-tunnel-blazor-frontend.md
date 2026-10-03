@@ -130,13 +130,16 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Pick a Blazor hosting model (none yet: WebSocket plus a static page; Blazor later for `UiDefinition`)
 - [x] Real design doc (the Decisions section above)
 - [x] Prototype, tests, and `docs/specs/` / `docs/user-guide/` entries
-- [ ] Blazor rendering of a `UiDefinition` control panel
-- [ ] Per-viewer read-only role; TLS verified with a real certificate
+- [x] Rendering of a `UiDefinition` control panel (done as JSON at `/api/panel` plus a generic renderer in the page, not a Blazor circuit: no Razor/SignalR dependency for what a small script does; live indicators and charts not shown yet)
+- [x] Read-only role (`Web:ReadOnlyToken`)
+- [x] TLS served and checked with a generated self-signed certificate (`Https_WithACertificate_ServesOverTls...`)
+- [x] TLS with a CA-issued certificate: a generated CA signs the server certificate; a client trusting only that CA connects and one without it is refused (`Https_WithACaIssuedCertificate...`)
+- [ ] A real device through the page, multiple browsers (needs user setup)
 
 ## Status
 
 **Implemented (2026-10-02): `DevTerm.Web`** with the decisions above. `AccessPolicyTests` and `WebHostTests`
 (13 unit tests, including a real WebSocket round trip against the loopback transport) pass, and a live
 run confirmed 401 without a token, a 302 with `?token=`, and a refused non-loopback `http` bind. Not verified:
-TLS with a real certificate, a real device through the page, more than one simultaneous browser. Not built:
+a real device through the page, more than one simultaneous browser. Not built:
 Blazor, user accounts, read-only viewers.

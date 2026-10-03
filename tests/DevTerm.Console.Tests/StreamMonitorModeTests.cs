@@ -109,13 +109,15 @@ public sealed class StreamMonitorModeTests
     public async Task Row_DescribesKindSizeEndAndFile()
     {
         await using var bench = await StreamMonitorBench.StartAsync("scope");
-        var capture = await bench.CaptureAsync(StreamContentSamples.Hpgl());
+        // No trailing SP0; (the pen stow that ends a plot), so only the idle wait can end it.
+        var plot = StreamContentSamples.Hpgl()[..^4];
+        var capture = await bench.CaptureAsync(plot);
 
         var row = StreamMonitorMode.Row(capture);
 
         Assert.AreEqual(StreamCaptureEnd.IdleTimeout, capture.Capture.EndReason);
         StringAssert.Contains(row, "HPGL");
-        StringAssert.Contains(row, $"{StreamContentSamples.Hpgl().Length} B");
+        StringAssert.Contains(row, $"{plot.Length} B");
         StringAssert.Contains(row, "went quiet");
         StringAssert.EndsWith(row, ".hpgl");
     }

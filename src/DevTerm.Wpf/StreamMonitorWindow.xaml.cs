@@ -182,8 +182,9 @@ public partial class StreamMonitorWindow : Window
         var running = _monitor.IsRunning;
         StateText.Text = running ? $"Monitoring {_monitor.DeviceName}" : $"Stopped — {_monitor.DeviceName}";
         StateDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, WpfTheme.Key(running ? ThemeRole.StatusConnected : ThemeRole.MutedForeground));
-        FolderText.Text = $"Saving to {StreamMonitor.DisplayPath(_monitor.ExportDirectory)}";
-        FolderText.ToolTip = _monitor.ExportDirectory;
+        var otherFolders = _monitor.ExportDirectories.Count - 1;
+        FolderText.Text = $"Saving to {StreamMonitor.DisplayPath(_monitor.ExportDirectory)}{(otherFolders > 0 ? $" (+{otherFolders} more)" : string.Empty)}";
+        FolderText.ToolTip = string.Join(Environment.NewLine, _monitor.ExportDirectories);
         ToggleButton.Content = running ? "Stop Monitoring" : "Start Monitoring";
     }
 

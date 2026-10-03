@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using DevTerm.Configuration;
+using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
@@ -61,13 +62,9 @@ public partial class MainWindow : Window
         // resolved. See docs/bugs/resolved/017-wpf-profile-switch-no-supersede.md.
         public CancellationTokenSource? SwitchCts { get; set; }
 
-        // Per-tab logging/Stream Monitor (docs/design/multi-session-ui.md's Step 4) - each tab owns
-        // its own logger and monitor rather than the window sharing one across every tab.
+        // Per-tab logging (docs/design/multi-session-ui.md's Step 4) - each tab owns its own logger. The
+        // Stream Monitor is the opposite: one window-level monitor watching every tab (see _streamMonitor).
         public SessionLogger? Logger { get; set; }
-
-        public StreamMonitor? Monitor { get; set; }
-
-        public StreamMonitorWindow? MonitorWindow { get; set; }
     }
 
     private readonly List<WindowTab> _tabs = [];
@@ -277,6 +274,7 @@ public partial class MainWindow : Window
         tab.Session.Disconnected += windowTab.DisconnectedHandler;
 
         _tabs.Add(windowTab);
+        TrackInMonitor(windowTab);
         SessionTabs.Items.Add(item);
         SessionTabs.SelectedItem = item;
         UpdateCloseSessionAvailability();
@@ -394,8 +392,7 @@ public partial class MainWindow : Window
             panel.Close();
         }
 
-        tab.MonitorWindow?.Close();
-        tab.Monitor?.Dispose();
+        _streamMonitor?.Untrack(tab);
         StopLogging(tab, report: false);
 
         tab.Tab.Session.Output -= tab.OutputHandler;
@@ -1074,28 +1071,43 @@ public partial class MainWindow : Window
         window.Show();
     }
 
-    /// <summary>
-    /// The active tab's own Stream Monitor, pointed at its session and started — opening the window
-    /// is asking to watch. Created on first use and kept for that tab's lifetime, scoped per-tab
-    /// (docs/design/multi-session-ui.md's Step 4) so one tab's captures never land in another's
-    /// output list; <see cref="CloseTabAsync"/> disposes it when the tab closes and
-    /// <see cref="SwitchProfileAsync"/> moves it along with that tab's session. Split from the click
-    /// handler so tests can drive it without showing a window.
-    /// </summary>
-    internal StreamMonitor EnsureStreamMonitor() => EnsureStreamMonitor(ActiveWindowTab);
+    // The window's one Stream Monitor, watching every tab's session (keyed by the tab) so captures from all
+    // open sessions land in one list. Created on first use; tabs opened or closed while it exists are
+    // tracked/untracked (AddTab, CloseTabAsync) and a profile switch re-points that tab (SwitchProfileAsync).
+    private StreamMonitor? _streamMonitor;
+    private StreamMonitorWindow? _monitorWindow;
 
-    private StreamMonitor EnsureStreamMonitor(WindowTab tab)
+    private void TrackInMonitor(WindowTab tab) =>
+        _streamMonitor?.Track(tab, tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
+
+    /// <summary>
+    /// The window's Stream Monitor, tracking every open tab's session and started - opening the window
+    /// is asking to watch. Created on first use and kept for the window's lifetime; each capture is
+    /// reported as a status line in the tab it came from. Split from the click handler so tests can
+    /// drive it without showing a window.
+    /// </summary>
+    internal StreamMonitor EnsureStreamMonitor()
     {
-        if (tab.Monitor is null)
+        if (_streamMonitor is null)
         {
-            var monitor = new StreamMonitor();
-            monitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() => AppendOutput(tab, capture.Describe(), OutputKind.Status));
-            tab.Monitor = monitor;
+            var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(ActiveWindowTab.Tab.CliOptions.StreamIdleTimeoutMs) });
+            monitor.CaptureAdded += (_, capture) => Dispatcher.BeginInvoke(() =>
+            {
+                if (capture.Source is WindowTab source && _tabs.Contains(source))
+                {
+                    AppendOutput(source, capture.Describe(), OutputKind.Status);
+                }
+            });
+            _streamMonitor = monitor;
         }
 
-        tab.Monitor.SetSession(tab.Tab.Session, StreamMonitor.DeviceNameFor(tab.Tab.CliOptions, _profileStore), tab.Tab.CliOptions.EffectiveExportDirectory);
-        tab.Monitor.Start();
-        return tab.Monitor;
+        foreach (var tab in _tabs)
+        {
+            TrackInMonitor(tab);
+        }
+
+        _streamMonitor.Start();
+        return _streamMonitor;
     }
 
     // Show(), not ShowDialog(): like the control panels, it's meant to stay open and update live
@@ -1103,8 +1115,8 @@ public partial class MainWindow : Window
     private void StreamMonitor_Click(object sender, RoutedEventArgs e)
     {
         var tab = ActiveWindowTab;
-        var monitor = EnsureStreamMonitor(tab);
-        if (tab.MonitorWindow is { } open)
+        var monitor = EnsureStreamMonitor();
+        if (_monitorWindow is { } open)
         {
             open.RefreshState();
             open.Activate();
@@ -1112,8 +1124,8 @@ public partial class MainWindow : Window
         }
 
         var window = new StreamMonitorWindow(monitor, tab.Tab.CliOptions, ConverterToolsStore.Load()) { Owner = this };
-        window.Closed += (_, _) => tab.MonitorWindow = null;
-        tab.MonitorWindow = window;
+        window.Closed += (_, _) => _monitorWindow = null;
+        _monitorWindow = window;
         window.Show();
     }
 
@@ -1220,7 +1232,7 @@ public partial class MainWindow : Window
         tab.Tab.Catalog = built.Catalog;
         tab.Tab.CliOptions = newOptions;
         tab.Tab.Parser = newOptions.EffectiveParser;
-        tab.Monitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, _profileStore), newOptions.EffectiveExportDirectory);
+        TrackInMonitor(tab);
         if (ReferenceEquals(tab, ActiveWindowTabOrNull))
         {
             ParserBox.ItemsSource = built.Catalog.InputNames;
@@ -1306,10 +1318,10 @@ public partial class MainWindow : Window
 
         _closing = true;
         ClosingCleanupRunCount++;
+        _monitorWindow?.Close();
+        _streamMonitor?.Dispose();
         foreach (var tab in _tabs)
         {
-            tab.MonitorWindow?.Close();
-            tab.Monitor?.Dispose();
             StopLogging(tab, report: false);
             tab.Tab.Session.Output -= tab.OutputHandler;
             tab.Tab.Session.Disconnected -= tab.DisconnectedHandler;

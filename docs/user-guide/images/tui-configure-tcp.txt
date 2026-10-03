@@ -10,16 +10,16 @@
 │                                                                             █│
 │                                                                             █│
 │  Transport:   ○ serial  ◉ tcp  ○ hid  ○ usbtmc  ○ ble  ○ rfc2217  ○ mqtt    █│
-│               ○ loopback                                                    █│
+│               ○ loopback                                                    ░│
 │  Description: Tektronix 2230 bench scope                                    ░│
 │                                                                             ░│
 │[-] TCP                                                                      ░│
-│  Host: 192.168.0.107                                                        ░│
-│  Port: 23                                                                   ░│
-│        ☐ Listen (server mode)                                               ░│
+│  Host:                     192.168.0.107                                    ░│
+│  Port:                     23                                               ░│
+│  Detected LXI instruments: ⟦ Detect LXI... ⟧                                ░│
+│                                                                             ░│
+│                            ☐ Listen (server mode)                           ░│
 │                                                                             ░│
 │[-] Presentation                                                             ░│
-│  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ░│
-│                         ☐ k8055 ☐ busylight ☐ scpi ☐ radexone ☐ zoomh4n     ░│
-│                         ☐ de5000 ☐ nmea                                     ▼│
+│  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal ☐ binary     ▼│
 └──────────────────────────────────────────────────────────────────────────────┘

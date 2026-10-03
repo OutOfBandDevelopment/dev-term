@@ -79,15 +79,44 @@ public sealed class Pipeline
             snapshot = [.. _presenters];
         }
 
+        // Content-capturing presenters go first: a chunk one of them consumed (a capture in progress, or ending in
+        // it) is withheld from the rest, so text presenters never print an image's bytes or keep their tail.
         var results = new List<PresenterOutput>(snapshot.Length);
+        var consumed = false;
         foreach (var presenter in snapshot)
         {
-            foreach (var text in presenter.Render(data))
+            if (presenter is not IContentCapturePresenter capturer)
             {
-                results.Add(new PresenterOutput(presenter.Name, text));
+                continue;
+            }
+
+            var before = capturer.CompletedCount;
+            var wasCapturing = capturer.IsCapturing;
+            AddOutputs(results, presenter, data);
+            consumed |= wasCapturing || capturer.IsCapturing || capturer.CompletedCount != before;
+        }
+
+        if (consumed)
+        {
+            return results;
+        }
+
+        foreach (var presenter in snapshot)
+        {
+            if (presenter is not IContentCapturePresenter)
+            {
+                AddOutputs(results, presenter, data);
             }
         }
 
         return results;
+    }
+
+    private static void AddOutputs(List<PresenterOutput> results, IPresenter presenter, ReadOnlySequence<byte> data)
+    {
+        foreach (var text in presenter.Render(data))
+        {
+            results.Add(new PresenterOutput(presenter.Name, text));
+        }
     }
 }

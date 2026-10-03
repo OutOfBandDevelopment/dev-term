@@ -1848,6 +1848,30 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SelectedLxiDevice_FillsTheTcpHostAndPort_WithoutTouchingTheSerialPort()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            Assert.AreEqual(0, vm.LxiDeviceOptions.Count, "A scan takes seconds, so nothing runs at construction.");
+            var device = new LxiDeviceOption("Rigol Technologies,DG1062Z  (192.168.0.87:5555)", "192.168.0.87", 5555);
+            vm.SetLxiDeviceOptions([device]);
+            var serialPort = vm.Port;
+
+            vm.SelectedLxiDevice = device;
+
+            Assert.AreEqual("192.168.0.87", vm.Host);
+            Assert.AreEqual("5555", vm.TcpPort);
+            Assert.AreEqual(serialPort, vm.Port);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void BleDeviceOptions_StartsEmpty_AndSetBleDeviceOptionsReplacesIt()
     {
         var directory = CreateTempDirectory();

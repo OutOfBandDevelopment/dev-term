@@ -100,6 +100,25 @@ Type a line and press Enter to send; Ctrl+C to exit.
 Add `--username` and `--password` for an authenticated broker. In the Connection Editor, pick `mqtt`: Host and Port
 come from the TCP group, plus an MQTT group for the topics and user name. The password is never saved.
 
+### AMQP and STOMP (RabbitMQ)
+
+`--transport amqp` (AMQP 0-9-1, port 5672) and `--transport stomp` (STOMP 1.2, port 61613) work like `mqtt`: the same
+`--subscribe`, `--publish`, `--username` and `--password`, and each message is shown as one `address<TAB>payload` line.
+For AMQP the address is a routing key on the `amq.topic` exchange (`sensors.#`); for STOMP it is a destination
+(`/topic/sensors`). Against the `containers/` RabbitMQ (user/password `devterm`; STOMP is mapped to 21613):
+
+```
+dotnet run --project src/DevTerm.Console -- --transport amqp --host 127.0.0.1 --port 5672 --username devterm --password devterm --subscribe "cli.#" --publish cli.out --presenter ascii --cli true
+[ascii] cli.out	hi amqp
+```
+
+For an encrypted connection add `--tls true` (AMQPS on 5671, STOMP over TLS on the broker's TLS port); the broker's
+certificate must be trusted by the system, or by `--cacertificate <file>` for a private CA. A certificate that does not
+validate is refused. `containers/make-test-certs.sh` makes a throwaway CA for the test RabbitMQ.
+
+The Connection Editor offers both under Transport, with the same MQTT group of fields; `Tls` and `CaCertificate` are
+kept in a saved profile and preserved when the editor saves it, but are not editor fields yet.
+
 ### Errors
 
 An unrecognized transport, or missing required arguments, print usage text to stderr and exit 1
@@ -258,6 +277,20 @@ How to press it:
 
 Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
 changes away.
+
+### Finding a LAN instrument (LXI)
+
+For an instrument on the network, choose the `tcp` transport and press **Detect LXI...** (a dropdown plus button in WPF, a
+button opening a list in the TUI). The scan takes about three seconds and lists each instrument that answered, with its
+`*IDN?` and raw SCPI port; picking one fills Host and Port. From a script:
+
+```
+> dotnet run --project src/DevTerm.Console -- --listlxidevices true
+192.168.0.87:5555  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (192.168.0.87:5555)
+```
+
+(Real output from the bench Rigol DG1062Z.) An instrument that only speaks VXI-11, with no raw SCPI port on 5025 or 5555,
+is listed as "VXI-11 only" and falls back to port 5025; dev-term has no VXI-11 client yet.
 
 ### Picking a detected serial port, HID device, or USBTMC device
 

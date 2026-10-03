@@ -381,9 +381,9 @@ public sealed class TuiModeTests
                 monitor = parts.CurrentStreamMonitor();
                 Assert.IsNotNull(monitor, "Opening Stream Monitor... should have created it, reachable via TuiWindowParts.CurrentStreamMonitor.");
 
-                // HP-GL has no in-band end marker - it only ends on idle timeout - so it's still "in
-                // progress" as soon as this returns, the same as real device output caught mid-reply.
-                transport.PushIncomingAsync(StreamContentSamples.Hpgl()).GetAwaiter().GetResult();
+                // An HP-GL plot with no SP0; (pen stow) yet only ends on the idle wait, so it's still "in
+                // progress" as soon as this returns, the same as real device output caught mid-plot.
+                transport.PushIncomingAsync(StreamContentSamples.Hpgl()[..^4]).GetAwaiter().GetResult();
                 var seen = TuiTestRunner.WaitUntilOnLoop(() => monitor!.IsRunning, _waitTimeout);
                 Assert.IsTrue(seen, "Expected the monitor to still be running before quitting.");
                 Assert.IsEmpty(monitor!.Captures, "The capture should still be in progress, not yet saved.");

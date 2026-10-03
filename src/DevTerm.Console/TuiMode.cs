@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core.StreamContent;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -75,8 +76,6 @@ public static class TuiMode
         /// <summary>This tab's own running log, if any (docs/design/multi-session-ui.md's Step 4) — not a single window-level logger.</summary>
         public SessionLogger? Logger { get; set; }
 
-        /// <summary>This tab's own Stream Monitor, if Device &gt; Stream Monitor... has been opened for it — not a single window-level monitor.</summary>
-        public StreamMonitor? Monitor { get; set; }
     }
 
     public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null)
@@ -113,7 +112,7 @@ public static class TuiMode
 
             // window.Disposing never fires once Run returns (the window is never disposed here -
             // see app.Dispose() below, which only tears down the driver), so every tab's own logger
-            // and Stream Monitor (Step 4: per-tab, not window-level) must be stopped/flushed
+            // and the window's one Stream Monitor (which watches every tab) must be stopped/flushed
             // explicitly here rather than relying on that event. Mirrors MainWindow.OnClosing's own
             // per-tab cleanup loop.
             parts.CleanupAllTabs();
@@ -182,6 +181,10 @@ public static class TuiMode
         MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
+
+        // The window's one Stream Monitor, created the first time Device > Stream Monitor... opens; it tracks every tab's
+        // session (keyed by the tab), so captures from all open sessions land in one list.
+        StreamMonitor? streamMonitor = null;
         MenuItem? newSessionMenuItem = null;
         MenuItem? closeSessionMenuItem = null;
         MenuItem? deviceProfilesMenuItem = null;
@@ -341,6 +344,7 @@ public static class TuiMode
             sessionTab.Session.Disconnected += windowTab.DisconnectedHandler;
 
             tabs.Add(windowTab);
+            TrackInMonitor(windowTab);
             tabsView.InsertTab(tabsView.TabCollection.Count(), editor);
             tabsView.Value = editor;
             UpdateCloseSessionAvailability();
@@ -954,7 +958,7 @@ public static class TuiMode
             windowTab.Tab.Catalog = built.Catalog;
             windowTab.Tab.CliOptions = newOptions;
             windowTab.Tab.Parser = newOptions.EffectiveParser;
-            windowTab.Monitor?.SetSession(mySession, StreamMonitor.DeviceNameFor(newOptions, profileStore), newOptions.EffectiveExportDirectory);
+            TrackInMonitor(windowTab);
             mySession.Output += windowTab.OutputHandler;
             mySession.Disconnected += windowTab.DisconnectedHandler;
             SessionLogging.Follow(windowTab.Logger, mySession, newOptions, profileStore.FindName(newOptions));
@@ -1051,7 +1055,7 @@ public static class TuiMode
             }
 
             StopLoggingForTab(windowTab, report: false);
-            windowTab.Monitor?.Dispose();
+            streamMonitor?.Untrack(windowTab);
             windowTab.Tab.Session.Output -= windowTab.OutputHandler;
             windowTab.Tab.Session.Disconnected -= windowTab.DisconnectedHandler;
             try
@@ -1109,12 +1113,11 @@ public static class TuiMode
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, ConnectionState.Closed)));
         }
 
-        // Device > Stream Monitor...: opening it starts monitoring the active tab's session (that's
-        // what opening it is for); its Stop button stops it. The monitor is per-tab (TuiWindowTab.Monitor,
-        // Step 4) and outlives the modal window so captures keep being auto-saved - each reported as a
-        // status line here, against the tab it belongs to - while the user is back in this window
-        // sending commands, possibly on a different tab by then. A later profile switch on that same
-        // tab moves it via SwitchProfileAsync's own windowTab.Monitor.SetSession call.
+        // Device > Stream Monitor...: opening it starts monitoring every open tab's session; its Stop button stops
+        // them all. The monitor is window-level (one list of captures, each labelled with its device) and outlives the
+        // modal window so captures keep being auto-saved - each reported as a status line against the tab it came
+        // from - while the user is back in this window. Tabs opened or closed while it runs are tracked/untracked
+        // (AddTab, CloseTabAsync), and a profile switch re-points that tab's session (SwitchProfileAsync).
         // Device > Converter Tools...: the app-wide list (~/.dev-term/converter-tools.json) the Stream Monitor's
         // Convert as: choice draws from. Takes effect the next time a Stream Monitor window opens.
         void EditConverterTools()
@@ -1126,20 +1129,33 @@ public static class TuiMode
             }
         }
 
+        void TrackInMonitor(TuiWindowTab windowTab) =>
+            streamMonitor?.Track(windowTab, windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
+
         void OpenStreamMonitor()
         {
             var windowTab = ActiveTab();
-            if (windowTab.Monitor is null)
+            if (streamMonitor is null)
             {
-                var monitor = new StreamMonitor();
-                monitor.CaptureAdded += (_, capture) => AppendStatus(windowTab, capture.Describe());
-                windowTab.Monitor = monitor;
+                var monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(windowTab.Tab.CliOptions.StreamIdleTimeoutMs) });
+                monitor.CaptureAdded += (_, capture) =>
+                {
+                    if (capture.Source is TuiWindowTab source && tabs.Contains(source))
+                    {
+                        AppendStatus(source, capture.Describe());
+                    }
+                };
+                streamMonitor = monitor;
             }
 
-            windowTab.Monitor.SetSession(windowTab.Tab.Session, StreamMonitor.DeviceNameFor(windowTab.Tab.CliOptions, profileStore), windowTab.Tab.CliOptions.EffectiveExportDirectory);
-            windowTab.Monitor.Start();
+            foreach (var t in tabs)
+            {
+                TrackInMonitor(t);
+            }
 
-            var monitorParts = StreamMonitorMode.BuildWindow(app, windowTab.Monitor, windowTab.Tab.CliOptions, new ConverterToolsStore().Load());
+            streamMonitor.Start();
+
+            var monitorParts = StreamMonitorMode.BuildWindow(app, streamMonitor, windowTab.Tab.CliOptions, new ConverterToolsStore().Load());
             app.Run(monitorParts.Window);
             monitorParts.Window.Dispose();
         }
@@ -1298,7 +1314,7 @@ public static class TuiMode
             themeMenu,
             () => ActiveTab().Tab.Session,
             streamMonitorMenuItem!,
-            () => ActiveTabOrNull()?.Monitor,
+            () => streamMonitor,
             tabsView,
             newSessionMenuItem!,
             closeSessionMenuItem!,
@@ -1308,8 +1324,9 @@ public static class TuiMode
                 foreach (var t in tabs)
                 {
                     t.Logger?.Dispose();
-                    t.Monitor?.Dispose();
                 }
+
+                streamMonitor?.Dispose();
             },
             echoSentCommandsMenuItem!,
             clearOutputMenuItem!,

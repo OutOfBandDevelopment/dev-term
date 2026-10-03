@@ -100,6 +100,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     private UsbtmcDeviceOption? _selectedUsbtmcDevice;
     private IReadOnlyList<UsbtmcDeviceOption> _detectedUsbtmcDevices = [];
     private readonly ObservableCollection<UsbtmcDeviceOption> _usbtmcDeviceOptions = [];
+    private LxiDeviceOption? _selectedLxiDevice;
+    private readonly ObservableCollection<LxiDeviceOption> _lxiDeviceOptions = [];
     private BleDeviceOption? _selectedBleDevice;
     private readonly ObservableCollection<BleDeviceOption> _bleDeviceOptions = [];
     private BleCharacteristicOption? _selectedBleWriteCharacteristic;
@@ -434,7 +436,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "amqp", "stomp", "loopback"];
 
     /// <summary>
     /// Every presenter name a saved profile can check, in registration order (built-ins first, then
@@ -528,6 +530,9 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     public IReadOnlyList<BleDeviceOption> BleDeviceOptions => _bleDeviceOptions;
 
+    /// <summary>LAN instruments found by a front end's own LXI scan (see <see cref="SetLxiDeviceOptions"/>); empty until one runs.</summary>
+    public IReadOnlyList<LxiDeviceOption> LxiDeviceOptions => _lxiDeviceOptions;
+
     /// <summary>
     /// The GATT services/characteristics ("sub-device" UUIDs) found by a front end's own scan of
     /// <see cref="BleDeviceId"/> (see <see cref="SetBleCharacteristicOptions"/>), one flattened entry
@@ -586,7 +591,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsMqttTransport => string.Equals(Transport, "mqtt", StringComparison.OrdinalIgnoreCase);
+    public bool IsMqttTransport => Transport.ToLowerInvariant() is "mqtt" or "amqp" or "stomp";
 
     public bool IsRfc2217Transport => string.Equals(Transport, "rfc2217", StringComparison.OrdinalIgnoreCase);
 
@@ -963,6 +968,27 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public string BleNotifyCharacteristicUuid { get => _bleNotifyCharacteristicUuid; set => SetField(ref _bleNotifyCharacteristicUuid, value); }
 
     /// <summary>
+    /// A LAN instrument found by a front end's LXI scan: writes its address and raw SCPI port into <see cref="Host"/> and
+    /// <see cref="TcpPort"/>. A front end must call <see cref="SetLxiDeviceOptions"/> first, since the scan takes seconds.
+    /// </summary>
+    [Category("TCP")]
+    [DisplayName("Detected LXI instruments")]
+    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpTransport))]
+    public LxiDeviceOption? SelectedLxiDevice
+    {
+        get => _selectedLxiDevice;
+        set
+        {
+            SetField(ref _selectedLxiDevice, value);
+            if (value is not null)
+            {
+                Host = value.Host;
+                TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
+    /// <summary>
     /// Same idea as <see cref="SelectedHidDevice"/>, for a BLE peripheral found by a front end's own
     /// scan — writes straight into <see cref="BleDeviceId"/>. Unlike HID/USBTMC, this view model can't
     /// run the scan itself (see <see cref="BleDeviceOptions"/>'s doc comment), so a front end must call
@@ -1332,6 +1358,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             StreamConvertExternalToolPath = _loadedOptions.StreamConvertExternalToolPath,
             StreamConvertExternalToolArguments = _loadedOptions.StreamConvertExternalToolArguments,
             StreamConvertDpi = _loadedOptions.StreamConvertDpi,
+            StreamIdleTimeoutMs = _loadedOptions.StreamIdleTimeoutMs,
             StreamConvertOutputExtension = _loadedOptions.StreamConvertOutputExtension,
             StreamConvertTools = [.. _converterTools.Select(StreamConvertToolOptions.Clone)],
             Parser = Parser.Trim() is { Length: > 0 } parser ? parser : CliOptions.DefaultPresenter,
@@ -1343,6 +1370,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             Publish = Publish.Trim() is { Length: > 0 } mp ? mp : null,
             Username = Username.Trim() is { Length: > 0 } mu ? mu : null,
             Password = _loadedOptions.Password,
+            Tls = _loadedOptions.Tls,
+            CaCertificate = _loadedOptions.CaCertificate,
             BleDeviceId = BleDeviceId.Trim() is { Length: > 0 } bdi ? bdi : null,
             BleServiceUuid = BleServiceUuid.Trim() is { Length: > 0 } bsu ? bsu : null,
             BleWriteCharacteristicUuid = BleWriteCharacteristicUuid.Trim() is { Length: > 0 } bwu ? bwu : null,
@@ -1778,6 +1807,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// its own to run eagerly (see <see cref="BleDeviceOptions"/>'s doc comment), so a front end calls
     /// this once its scan completes.
     /// </summary>
+    public void SetLxiDeviceOptions(IReadOnlyList<LxiDeviceOption> devices)
+    {
+        _lxiDeviceOptions.Clear();
+        foreach (var device in devices)
+        {
+            _lxiDeviceOptions.Add(device);
+        }
+
+        OnPropertyChanged(nameof(LxiDeviceOptions));
+    }
+
     public void SetBleDeviceOptions(IReadOnlyList<BleDeviceOption> devices)
     {
         _bleDeviceOptions.Clear();

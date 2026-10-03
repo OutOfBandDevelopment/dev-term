@@ -253,7 +253,7 @@ full solution build + full Unit test suite, 0 failures.
 
 **Step 4 done** (2026-09-30), in both front ends. Every Open question above is resolved:
 
-- **Session logging and Stream Monitor are per-tab**, not window-level. WPF: `WindowTab.Logger`/
+- **(Superseded 2026-10-03: the Stream Monitor is now one window-level monitor watching every tab; logging stays per-tab.)** **Session logging and Stream Monitor are per-tab**, not window-level. WPF: `WindowTab.Logger`/
   `WindowTab.Monitor`; TUI: `TuiWindowTab.Logger`/`TuiWindowTab.Monitor`. Two tabs can log to two
   different files, or run two Stream Monitors, at once; closing one tab's log/monitor never touches
   another's. `TuiLogging` was rewritten from an instance-based class holding one running logger to a

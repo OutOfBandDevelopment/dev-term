@@ -202,7 +202,7 @@ What was built, and where it differs from the text above:
   `StreamContentSniffer` matches the signatures above (plus TIFF, binary EPS, the PJL universal exit
   language and the HP-GL/2-in-PCL mode switch, and IEEE 488.2 definite-length `#<n><len>` blocks
   wrapping any of them). `StreamContentEndFinder` finds each format's structural end (PNG `IEND`,
-  JPEG EOI by walking segments, GIF trailer by walking blocks, BMP/binary-EPS header sizes,
+  JPEG EOI by walking segments, GIF trailer by walking blocks, PCX by decoding its run-length scanlines (plus the 768-byte palette), BMP/binary-EPS header sizes,
   PostScript `%%EOF`/Ctrl-D, a PJL job's closing UEL). HP-GL, TIFF and bare-reset PCL have no
   reliable in-band end and finish after a 2 s idle gap instead. `StreamContentWatcher` is the
   proposed `IPresenter`: it buffers, captures and raises `ContentDetected`, and never emits text.

@@ -20,10 +20,16 @@ internal static class TerminalPage
           form { display: flex; gap: 8px; padding: 8px 12px; background: var(--bar); }
           input { flex: 1; font: inherit; padding: 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); }
           .err { color: #d1242f; }
+          #panel { padding: 8px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); max-height: 40%; overflow: auto; }
+          #panel h2 { font-size: 14px; margin: 8px 0 4px; }
+          #panel .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+          #panel .row label { min-width: 10em; }
+          #panel .note { color: var(--dim); }
         </style>
         </head>
         <body>
         <header id="status">connecting...</header>
+        <div id="panel" hidden></div>
         <pre id="out"></pre>
         <form id="f"><input id="line" autocomplete="off" autofocus placeholder="type a line and press Enter"><button>Send</button></form>
         <script>
@@ -42,6 +48,56 @@ internal static class TerminalPage
             e.preventDefault();
             if (input.value && ws.readyState === WebSocket.OPEN) { ws.send(input.value); input.value = ''; }
           };
+
+          // Device control panel: rendered generically from the UiDefinition served at /api/panel (404 = none configured).
+          let readOnly = false;
+          async function invoke(commandId, value) {
+            const res = await fetch('/api/invoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commandId, value }) });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); line('! ' + (e.error || res.status)); }
+          }
+          function line(text) { const d = document.createElement('div'); d.textContent = text; d.className = text.startsWith('!') ? 'err' : ''; out.appendChild(d); out.scrollTop = out.scrollHeight; }
+          function el(tag, props, ...kids) { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; }
+          function renderControl(c) {
+            const row = el('div', { className: 'row' });
+            const label = el('label', { textContent: c.Label, title: c.Description || '' });
+            const id = c.CommandId || c.Id;
+            switch (c.kind) {
+              case 'button': {
+                const b = el('button', { textContent: c.Label, disabled: readOnly || (c.ParameterFieldIds && c.ParameterFieldIds.length > 0) });
+                if (c.ParameterFieldIds && c.ParameterFieldIds.length) b.title = 'Needs parameter fields, not available on the web yet';
+                b.onclick = () => invoke(id, null); row.append(b); break; }
+              case 'toggle': {
+                const t = el('input', { type: 'checkbox', checked: !!c.DefaultValue, disabled: readOnly });
+                t.onchange = () => invoke(id, t.checked ? '1' : '0'); row.append(label, t); break; }
+              case 'slider': case 'numeric': {
+                const n = el('input', { type: c.kind === 'slider' ? 'range' : 'number', min: c.Minimum, max: c.Maximum, step: c.Step || 'any', value: c.DefaultValue, disabled: readOnly });
+                n.onchange = () => invoke(id, String(n.value)); row.append(label, n, el('span', { className: 'note', textContent: c.Unit || '' })); break; }
+              case 'choice': {
+                const sel = el('select', { disabled: readOnly });
+                for (const o of c.Options) sel.append(el('option', { textContent: o, selected: o === c.DefaultValue }));
+                sel.onchange = () => invoke(id, sel.value); row.append(label, sel); break; }
+              case 'textField': {
+                const t = el('input', { type: 'text', value: c.DefaultValue || '', maxLength: c.MaxLength || 524288, disabled: readOnly });
+                t.onchange = () => invoke(id, t.value); row.append(label, t); break; }
+              default:
+                row.append(label, el('span', { className: 'note', textContent: '(' + c.kind + ' is not shown on the web yet)' }));
+            }
+            return row;
+          }
+          (async () => {
+            const status = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
+            readOnly = !!status.readOnly;
+            const res = await fetch('/api/panel');
+            if (!res.ok) return;
+            const def = await res.json();
+            const panel = document.getElementById('panel');
+            panel.append(el('h2', { textContent: def.Name + (readOnly ? ' (read-only)' : '') }));
+            for (const section of def.Sections) {
+              if (section.Label) panel.append(el('h2', { textContent: section.Label }));
+              for (const c of section.Controls) panel.append(renderControl(c));
+            }
+            panel.hidden = false;
+          })();
         </script>
         </body>
         </html>

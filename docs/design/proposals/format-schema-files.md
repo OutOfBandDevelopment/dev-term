@@ -114,7 +114,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Spike `JsonSchemaExporter` on `DeviceManifest`; check the `UiControl` discriminator output (it emits `anyOf` branches, each with `kind` as a `const`; no overlay needed)
 - [x] Decide whether the schema is generated at build time or checked in (both: a Debug build regenerates `schemas/`, the output is committed so editors can reference it, and a test fails on drift)
 - [x] Generate the schema for `DeviceManifest` / `UiDefinition` (and the connection profile)
-- [ ] Generate the schema for the `.ksy`-derived frame (see `ksy-importer.md`)
+- [x] The binary-frame schema: `FrameSchema` is part of the device manifest, so `schemas/device-manifest.schema.json` already carries it (fields, offsets, types, scale, length field, checksum)
 - [x] A test that fails when the schema drifts from the types (`SchemaDriftTests`)
 - [x] Reference the schema from manifest docs (editor completion in an IDE is untested)
 
@@ -123,5 +123,5 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 **Implemented (2026-10-02)** for the device manifest, UI definition and connection profile: `src/DevTerm.Schemas`
 exports each from the C# model with `JsonSchemaExporter` into `schemas/*.schema.json` on every Debug build, and
 `SchemaDriftTests` fails when the committed files differ. The profile schema omits `Password` (never saved). Not done:
-the `.ksy`-derived frame schema (waits on the `.ksy` importer work), XSD, SCPI device profile, and checking a real
-file against the schema in an editor or with a validator library.
+XSD, a SCPI device profile schema, and checking a real file against the schema in an editor or with a validator library:
+extend when needed. The binary-frame schema is covered by the manifest schema (2026-10-03). **Complete for now.**

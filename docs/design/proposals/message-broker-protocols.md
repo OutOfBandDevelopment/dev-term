@@ -75,15 +75,26 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] MQTT transport design and unit tests (`DevTerm.Transports.Mqtt`, 10 unit tests)
 - [x] MQTT in both front ends, plus `docs/specs/` and `docs/user-guide/` entries
 - [x] MQTT real-broker verification (Mosquitto container: an automated Integration test and a CLI round trip)
-- [ ] AMQP and STOMP (wait for a real target; reuse the generic `--subscribe`/`--publish`/`--username`/`--password` options)
+- [x] AMQP 0-9-1 and STOMP 1.2 (`DevTerm.Transports.Brokers`, one project for both; reuse the generic `--subscribe`/`--publish`/`--username`/`--password` options), verified against the Docker RabbitMQ
 - [ ] A real device or home-automation broker check for MQTT
 
 ## Status
 
-**MQTT implemented 2026-10-02; AMQP and STOMP not started.** `DevTerm.Transports.Mqtt` (MQTTnet 5.x) turns each
+**MQTT implemented 2026-10-02; AMQP and STOMP implemented 2026-10-03.** `DevTerm.Transports.Mqtt` (MQTTnet 5.x) turns each
 inbound message into one `topic<TAB>payload` line and publishes a typed line to `--publish`, or to its own topic when
 typed as `topic<TAB>payload`, so no `Session`/`Pipeline` change was needed. Verified against the `containers/`
 Mosquitto broker (Integration test plus a CLI round trip); no real device or TLS broker yet. The connection options
 are deliberately unprefixed (`--subscribe`, `--publish`, `--username`, `--password`) so AMQP and STOMP reuse them.
 The password is command-line/environment only: never saved to a profile or shown in the editor. Not yet built: TLS,
 MQTT 5 properties, retained/will messages.
+
+**AMQP and STOMP** share `DevTerm.Transports.Brokers` (one project rather than the one-plugin-per-protocol split proposed
+above, because both reduce to the same `IBrokerConnection` shape: connect, subscribe to an address, publish to an
+address). The same `address<TAB>payload` line model applies: the address is an AMQP routing key (bound to the
+`amq.topic` exchange through a private auto-delete queue) or a STOMP destination (`/topic/x`, `/queue/x`). AMQP uses
+RabbitMQ.Client 7 (0-9-1 only; AMQP 1.0 is not supported). STOMP is a small hand-written 1.2 client (`StompFrame`
+encoder/parser, no heart-beats, auto-ack) since no maintained .NET client was worth a dependency. Verified against the
+`containers/` RabbitMQ: Integration tests for both, a wrong STOMP password failing the open, and a CLI round trip each.
+TLS (`--tls true`, optional `--cacertificate <file>` for a private CA) is built for both and verified against the
+`containers/` RabbitMQ's TLS listeners (AMQPS 5671, STOMP 21614) with a generated CA: a client trusting the CA connects,
+one that does not is refused. Not built: TLS for MQTT, STOMP heart-beating and client acks, AMQP 1.0, durable queues.

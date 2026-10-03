@@ -146,7 +146,7 @@ public static class DevTermConfiguration
             // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
             // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
         }
-        else if (string.Equals(options.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        else if (options.Transport is { } brokerKind && brokerKind.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
         {
             profile[nameof(CliOptions.Host)] = options.Host;
             profile[nameof(CliOptions.Port)] = options.Port;
@@ -163,6 +163,16 @@ public static class DevTermConfiguration
             if (options.Username is not null)
             {
                 profile[nameof(CliOptions.Username)] = options.Username;
+            }
+
+            if (options.Tls)
+            {
+                profile[nameof(CliOptions.Tls)] = true;
+            }
+
+            if (options.CaCertificate is not null)
+            {
+                profile[nameof(CliOptions.CaCertificate)] = options.CaCertificate;
             }
 
             // Password deliberately never persisted: a profile is plain JSON on disk.
@@ -233,6 +243,11 @@ public static class DevTermConfiguration
         if (options.StreamConvertDpi != new CliOptions().StreamConvertDpi)
         {
             profile[nameof(CliOptions.StreamConvertDpi)] = options.StreamConvertDpi;
+        }
+
+        if (options.StreamIdleTimeoutMs != new CliOptions().StreamIdleTimeoutMs)
+        {
+            profile[nameof(CliOptions.StreamIdleTimeoutMs)] = options.StreamIdleTimeoutMs;
         }
 
         if (options.StreamConvertOutputExtension is not null)

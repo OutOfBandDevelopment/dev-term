@@ -18,6 +18,8 @@ public static class ConnectionErrorMessages
             "hid" => " Run with --listhiddevices to see available USB HID devices.",
             "rfc2217" => " Check --host/--port, and that the server actually speaks RFC 2217 option negotiation - some vendor bridges don't (see docs/design/rfc2217.md).",
             "mqtt" => " Check --host/--port (1883 is the usual MQTT port), the credentials, and that the broker is running (docker compose -f containers/docker-compose.yml up -d).",
+            "amqp" => " Check --host/--port (5672 is the usual AMQP port), the credentials, and that the broker is running (docker compose -f containers/docker-compose.yml up -d rabbitmq).",
+            "stomp" => " Check --host/--port (61613 is the usual STOMP port; the Docker RabbitMQ maps it to 21613), the credentials, and that the broker's STOMP plugin is enabled.",
             _ => string.Empty,
         };
 

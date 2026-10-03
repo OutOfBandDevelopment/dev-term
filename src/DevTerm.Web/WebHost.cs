@@ -1,8 +1,12 @@
 using System.Security.Cryptography.X509Certificates;
 using DevTerm.Configuration;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Devices.Busylight;
+using DevTerm.Devices.K8055;
+using DevTerm.UiDefinitions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,11 +63,28 @@ public static class WebHost
         var app = builder.Build();
         var hub = app.Services.GetRequiredService<SessionHub>();
 
-        app.UseMiddleware<AccessTokenMiddleware>(token);
+        app.UseMiddleware<AccessTokenMiddleware>(token, webOptions.ReadOnlyToken ?? string.Empty);
         app.UseWebSockets();
         app.Map("/ws", (HttpContext context) => WebSocketTunnel.HandleAsync(context, hub));
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
-        app.MapGet("/api/status", () => Results.Json(new { state = hub.State.ToString(), connection = hub.Description }));
+        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
+
+        var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
+        {
+            "k8055" => (K8055UiDefinition.Build(), (IControlSurface)new K8055ControlSurface(hub.Session)),
+            "busylight" => (BusylightUiDefinition.Build(), new BusylightControlSurface(hub.Session)),
+            _ => ((UiDefinition?)null, (IControlSurface?)null),
+        };
+        if (definition is not null && surface is not null)
+        {
+            var panelJson = UiDefinitionSerializer.ToJson(definition);
+            app.MapGet("/api/panel", () => Results.Content(panelJson, "application/json"));
+            app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, surface, request));
+        }
+        else
+        {
+            app.MapGet("/api/panel", () => Results.NotFound());
+        }
         return new Built(app, hub, token);
     }
 }

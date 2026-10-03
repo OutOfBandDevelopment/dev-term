@@ -89,16 +89,16 @@ public sealed class StreamContentWatcherTests
     }
 
     [TestMethod]
-    public void Hpgl_HasNoInBandEnd_SoItEndsOnIdle()
+    public void Hpgl_WithoutAPenStowEnd_EndsOnItsLongerIdleWait()
     {
         var (watcher, time, captures) = Create();
-        var plot = StreamContentSamples.Hpgl();
+        var plot = "IN;SP1;PU0,0;PD1000,0,1000,1000;"u8.ToArray();
 
         Feed(watcher, plot, chunkSize: 10);
-        time.Advance(_idle - TimeSpan.FromMilliseconds(1));
-        Assert.IsEmpty(captures);
+        time.Advance(TimeSpan.FromSeconds(9.9));
+        Assert.IsEmpty(captures, "A pause of a few seconds mid-plot must not split it into two files.");
 
-        time.Advance(TimeSpan.FromMilliseconds(1));
+        time.Advance(TimeSpan.FromSeconds(0.1));
 
         Assert.HasCount(1, captures);
         Assert.AreEqual(StreamContentKind.Hpgl, captures[0].Kind);
@@ -107,17 +107,41 @@ public sealed class StreamContentWatcherTests
     }
 
     [TestMethod]
+    public void Hpgl_EndsAtItsPenStow_AndIgnoresThePromptThatFollows()
+    {
+        var (watcher, _, captures) = Create();
+
+        Feed(watcher, [.. "IN;SP1;PU0,0;PD5,5;SP0;"u8, .. " READY;\r\n"u8], chunkSize: 4);
+
+        Assert.HasCount(1, captures);
+        Assert.AreEqual(StreamCaptureEnd.Complete, captures[0].EndReason);
+        Assert.AreEqual("IN;SP1;PU0,0;PD5,5;SP0;", Encoding.ASCII.GetString(captures[0].Data));
+    }
+
+    [TestMethod]
+    public void Hpgl_PenStowSplitAcrossReads_StillEndsTheCapture()
+    {
+        var (watcher, _, captures) = Create();
+
+        Feed(watcher, "IN;SP1;PD5,5;S"u8.ToArray());
+        Feed(watcher, "P0;"u8.ToArray());
+
+        Assert.HasCount(1, captures);
+        Assert.AreEqual(StreamCaptureEnd.Complete, captures[0].EndReason);
+    }
+
+    [TestMethod]
     public void MoreDataBeforeTheIdleTimeout_KeepsTheCaptureOpen()
     {
         var (watcher, time, captures) = Create();
 
         Feed(watcher, "IN;SP1;"u8.ToArray());
-        time.Advance(TimeSpan.FromSeconds(1.5));
+        time.Advance(TimeSpan.FromSeconds(6));
         Feed(watcher, "PD10,10;"u8.ToArray());
-        time.Advance(TimeSpan.FromSeconds(1.5));
+        time.Advance(TimeSpan.FromSeconds(6));
         Assert.IsEmpty(captures);
 
-        time.Advance(TimeSpan.FromSeconds(1));
+        time.Advance(TimeSpan.FromSeconds(5));
 
         Assert.HasCount(1, captures);
         Assert.AreEqual("IN;SP1;PD10,10;", Encoding.ASCII.GetString(captures[0].Data));
@@ -142,7 +166,7 @@ public sealed class StreamContentWatcherTests
         Feed(watcher, "status"u8.ToArray());
         time.Advance(_idle);
         Feed(watcher, "IN;SP1;"u8.ToArray());
-        time.Advance(_idle);
+        time.Advance(TimeSpan.FromSeconds(10));
 
         Assert.HasCount(1, captures);
         Assert.AreEqual(StreamContentKind.Hpgl, captures[0].Kind);
@@ -320,7 +344,7 @@ public sealed class StreamContentWatcherTests
     }
 
     [TestMethod]
-    public async Task BoundIntoALiveSession_OtherPresentersSeeExactlyWhatTheyDidBefore()
+    public async Task BoundIntoALiveSession_OtherPresentersSeeTextButNotTheCapturedContent()
     {
         var pipe = new Pipe();
         var transport = new Mock<ITransport>();
@@ -351,17 +375,18 @@ public sealed class StreamContentWatcherTests
         };
 
         await session.OpenAsync(TestContext.CancellationToken);
+        await pipe.Writer.WriteAsync("hi"u8.ToArray(), TestContext.CancellationToken);
+        await sawOutput.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         var bmp = StreamContentSamples.Bmp();
         await pipe.Writer.WriteAsync(bmp, TestContext.CancellationToken);
         await captured.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
-        await sawOutput.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         await session.CloseAsync(TestContext.CancellationToken);
 
         Assert.HasCount(1, captures);
         lock (outputs)
         {
             Assert.HasCount(1, outputs);
-            Assert.AreEqual("raw", outputs[0].PresenterName, "the watcher itself never produced output");
+            Assert.AreEqual("raw", outputs[0].PresenterName, "only the text before the image reaches other presenters; the image bytes are withheld");
         }
 
         Assert.IsTrue(session.Presenters.Contains(watcher));

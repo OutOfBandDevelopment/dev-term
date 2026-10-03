@@ -45,6 +45,29 @@ public sealed class ConsoleAppCliTests
     }
 
     [TestMethod]
+    public async Task ListPlugins_ReportsASkippedPluginWithItsReason()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "devterm-listplugins-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(directory, "broken"));
+        File.WriteAllText(Path.Combine(directory, "broken", "plugin.json"), "{ not json");
+        try
+        {
+            using var job = new ChildProcessJob();
+            using var process = Process.Start(BuildStartInfo($"--listplugins true --plugins \"{directory}\""))!;
+            job.Add(process);
+            var output = await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+
+            Assert.AreEqual(0, process.ExitCode);
+            StringAssert.Contains(output, "broken  skipped:");
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [TestMethod]
     public async Task ListHidDevices_ExitsZeroWithoutCrashing()
     {
         using var job = new ChildProcessJob();
