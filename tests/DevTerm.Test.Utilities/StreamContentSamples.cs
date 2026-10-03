@@ -111,6 +111,9 @@ public static class StreamContentSamples
     /// <summary>A PJL-wrapped PCL job: universal exit language, a reset, some text, reset, closing UEL.</summary>
     public static byte[] PjlPcl() => Encoding.ASCII.GetBytes("\u001b%-12345X@PJL ENTER LANGUAGE=PCL\r\n\u001bE\u001b&l0OHello\u001bE\u001b%-12345X");
 
+    /// <summary>A scope-style LaserJet raster job: orientation and resolution, three one-byte rows, end graphics, form feed, reset.</summary>
+    public static byte[] PclRaster() => Encoding.ASCII.GetBytes("\u001b&l0O\u001b*t150R\u001b*r0A\u001b*b1W\u0000\u001b*b1W\u0000\u001b*b1W\u0000\u001b*rB\u001b&l0H\u001bE");
+
     /// <summary>Wraps <paramref name="payload"/> in an IEEE 488.2 definite-length block (<c>#&lt;n&gt;&lt;length&gt;</c>), the way a SCPI instrument returns a screen dump.</summary>
     public static byte[] ScpiBlock(byte[] payload)
     {

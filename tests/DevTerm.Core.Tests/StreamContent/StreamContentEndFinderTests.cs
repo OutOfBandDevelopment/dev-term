@@ -17,6 +17,7 @@ public sealed class StreamContentEndFinderTests
         [StreamContentSamples.Pcx(), StreamContentKind.Pcx],
         [StreamContentSamples.PostScript(), StreamContentKind.PostScript],
         [StreamContentSamples.PjlPcl(), StreamContentKind.Pcl],
+        [StreamContentSamples.PclRaster(), StreamContentKind.Pcl],
     ];
 
     [TestMethod]

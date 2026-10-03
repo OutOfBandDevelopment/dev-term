@@ -252,7 +252,31 @@ public static class StreamContentSniffer
             return true;
         }
 
+        // A printer-style raster job start: orientation (ESC&l<n>O) or resolution (ESC*t<n>R), as a
+        // scope's LaserJet hard copy begins.
+        if (StartsWithEscapeCommand(s, (byte)'&', (byte)'l', (byte)'O') || StartsWithEscapeCommand(s, (byte)'*', (byte)'t', (byte)'R'))
+        {
+            return true;
+        }
+
         return s.StartsWith("\u001b%0B"u8) || s.StartsWith("\u001b%1B"u8) || s.StartsWith("\u001b%-1B"u8);
+    }
+
+    // ESC <group> <parameter char> <digits> <terminator> at the start of s, followed by another ESC.
+    private static bool StartsWithEscapeCommand(ReadOnlySpan<byte> s, byte group, byte parameter, byte terminator)
+    {
+        if (s.Length < 5 || s[1] != group || s[2] != parameter)
+        {
+            return false;
+        }
+
+        var i = 3;
+        while (i < s.Length && s[i] is >= (byte)'0' and <= (byte)'9')
+        {
+            i++;
+        }
+
+        return i > 3 && i + 1 < s.Length && s[i] == terminator && s[i + 1] == 0x1B;
     }
 
     // IN; or DF; (initialize/default - how nearly every real plot starts) as the first instruction,

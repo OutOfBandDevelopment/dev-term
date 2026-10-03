@@ -426,6 +426,92 @@ public abstract class StreamContentEndFinder
     {
         private static readonly byte[] _uel = "\u001b%-12345X"u8.ToArray();
         private long _scanFrom = -1;
+        private bool _raster;
+
+        // ESC*rB / ESC*rC end raster graphics. A printer's job then usually closes with a form feed
+        // (ESC&l0H, or FF) and a reset (ESC E), so those are part of the job and a capture ends after them.
+        private long? FindRasterEnd(ReadOnlySpan<byte> content)
+        {
+            var from = (int)_scanFrom;
+            var window = content[from..];
+            var at = window.IndexOf("\u001b*rB"u8);
+            var atC = window.IndexOf("\u001b*rC"u8);
+            if (at < 0 || (atC >= 0 && atC < at))
+            {
+                at = atC;
+            }
+
+            if (at < 0)
+            {
+                _scanFrom = Math.Max(_scanFrom, content.Length - 3);
+                return null;
+            }
+
+            var end = from + at + 4;
+            while (end < content.Length)
+            {
+                var rest = content[end..];
+                if (rest[0] == 0x0C)
+                {
+                    end++;
+                }
+                else if (rest[0] == 0x1B)
+                {
+                    if (rest.Length < 2)
+                    {
+                        return null;
+                    }
+
+                    if (rest[1] == (byte)'E')
+                    {
+                        return end + 2;
+                    }
+
+                    if (rest[1] != (byte)'&')
+                    {
+                        return end;
+                    }
+
+                    // ESC & l <digits> H
+                    var i = 2;
+                    if (rest.Length <= i)
+                    {
+                        return null;
+                    }
+
+                    if (rest[i] != (byte)'l')
+                    {
+                        return end;
+                    }
+
+                    i++;
+                    while (i < rest.Length && rest[i] is >= (byte)'0' and <= (byte)'9')
+                    {
+                        i++;
+                    }
+
+                    if (i >= rest.Length)
+                    {
+                        return null;
+                    }
+
+                    if (rest[i] != (byte)'H')
+                    {
+                        return end;
+                    }
+
+                    end += i + 1;
+                }
+                else
+                {
+                    return end;
+                }
+            }
+
+            // Everything so far is the job; a form feed/reset may still follow, so wait for the idle timeout
+            // rather than cutting the capture here.
+            return null;
+        }
 
         public override long? FindEnd(ReadOnlySpan<byte> content)
         {
@@ -438,12 +524,20 @@ public abstract class StreamContentEndFinder
 
                 if (!content.StartsWith(_uel))
                 {
-                    // A job that starts with a bare reset has no closing marker to look for.
-                    _scanFrom = long.MaxValue;
-                    return null;
+                    // A job that starts with a bare reset or raster setup has no closing UEL; a raster
+                    // job (a scope's LaserJet hard copy) ends at its end-graphics escape instead.
+                    _raster = true;
+                    _scanFrom = 0;
                 }
+                else
+                {
+                    _scanFrom = _uel.Length;
+                }
+            }
 
-                _scanFrom = _uel.Length;
+            if (_raster)
+            {
+                return FindRasterEnd(content);
             }
 
             if (_scanFrom >= content.Length)

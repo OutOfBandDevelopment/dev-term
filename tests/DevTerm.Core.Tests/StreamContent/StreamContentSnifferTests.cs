@@ -21,6 +21,7 @@ public sealed class StreamContentSnifferTests
         [StreamContentSamples.PostScript(), StreamContentKind.PostScript],
         [new byte[] { 0xC5, 0xD0, 0xD3, 0xC6, 30, 0, 0, 0 }, StreamContentKind.PostScript],
         [StreamContentSamples.PjlPcl(), StreamContentKind.Pcl],
+        [StreamContentSamples.PclRaster(), StreamContentKind.Pcl],
         [Encoding.ASCII.GetBytes("\u001bE\u001b&l0O"), StreamContentKind.Pcl],
         [Encoding.ASCII.GetBytes("\u001b%1BIN;PD;"), StreamContentKind.Pcl],
         [StreamContentSamples.Hpgl(), StreamContentKind.Hpgl],
