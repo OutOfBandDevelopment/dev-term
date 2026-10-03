@@ -72,6 +72,56 @@ public static class PlaybackText
         return batch.Items.SelectMany(Lines);
     }
 
+    /// <summary>
+    /// Parses what a jump field accepts: a plain whole number is a record position (0 to the record count),
+    /// anything with a colon is a log time as <c>m:ss</c>, <c>m:ss.fff</c> or <c>h:mm:ss.fff</c> (the same shape
+    /// <see cref="FormatOffset"/> prints). Returns <see langword="false"/> for anything else, never throws.
+    /// </summary>
+    public static bool TryParseJump(string? text, out int? record, out TimeSpan? time)
+    {
+        record = null;
+        time = null;
+        var trimmed = text?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return false;
+        }
+
+        if (!trimmed.Contains(':', StringComparison.Ordinal))
+        {
+            if (int.TryParse(trimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var position))
+            {
+                record = position;
+                return true;
+            }
+
+            return false;
+        }
+
+        var parts = trimmed.Split(':');
+        if (parts.Length is < 2 or > 3
+            || !int.TryParse(parts[^2], NumberStyles.None, CultureInfo.InvariantCulture, out var minutes)
+            || !decimal.TryParse(parts[^1], NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var seconds)
+            || seconds >= 60)
+        {
+            return false;
+        }
+
+        var hours = 0;
+        if (parts.Length == 3 && !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out hours))
+        {
+            return false;
+        }
+
+        if (parts.Length == 3 && minutes >= 60)
+        {
+            return false;
+        }
+
+        time = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromMilliseconds((double)(seconds * 1000m));
+        return true;
+    }
+
     public static string FormatOffset(TimeSpan offset) =>
         offset.TotalHours >= 1
             ? $"{((int)offset.TotalHours).ToString(CultureInfo.InvariantCulture)}:{offset.ToString(@"mm\:ss\.fff", CultureInfo.InvariantCulture)}"

@@ -71,7 +71,6 @@ the rest.
 - **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
 - **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
 - **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
-- **TUI Playback jump-to-time-or-record field** ([spec](docs/specs/playback-window.md)).
 - **TUI terminal-palette theme, and a live-following `system` theme** ([theming](docs/design/theming.md)).
 - **Third-party plugins out of process, with user approval** (optionally once per hash) ([plugin-model](docs/design/plugin-model.md)); **optional structured-message model** ([presenters](docs/design/presenters.md)); **manifest-declared reply correlation** ([device-control-modules](docs/design/device-control-modules.md)); **indexed, streamed log playback** ([session-logging](docs/design/session-logging.md)).
 - **TUI "Send as" menu follows the active tab** ([tui-main-screen spec](docs/specs/tui-main-screen.md)).

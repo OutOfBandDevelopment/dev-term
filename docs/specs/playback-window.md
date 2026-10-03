@@ -34,6 +34,7 @@ warning is its first output line.
 | Output | TUI: read-only `Editor`, last 300 lines. WPF: `ListBox` of `PlaybackLine`, last 1000 | `{mm:ss.fff} [{source}] {text}` per line, where the offset is from the first record. `[ascii]`/`[hex]`/… is received data as that presenter rendered it. `[tx]` is sent bytes, escaped (`\r`, `\n`, `\t`, `\\`, `\xNN`). `[dev-term]` is an event (`Connected.`, `Disconnected.`, `Logging {connection}, connection open` or `closed`). `[error]` is a lost connection or a presenter failure. `[note]` is a note. WPF colors them by theme role: sent in `accent` (steel blue in Light), events italic in `outputStatus`, errors in `outputError`, notes bold in `warning` (see [`docs/design/theming.md`](../design/theming.md)) |
 | Position | Label | `{Playing/Paused/End}  {position}/{count}  {elapsed} / {duration}  {speed}  Selection {in}–{out}`. The position is how many records have played |
 | Seek slider | WPF only, `0`–`count` | Dragging or clicking seeks (see **Seek**) |
+| Jump to | TUI only: text field right of Presenters | A record number (`120`) or a log time (`1:23`, `0:02.5`, `1:02:03.250`). Enter jumps. Anything else shows an error dialog and doesn't move |
 | Speed | TUI: **Slower**/**Faster** buttons stepping through the list. WPF: a combo box | 0.25x, 0.5x, **1x** (default), 2x, 10x, Max |
 | Note | WPF only: a text box next to **Add Note** | Enter adds it. The TUI prompts instead |
 
@@ -47,6 +48,7 @@ warning is its first output line.
 | **+10s** (fast-forward) | Plays everything in the next 10 s of log time instantly, and always at least one record | n/a |
 | **End** | Plays everything that's left instantly, then pauses | n/a |
 | **Seek** (WPF slider) | Forward plays the records in between instantly. Backward clears the output and replays from 0. Either way, stateful presenters end up exactly where live capture left them | n/a |
+| **Jump to** (TUI field) | A record number seeks to that position; a time plays every record at or before that log time. Forward plays the records in between instantly; backward clears and replays from 0, like **Seek** | Unreadable text shows an error dialog; the position is unchanged |
 | **Presenters** (TUI: edit + Enter; WPF: tick/untick) | Clears the output and replays up to the current position through the new set | Unknown names are ignored. An empty choice keeps the current set |
 | **Speed** | Applies from now on. Progress through the current gap is kept | n/a |
 | **Mark In** | The trim selection starts at the current position (the next record to play) | n/a |
@@ -84,4 +86,4 @@ warning is its first output line.
 - Notes can be added but not edited or deleted here.
 - No "skip silence" (capping long idle gaps) yet.
 - Backward seeks replay from the start, so they get slower as the log grows.
-- The TUI has no seek control besides Rewind/+10s/End/Step. **Decided 2026-10-03:** add a jump-to-time-or-record field. Not built yet.
+- ~~The TUI has no seek control besides Rewind/+10s/End/Step.~~ Added 2026-10-03: the **Jump to** field.

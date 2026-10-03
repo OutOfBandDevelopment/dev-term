@@ -220,6 +220,18 @@ public sealed class PlaybackEngine
         return new PlaybackBatch(reset, items);
     }
 
+    /// <summary>Seeks to the first position whose next record is later than <paramref name="offset"/>, i.e. plays every record at or before that log time. Backward works like <see cref="SeekTo"/>.</summary>
+    public PlaybackBatch SeekToTime(TimeSpan offset)
+    {
+        var position = 0;
+        while (position < Count && Log.OffsetOf(position) <= offset)
+        {
+            position++;
+        }
+
+        return SeekTo(position);
+    }
+
     /// <summary>Skips ahead <paramref name="amount"/> of log time, playing every record in that span instantly.</summary>
     public PlaybackBatch FastForward(TimeSpan amount)
     {
