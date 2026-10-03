@@ -145,7 +145,7 @@ passed — the init handshake completes and a `mic` button command sends without
 the same "no fault, no timeout" bar used by every other real-hardware confirmation in this repo.
 Only this one path was exercised; the other 11 buttons, the exact status-bitmask semantics against
 a live unit, and the per-recording-mode LED blink timing remain unconfirmed — the H4n's remote port
-is send-oriented, and whether it echoes anything back for this physical unit still isn't confirmed.
+is send-oriented. Update 2026-10-03 (`docs/test/2026-10-03-16-30-00.md`): a person watched the recorder and the Mic press switched its input to MIC, and the unit echoes `80` for the handshake and then streams a `60`/`80` status byte. Replies were intermittent across runs, cause not established.
 
 ## Open questions
 
