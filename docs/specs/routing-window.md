@@ -1,8 +1,7 @@
 # Routing Window
 
 **Status: built 2026-10-03 in WPF (`RoutingWindow`, Device menu > Routing...) and the TUI (`RoutingMode`, Device > Routing...), both over the
-shared `RoutingViewModel`.** Verified with unit tests, real screenshots and a fake broker link; not yet exercised by the windows against the
-Mosquitto/RabbitMQ containers. The engine is `MessageRouter`, `MqttRouterBridge` and `BrokerRouterBridge` (see
+shared `RoutingViewModel`.** Verified with unit tests, real screenshots and a fake broker link, and `RoutingService` (the engine both windows drive) round-trips through the real Mosquitto container (`RoutingBrokerIntegrationTests`); the windows themselves have not been driven by hand against a broker, and AMQP/STOMP routing has no container test yet. The engine is `MessageRouter`, `MqttRouterBridge` and `BrokerRouterBridge` (see
 [message-broker-protocols](../design/proposals/message-broker-protocols.md)); walkthrough: [routing](../user-guide/routing.md).
 
 ## Purpose
