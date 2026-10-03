@@ -12,6 +12,7 @@ using DevTerm.Presenters.Text;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Loopback;
+using DevTerm.Transports.Brokers;
 using DevTerm.Transports.Mqtt;
 using DevTerm.Transports.Rfc2217;
 using DevTerm.Transports.Serial;
@@ -122,6 +123,28 @@ public static class ServiceCollectionExtensions
             {
                 o.Host = cliOptions.Host ?? string.Empty;
                 o.Port = int.TryParse(cliOptions.Port, out var mqttPort) ? mqttPort : 0;
+                o.SubscribeTopics = [.. (cliOptions.Subscribe ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+                o.PublishTopic = cliOptions.Publish;
+                o.Username = cliOptions.Username;
+                o.Password = cliOptions.Password;
+                o.TimeoutMs = cliOptions.WriteTimeoutMs;
+            });
+        }
+        else if (cliOptions.Transport is { } brokerName && brokerName.ToLowerInvariant() is "amqp" or "stomp")
+        {
+            if (brokerName.Equals("amqp", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddAmqpTransport();
+            }
+            else
+            {
+                services.AddStompTransport();
+            }
+
+            services.Configure<BrokerTransportOptions>(o =>
+            {
+                o.Host = cliOptions.Host ?? string.Empty;
+                o.Port = int.TryParse(cliOptions.Port, out var brokerPort) ? brokerPort : 0;
                 o.SubscribeTopics = [.. (cliOptions.Subscribe ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
                 o.PublishTopic = cliOptions.Publish;
                 o.Username = cliOptions.Username;

@@ -41,9 +41,9 @@ public static class ConnectionDescription
                 : "Loopback";
         }
 
-        if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        if (cliOptions.Transport is { } brokerTransport && brokerTransport.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
         {
-            return $"MQTT {cliOptions.Host}:{cliOptions.Port}"
+            return $"{brokerTransport.ToUpperInvariant()} {cliOptions.Host}:{cliOptions.Port}"
                 + (string.IsNullOrWhiteSpace(cliOptions.Subscribe) ? string.Empty : $" subscribed to {cliOptions.Subscribe}")
                 + (string.IsNullOrWhiteSpace(cliOptions.Publish) ? string.Empty : $" publishing to {cliOptions.Publish}");
         }
@@ -111,9 +111,9 @@ public static class ConnectionDescription
             return "loopback://";
         }
 
-        if (string.Equals(cliOptions.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        if (cliOptions.Transport is { } brokerScheme && brokerScheme.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
         {
-            return $"mqtt://{cliOptions.Host}:{cliOptions.Port}";
+            return $"{brokerScheme.ToLowerInvariant()}://{cliOptions.Host}:{cliOptions.Port}";
         }
 
         if (string.Equals(cliOptions.Transport, "rfc2217", StringComparison.OrdinalIgnoreCase))

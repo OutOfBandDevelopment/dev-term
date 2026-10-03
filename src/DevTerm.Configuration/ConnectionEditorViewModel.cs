@@ -436,7 +436,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <c>AddTextPresenters</c> registers (see <c>DevTerm.Presenters.Text.ServiceCollectionExtensions</c>),
     /// and every <see cref="Configuration.LineEnding"/> member, respectively.
     /// </summary>
-    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "loopback"];
+    public IReadOnlyList<string> TransportOptions { get; } = ["serial", "tcp", "hid", "usbtmc", "ble", "rfc2217", "mqtt", "amqp", "stomp", "loopback"];
 
     /// <summary>
     /// Every presenter name a saved profile can check, in registration order (built-ins first, then
@@ -591,7 +591,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
 
     public bool IsLoopbackTransport => string.Equals(Transport, "loopback", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsMqttTransport => string.Equals(Transport, "mqtt", StringComparison.OrdinalIgnoreCase);
+    public bool IsMqttTransport => Transport.ToLowerInvariant() is "mqtt" or "amqp" or "stomp";
 
     public bool IsRfc2217Transport => string.Equals(Transport, "rfc2217", StringComparison.OrdinalIgnoreCase);
 

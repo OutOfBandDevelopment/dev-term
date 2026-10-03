@@ -146,7 +146,7 @@ public static class DevTermConfiguration
             // Handshake deliberately omitted: RFC 2217's SET-CONTROL flow-control values exist in
             // Rfc2217Enums, but wiring them end-to-end isn't built in v1 - see docs/design/rfc2217.md.
         }
-        else if (string.Equals(options.Transport, "mqtt", StringComparison.OrdinalIgnoreCase))
+        else if (options.Transport is { } brokerKind && brokerKind.ToLowerInvariant() is "mqtt" or "amqp" or "stomp")
         {
             profile[nameof(CliOptions.Host)] = options.Host;
             profile[nameof(CliOptions.Port)] = options.Port;

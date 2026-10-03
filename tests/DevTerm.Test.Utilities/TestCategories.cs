@@ -27,6 +27,7 @@ public static class TestCategories
     public const string Loopback = nameof(Loopback);
     public const string Rfc2217 = nameof(Rfc2217);
     public const string Mqtt = nameof(Mqtt);
+    public const string Brokers = nameof(Brokers);
     public const string Web = nameof(Web);
 
     // Device profile types.

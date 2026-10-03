@@ -74,8 +74,6 @@ the rest.
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md).
 - [LXI VXI-11 client](docs/design/proposals/lxi-support.md): phase 1 (discovery) is done; build this only when an instrument has no raw SCPI socket.
-- [MQTT, AMQP, STOMP protocol support](docs/design/proposals/message-broker-protocols.md) — receive/
-  route inbound messages and trigger outbound events to external services.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 - [Schema files for custom formats](docs/design/proposals/format-schema-files.md) — generated JSON Schemas for manifests,
   UI definitions and profiles (proposed 2026-10-02; spike `JsonSchemaExporter` first).

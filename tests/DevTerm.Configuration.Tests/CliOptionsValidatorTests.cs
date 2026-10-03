@@ -101,6 +101,27 @@ public sealed class CliOptionsValidatorTests
     }
 
     [TestMethod]
+    [DataRow("amqp")]
+    [DataRow("stomp")]
+    public void Validate_BrokerTransportWithHostPortAndAddress_Succeeds(string transport)
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = transport, Host = "broker", Port = "5672", Subscribe = "a.#" });
+
+        Assert.IsTrue(result.Succeeded);
+    }
+
+    [TestMethod]
+    [DataRow("amqp")]
+    [DataRow("stomp")]
+    public void Validate_BrokerTransportWithoutAnyAddress_FailsNamingTheTransport(string transport)
+    {
+        var result = _validator.Validate(null, new CliOptions { Transport = transport, Host = "broker", Port = "5672" });
+
+        Assert.IsTrue(result.Failed);
+        StringAssert.Contains(result.FailureMessage, transport.ToUpperInvariant(), StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public void Validate_Rfc2217WithHostAndPort_Succeeds()
     {
         var result = _validator.Validate(null, new CliOptions { Transport = "rfc2217", Host = "device.local", Port = "2217" });

@@ -42,7 +42,7 @@ Shown in two situations:
 
 | Field | Type | Default | Validation | Notes |
 |---|---|---|---|---|
-| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`rfc2217`/`mqtt`/`loopback` | `serial` | Must be one of the eight | Selecting a value shows only that transport's field group (see States); `rfc2217` reuses the Serial and TCP groups together rather than a group of its own — see States |
+| Transport | one of `serial`/`tcp`/`hid`/`usbtmc`/`ble`/`rfc2217`/`mqtt`/`amqp`/`stomp`/`loopback` | `serial` | Must be one of the ten | Selecting a value shows only that transport's field group (see States); `rfc2217` reuses the Serial and TCP groups together rather than a group of its own — see States |
 | Description | free text | empty | none | Purely descriptive; never read by any transport |
 | Port (serial) | free text, or picked from a "Detected ports"/"Detect..." list | empty | Required when Transport is `serial` | e.g. `COM3`, `/dev/ttyUSB0`; the list is whatever `ISerialPortDiscovery.GetPortNames()` (the same enumeration `--listports` uses) finds attached right now, captured once at construction; each entry the OS can describe is shown with that description — `COM3 — Prolific USB-to-Serial Comm Port` on Windows, `/dev/ttyUSB0 — FTDI FT232R USB UART (0403:6001, serial A50285BI)` on Linux/macOS (see Per-front-end notes) — but only the short name is written into the field |
 | Baud (serial) | integer, typed as text | `9600` | Declared `Integer`, at least 1: a value that isn't shows an inline message under/next to the field (`'96x' is not a whole number.`) while typing. The text is still kept as typed; on Connect/Save, `int.TryParse` ignores an unparseable value (keeps the previous one), as before | |
@@ -116,7 +116,8 @@ Shown in two situations:
   see `docs/design/rfc2217.md`). The Serial section's Port/Detected-ports row has no such guard and
   still renders for `rfc2217` (harmless, unused clutter — `BuildOptions` routes the TCP group's Port
   into `CliOptions.Port` for `rfc2217` via `IsTcpLikeTransport`, never the Serial group's).
-  **`mqtt` reuses the TCP group's Host/Port** (`IsTcpLikeTransport` includes it; Listen stays TCP-only) and adds
+  **`mqtt`, `amqp` and `stomp` reuse the TCP group's Host/Port** (and share the one MQTT section below, whose
+  Subscribe/Publish are AMQP routing keys or STOMP destinations for those two; AMQP defaults to port 5672, STOMP 61613) (`IsTcpLikeTransport` includes it; Listen stays TCP-only) and adds
   its own **MQTT** section (`IsMqttTransport`): Subscribe topics (comma-separated filters, wildcards allowed),
   Publish topic, and User name. The password has no field: it is accepted as `--password` or `DEVTERM_PASSWORD`
   only and is never written to a saved profile. At least one of Subscribe/Publish is required.

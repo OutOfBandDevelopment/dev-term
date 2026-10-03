@@ -146,7 +146,7 @@ public sealed class ConnectionEditorFormTests
         Assert.AreEqual("Read timeout (ms)", Controls(definition).Single(c => c.Id == nameof(CliOptions.ReadTimeoutMs)).Label);
         Assert.IsTrue(((ToggleControl)Controls(definition).Single(c => c.Id == nameof(CliOptions.Dtr))).DefaultValue);
         Assert.AreEqual(
-            "Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, or loopback.",
+            "Which transport to use: serial, tcp, hid, usbtmc, ble, rfc2217, mqtt, amqp, stomp, or loopback.",
             Controls(definition).Single(c => c.Id == nameof(CliOptions.Transport)).Description);
     }
 }

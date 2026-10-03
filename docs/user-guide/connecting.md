@@ -100,6 +100,20 @@ Type a line and press Enter to send; Ctrl+C to exit.
 Add `--username` and `--password` for an authenticated broker. In the Connection Editor, pick `mqtt`: Host and Port
 come from the TCP group, plus an MQTT group for the topics and user name. The password is never saved.
 
+### AMQP and STOMP (RabbitMQ)
+
+`--transport amqp` (AMQP 0-9-1, port 5672) and `--transport stomp` (STOMP 1.2, port 61613) work like `mqtt`: the same
+`--subscribe`, `--publish`, `--username` and `--password`, and each message is shown as one `address<TAB>payload` line.
+For AMQP the address is a routing key on the `amq.topic` exchange (`sensors.#`); for STOMP it is a destination
+(`/topic/sensors`). Against the `containers/` RabbitMQ (user/password `devterm`; STOMP is mapped to 21613):
+
+```
+dotnet run --project src/DevTerm.Console -- --transport amqp --host 127.0.0.1 --port 5672 --username devterm --password devterm --subscribe "cli.#" --publish cli.out --presenter ascii --cli true
+[ascii] cli.out	hi amqp
+```
+
+The Connection Editor offers both under Transport, with the same MQTT group of fields.
+
 ### Errors
 
 An unrecognized transport, or missing required arguments, print usage text to stderr and exit 1
