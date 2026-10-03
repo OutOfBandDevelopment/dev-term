@@ -28,7 +28,7 @@ both a direct serial connection and a serial-to-Ethernet bridge). TUI and WPF fr
 plugin loading, protocol decoders, rendering presenters, device control modules, RFC 2217, and the
 UDP/HID/BLE transports are designed in [`docs/design/`](docs/design/) but not yet built — see
 [`TODO.md`](TODO.md) for current in-progress status, [`BACKLOG.md`](BACKLOG.md) for what's not
-started yet, and `docs/changes/` for a dated log of completed work.
+started yet, [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) for every undecided question, and `docs/changes/` for a dated log of completed work.
 
 ## Documentation
 

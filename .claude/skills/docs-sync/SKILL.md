@@ -18,6 +18,7 @@ separate follow-up:
 | `docs/changes/YYYY-MM-DD.md` | Daily log of what was verified and how | Any non-trivial change, especially anything verified against real hardware |
 | `TODO.md` | Current in-progress state (active work only) | An in-progress item's status changes, or work starts on a new one. When an item finishes, delete it outright once its detail is in `docs/changes/` — never replace it with a "done, see docs/changes/..." pointer. |
 | `BACKLOG.md` | Not-yet-started backlog/research, kept out of `TODO.md` to keep it lean | A backlog item is finished (remove it, note it landed in `TODO.md`'s narrative), or a new one is identified |
+| `OPEN_QUESTIONS.md` | Index of every undecided question, one line each, pointing at the source doc | You add, answer or drop an "Open questions"/"Open items" entry anywhere (design, proposal, feature, spec, TODO, BACKLOG, bug). Add or delete its line in the same change; never copy the reasoning here |
 | `docs/test/{yyyy-MM-dd-HH-mm-ss}.md` | One real-hardware bench test session's full report (topology, device/profile matrix, commands + raw replies, findings) | A real-hardware test session runs — see the `hardware-test` skill. Only cross-reference it from `docs/changes/`; don't duplicate its content there. |
 
 ## Screenshots are tests, not manual chores
@@ -62,8 +63,10 @@ When a screen's layout changes:
    `**Update, YYYY-MM-DD**:` paragraph, matching the existing style). Remove the finished item from
    `BACKLOG.md` if it was tracked there; add any new backlog items you deliberately deferred to
    `BACKLOG.md`, not `TODO.md`.
-8. Add an entry to today's `docs/changes/YYYY-MM-DD.md` (create it if it doesn't exist).
-9. Run the full test suite (`dotnet test`) before committing.
+8. If the change raised a new open question or answered one, update `OPEN_QUESTIONS.md` (add the pointer, or delete
+   the line once the source doc records the decision).
+9. Add an entry to today's `docs/changes/YYYY-MM-DD.md` (create it if it doesn't exist).
+10. Run the full test suite (`dotnet test`) before committing.
 
 Skipping straight to step 9 after step 1 is the failure mode this skill exists to prevent — a spec
 or user-guide page that's silently drifted from the code is worse than no doc at all, because it
