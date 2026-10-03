@@ -57,17 +57,9 @@ minimum, before real design work starts:
 
 ## Open questions
 
-- Blazor Server (thin client, server-rendered, needs a persistent SignalR-style connection anyway —
-  which the WebSocket tunnel requirement already implies) vs. Blazor WebAssembly (heavier initial
-  download, runs client-side, doesn't need the server to hold UI state per client) — Server looks like
-  the more natural fit given the WebSocket-tunnel requirement is already effectively what Blazor Server
-  does under the hood, but this hasn't been evaluated against dev-term's specific needs (multiple
-  concurrent sessions, multiple simultaneous viewers of one session, etc.).
-- Multi-viewer semantics: can more than one browser watch/control the same `Session` at once, and if
-  so, how do concurrent typed-input senders not race each other — a question this codebase hasn't had
-  to answer yet, since every existing front end assumes one local operator per session.
-- Whether this ever needs its own transport-like "session discovery" (list what's running, attach to
-  one) or always starts a session itself from a connection profile the way the other front ends do.
+- ~~Blazor Server versus WebAssembly~~ **Decided 2026-10-03:** Blazor Server (the tunnel already needs a persistent connection), and the UI should behave like the WPF and TUI front ends, rendering `UiDefinition` generically.
+- ~~Multi-viewer semantics~~ **Decided 2026-10-02** (see Decisions below).
+- ~~Session discovery~~ **Decided 2026-10-02:** none; the host starts one profile session.
 
 ## Decisions (2026-10-02)
 

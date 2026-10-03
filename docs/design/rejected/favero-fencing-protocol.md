@@ -118,12 +118,4 @@ composite --> text : Recombines into one line
 
 ## Open questions
 
-- Whether this becomes the first real `ICompositeDecoder` implementation (this doc + the Radex
-  One proposal are currently dev-term's two best-specified, ready-to-build binary protocols) —
-  worth deciding relative ordering against the Radex One proposal, since Radex One is
-  request/response (simpler state machine) while this is continuous-push (simpler framing, no
-  control surface, but genuinely composite).
-- Whether a live scoreboard *rendering* presenter (not just the text baseline) is worth building
-  on top of this decoder later, given ScoreMachine already has a production-grade overlay/OBS
-  rendering path — dev-term's value-add here is more likely "observe/debug the raw stream
-  alongside the production system" than "replace the production renderer."
+None. Rejected and kept as history only (decided 2026-10-03): no hardware to test against.

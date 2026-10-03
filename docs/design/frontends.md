@@ -80,7 +80,7 @@ A richer visual front end for cases where a graphical view adds real value beyon
 
 ## Open questions
 
-- How much session state (open connections, chosen presenters) is shareable/handoff-able between front ends (e.g., start a session in the console app, attach to it from the WPF app).
+- ~~How much session state is shareable between front ends~~ **Decided 2026-10-03:** sharing across processes is wanted, over a **named pipe or a localhost-only web service** (the owner's preferred IPC). Ties to the named-pipe session monitoring item in BACKLOG. Not built.
 - ~~Whether the console app selects CLI vs. TUI mode via an explicit flag, auto-detection of an interactive terminal (isatty-style), or both.~~ **Decided**: an explicit flag, and TUI is the default — `dev-term` with no mode flag opens the TUI; `--cli true` forces the plain scriptable loop instead (e.g. for automation/CI). No terminal auto-detection.
 - Whether GUI (WPF) ships in the same initial milestone as the console app (CLI/TUI) or follows later, given it's a separate, Windows-only executable.
-- How much of a rendering presenter's live drawing/plot the TUI should attempt to approximate vs. simply pointing the user at the WPF app or an exported file.
+- ~~How much of a rendering presenter's drawing the TUI should approximate~~ **Decided 2026-10-03:** the TUI does its best; graphic rendering will never be possible there, and that is an accepted limit.

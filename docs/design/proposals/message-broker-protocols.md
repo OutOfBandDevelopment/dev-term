@@ -50,21 +50,10 @@ neither of those has: per-message **topic addressing**, not just message boundar
 
 ## Open questions
 
-- **The biggest one**: whether topic-addressed messages need a `Pipeline`/`Session` model change.
-  Today `Pipeline.Render` fans one byte chunk to every presenter uniformly; a broker connection with
-  several subscribed topics may need per-topic presenter routing (so a presenter watching topic A
-  doesn't also render topic B's traffic) — nothing built so far has needed this. Comparable in kind to
-  the still-open "how a UDP listener's first datagram maps onto Session" and "multi-peer TCP listener"
-  questions already in `transports.md`, but a genuinely new axis (topic identity, not just "which
-  peer").
-- No specific target broker or device is confirmed yet. This project has consistently preferred
-  building each transport/protocol against a real, on-hand target (see the BYTECC and LXI proposals'
-  explicit cautions about the same) — recommend picking one concrete use case (e.g., a specific
-  home-automation broker or IoT device already in use) before implementing, rather than building a
-  speculative three-protocol surface with nothing real to validate any of it against.
-- Whether all three protocols are actually wanted, or whether MQTT alone (by far the most common for
-  small/embedded devices, and the lightest client dependency) covers the real motivating use case and
-  AMQP/STOMP can stay backlog until a specific need for either shows up.
+- ~~Does topic-addressed traffic need a `Pipeline`/`Session` change?~~ **No** (resolved 2026-10-02): topic-prefixed text, see Status.
+- ~~No concrete target broker.~~ **Resolved**: the `containers/` Mosquitto and RabbitMQ brokers; a real device is not needed.
+- ~~Are all three protocols wanted?~~ **Built** (MQTT 2026-10-02; AMQP and STOMP 2026-10-03).
+- **Owner direction 2026-10-03 (not started, see BACKLOG):** this is meant as a **routing proxy**, not only a device interface. A device message that matches a rule is published to a broker, and an inbound broker message can trigger a device action, with mapping rules in both directions. Presenters must be addable and removable **without reconnecting** the device. It is a proof of concept: no real hardware is needed, and it counts as complete once a message detected over the loopback transport is published to a broker (and the reverse), with the mapping shaped so other profiles can plug in later. Message history across several channels should share one timecode (the clock tick when the message was posted).
 
 ## Completion checklist
 

@@ -103,3 +103,9 @@ the rest.
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
 - **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above.
 
+- **Message routing proxy over the brokers** (owner direction 2026-10-03, proof of concept, loopback-testable): rules that publish a matching device message to a broker and map an inbound broker message to a device action, with a shared timecode for history across channels. See [message-broker-protocols](docs/design/proposals/message-broker-protocols.md).
+- **Add and remove presenters on a live session** without reconnecting the device, and presenters that originate data (a simulation or virtual device). See [architecture](docs/design/architecture.md).
+- **Configurable read/write rate limits and connect timeout/retry** as core options (decided 2026-10-03).
+- **Confirm before switching profiles on a live connection; validate `ManifestPath` on save and at connect** (decided 2026-10-03).
+- **Package-manifest extraction under the app data folder**, offered to the user, instead of a never-cleaned temp folder.
+- **Stream Monitor: list export files already on disk; automatic HP-GL to SVG conversion as an option.** The external-tool and web converters are dropped.

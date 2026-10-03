@@ -216,6 +216,4 @@ decoder --> user : Human-readable text baseline
   `ScpiReplyPresenter` does line-buffering plus FIFO id-correlation generically (no per-family
   parsing at all); a specific reply's *meaning* stays a profile/UI concern (an `IndicatorControl`
   just shows the raw line), not something baked into the decoder.
-- Whether GPIB support is ever in scope (none of the transports in [transports.md](../transports.md)
-  cover it) — still open. If not, the bare HP 34401A and other GPIB-only paths are out of reach
-  unless accessed via a GPIB-to-USB/Ethernet adapter that presents as serial or TCP to the OS.
+- ~~Whether GPIB support is ever in scope~~ **Decided 2026-10-03:** out of scope. No GPIB hardware is on hand, so it is removed from development and can be added back if it ever comes up.

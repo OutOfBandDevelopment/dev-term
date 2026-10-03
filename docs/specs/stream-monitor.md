@@ -152,7 +152,7 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   selected list entry (`converted from HP-GL plot` in its detail; `StreamMonitor.AddConverted`). WPF draws
   `.svg` itself (`SvgPreview`: path, line, polyline, polygon, rect, circle, ellipse with stroke/fill/viewBox;
   no transforms, gradients, text or CSS) and shows `Could not draw this SVG: …` otherwise; the TUI lists it
-  but still can't draw. The list entry is for this session only (it isn't re-found after a restart). Live
+  but still can't draw (an accepted limit, 2026-10-03: the TUI will not render graphics). The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the

@@ -149,7 +149,7 @@ confirmed:
 
 - Whether the 2230's remote interface (as actually fitted/configured on the two owned units) is
   RS-232, GPIB, or both — affects whether any real testing can happen before a GPIB transport
-  exists.
+  exists.  (As of 2026-10-03 GPIB is out of scope, so only RS-232 matters.)
 - Whether this model supports *any* remote configuration (vs. read-only status/measurement query)
   — many instruments of this era and class only expose acquisition data remotely, leaving all
   front-panel settings physical-only, which would make an `IControlSurface` here mostly a read-only

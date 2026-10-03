@@ -170,9 +170,7 @@ to `~/.dev-term/manifests` by default.
   2026-09-25** for the synchronous case: pairing is per *command* (`IsQuery`/`ReplyId`, FIFO like
   SCPI), and patterns stay independent, always-on matches against every line, which is what lets
   them decode streamed telemetry too. Interleaved/concurrent replies remain unsupported.
-- Where package-mode manifests actually live on disk once loaded from a `.zip` — still extracted to
-  a fresh temp folder per load (`%TEMP%\devterm-manifests\…`) and never cleaned up; a per-user cache
-  keyed by the zip's hash would avoid re-extracting and the leak.
+- ~~Where package-mode manifests live on disk once loaded from a `.zip`~~ **Decided 2026-10-03:** default to a folder under the app data folder (`DevTermHome.Root`) rather than `%TEMP%`, with the location offered to the user. A per-zip-hash cache would also stop the leak and re-extraction. Not built.
 - Whether a single-file manifest should be allowed to *also* reference an external `.ksy` (accepting
   that it's then not really "single file" in practice) or whether that combination should be
   rejected outright to keep the two modes' guarantees clean and unambiguous.
