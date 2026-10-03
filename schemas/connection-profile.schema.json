@@ -118,6 +118,9 @@
         "ConnectTimeoutMs": {
           "type": "integer"
         },
+        "ResponseTimeoutMs": {
+          "type": "integer"
+        },
         "ConnectRetries": {
           "type": "integer"
         },
@@ -224,6 +227,18 @@
     },
     "ListLxiDevices": {
       "type": "boolean"
+    },
+    "Pipe": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Attach": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "ListPlugins": {
       "type": "boolean"
