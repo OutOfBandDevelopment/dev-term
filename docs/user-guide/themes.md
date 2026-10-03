@@ -18,9 +18,12 @@ Your choice is saved, and both apps start with it next time. It's stored in
 profile never changes the theme.
 
 **System** follows Windows' "Choose your app mode" setting (Settings > Personalization > Colors).
-WPF follows it live if you change it while dev-term is running. The TUI checks it when it starts
-and when you pick System. Off Windows, the TUI goes by the terminal's `COLORFGBG` hint if there is
+Both front ends follow it live if you change it while dev-term is running (the TUI checks every couple of seconds). Off Windows, the TUI goes by the terminal's `COLORFGBG` hint if there is
 one, and uses Light otherwise.
+
+In the TUI only, **Terminal** (View > Theme > Terminal, or `--theme terminal`) applies no colors of its own, so the
+terminal's own palette shows through, as it did before themes existed. dev-term's status line and charts use Light or Dark
+according to the terminal's `COLORFGBG` hint.
 
 To use a theme for one run without changing the saved choice, pass `--theme`:
 

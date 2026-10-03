@@ -275,7 +275,7 @@ RetentionSweeper.Sweep(new AppPreferencesStore().Load());
 if (useTui)
 {
     ActiveTheme.Initialize(layeredConfig);
-    TuiTheme.Apply(ActiveTheme.Current);
+    TuiTheme.ApplyActive();
 }
 
 string? bindError = null;

@@ -132,6 +132,29 @@ public sealed class TuiThemeTests
     }
 
     [TestMethod]
+    public void TerminalSelection_KeepsTheTerminalsOwnSchemes_AndSystemFollowsTheOsLive()
+    {
+        var before = Terminal.Gui.Configuration.SchemeManager.GetScheme("Base").Normal;
+        var dark = false;
+        ActiveTheme.PrefersDark = () => dark;
+        ActiveTheme.Select("system", persist: false);
+        TuiTheme.ApplyActive();
+        Assert.AreEqual(BuiltInThemes.Light, ActiveTheme.Current);
+        Assert.AreNotEqual(before, Terminal.Gui.Configuration.SchemeManager.GetScheme("Base").Normal);
+
+        dark = true;
+        ActiveTheme.RefreshSystem();
+        TuiTheme.ApplyActive();
+        Assert.AreEqual(BuiltInThemes.Dark, ActiveTheme.Current, "system re-resolves when the OS setting changes.");
+
+        Assert.IsNull(ActiveTheme.Select("terminal", persist: false), "terminal is a known selection, not a warning.");
+        Assert.IsTrue(ActiveTheme.IsTerminal);
+        TuiTheme.ApplyActive();
+        Assert.AreEqual(before, Terminal.Gui.Configuration.SchemeManager.GetScheme("Base").Normal);
+        Assert.IsNull(TuiTheme.Applied);
+    }
+
+    [TestMethod]
     public void ViewThemeMenu_ListsBuiltInsThenUserThemes()
     {
         var directory = Path.Combine(Path.GetTempPath(), "devterm-tui-themes", Path.GetRandomFileName());
@@ -142,7 +165,7 @@ public sealed class TuiThemeTests
         var (session, presenter, options) = Create();
         TuiTestRunner.RunHeadless(session, presenter, options, parts =>
         {
-            CollectionAssert.AreEqual(new[] { "light", "dark", "system", "amber" }, parts.ThemeMenu.Items.Keys.ToArray());
+            CollectionAssert.AreEqual(new[] { "light", "dark", "system", "amber", "terminal" }, parts.ThemeMenu.Items.Keys.ToArray());
 
             parts.ThemeMenu.Items["amber"].Action!.Invoke();
             TuiTestRunner.CurrentApp.LayoutAndDraw(true);

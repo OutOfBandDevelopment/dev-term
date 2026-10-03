@@ -19,7 +19,7 @@ internal sealed class TuiThemeMenu
     public TuiThemeMenu(Action<string> reportProblem)
     {
         ArgumentNullException.ThrowIfNull(reportProblem);
-        foreach (var name in ActiveTheme.Catalog.SelectionNames)
+        foreach (var name in ActiveTheme.Catalog.SelectionNames.Concat([BuiltInThemes.TerminalName]))
         {
             _items[name] = new MenuItem(Title(name), string.Empty, () =>
             {
@@ -61,6 +61,7 @@ internal sealed class TuiThemeMenu
         BuiltInThemes.LightName => "_Light",
         BuiltInThemes.DarkName => "_Dark",
         BuiltInThemes.SystemName => "_System (follow the OS)",
+        BuiltInThemes.TerminalName => "_Terminal (keep the terminal's colors)",
         _ => name,
     };
 }

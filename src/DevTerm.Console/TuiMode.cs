@@ -100,7 +100,7 @@ public static class TuiMode
 
         var app = Application.Create().Init();
         TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;
-        TuiTheme.Apply(ActiveTheme.Current);
+        TuiTheme.ApplyActive();
         TuiWindowParts parts;
         try
         {
@@ -818,7 +818,7 @@ public static class TuiMode
 
         void ReapplyTheme()
         {
-            TuiTheme.Apply(ActiveTheme.Current);
+            TuiTheme.ApplyActive();
             foreach (var windowTab in tabs)
             {
                 windowTab.Output.HighlightingDefinition = OutputHighlighting.Definition;
@@ -830,6 +830,21 @@ public static class TuiMode
         }
 
         ActiveTheme.Changed += OnThemeChanged;
+
+        // The system theme follows the OS setting live in the TUI too, as WPF's does: re-check every couple of seconds
+        // (a no-op unless the selection is "system" and the answer changed). Returning true keeps the timer running.
+        var followSystem = app.AddTimeout(TimeSpan.FromSeconds(2), () =>
+        {
+            ActiveTheme.RefreshSystem();
+            return true;
+        });
+        window.Disposing += (_, _) =>
+        {
+            if (followSystem is not null)
+            {
+                app.RemoveTimeout(followSystem);
+            }
+        };
         window.Disposing += (_, _) => ActiveTheme.Changed -= OnThemeChanged;
 
         // Everything that depends on one tab's connection state: its own tab header, and - only if

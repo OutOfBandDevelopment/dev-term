@@ -59,6 +59,18 @@ internal static class TuiTheme
         }
     }
 
+    /// <summary>Applies <see cref="ActiveTheme.Current"/>, or - for the <c>terminal</c> selection - leaves the terminal's own colors.</summary>
+    public static void ApplyActive()
+    {
+        if (ActiveTheme.IsTerminal)
+        {
+            Restore();
+            return;
+        }
+
+        Apply(ActiveTheme.Current);
+    }
+
     /// <summary>Puts Terminal.Gui's own schemes back (tests; a no-op if nothing was applied).</summary>
     public static void Restore()
     {

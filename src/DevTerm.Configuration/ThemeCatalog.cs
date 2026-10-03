@@ -70,7 +70,7 @@ public sealed class ThemeCatalog
     }
 
     /// <summary>
-    /// The theme <paramref name="selection"/> names: <c>light</c>, <c>dark</c>, <c>system</c> (resolved
+    /// The theme <paramref name="selection"/> names: <c>light</c>, <c>dark</c>, <c>terminal</c> (TUI only; resolves to light or dark for dev-term's own colors), <c>system</c> (resolved
     /// by <paramref name="prefersDark"/>, default <see cref="SystemThemeDetector.PrefersDark"/>) or a
     /// user theme's name, case-insensitively. Empty means <c>system</c>. An unknown name falls back to
     /// <c>system</c> with <paramref name="warning"/> saying so, rather than failing.
@@ -94,9 +94,15 @@ public sealed class ThemeCatalog
             return user;
         }
 
-        if (!string.Equals(name, BuiltInThemes.SystemName, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(name, BuiltInThemes.SystemName, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(name, BuiltInThemes.TerminalName, StringComparison.OrdinalIgnoreCase))
         {
             warning = $"Unknown theme \"{name}\" (expected light, dark, system, or a theme file's name under {DevTermUserDataPaths.ThemesDirectory}); using system.";
+        }
+
+        if (string.Equals(name, BuiltInThemes.TerminalName, StringComparison.OrdinalIgnoreCase))
+        {
+            return SystemThemeDetector.PrefersDarkFromColorFgBg(Environment.GetEnvironmentVariable("COLORFGBG")) ? BuiltInThemes.Dark : BuiltInThemes.Light;
         }
 
         return (prefersDark ?? SystemThemeDetector.PrefersDark)() ? BuiltInThemes.Dark : BuiltInThemes.Light;
