@@ -73,6 +73,32 @@ public static class StreamContentSamples
         return bytes;
     }
 
+    /// <summary>An 8x4 8-bit PCX (version 5): a 128-byte header, four run-length-coded scanlines, then the 0x0C marker and a 768-byte palette.</summary>
+    public static byte[] Pcx()
+    {
+        var bytes = new List<byte>(new byte[128]);
+        bytes[0] = 0x0A;
+        bytes[1] = 5;
+        bytes[2] = 1;
+        bytes[3] = 8;
+        bytes[8] = 7;
+        bytes[10] = 3;
+        bytes[65] = 1;
+        bytes[66] = 8;
+        for (var line = 0; line < 4; line++)
+        {
+            bytes.AddRange([0xC8, (byte)(line * 40)]);
+        }
+
+        bytes.Add(0x0C);
+        for (var i = 0; i < 768; i++)
+        {
+            bytes.Add((byte)i);
+        }
+
+        return [.. bytes];
+    }
+
     /// <summary>A little-endian TIFF header (no end marker - ends on idle).</summary>
     public static byte[] Tiff() => [(byte)'I', (byte)'I', 42, 0, 8, 0, 0, 0, 0, 0];
 

@@ -14,6 +14,7 @@ public sealed class StreamContentEndFinderTests
         [StreamContentSamples.Jpeg(), StreamContentKind.Jpeg],
         [StreamContentSamples.Gif(), StreamContentKind.Gif],
         [StreamContentSamples.Bmp(), StreamContentKind.Bmp],
+        [StreamContentSamples.Pcx(), StreamContentKind.Pcx],
         [StreamContentSamples.PostScript(), StreamContentKind.PostScript],
         [StreamContentSamples.PjlPcl(), StreamContentKind.Pcl],
     ];

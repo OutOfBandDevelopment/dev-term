@@ -15,6 +15,7 @@ public sealed class StreamContentSnifferTests
         [StreamContentSamples.Gif(), StreamContentKind.Gif],
         [Encoding.ASCII.GetBytes("GIF87a\u0001\u0000"), StreamContentKind.Gif],
         [StreamContentSamples.Bmp(), StreamContentKind.Bmp],
+        [StreamContentSamples.Pcx(), StreamContentKind.Pcx],
         [StreamContentSamples.Tiff(), StreamContentKind.Tiff],
         [new byte[] { (byte)'M', (byte)'M', 0, 42, 0, 0, 0, 8 }, StreamContentKind.Tiff],
         [StreamContentSamples.PostScript(), StreamContentKind.PostScript],

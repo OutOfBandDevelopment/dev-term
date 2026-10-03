@@ -50,6 +50,11 @@ public abstract class StreamContentEndFinder
             return new BmpEndFinder();
         }
 
+        if (kind == StreamContentKind.Pcx)
+        {
+            return new PcxEndFinder();
+        }
+
         if (kind == StreamContentKind.PostScript)
         {
             return new PostScriptEndFinder();
@@ -289,6 +294,81 @@ public abstract class StreamContentEndFinder
 
             var fileSize = BinaryPrimitives.ReadUInt32LittleEndian(content[2..]);
             return fileSize > 0 && content.Length >= fileSize ? fileSize : null;
+        }
+    }
+
+    // PCX: a 128-byte header (window, planes, bytes per line), then run-length-coded scanlines - a byte with
+    // its top two bits set is a run count (low six bits) for the next byte, anything else is one literal - and,
+    // for a version-5 8-bit single-plane image, a 0x0C marker plus a 768-byte palette. The end is known only by
+    // decoding the runs until the declared number of bytes has been produced.
+    private sealed class PcxEndFinder : StreamContentEndFinder
+    {
+        private const int _headerLength = 128;
+        private long _need = -1;
+        private long _produced;
+        private int _position = _headerLength;
+        private bool _hasPalette;
+
+        public override long? FindEnd(ReadOnlySpan<byte> content)
+        {
+            if (_need < 0)
+            {
+                if (content.Length < _headerLength)
+                {
+                    return null;
+                }
+
+                var lines = (long)BinaryPrimitives.ReadUInt16LittleEndian(content[10..]) - BinaryPrimitives.ReadUInt16LittleEndian(content[6..]) + 1;
+                var perLine = (long)content[65] * BinaryPrimitives.ReadUInt16LittleEndian(content[66..]);
+                if (lines <= 0 || perLine <= 0)
+                {
+                    return null;
+                }
+
+                _need = lines * perLine;
+                _hasPalette = content[1] == 5 && content[3] == 8 && content[65] == 1;
+            }
+
+            while (_produced < _need)
+            {
+                if (_position >= content.Length)
+                {
+                    return null;
+                }
+
+                if (content[_position] >= 0xC0)
+                {
+                    if (_position + 1 >= content.Length)
+                    {
+                        return null;
+                    }
+
+                    _produced += content[_position] & 0x3F;
+                    _position += 2;
+                }
+                else
+                {
+                    _produced++;
+                    _position++;
+                }
+            }
+
+            if (!_hasPalette)
+            {
+                return _position;
+            }
+
+            if (_position >= content.Length)
+            {
+                return null;
+            }
+
+            if (content[_position] != 0x0C)
+            {
+                return _position;
+            }
+
+            return content.Length >= _position + 769 ? _position + 769 : null;
         }
     }
 

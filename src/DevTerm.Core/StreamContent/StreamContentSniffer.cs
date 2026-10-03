@@ -187,6 +187,8 @@ public static class StreamContentSniffer
             case (byte)'I' when s.StartsWith("II*\0"u8):
             case (byte)'M' when s.StartsWith("MM\0*"u8):
                 return StreamContentKind.Tiff;
+            case 0x0A when IsPcx(s):
+                return StreamContentKind.Pcx;
             case (byte)'B' when IsBmp(s):
                 return StreamContentKind.Bmp;
             case (byte)'%' when s.StartsWith("%!PS"u8):
@@ -197,6 +199,21 @@ public static class StreamContentSniffer
         }
 
         return allowHpgl && IsHpgl(s) ? StreamContentKind.Hpgl : null;
+    }
+
+    // 0x0A is also a line feed, so the rest of the 128-byte header has to be plausible: a known version, RLE
+    // encoding (1), 1/2/4/8 bits per pixel, a window that doesn't run backwards, a zero reserved byte and
+    // a non-zero bytes-per-line.
+    private static bool IsPcx(ReadOnlySpan<byte> s)
+    {
+        if (s.Length < 128 || s[1] is not (0 or 2 or 3 or 4 or 5) || s[2] != 1 || s[3] is not (1 or 2 or 4 or 8) || s[64] != 0 || s[65] == 0)
+        {
+            return false;
+        }
+
+        return BinaryPrimitives.ReadUInt16LittleEndian(s[8..]) >= BinaryPrimitives.ReadUInt16LittleEndian(s[4..])
+            && BinaryPrimitives.ReadUInt16LittleEndian(s[10..]) >= BinaryPrimitives.ReadUInt16LittleEndian(s[6..])
+            && BinaryPrimitives.ReadUInt16LittleEndian(s[66..]) > 0;
     }
 
     // "BM" alone is two ordinary letters, so the rest of the 14-byte file header and the start of
