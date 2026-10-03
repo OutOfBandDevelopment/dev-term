@@ -153,5 +153,5 @@ SHOW_LEGEND()
 ## Open questions
 
 - Plugin isolation mechanism: in-process (`AssemblyLoadContext`) vs. out-of-process (IPC) plugin hosting.
-- ~~Whether presenters/decoders can also *originate* traffic~~ **Decided 2026-10-03: yes.** A presenter may generate data to feed back in as a simulation, or act as a virtual device of its own (it pairs with the loopback transport and the broker routing idea). Not built; see BACKLOG.
+- ~~Whether presenters/decoders can also *originate* traffic~~ **Decided 2026-10-03: yes.** A presenter may generate data to feed back in as a simulation, or act as a virtual device of its own (it pairs with the loopback transport and the broker routing idea). Built 2026-10-03 as `IOriginatingPresenter`; see `Session.AddPresenter`.
 - Cross-session scripting/automation model for the CLI front end.

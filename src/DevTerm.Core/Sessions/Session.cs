@@ -82,10 +82,53 @@ public sealed class Session : IAsyncDisposable
     /// built can still have its replies decoded/correlated, without requiring the presenter to have
     /// been part of the connection's original <c>CliOptions.EffectivePresenters</c> selection.
     /// </summary>
-    public void AddPresenter(IPresenter presenter) => _pipeline.AddPresenter(presenter);
+    public void AddPresenter(IPresenter presenter)
+    {
+        _pipeline.AddPresenter(presenter);
+        if (presenter is IOriginatingPresenter originator)
+        {
+            originator.Originated -= OnOriginated;
+            originator.Originated += OnOriginated;
+        }
+    }
 
     /// <summary>Unbinds a presenter previously bound with <see cref="AddPresenter"/> (see <see cref="Pipeline.RemovePresenter"/>).</summary>
-    public void RemovePresenter(IPresenter presenter) => _pipeline.RemovePresenter(presenter);
+    public void RemovePresenter(IPresenter presenter)
+    {
+        if (presenter is IOriginatingPresenter originator)
+        {
+            originator.Originated -= OnOriginated;
+        }
+
+        _pipeline.RemovePresenter(presenter);
+    }
+
+    // Fire-and-forget on purpose: Originated can fire inside Render on the read loop, which must not
+    // await a send (SendAsync from the read loop is fine, awaiting it inline is not). A failed send
+    // already faults the session and raises Disconnected, so nothing more to report here.
+    private void OnOriginated(object? sender, ReadOnlyMemory<byte> data)
+    {
+        if (State != ConnectionState.Open)
+        {
+            return;
+        }
+
+        var copy = data.ToArray();
+        using (ExecutionContext.SuppressFlow())
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await SendAsync(copy).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Originated send failed: {ex.Message}");
+                }
+            }, CancellationToken.None);
+        }
+    }
 
     public event EventHandler<PresenterOutput>? Output;
 
