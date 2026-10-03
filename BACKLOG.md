@@ -70,6 +70,10 @@ the rest.
 - **Offer a profile's control panel on connect** (hint or button, remembered per profile) ([device-control-panel spec](docs/specs/device-control-panel.md)).
 - **Stream Monitor filter, search and sort** by device, content type and time, in one list ([stream-monitor spec](docs/specs/stream-monitor.md)).
 - **Per-module destructive-command confirmation**, declared in a manifest or profile ([device-control-modules](docs/design/device-control-modules.md)).
+- **Connection Editor shows `ManifestName` and `ScpiAutoDetectTimeoutMs`** ([spec](docs/specs/connection-editor.md)).
+- **Chart hover readout, table view and history export** ([spec](docs/specs/device-control-panel.md)).
+- **TUI Playback jump-to-time-or-record field** ([spec](docs/specs/playback-window.md)).
+- **TUI terminal-palette theme, and a live-following `system` theme** ([theming](docs/design/theming.md)).
 - **TUI "Send as" menu follows the active tab** ([tui-main-screen spec](docs/specs/tui-main-screen.md)).
 
 ## Research (not backlog-ready)

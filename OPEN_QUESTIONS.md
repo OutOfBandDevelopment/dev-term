@@ -100,8 +100,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **Session logging:** adding a note to a log still being recorded; very large logs held in memory; backward seek
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
-- **Theming:** color the TUI Connection Editor's "(not found)" hints; offer a terminal-palette theme; make the TUI's
-  `system` theme live. — [theming](docs/design/theming.md)
+- **Theming:** color the TUI Connection Editor's "(not found)" hints. — [theming](docs/design/theming.md)
 - **Plugin loading:** options-section collision rules (see Needs your decision), moving built-in decoders into plugin
   folders. — [platform](docs/design/platform.md), TODO item 5
 
@@ -109,10 +108,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 "Open items" from `docs/specs/`; each is a missing capability, not a contested decision.
 
-- **Connection Editor:** `ManifestName` and `ScpiAutoDetectTimeoutMs` are carried over but not shown. —
-  [connection-editor](docs/specs/connection-editor.md)
-- **Control panel:** expand/collapse not persisted; charts lack
-  hover readout, table view and export; chart sizes are fixed. —
+- **Control panel:** expand/collapse not persisted; chart sizes are fixed. —
   [device-control-panel](docs/specs/device-control-panel.md)
 - **Expression picker:** no picking inside a channel segment or a button's parameter fields; no operators/regex
   helpers or CEL-style extension. — [expression-picker](docs/specs/expression-picker.md)
@@ -122,8 +118,6 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   declare a format. — [stream-monitor](docs/specs/stream-monitor.md)
 - **Theme builder:** no delete for saved themes; the TUI role list has no scroll indicator; no manual-use verification
   pass. — [theme-builder](docs/specs/theme-builder.md)
-- **Playback window:** the TUI has no seek control beyond Rewind/+10s/End/Step. —
-  [playback-window](docs/specs/playback-window.md)
 
 ## Open bugs
 

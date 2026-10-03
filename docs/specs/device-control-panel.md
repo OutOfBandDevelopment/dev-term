@@ -364,7 +364,7 @@ any command not in the curated list.
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
   only way in. **Decided 2026-10-03:** offer, don't force: connecting with such a profile shows a hint or button to open the
   panel (remembered per profile once chosen); it never opens on its own. Not built yet.
-- **Charts have no hover readout or table view** — the WPF charts show the latest values in their
+- **Charts have no hover readout or table view** (**Decided 2026-10-03:** build the hover readout, a table view and history export; not built yet) — the WPF charts show the latest values in their
   legend/labels but no per-point tooltip, and neither front end exports the history.
 - **Chart sizes are fixed per front end** (not declared in the model) — fine for the controls so
   far; a `Width`/`Height` hint could come later if a device needs a bigger plot.

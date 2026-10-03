@@ -426,7 +426,7 @@ Shown in two situations:
 
 - The generated form shows only the fields the view model declares; the saved-profile settings the
   editor still never exposes (`ManifestName`, `ScpiAutoDetectTimeoutMs`) are still carried over
-  untouched rather than shown. Exposing them is now a matter of annotating view-model properties for
+  untouched rather than shown. **Decided 2026-10-03:** show both as fields. Not built yet. Exposing them is now a matter of annotating view-model properties for
   them (the form would render them with no front-end change), not of hand-building two more field
   groups.
 
