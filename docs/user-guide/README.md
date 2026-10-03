@@ -52,6 +52,7 @@ test class's own doc comment.
   preview in WPF.
 - [Converting PostScript and PCL with Ghostscript](ghostscript-conversion.md) — installing a converter and
   pointing the Stream Monitor at it.
+- [Keeping old logs and exports tidy](retention.md) — `LogRetention`/`ExportRetention` rules in `preferences.json`.
 - [Choosing a theme](themes.md) — **View > Theme** (Light, Dark, System) in TUI/WPF, `--theme`, and
   writing your own JSON theme in `~/.dev-term/themes`.
 

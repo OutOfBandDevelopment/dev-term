@@ -35,7 +35,7 @@ the rest.
   already captures and saves. HP-GL now converts to SVG, listed in the capture list and drawn in WPF (2026-10-02); PostScript/PCL and TUI drawing remain.
 - Stream Monitor leftovers ([feature](docs/design/features/stream-content-detection.md)): direct in-window preview of
   PostScript and PCL (needs the rendering presenter above), SVG drawing in the TUI (it only lists the converted file),
-  a CLI-mode "export last N captures", and a retention/cleanup policy for the exports folder (low priority).
+  and a CLI-mode "export last N captures".
 
 ### Device control modules & hardware profiles
 

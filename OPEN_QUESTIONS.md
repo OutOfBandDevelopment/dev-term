@@ -33,8 +33,6 @@ Choices only the project owner can make (scope, direction, priorities).
   [device-control-modules](docs/design/device-control-modules.md)
 - **Config namespacing for plugin options** and whether named `--profile <name>` profiles are needed. —
   [platform](docs/design/platform.md)
-- **Retention policy:** how `~/.dev-term/captures/` and the Stream Monitor export folder are pruned (age, count or size). — [stream-content-detection](docs/design/features/stream-content-detection.md),
-  [stream-monitor spec](docs/specs/stream-monitor.md)
 
 ## Needs hardware or a capture
 
