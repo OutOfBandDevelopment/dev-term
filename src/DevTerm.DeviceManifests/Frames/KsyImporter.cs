@@ -43,6 +43,12 @@ public static class KsyImporter
 
         var warnings = new List<string>();
         var schema = new FrameSchema();
+        if (map.TryGetValue("meta", out var bitMeta) && bitMeta is Dictionary<object, object> bitMap
+            && bitMap.TryGetValue("bit-endian", out var bitEndian) && bitEndian is string bitOrder && bitOrder != "be")
+        {
+            warnings.Add($"meta.bit-endian '{bitOrder}' is not supported; bit fields are read most significant bit first.");
+        }
+
         if (map.TryGetValue("meta", out var meta) && meta is Dictionary<object, object> metaMap
             && metaMap.TryGetValue("endian", out var endian) && endian is string e)
         {
@@ -59,6 +65,12 @@ public static class KsyImporter
         var types = map.TryGetValue("types", out var typesValue) && typesValue is Dictionary<object, object> typeMap ? typeMap : [];
         var walk = new Walk(schema, warnings, types);
         walk.Sequence(seq, string.Empty, 0);
+        if (walk.LengthField is not null)
+        {
+            schema.LengthField = walk.LengthField;
+            schema.LengthAdjust = schema.MinLength ?? 0;
+        }
+
         if (walk.Sync.Count > 0)
         {
             schema.Sync = Convert.ToHexString([.. walk.Sync]);
@@ -80,13 +92,24 @@ public static class KsyImporter
         private const int _maxDepth = 8;
         private bool _leadingMagic = true;
 
+        private bool _openTail;
+
         public List<byte> Sync { get; } = [];
+
+        /// <summary>The field the last attribute's <c>size</c> pointed at, making the frame variable-length.</summary>
+        public string? LengthField { get; private set; }
 
         /// <summary>Adds each attribute in turn; false once one stops the frame (everything after it has an unknown offset).</summary>
         public bool Sequence(List<object> seq, string prefix, int depth)
         {
             foreach (var item in seq)
             {
+                if (_openTail)
+                {
+                    warnings.Add("An attribute follows a variable-size one; its offset is unknown, so the frame stops before it.");
+                    return false;
+                }
+
                 if (item is not Dictionary<object, object> attr)
                 {
                     warnings.Add("A seq entry is not a mapping; the frame stops there.");
@@ -137,6 +160,12 @@ public static class KsyImporter
 
         private bool Attribute(Dictionary<object, object> attr, string name, int depth)
         {
+            if (_openTail)
+            {
+                warnings.Add($"Attribute '{name}' follows a variable-size one; its offset is unknown, so the frame stops before it.");
+                return false;
+            }
+
             var field = new FrameField { Name = name, Label = Text(attr, "doc") };
             var contents = Contents(attr);
             var type = Text(attr, "type");
@@ -165,6 +194,16 @@ public static class KsyImporter
                     field.Type = baseType;
                     field.Endian = fieldEndian;
                 }
+                else if (type is not null && BitType(type) is { } bits)
+                {
+                    field.Type = bits;
+                }
+                else if (type is ("str" or null) && size is null && SizeField(attr, name) is { } lengthName)
+                {
+                    field.Type = type is null ? "bytes" : "str";
+                    LengthField = lengthName;
+                    _openTail = true;
+                }
                 else if (type is "str" && size is not null)
                 {
                     field.Type = "str";
@@ -184,6 +223,20 @@ public static class KsyImporter
 
             schema.Fields.Add(field);
             return true;
+        }
+
+        /// <summary>The earlier integer field a <c>size: other_field</c> points at, or null when <c>size</c> isn't a plain reference to one.</summary>
+        private string? SizeField(Dictionary<object, object> attr, string name)
+        {
+            var reference = Text(attr, "size");
+            if (reference is null || !reference.All(c => char.IsLetterOrDigit(c) || c == '_'))
+            {
+                return null;
+            }
+
+            var scope = name.Contains('.', StringComparison.Ordinal) ? name[..(name.LastIndexOf('.') + 1)] : string.Empty;
+            var found = schema.Fields.LastOrDefault(f => f.Name == scope + reference) ?? schema.Fields.LastOrDefault(f => f.Name == reference);
+            return found is { IsNumber: true } && found.Type is not ("f4" or "f8") ? found.Name : null;
         }
 
         private bool Nested(object definition, string name, string typeName, int depth)
@@ -260,6 +313,15 @@ public static class KsyImporter
         }
 
         return [.. bytes];
+    }
+
+    /// <summary>Kaitai's <c>b1</c> to <c>b64</c> bit-integer types (<c>b3be</c> too) as a frame bit field, or null.</summary>
+    private static string? BitType(string type)
+    {
+        var digits = type.EndsWith("be", StringComparison.Ordinal) ? type[1..^2] : type[1..];
+        return type.StartsWith('b') && int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var width) && width is >= 1 and <= 64
+            ? "b" + width.ToString(CultureInfo.InvariantCulture)
+            : null;
     }
 
     private static bool TryNumber(string type, out string baseType, out string? endian)

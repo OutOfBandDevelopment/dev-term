@@ -658,7 +658,8 @@ public sealed class FrameForm : EditorForm
         get
         {
             var errors = Frame.Validate();
-            var length = Frame.Length is { } bytes ? $"{bytes} bytes" : "length unknown";
+            var length = Frame.Length is { } bytes ? $"{bytes} bytes"
+                : Frame.IsVariable ? $"{Frame.MinLength}+ bytes, length from {Frame.LengthField}" : "length unknown";
             return $"{Frame.Fields.Count} field(s), {length}" + (errors.Count == 0 ? string.Empty : "; " + errors[0]);
         }
     }
@@ -682,7 +683,7 @@ public sealed class FrameFieldForm : EditorForm
     public FrameField Field { get; }
 
     [Browsable(false)]
-    public static IReadOnlyList<string> Types { get; } = ["u1", "u2", "u4", "u8", "s1", "s2", "s4", "s8", "f4", "f8", "str", "bytes", "skip"];
+    public static IReadOnlyList<string> Types { get; } = ["u1", "u2", "u4", "u8", "s1", "s2", "s4", "s8", "f4", "f8", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b12", "b16", "str", "bytes", "skip"];
 
     [Browsable(false)]
     public static IReadOnlyList<string> Endians { get; } = ["", "le", "be"];
@@ -726,7 +727,7 @@ public sealed class FrameFieldForm : EditorForm
 
     [Category("Field")]
     [DisplayName("Size (bytes)")]
-    [Description("Required for str, bytes and skip.")]
+    [Description("Required for str, bytes and skip (leave blank on a last bytes/str field when the frame takes its length from a field).")]
     [FormField(Order = 2, VisibleWhen = nameof(NeedsSize))]
     public double? Size
     {

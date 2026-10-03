@@ -184,6 +184,35 @@
                   }
                 }
               }
+            },
+            "LengthField": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "LengthAdjust": {
+              "type": "integer"
+            },
+            "Checksum": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "Kind": {
+                  "type": "string"
+                },
+                "Start": {
+                  "type": "integer"
+                },
+                "Endian": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
             }
           }
         },

@@ -7,7 +7,8 @@ namespace DevTerm.DeviceManifests;
 /// Finds <see cref="FrameSchema"/> frames in a binary byte stream and publishes each one's fields as live values
 /// (<see cref="IStructuredPresenter.ValuesChanged"/>). Renders no text of its own, like <see cref="ManifestReplyPresenter"/>:
 /// the connection's own presenters already show the bytes. Garbage before a frame is skipped by searching for the sync
-/// bytes (or, with none declared, by dropping one byte whenever an expected constant doesn't match).
+/// bytes (or, with none declared, by dropping one byte whenever an expected constant or checksum doesn't match). A variable-length
+/// frame waits for its length field and then for the rest of the frame, which may arrive over several reads.
 /// </summary>
 public sealed class ManifestFramePresenter : IPresenter, IStructuredPresenter
 {
@@ -57,11 +58,17 @@ public sealed class ManifestFramePresenter : IPresenter, IStructuredPresenter
                 }
             }
 
+            var probe = _decoder.Probe(span[at..], out var total);
+            if (probe == FrameProbe.NeedMore)
+            {
+                break;
+            }
+
             var decoded = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (_decoder.TryDecode(span.Slice(at, _decoder.Length), decoded))
+            if (probe == FrameProbe.Ready && _decoder.TryDecode(span.Slice(at, total), decoded))
             {
                 frames.Add(decoded);
-                at += _decoder.Length;
+                at += total;
             }
             else
             {

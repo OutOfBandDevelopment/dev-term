@@ -9,7 +9,7 @@ Completed work is logged by date under `docs/changes/`.
 Queue from your 2026-10-02 answers, in the order I'm taking them. Nothing below is built yet.
 
 1. **Message brokers and the web tunnel** (unlocked). MQTT is built and verified (see `docs/changes/2026-10-02.md`); the `DevTerm.Web` host is built too (loopback-only, token auth, `/ws` tunnel; see `docs/changes/2026-10-02.md`). AMQP and STOMP wait for a real target; Blazor rendering of control panels is a later step. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md).
-2. **`.ksy` gaps**: bit fields (unblocks the Zoom H4n status `.ksy`), variable-length frames, checksums.
+2. **`.ksy` gaps**: bit fields, length-prefixed frames and checksums are built (see `docs/changes/2026-10-02.md`). Left: a live check of the Zoom H4n status `.ksy` (needs the recorder on) and editor forms for the new frame settings.
 3. **Observability** (OpenTelemetry / app logging), opt-in behind a flag, with a collector or Aspire-dashboard container under `containers/`.
 4. **TUI-only palette option** for the light theme on 16-color consoles, leaving the WPF palette alone.
 5. **Plugin loading** (`AssemblyLoadContext`): move protocol decoders and rendering presenters out of the core references so they load as plugins.

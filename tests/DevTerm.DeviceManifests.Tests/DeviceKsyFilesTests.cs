@@ -81,11 +81,17 @@ public sealed class DeviceKsyFilesTests
     }
 
     [TestMethod]
-    public void ZoomH4n_DocumentsBitFields_TheImporterCannotYetReadAsAFrame()
+    public void ZoomH4n_StatusByte_ImportsAsEightBitFields()
     {
-        var result = KsyImporter.Import(File.ReadAllText(Path.Combine(DevicesDirectory(), "zoom-h4n", "zoom-h4n-status.ksy")));
+        // 0x42 = 0100 0010: led2 and peak set (masks 0x40 and 0x02), everything else clear.
+        var (schema, values) = Decode("zoom-h4n/zoom-h4n-status.ksy", [0x42]);
 
-        Assert.IsNotEmpty(result.Warnings);
+        Assert.AreEqual(1, schema.Length);
+        Assert.AreEqual("0", values["handshake_wake"]);
+        Assert.AreEqual("1", values["led2"]);
+        Assert.AreEqual("0", values["led1"]);
+        Assert.AreEqual("0", values["record_led"]);
+        Assert.AreEqual("1", values["peak"]);
     }
 
     [TestMethod]
