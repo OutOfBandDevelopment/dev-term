@@ -43,10 +43,15 @@ Things I can't decide or verify alone. Answer inline after each **Your call:**; 
     **Your call:**
 11. **LXI:** needs a real LXI instrument on the bench (which one?) before Phase 2; Phase 1 discovery could start without one. Start Phase 1?
     **Your call:**
-12. **Z-Wave** (no controller), **message brokers** (no target broker or device chosen), **web tunnel + Blazor** (security questions and hosting model unanswered), **BYTECC BT-UP01** (needs the two cheap checks: does the vendor client make the device look local, does it speak USB/IP): keep, defer, or close each as won't-do?
+12. **Z-Wave** (no controller) and **BYTECC BT-UP01** (needs the two cheap checks: does the vendor client make the device look local, does it speak USB/IP): keep, defer, or close each as won't-do?
     **Your call:**
+
 13. **BLE on Linux/macOS:** no machine to test on here. Skip, or do you have one?
     **Your call:**
+
+## In progress
+
+**Message brokers and the web tunnel (unlocked 2026-10-02).** Plan: MQTT first (`DevTerm.Transports.Mqtt`, MQTTnet 5.x, topic-prefixed text convention so no `Session`/`Pipeline` change at first, tested against an in-process fake), then the `DevTerm.Web` host (loopback-only bind by default, Blazor Server, auth and TLS designed before exposing). AMQP and STOMP wait for a real target. Proposals: [message-broker-protocols](docs/design/proposals/message-broker-protocols.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md). Nothing built yet.
 
 ## Backlog / research
 
