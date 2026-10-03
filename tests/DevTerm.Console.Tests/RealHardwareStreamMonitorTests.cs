@@ -120,6 +120,9 @@ public sealed class RealHardwareStreamMonitorTests
         try
         {
             await session.OpenAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+            // A failed run of the other-formats test can leave the scope on another format, so set BMP explicitly.
+            await session.SendAsync(Encoding.ASCII.GetBytes("HARDCopy:FORMat BMP\n"), TestContext.CancellationToken);
+            await Task.Delay(500, TestContext.CancellationToken);
             await session.SendAsync(Encoding.ASCII.GetBytes("HARDCopy START\n"), TestContext.CancellationToken);
             var capture = await captured.Task.WaitAsync(TimeSpan.FromMinutes(3), TestContext.CancellationToken);
 
@@ -140,7 +143,7 @@ public sealed class RealHardwareStreamMonitorTests
     /// <summary>
     /// The TDS2024's <c>HARDCopy:FORMat</c> picks what <c>HARDCopy START</c> streams, so one scope yields several
     /// real captures: EPSIMAGE is PostScript, LASERJET is PCL, PCX/TIFF/RLE are rasters. The format is restored to
-    /// BMP afterwards. LASERJET and PCX are left out: they produce no capture on the real scope (bug 069). Logs what the sniffer called each capture and keeps the bytes under the test results folder.
+    /// BMP afterwards. Logs what the sniffer called each capture and keeps the bytes under the test results folder.
     /// </summary>
     [TestMethod]
     [TestCategory(TestCategories.Hardware)]
@@ -148,6 +151,8 @@ public sealed class RealHardwareStreamMonitorTests
     [Timeout(360000)]
     [DataRow("EPSIMAGE")]
     [DataRow("TIFF")]
+    [DataRow("PCX")]
+    [DataRow("LASERJET")]
     public async Task Tds2024_HardCopy_OtherFormats_AreCaptured(string format)
     {
         var host = Parameter("RealTcpDeviceHost3");

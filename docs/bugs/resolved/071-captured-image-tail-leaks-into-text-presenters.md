@@ -29,4 +29,4 @@ Let the capturing presenter claim a chunk: run `IContentCapturePresenter`s first
 [069](069-tds2024-laserjet-pcx-hardcopy-no-capture.md). Known trade-off: text arriving in the very read that finishes a capture is withheld too.
 
 ## Resolution
-Fixed in `ba191e9b08055422f96f46d3bd993bb724577c25` on 2026-10-03: `Pipeline.Render` consults `IContentCapturePresenter` first (`IsCapturing`, `CompletedCount`) and withholds the chunk from the other presenters. Regression test: `PipelineTests.Render_WithholdsCapturedContentFromTextPresenters_SoNothingIsLeftInTheirBuffers`. Not re-checked on the real scope. Details: `docs/changes/2026-10-03.md`.
+Fixed in `ba191e9b08055422f96f46d3bd993bb724577c25` on 2026-10-03: `Pipeline.Render` consults `IContentCapturePresenter` first (`IsCapturing`, `CompletedCount`) and withholds the chunk from the other presenters. Regression test: `PipelineTests.Render_WithholdsCapturedContentFromTextPresenters_SoNothingIsLeftInTheirBuffers`. On the real scope 2026-10-03 the BMP, EPSIMAGE, TIFF, PCX and LASERJET captures all complete; the text view itself was not inspected. Details: `docs/changes/2026-10-03.md`.
