@@ -178,7 +178,7 @@ Conn --> UI : event: connection faulted / closed
 @endsalt
 ```
 
-Projects and configuration are stored server-side, never in the browser (decided 2026-10-03). Open questions: how a connection token is issued and revoked (lifetime, one-time use); whether a
+Projects and configuration are stored server-side, never in the browser (decided 2026-10-03). **Decided 2026-10-03: one shared `Web:Token` for everything, no per-connection tokens** (a read-only token still limits a viewer). Open questions: whether a
 how host-side hardware that is already open
 locally (WPF running on the same machine) is shared or refused; which of Scalar's and AsyncAPI UI's
 packages to use and how they are served without a CDN on an offline bench.
@@ -197,7 +197,8 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] TLS with a CA-issued certificate: a generated CA signs the server certificate; a client trusting only that CA connects and one without it is refused (`Https_WithACaIssuedCertificate...`)
 - [ ] A real device through the page, multiple browsers (needs user setup)
 - [ ] Start with no connection arguments; device, project and connection services (REST) plus a host events stream (2026-10-03 direction)
-- [ ] Per-connection tokens and `/ws/{id}` tunnels, several connections open at once
+- [x] `/ws/{id}` tunnels, several connections open at once, all under the one shared token: `GET/POST /api/connections?name=`, `DELETE /api/connections/{id}` (POST/DELETE refused for a read-only viewer); built 2026-10-03, tested by `WebHostTests.ApiConnections_OpenFromTheProject_ThenTunnelAndClose`
+- [ ] Per-connection tokens (decided against)
 - [ ] OpenAPI + Scalar UI for the services; AsyncAPI document + UI for the WebSocket/event channels
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
 - [ ] Blazor front end for those services

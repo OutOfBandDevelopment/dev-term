@@ -94,6 +94,63 @@ public static class WebHost
         var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
         app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
 
+        // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
+        // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
+        var open = new System.Collections.Concurrent.ConcurrentDictionary<string, (string Name, SessionHub Hub)>();
+        app.MapGet("/api/connections", () => Results.Json(open.Select(c => new { id = c.Key, name = c.Value.Name, state = c.Value.Hub.State.ToString() })));
+        app.MapPost("/api/connections", async (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            ProjectConnection? chosen = null;
+            try
+            {
+                chosen = string.IsNullOrWhiteSpace(cliOptions.Project) ? null : ProjectFile.Load(cliOptions.Project).Find(name);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+            }
+
+            if (chosen is null)
+            {
+                return Results.NotFound();
+            }
+
+            var options = chosen.ToOptions();
+            var built = DevTermSessionBuilder.Build(options);
+            var connection = new SessionHub(built.Session, built.Catalog, options, webOptions.BacklogLines);
+            await connection.StartAsync(context.RequestAborted);
+            var id = Guid.NewGuid().ToString("N")[..8];
+            open[id] = (chosen.Name, connection);
+            return Results.Json(new { id, name = chosen.Name });
+        });
+        app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (!open.TryRemove(id, out var removed))
+            {
+                return Results.NotFound();
+            }
+
+            await removed.Hub.DisposeAsync();
+            return Results.NoContent();
+        });
+        app.Map("/ws/{id}", (HttpContext context, string id) => open.TryGetValue(id, out var found) ? WebSocketTunnel.HandleAsync(context, found.Hub) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
+        app.Lifetime.ApplicationStopping.Register(() =>
+        {
+            foreach (var (_, connection) in open)
+            {
+                connection.Hub.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        });
+
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {
             { } id when app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase)) is { } contributed
