@@ -16,6 +16,23 @@ public static class WebHost
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
     public sealed record Built(WebApplication App, SessionHub Hub, string Token);
 
+    private static object[] ProjectConnections(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return [];
+        }
+
+        try
+        {
+            return [.. ProjectFile.Load(path).Connections.Select(c => new { name = c.Name, description = ConnectionDescription.Definition(c.ToOptions()) })];
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
     public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
     {
@@ -72,6 +89,10 @@ public static class WebHost
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
+
+        // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
+        var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
+        app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
 
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {

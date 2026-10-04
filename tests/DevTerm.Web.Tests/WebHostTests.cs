@@ -32,6 +32,31 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiProject_ListsTheProjectFilesConnections()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Scope", new CliOptions { Transport = "tcp", Host = "10.0.0.5", Port = "23" })]).Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var json = await client.GetStringAsync($"http://127.0.0.1:{port}/api/project");
+            StringAssert.Contains(json, "\"name\":\"Scope\"");
+            StringAssert.Contains(json, "10.0.0.5");
+            await built.App.StopAsync();
+        }
+
+        File.Delete(file);
+    }
+
+    [TestMethod]
     public async Task Request_WithoutToken_IsUnauthorized()
     {
         var (built, url) = await StartAsync();
