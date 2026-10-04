@@ -48,6 +48,26 @@ public abstract class UserFlowTestsBase
     });
 
     [TestMethod]
+    public Task Send_ManyLinesInARow_NoReplyIsDropped() => RunAsync(async driver =>
+    {
+        const int count = 15;
+        for (var i = 0; i < count; i++)
+        {
+            await driver.SendAsync("hello");
+            await Task.Delay(40, TestContext.CancellationToken);
+        }
+
+        var output = string.Empty;
+        for (var attempt = 0; attempt < 150 && CountOf(output, "From Loopback test") < count; attempt++)
+        {
+            await Task.Delay(100, TestContext.CancellationToken);
+            output = await driver.OutputAsync();
+        }
+
+        Assert.AreEqual(count, CountOf(output, "From Loopback test"), $"{driver.Name}: expected {count} replies.");
+    });
+
+    [TestMethod]
     public Task Send_SeveralLines_EachGetsItsOwnReply() => RunAsync(async driver =>
     {
         await driver.SendAsync("hello");
