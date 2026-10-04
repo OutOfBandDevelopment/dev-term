@@ -23,7 +23,7 @@ public sealed class WebUserFlowTests : UserFlowTestsBase
 
         var built = WebHost.Build(
             new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token" },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", Panel = "demo" },
             []);
         await built.Hub.StartAsync();
         await built.App.StartAsync();
@@ -46,14 +46,14 @@ public sealed class WebUserFlowTests : UserFlowTestsBase
                 var page = await browser.NewPageAsync();
                 await page.GotoAsync($"http://127.0.0.1:{port}/?token=demo-token");
                 await Assertions.Expect(page.Locator("#status")).ToContainTextAsync("connected");
-                await flow(new Driver(page));
+                await flow(new Driver(browser, page, $"http://127.0.0.1:{port}"));
             }
 
             await built.App.StopAsync();
         }
     }
 
-    private sealed class Driver(IPage page) : IFrontEndDriver
+    private sealed class Driver(IBrowser browser, IPage page, string baseUrl) : IFrontEndDriver
     {
         public string Name => "Web";
 
@@ -93,6 +93,20 @@ public sealed class WebUserFlowTests : UserFlowTestsBase
         public bool CanSwitchProfile => false;
 
         public Task SwitchToLoopbackProfileAsync() => throw new NotSupportedException();
+
+        public bool CanUsePanel => true;
+
+        public async Task ApplyDemoPanelAsync()
+        {
+            var panel = await browser.NewPageAsync();
+            await panel.GotoAsync($"{baseUrl}/panel?token=demo-token");
+            await panel.Locator("[data-control=apply] button").WaitForAsync();
+            // The Blazor circuit attaches its handlers a moment after the server-rendered page appears.
+            await Task.Delay(1500);
+            await panel.Locator("[data-control=led] input").CheckAsync();
+            await panel.Locator("[data-control=level] input").EvaluateAsync("e => { e.value = '7'; e.dispatchEvent(new Event('change', { bubbles: true })); }");
+            await panel.Locator("[data-control=apply] button").ClickAsync();
+        }
 
         public bool CanLog => false;
 

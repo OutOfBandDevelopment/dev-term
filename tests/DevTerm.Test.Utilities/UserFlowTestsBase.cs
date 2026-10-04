@@ -107,6 +107,18 @@ public abstract class UserFlowTestsBase
     });
 
     [TestMethod]
+    public Task Panel_SettingTheControlsAndPressingApply_SendsTheCommandToTheDevice() => RunAsync(async driver =>
+    {
+        if (!driver.CanUsePanel)
+        {
+            Assert.Inconclusive($"{driver.Name} has no control panel.");
+        }
+
+        await driver.ApplyDemoPanelAsync();
+        await ExpectAsync(driver, "Unrecognized: SET LED=1 LEVEL=7");
+    });
+
+    [TestMethod]
     public Task Send_SeveralLines_EachGetsItsOwnReply() => RunAsync(async driver =>
     {
         await driver.SendAsync("hello");

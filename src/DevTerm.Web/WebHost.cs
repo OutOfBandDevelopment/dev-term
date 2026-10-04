@@ -29,7 +29,8 @@ public static class WebHost
 
         var token = string.IsNullOrWhiteSpace(webOptions.Token) ? AccessPolicy.GenerateToken() : webOptions.Token;
 
-        var builder = WebApplication.CreateSlimBuilder(args);
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args, ApplicationName = typeof(WebHost).Assembly.GetName().Name }); // fixed so the static-asset manifests are found when hosted by a test host
+        builder.WebHost.UseStaticWebAssets(); // otherwise only Development resolves framework assets such as blazor.web.js
         builder.Services.AddDevTermFrontEnd(cliOptions);
         builder.Services.AddSingleton(sp =>
         {
@@ -67,6 +68,7 @@ public static class WebHost
         app.UseWebSockets();
         app.UseAntiforgery();
         app.Map("/ws", (HttpContext context) => WebSocketTunnel.HandleAsync(context, hub));
+        app.MapStaticAssets(); // serves _framework/blazor.web.js, without which the Blazor panel never becomes interactive
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));

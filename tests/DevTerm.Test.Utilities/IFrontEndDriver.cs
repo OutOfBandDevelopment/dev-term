@@ -37,6 +37,12 @@ public interface IFrontEndDriver
 
     Task StopLoggingAsync();
 
+    /// <summary>True when the front end can open the demo device's control panel (every one but the CLI).</summary>
+    bool CanUsePanel { get; }
+
+    /// <summary>Opens the demo panel, sets the LED toggle on and the level slider to 7, and presses Apply.</summary>
+    Task ApplyDemoPanelAsync();
+
     /// <summary>True when the front end can switch to another connection profile while running.</summary>
     bool CanSwitchProfile { get; }
 

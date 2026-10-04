@@ -97,6 +97,10 @@ public sealed class CliUserFlowTests : UserFlowTestsBase
 
         public Task SwitchToLoopbackProfileAsync() => throw new NotSupportedException();
 
+        public bool CanUsePanel => false;
+
+        public Task ApplyDemoPanelAsync() => throw new NotSupportedException();
+
         public bool CanLog => false;
 
         public Task StartLoggingAsync(string path) => throw new NotSupportedException();

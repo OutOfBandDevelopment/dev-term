@@ -68,6 +68,19 @@ public sealed class WpfUserFlowTests : UserFlowTestsBase
             Assert.IsTrue(StaTestRunner.PumpUntil(() => window.ConnectionStatusText.Text.StartsWith("Connected", StringComparison.Ordinal), _pump));
         }
 
+        public bool CanUsePanel => true;
+
+        public Task ApplyDemoPanelAsync()
+        {
+            window.PluginPanels = [new DevTerm.Devices.Demo.DemoPanelContribution()];
+            var panel = window.OpenPluginPanel(new DevTerm.Devices.Demo.DemoPanelContribution());
+            StaTestRunner.DoEvents();
+            ((System.Windows.Controls.CheckBox)panel.ControlViews["led"]).IsChecked = true;
+            ((System.Windows.Controls.Slider)panel.ControlViews["level"]).Value = 7;
+            ((System.Windows.Controls.Button)panel.ControlViews["apply"]).RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            return Task.CompletedTask;
+        }
+
         public bool CanLog => true;
 
         public Task StartLoggingAsync(string path)

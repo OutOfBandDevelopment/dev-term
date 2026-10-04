@@ -1,6 +1,7 @@
 using DevTerm.Configuration;
 using DevTerm.Test.Utilities;
 using Terminal.Gui.Input;
+using Terminal.Gui.Views;
 
 namespace DevTerm.Console.Tests;
 
@@ -73,6 +74,25 @@ public sealed class TuiUserFlowTests : UserFlowTestsBase
         {
             Assert.IsTrue(parts.SwitchProfileAsync(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Parser = "ascii" }).GetAwaiter().GetResult());
             Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.StatusLabel.Text.Contains("● Connected", StringComparison.Ordinal), _wait));
+            return Task.CompletedTask;
+        }
+
+        public bool CanUsePanel => true;
+
+        public Task ApplyDemoPanelAsync()
+        {
+            var session = parts.CurrentSession();
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                var contribution = new DevTerm.Devices.Demo.DemoPanelContribution();
+                var panel = ControlPanelMode.BuildWindow(TuiTestRunner.CurrentApp, contribution.BuildDefinition(), contribution.CreateSurface(session), null, "Demo");
+                ((CheckBox)panel.ControlViews["led"]).Value = CheckState.Checked;
+                var level = (TextField)panel.ControlViews["level"];
+                level.Text = "7";
+                level.InvokeCommand(Command.Accept);
+                ((Button)panel.ControlViews["apply"]).InvokeCommand(Command.Accept);
+                return true;
+            });
             return Task.CompletedTask;
         }
 
