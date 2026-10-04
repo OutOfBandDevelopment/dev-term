@@ -166,10 +166,10 @@ public class WebRolesTests
     }
 
     [TestMethod]
-    public void Validate_RejectsAReadOnlyTokenEqualToTheMainToken_AndAnUnknownPanel()
+    public void Validate_RejectsAReadOnlyTokenEqualToTheMainToken_AndBuildRejectsAnUnknownPanel()
     {
         Assert.IsNotNull(AccessPolicy.Validate(new WebOptions { Token = "x", ReadOnlyToken = "x" }));
-        Assert.IsNotNull(AccessPolicy.Validate(new WebOptions { Panel = "oscilloscope" }));
+        Assert.ThrowsExactly<InvalidOperationException>(() => WebHost.Build(new CliOptions { Transport = "loopback" }, new WebOptions { Panel = "oscilloscope" }, []));
         Assert.IsNull(AccessPolicy.Validate(new WebOptions { Token = "x", ReadOnlyToken = "y", Panel = "K8055" }));
     }
 

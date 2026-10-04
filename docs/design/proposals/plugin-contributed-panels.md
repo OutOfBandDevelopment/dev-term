@@ -65,11 +65,11 @@ F --> IDevicePanelContribution : menu + panel
 ## Completion checklist
 
 - [x] `IDevicePanelContribution` in `DevTerm.Core` with unit tests for the menu build (`TuiPluginPanelsTests`, `MainWindowPluginPanelsTests`).
-- [ ] TUI, WPF and web resolve contributions instead of naming device projects. TUI and WPF append contributed entries (the built-in items are still hand-written); web not started.
+- [ ] TUI, WPF and web resolve contributions instead of naming device projects. TUI and WPF append contributed entries (the built-in items are still hand-written); web `Web:Panel` also accepts a contribution id (resolved in `WebHost.Build`).
 - [ ] K8055 and Busylight moved to plugin folders as the first two cases.
 - [ ] Remaining decoders moved; core no longer references any `DevTerm.Devices.*` project.
 - [ ] Specs and user guide updated for the menu.
 
 ## Status
 
-Contract built; TUI and WPF add one Device-menu entry per registered contribution, enabled when connected and `IsAvailable(transport, vendorId, productId)` is true. Verified by unit tests only (a sample contribution wrapping the K8055 panel); no real plugin folder ships a contribution yet, and the web `/panel` does not resolve contributions. Built-in panels are untouched.
+Contract built; TUI and WPF add one Device-menu entry per registered contribution, enabled when connected and `IsAvailable(transport, vendorId, productId)` is true. Verified by unit tests only (a sample contribution wrapping the K8055 panel); no real plugin folder ships a contribution yet, and the web path is untested with a real contribution (no plugin DLL in the test setup). Built-in panels are untouched.

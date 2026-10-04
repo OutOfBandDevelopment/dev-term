@@ -77,15 +77,23 @@ public static class WebHost
         {
             "k8055" => (K8055UiDefinition.Build(), (IControlSurface)new K8055ControlSurface(hub.Session)),
             "busylight" => (BusylightUiDefinition.Build(), new BusylightControlSurface(hub.Session)),
+            { } id when app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase)) is { } contributed
+                => (contributed.BuildDefinition(), contributed.CreateSurface(hub.Session)),
             _ => ((UiDefinition?)null, (IControlSurface?)null),
         };
+        if (!string.IsNullOrWhiteSpace(webOptions.Panel) && definition is null)
+        {
+            throw new InvalidOperationException($"Web:Panel '{webOptions.Panel}' must be k8055, busylight or the id of a plugin-contributed panel.");
+        }
+
         if (definition is not null && surface is not null)
         {
             var panelJson = UiDefinitionSerializer.ToJson(definition);
             app.MapGet("/api/panel", () => Results.Content(panelJson, "application/json"));
             var holder = app.Services.GetRequiredService<Components.PanelHostHolder>();
             holder.Set(definition, surface);
-            if (hub.Catalog.TryGet(webOptions.Panel!.ToLowerInvariant(), out var source) && source is IStructuredPresenter structured)
+            var presenterName = app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, webOptions.Panel, StringComparison.OrdinalIgnoreCase))?.PresenterName ?? webOptions.Panel!.ToLowerInvariant();
+            if (hub.Catalog.TryGet(presenterName, out var source) && source is IStructuredPresenter structured)
             {
                 structured.ValuesChanged += (_, values) => holder.Publish(values);
             }
