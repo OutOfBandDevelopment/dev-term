@@ -67,6 +67,24 @@ public sealed class TuiUserFlowTests : UserFlowTestsBase
 
         public Task ReconnectAsync() => ToggleAsync("_Disconnect");
 
+        public bool CanLog => true;
+
+        public Task StartLoggingAsync(string path)
+        {
+            Assert.IsTrue(TuiTestRunner.InvokeOnLoop(() => parts.Logging.Start(path)));
+            return Task.CompletedTask;
+        }
+
+        public Task StopLoggingAsync()
+        {
+            TuiTestRunner.InvokeOnLoop(() =>
+            {
+                parts.Logging.Stop();
+                return true;
+            });
+            return Task.CompletedTask;
+        }
+
         private Task ToggleAsync(string expectedTitle)
         {
             parts.ToggleConnectionAsync().GetAwaiter().GetResult();

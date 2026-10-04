@@ -68,6 +68,29 @@ public abstract class UserFlowTestsBase
     });
 
     [TestMethod]
+    public Task Logging_ARecordedSession_ContainsTheDeviceReply() => RunAsync(async driver =>
+    {
+        if (!driver.CanLog)
+        {
+            Assert.Inconclusive($"{driver.Name} cannot start a session log while running.");
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"devterm-flow-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            await driver.StartLoggingAsync(path);
+            await driver.SendAsync("hello");
+            await ExpectAsync(driver, "From Loopback test");
+            await driver.StopLoggingAsync();
+            StringAssert.Contains(File.ReadAllText(path), Convert.ToBase64String("From Loopback test"u8.ToArray())[..20], $"{driver.Name}: the log should hold the reply (rx data is base64).");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    });
+
+    [TestMethod]
     public Task Send_SeveralLines_EachGetsItsOwnReply() => RunAsync(async driver =>
     {
         await driver.SendAsync("hello");

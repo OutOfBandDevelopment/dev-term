@@ -29,4 +29,11 @@ public interface IFrontEndDriver
 
     /// <summary>The Connect/Disconnect action. Only valid when <see cref="CanDisconnect"/>.</summary>
     Task ReconnectAsync();
+
+    /// <summary>True when the front end can start a session log while running (the CLI and web page cannot).</summary>
+    bool CanLog { get; }
+
+    Task StartLoggingAsync(string path);
+
+    Task StopLoggingAsync();
 }

@@ -89,5 +89,11 @@ public sealed class WebUserFlowTests : UserFlowTestsBase
         public Task DisconnectAsync() => throw new NotSupportedException();
 
         public Task ReconnectAsync() => throw new NotSupportedException();
+
+        public bool CanLog => false;
+
+        public Task StartLoggingAsync(string path) => throw new NotSupportedException();
+
+        public Task StopLoggingAsync() => throw new NotSupportedException();
     }
 }

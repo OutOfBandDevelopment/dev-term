@@ -60,6 +60,20 @@ public sealed class WpfUserFlowTests : UserFlowTestsBase
             Assert.IsTrue(StaTestRunner.PumpUntil(() => window.ConnectionStatusText.Text.StartsWith("Connected", StringComparison.Ordinal), _pump));
         }
 
+        public bool CanLog => true;
+
+        public Task StartLoggingAsync(string path)
+        {
+            Assert.IsTrue(window.StartLogging(path));
+            return Task.CompletedTask;
+        }
+
+        public Task StopLoggingAsync()
+        {
+            window.StopLogging();
+            return Task.CompletedTask;
+        }
+
         private string Text() => string.Join(Environment.NewLine, window.OutputList.Items.Cast<object>().Select(i => i.ToString()));
     }
 }
