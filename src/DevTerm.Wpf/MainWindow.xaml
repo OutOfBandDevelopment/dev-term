@@ -46,8 +46,6 @@
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
-                <MenuItem x:Name="K8055MenuItem" Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
-                <MenuItem x:Name="BusylightMenuItem" Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
                 <MenuItem x:Name="ScpiMenuItem" Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
                 <MenuItem x:Name="RadexOneMenuItem" Header="_Radex One Control Panel..." Click="RadexOneControlPanel_Click" />
                 <MenuItem x:Name="ZoomH4nMenuItem" Header="_Zoom H4n Remote..." Click="ZoomH4nControlPanel_Click" />

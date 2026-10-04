@@ -6,7 +6,7 @@ namespace DevTerm.Wpf;
 
 /// <summary>
 /// Device-menu entries for control panels contributed by plugins (<see cref="IDevicePanelContribution"/>,
-/// docs/design/proposals/plugin-contributed-panels.md): one item each, inserted ahead of Plugins..., enabled by
+/// docs/design/proposals/plugin-contributed-panels.md): one item each, at the top of the Device menu, enabled by
 /// <see cref="RefreshPluginPanelItems"/> the same way the built-in panels are.
 /// </summary>
 public partial class MainWindow
@@ -26,16 +26,25 @@ public partial class MainWindow
 
             _pluginPanelItems.Clear();
             var menu = (MenuItem)PluginsMenuItem.Parent;
+            var position = 0;
             foreach (var contribution in value ?? [])
             {
                 var captured = contribution;
                 var item = new MenuItem { Header = captured.MenuTitle, IsEnabled = false };
                 item.Click += (_, _) => OpenPluginPanel(captured);
-                menu.Items.Insert(menu.Items.IndexOf(PluginsMenuItem), item);
+                menu.Items.Insert(position++, item);
                 _pluginPanelItems.Add((captured, item));
             }
         }
     }
+
+    internal MenuItem? K8055MenuItem => PluginPanelItem("k8055");
+
+    internal MenuItem? BusylightMenuItem => PluginPanelItem("busylight");
+
+    private MenuItem? PluginPanelItem(string id) => _pluginPanelItems.FirstOrDefault(p => p.Panel.Id == id).Item;
+
+    internal ControlPanelWindow OpenK8055ControlPanel() => OpenPluginPanel(_pluginPanelItems.First(p => p.Panel.Id == "k8055").Panel);
 
     /// <summary>Split from the click handler so tests can drive it without simulating a menu click.</summary>
     internal ControlPanelWindow OpenPluginPanel(IDevicePanelContribution contribution)

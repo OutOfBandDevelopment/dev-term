@@ -44,6 +44,7 @@ public sealed class MainWindowSwitchProfileTests
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
+                PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
             };
             await window.ConnectAsync();
             Assert.IsTrue(window.SendBox.IsEnabled);

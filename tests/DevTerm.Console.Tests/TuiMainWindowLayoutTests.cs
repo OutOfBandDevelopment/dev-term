@@ -38,7 +38,7 @@ public sealed class TuiMainWindowLayoutTests
 
     private static Func<IApplication, View> MainWindow(Session session, PresenterCatalog catalog, CliOptions options, string? message = null) => app =>
     {
-        _parts = TuiMode.BuildWindow(app, session, catalog, options, TuiTestRunner.EmptyProfiles(), message);
+        _parts = TuiMode.BuildWindow(app, session, catalog, options, TuiTestRunner.EmptyProfiles(), message, panels: TuiTestRunner.BuiltInPanels);
         _parts.SendField.SetFocus();
         return _parts.Window;
     };

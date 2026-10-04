@@ -7,9 +7,7 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
 using DevTerm.Devices.De5000;
-using DevTerm.Devices.K8055;
 using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
@@ -178,8 +176,6 @@ public static class TuiMode
         // declared up here so a closure (AddTab, which can run before the menu exists) can safely read
         // them as still-null rather than hit a definite-assignment error.
         var contributedPanelItems = new List<(IDevicePanelContribution Panel, MenuItem Item)>();
-        MenuItem? k8055MenuItem = null;
-        MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
         MenuItem? radexOneMenuItem = null;
         MenuItem? zoomH4nMenuItem = null;
@@ -632,46 +628,7 @@ public static class TuiMode
                 // competing one to the same physical device - reads the live ActiveTab() tab's
                 // Session/Catalog, which SwitchProfileAsync reassigns on a profile switch and which
                 // changes altogether on a tab switch.
-                k8055MenuItem = new MenuItem("_K8055 Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        K8055UiDefinition.Build(),
-                        new K8055ControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — K8055 Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        BusylightUiDefinition.Build(),
-                        new BusylightControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Busylight Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
+                .. contributedPanelItems.Select(c => c.Item),
                 radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
                 {
                     var windowTab = ActiveTab();
@@ -783,7 +740,6 @@ public static class TuiMode
 
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
-                .. contributedPanelItems.Select(c => c.Item),
                 new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
             ]),
             new MenuBarItem("_View",
@@ -910,8 +866,6 @@ public static class TuiMode
                 item.Enabled = connected && panel.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
             }
 
-            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
-            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, windowTab.Tab.CliOptions, connected);
             radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, windowTab.Tab.CliOptions, connected);
             zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, windowTab.Tab.CliOptions, connected);
@@ -1190,8 +1144,6 @@ public static class TuiMode
                 item.Enabled = false;
             }
 
-            k8055MenuItem!.Enabled = false;
-            busylightMenuItem!.Enabled = false;
             scpiMenuItem!.Enabled = false;
             radexOneMenuItem!.Enabled = false;
             zoomH4nMenuItem!.Enabled = false;
@@ -1449,8 +1401,8 @@ public static class TuiMode
             SwitchProfileAsync,
             SetParser,
             statusLabel,
-            k8055MenuItem!,
-            busylightMenuItem!,
+            contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "k8055").Item!,
+            contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "busylight").Item!,
             scpiMenuItem!,
             ToggleAndRefreshAsync,
             new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger),

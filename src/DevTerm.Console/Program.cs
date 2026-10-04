@@ -364,6 +364,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>().Where(c => !DevicePanels.BuiltInPanelIds.Contains(c.Id))])
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()])
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

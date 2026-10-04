@@ -26,7 +26,7 @@ public sealed class OutputHighlightingTests
 
         TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, options), options, TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.");
+            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, options), options, TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.", panels: TuiTestRunner.BuiltInPanels);
             parts.Output.Text = string.Join('\n', parts.Output.Text, TuiMode.StatusLine("Connected."), "[ascii] ID TEK/2230");
 
             var token = app.Begin(parts.Window) ?? throw new NotSupportedException();

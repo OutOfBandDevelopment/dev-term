@@ -10,9 +10,7 @@ using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
 using DevTerm.Devices.De5000;
-using DevTerm.Devices.K8055;
 using DevTerm.Devices.Nmea;
 using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
@@ -452,8 +450,6 @@ public partial class MainWindow : Window
         DeviceProfilesMenuItem.IsEnabled = false;
         StreamMonitorMenuItem.IsEnabled = false;
         RefreshPluginPanelItems(null, false);
-        K8055MenuItem.IsEnabled = false;
-        BusylightMenuItem.IsEnabled = false;
         ScpiMenuItem.IsEnabled = false;
         RadexOneMenuItem.IsEnabled = false;
         ZoomH4nMenuItem.IsEnabled = false;
@@ -543,8 +539,6 @@ public partial class MainWindow : Window
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
         RefreshPluginPanelItems(tab, connected);
-        K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, tab.Tab.CliOptions, connected);
-        BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, tab.Tab.CliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.Tab.CliOptions, connected);
         RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, tab.Tab.CliOptions, connected);
         ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, tab.Tab.CliOptions, connected);
@@ -819,43 +813,6 @@ public partial class MainWindow : Window
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
     // -open session rather than opening a second competing connection to the same physical device.
-    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e) => OpenK8055ControlPanel();
-
-    /// <summary>Split from the click handler so tests can drive it and assert against <see cref="OpenControlPanels"/> without simulating a menu click.</summary>
-    internal ControlPanelWindow OpenK8055ControlPanel()
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            K8055UiDefinition.Build(),
-            new K8055ControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-        return window;
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void BusylightControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            BusylightUiDefinition.Build(),
-            new BusylightControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
     // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
     // stay open and update live alongside the main window, not block it. Reuses the current, already
     // -open session rather than opening a second competing connection to the same physical device.
