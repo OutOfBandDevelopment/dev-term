@@ -40,8 +40,36 @@ public static class DevTermConfiguration
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         config.AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false);
         config.AddJsonFile(LocalSettingsFileName, optional: true, reloadOnChange: false);
+        AddProjectConnection(config, args);
         config.AddEnvironmentVariables(EnvironmentVariablePrefix);
         config.AddCommandLine(args);
+    }
+
+    /// <summary>
+    /// When <c>--project &lt;file&gt;</c> is on the command line, layers the chosen connection's profile
+    /// above the saved default profile and below environment variables and the other flags. A missing
+    /// or unreadable file is ignored here (the flag stays visible as <see cref="CliOptions.Project"/>, so
+    /// a front end can report it) rather than throwing before any front end is up.
+    /// </summary>
+    private static void AddProjectConnection(IConfigurationBuilder config, string[] args)
+    {
+        var peek = new ConfigurationBuilder().AddCommandLine(args).Build();
+        if (peek[nameof(CliOptions.Project)] is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            if (ProjectFile.Load(path).Find(peek[nameof(CliOptions.ProjectConnection)]) is { } connection)
+            {
+                config.AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(connection.ProfileJson)));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            // Reported by the front end through CliOptions.Project; startup must not fail here.
+        }
     }
 
     /// <summary>

@@ -27,7 +27,7 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 };
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
@@ -291,6 +291,28 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException or
     // docs/bugs/resolved/032-startup-bind-failure-crash.md.
     cliOptions = new CliOptions();
     bindError = ex.Message;
+}
+
+if (bindError is null && cliOptions.SaveProject is { Length: > 0 } saveProjectPath)
+{
+    ProjectFile.From(Path.GetFileNameWithoutExtension(saveProjectPath), [(cliOptions.Transport, cliOptions)]).Save(saveProjectPath);
+    Console.WriteLine($"Saved project {saveProjectPath}");
+    return 0;
+}
+
+if (bindError is null && cliOptions.Project is { Length: > 0 } projectPath)
+{
+    try
+    {
+        if (ProjectFile.Load(projectPath).Find(cliOptions.ProjectConnection) is null)
+        {
+            bindError = $"Project {projectPath} has no connection {(string.IsNullOrEmpty(cliOptions.ProjectConnection) ? "at all" : $"named '{cliOptions.ProjectConnection}'")}.";
+        }
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+    {
+        bindError = $"Cannot open project {projectPath}: {ex.Message}";
+    }
 }
 
 if (bindError is null)

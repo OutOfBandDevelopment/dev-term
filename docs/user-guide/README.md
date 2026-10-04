@@ -57,6 +57,7 @@ test class's own doc comment.
 - [Keeping old logs and exports tidy](retention.md) — `LogRetention`/`ExportRetention` rules in `preferences.json`.
 - [Choosing a theme](themes.md) — **View > Theme** (Light, Dark, System) in TUI/WPF, `--theme`, and
   writing your own JSON theme in `~/.dev-term/themes`.
+- [Saving and reopening a set of connections](projects.md) — `--saveproject`/`--project` project files.
 - [Seeing which plugins loaded](plugins.md) — `--listplugins true` and **Device > Plugins...** in TUI/WPF.
 
 For the precise field-by-field/action-by-action reference behind these screens, see
