@@ -60,6 +60,14 @@ public sealed class WpfUserFlowTests : UserFlowTestsBase
             Assert.IsTrue(StaTestRunner.PumpUntil(() => window.ConnectionStatusText.Text.StartsWith("Connected", StringComparison.Ordinal), _pump));
         }
 
+        public bool CanSwitchProfile => true;
+
+        public async Task SwitchToLoopbackProfileAsync()
+        {
+            Assert.IsTrue(await window.SwitchProfileAsync(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Parser = "ascii" }));
+            Assert.IsTrue(StaTestRunner.PumpUntil(() => window.ConnectionStatusText.Text.StartsWith("Connected", StringComparison.Ordinal), _pump));
+        }
+
         public bool CanLog => true;
 
         public Task StartLoggingAsync(string path)

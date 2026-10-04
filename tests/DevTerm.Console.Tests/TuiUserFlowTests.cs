@@ -67,6 +67,15 @@ public sealed class TuiUserFlowTests : UserFlowTestsBase
 
         public Task ReconnectAsync() => ToggleAsync("_Disconnect");
 
+        public bool CanSwitchProfile => true;
+
+        public Task SwitchToLoopbackProfileAsync()
+        {
+            Assert.IsTrue(parts.SwitchProfileAsync(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Parser = "ascii" }).GetAwaiter().GetResult());
+            Assert.IsTrue(TuiTestRunner.WaitUntilOnLoop(() => parts.StatusLabel.Text.Contains("● Connected", StringComparison.Ordinal), _wait));
+            return Task.CompletedTask;
+        }
+
         public bool CanLog => true;
 
         public Task StartLoggingAsync(string path)

@@ -36,4 +36,10 @@ public interface IFrontEndDriver
     Task StartLoggingAsync(string path);
 
     Task StopLoggingAsync();
+
+    /// <summary>True when the front end can switch to another connection profile while running.</summary>
+    bool CanSwitchProfile { get; }
+
+    /// <summary>Switches to a fresh loopback profile (the same device, a new session).</summary>
+    Task SwitchToLoopbackProfileAsync();
 }

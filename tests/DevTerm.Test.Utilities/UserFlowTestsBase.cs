@@ -91,6 +91,22 @@ public abstract class UserFlowTestsBase
     });
 
     [TestMethod]
+    public Task SwitchProfile_TheNewSessionIsConnectedAndAnswers() => RunAsync(async driver =>
+    {
+        if (!driver.CanSwitchProfile)
+        {
+            Assert.Inconclusive($"{driver.Name} cannot switch profile while running.");
+        }
+
+        await driver.SendAsync("hello");
+        await ExpectAsync(driver, "From Loopback test");
+        await driver.SwitchToLoopbackProfileAsync();
+        Assert.IsTrue(await driver.IsConnectedAsync(), $"{driver.Name}: should be connected after the switch.");
+        await driver.SendAsync("afterswitch");
+        await ExpectAsync(driver, "Unrecognized: afterswitch");
+    });
+
+    [TestMethod]
     public Task Send_SeveralLines_EachGetsItsOwnReply() => RunAsync(async driver =>
     {
         await driver.SendAsync("hello");

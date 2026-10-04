@@ -205,7 +205,7 @@ reflecting over a real running window's own `KeyBindings`, not assumed:
 ## Cross-front-end user flows
 
 `DevTerm.Test.Utilities.UserFlowTestsBase` holds each user flow once (connected on startup, send and see the
-reply, an unknown command, several lines, fifteen in a row, a recorded session log, an empty line, disconnect then reconnect, send while disconnected),
+reply, an unknown command, several lines, fifteen in a row, a recorded session log, a profile switch, an empty line, disconnect then reconnect, send while disconnected),
 written against `IFrontEndDriver`. Each front end derives a `[TestClass]` and supplies a driver that starts it
 against a loopback device: `CliUserFlowTests` (the built console app over stdin/stdout), `TuiUserFlowTests`
 (real Terminal.Gui window, running loop), `WpfUserFlowTests` (a shown off-screen `MainWindow`) and

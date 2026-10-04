@@ -93,6 +93,10 @@ public sealed class CliUserFlowTests : UserFlowTestsBase
 
         public Task ReconnectAsync() => throw new NotSupportedException();
 
+        public bool CanSwitchProfile => false;
+
+        public Task SwitchToLoopbackProfileAsync() => throw new NotSupportedException();
+
         public bool CanLog => false;
 
         public Task StartLoggingAsync(string path) => throw new NotSupportedException();
