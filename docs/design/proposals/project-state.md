@@ -62,12 +62,13 @@ Built 2026-10-03, verified with unit tests and a real console run:
 - `ProjectFile`/`ProjectConnection` (`DevTerm.Configuration`), with round-trip, lookup, bad-input and layering tests.
 - `--project <file> [--projectconnection <name>]` opens one connection of a project (the first by default) in every
   front end, as a layer under environment variables and flags. A missing or invalid file is reported at startup.
+- TUI/WPF File menu items save all open tabs and open one tab per connection (built 2026-10-03, build and existing suites green, dialogs not driven by tests).
 - `--saveproject <file>` writes this run's connection as a one-connection project and exits.
 
 ## Completion checklist
 
 - [x] File format and library (`ProjectFile`)
 - [x] `--project` / `--projectconnection` / `--saveproject`
-- [ ] TUI and WPF **File > Save Project...** and **Open Project...**, saving every open session tab (the multi-session UI exists; this opens one tab per connection)
+- [x] TUI and WPF **File > Save Project...** and **Open Project...** (every open tab saved; one tab opened and connected per connection). Not covered by an automated test: they run native file dialogs
 - [ ] Send history, Stream Monitor/log settings and window layout in the file (connection-only for now)
 - [ ] Web host: use the same file as its connection set (see [web-tunnel-blazor-frontend.md](web-tunnel-blazor-frontend.md))

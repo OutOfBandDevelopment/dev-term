@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -375,6 +376,54 @@ public partial class MainWindow : Window
         var tab = AddTab(newTab);
         StartLoggingFromOptions(tab);
         Observe(ConnectAsync());
+    }
+
+    /// <summary>Writes every open tab's connection to a project file; reopened only by Open Project.</summary>
+    private void SaveProject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_tabs.Count == 0)
+        {
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "dev-term project (*.json)|*.json", FileName = "project.json" };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            ProjectFile.From(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not save the project: {ex.Message}", "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Opens one new tab per connection in a project file, connecting each.</summary>
+    private void OpenProject_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "dev-term project (*.json)|*.json" };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var connection in ProjectFile.Load(dialog.FileName).Connections)
+            {
+                var tab = AddTab(SessionTab.Build(connection.ToOptions()));
+                StartLoggingFromOptions(tab);
+                Observe(ConnectAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not open the project: {ex.Message}", "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void CloseSession_Click(object sender, RoutedEventArgs e)

@@ -598,6 +598,54 @@ public static class TuiMode
                     var tabToClose = ActiveTab();
                     Observe(CloseTabAsync(tabToClose), line => AppendOutput(tabToClose, line));
                 }),
+                new MenuItem("Save Pro_ject...", string.Empty, Guarded(() =>
+                {
+                    if (tabs.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var dialog = new SaveDialog { Path = "project.json" };
+                    app.Run(dialog);
+                    if (dialog.Canceled || dialog.FileName is not { Length: > 0 } fileName)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        ProjectFile.From(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendError(ActiveTab(), $"Could not save the project: {ex.Message}");
+                    }
+                })),
+                new MenuItem("Open P_roject...", string.Empty, Guarded(() =>
+                {
+                    var dialog = new OpenDialog();
+                    app.Run(dialog);
+                    if (dialog.Canceled || dialog.FilePaths.Count == 0)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        foreach (var connection in ProjectFile.Load(dialog.FilePaths[0]).Connections)
+                        {
+                            var newTab = AddTab(SessionTab.Build(connection.ToOptions()));
+                            Observe(ConnectNewTabAsync(newTab), line => AppendOutput(newTab, line));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ActiveTabOrNull() is { } active)
+                        {
+                            AppendError(active, $"Could not open the project: {ex.Message}");
+                        }
+                    }
+                })),
                 loggingMenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, ActiveTab().Tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
