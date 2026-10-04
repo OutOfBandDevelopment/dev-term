@@ -1,3 +1,4 @@
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddZoomH4nPresenter(this IServiceCollection services)
     {
         services.AddTransient<IPresenter, ZoomH4nDecoder>();
+        services.AddSingleton<IDevicePanelContribution, ZoomH4nPanelContribution>();
         return services;
     }
 }

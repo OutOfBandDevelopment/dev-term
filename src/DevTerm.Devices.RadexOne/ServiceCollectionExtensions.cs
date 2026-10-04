@@ -1,3 +1,4 @@
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddRadexOnePresenter(this IServiceCollection services)
     {
         services.AddTransient<IPresenter, RadexOneDecoder>();
+        services.AddSingleton<IDevicePanelContribution, RadexOnePanelContribution>();
         return services;
     }
 }

@@ -1,0 +1,6 @@
+{
+  "name": "De5000",
+  "version": "1.0.0",
+  "contract": 1,
+  "assembly": "DevTerm.Devices.De5000.dll"
+}

@@ -10,11 +10,7 @@ using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.De5000;
-using DevTerm.Devices.Nmea;
-using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
-using DevTerm.Devices.ZoomH4n;
 using DevTerm.Logging;
 
 namespace DevTerm.Wpf;
@@ -451,10 +447,6 @@ public partial class MainWindow : Window
         StreamMonitorMenuItem.IsEnabled = false;
         RefreshPluginPanelItems(null, false);
         ScpiMenuItem.IsEnabled = false;
-        RadexOneMenuItem.IsEnabled = false;
-        ZoomH4nMenuItem.IsEnabled = false;
-        De5000MenuItem.IsEnabled = false;
-        Nmea0183MenuItem.IsEnabled = false;
         ManifestMenuItem.IsEnabled = false;
 
         SendBox.IsEnabled = false;
@@ -540,10 +532,6 @@ public partial class MainWindow : Window
 
         RefreshPluginPanelItems(tab, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.Tab.CliOptions, connected);
-        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, tab.Tab.CliOptions, connected);
-        ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, tab.Tab.CliOptions, connected);
-        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, tab.Tab.CliOptions, connected);
-        Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, tab.Tab.CliOptions, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.Tab.CliOptions, connected);
         RefreshSoftwareFlowControlMenu(tab);
     }
@@ -808,85 +796,6 @@ public partial class MainWindow : Window
 
         _openControlPanels.Add(window);
         window.Closed += (_, _) => _openControlPanels.Remove(window);
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void RadexOneControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            RadexOneUiDefinition.Build(),
-            new RadexOneControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void ZoomH4nControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            ZoomH4nUiDefinition.Build(),
-            new ZoomH4nControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    // Passes no session to the control surface itself (De5000ControlSurface takes none) - the DE-5000
-    // has no writable commands, only live indicators driven by the structured presenter below.
-    private void De5000ControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            De5000UiDefinition.Build(),
-            new De5000ControlSurface(),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): same reasoning as De5000ControlPanel_Click above. Passes no session
-    // to the control surface (NmeaGpsControlSurface takes none) - a GPS receiver has no writable
-    // commands, only live indicators driven by the structured presenter below. The decoder/UI/
-    // control surface are a generic NMEA 0183 GPS panel, not specific to the Earthmate BT-20 - only
-    // this menu item's gate (DevicePanels.Nmea0183) is tied to that device's VID/PID. Not tracked
-    // against a tab (unlike the panels above) since its control surface holds no session reference,
-    // so it never goes stale on a profile switch/tab close.
-    private void Nmea0183ControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var structuredSource = ActiveWindowTab.Tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            NmeaGpsUiDefinition.Build(),
-            new NmeaGpsControlSurface(),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        window.Show();
     }
 
     // ShowDialog(), not Show(): unlike the two panels above, this is a one-shot picker (mirrors

@@ -1,0 +1,6 @@
+{
+  "name": "ZoomH4n",
+  "version": "1.0.0",
+  "contract": 1,
+  "assembly": "DevTerm.Devices.ZoomH4n.dll"
+}

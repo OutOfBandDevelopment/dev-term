@@ -7,11 +7,7 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.De5000;
-using DevTerm.Devices.Nmea;
-using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
-using DevTerm.Devices.ZoomH4n;
 using DevTerm.Logging;
 using DevTerm.Transports.Tcp;
 using Terminal.Gui.App;
@@ -177,10 +173,6 @@ public static class TuiMode
         // them as still-null rather than hit a definite-assignment error.
         var contributedPanelItems = new List<(IDevicePanelContribution Panel, MenuItem Item)>();
         MenuItem? scpiMenuItem = null;
-        MenuItem? radexOneMenuItem = null;
-        MenuItem? zoomH4nMenuItem = null;
-        MenuItem? de5000MenuItem = null;
-        MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
 
@@ -629,79 +621,6 @@ public static class TuiMode
                 // Session/Catalog, which SwitchProfileAsync reassigns on a profile switch and which
                 // changes altogether on a tab switch.
                 .. contributedPanelItems.Select(c => c.Item),
-                radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        RadexOneUiDefinition.Build(),
-                        new RadexOneControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Radex One Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        ZoomH4nUiDefinition.Build(),
-                        new ZoomH4nControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Zoom H4n Remote",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        De5000UiDefinition.Build(),
-                        new De5000ControlSurface(),
-                        structuredSource,
-                        "dev-term — DE-5000 LCR Meter",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        NmeaGpsUiDefinition.Build(),
-                        new NmeaGpsControlSurface(),
-                        structuredSource,
-                        "dev-term — NMEA 0183",
-                        PanelEcho(windowTab));
-                    app.Run(panelParts.Window);
-                })),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
@@ -867,10 +786,6 @@ public static class TuiMode
             }
 
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, windowTab.Tab.CliOptions, connected);
-            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, windowTab.Tab.CliOptions, connected);
-            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, windowTab.Tab.CliOptions, connected);
-            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, windowTab.Tab.CliOptions, connected);
-            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, windowTab.Tab.CliOptions, connected);
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, windowTab.Tab.CliOptions, connected);
 
             if (windowTab.Tab.Session.Transport is TcpTransport tcp)
@@ -1145,10 +1060,6 @@ public static class TuiMode
             }
 
             scpiMenuItem!.Enabled = false;
-            radexOneMenuItem!.Enabled = false;
-            zoomH4nMenuItem!.Enabled = false;
-            de5000MenuItem!.Enabled = false;
-            nmea0183MenuItem!.Enabled = false;
             manifestMenuItem!.Enabled = false;
             sendAsMenuBarItem!.Enabled = false;
             loggingMenuItem.Title = TuiLogging.StartTitle;
