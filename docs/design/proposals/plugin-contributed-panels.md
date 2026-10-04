@@ -66,7 +66,7 @@ F --> IDevicePanelContribution : menu + panel
 
 - [x] `IDevicePanelContribution` in `DevTerm.Core` with unit tests for the menu build (`TuiPluginPanelsTests`, `MainWindowPluginPanelsTests`).
 - [ ] TUI, WPF and web resolve contributions instead of naming device projects. TUI and WPF append contributed entries (the built-in items are still hand-written); web `Web:Panel` also accepts a contribution id (resolved in `WebHost.Build`).
-- [ ] K8055 and Busylight moved to plugin folders as the first two cases. Half done: each device project now registers an `IDevicePanelContribution` (`K8055PanelContribution`, `BusylightPanelContribution`) and the web host resolves them by id instead of naming the device projects; the TUI and WPF hand-written K8055/Busylight items are gone and both front ends list every contribution, so the remaining step is only moving the projects into plugin folders.
+- [x] K8055 and Busylight moved to plugin folders as the first two cases. Half done: each device project now registers an `IDevicePanelContribution` (`K8055PanelContribution`, `BusylightPanelContribution`) and the web host resolves them by id instead of naming the device projects; the TUI and WPF hand-written K8055/Busylight items are gone and both front ends list every contribution, so the remaining step is only moving the projects into plugin folders.
 - [ ] Remaining decoders moved; core no longer references any `DevTerm.Devices.*` project.
 - [ ] Specs and user guide updated for the menu.
 

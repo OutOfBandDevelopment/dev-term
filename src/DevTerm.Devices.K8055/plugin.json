@@ -1,0 +1,6 @@
+{
+  "name": "K8055",
+  "version": "1.0.0",
+  "contract": 1,
+  "assembly": "DevTerm.Devices.K8055.dll"
+}
