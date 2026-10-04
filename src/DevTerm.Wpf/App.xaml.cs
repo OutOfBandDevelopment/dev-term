@@ -145,7 +145,7 @@ public partial class App : Application
             _pipeRegistration = session.AddObserver(_pipeServer);
         }
 
-        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()] };
+        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>().Where(c => !DevicePanels.BuiltInPanelIds.Contains(c.Id))] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();

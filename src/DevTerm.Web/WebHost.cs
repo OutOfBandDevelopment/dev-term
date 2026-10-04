@@ -4,8 +4,6 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
-using DevTerm.Devices.K8055;
 using DevTerm.UiDefinitions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,8 +73,6 @@ public static class WebHost
 
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {
-            "k8055" => (K8055UiDefinition.Build(), (IControlSurface)new K8055ControlSurface(hub.Session)),
-            "busylight" => (BusylightUiDefinition.Build(), new BusylightControlSurface(hub.Session)),
             { } id when app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase)) is { } contributed
                 => (contributed.BuildDefinition(), contributed.CreateSurface(hub.Session)),
             _ => ((UiDefinition?)null, (IControlSurface?)null),
