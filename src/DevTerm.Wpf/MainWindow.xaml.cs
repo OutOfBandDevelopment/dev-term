@@ -451,6 +451,7 @@ public partial class MainWindow : Window
         ConnectMenuItem.IsEnabled = false;
         DeviceProfilesMenuItem.IsEnabled = false;
         StreamMonitorMenuItem.IsEnabled = false;
+        RefreshPluginPanelItems(null, false);
         K8055MenuItem.IsEnabled = false;
         BusylightMenuItem.IsEnabled = false;
         ScpiMenuItem.IsEnabled = false;
@@ -541,6 +542,7 @@ public partial class MainWindow : Window
             ? ThemeRole.StatusConnected
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
+        RefreshPluginPanelItems(tab, connected);
         K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, tab.Tab.CliOptions, connected);
         BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, tab.Tab.CliOptions, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.Tab.CliOptions, connected);

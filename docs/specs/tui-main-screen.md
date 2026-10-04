@@ -56,6 +56,7 @@ and send line, sharing one `File` menu and one status line for whichever tab is 
   profile switch.
   A saved profile is recognised at startup too — the untracked default profile a run starts from
   counts if it matches a saved one.
+- **Device > (plugin panels)**: one item per `IDevicePanelContribution` a plugin registers, listed just above Plugins...; enabled when connected and the contribution's `IsAvailable(transport, vendorId, productId)` accepts the active tab's connection, and it opens the generic control panel for it.
 - **Device > Plugins...** is always enabled (it needs no connection) and shows the same text as `--listplugins true` (`PluginReport`): one line per plugin folder found, loaded or skipped with why, or "No plugins found." It is a message box; plugins are loaded once at startup, so it does not rescan.
 - **One refresh for everything connection-dependent** (`RefreshConnectionUi(TuiWindowTab)`, inside
   `BuildWindow`): the File menu label, `Send:`, the title, the status line, and which **Device** menu

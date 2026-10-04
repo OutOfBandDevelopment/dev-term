@@ -1,5 +1,6 @@
 using DevTerm.Configuration;
 using DevTerm.Console;
+using DevTerm.Core.Control;
 using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -363,6 +364,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>())
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()])
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

@@ -79,7 +79,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -104,7 +104,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -160,7 +160,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -177,6 +177,7 @@ public static class TuiMode
         // UpdateCloseSessionAvailability enables/disables - assigned once the menu is built below,
         // declared up here so a closure (AddTab, which can run before the menu exists) can safely read
         // them as still-null rather than hit a definite-assignment error.
+        var contributedPanelItems = new List<(IDevicePanelContribution Panel, MenuItem Item)>();
         MenuItem? k8055MenuItem = null;
         MenuItem? busylightMenuItem = null;
         MenuItem? scpiMenuItem = null;
@@ -512,6 +513,27 @@ public static class TuiMode
         // "●"/"  " marker (Terminal.Gui has no native checkable MenuItem in this v2 usage).
         static string ToggleTitle(string label, bool on) => (on ? "● " : "  ") + label;
 
+        // One Device-menu entry per plugin-contributed panel (docs/design/proposals/plugin-contributed-panels.md), enabled like the built-ins.
+        foreach (var contribution in panels ?? [])
+        {
+            var captured = contribution;
+            contributedPanelItems.Add((captured, new MenuItem(captured.MenuTitle, string.Empty, Guarded(() =>
+            {
+                var windowTab = ActiveTab();
+                var structuredSource = captured.PresenterName is { } name && windowTab.Tab.Catalog.TryGet(name, out var presenter) ? presenter : null;
+                var definition = captured.BuildDefinition();
+                var panelParts = ControlPanelMode.BuildWindow(app, definition, captured.CreateSurface(windowTab.Tab.Session), structuredSource, $"dev-term — {definition.Name}", PanelEcho(windowTab));
+                try
+                {
+                    app.Run(panelParts.Window);
+                }
+                finally
+                {
+                    panelParts.Window.Dispose();
+                }
+            }))));
+        }
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -761,6 +783,7 @@ public static class TuiMode
 
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
+                .. contributedPanelItems.Select(c => c.Item),
                 new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
             ]),
             new MenuBarItem("_View",
@@ -881,6 +904,11 @@ public static class TuiMode
             streamMonitorMenuItem!.Enabled = true;
             sendAsMenuBarItem!.Enabled = true;
             MarkSendAs(windowTab);
+
+            foreach (var (panel, item) in contributedPanelItems)
+            {
+                item.Enabled = connected && panel.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
+            }
 
             k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
             busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
@@ -1157,6 +1185,11 @@ public static class TuiMode
             connectMenuItem.Title = "_Connect";
             deviceProfilesMenuItem!.Enabled = false;
             streamMonitorMenuItem!.Enabled = false;
+            foreach (var (_, item) in contributedPanelItems)
+            {
+                item.Enabled = false;
+            }
+
             k8055MenuItem!.Enabled = false;
             busylightMenuItem!.Enabled = false;
             scpiMenuItem!.Enabled = false;

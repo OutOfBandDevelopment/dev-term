@@ -63,6 +63,7 @@ is active — the WPF equivalent of the TUI's tab strip (`docs/specs/tui-main-sc
 - **Each tab's header text** (`WindowTab.HeaderText`) is refreshed independently of whether that tab
   is active — `RefreshConnectionUi(WindowTab, …)` updates it for whichever tab it's called for, then
   returns early (skipping the title/status bar/menu refresh) unless that tab is also the active one.
+- **Device > (plugin panels)**: one item per `IDevicePanelContribution` a plugin registers (`MainWindow.PluginPanels`, set by `App`), listed just above Plugins...; enabled when connected and the contribution's `IsAvailable(transport, vendorId, productId)` accepts the active tab's connection, and it opens a control panel window for it.
 - **Device > Plugins...** is always enabled (it needs no connection) and shows the same text as `--listplugins true` (`PluginReport`): one line per plugin folder found, loaded or skipped with why, or "No plugins found." It is a `MessageBox` (`MainWindow.Plugins`, set by `App`); plugins are loaded once at startup, so it does not rescan.
 - **`RefreshConnectionUi(WindowTab, ConnectionState?)`** is the one place everything connection-dependent
   for **one tab** is derived from its `Session.State`: that tab's header text always, and — only when
