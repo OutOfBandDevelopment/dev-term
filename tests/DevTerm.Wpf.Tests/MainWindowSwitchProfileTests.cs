@@ -92,6 +92,7 @@ public sealed class MainWindowSwitchProfileTests
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
+                PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution()],
             };
             window.Show();
             await window.ConnectAsync();
