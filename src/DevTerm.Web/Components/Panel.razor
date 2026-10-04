@@ -61,7 +61,7 @@
                         break;
                     case IndicatorControl i:
                         <label>@i.Label</label>
-                        <span>@i.DefaultValue</span>
+                        <span data-indicator="@i.Id">@(Host.Values.TryGetValue(i.Id, out var live) ? live : i.DefaultValue)</span>
                         break;
                     default:
                         <label>@c.Label</label>
@@ -122,5 +122,25 @@
         }
     }
 
-    public void Dispose() => _subscription.Dispose();
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && Http is null)
+        {
+            Host.ValuesChanged += OnValues;
+            _listening = true;
+        }
+    }
+
+    private bool _listening;
+
+    private void OnValues() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        if (_listening)
+        {
+            Host.ValuesChanged -= OnValues;
+        }
+    }
 }

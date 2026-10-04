@@ -46,6 +46,8 @@ public sealed class TestCategoryStandardsTests
         TestCategories.Rigol_Dg1062z,
         TestCategories.Velleman_K8055,
         TestCategories.Kuando_Busylight,
+        TestCategories.Mqtt,
+        TestCategories.Brokers,
     ];
 
     private static readonly Assembly[] _testAssemblies =

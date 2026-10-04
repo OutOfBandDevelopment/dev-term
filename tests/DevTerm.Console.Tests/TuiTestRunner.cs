@@ -95,6 +95,9 @@ internal static class TuiTestRunner
     /// A store over a directory that doesn't exist, so a window built under test never reads the
     /// developer's real <c>~/.dev-term/profiles</c> when its title asks "is this a saved profile?".
     /// </summary>
+    /// <summary>The K8055 and Busylight contributions the app registers; the Device menu has no hand-written items for them.</summary>
+    internal static IReadOnlyList<DevTerm.Core.Control.IDevicePanelContribution> BuiltInPanels { get; } = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()];
+
     public static ConnectionProfileStore EmptyProfiles() =>
         new(Path.Combine(Path.GetTempPath(), $"devterm-tests-{Guid.NewGuid():N}"));
 
@@ -107,7 +110,7 @@ internal static class TuiTestRunner
         _currentApp = app;
         try
         {
-            var parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles());
+            var parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels);
             parts.SendField.SetFocus();
             var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
             app.LayoutAndDraw(true);
@@ -185,7 +188,7 @@ internal static class TuiTestRunner
             {
                 app = Application.Create().Init("dotnet");
                 _currentApp = app;
-                parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles());
+                parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels);
                 parts.SendField.SetFocus();
                 app.Invoke(() => ready.Set());
                 app.Run(parts.Window);

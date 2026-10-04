@@ -1,0 +1,37 @@
+<Project>
+
+  <!--
+    Projects that set <BundleDevicePlugins>true</BundleDevicePlugins> (the apps, and the tests that build a real
+    session) get the K8055 and Busylight plugins copied to plugins/<name> in their output, so those devices load
+    through the plugin loader like any third-party plugin. See docs/design/proposals/plugin-contributed-panels.md.
+  -->
+  <ItemGroup Condition="'$(BundleDevicePlugins)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.K8055/DevTerm.Devices.K8055.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Busylight/DevTerm.Devices.Busylight.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.RadexOne/DevTerm.Devices.RadexOne.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.ZoomH4n/DevTerm.Devices.ZoomH4n.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/DevTerm.Devices.De5000.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/DevTerm.Devices.Nmea.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/DevTerm.Devices.Demo.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+  </ItemGroup>
+
+  <Target Name="BundleDevicePlugins" AfterTargets="Build" Condition="'$(BundleDevicePlugins)' == 'true'">
+    <ItemGroup>
+      <_K8055Plugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.K8055/bin/$(Configuration)/net10.0/DevTerm.Devices.K8055.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.K8055/bin/$(Configuration)/net10.0/plugin.json" />
+      <_BusylightPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Busylight/bin/$(Configuration)/net10.0/DevTerm.Devices.Busylight.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Busylight/bin/$(Configuration)/net10.0/plugin.json" />
+      <_RadexOnePlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.RadexOne/bin/$(Configuration)/net10.0/DevTerm.Devices.RadexOne.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.RadexOne/bin/$(Configuration)/net10.0/plugin.json" />
+      <_ZoomH4nPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.ZoomH4n/bin/$(Configuration)/net10.0/DevTerm.Devices.ZoomH4n.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.ZoomH4n/bin/$(Configuration)/net10.0/plugin.json" />
+      <_De5000Plugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/bin/$(Configuration)/net10.0/DevTerm.Devices.De5000.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/bin/$(Configuration)/net10.0/plugin.json" />
+      <_NmeaPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/bin/$(Configuration)/net10.0/DevTerm.Devices.Nmea.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/bin/$(Configuration)/net10.0/plugin.json" />
+      <_DemoPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/bin/$(Configuration)/net10.0/DevTerm.Devices.Demo.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/bin/$(Configuration)/net10.0/plugin.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_K8055Plugin)" DestinationFolder="$(OutDir)plugins/k8055" />
+    <Copy SourceFiles="@(_BusylightPlugin)" DestinationFolder="$(OutDir)plugins/busylight" />
+    <Copy SourceFiles="@(_RadexOnePlugin)" DestinationFolder="$(OutDir)plugins/radexone" />
+    <Copy SourceFiles="@(_ZoomH4nPlugin)" DestinationFolder="$(OutDir)plugins/zoomh4n" />
+    <Copy SourceFiles="@(_De5000Plugin)" DestinationFolder="$(OutDir)plugins/de5000" />
+    <Copy SourceFiles="@(_NmeaPlugin)" DestinationFolder="$(OutDir)plugins/nmea" />
+    <Copy SourceFiles="@(_DemoPlugin)" DestinationFolder="$(OutDir)plugins/demo" />
+  </Target>
+
+</Project>

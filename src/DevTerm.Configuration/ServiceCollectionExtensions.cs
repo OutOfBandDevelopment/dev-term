@@ -1,11 +1,5 @@
 using DevTerm.Core.Hosting;
-using DevTerm.Devices.Busylight;
-using DevTerm.Devices.De5000;
-using DevTerm.Devices.K8055;
-using DevTerm.Devices.Nmea;
-using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
-using DevTerm.Devices.ZoomH4n;
 using DevTerm.Core.Plugins;
 using DevTerm.Observability;
 using DevTerm.Presenters.Text;
@@ -224,13 +218,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(cliOptions);
         services.AddDevTermCore();
         services.AddTextPresenters();
-        services.AddK8055Presenter();
-        services.AddBusylightPresenter();
         services.AddScpiPresenter();
-        services.AddRadexOnePresenter();
-        services.AddZoomH4nPresenter();
-        services.AddDe5000Presenter();
-        services.AddNmeaGpsPresenter();
         services.AddPlugins(cliOptions);
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
         services.AddStreamCaptureConverter(cliOptions);

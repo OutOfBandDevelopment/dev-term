@@ -1,3 +1,4 @@
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddK8055Presenter(this IServiceCollection services)
     {
         services.AddTransient<IPresenter, K8055Decoder>();
+        services.AddSingleton<IDevicePanelContribution, K8055PanelContribution>();
         return services;
     }
 }

@@ -1,3 +1,4 @@
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddNmeaGpsPresenter(this IServiceCollection services)
     {
         services.AddTransient<IPresenter, NmeaGpsDecoder>();
+        services.AddSingleton<IDevicePanelContribution, NmeaPanelContribution>();
         return services;
     }
 }

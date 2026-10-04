@@ -340,6 +340,18 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? ExportTo { get; set; }
 
+    /// <summary>A project file to open: its connection (see <see cref="ProjectConnection"/>) becomes the profile this run starts from, under any other flag. Never restored automatically.</summary>
+    [Category("Mode")]
+    public string? Project { get; set; }
+
+    /// <summary>Write this run's connection to a one-connection project file at this path and exit, without connecting. Add more connections by editing the file.</summary>
+    [Category("Mode")]
+    public string? SaveProject { get; set; }
+
+    /// <summary>Which connection of <see cref="Project"/> to open, by name; the first when empty.</summary>
+    [Category("Mode")]
+    public string? ProjectConnection { get; set; }
+
     /// <summary>List every plugin folder found (loaded or skipped, with why) and exit.</summary>
     [Category("Mode")]
     public bool ListPlugins { get; set; }

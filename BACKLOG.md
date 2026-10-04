@@ -64,8 +64,6 @@ the rest.
 - [Network device discovery](docs/design/proposals/network-device-discovery.md) and [in-app config editors for network bridges](docs/design/proposals/network-device-config-editors.md) (proposed 2026-10-03): one Detect button for any network device with prefill, and a Device > Configure device menu for the USR-TCP232-302 and EByte E810-DTU.
 - [Z-Wave support](docs/design/proposals/z-wave-support.md) — ZStick, Z-Wave RPi hat.
 
-### Decided 2026-10-03 (owner interview), not started
-
 
 ## Research (not backlog-ready)
 
@@ -85,10 +83,10 @@ the rest.
   onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
   library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
 - **Cross-process session channel, remaining work:** the read-write channel and the localhost web-service variant. The read-only pipe, `--pipe <name>` (all three front ends) and the `--attach <name>` tail client are built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
-- **Project (workspace) state: save and restore all open sessions.** Save the set of open tabs (each one's connection profile, plus as much state as is practical: presenter choices, send history, Stream Monitor/log settings, window layout) as one project file, and reopen it on launch or from a menu so closing the program with several devices attached comes back to the same connections. Builds on the multi-tab sessions; needs a decision on connection-only versus full state, and whether to auto-restore the last project.
+- **Project state, remaining:** the file format and `--project`/`--saveproject` are built ([project-state](docs/design/proposals/project-state.md), decided connection-only and on request). The TUI/WPF File menu items are built too. Left: send history, log settings and window layout in the file.
 - **PCX (and PCL raster) preview in the Stream Monitor (rejected).** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
   **Decision 2026-10-03: the PCX decoder and the PCL raster preview are both rejected for now** (BMP and TIFF hardcopy already preview); a captured PCX or PCL job stays saved, and PCL still converts through GhostPCL. Revisit only if asked.
-- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above.
+- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above. Decided 2026-10-03: one shared token, no per-connection tokens. Built: `/api/project`, `/api/connections` (open/list/close) and `/ws/{id}`. Left: the host events stream, a Blazor connections UI, Scalar and AsyncAPI docs, and enumerating devices.
 

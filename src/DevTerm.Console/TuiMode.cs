@@ -7,13 +7,7 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
-using DevTerm.Devices.De5000;
-using DevTerm.Devices.K8055;
-using DevTerm.Devices.Nmea;
-using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
-using DevTerm.Devices.ZoomH4n;
 using DevTerm.Logging;
 using DevTerm.Transports.Tcp;
 using Terminal.Gui.App;
@@ -79,7 +73,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -104,7 +98,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -160,7 +154,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -177,13 +171,8 @@ public static class TuiMode
         // UpdateCloseSessionAvailability enables/disables - assigned once the menu is built below,
         // declared up here so a closure (AddTab, which can run before the menu exists) can safely read
         // them as still-null rather than hit a definite-assignment error.
-        MenuItem? k8055MenuItem = null;
-        MenuItem? busylightMenuItem = null;
+        var contributedPanelItems = new List<(IDevicePanelContribution Panel, MenuItem Item)>();
         MenuItem? scpiMenuItem = null;
-        MenuItem? radexOneMenuItem = null;
-        MenuItem? zoomH4nMenuItem = null;
-        MenuItem? de5000MenuItem = null;
-        MenuItem? nmea0183MenuItem = null;
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
 
@@ -512,6 +501,27 @@ public static class TuiMode
         // "●"/"  " marker (Terminal.Gui has no native checkable MenuItem in this v2 usage).
         static string ToggleTitle(string label, bool on) => (on ? "● " : "  ") + label;
 
+        // One Device-menu entry per plugin-contributed panel (docs/design/proposals/plugin-contributed-panels.md), enabled like the built-ins.
+        foreach (var contribution in panels ?? [])
+        {
+            var captured = contribution;
+            contributedPanelItems.Add((captured, new MenuItem(captured.MenuTitle, string.Empty, Guarded(() =>
+            {
+                var windowTab = ActiveTab();
+                var structuredSource = captured.PresenterName is { } name && windowTab.Tab.Catalog.TryGet(name, out var presenter) ? presenter : null;
+                var definition = captured.BuildDefinition();
+                var panelParts = ControlPanelMode.BuildWindow(app, definition, captured.CreateSurface(windowTab.Tab.Session), structuredSource, $"dev-term — {definition.Name}", PanelEcho(windowTab));
+                try
+                {
+                    app.Run(panelParts.Window);
+                }
+                finally
+                {
+                    panelParts.Window.Dispose();
+                }
+            }))));
+        }
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -588,6 +598,54 @@ public static class TuiMode
                     var tabToClose = ActiveTab();
                     Observe(CloseTabAsync(tabToClose), line => AppendOutput(tabToClose, line));
                 }),
+                new MenuItem("Save Pro_ject...", string.Empty, Guarded(() =>
+                {
+                    if (tabs.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var dialog = new SaveDialog { Path = "project.json" };
+                    app.Run(dialog);
+                    if (dialog.Canceled || dialog.FileName is not { Length: > 0 } fileName)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        ProjectFile.From(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendError(ActiveTab(), $"Could not save the project: {ex.Message}");
+                    }
+                })),
+                new MenuItem("Open P_roject...", string.Empty, Guarded(() =>
+                {
+                    var dialog = new OpenDialog();
+                    app.Run(dialog);
+                    if (dialog.Canceled || dialog.FilePaths.Count == 0)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        foreach (var connection in ProjectFile.Load(dialog.FilePaths[0]).Connections)
+                        {
+                            var newTab = AddTab(SessionTab.Build(connection.ToOptions()));
+                            Observe(ConnectNewTabAsync(newTab), line => AppendOutput(newTab, line));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ActiveTabOrNull() is { } active)
+                        {
+                            AppendError(active, $"Could not open the project: {ex.Message}");
+                        }
+                    }
+                })),
                 loggingMenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, ActiveTab().Tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
@@ -610,119 +668,7 @@ public static class TuiMode
                 // competing one to the same physical device - reads the live ActiveTab() tab's
                 // Session/Catalog, which SwitchProfileAsync reassigns on a profile switch and which
                 // changes altogether on a tab switch.
-                k8055MenuItem = new MenuItem("_K8055 Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        K8055UiDefinition.Build(),
-                        new K8055ControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — K8055 Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                busylightMenuItem = new MenuItem("_Busylight Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        BusylightUiDefinition.Build(),
-                        new BusylightControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Busylight Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                radexOneMenuItem = new MenuItem("_Radex One Control Panel...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        RadexOneUiDefinition.Build(),
-                        new RadexOneControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Radex One Control Panel",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                zoomH4nMenuItem = new MenuItem("_Zoom H4n Remote...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        ZoomH4nUiDefinition.Build(),
-                        new ZoomH4nControlSurface(windowTab.Tab.Session),
-                        structuredSource,
-                        "dev-term — Zoom H4n Remote",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                de5000MenuItem = new MenuItem("_DE-5000 LCR Meter...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        De5000UiDefinition.Build(),
-                        new De5000ControlSurface(),
-                        structuredSource,
-                        "dev-term — DE-5000 LCR Meter",
-                        PanelEcho(windowTab));
-                    try
-                    {
-                        app.Run(panelParts.Window);
-                    }
-                    finally
-                    {
-                        panelParts.Window.Dispose();
-                    }
-                })),
-                nmea0183MenuItem = new MenuItem("_NMEA 0183...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = windowTab.Tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
-                    var panelParts = ControlPanelMode.BuildWindow(
-                        app,
-                        NmeaGpsUiDefinition.Build(),
-                        new NmeaGpsControlSurface(),
-                        structuredSource,
-                        "dev-term — NMEA 0183",
-                        PanelEcho(windowTab));
-                    app.Run(panelParts.Window);
-                })),
+                .. contributedPanelItems.Select(c => c.Item),
                 // One generic entry, not one per instrument, unlike the two above - the command set
                 // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
                 // instrument is a dropped-in JSON file, not a new menu item.
@@ -882,13 +828,12 @@ public static class TuiMode
             sendAsMenuBarItem!.Enabled = true;
             MarkSendAs(windowTab);
 
-            k8055MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.K8055, windowTab.Tab.CliOptions, connected);
-            busylightMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Busylight, windowTab.Tab.CliOptions, connected);
+            foreach (var (panel, item) in contributedPanelItems)
+            {
+                item.Enabled = connected && panel.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
+            }
+
             scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, windowTab.Tab.CliOptions, connected);
-            radexOneMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, windowTab.Tab.CliOptions, connected);
-            zoomH4nMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, windowTab.Tab.CliOptions, connected);
-            de5000MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.De5000, windowTab.Tab.CliOptions, connected);
-            nmea0183MenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, windowTab.Tab.CliOptions, connected);
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, windowTab.Tab.CliOptions, connected);
 
             if (windowTab.Tab.Session.Transport is TcpTransport tcp)
@@ -1157,13 +1102,12 @@ public static class TuiMode
             connectMenuItem.Title = "_Connect";
             deviceProfilesMenuItem!.Enabled = false;
             streamMonitorMenuItem!.Enabled = false;
-            k8055MenuItem!.Enabled = false;
-            busylightMenuItem!.Enabled = false;
+            foreach (var (_, item) in contributedPanelItems)
+            {
+                item.Enabled = false;
+            }
+
             scpiMenuItem!.Enabled = false;
-            radexOneMenuItem!.Enabled = false;
-            zoomH4nMenuItem!.Enabled = false;
-            de5000MenuItem!.Enabled = false;
-            nmea0183MenuItem!.Enabled = false;
             manifestMenuItem!.Enabled = false;
             sendAsMenuBarItem!.Enabled = false;
             loggingMenuItem.Title = TuiLogging.StartTitle;
@@ -1416,8 +1360,8 @@ public static class TuiMode
             SwitchProfileAsync,
             SetParser,
             statusLabel,
-            k8055MenuItem!,
-            busylightMenuItem!,
+            contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "k8055").Item!,
+            contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "busylight").Item!,
             scpiMenuItem!,
             ToggleAndRefreshAsync,
             new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger),

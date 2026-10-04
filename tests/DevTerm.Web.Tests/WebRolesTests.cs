@@ -7,6 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using DevTerm.Configuration;
 using DevTerm.Test.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DevTerm.Web.Tests;
 
@@ -57,6 +58,23 @@ public class WebRolesTests
             Assert.IsFalse(full.Contains("Read-only viewer", StringComparison.Ordinal));
             StringAssert.Contains(readOnly, "Read-only viewer");
             StringAssert.Contains(readOnly, "disabled");
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task BlazorPanelPage_ShowsTheLatestPublishedIndicatorValue()
+    {
+        var (built, url) = await StartAsync("k8055");
+        await using (built.Hub)
+        {
+            using var client = Client("secret");
+            built.App.Services.GetRequiredService<Components.PanelHostHolder>().Publish(new Dictionary<string, string> { ["analogIn1"] = "173" });
+
+            var page = await client.GetStringAsync(url + "/panel");
+
+            StringAssert.Contains(page, "data-indicator=\"analogIn1\"");
+            StringAssert.Contains(page, ">173<");
             await built.App.StopAsync();
         }
     }
@@ -148,10 +166,10 @@ public class WebRolesTests
     }
 
     [TestMethod]
-    public void Validate_RejectsAReadOnlyTokenEqualToTheMainToken_AndAnUnknownPanel()
+    public void Validate_RejectsAReadOnlyTokenEqualToTheMainToken_AndBuildRejectsAnUnknownPanel()
     {
         Assert.IsNotNull(AccessPolicy.Validate(new WebOptions { Token = "x", ReadOnlyToken = "x" }));
-        Assert.IsNotNull(AccessPolicy.Validate(new WebOptions { Panel = "oscilloscope" }));
+        Assert.ThrowsExactly<InvalidOperationException>(() => WebHost.Build(new CliOptions { Transport = "loopback" }, new WebOptions { Panel = "oscilloscope" }, []));
         Assert.IsNull(AccessPolicy.Validate(new WebOptions { Token = "x", ReadOnlyToken = "y", Panel = "K8055" }));
     }
 

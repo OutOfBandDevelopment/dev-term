@@ -4,8 +4,6 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
-using DevTerm.Devices.K8055;
 using DevTerm.UiDefinitions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +15,23 @@ public static class WebHost
 {
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
     public sealed record Built(WebApplication App, SessionHub Hub, string Token);
+
+    private static object[] ProjectConnections(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return [];
+        }
+
+        try
+        {
+            return [.. ProjectFile.Load(path).Connections.Select(c => new { name = c.Name, description = ConnectionDescription.Definition(c.ToOptions()) })];
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
 
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
     public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
@@ -31,7 +46,8 @@ public static class WebHost
 
         var token = string.IsNullOrWhiteSpace(webOptions.Token) ? AccessPolicy.GenerateToken() : webOptions.Token;
 
-        var builder = WebApplication.CreateSlimBuilder(args);
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args, ApplicationName = typeof(WebHost).Assembly.GetName().Name }); // fixed so the static-asset manifests are found when hosted by a test host
+        builder.WebHost.UseStaticWebAssets(); // otherwise only Development resolves framework assets such as blazor.web.js
         builder.Services.AddDevTermFrontEnd(cliOptions);
         builder.Services.AddSingleton(sp =>
         {
@@ -69,21 +85,95 @@ public static class WebHost
         app.UseWebSockets();
         app.UseAntiforgery();
         app.Map("/ws", (HttpContext context) => WebSocketTunnel.HandleAsync(context, hub));
+        app.MapStaticAssets(); // serves _framework/blazor.web.js, without which the Blazor panel never becomes interactive
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
 
+        // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
+        var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
+        app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
+
+        // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
+        // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
+        var open = new System.Collections.Concurrent.ConcurrentDictionary<string, (string Name, SessionHub Hub)>();
+        app.MapGet("/api/connections", () => Results.Json(open.Select(c => new { id = c.Key, name = c.Value.Name, state = c.Value.Hub.State.ToString() })));
+        app.MapPost("/api/connections", async (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            ProjectConnection? chosen = null;
+            try
+            {
+                chosen = string.IsNullOrWhiteSpace(cliOptions.Project) ? null : ProjectFile.Load(cliOptions.Project).Find(name);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+            }
+
+            if (chosen is null)
+            {
+                return Results.NotFound();
+            }
+
+            var options = chosen.ToOptions();
+            var built = DevTermSessionBuilder.Build(options);
+            var connection = new SessionHub(built.Session, built.Catalog, options, webOptions.BacklogLines);
+            await connection.StartAsync(context.RequestAborted);
+            var id = Guid.NewGuid().ToString("N")[..8];
+            open[id] = (chosen.Name, connection);
+            return Results.Json(new { id, name = chosen.Name });
+        });
+        app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (!open.TryRemove(id, out var removed))
+            {
+                return Results.NotFound();
+            }
+
+            await removed.Hub.DisposeAsync();
+            return Results.NoContent();
+        });
+        app.Map("/ws/{id}", (HttpContext context, string id) => open.TryGetValue(id, out var found) ? WebSocketTunnel.HandleAsync(context, found.Hub) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
+        app.Lifetime.ApplicationStopping.Register(() =>
+        {
+            foreach (var (_, connection) in open)
+            {
+                connection.Hub.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        });
+
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {
-            "k8055" => (K8055UiDefinition.Build(), (IControlSurface)new K8055ControlSurface(hub.Session)),
-            "busylight" => (BusylightUiDefinition.Build(), new BusylightControlSurface(hub.Session)),
+            { } id when app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase)) is { } contributed
+                => (contributed.BuildDefinition(), contributed.CreateSurface(hub.Session)),
             _ => ((UiDefinition?)null, (IControlSurface?)null),
         };
+        if (!string.IsNullOrWhiteSpace(webOptions.Panel) && definition is null)
+        {
+            throw new InvalidOperationException($"Web:Panel '{webOptions.Panel}' must be k8055, busylight or the id of a plugin-contributed panel.");
+        }
+
         if (definition is not null && surface is not null)
         {
             var panelJson = UiDefinitionSerializer.ToJson(definition);
             app.MapGet("/api/panel", () => Results.Content(panelJson, "application/json"));
-            app.Services.GetRequiredService<Components.PanelHostHolder>().Set(definition, surface);
+            var holder = app.Services.GetRequiredService<Components.PanelHostHolder>();
+            holder.Set(definition, surface);
+            var presenterName = app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, webOptions.Panel, StringComparison.OrdinalIgnoreCase))?.PresenterName ?? webOptions.Panel!.ToLowerInvariant();
+            if (hub.Catalog.TryGet(presenterName, out var source) && source is IStructuredPresenter structured)
+            {
+                structured.ValuesChanged += (_, values) => holder.Publish(values);
+            }
+
             app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, surface, request));
         }
         else

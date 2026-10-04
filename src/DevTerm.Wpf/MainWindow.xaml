@@ -38,6 +38,8 @@
                 <Separator />
                 <MenuItem Header="_New Session..." InputGestureText="Ctrl+T" Click="NewSession_Click" />
                 <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" InputGestureText="Ctrl+W" Click="CloseSession_Click" />
+                <MenuItem Header="_Save Project..." Click="SaveProject_Click" />
+                <MenuItem Header="Open _Project..." Click="OpenProject_Click" />
                 <Separator />
                 <!-- Logger mode and playback: MainWindow.Logging.cs. -->
                 <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
@@ -46,13 +48,7 @@
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
-                <MenuItem x:Name="K8055MenuItem" Header="_K8055 Control Panel..." Click="K8055ControlPanel_Click" />
-                <MenuItem x:Name="BusylightMenuItem" Header="_Busylight Control Panel..." Click="BusylightControlPanel_Click" />
                 <MenuItem x:Name="ScpiMenuItem" Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
-                <MenuItem x:Name="RadexOneMenuItem" Header="_Radex One Control Panel..." Click="RadexOneControlPanel_Click" />
-                <MenuItem x:Name="ZoomH4nMenuItem" Header="_Zoom H4n Remote..." Click="ZoomH4nControlPanel_Click" />
-                <MenuItem x:Name="De5000MenuItem" Header="_DE-5000 LCR Meter..." Click="De5000ControlPanel_Click" />
-                <MenuItem x:Name="Nmea0183MenuItem" Header="_NMEA 0183..." Click="Nmea0183ControlPanel_Click" />
                 <MenuItem x:Name="ManifestMenuItem" Header="Device _Manifest..." Click="DeviceManifest_Click" />
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />

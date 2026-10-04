@@ -23,6 +23,7 @@ public sealed class SessionHub : IAsyncDisposable
     public SessionHub(Session session, PresenterCatalog catalog, CliOptions options, int backlogLines)
     {
         _session = session;
+        Catalog = catalog;
         _options = options;
         _parser = options.EffectiveParser;
         _input = catalog.TryGetInput(_parser, out var input)
@@ -37,6 +38,9 @@ public sealed class SessionHub : IAsyncDisposable
     public event Action<string>? LineReceived;
 
     internal Session Session => _session;
+
+    /// <summary>The catalog this session's presenters came from (a fresh catalog would be a different, unconnected set).</summary>
+    internal PresenterCatalog Catalog { get; }
 
     public ConnectionState State => _session.State;
 

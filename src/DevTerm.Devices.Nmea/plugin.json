@@ -1,0 +1,6 @@
+{
+  "name": "Nmea",
+  "version": "1.0.0",
+  "contract": 1,
+  "assembly": "DevTerm.Devices.Nmea.dll"
+}

@@ -42,6 +42,9 @@ public static class DevicePanels
     private const int _nmea0183VendorId = 0x1163;
     private const int _nmea0183ProductId = 0x0200;
 
+    /// <summary>Ids of panels the TUI and WPF menus have a built-in item for; a registered <see cref="Core.Control.IDevicePanelContribution"/> with one of these ids (the web host resolves them) is not listed a second time.</summary>
+    public static IReadOnlySet<string> BuiltInPanelIds { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "k8055", "busylight" };
+
     public static bool IsAvailable(DevicePanel panel, CliOptions options, bool connected)
     {
         ArgumentNullException.ThrowIfNull(options);

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,13 +11,7 @@ using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Busylight;
-using DevTerm.Devices.De5000;
-using DevTerm.Devices.K8055;
-using DevTerm.Devices.Nmea;
-using DevTerm.Devices.RadexOne;
 using DevTerm.Devices.Scpi;
-using DevTerm.Devices.ZoomH4n;
 using DevTerm.Logging;
 
 namespace DevTerm.Wpf;
@@ -383,6 +378,54 @@ public partial class MainWindow : Window
         Observe(ConnectAsync());
     }
 
+    /// <summary>Writes every open tab's connection to a project file; reopened only by Open Project.</summary>
+    private void SaveProject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_tabs.Count == 0)
+        {
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "dev-term project (*.json)|*.json", FileName = "project.json" };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            ProjectFile.From(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not save the project: {ex.Message}", "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Opens one new tab per connection in a project file, connecting each.</summary>
+    private void OpenProject_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "dev-term project (*.json)|*.json" };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var connection in ProjectFile.Load(dialog.FileName).Connections)
+            {
+                var tab = AddTab(SessionTab.Build(connection.ToOptions()));
+                StartLoggingFromOptions(tab);
+                Observe(ConnectAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not open the project: {ex.Message}", "dev-term", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void CloseSession_Click(object sender, RoutedEventArgs e)
     {
         if (ActiveWindowTabOrNull is { } tab)
@@ -451,13 +494,8 @@ public partial class MainWindow : Window
         ConnectMenuItem.IsEnabled = false;
         DeviceProfilesMenuItem.IsEnabled = false;
         StreamMonitorMenuItem.IsEnabled = false;
-        K8055MenuItem.IsEnabled = false;
-        BusylightMenuItem.IsEnabled = false;
+        RefreshPluginPanelItems(null, false);
         ScpiMenuItem.IsEnabled = false;
-        RadexOneMenuItem.IsEnabled = false;
-        ZoomH4nMenuItem.IsEnabled = false;
-        De5000MenuItem.IsEnabled = false;
-        Nmea0183MenuItem.IsEnabled = false;
         ManifestMenuItem.IsEnabled = false;
 
         SendBox.IsEnabled = false;
@@ -541,13 +579,8 @@ public partial class MainWindow : Window
             ? ThemeRole.StatusConnected
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
-        K8055MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.K8055, tab.Tab.CliOptions, connected);
-        BusylightMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Busylight, tab.Tab.CliOptions, connected);
+        RefreshPluginPanelItems(tab, connected);
         ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.Tab.CliOptions, connected);
-        RadexOneMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.RadexOne, tab.Tab.CliOptions, connected);
-        ZoomH4nMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.ZoomH4n, tab.Tab.CliOptions, connected);
-        De5000MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.De5000, tab.Tab.CliOptions, connected);
-        Nmea0183MenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Nmea0183, tab.Tab.CliOptions, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.Tab.CliOptions, connected);
         RefreshSoftwareFlowControlMenu(tab);
     }
@@ -812,122 +845,6 @@ public partial class MainWindow : Window
 
         _openControlPanels.Add(window);
         window.Closed += (_, _) => _openControlPanels.Remove(window);
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void K8055ControlPanel_Click(object sender, RoutedEventArgs e) => OpenK8055ControlPanel();
-
-    /// <summary>Split from the click handler so tests can drive it and assert against <see cref="OpenControlPanels"/> without simulating a menu click.</summary>
-    internal ControlPanelWindow OpenK8055ControlPanel()
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("k8055", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            K8055UiDefinition.Build(),
-            new K8055ControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-        return window;
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void BusylightControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("busylight", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            BusylightUiDefinition.Build(),
-            new BusylightControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void RadexOneControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("radexone", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            RadexOneUiDefinition.Build(),
-            new RadexOneControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void ZoomH4nControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("zoomh4n", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            ZoomH4nUiDefinition.Build(),
-            new ZoomH4nControlSurface(tab.Tab.Session),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    // Passes no session to the control surface itself (De5000ControlSurface takes none) - the DE-5000
-    // has no writable commands, only live indicators driven by the structured presenter below.
-    private void De5000ControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var structuredSource = tab.Tab.Catalog.TryGet("de5000", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            De5000UiDefinition.Build(),
-            new De5000ControlSurface(),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
-
-    // Show(), not ShowDialog(): same reasoning as De5000ControlPanel_Click above. Passes no session
-    // to the control surface (NmeaGpsControlSurface takes none) - a GPS receiver has no writable
-    // commands, only live indicators driven by the structured presenter below. The decoder/UI/
-    // control surface are a generic NMEA 0183 GPS panel, not specific to the Earthmate BT-20 - only
-    // this menu item's gate (DevicePanels.Nmea0183) is tied to that device's VID/PID. Not tracked
-    // against a tab (unlike the panels above) since its control surface holds no session reference,
-    // so it never goes stale on a profile switch/tab close.
-    private void Nmea0183ControlPanel_Click(object sender, RoutedEventArgs e)
-    {
-        var structuredSource = ActiveWindowTab.Tab.Catalog.TryGet("nmea", out var presenter) ? presenter : null;
-        var window = new ControlPanelWindow(
-            NmeaGpsUiDefinition.Build(),
-            new NmeaGpsControlSurface(),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        window.Show();
     }
 
     // ShowDialog(), not Show(): unlike the two panels above, this is a one-shot picker (mirrors

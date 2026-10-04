@@ -26,6 +26,7 @@ public sealed class MainWindowConnectionStateTests
         var window = new MainWindow(new Session(transport, new Pipeline([ascii])), new PresenterCatalog([ascii]), options, IsolatedProfiles.Empty())
         {
             ShowInTaskbar = false,
+            PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
         };
         return (window, transport);
     }
@@ -44,8 +45,8 @@ public sealed class MainWindowConnectionStateTests
             Assert.AreEqual(WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.StatusConnected]), ((SolidColorBrush)window.ConnectionStatusDot.Fill).Color, "The dot is the theme's statusConnected.");
             Assert.DoesNotContain("disconnected", window.Title);
             Assert.IsTrue(window.ScpiMenuItem.IsEnabled, "SCPI makes sense over TCP.");
-            Assert.IsFalse(window.K8055MenuItem.IsEnabled, "The K8055 is a HID device.");
-            Assert.IsFalse(window.BusylightMenuItem.IsEnabled);
+            Assert.IsFalse(window.K8055MenuItem!.IsEnabled, "The K8055 is a HID device.");
+            Assert.IsFalse(window.BusylightMenuItem!.IsEnabled);
         });
     }
 
@@ -89,8 +90,8 @@ public sealed class MainWindowConnectionStateTests
             var (window, _) = CreateWindow(new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5500, Presenter = ["ascii"] });
             await window.ConnectAsync();
 
-            Assert.IsTrue(window.K8055MenuItem.IsEnabled);
-            Assert.IsFalse(window.BusylightMenuItem.IsEnabled);
+            Assert.IsTrue(window.K8055MenuItem!.IsEnabled);
+            Assert.IsFalse(window.BusylightMenuItem!.IsEnabled);
             Assert.IsFalse(window.ScpiMenuItem.IsEnabled, "SCPI is text; HID is fixed-size binary reports.");
         });
     }

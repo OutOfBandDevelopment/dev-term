@@ -1,5 +1,6 @@
 using DevTerm.Configuration;
 using DevTerm.Console;
+using DevTerm.Core.Control;
 using DevTerm.Core.Plugins;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -26,7 +27,7 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 };
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
@@ -292,6 +293,28 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException or
     bindError = ex.Message;
 }
 
+if (bindError is null && cliOptions.SaveProject is { Length: > 0 } saveProjectPath)
+{
+    ProjectFile.From(Path.GetFileNameWithoutExtension(saveProjectPath), [(cliOptions.Transport, cliOptions)]).Save(saveProjectPath);
+    Console.WriteLine($"Saved project {saveProjectPath}");
+    return 0;
+}
+
+if (bindError is null && cliOptions.Project is { Length: > 0 } projectPath)
+{
+    try
+    {
+        if (ProjectFile.Load(projectPath).Find(cliOptions.ProjectConnection) is null)
+        {
+            bindError = $"Project {projectPath} has no connection {(string.IsNullOrEmpty(cliOptions.ProjectConnection) ? "at all" : $"named '{cliOptions.ProjectConnection}'")}.";
+        }
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+    {
+        bindError = $"Cannot open project {projectPath}: {ex.Message}";
+    }
+}
+
 if (bindError is null)
 {
     var validation = new CliOptionsValidator().Validate(null, cliOptions);
@@ -363,6 +386,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>())
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()])
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

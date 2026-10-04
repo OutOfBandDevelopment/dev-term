@@ -202,6 +202,18 @@ reflecting over a real running window's own `KeyBindings`, not assumed:
   — a direct, documented way to invoke a view's command — is what `DevTerm.Console.Tests.ConfigureModeTests`
   uses instead; see its own `Click` helper for the full account.
 
+## Cross-front-end user flows
+
+`DevTerm.Test.Utilities.UserFlowTestsBase` holds each user flow once (connected on startup, send and see the
+reply, an unknown command, several lines, fifteen in a row, a recorded session log, a profile switch, an empty line, disconnect then reconnect, send while disconnected, and setting the demo panel's controls then pressing Apply),
+written against `IFrontEndDriver`. Each front end derives a `[TestClass]` and supplies a driver that starts it
+against a loopback device: `CliUserFlowTests` (the built console app over stdin/stdout), `TuiUserFlowTests`
+(real Terminal.Gui window, running loop), `WpfUserFlowTests` (a shown off-screen `MainWindow`) and
+`WebUserFlowTests` (Playwright driving Edge). The same test name therefore appears under every front end, so
+a flow that works in one and not another shows up as a failure in exactly one class. A flow a front end has
+no way to perform (the CLI and web page have no Connect/Disconnect action) reports Inconclusive rather than
+passing. The panel flow uses the example `Demo` plugin (`src/DevTerm.Devices.Demo`, loopback-only: an LED toggle, a 0-9 level slider and an Apply button that sends `SET LED=n LEVEL=n`; the loopback device answers `? Unrecognized: ...`), so a panel Apply is exercised end to end in the TUI, WPF and web front ends (Inconclusive for the CLI). Add a new flow by adding a method to the base class, plus any driver members it needs.
+
 ## User guide
 
 [`docs/user-guide/`](../user-guide/README.md) has task-oriented walkthroughs, one file per user

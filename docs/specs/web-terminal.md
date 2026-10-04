@@ -43,4 +43,4 @@ only.
 
 ## Blazor panel page (`/panel`)
 
-Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator; other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.
+Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator (showing the latest value the device's structured presenter published, e.g. the K8055 analog inputs, when that presenter is selected; otherwise its default); other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.

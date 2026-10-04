@@ -32,6 +32,80 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiProject_ListsTheProjectFilesConnections()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Scope", new CliOptions { Transport = "tcp", Host = "10.0.0.5", Port = "23" })]).Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var json = await client.GetStringAsync($"http://127.0.0.1:{port}/api/project");
+            StringAssert.Contains(json, "\"name\":\"Scope\"");
+            StringAssert.Contains(json, "10.0.0.5");
+            await built.App.StopAsync();
+        }
+
+        File.Delete(file);
+    }
+
+    [TestMethod]
+    public async Task ApiConnections_OpenFromTheProject_ThenTunnelAndClose()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Echo", new CliOptions { Transport = "loopback", Presenter = ["ascii"], Parser = "ascii" })]).Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret", ReadOnlyToken = "watch" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            var baseUrl = $"http://127.0.0.1:{port}";
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            using var watcher = new HttpClient();
+            watcher.DefaultRequestHeaders.Authorization = new("Bearer", "watch");
+
+            Assert.AreEqual(HttpStatusCode.Forbidden, (await watcher.PostAsync(baseUrl + "/api/connections?name=Echo", null)).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.PostAsync(baseUrl + "/api/connections?name=Nope", null)).StatusCode);
+
+            var opened = await client.PostAsync(baseUrl + "/api/connections?name=Echo", null);
+            Assert.AreEqual(HttpStatusCode.OK, opened.StatusCode);
+            var id = System.Text.Json.JsonDocument.Parse(await opened.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString()!;
+            StringAssert.Contains(await client.GetStringAsync(baseUrl + "/api/connections"), id);
+
+            using var socket = new ClientWebSocket();
+            socket.Options.SetRequestHeader("Authorization", "Bearer secret");
+            await socket.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/ws/{id}"), CancellationToken.None);
+            await socket.SendAsync(Encoding.UTF8.GetBytes("hello"), WebSocketMessageType.Text, true, CancellationToken.None);
+            var buffer = new byte[4096];
+            var seen = new StringBuilder();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            while (!seen.ToString().Contains("[ascii]", StringComparison.Ordinal))
+            {
+                var result = await socket.ReceiveAsync(buffer, timeout.Token);
+                seen.Append(Encoding.UTF8.GetString(buffer, 0, result.Count)).Append(' ');
+            }
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync($"{baseUrl}/api/connections/{id}")).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync($"{baseUrl}/api/connections/{id}")).StatusCode);
+            await built.App.StopAsync();
+        }
+
+        File.Delete(file);
+    }
+
+    [TestMethod]
     public async Task Request_WithoutToken_IsUnauthorized()
     {
         var (built, url) = await StartAsync();
