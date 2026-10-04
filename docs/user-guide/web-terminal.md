@@ -34,4 +34,4 @@ With `--Web:Panel busylight` (or `k8055`), open `/panel` for a server-rendered c
 
 ![The /panel page for a read-only viewer](images/web-blazor-panel-readonly.png)
 
-These are real headless-Edge captures taken by `WebScreenshotTests` (Integration; Inconclusive without Edge), so re-run that class when the page changes.
+These are real browser captures taken by `WebScreenshotTests`, which drives the installed Microsoft Edge through Playwright (Integration; Inconclusive without Edge), so re-run that class when the page changes.
