@@ -1,3 +1,4 @@
+using DevTerm.Configuration.Discovery;
 using DevTerm.Transports.Tcp;
 
 namespace DevTerm.Configuration;
@@ -10,4 +11,8 @@ public static class LxiDeviceScanner
 {
     public static IReadOnlyList<LxiDeviceOption> Scan() =>
         [.. LxiDiscovery.ScanAsync(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Select(LxiDeviceOption.FromDevice)];
+
+    /// <summary>Every discovery probe (LXI, mDNS, SSDP), for the Connection Editor's "Detect network devices..." picker.</summary>
+    public static IReadOnlyList<LxiDeviceOption> ScanNetwork() =>
+        [.. NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult().Select(LxiDeviceOption.FromHit)];
 }

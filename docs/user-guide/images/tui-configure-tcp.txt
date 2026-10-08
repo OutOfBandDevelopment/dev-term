@@ -17,7 +17,7 @@
 │[-] TCP                                                                      ░│
 │  Host:                     192.168.0.107                                    ░│
 │  Port:                     23                                               ░│
-│  Detected LXI instruments: ⟦ Detect LXI... ⟧                                ░│
+│  Detected network devices: ⟦ Detect network devices... ⟧                    ░│
 │                                                                             ░│
 │                            ☐ Listen (server mode)                           ░│
 │                                                                             ░│

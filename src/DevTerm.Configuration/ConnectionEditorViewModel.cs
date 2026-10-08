@@ -991,7 +991,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <see cref="TcpPort"/>. A front end must call <see cref="SetLxiDeviceOptions"/> first, since the scan takes seconds.
     /// </summary>
     [Category("TCP")]
-    [DisplayName("Detected LXI instruments")]
+    [DisplayName("Detected network devices")]
     [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpTransport))]
     public LxiDeviceOption? SelectedLxiDevice
     {

@@ -154,7 +154,7 @@ public static class ConfigureMode
         var detectHidButton = new Button { Text = "Detect HID...", ShadowStyle = ShadowStyles.None };
         var detectUsbtmcButton = new Button { Text = "Detect USBTMC...", ShadowStyle = ShadowStyles.None };
         var detectBleButton = new Button { Text = "Detect BLE...", ShadowStyle = ShadowStyles.None };
-        var detectLxiButton = new Button { Text = "Detect LXI...", ShadowStyle = ShadowStyles.None };
+        var detectLxiButton = new Button { Text = "Detect network devices...", ShadowStyle = ShadowStyles.None };
         var detectBleCharacteristicsButton = new Button { Text = "Detect characteristics...", ShadowStyle = ShadowStyles.None };
         var pickBleNotifyCharacteristicButton = new Button { Text = "Pick...", ShadowStyle = ShadowStyles.None };
         var formOptions = new TuiFormOptions { CollapsibleSections = true };
@@ -478,9 +478,9 @@ public static class ConfigureMode
         // An LXI scan is a live network broadcast (about three seconds), so like BLE it runs when the button is pressed.
         detectLxiButton.Accepting += (_, e) =>
         {
-            viewModel.SetLxiDeviceOptions(LxiDeviceScanner.Scan());
+            viewModel.SetLxiDeviceOptions(LxiDeviceScanner.ScanNetwork());
             var devices = viewModel.LxiDeviceOptions;
-            if (FormRenderer.PickFromList(app, "Detected LXI instruments", [.. devices.Select(d => d.Display)], "Nothing was detected.") is int i)
+            if (FormRenderer.PickFromList(app, "Detected network devices", [.. devices.Select(d => d.Display)], "Nothing was detected.") is int i)
             {
                 viewModel.SelectedLxiDevice = devices[i];
             }

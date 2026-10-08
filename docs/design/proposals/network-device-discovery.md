@@ -86,7 +86,7 @@ UI -> UI : prefill Transport/Host/Port/baud/profile
 - [ ] EByte UDP probe (needs a fresh capture first)
 - [ ] USR search probe (needs a capture first)
 - [x] `--listnetworkdevices true` in the CLI (2026-10-08)
-- [ ] Connection Editor: "Detect network devices..." in WPF and TUI with prefill
+- [x] Connection Editor: "Detect network devices..." in WPF and TUI (2026-10-08); it fills Host and Port only, the transport stays `tcp`, so the richer per-kind prefill (vxi11 transport, USR/EByte settings) is still open
 - [ ] Spec (`docs/specs/connection-editor.md`) and user guide updated with real captures
 
 ## Status
