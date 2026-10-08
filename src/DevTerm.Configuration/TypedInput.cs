@@ -38,6 +38,21 @@ public static class TypedInput
     }
 
     /// <summary>
+    /// Encodes <paramref name="line"/> with the options' effective parser looked up in <paramref name="catalog"/>, for
+    /// callers (the control pipe) that have no send field. Returns the bytes, or an error message.
+    /// </summary>
+    public static (byte[]? Payload, string? Error) TryEncode(PresenterCatalog catalog, CliOptions options, string line)
+    {
+        var parser = options.EffectiveParser;
+        if (!catalog.TryGetInput(parser, out var input))
+        {
+            return (null, $"No presenter named '{parser}' can encode text.");
+        }
+
+        return TryEncode(input, parser, line, options.LineEnding, out var payload, out var error) ? (payload, null) : (null, error);
+    }
+
+    /// <summary>
     /// Builds the text to echo for a sent line (View &gt; Echo Sent Commands): <paramref name="line"/>
     /// with <paramref name="lineEnding"/>'s literal characters appended, then
     /// <see cref="EscapeForDisplay"/>d - so e.g. a CR/LF line ending shows as the two visible
