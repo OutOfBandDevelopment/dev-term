@@ -7,7 +7,6 @@ using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Scpi;
 using DevTerm.Logging;
 using DevTerm.Transports.Tcp;
 using Terminal.Gui.App;
@@ -73,7 +72,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -109,7 +108,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels, instruments);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -165,7 +164,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -183,7 +182,7 @@ public static class TuiMode
         // declared up here so a closure (AddTab, which can run before the menu exists) can safely read
         // them as still-null rather than hit a definite-assignment error.
         var contributedPanelItems = new List<(IDevicePanelContribution Panel, MenuItem Item)>();
-        MenuItem? scpiMenuItem = null;
+        var instrumentItems = new List<(IInstrumentPanelProvider Provider, MenuItem Item)>();
         MenuItem? manifestMenuItem = null;
         MenuItem? streamMonitorMenuItem = null;
 
@@ -533,6 +532,34 @@ public static class TuiMode
             }))));
         }
 
+        // One Device-menu entry per instrument provider (SCPI today): pick an instrument or auto-detect it, then open its data-driven panel.
+        foreach (var provider in instruments ?? [])
+        {
+            var captured = provider;
+            instrumentItems.Add((captured, new MenuItem(captured.MenuTitle, string.Empty, Guarded(() =>
+            {
+                var windowTab = ActiveTab();
+                var structuredSource = ResolveInstrumentPresenter(captured, windowTab.Tab.Session, windowTab.Tab.Catalog);
+                var saved = windowTab.Tab.CliOptions.ScpiProfile;
+                var picked = captured.Offers(saved) ? saved : PickInstrumentChoice(app, captured);
+                if (picked is null)
+                {
+                    return;
+                }
+
+                if (picked == captured.AutoDetectChoice)
+                {
+                    // The detect query is a real send/await over the live transport, so it cannot finish before the menu action
+                    // returns: fire-and-forget with the eventual window open marshaled back via Application.Invoke, the same
+                    // pattern ToggleConnectionAsync/SwitchProfileAsync use (real async I/O resumes off the UI thread).
+                    Observe(DetectAndOpenInstrumentAsync(app, captured, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab)), line => AppendOutput(windowTab, line));
+                    return;
+                }
+
+                OpenInstrumentWindow(app, captured, picked, windowTab.Tab.Session, structuredSource, PanelEcho(windowTab));
+            }))));
+        }
+
         var menuBar = new MenuBar(
         [
             new MenuBarItem("_File",
@@ -698,35 +725,7 @@ public static class TuiMode
                 // Session/Catalog, which SwitchProfileAsync reassigns on a profile switch and which
                 // changes altogether on a tab switch.
                 .. contributedPanelItems.Select(c => c.Item),
-                // One generic entry, not one per instrument, unlike the two above - the command set
-                // is data (ScpiProfileCatalog), not a hardcoded per-device UiDefinition, so a new
-                // instrument is a dropped-in JSON file, not a new menu item.
-                scpiMenuItem = new MenuItem("_SCPI Instrument...", string.Empty, Guarded(() =>
-                {
-                    var windowTab = ActiveTab();
-                    var structuredSource = ResolveActiveScpiPresenter(windowTab.Tab.Session, windowTab.Tab.Catalog);
-                    var picked = ResolveSavedScpiProfileChoice(windowTab.Tab.CliOptions.ScpiProfile) ?? PickScpiProfileChoice(app);
-                    if (picked is null)
-                    {
-                        return;
-                    }
-
-                    if (picked == _scpiAutoDetectChoice)
-                    {
-                        // *IDN? is a real send/await over the live transport - unlike the two panels
-                        // above, this can't finish before the menu action returns, so it's fire-and-
-                        // forget with the eventual window open marshaled back via Application.Invoke,
-                        // the same pattern ToggleConnectionAsync/SwitchProfileAsync use for the same
-                        // reason (real async I/O resumes off the UI thread).
-                        Observe(DetectAndOpenScpiInstrumentAsync(app, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab)), line => AppendOutput(windowTab, line));
-                        return;
-                    }
-
-                    var profile = picked == _scpiGenericChoice
-                        ? ScpiProfileCatalog.Generic
-                        : ScpiProfileCatalog.All.First(p => p.Name == picked);
-                    OpenScpiInstrumentWindow(app, windowTab.Tab.Session, structuredSource, profile, PanelEcho(windowTab));
-                })),
+                .. instrumentItems.Select(i => i.Item),
                 manifestMenuItem = new MenuItem("Device _Manifest...", string.Empty, Guarded(() => OpenDeviceManifest(app, ActiveTab().Tab.Session, PanelEcho(ActiveTab())))),
 
                 // Always available: editing a manifest needs no connection (see ManifestEditorMode).
@@ -862,7 +861,11 @@ public static class TuiMode
                 item.Enabled = connected && panel.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
             }
 
-            scpiMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Scpi, windowTab.Tab.CliOptions, connected);
+            foreach (var (provider, item) in instrumentItems)
+            {
+                item.Enabled = connected && provider.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
+            }
+
             manifestMenuItem!.Enabled = DevicePanels.IsAvailable(DevicePanel.Manifest, windowTab.Tab.CliOptions, connected);
 
             if (windowTab.Tab.Session.Transport is TcpTransport tcp)
@@ -1146,7 +1149,11 @@ public static class TuiMode
                 item.Enabled = false;
             }
 
-            scpiMenuItem!.Enabled = false;
+            foreach (var (_, item) in instrumentItems)
+            {
+                item.Enabled = false;
+            }
+
             manifestMenuItem!.Enabled = false;
             sendAsMenuBarItem!.Enabled = false;
             loggingMenuItem.Title = TuiLogging.StartTitle;
@@ -1401,7 +1408,7 @@ public static class TuiMode
             statusLabel,
             contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "k8055").Item!,
             contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "busylight").Item!,
-            scpiMenuItem!,
+            instrumentItems.FirstOrDefault(i => i.Provider.Id == "scpi").Item!,
             ToggleAndRefreshAsync,
             new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger),
             themeMenu,
@@ -1530,29 +1537,18 @@ public static class TuiMode
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
 
-    /// <summary>Centralized on <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/> so a saved <c>CliOptions.ScpiProfile</c> choice and this picker always agree on the exact same literal.</summary>
-    private const string _scpiAutoDetectChoice = ScpiProfileCatalog.AutoDetectChoiceName;
-
-    private static readonly string _scpiGenericChoice = ScpiProfileCatalog.Generic.Name;
-
     /// <summary>
-    /// Resolves the registered "scpi" presenter and binds it into <paramref name="session"/>'s live
-    /// pipeline if it isn't there already. <see cref="PresenterCatalog.TryGet"/> alone resolves the
-    /// DI-registered singleton regardless of whether the user selected "scpi" for this connection
-    /// (the pipeline is normally fixed at session-build time from
-    /// <see cref="CliOptions.EffectivePresenters"/>), which used to silently break query/reply
-    /// correlation: a Measure-style button still sent and the device still beeped, but the reply was
-    /// never routed through <c>ScpiReplyPresenter</c> so it never appeared anywhere — see
-    /// docs/changes/2026-09-23.md's real-hardware report. The fix binds the presenter onto the
-    /// session's existing <see cref="Session.Presenters"/>/<see cref="Pipeline"/> instance in place
-    /// (<see cref="Session.AddPresenter"/>) rather than resolving/rebuilding a new pipeline: the read
-    /// loop already holds a reference to this one, immutable-from-the-outside instance for the whole
-    /// life of the session, so anything not mutated into that same instance would never be seen by
-    /// it.
+    /// Resolves the provider's structured presenter (SCPI's reply presenter) and binds it into <paramref name="session"/>'s live
+    /// pipeline if it isn't there already. <see cref="PresenterCatalog.TryGet"/> alone resolves the DI-registered singleton
+    /// regardless of whether the user selected it for this connection (the pipeline is normally fixed at session-build time from
+    /// <see cref="CliOptions.EffectivePresenters"/>), which used to silently break query/reply correlation: a Measure-style button
+    /// still sent and the device still beeped, but the reply never reached the presenter - see docs/changes/2026-09-23.md's
+    /// real-hardware report. The presenter is bound onto the session's existing <see cref="Pipeline"/> in place
+    /// (<see cref="Session.AddPresenter"/>) because the read loop already holds a reference to that one instance.
     /// </summary>
-    private static IPresenter? ResolveActiveScpiPresenter(Session session, PresenterCatalog catalog)
+    private static IPresenter? ResolveInstrumentPresenter(IInstrumentPanelProvider provider, Session session, PresenterCatalog catalog)
     {
-        if (!catalog.TryGet("scpi", out var presenter))
+        if (!catalog.TryGet(provider.PresenterName, out var presenter))
         {
             return null;
         }
@@ -1562,54 +1558,33 @@ public static class TuiMode
     }
 
     /// <summary>
-    /// Resolves a saved <see cref="CliOptions.ScpiProfile"/> choice to a picker-equivalent string,
-    /// or <see langword="null"/> if it's unset/no longer resolvable — the latter falls back to
-    /// <see cref="PickScpiProfileChoice"/> exactly as if nothing had been saved.
+    /// Runs the provider's auto-detect with the connection's configured timeout, reporting progress in the output pane while it
+    /// waits and what it found afterward, then opens the matched instrument's panel (or the generic one).
     /// </summary>
-    private static string? ResolveSavedScpiProfileChoice(string? saved)
-    {
-        if (string.IsNullOrWhiteSpace(saved))
-        {
-            return null;
-        }
-
-        if (saved == _scpiAutoDetectChoice || saved == _scpiGenericChoice || ScpiProfileCatalog.All.Any(p => p.Name == saved))
-        {
-            return saved;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Runs the shared <see cref="ScpiAutoDetect"/> with the connection's configured timeout,
-    /// reporting progress in the output pane while it waits and what it found afterward, then opens
-    /// the matched profile's panel (or Generic).
-    /// </summary>
-    private static async Task DetectAndOpenScpiInstrumentAsync(IApplication app, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null)
+    private static async Task DetectAndOpenInstrumentAsync(IApplication app, IInstrumentPanelProvider provider, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null)
     {
         var timeout = TimeSpan.FromMilliseconds(timeoutMs);
-        appendStatus(ScpiAutoDetect.ProgressMessage(timeout));
+        appendStatus(provider.DetectProgressMessage(timeout));
 
-        ScpiAutoDetectResult result;
+        InstrumentDetection detection;
         try
         {
-            result = await ScpiAutoDetect.DetectAsync(session, structuredSource, timeout);
+            detection = await provider.DetectAsync(session, structuredSource, timeout);
         }
         catch (Exception ex)
         {
-            // The *IDN? send failed - the session has disconnected itself and reported why, so
+            // The detect send failed - the session has disconnected itself and reported why, so
             // there's no connection to open a panel against.
-            appendError($"SCPI auto-detect failed: {ex.Message}");
+            appendError($"Auto-detect failed: {ex.Message}");
             return;
         }
 
-        appendStatus(result.Describe(timeout));
+        appendStatus(detection.Message);
         app.Invoke(() =>
         {
             try
             {
-                OpenScpiInstrumentWindow(app, session, structuredSource, result.Profile ?? ScpiProfileCatalog.Generic, echoSent);
+                OpenInstrumentWindow(app, provider, detection.Choice, session, structuredSource, echoSent);
             }
             catch (Exception ex)
             {
@@ -1618,20 +1593,10 @@ public static class TuiMode
         });
     }
 
-    private static void OpenScpiInstrumentWindow(IApplication app, Session session, IPresenter? structuredSource, ScpiInstrumentProfile profile, Action<string>? echoSent = null)
+    private static void OpenInstrumentWindow(IApplication app, IInstrumentPanelProvider provider, string choice, Session session, IPresenter? structuredSource, Action<string>? echoSent = null)
     {
-        if (structuredSource is ScpiReplyPresenter replyPresenter)
-        {
-            replyPresenter.ConfigureTerminator(profile.Terminator);
-        }
-
-        var panelParts = ControlPanelMode.BuildWindow(
-            app,
-            ScpiUiDefinitionBuilder.Build(profile),
-            new ScpiControlSurface(session, profile, structuredSource as IScpiReplyTracker),
-            structuredSource,
-            $"dev-term — {profile.Name}",
-            echoSent);
+        var panel = provider.Open(choice, session, structuredSource);
+        var panelParts = ControlPanelMode.BuildWindow(app, panel.Definition, panel.Surface, structuredSource, panel.Title, echoSent);
         try
         {
             app.Run(panelParts.Window);
@@ -1645,12 +1610,8 @@ public static class TuiMode
     /// <summary>Device > Device Manifest...: pick a manifest and open its panel on the live session (see <see cref="ManifestPanelMode"/>).</summary>
     private static void OpenDeviceManifest(IApplication app, Session session, Action<string>? echoSent = null) => ManifestPanelMode.PickAndRun(app, session, echoSent);
 
-    internal static string? PickScpiProfileChoice(IApplication app)
-    {
-        var items = new List<string> { _scpiAutoDetectChoice, _scpiGenericChoice };
-        items.AddRange(ScpiProfileCatalog.All.Select(p => p.Name));
-        return PickFromList(app, "Select SCPI Instrument", items);
-    }
+    internal static string? PickInstrumentChoice(IApplication app, IInstrumentPanelProvider provider) =>
+        PickFromList(app, provider.PickerTitle, provider.PickerChoices());
 
     /// <summary>
     /// A small nested modal picker, the same plain Dialog+ListView pattern <c>ConfigureMode</c>'s own

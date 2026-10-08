@@ -5,8 +5,8 @@ using System.IO;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
-using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
@@ -479,13 +479,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public IReadOnlyList<string> HandshakeOptions { get; } = Enum.GetNames<Handshake>();
 
     /// <summary>
-    /// The saved-profile SCPI-instrument choice — <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/>,
-    /// <see cref="ScpiProfileCatalog.Generic"/>'s own name, or a real <see cref="ScpiProfileCatalog.All"/>
-    /// entry's name — preselected so the "SCPI Instrument..." menu item doesn't need its picker
+    /// The saved-profile SCPI-instrument choice — the auto-detect choice, the generic one, or a real profile's
+    /// name, all offered by the loaded <see cref="IInstrumentPanelProvider"/>s — preselected so the "SCPI Instrument..." menu item doesn't need its picker
     /// re-run every connection. Empty means "always ask" (today's behavior, unchanged).
     /// </summary>
-    public IReadOnlyList<string> ScpiProfileOptions { get; } =
-        [ScpiProfileCatalog.AutoDetectChoiceName, ScpiProfileCatalog.Generic.Name, .. ScpiProfileCatalog.All.Select(p => p.Name)];
+    public IReadOnlyList<string> ScpiProfileOptions { get; } = InstrumentPanelProviders.ProfileChoices();
 
     /// <summary>
     /// Serial ports actually attached to this machine right now (<see cref="ISerialPortDiscovery.GetPortNames"/>,

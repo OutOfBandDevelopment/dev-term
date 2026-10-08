@@ -1,5 +1,5 @@
 using DevTerm.Transports.Rfc2217;
-using DevTerm.Devices.Scpi;
+using DevTerm.Core.Control;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -49,12 +49,15 @@ public static class CliMode
 
         // The TUI/WPF control panels do this when they open; here a named profile does it up front, so a terminatorless
         // instrument (Rigol DS1102E, Korad) doesn't leave the scpi presenter buffering for a line ending that never comes.
-        if (cliOptions.ScpiProfile is { Length: > 0 } scpiProfileName
-            && ScpiProfileCatalog.All.FirstOrDefault(p => string.Equals(p.Name, scpiProfileName, StringComparison.OrdinalIgnoreCase)) is { } scpiProfile
-            && catalog.TryGet("scpi", out var scpiPresenter)
-            && scpiPresenter is ScpiReplyPresenter scpiReplyPresenter)
+        if (cliOptions.ScpiProfile is { Length: > 0 } instrumentProfileName)
         {
-            scpiReplyPresenter.ConfigureTerminator(scpiProfile.Terminator);
+            foreach (var provider in InstrumentPanelProviders.All)
+            {
+                if (catalog.TryGet(provider.PresenterName, out var instrumentPresenter) && provider.ConfigureForProfile(instrumentProfileName, instrumentPresenter))
+                {
+                    break;
+                }
+            }
         }
 
         session.Output += (_, output) => stdout.WriteLine($"[{output.PresenterName}] {output.Text}");

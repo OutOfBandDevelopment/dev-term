@@ -36,7 +36,7 @@ public sealed class TuiDialogLayoutTests
     [TestMethod]
     [DynamicData(nameof(SizesAndThemes))]
     public void ScpiInstrumentPicker(int width, int height, string theme) =>
-        TuiReview.Modal("dialog-scpi-picker", width, height, theme, Background, app => TuiMode.PickScpiProfileChoice(app));
+        TuiReview.Modal("dialog-scpi-picker", width, height, theme, Background, app => TuiMode.PickInstrumentChoice(app, new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()));
 
     [TestMethod]
     [DynamicData(nameof(SizesAndThemes))]

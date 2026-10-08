@@ -11,7 +11,6 @@ using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
-using DevTerm.Devices.Scpi;
 using DevTerm.Logging;
 
 namespace DevTerm.Wpf;
@@ -532,7 +531,11 @@ public partial class MainWindow : Window
         DeviceProfilesMenuItem.IsEnabled = false;
         StreamMonitorMenuItem.IsEnabled = false;
         RefreshPluginPanelItems(null, false);
-        ScpiMenuItem.IsEnabled = false;
+        foreach (var (_, item) in _instrumentItems)
+        {
+            item.IsEnabled = false;
+        }
+
         ManifestMenuItem.IsEnabled = false;
 
         SendBox.IsEnabled = false;
@@ -617,7 +620,7 @@ public partial class MainWindow : Window
             : state == ConnectionState.Opening ? ThemeRole.StatusConnecting : ThemeRole.StatusDisconnected));
 
         RefreshPluginPanelItems(tab, connected);
-        ScpiMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Scpi, tab.Tab.CliOptions, connected);
+        RefreshInstrumentItems(tab, connected);
         ManifestMenuItem.IsEnabled = DevicePanels.IsAvailable(DevicePanel.Manifest, tab.Tab.CliOptions, connected);
         RefreshSoftwareFlowControlMenu(tab);
     }
@@ -913,155 +916,6 @@ public partial class MainWindow : Window
 
     private void Plugins_Click(object sender, RoutedEventArgs e) =>
         MessageBox.Show(this, PluginReport.Text(Plugins), "dev-term — plugins", MessageBoxButton.OK, MessageBoxImage.Information);
-
-    private void ScpiInstrument_Click(object sender, RoutedEventArgs e)
-    {
-        var tab = ActiveWindowTab;
-        var chosen = ResolveSavedScpiProfileChoice(tab.Tab.CliOptions.ScpiProfile);
-        if (chosen is null)
-        {
-            var picker = new ScpiInstrumentPickerWindow { Owner = this };
-            if (picker.ShowDialog() != true || picker.Chosen is not { } picked)
-            {
-                return;
-            }
-
-            chosen = picked;
-        }
-
-        var structuredSource = ResolveActiveScpiPresenter();
-        if (chosen == ScpiInstrumentPickerWindow.AutoDetectChoice)
-        {
-            Observe(DetectAndOpenScpiInstrumentAsync(structuredSource));
-            return;
-        }
-
-        var profile = chosen == ScpiInstrumentPickerWindow.GenericChoice
-            ? ScpiProfileCatalog.Generic
-            : ScpiProfileCatalog.All.First(p => p.Name == chosen);
-        OpenScpiInstrumentWindow(tab, structuredSource, profile);
-    }
-
-    /// <summary>
-    /// Resolves the active tab's registered "scpi" presenter and binds it into that tab's session's
-    /// live pipeline if it isn't there already. <see cref="PresenterCatalog.TryGet"/> alone resolves
-    /// the DI-registered singleton regardless of whether the user selected "scpi" for this connection
-    /// (the pipeline is normally fixed at session-build time from
-    /// <see cref="CliOptions.EffectivePresenters"/>), which used to silently break query/reply
-    /// correlation: a Measure-style button still sent and the device still beeped, but the reply was
-    /// never routed through <c>ScpiReplyPresenter</c> so it never appeared anywhere — see
-    /// docs/changes/2026-09-23.md's real-hardware report. The fix binds the presenter onto the
-    /// session's existing <see cref="Session.Presenters"/>/<see cref="Pipeline"/> instance in place
-    /// (<see cref="Session.AddPresenter"/>) rather than resolving/rebuilding a new pipeline: the read
-    /// loop already holds a reference to this one, immutable-from-the-outside instance for the whole
-    /// life of the session, so anything not mutated into that same instance would never be seen by
-    /// it. Mirrors <c>TuiMode.ResolveActiveScpiPresenter</c>.
-    /// </summary>
-    private IPresenter? ResolveActiveScpiPresenter()
-    {
-        var tab = ActiveWindowTab;
-        if (!tab.Tab.Catalog.TryGet("scpi", out var presenter))
-        {
-            return null;
-        }
-
-        tab.Tab.Session.AddPresenter(presenter);
-        return presenter;
-    }
-
-    /// <summary>
-    /// Resolves a saved <see cref="CliOptions.ScpiProfile"/> choice to a picker-equivalent string,
-    /// or <see langword="null"/> if it's unset/no longer resolvable — the latter falls back to
-    /// showing <see cref="ScpiInstrumentPickerWindow"/> exactly as if nothing had been saved.
-    /// Mirrors <c>TuiMode.ResolveSavedScpiProfileChoice</c>.
-    /// </summary>
-    private static string? ResolveSavedScpiProfileChoice(string? saved)
-    {
-        if (string.IsNullOrWhiteSpace(saved))
-        {
-            return null;
-        }
-
-        if (saved == ScpiInstrumentPickerWindow.AutoDetectChoice
-            || saved == ScpiInstrumentPickerWindow.GenericChoice
-            || ScpiProfileCatalog.All.Any(p => p.Name == saved))
-        {
-            return saved;
-        }
-
-        return null;
-    }
-
-    // *IDN? is a real send/await over the live transport, so unlike the synchronous picker above
-    // this can't finish before the click handler returns - fire-and-forget (observed). Shares its
-    // detect logic with the TUI (ScpiAutoDetect); reports progress while it waits (a wait cursor and
-    // a status line) and what it found afterward, using the connection's configured timeout.
-    /// <summary>internal so a test can drive the auto-detect-during-a-profile-switch race directly.</summary>
-    internal async Task DetectAndOpenScpiInstrumentAsync(IPresenter? structuredSource)
-    {
-        if (ActiveWindowTabOrNull is not { } tab)
-        {
-            return;
-        }
-
-        // Captured so that if SwitchProfileAsync replaces this tab's Session/Catalog while this
-        // detection is in flight, the completion below can tell and not open a panel pairing the NEW
-        // session with structuredSource from the OLD catalog - part of bug 016, see
-        // docs/bugs/resolved/016-wpf-panels-bound-to-old-session.md's "Related" note.
-        var sessionAtStart = tab.Tab.Session;
-        var timeout = TimeSpan.FromMilliseconds(tab.Tab.CliOptions.ScpiAutoDetectTimeoutMs);
-        AppendOutput(tab, ScpiAutoDetect.ProgressMessage(timeout), OutputKind.Status);
-
-        ScpiAutoDetectResult result;
-        var previousCursor = Cursor;
-        Cursor = System.Windows.Input.Cursors.Wait;
-        try
-        {
-            result = await ScpiAutoDetect.DetectAsync(sessionAtStart, structuredSource, timeout);
-        }
-        catch (Exception ex)
-        {
-            // The *IDN? send failed - the session has disconnected itself and reported why, so
-            // there's no connection to open a panel against.
-            AppendOutput(tab, $"SCPI auto-detect failed: {ex.Message}", OutputKind.Error);
-            return;
-        }
-        finally
-        {
-            Cursor = previousCursor;
-        }
-
-        if (!ReferenceEquals(tab.Tab.Session, sessionAtStart))
-        {
-            // The profile changed while auto-detect was waiting; the detected profile belongs to a
-            // connection that's already closed, so there's nothing live to open a panel against.
-            return;
-        }
-
-        AppendOutput(tab, result.Describe(timeout), OutputKind.Status);
-        OpenScpiInstrumentWindow(tab, structuredSource, result.Profile ?? ScpiProfileCatalog.Generic);
-    }
-
-    // Show(), not ShowDialog(): unlike Device Profiles (a one-shot picker), this panel is meant to
-    // stay open and update live alongside the main window, not block it. Reuses the current, already
-    // -open session rather than opening a second competing connection to the same physical device.
-    private void OpenScpiInstrumentWindow(WindowTab tab, IPresenter? structuredSource, ScpiInstrumentProfile profile)
-    {
-        if (structuredSource is ScpiReplyPresenter replyPresenter)
-        {
-            replyPresenter.ConfigureTerminator(profile.Terminator);
-        }
-
-        var window = new ControlPanelWindow(
-            ScpiUiDefinitionBuilder.Build(profile),
-            new ScpiControlSurface(tab.Tab.Session, profile, structuredSource as IScpiReplyTracker),
-            structuredSource)
-        {
-            Owner = this,
-        };
-        TrackControlPanel(window, tab);
-        window.Show();
-    }
 
     // The window's one Stream Monitor, watching every tab's session (keyed by the tab) so captures from all
     // open sessions land in one list. Created on first use; tabs opened or closed while it exists are

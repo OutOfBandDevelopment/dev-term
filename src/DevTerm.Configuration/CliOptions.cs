@@ -415,8 +415,8 @@ public sealed class CliOptions
     public string? ManifestName { get; set; }
 
     /// <summary>
-    /// Names an entry from <c>DevTerm.Devices.Scpi.ScpiProfileCatalog.All</c> (or its
-    /// <c>Generic.Name</c>/<c>AutoDetectChoiceName</c> synthetic choices) to preselect when the "SCPI
+    /// Names an entry from the SCPI plugin's profile catalog (or its generic/auto-detect
+    /// synthetic choices, see <c>IInstrumentPanelProvider.PickerChoices</c>) to preselect when the "SCPI
     /// Instrument..." menu item opens, so a saved connection doesn't need the picker re-run every
     /// time. Null/unrecognized falls back to today's picker-always-shown behavior. Only meaningful
     /// when <see cref="Presenter"/> includes <c>"scpi"</c>.

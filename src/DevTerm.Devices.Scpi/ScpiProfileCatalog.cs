@@ -38,7 +38,7 @@ public static class ScpiProfileCatalog
 
     static ScpiProfileCatalog()
     {
-        _all = Load(AppContext.BaseDirectory, out _loadErrors);
+        _all = Load(Path.GetDirectoryName(typeof(ScpiProfileCatalog).Assembly.Location) is { Length: > 0 } pluginDirectory ? pluginDirectory : AppContext.BaseDirectory, out _loadErrors, AppContext.BaseDirectory);
     }
 
     /// <summary>
@@ -109,12 +109,12 @@ public static class ScpiProfileCatalog
     /// Same as <see cref="Load(string)"/>, but also reports which files (if any) failed to load
     /// instead of throwing — see <see cref="LoadFrom"/>.
     /// </summary>
-    internal static List<ScpiInstrumentProfile> Load(string baseDirectory, out List<string> errors)
+    internal static List<ScpiInstrumentProfile> Load(string baseDirectory, out List<string> errors, string? dropInBaseDirectory = null)
     {
         var profiles = new List<ScpiInstrumentProfile>();
         errors = [];
         LoadFrom(Path.Combine(baseDirectory, "Profiles"), profiles, errors);
-        LoadFrom(Path.Combine(baseDirectory, _dropInFolderName), profiles, errors);
+        LoadFrom(Path.Combine(dropInBaseDirectory ?? baseDirectory, _dropInFolderName), profiles, errors);
         LoadFrom(UserProfilesDirectory, profiles, errors);
         return profiles;
     }

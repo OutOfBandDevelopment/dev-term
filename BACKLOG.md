@@ -72,7 +72,7 @@ proposal file. Last swept 2026-10-08.
 
 **Decided 2026-10-08, to build (in this order of ask, none started):**
 1. Network discovery: shared `INetworkDeviceProbe`, mDNS and SSDP probes, Connection Editor "Detect network devices..." (WPF, TUI), `--listnetworkdevices`; fake-response unit tests only, marked not hardware-verified.
-2. Plugin-contributed panels: move the built-in decoders out of core, in stages, until core references no `DevTerm.Devices.*` project.
+2. Plugin-contributed panels: finish the checklist (front ends resolving only contributions, specs and user guide for the menu); the decoder move itself is done.
 3. Web: a Blazor profile editor over the project PUT/DELETE endpoints (form layout still to be shown to you).
 Decided against: the web host using the project file as its whole connection set (connections stay an extra list); supporting other ES51919 meters beyond "probably works". Keep it current: add a row when a proposal gains an unchecked item, delete the row
 when the item is checked off in the proposal (the `work-docs-audit` skill re-sweeps this section).
@@ -84,7 +84,7 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 | [network-device-discovery](docs/design/proposals/network-device-discovery.md) | Connection Editor "Detect network devices..." (WPF, TUI) with prefill; spec and guide with real captures | Buildable now |
 | [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR search probe | A fresh capture of each device |
 | [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | `IDeviceConfigEditor` seam and menu; EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
-| [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md) | TUI, WPF and web resolve contributions instead of naming device projects; remaining decoders moved out so core references no `DevTerm.Devices.*` project; specs and user guide for the menu | Buildable now (large refactor) |
+| [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md) | TUI, WPF and web resolve contributions instead of the hand-written built-in items; specs and user guide for the menu | Buildable now (large refactor) |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
 | [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers; Blazor front end for the remaining services (project editing) | Your setup; form layout decisions |

@@ -67,7 +67,7 @@ public sealed class TuiModeErrorHandlingTests
 
         TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, cliOptions), cliOptions, TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.", panels: TuiTestRunner.BuiltInPanels);
+            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, cliOptions), cliOptions, TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.", panels: TuiTestRunner.BuiltInPanels, instruments: TuiTestRunner.BuiltInInstruments);
 
             StringAssert.Contains(parts.Output.Text, "refused");
             Assert.IsFalse(parts.SendField.Enabled);

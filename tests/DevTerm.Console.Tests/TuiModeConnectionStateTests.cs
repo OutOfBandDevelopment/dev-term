@@ -50,7 +50,7 @@ public sealed class TuiModeConnectionStateTests
 
         TuiTestRunner.RunHeadlessApp(app =>
         {
-            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, Tcp()), Tcp(), TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.", panels: TuiTestRunner.BuiltInPanels);
+            var parts = TuiMode.BuildWindow(app, session, TuiTestRunner.CatalogFor(ascii, Tcp()), Tcp(), TuiTestRunner.EmptyProfiles(), "Could not open the connection: refused.", panels: TuiTestRunner.BuiltInPanels, instruments: TuiTestRunner.BuiltInInstruments);
 
             Assert.AreEqual(" ● Disconnected — tcp://127.0.0.1:1", parts.StatusLabel.Text);
             Assert.EndsWith(" — disconnected", parts.Window.Title);

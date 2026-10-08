@@ -44,7 +44,7 @@ public sealed class MainWindowSwitchProfileTests
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
-                PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
+                InstrumentProviders = [new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()], PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
             };
             await window.ConnectAsync();
             Assert.IsTrue(window.SendBox.IsEnabled);
@@ -92,7 +92,7 @@ public sealed class MainWindowSwitchProfileTests
                 IsolatedProfiles.Empty())
             {
                 ShowInTaskbar = false,
-                PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution()],
+                InstrumentProviders = [new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()], PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution()],
             };
             window.Show();
             await window.ConnectAsync();
@@ -139,8 +139,8 @@ public sealed class MainWindowSwitchProfileTests
             window.Show();
             await window.ConnectAsync();
 
-            // Never replies: DetectAndOpenScpiInstrumentAsync's *IDN? wait times out after 300 ms.
-            var detectTask = window.DetectAndOpenScpiInstrumentAsync(scpiPresenter);
+            // Never replies: DetectAndOpenInstrumentAsync's *IDN? wait times out after 300 ms.
+            var detectTask = window.DetectAndOpenInstrumentAsync(new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider(), scpiPresenter);
 
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
