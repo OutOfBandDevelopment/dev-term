@@ -384,4 +384,13 @@ public sealed class CliOptionsValidatorTests
         Assert.IsTrue(validator.Validate(null, new CliOptions { Transport = "loopback", ShareTcp = 70000 }).Failed);
         Assert.IsTrue(validator.Validate(null, new CliOptions { Transport = "loopback", ShareTcp = 2323, ShareBind = "not-an-ip" }).Failed);
     }
+
+    [TestMethod]
+    public void ControlHttp_MustBeAPort()
+    {
+        var validator = new CliOptionsValidator();
+
+        Assert.IsTrue(validator.Validate(null, new CliOptions { Transport = "loopback", ControlHttp = 8765 }).Succeeded);
+        Assert.IsTrue(validator.Validate(null, new CliOptions { Transport = "loopback", ControlHttp = 70000 }).Failed);
+    }
 }

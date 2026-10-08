@@ -336,6 +336,14 @@ public sealed class CliOptions
     [Category("Session")]
     public string ShareBind { get; set; } = "127.0.0.1";
 
+    /// <summary>Open the same read-write control as <see cref="Control"/> over HTTP on 127.0.0.1 at this port (0 is off), guarded by a per-run bearer token printed at startup: <c>POST /command</c>, <c>GET /events</c> (Server-Sent Events), <c>GET /ping</c>.</summary>
+    [Category("Session")]
+    public int ControlHttp { get; set; }
+
+    /// <summary>The bearer token <see cref="ControlHttp"/> requires; random per run when empty. Set it for the TUI and WPF, which have nowhere to print a generated one.</summary>
+    [Category("Session")]
+    public string? ControlToken { get; set; }
+
     /// <summary>Drive another dev-term process's session (started with <see cref="Control"/>): each line read from stdin is sent as a control command (<c>send ...</c>, <c>sendhex ...</c>, <c>ping</c>) and every line the session returns is printed; connects to nothing itself.</summary>
     [Category("Mode")]
     public string? ControlClient { get; set; }

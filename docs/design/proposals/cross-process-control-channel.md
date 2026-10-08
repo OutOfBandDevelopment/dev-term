@@ -63,7 +63,7 @@ pipe <- B
 - [x] Read-write named-pipe channel (`SessionControlPipeServer`, `--control <name>`, console CLI mode; decided 2026-10-07: current OS user only via `PipeOptions.CurrentUserOnly`, sends interleave through `Session.SendAsync`)
 - [x] `--control` in the TUI and WPF front ends (first tab's session only; not exercised by a front-end test)
 - [x] A client mode: `--controlclient <name>` reads commands from stdin and prints replies and events (checked across two real processes with the loopback transport, 2026-10-07)
-- [ ] Localhost web-service variant
+- [x] Localhost web-service variant (`--controlhttp <port>`, `SessionHttpControlServer`: 127.0.0.1 only, bearer token, `POST /command`, `GET /events` as SSE, `GET /ping`)
 
 ## Status
 

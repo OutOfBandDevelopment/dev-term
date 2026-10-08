@@ -116,7 +116,7 @@ public sealed class SessionControlPipeServer : ISessionObserver, IAsyncDisposabl
                 using var reader = new StreamReader(server, Encoding.UTF8, leaveOpen: true);
                 while (await reader.ReadLineAsync(_stop.Token).ConfigureAwait(false) is { } command)
                 {
-                    queue.Writer.TryWrite(await ExecuteAsync(command).ConfigureAwait(false));
+                    queue.Writer.TryWrite(await SessionCommands.ExecuteAsync(_session, _encodeText, command, _stop.Token).ConfigureAwait(false));
                 }
 
                 queue.Writer.TryComplete();
@@ -133,46 +133,6 @@ public sealed class SessionControlPipeServer : ISessionObserver, IAsyncDisposabl
                     _clients.Remove(queue);
                 }
             }
-        }
-    }
-
-    private async Task<string> ExecuteAsync(string command)
-    {
-        var space = command.IndexOf(' ', StringComparison.Ordinal);
-        var verb = (space < 0 ? command : command[..space]).ToLowerInvariant();
-        var argument = space < 0 ? string.Empty : command[(space + 1)..];
-        try
-        {
-            switch (verb)
-            {
-                case "ping":
-                    return "ok";
-                case "send":
-                {
-                    var (payload, error) = _encodeText(argument);
-                    if (payload is null)
-                    {
-                        return "error " + (error ?? "could not encode that text").ReplaceLineEndings(" ");
-                    }
-
-                    await _session.SendAsync(payload, _stop.Token).ConfigureAwait(false);
-                    return "ok";
-                }
-
-                case "sendhex":
-                    await _session.SendAsync(Convert.FromHexString(argument.Replace(" ", string.Empty, StringComparison.Ordinal)), _stop.Token).ConfigureAwait(false);
-                    return "ok";
-                default:
-                    return "error unknown command '" + verb + "' (send, sendhex, ping)";
-            }
-        }
-        catch (FormatException)
-        {
-            return "error sendhex needs an even number of hex digits";
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            return "error " + e.Message.ReplaceLineEndings(" ");
         }
     }
 

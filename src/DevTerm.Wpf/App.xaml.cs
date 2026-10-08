@@ -151,12 +151,20 @@ public partial class App : Application
             _controlRegistration = session.AddObserver(_controlServer);
         }
 
+        if (cliOptions.ControlHttp > 0)
+        {
+            _controlHttpServer = new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(catalog, cliOptions, text), cliOptions.ControlToken);
+            _controlHttpRegistration = session.AddObserver(_controlHttpServer);
+        }
+
         var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 
+    private SessionHttpControlServer? _controlHttpServer;
+    private IDisposable? _controlHttpRegistration;
     private SessionControlPipeServer? _controlServer;
     private IDisposable? _controlRegistration;
     private SessionPipeServer? _pipeServer;
@@ -164,6 +172,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _controlHttpRegistration?.Dispose();
+        _controlHttpServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _controlRegistration?.Dispose();
         _controlServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _pipeRegistration?.Dispose();

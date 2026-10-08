@@ -77,6 +77,15 @@ public static class CliMode
             stderr.WriteLine($"Accepting commands (send, sendhex, ping) for this session on the local pipe {controlServer.PipeName}, current user only.");
         }
 
+        await using var controlHttpServer = cliOptions.ControlHttp > 0
+            ? new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(input, parser, text, cliOptions.LineEnding, out var httpBytes, out var httpError) ? (httpBytes, null) : (null, httpError), cliOptions.ControlToken)
+            : null;
+        using var controlHttpRegistration = controlHttpServer is null ? null : session.AddObserver(controlHttpServer);
+        if (controlHttpServer is not null)
+        {
+            stderr.WriteLine($"Control over HTTP on http://127.0.0.1:{controlHttpServer.Port}/ with header 'Authorization: Bearer {controlHttpServer.Token}' (POST /command, GET /events, GET /ping).");
+        }
+
         await using var shareServer = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress)
             ? new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp)
             : null;

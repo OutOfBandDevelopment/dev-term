@@ -93,7 +93,9 @@ public static class TuiMode
         using var pipeRegistration = pipeServer is null ? null : session.AddObserver(pipeServer);
         await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control) ? null : new SessionControlPipeServer(session, cliOptions.Control, text => TypedInput.TryEncode(catalog, cliOptions, text));
         using var controlRegistration = controlServer is null ? null : session.AddObserver(controlServer);
-
+        await using var controlHttpServer = cliOptions.ControlHttp > 0 ? new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(catalog, cliOptions, text), cliOptions.ControlToken) : null;
+        using var controlHttpRegistration = controlHttpServer is null ? null : session.AddObserver(controlHttpServer);
+        
         var app = Application.Create().Init();
         TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;
         TuiTheme.ApplyActive();

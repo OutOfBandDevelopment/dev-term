@@ -316,6 +316,15 @@
     "ShareBind": {
       "type": "string"
     },
+    "ControlHttp": {
+      "type": "integer"
+    },
+    "ControlToken": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ControlClient": {
       "type": [
         "string",
