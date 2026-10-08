@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using System.Text;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Tcp;
@@ -13,27 +12,21 @@ namespace DevTerm.Transports.Vxi11.Tests;
 [TestClass]
 public sealed class RealHardwareVxi11Tests
 {
-    private const string _host = "192.168.0.87";
-
     public TestContext TestContext { get; set; } = null!;
 
     [TestMethod]
     public async Task Dg1062z_AnswersIdentify()
     {
-        using (var probe = new TcpClient())
+        // The unit takes a DHCP address (.87, then .127), so find it by LXI discovery instead of a fixed host.
+        var found = await LxiDiscovery.ScanAsync(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1), TestContext.CancellationToken);
+        var device = found.FirstOrDefault(d => d.Identity.Contains("DG1062Z", StringComparison.OrdinalIgnoreCase));
+        if (device is null)
         {
-            try
-            {
-                using var probeTimeout = new CancellationTokenSource(1500);
-                await probe.ConnectAsync(_host, 111, probeTimeout.Token);
-            }
-            catch (Exception ex) when (ex is SocketException or OperationCanceledException)
-            {
-                Assert.Inconclusive($"No VXI-11 instrument answered on {_host}:111.");
-            }
+            Assert.Inconclusive("No DG1062Z answered LXI discovery.");
         }
 
-        await using var transport = new Vxi11Transport(new SystemTcpConnectionSource(), Options.Create(new Vxi11TransportOptions { Host = _host, AppendLineFeedAtEnd = false }));
+        var host = device.Host;
+        await using var transport = new Vxi11Transport(new SystemTcpConnectionSource(), Options.Create(new Vxi11TransportOptions { Host = host, AppendLineFeedAtEnd = false }));
         await transport.OpenAsync(TestContext.CancellationToken);
         await transport.WriteAsync("*IDN?\n"u8.ToArray(), TestContext.CancellationToken);
 
