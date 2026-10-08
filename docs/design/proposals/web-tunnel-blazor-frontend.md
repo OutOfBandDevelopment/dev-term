@@ -196,7 +196,8 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] TLS served and checked with a generated self-signed certificate (`Https_WithACertificate_ServesOverTls...`)
 - [x] TLS with a CA-issued certificate: a generated CA signs the server certificate; a client trusting only that CA connects and one without it is refused (`Https_WithACaIssuedCertificate...`)
 - [ ] A real device through the page, multiple browsers (needs user setup)
-- [ ] Start with no connection arguments; device, project and connection services (REST) plus a host events stream (2026-10-03 direction)
+- [x] `GET /api/devices` lists serial ports and USB HID/USBTMC devices on the host (2026-10-08, `WebHostTests.ApiDevices_...`); `--controlhttp` is honored too
+- [ ] Start with no connection arguments; project create/manage services (REST) plus a host events stream (2026-10-03 direction)
 - [x] `/ws/{id}` tunnels, several connections open at once, all under the one shared token: `GET/POST /api/connections?name=`, `DELETE /api/connections/{id}` (POST/DELETE refused for a read-only viewer); built 2026-10-03, tested by `WebHostTests.ApiConnections_OpenFromTheProject_ThenTunnelAndClose`
 - [ ] Per-connection tokens (decided against)
 - [ ] OpenAPI + Scalar UI for the services; AsyncAPI document + UI for the WebSocket/event channels

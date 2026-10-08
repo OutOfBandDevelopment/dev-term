@@ -1,11 +1,11 @@
 ┌┤dev-term — Configure Connection (Ctrl+Q to quit)├────────────────────────────┐
 │[-] Presentation                                                             ▲│
 │  Presenters:            ☑ ascii ☐ utf8 ☐ hex ☐ decimal ☐ octal              ░│
-│                         ☐ binary ☐ k8055 ☐ busylight ☐ scpi                 ░│
-│                         ☐ radexone ☐ zoomh4n ☐ de5000 ☐ nmea                ░│
+│                         ☐ binary ☐ scpi ☐ busylight ☐ de5000                ░│
+│                         ☐ k8055 ☐ nmea ☐ radexone ☐ zoomh4n                 ░│
 │  Send as:               ◉ ascii  ○ utf8  ○ hex  ○ decimal  ○ octal          ░│
-│                         ○ binary  ○ k8055  ○ busylight  ○ scpi              ░│
-│                         ○ radexone  ○ zoomh4n  ○ de5000  ○ nmea             ░│
+│                         ○ binary  ○ scpi  ○ busylight  ○ de5000             ░│
+│                         ○ k8055  ○ nmea  ○ radexone  ○ zoomh4n              ░│
 │  Line ending:           ◉ None  ○ Cr  ○ Lf  ○ CrLf                          ░│
 │  ASCII max line length: 4096                                                ░│
 │                                                                             ░│

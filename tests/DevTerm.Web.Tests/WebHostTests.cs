@@ -57,6 +57,26 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiDevices_RequiresTheTokenAndReturnsTheThreeLists()
+    {
+        var (built, baseUrl) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync(baseUrl + "/api/devices")).StatusCode);
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var json = await client.GetStringAsync(baseUrl + "/api/devices");
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            foreach (var key in new[] { "serial", "hid", "usbtmc" })
+            {
+                Assert.AreEqual(System.Text.Json.JsonValueKind.Array, document.RootElement.GetProperty(key).ValueKind, key);
+            }
+
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ApiProject_ListsTheProjectFilesConnections()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");

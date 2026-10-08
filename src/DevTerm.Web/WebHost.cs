@@ -90,6 +90,8 @@ public static class WebHost
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
 
+        app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate()));
+
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
         var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
         app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
