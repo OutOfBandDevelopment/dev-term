@@ -1333,14 +1333,14 @@ public static class TuiMode
                 return;
             }
 
-            if (key == Key.T.WithCtrl)
+            if (key == Key.T.WithCtrl || key == Key.T.WithCtrl.WithShift)
             {
                 key.Handled = true;
                 newSessionMenuItem!.Action!.Invoke();
                 return;
             }
 
-            if (key == Key.W.WithCtrl)
+            if (key == Key.W.WithCtrl || key == Key.W.WithCtrl.WithShift)
             {
                 if (ActiveTabOrNull() is { } activeTab)
                 {

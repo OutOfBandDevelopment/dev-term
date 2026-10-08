@@ -171,6 +171,11 @@ public partial class MainWindow : Window
                     return true;
             }
         }
+        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key is Key.T or Key.W)
+        {
+            // Ctrl+Shift+T / Ctrl+Shift+W: the same new/close pair, for muscle memory from browser and terminal tabs.
+            return HandleGlobalKeyDown(key, ModifierKeys.Control);
+        }
         else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.Tab)
         {
             SelectAdjacentTab(-1);

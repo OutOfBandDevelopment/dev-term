@@ -74,7 +74,6 @@ proposal file. Last swept 2026-10-08.
 1. Network discovery: shared `INetworkDeviceProbe`, mDNS and SSDP probes, Connection Editor "Detect network devices..." (WPF, TUI), `--listnetworkdevices`; fake-response unit tests only, marked not hardware-verified.
 2. Plugin-contributed panels: move the built-in decoders out of core, in stages, until core references no `DevTerm.Devices.*` project.
 3. Web: a Blazor profile editor over the project PUT/DELETE endpoints (form layout still to be shown to you), and `--controlhttp` per opened connection (one port each).
-4. Multi-session tab shortcuts: Ctrl+Shift+T new, Ctrl+Shift+W close (TUI and WPF).
 Decided against: the web host using the project file as its whole connection set (connections stay an extra list); supporting other ES51919 meters beyond "probably works". Keep it current: add a row when a proposal gains an unchecked item, delete the row
 when the item is checked off in the proposal (the `work-docs-audit` skill re-sweeps this section).
 
