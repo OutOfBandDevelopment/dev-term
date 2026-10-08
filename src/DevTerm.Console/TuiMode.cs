@@ -95,6 +95,13 @@ public static class TuiMode
         using var controlRegistration = controlServer is null ? null : session.AddObserver(controlServer);
         await using var controlHttpServer = cliOptions.ControlHttp > 0 ? new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(catalog, cliOptions, text), cliOptions.ControlToken) : null;
         using var controlHttpRegistration = controlHttpServer is null ? null : session.AddObserver(controlHttpServer);
+
+        System.Net.IPAddress? shareAddress = null;
+        var shareOn = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out shareAddress);
+        await using var shareServer = shareOn && !cliOptions.ShareRfc2217 ? new SessionTcpShareServer(session, shareAddress!, cliOptions.ShareTcp) : null;
+        using var shareRegistration = shareServer is null ? null : session.AddObserver(shareServer);
+        await using var rfc2217Server = shareOn && cliOptions.ShareRfc2217 ? new DevTerm.Transports.Rfc2217.Rfc2217ServerBridge(session, shareAddress!, cliOptions.ShareTcp) : null;
+        using var rfc2217Registration = rfc2217Server is null ? null : session.AddObserver(rfc2217Server);
         
         var app = Application.Create().Init();
         TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;

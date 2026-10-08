@@ -157,12 +157,29 @@ public partial class App : Application
             _controlHttpRegistration = session.AddObserver(_controlHttpServer);
         }
 
+        if (cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress))
+        {
+            if (cliOptions.ShareRfc2217)
+            {
+                _rfc2217Server = new DevTerm.Transports.Rfc2217.Rfc2217ServerBridge(session, shareAddress, cliOptions.ShareTcp);
+                _shareRegistration = session.AddObserver(_rfc2217Server);
+            }
+            else
+            {
+                _shareServer = new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp);
+                _shareRegistration = session.AddObserver(_shareServer);
+            }
+        }
+
         var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 
+    private SessionTcpShareServer? _shareServer;
+    private DevTerm.Transports.Rfc2217.Rfc2217ServerBridge? _rfc2217Server;
+    private IDisposable? _shareRegistration;
     private SessionHttpControlServer? _controlHttpServer;
     private IDisposable? _controlHttpRegistration;
     private SessionControlPipeServer? _controlServer;
@@ -172,6 +189,9 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _shareRegistration?.Dispose();
+        _shareServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _rfc2217Server?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _controlHttpRegistration?.Dispose();
         _controlHttpServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _controlRegistration?.Dispose();
