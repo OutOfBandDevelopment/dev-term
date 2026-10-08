@@ -75,6 +75,41 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task OpenedConnection_WithControlHttp_GetsItsOwnControlServerClosedWithIt()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-ctl-{Guid.NewGuid():N}.json");
+        var controlPort = FreePort();
+        var project = new ProjectFile { Name = "Bench" };
+        project.Connections.Add(new ProjectConnection("Sim", $$"""{"Transport":"loopback","Presenter":["ascii"],"ControlHttp":{{controlPort}},"ControlToken":"ctl"}"""));
+        project.Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var baseUrl = $"http://127.0.0.1:{port}";
+            using var opened = await client.PostAsync(baseUrl + "/api/connections?name=Sim", null, TestContext.CancellationToken);
+            var json = System.Text.Json.JsonDocument.Parse(await opened.Content.ReadAsStringAsync(TestContext.CancellationToken)).RootElement;
+            Assert.AreEqual(controlPort, json.GetProperty("controlPort").GetInt32());
+
+            using var control = new HttpClient();
+            control.DefaultRequestHeaders.Authorization = new("Bearer", "ctl");
+            using var ping = await control.GetAsync($"http://127.0.0.1:{controlPort}/ping", TestContext.CancellationToken);
+            Assert.AreEqual(HttpStatusCode.OK, ping.StatusCode);
+
+            await client.DeleteAsync($"{baseUrl}/api/connections/{json.GetProperty("id").GetString()}", TestContext.CancellationToken);
+            await Assert.ThrowsAsync<HttpRequestException>(() => control.GetAsync($"http://127.0.0.1:{controlPort}/ping", TestContext.CancellationToken));
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
+    }
+
+    [TestMethod]
     public async Task ApiEvents_StreamsConnectionOpenedAndClosed()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-events-{Guid.NewGuid():N}.json");

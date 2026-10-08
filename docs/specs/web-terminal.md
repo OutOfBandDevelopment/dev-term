@@ -32,7 +32,7 @@ with the reason.
 | `/api/panel` | The configured panel's `UiDefinition` as JSON (404 when `Panel` is unset) |
 | `/api/project` | The `--project` file's connections as `[{"name", "description"}]` (no credentials); `[]` without a project |
 | `GET /api/connections` | The extra connections currently open: `[{"id", "name", "state"}]` |
-| `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name"}`; 404 for an unknown name, 403 for a read-only viewer |
+| `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name", "controlPort", "controlToken"}` (the last two null unless the profile sets `ControlHttp`, see "Per-connection control" below); 404 for an unknown name, 403 for a read-only viewer |
 | `DELETE /api/connections/{id}` | Closes it (204 whether or not it was open, so a repeat is harmless; 403 read-only) |
 | `/ws/{id}` | The same text WebSocket as `/ws`, for one opened connection |
 | `/api/devices` | Attached hardware: `{"serial": [...], "hid": [...], "usbtmc": [...]}`; a kind that cannot be enumerated returns `[]` |
@@ -53,6 +53,15 @@ redirects). Missing or wrong: 401. A browser `Origin` that differs from the host
 The same loopback channel as the console front ends (`POST /command`, `GET /events`, `GET /ping`) on the shared session,
 with its own bearer token (`--controltoken`, generated if omitted). It is separate from the host token, so a script can
 send commands without being able to open or close connections. The URL and token are printed at startup.
+
+### Per-connection control
+
+A project connection whose profile sets `ControlHttp` (a port) and optionally `ControlToken` gets its own loopback control
+server on that port when it is opened with `POST /api/connections` or the Connections page, with the same
+`/command`, `/events` and `/ping` and its own token (random if `ControlToken` is empty). One port per connection, so give
+each profile a different one; the server stops when the connection is closed, and an open that cannot bind the port fails
+with the error instead of leaving a half-open connection. Only profiles written by hand or by `PUT /api/project/...` carry
+`ControlHttp`: a project saved from open tabs drops session-only options.
 
 ## Behaviour
 

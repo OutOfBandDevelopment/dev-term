@@ -145,7 +145,7 @@ public static class WebHost
             }
 
             return await connections.OpenAsync(name, context.RequestAborted) is { } opened
-                ? Results.Json(new { id = opened.Id, name = opened.Name })
+                ? Results.Json(new { id = opened.Id, name = opened.Name, controlPort = opened.ControlPort, controlToken = opened.ControlToken })
                 : Results.NotFound();
         }).WithSummary("Open a project connection as its own session; 404 unknown name, 403 read-only");
         app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>

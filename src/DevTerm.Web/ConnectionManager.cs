@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using DevTerm.Configuration;
+using DevTerm.Core.Sessions;
 
 namespace DevTerm.Web;
 
@@ -7,11 +8,14 @@ namespace DevTerm.Web;
 /// The extra connections the host opens from its <c>--project</c> file, each its own <see cref="SessionHub"/>.
 /// Shared by the REST endpoints and the Blazor <c>/connections</c> page so both see the same set.
 /// </summary>
+/// <summary>An opened project connection; <see cref="ControlPort"/> and <see cref="ControlToken"/> are set only when its profile asked for <c>ControlHttp</c>.</summary>
+public sealed record OpenedConnection(string Id, string Name, int? ControlPort = null, string? ControlToken = null);
+
 public sealed class ConnectionManager
 {
     private readonly string? _projectPath;
     private readonly int _backlogLines;
-    private readonly ConcurrentDictionary<string, (string Name, SessionHub Hub)> _open = new();
+    private readonly ConcurrentDictionary<string, (string Name, SessionHub Hub, SessionHttpControlServer? Control, IDisposable? Registration)> _open = new();
     private readonly object _projectLock = new();
 
     public ConnectionManager(string? projectPath, int backlogLines, HostEvents events)
@@ -147,8 +151,12 @@ public sealed class ConnectionManager
         return found;
     }
 
-    /// <summary>Opens the named project connection; <see langword="null"/> when the project has no such connection.</summary>
-    public async Task<(string Id, string Name)?> OpenAsync(string name, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Opens the named project connection; <see langword="null"/> when the project has no such connection. A profile with
+    /// <c>ControlHttp</c> set also gets its own loopback control server on that port (one port per connection, token from
+    /// <c>ControlToken</c> or random), closed with the connection.
+    /// </summary>
+    public async Task<OpenedConnection?> OpenAsync(string name, CancellationToken cancellationToken = default)
     {
         ProjectConnection? chosen = null;
         try
@@ -167,12 +175,35 @@ public sealed class ConnectionManager
         var options = chosen.ToOptions();
         var built = DevTermSessionBuilder.Build(options);
         var connection = new SessionHub(built.Session, built.Catalog, options, _backlogLines);
-        await connection.StartAsync(cancellationToken);
+        SessionHttpControlServer? control = null;
+        IDisposable? registration = null;
+        try
+        {
+            if (options.ControlHttp > 0)
+            {
+                control = new SessionHttpControlServer(connection.Session, options.ControlHttp, text => TypedInput.TryEncode(connection.Catalog, options, text), options.ControlToken);
+                registration = connection.Session.AddObserver(control);
+            }
+
+            await connection.StartAsync(cancellationToken);
+        }
+        catch
+        {
+            registration?.Dispose();
+            if (control is not null)
+            {
+                await control.DisposeAsync();
+            }
+
+            await connection.DisposeAsync();
+            throw;
+        }
+
         var id = Guid.NewGuid().ToString("N")[..8];
-        _open[id] = (chosen.Name, connection);
+        _open[id] = (chosen.Name, connection, control, registration);
         connection.LineReceived += line => Events.Publish("line", new { id, text = line });
         Events.Publish("connection-opened", new { id, name = chosen.Name });
-        return (id, chosen.Name);
+        return new OpenedConnection(id, chosen.Name, control?.Port, control?.Token);
     }
 
     public async Task<bool> CloseAsync(string id)
@@ -180,6 +211,12 @@ public sealed class ConnectionManager
         if (!_open.TryRemove(id, out var removed))
         {
             return false;
+        }
+
+        removed.Registration?.Dispose();
+        if (removed.Control is not null)
+        {
+            await removed.Control.DisposeAsync();
         }
 
         await removed.Hub.DisposeAsync();
