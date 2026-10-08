@@ -18,6 +18,11 @@ public static class WebHost
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
     public sealed record Built(WebApplication App, SessionHub Hub, string Token, SessionHttpControlServer? ControlHttp = null);
 
+    /// <summary>True when the options name a connection (a transport other than the bare default, or a port/host).</summary>
+    internal static bool IsConfigured(CliOptions options) =>
+        !(string.Equals(options.Transport, new CliOptions().Transport, StringComparison.OrdinalIgnoreCase)
+          && string.IsNullOrEmpty(options.Port) && string.IsNullOrEmpty(options.Host));
+
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
     public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
     {
@@ -39,7 +44,7 @@ public static class WebHost
             var catalog = sp.GetRequiredService<PresenterCatalog>();
             var presenters = DevTermSessionBuilder.ResolvePresenters(catalog, cliOptions);
             var session = sp.GetRequiredService<ISessionFactory>().Create(sp.GetRequiredService<ITransport>(), new Pipeline(presenters));
-            return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines);
+            return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines) { Configured = IsConfigured(cliOptions) };
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
@@ -76,7 +81,27 @@ public static class WebHost
         app.MapStaticAssets(); // serves _framework/blazor.web.js, without which the Blazor panel never becomes interactive
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
-        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
+        app.MapPost("/api/session/connect", async (HttpContext context) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            await hub.StartAsync(context.RequestAborted);
+            return Results.Json(new { state = hub.State.ToString() });
+        }).WithSummary("Connect the host's own session (a no-op when open or when no connection is configured); 403 read-only");
+        app.MapPost("/api/session/disconnect", async (HttpContext context) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            await hub.DisconnectAsync();
+            return Results.Json(new { state = hub.State.ToString() });
+        }).WithSummary("Disconnect the host's own session; the next sent line reconnects. 403 read-only");
+        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { configured = hub.Configured, state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
 
         // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
         app.MapOpenApi("/openapi/v1.json");
@@ -86,6 +111,7 @@ public static class WebHost
         var events = app.Services.GetRequiredService<HostEvents>();
         var connections = app.Services.GetRequiredService<ConnectionManager>();
         hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
+        hub.StateChanged += () => events.Publish("session-state", new { state = hub.State.ToString() });
         app.MapGet("/api/events", async (HttpContext context) =>
         {
             context.Response.ContentType = "text/event-stream";

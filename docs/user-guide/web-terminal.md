@@ -80,6 +80,10 @@ The main page works like the desktop apps: the host's own session is the **dev-t
 
 ![Three sessions as tabs](images/web-terminal-tabs.png)
 
+The status line of the dev-term tab has a **Disconnect** button (and **Connect** once closed), like the desktop apps' Connect/Disconnect menu item:
+
+![Main session disconnected](images/web-terminal-disconnected.png)
+
 ### The /connections page
 
 Open `/connections` for the same thing as buttons: **Open** starts a project connection as its own session, **Close** ends it.

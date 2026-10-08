@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core.Transports;
 using DevTerm.Test.Utilities;
 
 namespace DevTerm.Web.Tests;
@@ -220,6 +221,31 @@ public class WebHostTests
 
             await built.App.StopAsync();
         }
+    }
+
+    [TestMethod]
+    public async Task ApiSession_DisconnectsAndReconnectsTheMainSession_NotForReadOnlyViewers()
+    {
+        var (built, baseUrl) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.IsTrue((await client.GetStringAsync(baseUrl + "/api/status", TestContext.CancellationToken)).Contains("\"state\":\"Open\"", StringComparison.Ordinal));
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync(baseUrl + "/api/session/disconnect", null, TestContext.CancellationToken)).StatusCode);
+            Assert.AreEqual(ConnectionState.Closed, built.Hub.State);
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync(baseUrl + "/api/session/connect", null, TestContext.CancellationToken)).StatusCode);
+            Assert.AreEqual(ConnectionState.Open, built.Hub.State);
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
+    }
+
+    [TestMethod]
+    public void IsConfigured_IsFalseOnlyForTheBareDefault()
+    {
+        Assert.IsFalse(WebHost.IsConfigured(new CliOptions()));
+        Assert.IsTrue(WebHost.IsConfigured(new CliOptions { Transport = "loopback" }));
+        Assert.IsTrue(WebHost.IsConfigured(new CliOptions { Port = "COM3" }));
     }
 
     [TestMethod]

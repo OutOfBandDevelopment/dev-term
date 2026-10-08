@@ -43,7 +43,7 @@ internal static class TerminalPage
           const out = document.getElementById('out'), status = document.getElementById('status'), input = document.getElementById('line');
           const tabsEl = document.getElementById('tabs'), panelEl = document.getElementById('panel');
           const tabs = []; let active = null; let panelShown = false;
-          let readOnly = false, profiles = [], pickedProfile = null;
+          let readOnly = false, profiles = [], pickedProfile = null, sessionOpen = false, configured = true;
 
           // One tab per session: the host's own session (/ws) and every connection opened from a saved profile (/ws/{id}).
           // Each keeps its own WebSocket and output, so switching tabs loses nothing.
@@ -75,9 +75,22 @@ internal static class TerminalPage
             if (active) {
               out.textContent = '';
               for (const l of active.lines) appendLine(l);
-              status.textContent = active.name + ' - ' + active.state;
+              const closed = active.key === 'main' && active.state === 'connected' && !sessionOpen;
+              status.textContent = active.name + ' - ' + (closed ? 'session closed' : active.state);
+              const tog = document.createElement('button'); tog.id = 'toggle'; tog.type = 'button';
+              if (active.key === 'main') {
+                tog.textContent = sessionOpen ? 'Disconnect' : 'Connect';
+                tog.disabled = readOnly || (!sessionOpen && !configured);
+                tog.onclick = async () => { await fetch('/api/session/' + (sessionOpen ? 'disconnect' : 'connect'), { method: 'POST' }); await refreshSession(); };
+                status.append(' ', tog);
+              }
               panelEl.hidden = !(panelShown && active.key === 'main');
             }
+          }
+          async function refreshSession() {
+            const st = await fetch('/api/status').then(r => r.json()).catch(() => null);
+            if (!st) return;
+            sessionOpen = st.state === 'Open'; configured = st.configured !== false; render();
           }
           function addTab(key, name, path, makeActive) {
             if (tabs.some(t => t.key === key)) return;
@@ -149,7 +162,7 @@ internal static class TerminalPage
           }
           (async () => {
             const st = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
-            readOnly = !!st.readOnly;
+            readOnly = !!st.readOnly; sessionOpen = st.state === 'Open'; configured = st.configured !== false;
             profiles = await fetch('/api/project').then(r => r.json()).catch(() => []);
             addTab('main', 'dev-term', '/ws', true);
             const open = await fetch('/api/connections').then(r => r.json()).catch(() => []);
@@ -158,6 +171,7 @@ internal static class TerminalPage
             const es = new EventSource('/api/events');
             es.addEventListener('connection-opened', e => { const c = JSON.parse(e.data); addTab(c.id, c.name, '/ws/' + c.id, false); });
             es.addEventListener('connection-closed', e => removeTab(JSON.parse(e.data).id));
+            es.addEventListener('session-state', e => { sessionOpen = JSON.parse(e.data).state === 'Open'; render(); });
             es.addEventListener('project-changed', async () => { profiles = await fetch('/api/project').then(r => r.json()).catch(() => profiles); render(); });
             const res = await fetch('/api/panel');
             if (!res.ok) return;

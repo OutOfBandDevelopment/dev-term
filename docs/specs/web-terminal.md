@@ -74,6 +74,8 @@ only.
 
 The main page has one tab per session, like the desktop apps: **dev-term** (the host's own session, `/ws`) and one tab for each connection opened from a saved profile (`/ws/{id}`). Each tab has its own WebSocket, output and status line (`<name> - connected|disconnected`); the send box goes to the active tab. The profile dropdown with **Open** (right of the tabs) starts a saved profile as a new tab (`POST /api/connections`); the **x** beside a tab closes it (`DELETE /api/connections/{id}`; the main tab has none). Tabs already open when the page loads are restored, and the `connection-opened`/`connection-closed` events keep every open browser tab in step with the `/connections` page and REST calls. The profile list follows `project-changed`. A read-only token can read every tab but cannot open or close one. The device panel, when configured, shows under the main tab only.
 
+The main tab's status line carries a **Connect/Disconnect** button for the host's own session (`POST /api/session/connect|disconnect`, 403 for a read-only token; `session-state` events keep every viewer current). Disconnecting leaves the tab and its output; the status reads `session closed`, and sending a line reconnects, as after a lost connection. A host started with no connection at all (`/api/status` `configured: false`) starts closed with a hint instead of a serial `PortName` error, and Connect stays disabled until a connection is configured; open a saved profile from the picker instead.
+
 ## Blazor connections page (`/connections`)
 
 Same token auth. Lists the `--project` file's connections (name, description, **Open**) and the extra connections currently

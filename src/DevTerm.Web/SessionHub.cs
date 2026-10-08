@@ -31,8 +31,17 @@ public sealed class SessionHub : IAsyncDisposable
             : throw new InvalidOperationException($"Unknown parser '{_parser}'. Available: {string.Join(", ", catalog.InputNames)}");
         _backlogLimit = Math.Max(1, backlogLines);
         _session.Output += (_, output) => Publish($"[{output.PresenterName}] {output.Text}");
-        _session.Disconnected += (_, e) => Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} The next line sent will reconnect.");
+        _session.Disconnected += (_, e) => { StateChanged?.Invoke(); Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} The next line sent will reconnect."); };
     }
+
+    /// <summary>
+    /// False when the host was started with no connection to make (nothing in the arguments or the saved default profile);
+    /// the main session then stays closed until someone connects it, instead of failing on default serial options.
+    /// </summary>
+    public bool Configured { get; init; } = true;
+
+    /// <summary>Raised when the session connects, disconnects or is lost, so a page can refresh its button.</summary>
+    public event Action? StateChanged;
 
     /// <summary>Raised for every output or status line.</summary>
     public event Action<string>? LineReceived;
@@ -57,9 +66,32 @@ public sealed class SessionHub : IAsyncDisposable
         }
     }
 
+    /// <summary>Closes the session on request (the next sent line reconnects, as after a lost connection).</summary>
+    public async Task DisconnectAsync()
+    {
+        if (_session.State == ConnectionState.Open)
+        {
+            await _session.CloseAsync();
+            Publish($"Disconnected from {Description}.");
+        }
+
+        StateChanged?.Invoke();
+    }
+
     /// <summary>Connects; a failure is shown to viewers instead of thrown, like the TUI/WPF startup, and the next send retries.</summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        if (!Configured)
+        {
+            Publish("Not connected: no connection is configured. Open a saved profile from the picker above, or save one on the Profiles page.");
+            return;
+        }
+
+        if (_session.State == ConnectionState.Open)
+        {
+            return;
+        }
+
         try
         {
             await _session.OpenAsync(cancellationToken);
@@ -69,6 +101,8 @@ public sealed class SessionHub : IAsyncDisposable
         {
             Publish($"! {ConnectionErrorMessages.For(_options.Transport, ex)}");
         }
+
+        StateChanged?.Invoke();
     }
 
     /// <summary>Encodes and sends one typed line. Returns an error message for the sender, or <see langword="null"/>.</summary>
@@ -90,6 +124,11 @@ public sealed class SessionHub : IAsyncDisposable
             return null;
         }
 
+        if (!Configured)
+        {
+            return "Not connected: no connection is configured. Open a saved profile from the picker above.";
+        }
+
         await _sendLock.WaitAsync(cancellationToken);
         try
         {
@@ -99,6 +138,7 @@ public sealed class SessionHub : IAsyncDisposable
                 {
                     await _session.OpenAsync(cancellationToken);
                     Publish($"Reconnected to {Description}.");
+                    StateChanged?.Invoke();
                 }
                 catch (Exception ex)
                 {

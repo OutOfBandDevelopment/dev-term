@@ -189,6 +189,21 @@ public class WebScreenshotTests
         await SaveAsync(page, "web-terminal-reply.png");
     });
 
+    /// <summary>The host's own tab can be disconnected and connected again from the page.</summary>
+    [TestMethod]
+    public Task TerminalPage_MainSession_DisconnectsAndReconnects() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Assertions.Expect(page.Locator("#toggle")).ToHaveTextAsync("Disconnect");
+        await page.Locator("#toggle").ClickAsync();
+        await Assertions.Expect(page.Locator("#status")).ToContainTextAsync("session closed");
+        await Assertions.Expect(page.Locator("#toggle")).ToHaveTextAsync("Connect");
+        await SaveAsync(page, "web-terminal-disconnected.png");
+        await page.Locator("#toggle").ClickAsync();
+        await Assertions.Expect(page.Locator("#toggle")).ToHaveTextAsync("Disconnect");
+    });
+
     /// <summary>Opens two saved profiles as tabs beside the host's own session; each keeps its own output, and closing one leaves the rest.</summary>
     [TestMethod]
     public Task TerminalPage_MultipleSessions_OpenSwitchAndClose() => RunAsync(async (page, baseUrl) =>
