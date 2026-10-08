@@ -1,3 +1,4 @@
+using DevTerm.Transports.Rfc2217;
 using DevTerm.Devices.Scpi;
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
@@ -86,13 +87,22 @@ public static class CliMode
             stderr.WriteLine($"Control over HTTP on http://127.0.0.1:{controlHttpServer.Port}/ with header 'Authorization: Bearer {controlHttpServer.Token}' (POST /command, GET /events, GET /ping).");
         }
 
-        await using var shareServer = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress)
+        await using var shareServer = cliOptions.ShareTcp > 0 && !cliOptions.ShareRfc2217 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress)
             ? new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp)
             : null;
         using var shareRegistration = shareServer is null ? null : session.AddObserver(shareServer);
         if (shareServer is not null)
         {
             stderr.WriteLine($"Sharing this session on {cliOptions.ShareBind}:{shareServer.Port} (no authentication; one client at a time).");
+        }
+
+        await using var rfc2217Server = cliOptions.ShareTcp > 0 && cliOptions.ShareRfc2217 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var rfc2217Address)
+            ? new Rfc2217ServerBridge(session, rfc2217Address, cliOptions.ShareTcp)
+            : null;
+        using var rfc2217Registration = rfc2217Server is null ? null : session.AddObserver(rfc2217Server);
+        if (rfc2217Server is not null)
+        {
+            stderr.WriteLine($"Sharing this session as an RFC 2217 serial port on {cliOptions.ShareBind}:{rfc2217Server.Port} (no authentication; one client at a time; baud/DTR/RTS requests are acknowledged but not applied to the device).");
         }
 
         try

@@ -313,6 +313,9 @@
     "ShareTcp": {
       "type": "integer"
     },
+    "ShareRfc2217": {
+      "type": "boolean"
+    },
     "ShareBind": {
       "type": "string"
     },

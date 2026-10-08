@@ -166,6 +166,8 @@ don't, since CTS has nothing to do with them. See `Session.Disconnected`, `Typed
 Whatever the device sends is copied to the connected TCP client, and whatever that client sends is written to the
 device (try `telnet 127.0.0.1 2323`). One client at a time; a second connection is closed at once. There is no
 authentication or encryption, so it binds loopback unless you pass `--sharebind 0.0.0.0` (or another address).
+
+Add `--sharerfc2217 true` to make that port speak RFC 2217, so a serial-aware tool can open it as a remote serial port (for example pyserial's `serial.serial_for_url('rfc2217://127.0.0.1:2323')`). The client's baud rate and DTR/RTS requests are acknowledged but not applied to the real device yet.
 This is a plain byte proxy: it does not negotiate RFC 2217 baud/DTR/RTS changes.
 
 ## Driving a session from another program

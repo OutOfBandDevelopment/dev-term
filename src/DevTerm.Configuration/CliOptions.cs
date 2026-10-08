@@ -332,6 +332,10 @@ public sealed class CliOptions
     [Category("Session")]
     public int ShareTcp { get; set; }
 
+    /// <summary>Make the <see cref="ShareTcp"/> port speak RFC 2217 (Telnet COM-PORT-OPTION) so a client such as pyserial's <c>rfc2217://</c> can use it as a remote serial port. The client's baud/DTR/RTS requests are acknowledged but not applied to the device.</summary>
+    [Category("Session")]
+    public bool ShareRfc2217 { get; set; }
+
     /// <summary>The address <see cref="ShareTcp"/> binds; loopback by default because the share has no authentication or encryption.</summary>
     [Category("Session")]
     public string ShareBind { get; set; } = "127.0.0.1";
