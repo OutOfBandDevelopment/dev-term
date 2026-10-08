@@ -21,6 +21,21 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException)
     return 1;
 }
 
+if (!string.IsNullOrWhiteSpace(webOptions.Profile))
+{
+    var store = new ConnectionProfileStore();
+    var name = store.List().FirstOrDefault(n => string.Equals(n, webOptions.Profile, StringComparison.OrdinalIgnoreCase));
+    if (name is null)
+    {
+        Console.Error.WriteLine($"No saved profile named '{webOptions.Profile}'. Saved: {string.Join(", ", store.List())}.");
+        return 1;
+    }
+
+    var project = cliOptions.Project;
+    cliOptions = store.Load(name);
+    cliOptions.Project = project;
+}
+
 // No connection configured at all is a valid start: the host comes up with its main session closed and connections are
 // opened at runtime (POST /api/connections from a --project file). A half-configured connection is still an error.
 var unconfigured = string.Equals(cliOptions.Transport, new CliOptions().Transport, StringComparison.OrdinalIgnoreCase)

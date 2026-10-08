@@ -17,6 +17,9 @@ public sealed class WebOptions
     /// <summary>Which device control panel to serve at <c>/api/panel</c> and show in the page: <c>k8055</c> or <c>busylight</c>. Blank serves none.</summary>
     public string? Panel { get; set; }
 
+    /// <summary>A saved connection profile (the same store as the TUI and WPF) for the host's own session; blank uses the usual layered options. <c>--Web:Profile Bench</c>.</summary>
+    public string? Profile { get; set; }
+
     /// <summary>Permit a non-loopback bind. Also requires a token and a certificate.</summary>
     public bool AllowRemote { get; set; }
 
