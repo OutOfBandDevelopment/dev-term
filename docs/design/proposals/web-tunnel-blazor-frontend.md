@@ -197,7 +197,8 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] TLS with a CA-issued certificate: a generated CA signs the server certificate; a client trusting only that CA connects and one without it is refused (`Https_WithACaIssuedCertificate...`)
 - [ ] A real device through the page, multiple browsers (needs user setup)
 - [x] `GET /api/devices` lists serial ports and USB HID/USBTMC devices on the host (2026-10-08, `WebHostTests.ApiDevices_...`); `--controlhttp` is honored too
-- [ ] Start with no connection arguments; project create/manage services (REST) (2026-10-03 direction)
+- [x] Project create/replace/remove services: `PUT`/`DELETE /api/project/connections/{name}` (2026-10-08, `WebHostTests.ApiProject_PutAndDelete...`)
+- [ ] Start with no connection arguments (2026-10-03 direction)
 - [x] Blazor connections page `/connections` (open/close project connections, live via the events; `ConnectionManager`; 2026-10-08, `WebScreenshotTests.ConnectionsPage_*`)
 - [x] API docs: OpenAPI + Scalar for REST, hand-written AsyncAPI for the streams (2026-10-08, `WebHostTests.ApiDocs_...`)
 - [x] Host events stream `GET /api/events` (SSE): `connection-opened`, `connection-closed` and `line` events for the main and opened connections (2026-10-08, `WebHostTests.ApiEvents_...`, `HostEventsTests`)

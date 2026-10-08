@@ -194,6 +194,50 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiProject_PutAndDeleteAConnection_EditsTheProjectFile()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Echo", new CliOptions { Transport = "loopback", Presenter = ["ascii"], Parser = "ascii" })]).Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret", ReadOnlyToken = "watch" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            var baseUrl = $"http://127.0.0.1:{port}";
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            using var watcher = new HttpClient();
+            watcher.DefaultRequestHeaders.Authorization = new("Bearer", "watch");
+            static StringContent Json(string text) => new(text, Encoding.UTF8, "application/json");
+
+            Assert.AreEqual(HttpStatusCode.Forbidden, (await watcher.PutAsync(baseUrl + "/api/project/connections/Lab", Json("{\"Transport\":\"loopback\"}"))).StatusCode);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PutAsync(baseUrl + "/api/project/connections/Bad", Json("{\"Transport\":\"tcp\"}"))).StatusCode);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PutAsync(baseUrl + "/api/project/connections/Bad", Json("not json"))).StatusCode);
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.PutAsync(baseUrl + "/api/project/connections/Lab", Json("{\"Transport\":\"tcp\",\"Host\":\"10.0.0.5\",\"Port\":23}"))).StatusCode);
+            var listed = await client.GetStringAsync(baseUrl + "/api/project");
+            StringAssert.Contains(listed, "Lab");
+            StringAssert.Contains(listed, "Echo");
+            Assert.AreEqual(2, ProjectFile.Load(file).Connections.Count);
+
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync(baseUrl + "/api/project/connections/Lab")).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync(baseUrl + "/api/project/connections/Lab")).StatusCode);
+            Assert.AreEqual(1, ProjectFile.Load(file).Connections.Count);
+
+            File.WriteAllText(file, "{ not a project");
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PutAsync(baseUrl + "/api/project/connections/Lab", Json("{\"Transport\":\"loopback\"}"))).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync(baseUrl + "/api/project/connections/Echo")).StatusCode);
+            await built.App.StopAsync();
+        }
+
+        File.Delete(file);
+    }
+
+    [TestMethod]
     public async Task ApiConnections_OpenFromTheProject_ThenTunnelAndClose()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");

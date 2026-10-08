@@ -109,6 +109,24 @@ public static class WebHost
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
         app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description }))).WithSummary("The project file's connections (name and description only)");
 
+        // Create, replace and remove a project connection. The body is the profile JSON (what a saved profile holds).
+        app.MapPut("/api/project/connections/{name}", async (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var error = connections.Upsert(name, await reader.ReadToEndAsync(context.RequestAborted));
+            return error is null ? Results.NoContent() : Results.BadRequest(new { error });
+        }).WithSummary("Create or replace a project connection from profile JSON; 400 with the reason when invalid or there is no --project");
+        app.MapDelete("/api/project/connections/{name}", (HttpContext context, string name) =>
+            context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem)
+                ? Results.StatusCode(StatusCodes.Status403Forbidden)
+                : connections.Remove(name) ? Results.NoContent() : Results.NotFound())
+            .WithSummary("Remove a project connection; 404 when unknown");
+
         // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
         // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
         app.MapGet("/api/connections", () => Results.Json(connections.Open().Select(c => new { id = c.Id, name = c.Name, state = c.State }))).WithSummary("The extra connections currently open");

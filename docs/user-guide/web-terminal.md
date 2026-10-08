@@ -49,6 +49,21 @@ event: connection-closed
 data: {"id":"5dea72d2"}
 ```
 
+### Editing the project
+
+A host started with `--project <file>` can also add, replace and remove the project's connections. Real output, same host and token
+(the second call is a profile that fails validation, and nothing is written for it):
+
+```
+PUT    /api/project/connections/Lab  {"Transport":"tcp","Host":"10.0.0.5","Port":23}  -> 204
+PUT    /api/project/connections/Bad  {"Transport":"tcp"}  -> 400 {"error":"Missing or invalid '--port' for the TCP transport (expected 1-65535)."}
+GET    /api/project                  -> [{"name":"Sim","description":"loopback://"},{"name":"Lab","description":"tcp://10.0.0.5:23"}]
+DELETE /api/project/connections/Lab  -> 204
+GET    /api/project                  -> [{"name":"Sim","description":"loopback://"}]
+```
+
+A new connection can then be opened with `POST /api/connections?name=Lab`.
+
 ### Browsing the API
 
 `/scalar/v1` is an interactive reference for the REST endpoints (try a call from the page), `/openapi/v1.json` is the same

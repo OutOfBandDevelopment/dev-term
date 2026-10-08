@@ -37,6 +37,8 @@ with the reason.
 | `/ws/{id}` | The same text WebSocket as `/ws`, for one opened connection |
 | `/api/devices` | Attached hardware: `{"serial": [...], "hid": [...], "usbtmc": [...]}`; a kind that cannot be enumerated returns `[]` |
 | `/api/events` | Server-Sent Events: `connection-opened` `{id, name}`, `connection-closed` `{id}` and `line` `{id, text}` (`id` is `main` for the shared session). Each subscriber has a 256-event queue that drops its oldest |
+| `PUT /api/project/connections/{name}` | Create or replace a connection in the `--project` file; the body is profile JSON (`{"Transport":"tcp","Host":"10.0.0.5","Port":23}`), validated like a CLI profile. 204 saved; 400 with `{"error"}` when invalid, when the file is unreadable, or when the host has no `--project`; 403 for a read-only viewer. Existing history and log settings are kept |
+| `DELETE /api/project/connections/{name}` | Remove a connection from the project file; 204, 404 unknown name, 403 read-only. Both publish a `project-changed` event |
 | `/openapi/v1.json` | OpenAPI 3.1 for the plain REST endpoints (the streaming ones, `/ws` and `/api/events`, are not in it) |
 | `/scalar/v1` | The Scalar viewer over that document |
 | `/asyncapi.json` | AsyncAPI 3.0 for `/ws`, `/ws/{id}` and `/api/events`, written by hand in `AsyncApiDocument` (keep it in step with `WebSocketTunnel` and `HostEvents`) |
