@@ -8,6 +8,9 @@ namespace DevTerm.Configuration;
 /// <summary>The live state of one open tab, as captured into a project: its connection plus its send history and whether it was logging.</summary>
 public sealed record ProjectTabState(string Name, CliOptions Options, IReadOnlyList<string> History, bool Logging);
 
+/// <summary>The main window's position and size when a project was saved (device-independent pixels), and whether it was maximized. Only the WPF front end uses it.</summary>
+public sealed record ProjectWindowBounds(double Left, double Top, double Width, double Height, bool Maximized);
+
 /// <summary>
 /// One connection in a <see cref="ProjectFile"/>: a name plus the same connection-relevant JSON a saved profile holds
 /// (transport settings and presenter choices), and optionally the tab's <see cref="History"/> (most recent first) and
@@ -46,6 +49,9 @@ public sealed class ProjectFile
     /// <summary>The name of the connection whose tab was in front when the project was saved (the window layout), or null.</summary>
     public string? Active { get; set; }
 
+    /// <summary>The main window's bounds when saved (WPF), or null.</summary>
+    public ProjectWindowBounds? Window { get; set; }
+
     /// <summary>Builds a project from open tabs, keeping each tab's send history and log setting and which one is <paramref name="active"/>.</summary>
     public static ProjectFile FromTabs(string name, IEnumerable<ProjectTabState> tabs, string? active)
     {
@@ -77,6 +83,7 @@ public sealed class ProjectFile
         {
             ["Name"] = Name,
             ["Active"] = Active,
+            ["Window"] = Window is { } w ? new JsonObject { ["Left"] = w.Left, ["Top"] = w.Top, ["Width"] = w.Width, ["Height"] = w.Height, ["Maximized"] = w.Maximized } : null,
             ["Connections"] = new JsonArray([.. Connections.Select(c => (JsonNode?)new JsonObject
             {
                 ["Name"] = c.Name,
@@ -95,6 +102,15 @@ public sealed class ProjectFile
         {
             var root = JsonNode.Parse(json) as JsonObject ?? throw new InvalidDataException("A project file must be a JSON object.");
             var project = new ProjectFile { Name = (string?)root["Name"] ?? string.Empty, Active = (string?)root["Active"] };
+            if (root["Window"] is JsonObject window
+                && window["Left"] is JsonValue left && window["Top"] is JsonValue top
+                && window["Width"] is JsonValue width && window["Height"] is JsonValue height
+                && left.TryGetValue<double>(out var l) && top.TryGetValue<double>(out var t)
+                && width.TryGetValue<double>(out var w) && height.TryGetValue<double>(out var h))
+            {
+                project.Window = new ProjectWindowBounds(l, t, w, h, window["Maximized"] is JsonValue m && m.TryGetValue<bool>(out var max) && max);
+            }
+
             foreach (var node in root["Connections"] as JsonArray ?? [])
             {
                 if (node is not JsonObject connection || connection["Profile"] is not JsonObject profile)

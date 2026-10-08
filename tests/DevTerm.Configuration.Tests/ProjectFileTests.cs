@@ -28,6 +28,16 @@ public sealed class ProjectFileTests
     }
 
     [TestMethod]
+    public void RoundTrip_KeepsTheWindowBounds_AndOldFilesWithoutThemStillLoad()
+    {
+        var project = Sample();
+        project.Window = new ProjectWindowBounds(10.5, 20, 900, 600, true);
+        var loaded = ProjectFile.FromJson(project.ToJson());
+        Assert.AreEqual(project.Window, loaded.Window);
+        Assert.IsNull(ProjectFile.FromJson(Sample().ToJson()).Window);
+    }
+
+    [TestMethod]
     public void Find_WithNoName_ReturnsTheFirstConnection_AndUnknownReturnsNull()
     {
         var project = Sample();
