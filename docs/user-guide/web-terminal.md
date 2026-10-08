@@ -84,6 +84,10 @@ The status line of the dev-term tab has a **Disconnect** button (and **Connect**
 
 ![Main session disconnected](images/web-terminal-disconnected.png)
 
+The dropdown beside Disconnect switches the main tab to another saved profile in place, like the desktop apps' profile switch; output stays, the session behind it changes:
+
+![Main tab switched to another profile](images/web-terminal-switched.png)
+
 ### The /connections page
 
 Open `/connections` for the same thing as buttons: **Open** starts a project connection as its own session, **Close** ends it.

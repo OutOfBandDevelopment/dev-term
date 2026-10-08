@@ -11,10 +11,10 @@ namespace DevTerm.Web;
 /// </summary>
 public sealed class SessionHub : IAsyncDisposable
 {
-    private readonly Session _session;
-    private readonly CliOptions _options;
-    private readonly IPresenterInput _input;
-    private readonly string _parser;
+    private Session _session;
+    private CliOptions _options;
+    private IPresenterInput _input;
+    private string _parser;
     private readonly int _backlogLimit;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private readonly object _gate = new();
@@ -22,23 +22,87 @@ public sealed class SessionHub : IAsyncDisposable
 
     public SessionHub(Session session, PresenterCatalog catalog, CliOptions options, int backlogLines)
     {
-        _session = session;
-        Catalog = catalog;
-        _options = options;
-        _parser = options.EffectiveParser;
-        _input = catalog.TryGetInput(_parser, out var input)
-            ? input
-            : throw new InvalidOperationException($"Unknown parser '{_parser}'. Available: {string.Join(", ", catalog.InputNames)}");
         _backlogLimit = Math.Max(1, backlogLines);
-        _session.Output += (_, output) => Publish($"[{output.PresenterName}] {output.Text}");
-        _session.Disconnected += (_, e) => { StateChanged?.Invoke(); Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} The next line sent will reconnect."); };
+        _session = session;
+        _options = options;
+        Catalog = catalog;
+        (_parser, _input) = ResolveInput(catalog, options);
+        Attach(session, options);
     }
+
+    private static (string Parser, IPresenterInput Input) ResolveInput(PresenterCatalog catalog, CliOptions options)
+    {
+        var parser = options.EffectiveParser;
+        return catalog.TryGetInput(parser, out var input)
+            ? (parser, input)
+            : throw new InvalidOperationException($"Unknown parser '{parser}'. Available: {string.Join(", ", catalog.InputNames)}");
+    }
+
+    private void Attach(Session session, CliOptions options)
+    {
+        session.Output += (_, output) => { if (ReferenceEquals(session, _session)) { Publish($"[{output.PresenterName}] {output.Text}"); } };
+        session.Disconnected += (_, e) =>
+        {
+            if (ReferenceEquals(session, _session))
+            {
+                StateChanged?.Invoke();
+                Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} The next line sent will reconnect.");
+            }
+        };
+    }
+
+    /// <summary>
+    /// Replaces the host's own connection with <paramref name="options"/> (a saved profile): the old session is closed and
+    /// disposed, a new one is built and connected, and viewers stay attached with their output kept. A failed connect is
+    /// reported to viewers, and the new profile stays selected (the next sent line retries), as at startup.
+    /// </summary>
+    public async Task SwitchAsync(CliOptions options, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var built = DevTermSessionBuilder.Build(options);
+        var parsed = ResolveInput(built.Catalog, options);
+        await _sendLock.WaitAsync(cancellationToken);
+        Session old;
+        try
+        {
+            old = _session;
+            _session = built.Session;
+            _options = options;
+            Catalog = built.Catalog;
+            (_parser, _input) = parsed;
+            Configured = true;
+            ProfileName = name;
+            Attach(built.Session, options);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+
+        await old.DisposeAsync();
+        Publish($"Switched to {name}.");
+        SessionChanged?.Invoke();
+        StateChanged?.Invoke();
+        await StartAsync(cancellationToken);
+    }
+
+    /// <summary>The saved profile the host's own session was switched to; <see langword="null"/> until a switch.</summary>
+    public string? ProfileName { get; private set; }
+
+    /// <summary>Raised after <see cref="SwitchAsync"/> replaced the session (anything holding the old one must rebind).</summary>
+    public event Action? SessionChanged;
 
     /// <summary>
     /// False when the host was started with no connection to make (nothing in the arguments or the saved default profile);
     /// the main session then stays closed until someone connects it, instead of failing on default serial options.
     /// </summary>
-    public bool Configured { get; init; } = true;
+    public bool Configured { get; private set; } = true;
+
+    internal SessionHub WithConfigured(bool configured)
+    {
+        Configured = configured;
+        return this;
+    }
 
     /// <summary>Raised when the session connects, disconnects or is lost, so a page can refresh its button.</summary>
     public event Action? StateChanged;
@@ -49,7 +113,7 @@ public sealed class SessionHub : IAsyncDisposable
     internal Session Session => _session;
 
     /// <summary>The catalog this session's presenters came from (a fresh catalog would be a different, unconnected set).</summary>
-    internal PresenterCatalog Catalog { get; }
+    internal PresenterCatalog Catalog { get; private set; }
 
     public ConnectionState State => _session.State;
 

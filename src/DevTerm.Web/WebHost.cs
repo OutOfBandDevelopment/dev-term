@@ -44,7 +44,7 @@ public static class WebHost
             var catalog = sp.GetRequiredService<PresenterCatalog>();
             var presenters = DevTermSessionBuilder.ResolvePresenters(catalog, cliOptions);
             var session = sp.GetRequiredService<ISessionFactory>().Create(sp.GetRequiredService<ITransport>(), new Pipeline(presenters));
-            return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines) { Configured = IsConfigured(cliOptions) };
+            return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines).WithConfigured(IsConfigured(cliOptions));
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
@@ -73,6 +73,7 @@ public static class WebHost
 
         var app = builder.Build();
         var hub = app.Services.GetRequiredService<SessionHub>();
+        var connections = app.Services.GetRequiredService<ConnectionManager>();
 
         app.UseMiddleware<AccessTokenMiddleware>(token, webOptions.ReadOnlyToken ?? string.Empty);
         app.UseWebSockets();
@@ -91,6 +92,30 @@ public static class WebHost
             await hub.StartAsync(context.RequestAborted);
             return Results.Json(new { state = hub.State.ToString() });
         }).WithSummary("Connect the host's own session (a no-op when open or when no connection is configured); 403 read-only");
+        app.MapPost("/api/session/profile", async (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            var options = connections.ProjectOptions(name);
+            if (options is null)
+            {
+                return Results.NotFound();
+            }
+
+            try
+            {
+                await hub.SwitchAsync(options, name);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            return Results.Json(new { state = hub.State.ToString(), profile = hub.ProfileName });
+        }).WithSummary("Switch the host's own session to a saved profile (closes the old connection, connects the new one); 404 unknown, 403 read-only");
         app.MapPost("/api/session/disconnect", async (HttpContext context) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -101,7 +126,7 @@ public static class WebHost
             await hub.DisconnectAsync();
             return Results.Json(new { state = hub.State.ToString() });
         }).WithSummary("Disconnect the host's own session; the next sent line reconnects. 403 read-only");
-        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { configured = hub.Configured, state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
+        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { configured = hub.Configured, profile = hub.ProfileName, state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
 
         // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
         app.MapOpenApi("/openapi/v1.json");
@@ -109,7 +134,6 @@ public static class WebHost
         app.MapGet("/asyncapi", () => Results.Content(AsyncApiDocument.Viewer, "text/html"));
         app.MapGet("/asyncapi.json", () => Results.Content(AsyncApiDocument.Json, "application/json"));
         var events = app.Services.GetRequiredService<HostEvents>();
-        var connections = app.Services.GetRequiredService<ConnectionManager>();
         hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
         hub.StateChanged += () => events.Publish("session-state", new { state = hub.State.ToString() });
         app.MapGet("/api/events", async (HttpContext context) =>
@@ -214,12 +238,29 @@ public static class WebHost
             var holder = app.Services.GetRequiredService<Components.PanelHostHolder>();
             holder.Set(definition, surface);
             var presenterName = app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, webOptions.Panel, StringComparison.OrdinalIgnoreCase))?.PresenterName ?? webOptions.Panel!.ToLowerInvariant();
-            if (hub.Catalog.TryGet(presenterName, out var source) && source is IStructuredPresenter structured)
+            void Subscribe()
             {
-                structured.ValuesChanged += (_, values) => holder.Publish(values);
+                if (hub.Catalog.TryGet(presenterName, out var source) && source is IStructuredPresenter structured)
+                {
+                    structured.ValuesChanged += (_, values) => holder.Publish(values);
+                }
             }
 
-            app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, surface, request));
+            Subscribe();
+            var contribution = app.Services.GetServices<IDevicePanelContribution>().FirstOrDefault(c => string.Equals(c.Id, webOptions.Panel, StringComparison.OrdinalIgnoreCase));
+            var liveSurface = surface;
+            if (contribution is not null)
+            {
+                // A switched profile brings a new session and presenter set: point the panel at them.
+                hub.SessionChanged += () =>
+                {
+                    liveSurface = contribution.CreateSurface(hub.Session);
+                    holder.Set(definition, liveSurface);
+                    Subscribe();
+                };
+            }
+
+            app.MapPost("/api/invoke", (HttpContext context, InvokeRequest request) => PanelApi.InvokeAsync(context, liveSurface, request));
         }
         else
         {

@@ -204,6 +204,24 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("#toggle")).ToHaveTextAsync("Disconnect");
     });
 
+    /// <summary>Switching the main tab to another saved profile replaces its session in place and keeps the tab.</summary>
+    [TestMethod]
+    public Task TerminalPage_MainSession_SwitchesProfileInPlace() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Task.Delay(500);
+        await page.Locator("#switchprofile").SelectOptionAsync("Supply");
+        await page.Locator("#switch").ClickAsync();
+        await Assertions.Expect(page.Locator("#status")).ToContainTextAsync("(Supply)");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("Switched to Supply.");
+        await page.Locator("#line").FillAsync("68 65 6c 6c 6f");
+        await page.Locator("#line").PressAsync("Enter");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("[hex]");
+        await Assertions.Expect(page.Locator("button.tab")).ToHaveCountAsync(1);
+        await SaveAsync(page, "web-terminal-switched.png");
+    }, BenchProject());
+
     /// <summary>Opens two saved profiles as tabs beside the host's own session; each keeps its own output, and closing one leaves the rest.</summary>
     [TestMethod]
     public Task TerminalPage_MultipleSessions_OpenSwitchAndClose() => RunAsync(async (page, baseUrl) =>
