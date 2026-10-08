@@ -12,6 +12,8 @@ namespace DevTerm.Web.Tests;
 [TestCategory(TestCategories.Web)]
 public class WebHostTests
 {
+    public required TestContext TestContext { get; set; }
+
     private static int FreePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -29,6 +31,22 @@ public class WebHostTests
         await built.Hub.StartAsync();
         await built.App.StartAsync();
         return (built, $"http://127.0.0.1:{port}");
+    }
+
+    [TestMethod]
+    public async Task UnconfiguredStart_ComesUpWithoutAPortAndServesPing()
+    {
+        var port = FreePort();
+        var built = WebHost.Build(new CliOptions(), new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" }, []);
+        await using (built.Hub)
+        {
+            await built.Hub.StartAsync();
+            await built.App.StartAsync();
+            using var client = new HttpClient();
+            using var response = await client.GetAsync($"http://127.0.0.1:{port}/", TestContext.CancellationToken);
+            Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
     }
 
     [TestMethod]

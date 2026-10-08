@@ -12,7 +12,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSerialTransport(this IServiceCollection services)
     {
-        services.AddOptions<SerialTransportOptions>().ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<SerialTransportOptions>().ValidateDataAnnotations();
         services.AddSingleton<ISerialPortFactory, SystemSerialPortFactory>();
         services.AddSingleton<ISerialPortDiscovery, SystemSerialPortDiscovery>();
         services.AddTransient<ITransport, SerialTransport>();
