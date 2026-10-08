@@ -394,7 +394,7 @@ public partial class MainWindow : Window
 
         try
         {
-            ProjectFile.From(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(dialog.FileName);
+            ProjectFile.FromTabs(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => new ProjectTabState(ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions, [.. t.Tab.SendHistory.Items], t.Logger is not null))], ActiveWindowTabOrNull is { } front ? ConnectionDescription.Definition(front.Tab.CliOptions) : null).Save(dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -413,11 +413,28 @@ public partial class MainWindow : Window
 
         try
         {
-            foreach (var connection in ProjectFile.Load(dialog.FileName).Connections)
+            var project = ProjectFile.Load(dialog.FileName);
+            WindowTab? front = null;
+            foreach (var connection in project.Connections)
             {
                 var tab = AddTab(SessionTab.Build(connection.ToOptions()));
+                if (connection.History is { } history)
+                {
+                    tab.Tab.SendHistory.Restore(history);
+                }
+
+                if (string.Equals(connection.Name, project.Active, StringComparison.OrdinalIgnoreCase))
+                {
+                    front = tab;
+                }
+
                 StartLoggingFromOptions(tab);
                 Observe(ConnectAsync());
+            }
+
+            if (front is not null)
+            {
+                SessionTabs.SelectedItem = front.Item;
             }
         }
         catch (Exception ex)

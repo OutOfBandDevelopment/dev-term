@@ -24,3 +24,5 @@ connections by editing the file: each entry is a `Name` and a `Profile` in the s
 In the TUI and WPF, **File > Save Project...** writes every open tab's connection to a file you pick, and
 **File > Open Project...** opens one new tab per connection in a file and connects each. Nothing is opened
 unless you choose it.
+
+The TUI and WPF save more than the connection: each tab's send history (Up/Down recall) and whether it was logging are saved too (a logging tab reopens logging to a fresh automatic file, or to its explicit `--log` path), and the tab that was in front is selected again on open. The file shape adds `Active` (a connection name) at the top and optional `History` and `Log` beside each `Profile`. The command-line `--saveproject` still writes connections only.

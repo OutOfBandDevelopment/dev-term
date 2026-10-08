@@ -127,4 +127,32 @@ public sealed class ProjectFileTests
         DevTermConfiguration.Bind(builder.Build(), options);
         return options;
     }
+
+    [TestMethod]
+    public void FromTabs_RoundTripsHistoryLogAndTheActiveConnection()
+    {
+        var project = ProjectFile.FromTabs("Bench", [
+            new ProjectTabState("Scope", new CliOptions { Transport = "tcp", Host = "10.0.0.5", Port = "23" }, ["*IDN?", "CH1?"], Logging: true),
+            new ProjectTabState("Supply", new CliOptions { Transport = "serial", Port = "COM3", Log = "supply.jsonl" }, [], Logging: false),
+        ], active: "Supply");
+
+        var loaded = ProjectFile.FromJson(project.ToJson());
+
+        Assert.AreEqual("Supply", loaded.Active);
+        CollectionAssert.AreEqual(new[] { "*IDN?", "CH1?" }, loaded.Find("Scope")!.History!.ToArray());
+        Assert.AreEqual("true", loaded.Find("Scope")!.ToOptions().Log, "a tab that was logging comes back logging to an automatic file.");
+        Assert.IsNull(loaded.Find("Supply")!.History);
+        Assert.AreEqual("supply.jsonl", loaded.Find("Supply")!.ToOptions().Log);
+    }
+
+    [TestMethod]
+    public void SendHistory_Restore_ReplacesTheItemsMostRecentFirst()
+    {
+        var history = new SendHistory();
+        history.Add("old");
+        history.Restore(["b", "a"]);
+
+        CollectionAssert.AreEqual(new[] { "b", "a" }, history.Items.ToArray());
+        Assert.AreEqual("b", history.Previous());
+    }
 }

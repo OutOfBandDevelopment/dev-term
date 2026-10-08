@@ -45,6 +45,17 @@ public sealed class SendHistory
         }
     }
 
+    /// <summary>Replaces the history with <paramref name="mostRecentFirst"/> (e.g. from a project file), trimmed to <see cref="Capacity"/>.</summary>
+    public void Restore(IEnumerable<string> mostRecentFirst)
+    {
+        _cursor = -1;
+        _items.Clear();
+        foreach (var line in mostRecentFirst.Where(l => !string.IsNullOrEmpty(l)).Take(Capacity))
+        {
+            _items.Add(line);
+        }
+    }
+
     /// <summary>Moves toward older entries (Up arrow). Returns null once already at the oldest entry, or if there's no history.</summary>
     public string? Previous()
     {

@@ -304,6 +304,12 @@
         "null"
       ]
     },
+    "ShareTcp": {
+      "type": "integer"
+    },
+    "ShareBind": {
+      "type": "string"
+    },
     "Attach": {
       "type": [
         "string",
@@ -317,6 +323,30 @@
       "type": "integer"
     },
     "ExportTo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Profile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SaveProject": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ProjectConnection": {
       "type": [
         "string",
         "null"

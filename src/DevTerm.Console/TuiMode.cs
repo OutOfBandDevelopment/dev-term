@@ -614,7 +614,7 @@ public static class TuiMode
 
                     try
                     {
-                        ProjectFile.From(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(fileName);
+                        ProjectFile.FromTabs(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => new ProjectTabState(ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions, [.. t.Tab.SendHistory.Items], t.Logger is not null))], ActiveTabOrNull() is { } front ? ConnectionDescription.Definition(front.Tab.CliOptions) : null).Save(fileName);
                     }
                     catch (Exception ex)
                     {
@@ -632,10 +632,27 @@ public static class TuiMode
 
                     try
                     {
-                        foreach (var connection in ProjectFile.Load(dialog.FilePaths[0]).Connections)
+                        var project = ProjectFile.Load(dialog.FilePaths[0]);
+                        TuiWindowTab? front = null;
+                        foreach (var connection in project.Connections)
                         {
                             var newTab = AddTab(SessionTab.Build(connection.ToOptions()));
+                            if (connection.History is { } history)
+                            {
+                                newTab.Tab.SendHistory.Restore(history);
+                            }
+
+                            if (string.Equals(connection.Name, project.Active, StringComparison.OrdinalIgnoreCase))
+                            {
+                                front = newTab;
+                            }
+
                             Observe(ConnectNewTabAsync(newTab), line => AppendOutput(newTab, line));
+                        }
+
+                        if (front is not null)
+                        {
+                            tabsView.Value = front.Output;
                         }
                     }
                     catch (Exception ex)
