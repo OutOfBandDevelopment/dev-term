@@ -20,6 +20,12 @@ internal static class TerminalPage
           form { display: flex; gap: 8px; padding: 8px 12px; background: var(--bar); }
           input { flex: 1; font: inherit; padding: 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); }
           .err { color: #d1242f; }
+          #tabs { display: flex; gap: 4px; align-items: center; padding: 4px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); flex-wrap: wrap; }
+          #tabs .tab { font: inherit; padding: 3px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); cursor: pointer; }
+          #tabs .tab.on { border-color: var(--fg); font-weight: bold; }
+          #tabs .close { font: inherit; padding: 1px 5px; margin-left: -4px; margin-right: 8px; background: transparent; color: var(--dim); border: 0; cursor: pointer; }
+          #newsession { margin-left: auto; display: flex; gap: 4px; }
+          #newsession select { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); padding: 3px; }
           #panel { padding: 8px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); max-height: 40%; overflow: auto; }
           #panel h2 { font-size: 14px; margin: 8px 0 4px; }
           #panel .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
@@ -28,29 +34,86 @@ internal static class TerminalPage
         </style>
         </head>
         <body>
+        <nav id="tabs"></nav>
         <header id="status">connecting...</header>
         <div id="panel" hidden></div>
         <pre id="out"></pre>
         <form id="f"><input id="line" autocomplete="off" autofocus placeholder="type a line and press Enter"><button>Send</button></form>
         <script>
           const out = document.getElementById('out'), status = document.getElementById('status'), input = document.getElementById('line');
-          const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
-          ws.onopen = () => status.textContent = 'dev-term - connected';
-          ws.onclose = () => status.textContent = 'dev-term - disconnected (reload to reconnect)';
-          ws.onmessage = e => {
-            const span = document.createElement('div');
-            span.textContent = e.data;
-            if (e.data.startsWith('!')) span.className = 'err';
-            out.appendChild(span);
-            out.scrollTop = out.scrollHeight;
-          };
+          const tabsEl = document.getElementById('tabs'), panelEl = document.getElementById('panel');
+          const tabs = []; let active = null; let panelShown = false;
+          let readOnly = false, profiles = [], pickedProfile = null;
+
+          // One tab per session: the host's own session (/ws) and every connection opened from a saved profile (/ws/{id}).
+          // Each keeps its own WebSocket and output, so switching tabs loses nothing.
+          function appendLine(text) {
+            const d = document.createElement('div'); d.textContent = text;
+            if (text.startsWith('!')) d.className = 'err';
+            out.appendChild(d); out.scrollTop = out.scrollHeight;
+          }
+          function render() {
+            tabsEl.textContent = '';
+            for (const t of tabs) {
+              const b = document.createElement('button');
+              b.className = 'tab' + (t === active ? ' on' : ''); b.dataset.tab = t.key; b.textContent = t.name; b.onclick = () => select(t);
+              tabsEl.append(b);
+              if (t.key !== 'main') {
+                const x = document.createElement('button');
+                x.className = 'close'; x.textContent = 'x'; x.title = 'Close ' + t.name; x.disabled = readOnly; x.onclick = () => closeTab(t);
+                tabsEl.append(x);
+              }
+            }
+            const pick = document.createElement('select'); pick.id = 'profile';
+            const open = document.createElement('button'); open.id = 'open'; open.textContent = 'Open'; open.disabled = readOnly || profiles.length === 0;
+            for (const n of profiles) pick.append(Object.assign(document.createElement('option'), { textContent: n.name, value: n.name, title: n.description }));
+            if (profiles.length === 0) pick.append(Object.assign(document.createElement('option'), { textContent: 'no saved profiles' }));
+            pick.disabled = profiles.length === 0; pick.value = pickedProfile || pick.value; pick.onchange = () => { pickedProfile = pick.value; };
+            open.onclick = () => openProfile(pick.value);
+            const add = document.createElement('span'); add.id = 'newsession'; add.append(pick, open);
+            tabsEl.append(add);
+            if (active) {
+              out.textContent = '';
+              for (const l of active.lines) appendLine(l);
+              status.textContent = active.name + ' - ' + active.state;
+              panelEl.hidden = !(panelShown && active.key === 'main');
+            }
+          }
+          function addTab(key, name, path, makeActive) {
+            if (tabs.some(t => t.key === key)) return;
+            const tab = { key, name, lines: [], state: 'connecting...' };
+            const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + path);
+            tab.ws = ws;
+            ws.onopen = () => { tab.state = 'connected'; if (tab === active) render(); };
+            ws.onclose = () => { tab.state = 'disconnected' + (key === 'main' ? ' (reload to reconnect)' : ''); if (tab === active) render(); };
+            ws.onmessage = e => { tab.lines.push(e.data); if (tab.lines.length > 5000) tab.lines.shift(); if (tab === active) appendLine(e.data); };
+            tabs.push(tab);
+            if (makeActive || !active) active = tab;
+            render();
+          }
+          function select(tab) { active = tab; render(); input.focus(); }
+          function removeTab(key) {
+            const i = tabs.findIndex(t => t.key === key);
+            if (i < 0) return;
+            const [gone] = tabs.splice(i, 1);
+            try { gone.ws.close(); } catch { }
+            if (active === gone) active = tabs[Math.max(0, i - 1)];
+            render();
+          }
+          async function closeTab(tab) { await fetch('/api/connections/' + tab.key, { method: 'DELETE' }); removeTab(tab.key); }
+          async function openProfile(name) {
+            const res = await fetch('/api/connections?name=' + encodeURIComponent(name), { method: 'POST' });
+            if (!res.ok) { line('! could not open ' + name + ' (' + res.status + ')'); return; }
+            const c = await res.json();
+            addTab(c.id, c.name, '/ws/' + c.id, true);
+            select(tabs.find(t => t.key === c.id));
+          }
           document.getElementById('f').onsubmit = e => {
             e.preventDefault();
-            if (input.value && ws.readyState === WebSocket.OPEN) { ws.send(input.value); input.value = ''; }
+            if (active && input.value && active.ws.readyState === WebSocket.OPEN) { active.ws.send(input.value); input.value = ''; }
           };
 
           // Device control panel: rendered generically from the UiDefinition served at /api/panel (404 = none configured).
-          let readOnly = false;
           async function invoke(commandId, value) {
             const res = await fetch('/api/invoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commandId, value }) });
             if (!res.ok) { const e = await res.json().catch(() => ({})); line('! ' + (e.error || res.status)); }
@@ -85,8 +148,17 @@ internal static class TerminalPage
             return row;
           }
           (async () => {
-            const status = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
-            readOnly = !!status.readOnly;
+            const st = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
+            readOnly = !!st.readOnly;
+            profiles = await fetch('/api/project').then(r => r.json()).catch(() => []);
+            addTab('main', 'dev-term', '/ws', true);
+            const open = await fetch('/api/connections').then(r => r.json()).catch(() => []);
+            for (const c of open) addTab(c.id, c.name, '/ws/' + c.id, false);
+            // Other tabs, the /connections page and the REST calls open and close sessions too.
+            const es = new EventSource('/api/events');
+            es.addEventListener('connection-opened', e => { const c = JSON.parse(e.data); addTab(c.id, c.name, '/ws/' + c.id, false); });
+            es.addEventListener('connection-closed', e => removeTab(JSON.parse(e.data).id));
+            es.addEventListener('project-changed', async () => { profiles = await fetch('/api/project').then(r => r.json()).catch(() => profiles); render(); });
             const res = await fetch('/api/panel');
             if (!res.ok) return;
             const def = await res.json();
@@ -96,7 +168,7 @@ internal static class TerminalPage
               if (section.Label) panel.append(el('h2', { textContent: section.Label }));
               for (const c of section.Controls) panel.append(renderControl(c));
             }
-            panel.hidden = false;
+            panelShown = true; render();
           })();
         </script>
         </body>

@@ -70,6 +70,10 @@ All viewers share one session. Output goes to everyone; sends are serialized. A 
 page and the next sent line retries, as in the TUI/WPF. Input that the parser cannot encode is reported to the sender
 only.
 
+## Sessions as tabs (main page `/`)
+
+The main page has one tab per session, like the desktop apps: **dev-term** (the host's own session, `/ws`) and one tab for each connection opened from a saved profile (`/ws/{id}`). Each tab has its own WebSocket, output and status line (`<name> - connected|disconnected`); the send box goes to the active tab. The profile dropdown with **Open** (right of the tabs) starts a saved profile as a new tab (`POST /api/connections`); the **x** beside a tab closes it (`DELETE /api/connections/{id}`; the main tab has none). Tabs already open when the page loads are restored, and the `connection-opened`/`connection-closed` events keep every open browser tab in step with the `/connections` page and REST calls. The profile list follows `project-changed`. A read-only token can read every tab but cannot open or close one. The device panel, when configured, shows under the main tab only.
+
 ## Blazor connections page (`/connections`)
 
 Same token auth. Lists the `--project` file's connections (name, description, **Open**) and the extra connections currently

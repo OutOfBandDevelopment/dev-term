@@ -188,4 +188,31 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("From Loopback test");
         await SaveAsync(page, "web-terminal-reply.png");
     });
+
+    /// <summary>Opens two saved profiles as tabs beside the host's own session; each keeps its own output, and closing one leaves the rest.</summary>
+    [TestMethod]
+    public Task TerminalPage_MultipleSessions_OpenSwitchAndClose() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Task.Delay(500); // the profile list loads after the page does
+
+        await page.Locator("#profile").SelectOptionAsync("Scope");
+        await page.Locator("#open").ClickAsync();
+        await Assertions.Expect(page.Locator("button.tab")).ToHaveCountAsync(2);
+        await page.Locator("#line").FillAsync("hello");
+        await page.Locator("#line").PressAsync("Enter");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("From Loopback test");
+
+        await page.Locator("#profile").SelectOptionAsync("Supply");
+        await page.Locator("#open").ClickAsync();
+        await Assertions.Expect(page.Locator("button.tab")).ToHaveCountAsync(3);
+        await Assertions.Expect(page.Locator("#out")).Not.ToContainTextAsync("From Loopback test"); // a different session
+        await SaveAsync(page, "web-terminal-tabs.png");
+
+        await page.Locator("button.tab[data-tab=main]").ClickAsync();
+        await Assertions.Expect(page.Locator("#status")).ToContainTextAsync("dev-term");
+        await page.Locator("button.close").First.ClickAsync();
+        await Assertions.Expect(page.Locator("button.tab")).ToHaveCountAsync(2);
+    }, BenchProject());
 }

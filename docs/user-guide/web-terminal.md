@@ -74,6 +74,12 @@ document for tooling, and `/asyncapi.json` describes the WebSocket and event-str
  They need
 the same token as everything else, so open them after `?token=` has set the cookie.
 
+### Several sessions in tabs
+
+The main page works like the desktop apps: the host's own session is the **dev-term** tab, and picking a saved profile and pressing **Open** adds a tab for it. Tabs keep their own output, so you can switch between a scope and a supply without losing either; **x** closes one. Opening or closing one elsewhere (another browser tab, `/connections`, the REST calls) shows up here too.
+
+![Three sessions as tabs](images/web-terminal-tabs.png)
+
 ### The /connections page
 
 Open `/connections` for the same thing as buttons: **Open** starts a project connection as its own session, **Close** ends it.
