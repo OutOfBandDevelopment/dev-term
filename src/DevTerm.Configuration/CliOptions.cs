@@ -320,6 +320,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListLxiDevices { get; set; }
 
+    /// <summary>Probe the LAN with every discovery probe (LXI, mDNS, SSDP), print each hit as <c>address:port  transport  description</c>, and exit.</summary>
+    [Category("Mode")]
+    public bool ListNetworkDevices { get; set; }
+
     /// <summary>Publish this session's traffic read-only on a local named pipe of this name, for <see cref="Attach"/> from another process.</summary>
     [Category("Session")]
     public string? Pipe { get; set; }

@@ -155,6 +155,16 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
     return 0;
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListNetworkDevices)))
+{
+    foreach (var hit in await DevTerm.Configuration.Discovery.NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3)))
+    {
+        Console.WriteLine($"{hit.Address}:{hit.Port}  {hit.Transport}  {hit.DisplayName}  ({hit.Kind}, {hit.Source})");
+    }
+
+    return 0;
+}
+
 if (earlyConfig[nameof(CliOptions.ControlClient)] is { Length: > 0 } controlName)
 {
     static async IAsyncEnumerable<string> StdinLines()
