@@ -80,14 +80,15 @@ UI -> UI : prefill Transport/Host/Port/baud/profile
 
 ## Completion checklist
 
-- [ ] `INetworkDeviceProbe`/`NetworkDeviceHit` in a shared library; LXI discovery wrapped as the first probe
-- [ ] mDNS/DNS-SD probe
-- [ ] SSDP probe
+- [x] `INetworkDeviceProbe`/`NetworkDeviceHit` in a shared library; LXI discovery wrapped as the first probe (2026-10-08, `DevTerm.Configuration.Discovery`)
+- [x] mDNS/DNS-SD probe (2026-10-08, fake-response tests only)
+- [x] SSDP probe (2026-10-08, fake-response tests only)
 - [ ] EByte UDP probe (needs a fresh capture first)
 - [ ] USR search probe (needs a capture first)
-- [ ] Connection Editor: "Detect network devices..." in WPF and TUI with prefill; `--listnetworkdevices` in the CLI
+- [x] `--listnetworkdevices true` in the CLI (2026-10-08)
+- [ ] Connection Editor: "Detect network devices..." in WPF and TUI with prefill
 - [ ] Spec (`docs/specs/connection-editor.md`) and user guide updated with real captures
 
 ## Status
 
-Proposed 2026-10-03; nothing built. Replaces the LXI-only button when built.
+Proposed 2026-10-03. Built 2026-10-08: the probe interface, LXI/mDNS/SSDP probes, merge-by-IP and `--listnetworkdevices`. Run on the bench LAN it listed a Brother printer and a NAS (mDNS) and the DG1062Z (LXI); the DG1062Z answered neither mDNS nor SSDP, and SSDP found nothing. Not yet built: the Connection Editor button, the EByte and USR probes. Replaces the LXI-only button when built.

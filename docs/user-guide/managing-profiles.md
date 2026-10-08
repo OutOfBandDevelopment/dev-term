@@ -75,3 +75,10 @@ Nothing from the Connection Editor's requested list is still open — the last i
 detected serial ports on Linux and macOS, landed 2026-09-25. See
 [`docs/specs/connection-editor.md`](../specs/connection-editor.md)'s Open items and
 [`BACKLOG.md`](../../BACKLOG.md) for smaller follow-ups.
+
+## Starting from a saved profile on the command line
+
+`dev-term --profile bench-scope --cli true` starts from the saved profile named `bench-scope` (the
+same profiles the Connection Editor lists), layered above the default `appsettings.Local.json`
+profile. Any other flag still wins, e.g. `--profile bench-scope --port 24`. An unknown name is an
+error ("No saved connection profile named ...") rather than a silent fallback.

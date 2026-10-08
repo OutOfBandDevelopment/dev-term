@@ -7,6 +7,7 @@ using DevTerm.Core.Transports;
 using DevTerm.UiDefinitions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Scalar.AspNetCore;
 
 namespace DevTerm.Web;
 
@@ -14,24 +15,7 @@ namespace DevTerm.Web;
 public static class WebHost
 {
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
-    public sealed record Built(WebApplication App, SessionHub Hub, string Token);
-
-    private static object[] ProjectConnections(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return [];
-        }
-
-        try
-        {
-            return [.. ProjectFile.Load(path).Connections.Select(c => new { name = c.Name, description = ConnectionDescription.Definition(c.ToOptions()) })];
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-            return [];
-        }
-    }
+    public sealed record Built(WebApplication App, SessionHub Hub, string Token, SessionHttpControlServer? ControlHttp = null);
 
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
     public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
@@ -58,6 +42,9 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddOpenApi();
+        builder.Services.AddSingleton<HostEvents>();
+        builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>()));
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
@@ -88,16 +75,68 @@ public static class WebHost
         app.MapStaticAssets(); // serves _framework/blazor.web.js, without which the Blazor panel never becomes interactive
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
-        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
+        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
+
+        // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
+        app.MapOpenApi("/openapi/v1.json");
+        app.MapScalarApiReference("/scalar", options => options.WithTitle("dev-term web host"));
+        app.MapGet("/asyncapi", () => Results.Content(AsyncApiDocument.Viewer, "text/html"));
+        app.MapGet("/asyncapi.json", () => Results.Content(AsyncApiDocument.Json, "application/json"));
+        var events = app.Services.GetRequiredService<HostEvents>();
+        var connections = app.Services.GetRequiredService<ConnectionManager>();
+        hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
+        app.MapGet("/api/events", async (HttpContext context) =>
+        {
+            context.Response.ContentType = "text/event-stream";
+            context.Response.Headers.CacheControl = "no-cache";
+            await context.Response.WriteAsync(": connected\n\n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
+            try
+            {
+                await foreach (var frame in events.SubscribeAsync(context.RequestAborted))
+                {
+                    await context.Response.WriteAsync(frame, context.RequestAborted);
+                    await context.Response.Body.FlushAsync(context.RequestAborted);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        })
+            .WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(string), StatusCodes.Status200OK, "text/event-stream"))
+            .WithSummary("Server-Sent Events: connection-opened, connection-closed and line events");
+        app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate())).WithSummary("Attached serial, HID and USBTMC devices");
 
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
-        var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
-        app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
+        app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description }))).WithSummary("The project file's connections (name and description only)");
+
+        // Create, replace and remove a project connection. The body is the profile JSON (what a saved profile holds).
+        app.MapPut("/api/project/connections/{name}", async (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var error = connections.Upsert(name, await reader.ReadToEndAsync(context.RequestAborted));
+            return error is null ? Results.NoContent() : Results.BadRequest(new { error });
+        }).WithSummary("Create or replace a project connection from profile JSON; 400 with the reason when invalid or there is no --project");
+        app.MapDelete("/api/project/connections/{name}", (HttpContext context, string name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            connections.Remove(name);
+            return Results.NoContent();
+        })
+            .WithSummary("Remove a project connection; 204 whether or not it existed, 403 read-only");
 
         // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
         // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
-        var open = new System.Collections.Concurrent.ConcurrentDictionary<string, (string Name, SessionHub Hub)>();
-        app.MapGet("/api/connections", () => Results.Json(open.Select(c => new { id = c.Key, name = c.Value.Name, state = c.Value.Hub.State.ToString() })));
+        app.MapGet("/api/connections", () => Results.Json(connections.Open().Select(c => new { id = c.Id, name = c.Name, state = c.State }))).WithSummary("The extra connections currently open");
         app.MapPost("/api/connections", async (HttpContext context, string name) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -105,28 +144,10 @@ public static class WebHost
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
-            ProjectConnection? chosen = null;
-            try
-            {
-                chosen = string.IsNullOrWhiteSpace(cliOptions.Project) ? null : ProjectFile.Load(cliOptions.Project).Find(name);
-            }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-            }
-
-            if (chosen is null)
-            {
-                return Results.NotFound();
-            }
-
-            var options = chosen.ToOptions();
-            var built = DevTermSessionBuilder.Build(options);
-            var connection = new SessionHub(built.Session, built.Catalog, options, webOptions.BacklogLines);
-            await connection.StartAsync(context.RequestAborted);
-            var id = Guid.NewGuid().ToString("N")[..8];
-            open[id] = (chosen.Name, connection);
-            return Results.Json(new { id, name = chosen.Name });
-        });
+            return await connections.OpenAsync(name, context.RequestAborted) is { } opened
+                ? Results.Json(new { id = opened.Id, name = opened.Name })
+                : Results.NotFound();
+        }).WithSummary("Open a project connection as its own session; 404 unknown name, 403 read-only");
         app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -134,22 +155,11 @@ public static class WebHost
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
-            if (!open.TryRemove(id, out var removed))
-            {
-                return Results.NotFound();
-            }
-
-            await removed.Hub.DisposeAsync();
+            await connections.CloseAsync(id);
             return Results.NoContent();
-        });
-        app.Map("/ws/{id}", (HttpContext context, string id) => open.TryGetValue(id, out var found) ? WebSocketTunnel.HandleAsync(context, found.Hub) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
-        app.Lifetime.ApplicationStopping.Register(() =>
-        {
-            foreach (var (_, connection) in open)
-            {
-                connection.Hub.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            }
-        });
+        }).WithSummary("Close an opened connection; 204 whether or not it was open, 403 read-only");
+        app.Map("/ws/{id}", (HttpContext context, string id) => connections.TryGet(id, out var found) ? WebSocketTunnel.HandleAsync(context, found) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
+        app.Lifetime.ApplicationStopping.Register(() => connections.CloseAllAsync().GetAwaiter().GetResult());
 
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {
@@ -180,6 +190,20 @@ public static class WebHost
         {
             app.MapGet("/api/panel", () => Results.NotFound());
         }
-        return new Built(app, hub, token);
+
+        // --controlhttp <port>: the same loopback command/event channel the console front ends offer, on the shared session.
+        SessionHttpControlServer? controlHttp = null;
+        if (cliOptions.ControlHttp > 0)
+        {
+            controlHttp = new SessionHttpControlServer(hub.Session, cliOptions.ControlHttp, text => TypedInput.TryEncode(hub.Catalog, cliOptions, text), cliOptions.ControlToken);
+            var registration = hub.Session.AddObserver(controlHttp);
+            app.Lifetime.ApplicationStopping.Register(() =>
+            {
+                registration.Dispose();
+                controlHttp.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            });
+        }
+
+        return new Built(app, hub, token, controlHttp);
     }
 }

@@ -12,7 +12,7 @@ namespace DevTerm.Transports.Rfc2217;
 /// docs/design/rfc2217.md for the wire format and <see cref="Rfc2217TelnetReadStream"/> for the
 /// Telnet framing layered on top of it.
 /// </summary>
-public sealed class Rfc2217Transport : ITransport
+public sealed class Rfc2217Transport : ITransport, IComPortControl
 {
     private readonly ITcpConnectionSource _connectionSource;
     private readonly IOptions<Rfc2217TransportOptions> _options;
@@ -60,6 +60,84 @@ public sealed class Rfc2217Transport : ITransport
     /// whatever the remote port already had configured, not what this session asked for.
     /// </summary>
     public bool ComPortControlNegotiated { get; private set; }
+
+    public IComPortControl SetBaudRate(int baudRate)
+    {
+        _options.Value.BaudRate = baudRate;
+        Push(Rfc2217Codec.EncodeSetBaudRate(baudRate));
+        return this;
+    }
+
+    public IComPortControl SetDataBits(int dataBits)
+    {
+        _options.Value.DataBits = dataBits;
+        Push(Rfc2217Codec.EncodeSetDataSize((ComPortDataSize)dataBits));
+        return this;
+    }
+
+    public IComPortControl SetParity(ComParity parity)
+    {
+        var mapped = parity switch
+        {
+            ComParity.Odd => System.IO.Ports.Parity.Odd,
+            ComParity.Even => System.IO.Ports.Parity.Even,
+            ComParity.Mark => System.IO.Ports.Parity.Mark,
+            ComParity.Space => System.IO.Ports.Parity.Space,
+            _ => System.IO.Ports.Parity.None,
+        };
+        _options.Value.Parity = mapped;
+        Push(Rfc2217Codec.EncodeSetParity(ToComPortParity(mapped)));
+        return this;
+    }
+
+    public IComPortControl SetStopBits(ComStopBits stopBits)
+    {
+        var mapped = stopBits switch
+        {
+            ComStopBits.Two => System.IO.Ports.StopBits.Two,
+            ComStopBits.OnePointFive => System.IO.Ports.StopBits.OnePointFive,
+            _ => System.IO.Ports.StopBits.One,
+        };
+        _options.Value.StopBits = mapped;
+        Push(Rfc2217Codec.EncodeSetStopSize(ToComPortStopSize(mapped)));
+        return this;
+    }
+
+    public IComPortControl SetDtr(bool enabled)
+    {
+        _options.Value.DtrEnable = enabled;
+        Push(Rfc2217Codec.EncodeSetControl(enabled ? Rfc2217ControlValue.SetDtrStateOn : Rfc2217ControlValue.SetDtrStateOff));
+        return this;
+    }
+
+    public IComPortControl SetRts(bool enabled)
+    {
+        _options.Value.RtsEnable = enabled;
+        Push(Rfc2217Codec.EncodeSetControl(enabled ? Rfc2217ControlValue.SetRtsStateOn : Rfc2217ControlValue.SetRtsStateOff));
+        return this;
+    }
+
+    // Always remembered in the options; sent only on an open connection whose peer accepted COM-PORT-OPTION.
+    // Fire-and-forget like the initial configuration: a dead socket surfaces through the read loop.
+    private void Push(byte[] frame)
+    {
+        var stream = _telnetStream;
+        if (stream is null || State != ConnectionState.Open || !ComPortControlNegotiated)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await stream.SendRawFramedAsync(frame, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException)
+            {
+            }
+        });
+    }
 
     public async Task OpenAsync(CancellationToken cancellationToken = default)
     {

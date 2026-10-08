@@ -1,0 +1,142 @@
+@page "/connections"
+@using Microsoft.AspNetCore.Components.Web
+@inject ConnectionManager Manager
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Connections</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: connections cannot be opened or closed.</p> }
+@if (_error is not null) { <p class="error">@_error</p> }
+
+@if (_project.Count == 0)
+{
+    <p class="note">The host has no project connections (start it with --project &lt;file&gt;).</p>
+}
+else
+{
+    <fieldset>
+        <legend>Project</legend>
+        @foreach (var c in _project)
+        {
+            <div class="row" data-project="@c.Name">
+                <label>@c.Name</label>
+                <span class="note">@c.Description</span>
+                <button disabled="@_readOnly" @onclick="() => OpenAsync(c.Name)">Open</button>
+            </div>
+        }
+    </fieldset>
+}
+
+<fieldset>
+    <legend>Open</legend>
+    @if (_open.Count == 0) { <p class="note">None open.</p> }
+    @foreach (var c in _open)
+    {
+        <div class="row" data-open="@c.Id">
+            <label>@c.Name</label>
+            <span class="note">@c.State - /ws/@c.Id</span>
+            <button disabled="@_readOnly" @onclick="() => CloseAsync(c.Id)">Close</button>
+        </div>
+    }
+</fieldset>
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _error;
+    private IReadOnlyList<(string Name, string Description)> _project = [];
+    private IReadOnlyList<(string Id, string Name, string State)> _open = [];
+    private CancellationTokenSource? _cts;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted; // unknown means no controls
+        }
+
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        _project = Manager.Project();
+        _open = Manager.Open();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && Http is null)
+        {
+            _cts = new CancellationTokenSource();
+            _ = WatchAsync(_cts.Token);
+        }
+    }
+
+    // Re-read when any connection opens or closes (from this page, the REST API or another tab).
+    private async Task WatchAsync(CancellationToken token)
+    {
+        try
+        {
+            await foreach (var frame in Manager.Events.SubscribeAsync(token))
+            {
+                if (frame.StartsWith("event: connection-", StringComparison.Ordinal))
+                {
+                    Refresh();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task OpenAsync(string name)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            _error = await Manager.OpenAsync(name) is null ? $"No project connection named '{name}'." : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = ex.Message;
+        }
+
+        Refresh();
+    }
+
+    private async Task CloseAsync(string id)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        await Manager.CloseAsync(id);
+        Refresh();
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

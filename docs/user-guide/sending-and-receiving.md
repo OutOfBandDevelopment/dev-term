@@ -159,3 +159,25 @@ The session closes, the reason is reported once, and:
 A serial timeout adds a hint about hardware flow control (CTS / `--handshake`); other transports
 don't, since CTS has nothing to do with them. See `Session.Disconnected`, `TypedInput` and
 `ConnectionErrorMessages` in [`docs/design/architecture.md`](../design/architecture.md).
+
+## Sharing a connection over TCP
+
+`dev-term --transport serial --port COM3 --cli true --sharetcp 2323` also listens on `127.0.0.1:2323`.
+Whatever the device sends is copied to the connected TCP client, and whatever that client sends is written to the
+device (try `telnet 127.0.0.1 2323`). One client at a time; a second connection is closed at once. There is no
+authentication or encryption, so it binds loopback unless you pass `--sharebind 0.0.0.0` (or another address).
+
+Add `--sharerfc2217 true` to make that port speak RFC 2217, so a serial-aware tool can open it as a remote serial port (for example pyserial's `serial.serial_for_url('rfc2217://127.0.0.1:2323')`). The client's baud rate, parity, stop bits and DTR/RTS requests are applied to the real device when the shared connection is a serial port or another RFC 2217 link.
+This is a plain byte proxy: it does not negotiate RFC 2217 baud/DTR/RTS changes.
+
+## Driving a session from another program
+
+`--control bench1` (console CLI mode) opens a local pipe `devterm-control-bench1` that only your own OS user can connect to. A script writes one command per line and reads `ok` or `error <why>` back: `send *IDN?` (typed text, encoded like what you type, line ending included), `sendhex 41 42`, or `ping`. The session's `open`/`rx`/`tx`/`closed` lines come back on the same pipe. Its sends interleave with your own typing.
+
+From a second terminal, `dev-term --controlclient bench1` does this for you: each line you type (or pipe in) is a command, for example `send *IDN?`, and every reply and event line is printed. It exits 1 if nothing is listening on that name.
+
+### Over HTTP
+
+`--controlhttp 8080` serves the same commands on `http://127.0.0.1:8080/` (loopback only). dev-term prints a per-run bearer token at startup (or set your own with `--controltoken`); send it as `Authorization: Bearer <token>` or `?token=`. `POST /command` takes the command line as its body and answers `ok` or `error <why>`; `GET /events` is a Server-Sent Events stream of the `open`/`rx`/`tx`/`closed` lines; `GET /ping` checks it is up. Without the token every request gets 401. A Python example that tails events and replies is in `examples/python/control-channel-client/`.
+
+`--control`, `--controlhttp`, `--sharetcp` and `--sharerfc2217` work in the console CLI, the TUI and WPF.

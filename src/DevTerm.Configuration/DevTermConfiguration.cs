@@ -40,9 +40,31 @@ public static class DevTermConfiguration
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         config.AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false);
         config.AddJsonFile(LocalSettingsFileName, optional: true, reloadOnChange: false);
+        AddNamedProfile(config, args);
         AddProjectConnection(config, args);
         config.AddEnvironmentVariables(EnvironmentVariablePrefix);
         config.AddCommandLine(args);
+    }
+
+    /// <summary>
+    /// When <c>--profile &lt;name&gt;</c> is on the command line, layers that saved profile (from
+    /// <see cref="DevTermUserDataPaths.ProfilesDirectory"/>) above the default profile and below the
+    /// project, environment variables and the other flags. An unknown or unreadable name is ignored
+    /// here (the flag stays visible as <see cref="CliOptions.Profile"/> for the front end to report).
+    /// </summary>
+    private static void AddNamedProfile(IConfigurationBuilder config, string[] args)
+    {
+        var peek = new ConfigurationBuilder().AddCommandLine(args).Build();
+        if (peek[nameof(CliOptions.Profile)] is not { Length: > 0 } name || !ProfileName.IsValid(name))
+        {
+            return;
+        }
+
+        var path = Path.Combine(DevTermUserDataPaths.ProfilesDirectory, $"{name}.json");
+        if (File.Exists(path))
+        {
+            config.AddJsonFile(path, optional: true, reloadOnChange: false);
+        }
     }
 
     /// <summary>

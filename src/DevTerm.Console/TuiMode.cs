@@ -91,7 +91,18 @@ public static class TuiMode
         // --pipe publishes the first tab's session read-only for `--attach` (tabs added later are not published).
         await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(cliOptions.Pipe);
         using var pipeRegistration = pipeServer is null ? null : session.AddObserver(pipeServer);
+        await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control) ? null : new SessionControlPipeServer(session, cliOptions.Control, text => TypedInput.TryEncode(catalog, cliOptions, text));
+        using var controlRegistration = controlServer is null ? null : session.AddObserver(controlServer);
+        await using var controlHttpServer = cliOptions.ControlHttp > 0 ? new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(catalog, cliOptions, text), cliOptions.ControlToken) : null;
+        using var controlHttpRegistration = controlHttpServer is null ? null : session.AddObserver(controlHttpServer);
 
+        System.Net.IPAddress? shareAddress = null;
+        var shareOn = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out shareAddress);
+        await using var shareServer = shareOn && !cliOptions.ShareRfc2217 ? new SessionTcpShareServer(session, shareAddress!, cliOptions.ShareTcp) : null;
+        using var shareRegistration = shareServer is null ? null : session.AddObserver(shareServer);
+        await using var rfc2217Server = shareOn && cliOptions.ShareRfc2217 ? new DevTerm.Transports.Rfc2217.Rfc2217ServerBridge(session, shareAddress!, cliOptions.ShareTcp) : null;
+        using var rfc2217Registration = rfc2217Server is null ? null : session.AddObserver(rfc2217Server);
+        
         var app = Application.Create().Init();
         TuiTheme.SixteenColors = app.Driver?.Force16Colors == true;
         TuiTheme.ApplyActive();
@@ -544,6 +555,7 @@ public static class TuiMode
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
                         if (windowTab.Tab.Session.State == ConnectionState.Open
+                            && !LiveSessionUpdate.CanApplyLive(windowTab.Tab.CliOptions, chosen)
                             && MessageBox.Query(app, "dev-term", $"Switch to {ConnectionDescription.Definition(chosen)}? This closes the current connection. The new profile is saved either way.", ["Yes", "No"]) != 0)
                         {
                             return;
@@ -614,7 +626,7 @@ public static class TuiMode
 
                     try
                     {
-                        ProjectFile.From(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(fileName);
+                        ProjectFile.FromTabs(Path.GetFileNameWithoutExtension(fileName), [.. tabs.Select(t => new ProjectTabState(ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions, [.. t.Tab.SendHistory.Items], t.Logger is not null))], ActiveTabOrNull() is { } front ? ConnectionDescription.Definition(front.Tab.CliOptions) : null).Save(fileName);
                     }
                     catch (Exception ex)
                     {
@@ -632,10 +644,27 @@ public static class TuiMode
 
                     try
                     {
-                        foreach (var connection in ProjectFile.Load(dialog.FilePaths[0]).Connections)
+                        var project = ProjectFile.Load(dialog.FilePaths[0]);
+                        TuiWindowTab? front = null;
+                        foreach (var connection in project.Connections)
                         {
                             var newTab = AddTab(SessionTab.Build(connection.ToOptions()));
+                            if (connection.History is { } history)
+                            {
+                                newTab.Tab.SendHistory.Restore(history);
+                            }
+
+                            if (string.Equals(connection.Name, project.Active, StringComparison.OrdinalIgnoreCase))
+                            {
+                                front = newTab;
+                            }
+
                             Observe(ConnectNewTabAsync(newTab), line => AppendOutput(newTab, line));
+                        }
+
+                        if (front is not null)
+                        {
+                            tabsView.Value = front.Output;
                         }
                     }
                     catch (Exception ex)
@@ -915,6 +944,16 @@ public static class TuiMode
         async Task<bool> SwitchProfileAsync(CliOptions newOptions)
         {
             var windowTab = ActiveTab();
+
+            // Only line settings, presenters, parser or line ending changed: update the open session in place.
+            if (LiveSessionUpdate.TryApply(windowTab.Tab.Session, windowTab.Tab.Catalog, windowTab.Tab.CliOptions, newOptions))
+            {
+                windowTab.Tab.CliOptions = newOptions;
+                windowTab.Tab.Parser = newOptions.EffectiveParser;
+                AppendOutput(windowTab, "Connection settings updated without reconnecting.");
+                return true;
+            }
+
             windowTab.SwitchCts?.Cancel();
             var cts = new CancellationTokenSource();
             windowTab.SwitchCts = cts;

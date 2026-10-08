@@ -36,11 +36,11 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
-            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
             new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight" },
             []);
         await built.Hub.StartAsync();
@@ -80,6 +80,34 @@ public class WebScreenshotTests
 
     private static async Task WaitConnectedAsync(IPage page) =>
         await Assertions.Expect(page.Locator("#status")).ToContainTextAsync("connected");
+
+    private static string BenchProject()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-shot-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Scope", new CliOptions { Transport = "loopback", Presenter = ["ascii"] }), ("Supply", new CliOptions { Transport = "loopback", Presenter = ["hex"] })]).Save(file);
+        return file;
+    }
+
+    [TestMethod]
+    public Task ConnectionsPage_OpenAndClose_Screenshot() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/connections?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000); // the circuit must be interactive before a click on the prerendered button counts
+        await page.Locator("[data-project=Scope] button").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-open]")).ToHaveCountAsync(1);
+        await SaveAsync(page, "web-blazor-connections.png");
+        await page.Locator("[data-open] button").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-open]")).ToHaveCountAsync(0);
+    }, BenchProject());
+
+    [TestMethod]
+    public Task ConnectionsPage_ReadOnly_DisablesTheButtons() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/connections?token=watch-token");
+        await Assertions.Expect(page.GetByText("Read-only viewer")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("[data-project=Scope] button")).ToBeDisabledAsync();
+    }, BenchProject());
 
     [TestMethod]
     public Task TerminalPage_Screenshot() => RunAsync(async (page, baseUrl) =>

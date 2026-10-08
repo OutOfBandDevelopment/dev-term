@@ -304,6 +304,36 @@
         "null"
       ]
     },
+    "Control": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ShareTcp": {
+      "type": "integer"
+    },
+    "ShareRfc2217": {
+      "type": "boolean"
+    },
+    "ShareBind": {
+      "type": "string"
+    },
+    "ControlHttp": {
+      "type": "integer"
+    },
+    "ControlToken": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ControlClient": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Attach": {
       "type": [
         "string",
@@ -317,6 +347,30 @@
       "type": "integer"
     },
     "ExportTo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Profile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SaveProject": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ProjectConnection": {
       "type": [
         "string",
         "null"

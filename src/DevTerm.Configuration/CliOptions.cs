@@ -320,9 +320,41 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListLxiDevices { get; set; }
 
+    /// <summary>Probe the LAN with every discovery probe (LXI, mDNS, SSDP), print each hit as <c>address:port  transport  description</c>, and exit.</summary>
+    [Category("Mode")]
+    public bool ListNetworkDevices { get; set; }
+
     /// <summary>Publish this session's traffic read-only on a local named pipe of this name, for <see cref="Attach"/> from another process.</summary>
     [Category("Session")]
     public string? Pipe { get; set; }
+
+    /// <summary>Open a read-write control channel for this session on a local named pipe of this name (current OS user only): <c>send</c>/<c>sendhex</c>/<c>ping</c> commands in, event lines out.</summary>
+    [Category("Session")]
+    public string? Control { get; set; }
+
+    /// <summary>Share this session on a TCP port as a transparent byte proxy (one client at a time); 0 is off. Binds <see cref="ShareBind"/>.</summary>
+    [Category("Session")]
+    public int ShareTcp { get; set; }
+
+    /// <summary>Make the <see cref="ShareTcp"/> port speak RFC 2217 (Telnet COM-PORT-OPTION) so a client such as pyserial's <c>rfc2217://</c> can use it as a remote serial port. The client's baud/parity/stop/DTR/RTS requests are applied to the device when its transport supports line control (serial, RFC 2217).</summary>
+    [Category("Session")]
+    public bool ShareRfc2217 { get; set; }
+
+    /// <summary>The address <see cref="ShareTcp"/> binds; loopback by default because the share has no authentication or encryption.</summary>
+    [Category("Session")]
+    public string ShareBind { get; set; } = "127.0.0.1";
+
+    /// <summary>Open the same read-write control as <see cref="Control"/> over HTTP on 127.0.0.1 at this port (0 is off), guarded by a per-run bearer token printed at startup: <c>POST /command</c>, <c>GET /events</c> (Server-Sent Events), <c>GET /ping</c>.</summary>
+    [Category("Session")]
+    public int ControlHttp { get; set; }
+
+    /// <summary>The bearer token <see cref="ControlHttp"/> requires; random per run when empty. Set it for the TUI and WPF, which have nowhere to print a generated one.</summary>
+    [Category("Session")]
+    public string? ControlToken { get; set; }
+
+    /// <summary>Drive another dev-term process's session (started with <see cref="Control"/>): each line read from stdin is sent as a control command (<c>send ...</c>, <c>sendhex ...</c>, <c>ping</c>) and every line the session returns is printed; connects to nothing itself.</summary>
+    [Category("Mode")]
+    public string? ControlClient { get; set; }
 
     /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
     [Category("Mode")]
@@ -343,6 +375,10 @@ public sealed class CliOptions
     /// <summary>A project file to open: its connection (see <see cref="ProjectConnection"/>) becomes the profile this run starts from, under any other flag. Never restored automatically.</summary>
     [Category("Mode")]
     public string? Project { get; set; }
+
+    /// <summary>A saved connection profile to start from, by name (see <see cref="ConnectionProfileStore"/>): layered above the default <c>appsettings.Local.json</c> profile and below every other flag.</summary>
+    [Category("Mode")]
+    public string? Profile { get; set; }
 
     /// <summary>Write this run's connection to a one-connection project file at this path and exit, without connecting. Add more connections by editing the file.</summary>
     [Category("Mode")]

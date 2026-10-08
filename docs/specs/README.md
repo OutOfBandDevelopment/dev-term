@@ -52,6 +52,7 @@ Each spec follows the same shape:
 - [Expression Picker](expression-picker.md) — the modal that builds an indicator expression from the manifest's value
   paths, functions, live diagnostics and a sample-data result (`ExpressionPickerDialog` / `ExpressionPickerWindow`).
   **Pick...** beside an indicator's Expression field in the Manifest Editor.
+- [Session control channel](session-control-channel.md) — `--pipe`/`--attach`, `--control`/`--controlclient` and `--controlhttp`: reading and driving a live session from another process.
 - [Web terminal](web-terminal.md) — `DevTerm.Web`: settings, endpoints, access rules.
 - [Stream Monitor](stream-monitor.md) — `StreamMonitorMode` (TUI) / `StreamMonitorWindow` (WPF) over
   the shared `DevTerm.Configuration.StreamMonitor`: detects images/HP-GL/PostScript/PCL in a live

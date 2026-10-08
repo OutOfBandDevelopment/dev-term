@@ -14,8 +14,10 @@ front end watch (later: drive) a device that one process already has open.
 - **Never blocks the session:** every client has a bounded queue (1000 lines, drop-oldest) and its own writer
   task, so a slow or stalled client loses lines instead of stalling the read loop. (A zero-size pipe buffer
   makes a synchronous write block until the client reads, which is why the first prototype hung.)
-- **Phase 2, read-write (not built):** a command channel (`send <text>`, `presenter add/remove`) is a
-  different trust decision, see the open question below.
+- **Phase 2, read-write (built 2026-10-07):** `--control <name>` opens `devterm-control-{name}`, a duplex pipe limited
+  to the current OS user. A client writes `send <text>` (encoded with the host's parser and line ending),
+  `sendhex <HEX>` or `ping`, one per line, and gets `ok` or `error <why>` back; the same `open`/`rx`/`tx`/`closed`
+  event lines stream on the same pipe. `presenter add/remove` is not built.
 - **Localhost web service alternative:** the same line events fit Server-Sent Events or a WebSocket on
   `127.0.0.1`. It reaches browsers and non-.NET tools more easily, at the cost of a port and a
   same-machine-user trust model to design. The pipe is the simpler first step.
@@ -48,8 +50,6 @@ pipe <- B
 
 ## Open questions
 
-- Read-write: who may send over the pipe (any local user, same user only, an explicit token), and whether a
-  second writer can interleave with the owning front end's own typing.
 - Naming: is the session name the profile name, a tab title, or generated? Discovery of live sessions
   (list the pipes) is not designed.
 - Web service versus pipe for browsers and non-.NET clients.
@@ -60,8 +60,10 @@ pipe <- B
 - [x] CLI flag `--pipe <name>` publishes the session (console CLI mode)
 - [x] `--pipe` in the TUI and WPF front ends (first tab's session only)
 - [x] A `tail` client mode (`--attach <name>`, prints `open`/`rx`/`tx`/`closed` lines with the ASCII beside each)
-- [ ] Decide and build the read-write channel
-- [ ] Localhost web-service variant
+- [x] Read-write named-pipe channel (`SessionControlPipeServer`, `--control <name>`, console CLI mode; decided 2026-10-07: current OS user only via `PipeOptions.CurrentUserOnly`, sends interleave through `Session.SendAsync`)
+- [x] `--control` in the TUI and WPF front ends (first tab's session only; not exercised by a front-end test)
+- [x] A client mode: `--controlclient <name>` reads commands from stdin and prints replies and events (checked across two real processes with the loopback transport, 2026-10-07)
+- [x] Localhost web-service variant (`--controlhttp <port>`, `SessionHttpControlServer`: 127.0.0.1 only, bearer token, `POST /command`, `GET /events` as SSE, `GET /ping`)
 
 ## Status
 

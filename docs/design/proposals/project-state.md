@@ -70,5 +70,5 @@ Built 2026-10-03, verified with unit tests and a real console run:
 - [x] File format and library (`ProjectFile`)
 - [x] `--project` / `--projectconnection` / `--saveproject`
 - [x] TUI and WPF **File > Save Project...** and **Open Project...** (every open tab saved; one tab opened and connected per connection). Not covered by an automated test: they run native file dialogs
-- [ ] Send history, Stream Monitor/log settings and window layout in the file (connection-only for now)
-- [ ] Web host: use the same file as its connection set (see [web-tunnel-blazor-frontend.md](web-tunnel-blazor-frontend.md))
+- [x] Send history, log setting and the active tab (2026-10-07; TUI and WPF save/open). WPF also saves the main window's position, size and maximized state (`Window`, 2026-10-08; skipped on open if it would be off-screen). Not saved: output-pane contents, TUI layout
+- [x] ~~Web host: use the same file as its connection set~~ decided against 2026-10-08: project connections stay an extra list beside the shared session (built) (see [web-tunnel-blazor-frontend.md](web-tunnel-blazor-frontend.md))

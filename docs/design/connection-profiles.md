@@ -198,6 +198,12 @@ persisted subset rather than tracking a name that would go stale on the first ed
 `tcp://`/`serial://`/`hid://` connection string (`ConnectionDescription.Definition`) — and is
 recomputed on every live profile switch. Details in `docs/specs/tui-main-screen.md`.
 
+## Selecting a profile from the command line
+
+`--profile <name>` (`CliOptions.Profile`) layers the named saved profile above `appsettings.Local.json`
+and below the project layer, environment variables and the other flags (`DevTermConfiguration.AddNamedProfile`).
+The console app reports an unknown or invalid name as a startup error. Decided 2026-10-07.
+
 ## What this explicitly is not (yet)
 
 - **Not wired to `IControlSurface`** — loading a profile's referenced manifest makes its

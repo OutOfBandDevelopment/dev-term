@@ -27,6 +27,16 @@ public sealed class CliOptionsValidator : IValidateOptions<CliOptions>
             return ValidateOptionsResult.Fail("'--writetimeoutms' must be -1 (infinite) or a non-negative timeout in milliseconds.");
         }
 
+        if (options.ShareTcp is < 0 or > 65535 || (options.ShareTcp > 0 && !System.Net.IPAddress.TryParse(options.ShareBind, out _)))
+        {
+            return ValidateOptionsResult.Fail("'--sharetcp' must be 0 (off) or a port 1-65535, and '--sharebind' an IP address such as 127.0.0.1.");
+        }
+
+        if (options.ControlHttp is < 0 or > 65535)
+        {
+            return ValidateOptionsResult.Fail("'--controlhttp' must be 0 (off) or a port 1-65535.");
+        }
+
         if (!string.IsNullOrWhiteSpace(options.Otlp) && !string.Equals(options.Otlp, "false", StringComparison.OrdinalIgnoreCase) && TelemetryExporter.ParseEndpoint(options.Otlp) is null)
         {
             return ValidateOptionsResult.Fail("'--otlp' must be 'true' or an http(s) URL such as http://localhost:4317.");

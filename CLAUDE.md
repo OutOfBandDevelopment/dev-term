@@ -132,6 +132,9 @@ Eight kinds of doc, each with a distinct job — don't blend them:
   full detail already exists under `docs/changes/`; if it doesn't yet, write it there first, then
   delete the `TODO.md` entry in the same change. **[`BACKLOG.md`](BACKLOG.md)** is the same idea for
   not-yet-started work.
+- **Bugs and proposals are tracked in [`BACKLOG.md`](BACKLOG.md)'s "Proposals and bugs tracker"** — every open bug and
+  every unchecked proposal checklist item has a row there, so nothing lives only in a proposal file. Add the row in the same
+  change that files the bug or adds the unchecked item; delete it when the bug closes or the item is checked off.
 - **[`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md)** — the one index of every genuinely undecided question across the design docs,
   proposals, specs, `TODO.md` and `BACKLOG.md`, grouped by what answering it needs (your decision, hardware/a capture,
   design work, known screen gaps). It only *points* at the source doc, which keeps the reasoning. **Whenever you add an

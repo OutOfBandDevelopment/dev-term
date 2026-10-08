@@ -394,7 +394,10 @@ public partial class MainWindow : Window
 
         try
         {
-            ProjectFile.From(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => (ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions))]).Save(dialog.FileName);
+            var saved = ProjectFile.FromTabs(Path.GetFileNameWithoutExtension(dialog.FileName), [.. _tabs.Select(t => new ProjectTabState(ConnectionDescription.Definition(t.Tab.CliOptions), t.Tab.CliOptions, [.. t.Tab.SendHistory.Items], t.Logger is not null))], ActiveWindowTabOrNull is { } front ? ConnectionDescription.Definition(front.Tab.CliOptions) : null);
+            var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+            saved.Window = new ProjectWindowBounds(bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowState == WindowState.Maximized);
+            saved.Save(dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -413,11 +416,40 @@ public partial class MainWindow : Window
 
         try
         {
-            foreach (var connection in ProjectFile.Load(dialog.FileName).Connections)
+            var project = ProjectFile.Load(dialog.FileName);
+            if (project.Window is { } saved && saved.Width >= MinWidth && saved.Height >= MinHeight
+                && saved.Left + saved.Width > SystemParameters.VirtualScreenLeft && saved.Left < SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth
+                && saved.Top + saved.Height > SystemParameters.VirtualScreenTop && saved.Top < SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight)
+            {
+                WindowState = WindowState.Normal;
+                (Left, Top, Width, Height) = (saved.Left, saved.Top, saved.Width, saved.Height);
+                if (saved.Maximized)
+                {
+                    WindowState = WindowState.Maximized;
+                }
+            }
+
+            WindowTab? front = null;
+            foreach (var connection in project.Connections)
             {
                 var tab = AddTab(SessionTab.Build(connection.ToOptions()));
+                if (connection.History is { } history)
+                {
+                    tab.Tab.SendHistory.Restore(history);
+                }
+
+                if (string.Equals(connection.Name, project.Active, StringComparison.OrdinalIgnoreCase))
+                {
+                    front = tab;
+                }
+
                 StartLoggingFromOptions(tab);
                 Observe(ConnectAsync());
+            }
+
+            if (front is not null)
+            {
+                SessionTabs.SelectedItem = front.Item;
             }
         }
         catch (Exception ex)
@@ -812,7 +844,7 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
-            if (tab.Tab.Session.State == ConnectionState.Open && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
+            if (tab.Tab.Session.State == ConnectionState.Open && !LiveSessionUpdate.CanApplyLive(tab.Tab.CliOptions, chosen) && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
             {
                 return;
             }
@@ -1204,6 +1236,15 @@ public partial class MainWindow : Window
         if (ActiveWindowTabOrNull is not { } tab)
         {
             return false;
+        }
+
+        // Only line settings, presenters, parser or line ending changed: update the open session in place.
+        if (LiveSessionUpdate.TryApply(tab.Tab.Session, tab.Tab.Catalog, tab.Tab.CliOptions, newOptions))
+        {
+            tab.Tab.CliOptions = newOptions;
+            tab.Tab.Parser = newOptions.EffectiveParser;
+            AppendOutput(tab, "Connection settings updated without reconnecting.", OutputKind.Status);
+            return true;
         }
 
         tab.SwitchCts?.Cancel();

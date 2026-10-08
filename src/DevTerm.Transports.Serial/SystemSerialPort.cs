@@ -39,5 +39,41 @@ public sealed class SystemSerialPort : ISerialPort
 
     public void Write(byte[] buffer, int offset, int count) => _port.Write(buffer, offset, count);
 
+    public ISerialPort SetBaudRate(int baudRate)
+    {
+        _port.BaudRate = baudRate;
+        return this;
+    }
+
+    public ISerialPort SetDataBits(int dataBits)
+    {
+        _port.DataBits = dataBits;
+        return this;
+    }
+
+    public ISerialPort SetParity(System.IO.Ports.Parity parity)
+    {
+        _port.Parity = parity;
+        return this;
+    }
+
+    public ISerialPort SetStopBits(System.IO.Ports.StopBits stopBits)
+    {
+        _port.StopBits = stopBits;
+        return this;
+    }
+
+    public ISerialPort SetDtr(bool enabled)
+    {
+        _port.DtrEnable = enabled;
+        return this;
+    }
+
+    public ISerialPort SetRts(bool enabled)
+    {
+        _port.RtsEnable = enabled;
+        return this;
+    }
+
     public void Dispose() => _port.Dispose();
 }

@@ -31,5 +31,5 @@ The Options pattern is for **structural application/plugin settings** (how the a
 
 ## Open questions
 
-- Whether plugin options sections need namespacing/collision rules (e.g., prefixing by plugin id) so two plugins can't accidentally bind to the same configuration section — the console app's own settings are currently all flat/top-level (see `CliOptions`), which won't scale once plugin-contributed options join the same file.
-- Whether the single-file `appsettings.Local.json` profile convention should grow into multiple *named* profiles (`--profile <name>`) once someone needs to switch between several saved devices, or whether "one file, edit it" stays sufficient.
+- **Decided 2026-10-07: no plugin-options namespacing for now.** (Was: whether plugin options sections need namespacing/collision rules (e.g., prefixing by plugin id) so two plugins can't accidentally bind to the same configuration section — the console app's own settings are currently all flat/top-level (see `CliOptions`), which won't scale once plugin-contributed options join the same file.)
+- **Decided 2026-10-07 and built: named profiles (`--profile <name>`).** (Was: whether the single-file `appsettings.Local.json` profile convention should grow into multiple *named* profiles (`--profile <name>`) once someone needs to switch between several saved devices, or whether "one file, edit it" stays sufficient.)

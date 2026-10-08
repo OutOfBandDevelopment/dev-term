@@ -30,6 +30,61 @@ public sealed class SerialTransportTests
     }
 
     [TestMethod]
+    public async Task LineSetters_OnAnOpenTransport_ApplyToThePortAndAreRemembered()
+    {
+        var (port, _) = CreatePort();
+        var factory = new Mock<ISerialPortFactory>();
+        factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
+        var options = Options();
+        var transport = new SerialTransport(factory.Object, options);
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        var chained = transport.SetBaudRate(115200).SetDataBits(7).SetParity(ComParity.Even).SetStopBits(ComStopBits.Two).SetDtr(false).SetRts(false);
+
+        Assert.AreSame(transport, chained);
+        port.Verify(p => p.SetBaudRate(115200), Times.Once);
+        port.Verify(p => p.SetDataBits(7), Times.Once);
+        port.Verify(p => p.SetParity(System.IO.Ports.Parity.Even), Times.Once);
+        port.Verify(p => p.SetStopBits(System.IO.Ports.StopBits.Two), Times.Once);
+        port.Verify(p => p.SetDtr(false), Times.Once);
+        port.Verify(p => p.SetRts(false), Times.Once);
+        Assert.AreEqual(115200, options.Value.BaudRate);
+        Assert.AreEqual(System.IO.Ports.Parity.Even, options.Value.Parity);
+        Assert.AreEqual(ConnectionState.Open, transport.State);
+
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public void LineSetters_OnAClosedTransport_OnlyRememberTheValues()
+    {
+        var options = Options();
+        var transport = new SerialTransport(Mock.Of<ISerialPortFactory>(), options);
+
+        transport.SetBaudRate(57600).SetDtr(false);
+
+        Assert.AreEqual(57600, options.Value.BaudRate);
+        Assert.IsFalse(options.Value.DtrEnable);
+    }
+
+    [TestMethod]
+    public async Task SetRts_UnderHardwareHandshake_DoesNotTouchThePort()
+    {
+        var (port, _) = CreatePort();
+        var factory = new Mock<ISerialPortFactory>();
+        factory.Setup(f => f.Create(It.IsAny<SerialTransportOptions>())).Returns(port.Object);
+        var options = Options();
+        options.Value.Handshake = System.IO.Ports.Handshake.RequestToSend;
+        var transport = new SerialTransport(factory.Object, options);
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        transport.SetRts(false);
+
+        port.Verify(p => p.SetRts(It.IsAny<bool>()), Times.Never);
+        await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
     public async Task OpenAsync_CreatesAndOpensPortFromFactory()
     {
         var (port, _) = CreatePort();

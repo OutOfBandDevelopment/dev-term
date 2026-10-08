@@ -145,17 +145,57 @@ public partial class App : Application
             _pipeRegistration = session.AddObserver(_pipeServer);
         }
 
+        if (!string.IsNullOrWhiteSpace(cliOptions.Control))
+        {
+            _controlServer = new SessionControlPipeServer(session, cliOptions.Control, text => TypedInput.TryEncode(catalog, cliOptions, text));
+            _controlRegistration = session.AddObserver(_controlServer);
+        }
+
+        if (cliOptions.ControlHttp > 0)
+        {
+            _controlHttpServer = new SessionHttpControlServer(session, cliOptions.ControlHttp, text => TypedInput.TryEncode(catalog, cliOptions, text), cliOptions.ControlToken);
+            _controlHttpRegistration = session.AddObserver(_controlHttpServer);
+        }
+
+        if (cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress))
+        {
+            if (cliOptions.ShareRfc2217)
+            {
+                _rfc2217Server = new DevTerm.Transports.Rfc2217.Rfc2217ServerBridge(session, shareAddress, cliOptions.ShareTcp);
+                _shareRegistration = session.AddObserver(_rfc2217Server);
+            }
+            else
+            {
+                _shareServer = new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp);
+                _shareRegistration = session.AddObserver(_shareServer);
+            }
+        }
+
         var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
     }
 
+    private SessionTcpShareServer? _shareServer;
+    private DevTerm.Transports.Rfc2217.Rfc2217ServerBridge? _rfc2217Server;
+    private IDisposable? _shareRegistration;
+    private SessionHttpControlServer? _controlHttpServer;
+    private IDisposable? _controlHttpRegistration;
+    private SessionControlPipeServer? _controlServer;
+    private IDisposable? _controlRegistration;
     private SessionPipeServer? _pipeServer;
     private IDisposable? _pipeRegistration;
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _shareRegistration?.Dispose();
+        _shareServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _rfc2217Server?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _controlHttpRegistration?.Dispose();
+        _controlHttpServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _controlRegistration?.Dispose();
+        _controlServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _pipeRegistration?.Dispose();
         _pipeServer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _host?.Dispose();

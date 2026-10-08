@@ -21,8 +21,12 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException)
     return 1;
 }
 
+// No connection configured at all is a valid start: the host comes up with its main session closed and connections are
+// opened at runtime (POST /api/connections from a --project file). A half-configured connection is still an error.
+var unconfigured = string.Equals(cliOptions.Transport, new CliOptions().Transport, StringComparison.OrdinalIgnoreCase)
+    && string.IsNullOrEmpty(cliOptions.Port) && string.IsNullOrEmpty(cliOptions.Host);
 var validation = new CliOptionsValidator().Validate(null, cliOptions);
-if (validation.Failed)
+if (validation.Failed && !unconfigured)
 {
     Console.Error.WriteLine(string.Join(" ", validation.Failures));
     return 1;
@@ -44,6 +48,11 @@ await using (built.Hub)
     await built.Hub.StartAsync();
     var first = webOptions.Urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)[0];
     Console.WriteLine($"dev-term web: {first}/?token={built.Token}");
+    if (built.ControlHttp is { } controlHttp)
+    {
+        Console.WriteLine($"dev-term control: http://127.0.0.1:{controlHttp.Port}/ with header 'Authorization: Bearer {controlHttp.Token}' (POST /command, GET /events, GET /ping).");
+    }
+
     await built.App.RunAsync();
 }
 
