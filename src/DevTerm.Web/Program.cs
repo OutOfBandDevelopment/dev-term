@@ -21,8 +21,12 @@ catch (Exception ex) when (ex is InvalidOperationException or FormatException)
     return 1;
 }
 
+// No connection configured at all is a valid start: the host comes up with its main session closed and connections are
+// opened at runtime (POST /api/connections from a --project file). A half-configured connection is still an error.
+var unconfigured = string.Equals(cliOptions.Transport, new CliOptions().Transport, StringComparison.OrdinalIgnoreCase)
+    && string.IsNullOrEmpty(cliOptions.Port) && string.IsNullOrEmpty(cliOptions.Host);
 var validation = new CliOptionsValidator().Validate(null, cliOptions);
-if (validation.Failed)
+if (validation.Failed && !unconfigured)
 {
     Console.Error.WriteLine(string.Join(" ", validation.Failures));
     return 1;

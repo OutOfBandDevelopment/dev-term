@@ -33,12 +33,12 @@ with the reason.
 | `/api/project` | The `--project` file's connections as `[{"name", "description"}]` (no credentials); `[]` without a project |
 | `GET /api/connections` | The extra connections currently open: `[{"id", "name", "state"}]` |
 | `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name"}`; 404 for an unknown name, 403 for a read-only viewer |
-| `DELETE /api/connections/{id}` | Closes it (204; 404 unknown id; 403 read-only) |
+| `DELETE /api/connections/{id}` | Closes it (204 whether or not it was open, so a repeat is harmless; 403 read-only) |
 | `/ws/{id}` | The same text WebSocket as `/ws`, for one opened connection |
 | `/api/devices` | Attached hardware: `{"serial": [...], "hid": [...], "usbtmc": [...]}`; a kind that cannot be enumerated returns `[]` |
 | `/api/events` | Server-Sent Events: `connection-opened` `{id, name}`, `connection-closed` `{id}` and `line` `{id, text}` (`id` is `main` for the shared session). Each subscriber has a 256-event queue that drops its oldest |
 | `PUT /api/project/connections/{name}` | Create or replace a connection in the `--project` file; the body is profile JSON (`{"Transport":"tcp","Host":"10.0.0.5","Port":23}`), validated like a CLI profile. 204 saved; 400 with `{"error"}` when invalid, when the file is unreadable, or when the host has no `--project`; 403 for a read-only viewer. Existing history and log settings are kept |
-| `DELETE /api/project/connections/{name}` | Remove a connection from the project file; 204, 404 unknown name, 403 read-only. Both publish a `project-changed` event |
+| `DELETE /api/project/connections/{name}` | Remove a connection from the project file; 204 whether or not it existed; 403 read-only. Both publish a `project-changed` event |
 | `/openapi/v1.json` | OpenAPI 3.1 for the plain REST endpoints (the streaming ones, `/ws` and `/api/events`, are not in it) |
 | `/scalar/v1` | The Scalar viewer over that document |
 | `/asyncapi.json` | AsyncAPI 3.0 for `/ws`, `/ws/{id}` and `/api/events`, written by hand in `AsyncApiDocument` (keep it in step with `WebSocketTunnel` and `HostEvents`) |

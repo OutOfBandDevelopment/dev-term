@@ -122,10 +122,16 @@ public static class WebHost
             return error is null ? Results.NoContent() : Results.BadRequest(new { error });
         }).WithSummary("Create or replace a project connection from profile JSON; 400 with the reason when invalid or there is no --project");
         app.MapDelete("/api/project/connections/{name}", (HttpContext context, string name) =>
-            context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem)
-                ? Results.StatusCode(StatusCodes.Status403Forbidden)
-                : connections.Remove(name) ? Results.NoContent() : Results.NotFound())
-            .WithSummary("Remove a project connection; 404 when unknown");
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            connections.Remove(name);
+            return Results.NoContent();
+        })
+            .WithSummary("Remove a project connection; 204 whether or not it existed, 403 read-only");
 
         // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
         // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
@@ -148,8 +154,9 @@ public static class WebHost
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
-            return await connections.CloseAsync(id) ? Results.NoContent() : Results.NotFound();
-        }).WithSummary("Close an opened connection; 404 unknown id, 403 read-only");
+            await connections.CloseAsync(id);
+            return Results.NoContent();
+        }).WithSummary("Close an opened connection; 204 whether or not it was open, 403 read-only");
         app.Map("/ws/{id}", (HttpContext context, string id) => connections.TryGet(id, out var found) ? WebSocketTunnel.HandleAsync(context, found) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
         app.Lifetime.ApplicationStopping.Register(() => connections.CloseAllAsync().GetAwaiter().GetResult());
 

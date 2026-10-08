@@ -225,12 +225,12 @@ public class WebHostTests
             Assert.AreEqual(2, ProjectFile.Load(file).Connections.Count);
 
             Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync(baseUrl + "/api/project/connections/Lab")).StatusCode);
-            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync(baseUrl + "/api/project/connections/Lab")).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync(baseUrl + "/api/project/connections/Lab")).StatusCode);
             Assert.AreEqual(1, ProjectFile.Load(file).Connections.Count);
 
             File.WriteAllText(file, "{ not a project");
             Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PutAsync(baseUrl + "/api/project/connections/Lab", Json("{\"Transport\":\"loopback\"}"))).StatusCode);
-            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync(baseUrl + "/api/project/connections/Echo")).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync(baseUrl + "/api/project/connections/Echo")).StatusCode);
             await built.App.StopAsync();
         }
 
@@ -279,7 +279,7 @@ public class WebHostTests
             }
 
             Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync($"{baseUrl}/api/connections/{id}")).StatusCode);
-            Assert.AreEqual(HttpStatusCode.NotFound, (await client.DeleteAsync($"{baseUrl}/api/connections/{id}")).StatusCode);
+            Assert.AreEqual(HttpStatusCode.NoContent, (await client.DeleteAsync($"{baseUrl}/api/connections/{id}")).StatusCode);
             await built.App.StopAsync();
         }
 
