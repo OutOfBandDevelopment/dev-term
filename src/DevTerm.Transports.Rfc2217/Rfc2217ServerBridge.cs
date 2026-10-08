@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.Transports;
 
 namespace DevTerm.Transports.Rfc2217;
 
@@ -322,6 +323,29 @@ public sealed class Rfc2217ServerBridge : ISessionObserver, IAsyncDisposable
         }
     }
 
+    // The session's transport takes the client's line settings live when it fronts a serial line.
+    private void ApplyToTransport(Rfc2217PortSettings settings)
+    {
+        if (_session.Transport is not IComPortControl control)
+        {
+            return;
+        }
+
+        try
+        {
+            control.SetBaudRate(settings.BaudRate)
+                .SetDataBits(settings.DataBits)
+                .SetParity(settings.Parity switch { Parity.Odd => ComParity.Odd, Parity.Even => ComParity.Even, Parity.Mark => ComParity.Mark, Parity.Space => ComParity.Space, _ => ComParity.None })
+                .SetStopBits(settings.StopBits switch { StopBits.Two => ComStopBits.Two, StopBits.OnePointFive => ComStopBits.OnePointFive, _ => ComStopBits.One })
+                .SetDtr(settings.Dtr)
+                .SetRts(settings.Rts);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException)
+        {
+            // A setting the device rejects (an unsupported baud rate) is not the client's connection failing.
+        }
+    }
+
     private static byte[] Reply(byte command, params byte[] payload) =>
         Rfc2217Codec.EncodeSubnegotiation((byte)(command + Rfc2217Command.ServerOffset), payload);
 
@@ -424,6 +448,7 @@ public sealed class Rfc2217ServerBridge : ISessionObserver, IAsyncDisposable
 
         if (changed)
         {
+            ApplyToTransport(Settings);
             SettingsChanged?.Invoke(Settings);
         }
     }

@@ -41,3 +41,10 @@ device output in normal text:
 
 Both front ends guard against sending on a closed session — typing and pressing Enter/Send while
 disconnected reports "Not connected" in the output instead of throwing or silently doing nothing.
+
+## Changing settings without reconnecting
+
+In Device Profiles, editing only the serial line (baud rate, data bits, parity, stop bits, DTR, RTS), the
+presenters, the send parser or the line ending updates the open connection in place: no prompt, no
+disconnect. Changing the port, host, transport or similar still switches to a new connection. A serial
+or RFC 2217 connection applies the line settings to the device immediately.

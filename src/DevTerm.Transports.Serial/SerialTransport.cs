@@ -7,7 +7,7 @@ namespace DevTerm.Transports.Serial;
 /// <summary>
 /// <see cref="ITransport"/> for a serial/UART connection. See docs/design/transports.md.
 /// </summary>
-public sealed class SerialTransport : ITransport
+public sealed class SerialTransport : ITransport, IComPortControl
 {
     private readonly ISerialPortFactory _portFactory;
     private readonly IOptions<SerialTransportOptions> _options;
@@ -149,6 +149,68 @@ public sealed class SerialTransport : ITransport
 
         var buffer = data.ToArray();
         _port.Write(buffer, 0, buffer.Length);
+    }
+
+    public IComPortControl SetBaudRate(int baudRate)
+    {
+        _options.Value.BaudRate = baudRate;
+        _port?.SetBaudRate(baudRate);
+        return this;
+    }
+
+    public IComPortControl SetDataBits(int dataBits)
+    {
+        _options.Value.DataBits = dataBits;
+        _port?.SetDataBits(dataBits);
+        return this;
+    }
+
+    public IComPortControl SetParity(ComParity parity)
+    {
+        var mapped = parity switch
+        {
+            ComParity.Odd => System.IO.Ports.Parity.Odd,
+            ComParity.Even => System.IO.Ports.Parity.Even,
+            ComParity.Mark => System.IO.Ports.Parity.Mark,
+            ComParity.Space => System.IO.Ports.Parity.Space,
+            _ => System.IO.Ports.Parity.None,
+        };
+        _options.Value.Parity = mapped;
+        _port?.SetParity(mapped);
+        return this;
+    }
+
+    public IComPortControl SetStopBits(ComStopBits stopBits)
+    {
+        var mapped = stopBits switch
+        {
+            ComStopBits.Two => System.IO.Ports.StopBits.Two,
+            ComStopBits.OnePointFive => System.IO.Ports.StopBits.OnePointFive,
+            _ => System.IO.Ports.StopBits.One,
+        };
+        _options.Value.StopBits = mapped;
+        _port?.SetStopBits(mapped);
+        return this;
+    }
+
+    public IComPortControl SetDtr(bool enabled)
+    {
+        _options.Value.DtrEnable = enabled;
+        _port?.SetDtr(enabled);
+        return this;
+    }
+
+    public IComPortControl SetRts(bool enabled)
+    {
+        _options.Value.RtsEnable = enabled;
+
+        // RTS belongs to the handshake under hardware flow control; only remember the value then.
+        if (_options.Value.Handshake is not (System.IO.Ports.Handshake.RequestToSend or System.IO.Ports.Handshake.RequestToSendXOnXOff))
+        {
+            _port?.SetRts(enabled);
+        }
+
+        return this;
     }
 
     public async ValueTask DisposeAsync()

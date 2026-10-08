@@ -37,6 +37,11 @@ Shown in two situations:
    immediately (`DevTermSessionBuilder`/`MainWindow.SwitchProfileAsync`/`TuiMode.BuildWindow`'s
    `SwitchProfileAsync`) — the running session tears down and the new one opens in place, no
    restart needed.
+   **Exception, no reconnect:** if the edit changes only baud, data bits, parity, stop bits, DTR, RTS,
+   the display presenters, the send parser or the line ending, `LiveSessionUpdate` applies it to the
+   open session in place (no confirmation prompt, the connection stays open, output says "Connection
+   settings updated without reconnecting."). Anything that identifies the connection (transport, port,
+   host, handshake, timeouts, ...) still switches sessions. Tests: `LiveSessionUpdateTests`.
 
 ## Fields
 

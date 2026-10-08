@@ -548,6 +548,7 @@ public static class TuiMode
                     {
                         DevTermConfiguration.SaveLocalProfile(chosen);
                         if (windowTab.Tab.Session.State == ConnectionState.Open
+                            && !LiveSessionUpdate.CanApplyLive(windowTab.Tab.CliOptions, chosen)
                             && MessageBox.Query(app, "dev-term", $"Switch to {ConnectionDescription.Definition(chosen)}? This closes the current connection. The new profile is saved either way.", ["Yes", "No"]) != 0)
                         {
                             return;
@@ -936,6 +937,16 @@ public static class TuiMode
         async Task<bool> SwitchProfileAsync(CliOptions newOptions)
         {
             var windowTab = ActiveTab();
+
+            // Only line settings, presenters, parser or line ending changed: update the open session in place.
+            if (LiveSessionUpdate.TryApply(windowTab.Tab.Session, windowTab.Tab.Catalog, windowTab.Tab.CliOptions, newOptions))
+            {
+                windowTab.Tab.CliOptions = newOptions;
+                windowTab.Tab.Parser = newOptions.EffectiveParser;
+                AppendOutput(windowTab, "Connection settings updated without reconnecting.");
+                return true;
+            }
+
             windowTab.SwitchCts?.Cancel();
             var cts = new CancellationTokenSource();
             windowTab.SwitchCts = cts;

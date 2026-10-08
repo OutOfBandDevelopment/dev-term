@@ -829,7 +829,7 @@ public partial class MainWindow : Window
         if (window.Result is { } chosen)
         {
             DevTermConfiguration.SaveLocalProfile(chosen);
-            if (tab.Tab.Session.State == ConnectionState.Open && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
+            if (tab.Tab.Session.State == ConnectionState.Open && !LiveSessionUpdate.CanApplyLive(tab.Tab.CliOptions, chosen) && !ConfirmProfileSwitch(tab.Tab.CliOptions, chosen))
             {
                 return;
             }
@@ -1221,6 +1221,15 @@ public partial class MainWindow : Window
         if (ActiveWindowTabOrNull is not { } tab)
         {
             return false;
+        }
+
+        // Only line settings, presenters, parser or line ending changed: update the open session in place.
+        if (LiveSessionUpdate.TryApply(tab.Tab.Session, tab.Tab.Catalog, tab.Tab.CliOptions, newOptions))
+        {
+            tab.Tab.CliOptions = newOptions;
+            tab.Tab.Parser = newOptions.EffectiveParser;
+            AppendOutput(tab, "Connection settings updated without reconnecting.", OutputKind.Status);
+            return true;
         }
 
         tab.SwitchCts?.Cancel();
