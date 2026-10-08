@@ -223,6 +223,21 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiDiscover_RequiresTheTokenAndReturnsAJsonArray()
+    {
+        var (built, baseUrl) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync(baseUrl + "/api/discover", TestContext.CancellationToken)).StatusCode);
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            using var document = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(baseUrl + "/api/discover?seconds=1", TestContext.CancellationToken));
+            Assert.AreEqual(System.Text.Json.JsonValueKind.Array, document.RootElement.ValueKind);
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
+    }
+
+    [TestMethod]
     public async Task ApiProject_ListsTheProjectFilesConnections()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");

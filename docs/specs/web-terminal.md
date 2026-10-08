@@ -31,6 +31,7 @@ with the reason.
 | `/api/status` | `{"state": "...", "connection": "...", "readOnly": false}` |
 | `/api/panel` | The configured panel's `UiDefinition` as JSON (404 when `Panel` is unset) |
 | `/api/project` | The `--project` file's connections as `[{"name", "description"}]` (no credentials); `[]` without a project |
+| `GET /api/discover?seconds=n` | Network devices found by the LXI, mDNS and SSDP probes (the `--listnetworkdevices` set), listening 1-10 s (default 3): `[{"address","port","transport","kind","name","source","hostname"}]`; `[]` when nothing answers or the network is unreachable. Not hardware-verified beyond the one real-LAN run of the probes |
 | `GET /api/connections` | The extra connections currently open: `[{"id", "name", "state"}]` |
 | `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name", "controlPort", "controlToken"}` (the last two null unless the profile sets `ControlHttp`, see "Per-connection control" below); 404 for an unknown name, 403 for a read-only viewer |
 | `DELETE /api/connections/{id}` | Closes it (204 whether or not it was open, so a repeat is harmless; 403 read-only) |
@@ -75,6 +76,20 @@ Same token auth. Lists the `--project` file's connections (name, description, **
 open (name, state, `/ws/<id>`, **Close**). It shares `ConnectionManager` with the REST endpoints, so a connection opened
 over `POST /api/connections` or in another tab appears here without a reload (it re-reads on the `connection-*` events).
 A read-only token sees both lists with every button disabled and a notice; with no `--project` the page says so.
+
+## Blazor profiles page (`/profiles`)
+
+Same token auth. Lists the `--project` file's connections (name, description, **Edit**, **Open**, **Delete**) and **New connection...**.
+**Delete** turns into **Really delete?** on the row and removes the connection only on the second click; navigating away or
+clicking another row's Delete moves the confirmation. **Edit**/**New** swap the list for a form:
+
+- **Name** (fixed once saved) and **Detect network devices...**, which runs the `/api/discover` probes (3 s) and lists the hits as buttons; picking one fills Transport, Host and Port (and the name when empty).
+- The connection fields are generated from `ConnectionEditorViewModel`'s form definition, the one the TUI and WPF Connection Editors render, through `FormBinding`: sections are fieldsets, a field shows only when its `VisibleWhen` holds (so choosing a transport shows that transport's fields), choices are dropdowns, presenters are checkboxes, toggles are checkboxes, everything else a text box. A value that fails its constraint shows the message beside the field. The rich device pickers (`Selected*`: serial, HID, USBTMC, BLE, network) and command buttons are not on the web form.
+- **Save** builds the profile JSON from the form and calls `ConnectionManager.Upsert` (the same validation as `PUT /api/project/connections/{name}`); an error such as a missing port or name is shown at the top and the form stays open. **Cancel** discards.
+
+A read-only token sees the list with every button disabled and a notice.
+
+**Which connections**: the `--project` file when the host has one; otherwise the saved profiles the TUI and WPF use (`ConnectionProfileStore`, the `profiles` folder under the dev-term home), so a profile saved in either desktop app is listed, editable and openable here with no setup. `/connections` and `POST /api/connections` use the same set.
 
 ## Blazor panel page (`/panel`)
 

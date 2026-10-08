@@ -102,6 +102,50 @@ public class WebScreenshotTests
     }, BenchProject());
 
     [TestMethod]
+    public Task ProfilesPage_AddEditAndDelete_Screenshot() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/profiles?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000); // the circuit must be interactive before a click on the prerendered button counts
+        await Assertions.Expect(page.Locator("[data-project]")).ToHaveCountAsync(2);
+        await SaveAsync(page, "web-blazor-profiles.png");
+
+        await page.Locator("#new").ClickAsync();
+        await page.Locator("input[data-field=Name]").FillAsync("Bench TCP");
+        await page.Locator("[data-field=Transport] select").SelectOptionAsync("tcp");
+        await page.Locator("[data-field=Host] input").FillAsync("10.0.0.5");
+        await page.Locator("[data-field=TcpPort] input").FillAsync("23");
+        await page.Locator("[data-field=TcpPort] input").BlurAsync();
+        await SaveAsync(page, "web-blazor-profile-editor.png");
+        await page.Locator("#save").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-project]")).ToHaveCountAsync(3);
+
+        await page.Locator("[data-project=\"Bench TCP\"] button", new PageLocatorOptions { HasText = "Delete" }).ClickAsync();
+        await page.Locator("[data-project=\"Bench TCP\"] button", new PageLocatorOptions { HasText = "Really delete?" }).ClickAsync();
+        await Assertions.Expect(page.Locator("[data-project]")).ToHaveCountAsync(2);
+    }, BenchProject());
+
+    [TestMethod]
+    public Task ProfilesPage_AnUnnamedConnection_ShowsTheValidationError() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/profiles?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await page.Locator("#new").ClickAsync();
+        await page.Locator("#save").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-error=page]")).ToContainTextAsync("needs a name");
+    }, BenchProject());
+
+    [TestMethod]
+    public Task ProfilesPage_ReadOnly_DisablesEditing() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/profiles?token=watch-token");
+        await Assertions.Expect(page.GetByText("Read-only viewer")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("#new")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-project=Scope] button").First).ToBeDisabledAsync();
+    }, BenchProject());
+
+    [TestMethod]
     public Task ConnectionsPage_ReadOnly_DisablesTheButtons() => RunAsync(async (page, baseUrl) =>
     {
         await page.GotoAsync($"{baseUrl}/connections?token=watch-token");

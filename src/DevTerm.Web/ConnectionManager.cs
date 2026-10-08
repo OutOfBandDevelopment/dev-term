@@ -14,13 +14,16 @@ public sealed record OpenedConnection(string Id, string Name, int? ControlPort =
 public sealed class ConnectionManager
 {
     private readonly string? _projectPath;
+    private readonly ConnectionProfileStore? _store;
     private readonly int _backlogLines;
     private readonly ConcurrentDictionary<string, (string Name, SessionHub Hub, SessionHttpControlServer? Control, IDisposable? Registration)> _open = new();
     private readonly object _projectLock = new();
 
-    public ConnectionManager(string? projectPath, int backlogLines, HostEvents events)
+    /// <param name="store">The saved-profile store the TUI and WPF use; the connection set when there is no <paramref name="projectPath"/>.</param>
+    public ConnectionManager(string? projectPath, int backlogLines, HostEvents events, ConnectionProfileStore? store = null)
     {
         _projectPath = projectPath;
+        _store = store;
         _backlogLines = backlogLines;
         Events = events;
     }
@@ -33,9 +36,12 @@ public sealed class ConnectionManager
     {
         try
         {
-            return string.IsNullOrWhiteSpace(_projectPath)
-                ? []
-                : [.. ProjectFile.Load(_projectPath).Connections.Select(c => (c.Name, ConnectionDescription.Definition(c.ToOptions())))];
+            if (string.IsNullOrWhiteSpace(_projectPath))
+            {
+                return _store is null ? [] : [.. _store.List().Select(n => (n, StoreDescription(n)))];
+            }
+
+            return [.. ProjectFile.Load(_projectPath).Connections.Select(c => (c.Name, ConnectionDescription.Definition(c.ToOptions())))];
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
@@ -43,8 +49,38 @@ public sealed class ConnectionManager
         }
     }
 
+    /// <summary>The named project connection's settings (case-insensitive), or <see langword="null"/> when there is no such connection or no readable project.</summary>
+    public CliOptions? ProjectOptions(string name)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_projectPath))
+            {
+                return _store is not null && _store.List().Contains(name, StringComparer.OrdinalIgnoreCase) ? _store.Load(name) : null;
+            }
+
+            return !File.Exists(_projectPath) ? null : ProjectFile.Load(_projectPath).Find(name)?.ToOptions();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>True when the host was started with a <c>--project</c> file that edits can be saved to.</summary>
-    public bool HasProject => !string.IsNullOrWhiteSpace(_projectPath);
+    public bool HasProject => !string.IsNullOrWhiteSpace(_projectPath) || _store is not null;
+
+    private string StoreDescription(string name)
+    {
+        try
+        {
+            return ConnectionDescription.Definition(_store!.Load(name));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return "(unreadable profile)";
+        }
+    }
 
     /// <summary>
     /// Adds or replaces the named connection in the project file from <paramref name="profileJson"/> (the JSON a saved
@@ -55,7 +91,7 @@ public sealed class ConnectionManager
     {
         if (!HasProject)
         {
-            return "The host was started without --project, so there is no file to save to.";
+            return "The host has no project file or profile store to save to.";
         }
 
         if (string.IsNullOrWhiteSpace(name))
@@ -76,6 +112,21 @@ public sealed class ConnectionManager
         catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException or FormatException or InvalidDataException)
         {
             return "The profile is not valid: " + ex.Message;
+        }
+
+        if (string.IsNullOrWhiteSpace(_projectPath))
+        {
+            try
+            {
+                _store!.Save(name.Trim(), candidate.ToOptions());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                return "The profile could not be saved: " + ex.Message;
+            }
+
+            Events.Publish("project-changed", new { name });
+            return null;
         }
 
         lock (_projectLock)
@@ -113,6 +164,24 @@ public sealed class ConnectionManager
         if (!HasProject)
         {
             return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_projectPath))
+        {
+            try
+            {
+                if (!_store!.Delete(name))
+                {
+                    return false;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                return false;
+            }
+
+            Events.Publish("project-changed", new { name });
+            return true;
         }
 
         lock (_projectLock)
@@ -158,21 +227,13 @@ public sealed class ConnectionManager
     /// </summary>
     public async Task<OpenedConnection?> OpenAsync(string name, CancellationToken cancellationToken = default)
     {
-        ProjectConnection? chosen = null;
-        try
-        {
-            chosen = string.IsNullOrWhiteSpace(_projectPath) ? null : ProjectFile.Load(_projectPath).Find(name);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-        }
-
-        if (chosen is null)
+        CliOptions? options = ProjectOptions(name);
+        if (options is null)
         {
             return null;
         }
 
-        var options = chosen.ToOptions();
+        var chosen = new { Name = name };
         var built = DevTermSessionBuilder.Build(options);
         var connection = new SessionHub(built.Session, built.Catalog, options, _backlogLines);
         SessionHttpControlServer? control = null;

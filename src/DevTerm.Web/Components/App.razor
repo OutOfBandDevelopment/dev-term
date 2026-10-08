@@ -12,10 +12,14 @@
         .row > label { min-width: 12em; }
         .note { color: #8a96a3; }
         .error { color: #ff8a80; }
+        nav { display: flex; gap: 16px; margin-bottom: 12px; }
+        nav a { color: #8fb4d8; }
+        select, input[type=text], input[type=number] { background: #1c232b; color: inherit; border: 1px solid #38424f; padding: 2px 4px; }
     </style>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
+    <nav><a href="profiles">Profiles</a><a href="connections">Connections</a><a href="panel">Panel</a></nav>
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>

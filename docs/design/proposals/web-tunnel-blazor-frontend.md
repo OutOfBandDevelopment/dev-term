@@ -182,7 +182,7 @@ Projects and configuration are stored server-side, never in the browser (decided
 how host-side hardware that is already open
 locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI gets a small hand-written page, no package). ~~Scalar offline~~: its page references only bundled scripts (`scalar.js`, `scalar.aspnetcore.js`) and no external URL (checked 2026-10-08 against a running host; not rendered in a browser with the network cut).
 
-## Profile editor page (`/profiles`) - layout for review
+## Profile editor page (`/profiles`)
 
 The page edits the host's `--project` file through the services that already exist (`GET /api/project`,
 `PUT`/`DELETE /api/project/connections/{name}`), so it needs no new server logic. The form is not hand-written: it renders
@@ -267,7 +267,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] ~~Per-connection tokens~~ (decided against)
 - [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; the JSON is at `/asyncapi.json`, a small built-in page at `/asyncapi`)
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
-- [ ] Blazor front end for those services: the `/profiles` editor (layout above, awaiting review) and `GET /api/discover`
+- [x] Blazor front end for those services: the `/profiles` editor and `GET /api/discover` (2026-10-08; `Profiles.razor`, `WebScreenshotTests.ProfilesPage_*`, `WebHostTests.ApiDiscover_*`; the rich device pickers are not on the web form)
 
 ## Status
 

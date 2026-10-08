@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using DevTerm.Configuration;
+using DevTerm.Configuration.Discovery;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
@@ -44,7 +45,7 @@ public static class WebHost
         builder.Services.AddSingleton<Components.PanelHostHolder>();
         builder.Services.AddOpenApi();
         builder.Services.AddSingleton<HostEvents>();
-        builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>()));
+        builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>(), new ConnectionProfileStore()));
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
@@ -106,6 +107,14 @@ public static class WebHost
             .WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(string), StatusCodes.Status200OK, "text/event-stream"))
             .WithSummary("Server-Sent Events: connection-opened, connection-closed and line events");
         app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate())).WithSummary("Attached serial, HID and USBTMC devices");
+
+        // The same LXI / mDNS / SSDP probes as --listnetworkdevices; an unreachable network is just an empty list.
+        app.MapGet("/api/discover", async (HttpContext context, int? seconds) =>
+        {
+            var listenFor = TimeSpan.FromSeconds(Math.Clamp(seconds ?? 3, 1, 10));
+            var hits = await NetworkDiscovery.CreateDefault().DiscoverAsync(listenFor, context.RequestAborted);
+            return Results.Json(hits.Select(h => new { address = h.Address, port = h.Port, transport = h.Transport, kind = h.Kind, name = h.DisplayName, source = h.Source, hostname = h.Hostname }));
+        }).WithSummary("Network devices found by the LXI, mDNS and SSDP probes (?seconds=1..10, default 3)");
 
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
         app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description }))).WithSummary("The project file's connections (name and description only)");

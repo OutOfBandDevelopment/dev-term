@@ -81,6 +81,18 @@ Opening one over the REST call or in another tab updates the list live. A read-o
 
 ![The /connections page with Scope open](images/web-blazor-connections.png)
 
+### The /profiles page
+
+Open `/profiles` to add, change and remove the project's connections without writing JSON. **New connection...** opens the same
+form the desktop Connection Editor uses (pick a Transport and only its fields appear); **Detect network devices...** lists
+instruments and services found on the LAN and fills in the address when you pick one. **Save** checks the profile and writes it
+into the project file, or shows what is wrong (for example a missing port). **Delete** asks once more on the row before removing.
+**Open** starts the connection, as on `/connections`. A read-only token sees the list but cannot change anything. Without `--project` the list is your saved profiles, the same ones the TUI and WPF show, so a profile made in any of them appears in all.
+
+![The /profiles page](images/web-blazor-profiles.png)
+
+![Adding a TCP connection](images/web-blazor-profile-editor.png)
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:

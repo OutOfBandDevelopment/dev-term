@@ -20,7 +20,6 @@ How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-d
 Choices only the project owner can make (scope, direction, priorities).
 
 - **Next interview round (added 2026-10-08):**
-  - Is the web profile editor layout right (list above form, inline delete confirm, `GET /api/discover` for the detect button)? — [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md) "Profile editor page"
   - Which hardware can be put on the bench next (DE-5000, an MQTT broker or device, the E810, the BT-UP01), and in what order? — [TODO.md](TODO.md) "Manual review"
 
 ## Needs hardware or a capture
