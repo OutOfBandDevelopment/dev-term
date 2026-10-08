@@ -69,6 +69,7 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [x] Python, Java and Go examples verified through the host; tests for a silent and a dying plugin
 - [x] Go example run through the host (go 1.27.1, 2026-10-03)
 - [x] `plugin.json` discovery of out-of-process plugins in `PluginLoader` (a `process` entry instead of an `assembly`; 2026-10-03)
+- [x] Attach-to-a-running-session variant: any program can use the control pipe or loopback HTTP channel (`examples/python/control-channel-client/`, 2026-10-07)
 - [ ] Transport and device-module variants
 - [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)
 
