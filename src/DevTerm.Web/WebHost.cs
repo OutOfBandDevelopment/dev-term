@@ -90,6 +90,26 @@ public static class WebHost
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
 
+        var events = new HostEvents();
+        hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
+        app.MapGet("/api/events", async (HttpContext context) =>
+        {
+            context.Response.ContentType = "text/event-stream";
+            context.Response.Headers.CacheControl = "no-cache";
+            await context.Response.WriteAsync(": connected\n\n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
+            try
+            {
+                await foreach (var frame in events.SubscribeAsync(context.RequestAborted))
+                {
+                    await context.Response.WriteAsync(frame, context.RequestAborted);
+                    await context.Response.Body.FlushAsync(context.RequestAborted);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
         app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate()));
 
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
@@ -127,6 +147,8 @@ public static class WebHost
             await connection.StartAsync(context.RequestAborted);
             var id = Guid.NewGuid().ToString("N")[..8];
             open[id] = (chosen.Name, connection);
+            connection.LineReceived += line => events.Publish("line", new { id, text = line });
+            events.Publish("connection-opened", new { id, name = chosen.Name });
             return Results.Json(new { id, name = chosen.Name });
         });
         app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
@@ -142,6 +164,7 @@ public static class WebHost
             }
 
             await removed.Hub.DisposeAsync();
+            events.Publish("connection-closed", new { id });
             return Results.NoContent();
         });
         app.Map("/ws/{id}", (HttpContext context, string id) => open.TryGetValue(id, out var found) ? WebSocketTunnel.HandleAsync(context, found.Hub) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));

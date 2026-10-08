@@ -57,6 +57,70 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiEvents_StreamsConnectionOpenedAndClosed()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-events-{Guid.NewGuid():N}.json");
+        ProjectFile.From("Bench", [("Sim", new CliOptions { Transport = "loopback", Presenter = ["ascii"] })]).Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var baseUrl = $"http://127.0.0.1:{port}";
+            using var stream = await client.GetStreamAsync(baseUrl + "/api/events");
+            using var reader = new StreamReader(stream);
+            var seen = new System.Text.StringBuilder();
+            var pump = Task.Run(async () =>
+            {
+                while (await reader.ReadLineAsync() is { } line)
+                {
+                    lock (seen)
+                    {
+                        seen.AppendLine(line);
+                    }
+                }
+            });
+
+            var opened = await client.PostAsync(baseUrl + "/api/connections?name=Sim", null);
+            var id = System.Text.Json.JsonDocument.Parse(await opened.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString();
+            await client.DeleteAsync($"{baseUrl}/api/connections/{id}");
+
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < deadline)
+            {
+                lock (seen)
+                {
+                    if (seen.ToString().Contains("event: connection-closed", StringComparison.Ordinal))
+                    {
+                        break;
+                    }
+                }
+
+                await Task.Delay(20);
+            }
+
+            string text;
+            lock (seen)
+            {
+                text = seen.ToString();
+            }
+
+            StringAssert.Contains(text, "event: connection-opened");
+            StringAssert.Contains(text, $"\"id\":\"{id}\"");
+            StringAssert.Contains(text, "event: connection-closed");
+            await built.App.StopAsync();
+        }
+
+        File.Delete(file);
+    }
+
+    [TestMethod]
     public async Task ApiDevices_RequiresTheTokenAndReturnsTheThreeLists()
     {
         var (built, baseUrl) = await StartAsync();
