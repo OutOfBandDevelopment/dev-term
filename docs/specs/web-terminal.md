@@ -41,6 +41,7 @@ with the reason.
 | `DELETE /api/project/connections/{name}` | Remove a connection from the project file; 204 whether or not it existed; 403 read-only. Both publish a `project-changed` event |
 | `/openapi/v1.json` | OpenAPI 3.1 for the plain REST endpoints (the streaming ones, `/ws` and `/api/events`, are not in it) |
 | `/scalar/v1` | The Scalar viewer over that document |
+| `/asyncapi` | A dependency-free page (no CDN, works offline) that renders `/asyncapi.json`: channels, messages with payload schemas, operations |
 | `/asyncapi.json` | AsyncAPI 3.0 for `/ws`, `/ws/{id}` and `/api/events`, written by hand in `AsyncApiDocument` (keep it in step with `WebSocketTunnel` and `HostEvents`) |
 | `POST /api/invoke` | `{"commandId": "...", "value": "..."}` through the panel's `IControlSurface`; 403 for a read-only viewer, 400 without a command id |
 

@@ -68,7 +68,6 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 
 Answerable by thinking and a prototype; no owner decision or hardware needed.
 
-- **Web host:** an AsyncAPI viewer (none chosen; JSON only). — [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md)
 
 - **Plugin panels:** whether a plugin contribution also carries instrument-picker style dialogs, and whether panel entries filter by selected presenter ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
 

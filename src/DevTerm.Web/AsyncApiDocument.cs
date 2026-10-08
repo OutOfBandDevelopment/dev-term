@@ -49,4 +49,39 @@ internal static class AsyncApiDocument
       }
     }
     """;
+
+    /// <summary>A dependency-free page (no CDN, so it works on an offline bench) that fetches <c>/asyncapi.json</c> and lists its channels, operations and messages.</summary>
+    public const string Viewer = """
+    <!doctype html>
+    <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>dev-term streams</title>
+    <style>
+    :root { color-scheme: light dark; --bg: #fff; --fg: #1d2330; --muted: #5d6677; --line: #d5dae3; --code: #eef1f6; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #14171f; --fg: #e4e8f0; --muted: #98a2b3; --line: #2c3340; --code: #1e2330; } }
+    body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; } h2 { font-size: 1.1rem; margin: 28px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+    .muted { color: var(--muted); } code, pre { background: var(--code); border-radius: 4px; font: 13px ui-monospace, Consolas, monospace; }
+    code { padding: 1px 5px; } pre { padding: 10px; overflow-x: auto; margin: 6px 0; }
+    section { margin: 12px 0; } .tag { font-size: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; margin-left: 6px; }
+    </style></head><body><main id="app"><p class="muted">Loading /asyncapi.json ...</p></main>
+    <script>
+    const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+    fetch('/asyncapi.json').then(r => r.json()).then(doc => {
+      const app = document.getElementById('app'); app.replaceChildren();
+      app.append(el('h1', doc.info.title), el('p', 'AsyncAPI ' + doc.asyncapi + ' - v' + doc.info.version, 'muted'), el('p', doc.info.description || ''));
+      app.append(el('h2', 'Channels'));
+      for (const [name, ch] of Object.entries(doc.channels || {})) {
+        const s = el('section'); const h = el('div'); h.append(el('code', ch.address), el('span', name, 'tag')); s.append(h, el('div', ch.description || '', 'muted'));
+        for (const m of Object.values(ch.messages || {})) {
+          const key = (m.$ref || '').split('/').pop(); const msg = (doc.components.messages || {})[key] || m;
+          s.append(el('div', 'Message ' + (msg.name || key) + (msg.contentType ? ' (' + msg.contentType + ')' : '')), el('pre', JSON.stringify(msg.payload, null, 2)));
+        }
+        app.append(s);
+      }
+      app.append(el('h2', 'Operations'));
+      for (const [name, op] of Object.entries(doc.operations || {})) { const s = el('section'); s.append(el('code', op.action), document.createTextNode(' ' + name + ' on ' + op.channel.$ref.split('/').pop())); app.append(s); }
+    }).catch(e => { document.getElementById('app').textContent = 'Could not load /asyncapi.json: ' + e; });
+    </script></body></html>
+    """;
 }

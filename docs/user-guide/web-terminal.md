@@ -67,7 +67,11 @@ A new connection can then be opened with `POST /api/connections?name=Lab`.
 ### Browsing the API
 
 `/scalar/v1` is an interactive reference for the REST endpoints (try a call from the page), `/openapi/v1.json` is the same
-document for tooling, and `/asyncapi.json` describes the WebSocket and event-stream channels that OpenAPI cannot. They need
+document for tooling, and `/asyncapi.json` describes the WebSocket and event-stream channels that OpenAPI cannot. `/asyncapi` shows that document as a page:
+
+![The AsyncAPI viewer](images/web-asyncapi-viewer.png)
+
+ They need
 the same token as everything else, so open them after `?token=` has set the cookie.
 
 ### The /connections page

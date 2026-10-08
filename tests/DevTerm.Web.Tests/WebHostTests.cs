@@ -141,6 +141,7 @@ public class WebHostTests
             StringAssert.Contains(openApi, "/api/devices");
             StringAssert.Contains(openApi, "/api/connections");
             StringAssert.Contains(await client.GetStringAsync(baseUrl + "/scalar/v1"), "dev-term web host");
+            StringAssert.Contains(await client.GetStringAsync(baseUrl + "/asyncapi"), "/asyncapi.json");
             var asyncApi = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(baseUrl + "/asyncapi.json"));
             Assert.AreEqual("3.0.0", asyncApi.RootElement.GetProperty("asyncapi").GetString());
             Assert.IsTrue(asyncApi.RootElement.GetProperty("channels").TryGetProperty("events", out _));

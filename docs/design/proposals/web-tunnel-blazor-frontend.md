@@ -180,7 +180,7 @@ Conn --> UI : event: connection faulted / closed
 
 Projects and configuration are stored server-side, never in the browser (decided 2026-10-03). **Decided 2026-10-03: one shared `Web:Token` for everything, no per-connection tokens** (a read-only token still limits a viewer). Open questions: whether a
 how host-side hardware that is already open
-locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI is served as JSON only, no viewer package chosen). ~~Scalar offline~~: its page references only bundled scripts (`scalar.js`, `scalar.aspnetcore.js`) and no external URL (checked 2026-10-08 against a running host; not rendered in a browser with the network cut).
+locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI gets a small hand-written page, no package). ~~Scalar offline~~: its page references only bundled scripts (`scalar.js`, `scalar.aspnetcore.js`) and no external URL (checked 2026-10-08 against a running host; not rendered in a browser with the network cut).
 
 ## Completion checklist
 
@@ -203,7 +203,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Host events stream `GET /api/events` (SSE): `connection-opened`, `connection-closed` and `line` events for the main and opened connections (2026-10-08, `WebHostTests.ApiEvents_...`, `HostEventsTests`)
 - [x] `/ws/{id}` tunnels, several connections open at once, all under the one shared token: `GET/POST /api/connections?name=`, `DELETE /api/connections/{id}` (POST/DELETE refused for a read-only viewer); built 2026-10-03, tested by `WebHostTests.ApiConnections_OpenFromTheProject_ThenTunnelAndClose`
 - [ ] Per-connection tokens (decided against)
-- [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; no AsyncAPI *UI* yet, the JSON is served at `/asyncapi.json`)
+- [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; the JSON is at `/asyncapi.json`, a small built-in page at `/asyncapi`)
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
 - [ ] Blazor front end for those services
 

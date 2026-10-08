@@ -80,6 +80,7 @@ public static class WebHost
         // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
         app.MapOpenApi("/openapi/v1.json");
         app.MapScalarApiReference("/scalar", options => options.WithTitle("dev-term web host"));
+        app.MapGet("/asyncapi", () => Results.Content(AsyncApiDocument.Viewer, "text/html"));
         app.MapGet("/asyncapi.json", () => Results.Content(AsyncApiDocument.Json, "application/json"));
         var events = app.Services.GetRequiredService<HostEvents>();
         var connections = app.Services.GetRequiredService<ConnectionManager>();
