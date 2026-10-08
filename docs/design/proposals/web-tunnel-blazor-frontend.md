@@ -182,6 +182,68 @@ Projects and configuration are stored server-side, never in the browser (decided
 how host-side hardware that is already open
 locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI gets a small hand-written page, no package). ~~Scalar offline~~: its page references only bundled scripts (`scalar.js`, `scalar.aspnetcore.js`) and no external URL (checked 2026-10-08 against a running host; not rendered in a browser with the network cut).
 
+## Profile editor page (`/profiles`) - layout for review
+
+The page edits the host's `--project` file through the services that already exist (`GET /api/project`,
+`PUT`/`DELETE /api/project/connections/{name}`), so it needs no new server logic. The form is not hand-written: it renders
+the same form model the TUI and WPF Connection Editors use (`ConnectionEditorViewModel`'s `[FormField]` metadata through
+the generic form renderer idea already used for `/panel`), so a new option appears on all three front ends at once.
+Only the Transport choice and the fields that apply to it are shown, as in the other editors.
+
+```plantuml
+@startsalt
+{+
+  { <b>Profiles</b> | [ Connections ] | [ Panel ] }
+  --
+  {
+    { <b>Project: Bench</b> }
+    {#
+      Name | Transport | Description | .
+      Echo | loopback | Loopback | [Edit] [Open] [Delete]
+      Scope | tcp | 10.0.0.5:23 | [Edit] [Open] [Delete]
+    }
+    [ New connection ]
+  }
+  --
+  {+
+    <b>Edit: Scope</b>
+    Name       | "Scope            "
+    Transport  | ^tcp^
+    Host       | "10.0.0.5         "
+    Port       | "23               "
+    Presenters | [X] ascii  [ ] hex  [ ] scpi
+    Line ending| ^Lf^
+    ..
+    [ Detect network devices... ] | [ Save ] | [ Cancel ]
+    <color:red>Validation errors appear here, from the same validator the CLI uses.</color>
+  }
+}
+@endsalt
+```
+
+```plantuml
+@startuml
+actor Viewer
+participant "/profiles (Blazor)" as P
+participant "WebHost" as H
+participant "ConnectionManager" as M
+participant "project file" as F
+Viewer -> P : Edit "Scope", change Port, Save
+P -> H : PUT /api/project/connections/Scope (profile JSON)
+H -> M : Upsert(name, json)
+M -> M : CliOptionsValidator.Validate
+M -> F : save (history and log kept)
+M --> H : null | error text
+H --> P : 204 | 400 {error}
+P --> Viewer : list refreshed | inline error
+@enduml
+```
+
+Decisions this layout makes (change them in review): one page with the list above the form, not a modal; Save is disabled for a
+read-only viewer (the service answers 403 anyway); "Detect network devices..." calls a new `GET /api/discover` that runs the
+same probes as `--listnetworkdevices` (not built yet); Delete asks for a second click inline because the browser dialogs are
+unavailable to the page host.
+
 ## Completion checklist
 
 What is needed before this proposal can be closed. Tick items as they land, in the same change.
@@ -205,7 +267,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] ~~Per-connection tokens~~ (decided against)
 - [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; the JSON is at `/asyncapi.json`, a small built-in page at `/asyncapi`)
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
-- [ ] Blazor front end for those services
+- [ ] Blazor front end for those services: the `/profiles` editor (layout above, awaiting review) and `GET /api/discover`
 
 ## Status
 
