@@ -54,6 +54,13 @@ All viewers share one session. Output goes to everyone; sends are serialized. A 
 page and the next sent line retries, as in the TUI/WPF. Input that the parser cannot encode is reported to the sender
 only.
 
+## Blazor connections page (`/connections`)
+
+Same token auth. Lists the `--project` file's connections (name, description, **Open**) and the extra connections currently
+open (name, state, `/ws/<id>`, **Close**). It shares `ConnectionManager` with the REST endpoints, so a connection opened
+over `POST /api/connections` or in another tab appears here without a reload (it re-reads on the `connection-*` events).
+A read-only token sees both lists with every button disabled and a notice; with no `--project` the page says so.
+
 ## Blazor panel page (`/panel`)
 
 Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator (showing the latest value the device's structured presenter published, e.g. the K8055 analog inputs, when that presenter is selected; otherwise its default); other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.

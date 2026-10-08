@@ -16,23 +16,6 @@ public static class WebHost
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
     public sealed record Built(WebApplication App, SessionHub Hub, string Token, SessionHttpControlServer? ControlHttp = null);
 
-    private static object[] ProjectConnections(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return [];
-        }
-
-        try
-        {
-            return [.. ProjectFile.Load(path).Connections.Select(c => new { name = c.Name, description = ConnectionDescription.Definition(c.ToOptions()) })];
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-            return [];
-        }
-    }
-
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
     public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
     {
@@ -58,6 +41,8 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddSingleton<HostEvents>();
+        builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>()));
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
@@ -90,7 +75,8 @@ public static class WebHost
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
 
-        var events = new HostEvents();
+        var events = app.Services.GetRequiredService<HostEvents>();
+        var connections = app.Services.GetRequiredService<ConnectionManager>();
         hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
         app.MapGet("/api/events", async (HttpContext context) =>
         {
@@ -113,13 +99,11 @@ public static class WebHost
         app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate()));
 
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
-        var projectJson = System.Text.Json.JsonSerializer.Serialize(ProjectConnections(cliOptions.Project));
-        app.MapGet("/api/project", () => Results.Content(projectJson, "application/json"));
+        app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description })));
 
         // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
         // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
-        var open = new System.Collections.Concurrent.ConcurrentDictionary<string, (string Name, SessionHub Hub)>();
-        app.MapGet("/api/connections", () => Results.Json(open.Select(c => new { id = c.Key, name = c.Value.Name, state = c.Value.Hub.State.ToString() })));
+        app.MapGet("/api/connections", () => Results.Json(connections.Open().Select(c => new { id = c.Id, name = c.Name, state = c.State })));
         app.MapPost("/api/connections", async (HttpContext context, string name) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -127,29 +111,9 @@ public static class WebHost
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
-            ProjectConnection? chosen = null;
-            try
-            {
-                chosen = string.IsNullOrWhiteSpace(cliOptions.Project) ? null : ProjectFile.Load(cliOptions.Project).Find(name);
-            }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-            }
-
-            if (chosen is null)
-            {
-                return Results.NotFound();
-            }
-
-            var options = chosen.ToOptions();
-            var built = DevTermSessionBuilder.Build(options);
-            var connection = new SessionHub(built.Session, built.Catalog, options, webOptions.BacklogLines);
-            await connection.StartAsync(context.RequestAborted);
-            var id = Guid.NewGuid().ToString("N")[..8];
-            open[id] = (chosen.Name, connection);
-            connection.LineReceived += line => events.Publish("line", new { id, text = line });
-            events.Publish("connection-opened", new { id, name = chosen.Name });
-            return Results.Json(new { id, name = chosen.Name });
+            return await connections.OpenAsync(name, context.RequestAborted) is { } opened
+                ? Results.Json(new { id = opened.Id, name = opened.Name })
+                : Results.NotFound();
         });
         app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
         {
@@ -158,23 +122,10 @@ public static class WebHost
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
-            if (!open.TryRemove(id, out var removed))
-            {
-                return Results.NotFound();
-            }
-
-            await removed.Hub.DisposeAsync();
-            events.Publish("connection-closed", new { id });
-            return Results.NoContent();
+            return await connections.CloseAsync(id) ? Results.NoContent() : Results.NotFound();
         });
-        app.Map("/ws/{id}", (HttpContext context, string id) => open.TryGetValue(id, out var found) ? WebSocketTunnel.HandleAsync(context, found.Hub) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
-        app.Lifetime.ApplicationStopping.Register(() =>
-        {
-            foreach (var (_, connection) in open)
-            {
-                connection.Hub.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            }
-        });
+        app.Map("/ws/{id}", (HttpContext context, string id) => connections.TryGet(id, out var found) ? WebSocketTunnel.HandleAsync(context, found) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
+        app.Lifetime.ApplicationStopping.Register(() => connections.CloseAllAsync().GetAwaiter().GetResult());
 
         var (definition, surface) = webOptions.Panel?.ToLowerInvariant() switch
         {

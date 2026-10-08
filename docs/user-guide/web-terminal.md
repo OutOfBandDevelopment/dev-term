@@ -49,6 +49,13 @@ event: connection-closed
 data: {"id":"5dea72d2"}
 ```
 
+### The /connections page
+
+Open `/connections` for the same thing as buttons: **Open** starts a project connection as its own session, **Close** ends it.
+Opening one over the REST call or in another tab updates the list live. A read-only token sees the page with the buttons disabled.
+
+![The /connections page with Scope open](images/web-blazor-connections.png)
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:
