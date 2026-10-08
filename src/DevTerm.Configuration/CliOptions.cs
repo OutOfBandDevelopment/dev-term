@@ -324,6 +324,10 @@ public sealed class CliOptions
     [Category("Session")]
     public string? Pipe { get; set; }
 
+    /// <summary>Open a read-write control channel for this session on a local named pipe of this name (current OS user only): <c>send</c>/<c>sendhex</c>/<c>ping</c> commands in, event lines out.</summary>
+    [Category("Session")]
+    public string? Control { get; set; }
+
     /// <summary>Share this session on a TCP port as a transparent byte proxy (one client at a time); 0 is off. Binds <see cref="ShareBind"/>.</summary>
     [Category("Session")]
     public int ShareTcp { get; set; }

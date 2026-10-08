@@ -167,3 +167,7 @@ Whatever the device sends is copied to the connected TCP client, and whatever th
 device (try `telnet 127.0.0.1 2323`). One client at a time; a second connection is closed at once. There is no
 authentication or encryption, so it binds loopback unless you pass `--sharebind 0.0.0.0` (or another address).
 This is a plain byte proxy: it does not negotiate RFC 2217 baud/DTR/RTS changes.
+
+## Driving a session from another program
+
+`--control bench1` (console CLI mode) opens a local pipe `devterm-control-bench1` that only your own OS user can connect to. A script writes one command per line and reads `ok` or `error <why>` back: `send *IDN?` (typed text, encoded like what you type, line ending included), `sendhex 41 42`, or `ping`. The session's `open`/`rx`/`tx`/`closed` lines come back on the same pipe. Its sends interleave with your own typing.

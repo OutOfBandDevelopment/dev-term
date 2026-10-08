@@ -67,6 +67,16 @@ public static class CliMode
             stderr.WriteLine($"Publishing this session read-only; attach with: --attach {cliOptions.Pipe}");
         }
 
+        await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control)
+            ? null
+            : new SessionControlPipeServer(session, cliOptions.Control, text =>
+                TypedInput.TryEncode(input, parser, text, cliOptions.LineEnding, out var bytes, out var encodeError) ? (bytes, null) : (null, encodeError));
+        using var controlRegistration = controlServer is null ? null : session.AddObserver(controlServer);
+        if (controlServer is not null)
+        {
+            stderr.WriteLine($"Accepting commands (send, sendhex, ping) for this session on the local pipe {controlServer.PipeName}, current user only.");
+        }
+
         await using var shareServer = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress)
             ? new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp)
             : null;

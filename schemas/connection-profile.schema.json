@@ -304,6 +304,12 @@
         "null"
       ]
     },
+    "Control": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ShareTcp": {
       "type": "integer"
     },
