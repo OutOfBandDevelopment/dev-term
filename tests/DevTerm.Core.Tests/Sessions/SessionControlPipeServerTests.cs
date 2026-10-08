@@ -52,6 +52,40 @@ public sealed class SessionControlPipeServerTests
         CollectionAssert.AreEqual(Encoding.ASCII.GetBytes("*IDN?\nAB"), written.ToArray());
     }
 
+    [TestMethod]
+    public async Task ControlClient_SendsCommandsAndPrintsReplies()
+    {
+        var transport = new Mock<ITransport>();
+        transport.SetupGet(t => t.Input).Returns(new Pipe().Reader);
+        transport.SetupGet(t => t.State).Returns(ConnectionState.Open);
+        transport.Setup(t => t.WriteAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        await session.OpenAsync(TestContext.CancellationToken);
+        var name = "test-" + Guid.NewGuid().ToString("N");
+        await using var server = new SessionControlPipeServer(session, name, text => (Encoding.ASCII.GetBytes(text), null));
+
+        var lines = new List<string>();
+        await SessionControlClient.RunAsync(name, Commands("ping", "send hi", "nonsense"), l => { lock (lines) { lines.Add(l); } }, cancellationToken: TestContext.CancellationToken);
+
+        string[] seen;
+        lock (lines)
+        {
+            seen = [.. lines];
+        }
+
+        Assert.AreEqual(2, seen.Count(l => l == "ok"));
+        Assert.IsTrue(seen.Any(l => l.StartsWith("error unknown command", StringComparison.Ordinal)));
+    }
+
+    private static async IAsyncEnumerable<string> Commands(params string[] commands)
+    {
+        foreach (var command in commands)
+        {
+            yield return command;
+            await Task.Yield();
+        }
+    }
+
     // Event lines (open/tx/rx/closed) share the stream with replies; skip them to reach the next reply.
     private async Task<string> ReadReplyAsync(StreamReader reader)
     {

@@ -171,3 +171,5 @@ This is a plain byte proxy: it does not negotiate RFC 2217 baud/DTR/RTS changes.
 ## Driving a session from another program
 
 `--control bench1` (console CLI mode) opens a local pipe `devterm-control-bench1` that only your own OS user can connect to. A script writes one command per line and reads `ok` or `error <why>` back: `send *IDN?` (typed text, encoded like what you type, line ending included), `sendhex 41 42`, or `ping`. The session's `open`/`rx`/`tx`/`closed` lines come back on the same pipe. Its sends interleave with your own typing.
+
+From a second terminal, `dev-term --controlclient bench1` does this for you: each line you type (or pipe in) is a command, for example `send *IDN?`, and every reply and event line is printed. It exits 1 if nothing is listening on that name.

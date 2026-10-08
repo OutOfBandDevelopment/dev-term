@@ -62,7 +62,7 @@ pipe <- B
 - [x] A `tail` client mode (`--attach <name>`, prints `open`/`rx`/`tx`/`closed` lines with the ASCII beside each)
 - [x] Read-write named-pipe channel (`SessionControlPipeServer`, `--control <name>`, console CLI mode; decided 2026-10-07: current OS user only via `PipeOptions.CurrentUserOnly`, sends interleave through `Session.SendAsync`)
 - [x] `--control` in the TUI and WPF front ends (first tab's session only; not exercised by a front-end test)
-- [ ] A client mode for `--control` (today any program that opens the pipe works)
+- [x] A client mode: `--controlclient <name>` reads commands from stdin and prints replies and events (checked across two real processes with the loopback transport, 2026-10-07)
 - [ ] Localhost web-service variant
 
 ## Status

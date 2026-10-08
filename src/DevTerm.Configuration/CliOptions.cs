@@ -336,6 +336,10 @@ public sealed class CliOptions
     [Category("Session")]
     public string ShareBind { get; set; } = "127.0.0.1";
 
+    /// <summary>Drive another dev-term process's session (started with <see cref="Control"/>): each line read from stdin is sent as a control command (<c>send ...</c>, <c>sendhex ...</c>, <c>ping</c>) and every line the session returns is printed; connects to nothing itself.</summary>
+    [Category("Mode")]
+    public string? ControlClient { get; set; }
+
     /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
     [Category("Mode")]
     public string? Attach { get; set; }

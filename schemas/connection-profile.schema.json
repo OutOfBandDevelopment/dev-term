@@ -316,6 +316,12 @@
     "ShareBind": {
       "type": "string"
     },
+    "ControlClient": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "Attach": {
       "type": [
         "string",

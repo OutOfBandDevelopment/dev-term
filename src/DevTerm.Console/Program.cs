@@ -27,7 +27,7 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 };
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--profile <name>] [--control <name>] [--sharetcp <port> [--sharebind <ip>]] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--profile <name>] [--control <name>] [--controlclient <name>] [--sharetcp <port> [--sharebind <ip>]] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
@@ -153,6 +153,31 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
     }
 
     return 0;
+}
+
+if (earlyConfig[nameof(CliOptions.ControlClient)] is { Length: > 0 } controlName)
+{
+    static async IAsyncEnumerable<string> StdinLines()
+    {
+        while (await Console.In.ReadLineAsync() is { } line)
+        {
+            if (line.Length > 0)
+            {
+                yield return line;
+            }
+        }
+    }
+
+    try
+    {
+        await SessionControlClient.RunAsync(controlName, StdinLines(), Console.WriteLine);
+        return 0;
+    }
+    catch (TimeoutException)
+    {
+        Console.Error.WriteLine($"No session named '{controlName}' is accepting control. Start one with --control {controlName}.");
+        return 1;
+    }
 }
 
 if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
