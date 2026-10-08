@@ -102,7 +102,7 @@ public static class CliMode
         using var rfc2217Registration = rfc2217Server is null ? null : session.AddObserver(rfc2217Server);
         if (rfc2217Server is not null)
         {
-            stderr.WriteLine($"Sharing this session as an RFC 2217 serial port on {cliOptions.ShareBind}:{rfc2217Server.Port} (no authentication; one client at a time; baud/DTR/RTS requests are acknowledged but not applied to the device).");
+            stderr.WriteLine($"Sharing this session as an RFC 2217 serial port on {cliOptions.ShareBind}:{rfc2217Server.Port} (no authentication; one client at a time; baud/parity/DTR/RTS requests are applied to the device when its transport supports them).");
         }
 
         try

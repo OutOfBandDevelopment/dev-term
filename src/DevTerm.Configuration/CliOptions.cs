@@ -332,7 +332,7 @@ public sealed class CliOptions
     [Category("Session")]
     public int ShareTcp { get; set; }
 
-    /// <summary>Make the <see cref="ShareTcp"/> port speak RFC 2217 (Telnet COM-PORT-OPTION) so a client such as pyserial's <c>rfc2217://</c> can use it as a remote serial port. The client's baud/DTR/RTS requests are acknowledged but not applied to the device.</summary>
+    /// <summary>Make the <see cref="ShareTcp"/> port speak RFC 2217 (Telnet COM-PORT-OPTION) so a client such as pyserial's <c>rfc2217://</c> can use it as a remote serial port. The client's baud/parity/stop/DTR/RTS requests are applied to the device when its transport supports line control (serial, RFC 2217).</summary>
     [Category("Session")]
     public bool ShareRfc2217 { get; set; }
 

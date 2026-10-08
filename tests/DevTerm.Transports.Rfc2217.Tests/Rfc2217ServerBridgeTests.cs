@@ -90,6 +90,46 @@ public sealed class Rfc2217ServerBridgeTests
         }
     }
 
+    [TestMethod]
+    public async Task Client_SettingsAreAppliedToATransportThatImplementsIComPortControl()
+    {
+        var pipe = new Pipe();
+        var transport = new Mock<ITransport>();
+        var control = transport.As<IComPortControl>();
+        control.Setup(c => c.SetBaudRate(It.IsAny<int>())).Returns(control.Object);
+        control.Setup(c => c.SetDataBits(It.IsAny<int>())).Returns(control.Object);
+        control.Setup(c => c.SetParity(It.IsAny<ComParity>())).Returns(control.Object);
+        control.Setup(c => c.SetStopBits(It.IsAny<ComStopBits>())).Returns(control.Object);
+        control.Setup(c => c.SetDtr(It.IsAny<bool>())).Returns(control.Object);
+        control.Setup(c => c.SetRts(It.IsAny<bool>())).Returns(control.Object);
+        transport.SetupGet(t => t.Input).Returns(pipe.Reader);
+        transport.SetupGet(t => t.State).Returns(ConnectionState.Open);
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        await session.OpenAsync(TestContext.CancellationToken);
+        await using var bridge = new Rfc2217ServerBridge(session, IPAddress.Loopback, 0);
+        using var registration = session.AddObserver(bridge);
+
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, bridge.Port, TestContext.CancellationToken);
+        var stream = client.GetStream();
+        await stream.WriteAsync(new byte[] { 0xFF, 0xFB, 44 }, TestContext.CancellationToken);
+        await stream.WriteAsync(Rfc2217Codec.EncodeSetBaudRate(57600), TestContext.CancellationToken);
+        await stream.WriteAsync(Rfc2217Codec.EncodeSetControl(Rfc2217ControlValue.SetDtrStateOff), TestContext.CancellationToken);
+
+        var reply = new List<byte>();
+        var buffer = new byte[256];
+        var expectedBaudAck = Rfc2217Codec.EncodeSubnegotiation(101, [0, 0, 0xE1, 0x00]);
+        while (!Contains(reply, expectedBaudAck))
+        {
+            var read = await stream.ReadAsync(buffer, TestContext.CancellationToken);
+            Assert.IsGreaterThan(0, read);
+            reply.AddRange(buffer.AsSpan(0, read).ToArray());
+        }
+
+        control.Verify(c => c.SetBaudRate(57600), Times.AtLeastOnce);
+        control.Verify(c => c.SetDtr(false), Times.AtLeastOnce);
+    }
+
     private static bool Contains(List<byte> haystack, byte[] needle) =>
         haystack.Count >= needle.Length && haystack.ToArray().AsSpan().IndexOf(needle) >= 0;
 }
