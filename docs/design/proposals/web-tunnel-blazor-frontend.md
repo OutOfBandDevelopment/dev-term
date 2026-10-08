@@ -180,7 +180,7 @@ Conn --> UI : event: connection faulted / closed
 
 Projects and configuration are stored server-side, never in the browser (decided 2026-10-03). **Decided 2026-10-03: one shared `Web:Token` for everything, no per-connection tokens** (a read-only token still limits a viewer). Open questions: whether a
 how host-side hardware that is already open
-locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI is served as JSON only, no viewer package chosen), and whether Scalar's viewer works without a CDN on an offline bench (not checked).
+locally (WPF running on the same machine) is shared or refused; ~~which of Scalar's and AsyncAPI UI's packages to use~~ (decided 2026-10-08: `Scalar.AspNetCore` for REST; AsyncAPI is served as JSON only, no viewer package chosen). ~~Scalar offline~~: its page references only bundled scripts (`scalar.js`, `scalar.aspnetcore.js`) and no external URL (checked 2026-10-08 against a running host; not rendered in a browser with the network cut).
 
 ## Completion checklist
 
