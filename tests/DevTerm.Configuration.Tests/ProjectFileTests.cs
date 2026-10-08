@@ -88,4 +88,43 @@ public sealed class ProjectFileTests
 
         Assert.IsNotNull(builder.Build());
     }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void ProfileFlag_LayersTheNamedSavedProfile_UnderCommandLineFlags_AndIgnoresAnUnknownOne()
+    {
+        var home = Path.Combine(Path.GetTempPath(), $"devterm-home-{Guid.NewGuid():N}");
+        var previous = Environment.GetEnvironmentVariable("DEVTERM_HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("DEVTERM_HOME", home);
+            new ConnectionProfileStore().Save("bench-scope", new CliOptions { Transport = "tcp", Host = "192.168.0.110", Port = "23" });
+
+            var options = BindWith(["--profile", "bench-scope", "--port", "24"]);
+            Assert.AreEqual("tcp", options.Transport);
+            Assert.AreEqual("192.168.0.110", options.Host);
+            Assert.AreEqual("24", options.Port, "an explicit flag outranks the profile.");
+            Assert.AreEqual("bench-scope", options.Profile);
+
+            Assert.AreEqual("serial", BindWith(["--profile", "nope"]).Transport, "an unknown name is left for the front end to report.");
+            Assert.AreEqual("serial", BindWith(["--profile", "..\evil"]).Transport);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DEVTERM_HOME", previous);
+            if (Directory.Exists(home))
+            {
+                Directory.Delete(home, recursive: true);
+            }
+        }
+    }
+
+    private static CliOptions BindWith(string[] args)
+    {
+        var builder = new ConfigurationBuilder();
+        DevTermConfiguration.Configure(builder, args, "Production");
+        var options = new CliOptions();
+        DevTermConfiguration.Bind(builder.Build(), options);
+        return options;
+    }
 }

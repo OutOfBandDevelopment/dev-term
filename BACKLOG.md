@@ -58,7 +58,6 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
-- **Named profiles (`--profile <name>`)** (decided 2026-10-07): several saved device profiles selectable by name, alongside the single `appsettings.Local.json`; see docs/design/platform.md.
 - **Read-write control channel and out-of-process plugins over both a named pipe and a localhost web service** (decided 2026-10-07): see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md) and [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md).
 
 ### Proposed Ideas

@@ -27,7 +27,7 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
 };
 
 const string Usage =
-    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
+    "Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>] [--profile <name>] [--project <file> [--projectconnection <name>]] [--saveproject <file>]"
     + "\n   or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
@@ -298,6 +298,12 @@ if (bindError is null && cliOptions.SaveProject is { Length: > 0 } saveProjectPa
     ProjectFile.From(Path.GetFileNameWithoutExtension(saveProjectPath), [(cliOptions.Transport, cliOptions)]).Save(saveProjectPath);
     Console.WriteLine($"Saved project {saveProjectPath}");
     return 0;
+}
+
+if (bindError is null && cliOptions.Profile is { Length: > 0 } profileName
+    && !(ProfileName.IsValid(profileName) && File.Exists(Path.Combine(DevTermUserDataPaths.ProfilesDirectory, $"{profileName}.json"))))
+{
+    bindError = $"No saved connection profile named '{profileName}'.";
 }
 
 if (bindError is null && cliOptions.Project is { Length: > 0 } projectPath)

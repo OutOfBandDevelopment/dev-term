@@ -344,6 +344,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? Project { get; set; }
 
+    /// <summary>A saved connection profile to start from, by name (see <see cref="ConnectionProfileStore"/>): layered above the default <c>appsettings.Local.json</c> profile and below every other flag.</summary>
+    [Category("Mode")]
+    public string? Profile { get; set; }
+
     /// <summary>Write this run's connection to a one-connection project file at this path and exit, without connecting. Add more connections by editing the file.</summary>
     [Category("Mode")]
     public string? SaveProject { get; set; }
