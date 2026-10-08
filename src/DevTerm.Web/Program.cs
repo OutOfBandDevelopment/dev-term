@@ -44,6 +44,11 @@ await using (built.Hub)
     await built.Hub.StartAsync();
     var first = webOptions.Urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)[0];
     Console.WriteLine($"dev-term web: {first}/?token={built.Token}");
+    if (built.ControlHttp is { } controlHttp)
+    {
+        Console.WriteLine($"dev-term control: http://127.0.0.1:{controlHttp.Port}/ with header 'Authorization: Bearer {controlHttp.Token}' (POST /command, GET /events, GET /ping).");
+    }
+
     await built.App.RunAsync();
 }
 

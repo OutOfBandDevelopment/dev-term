@@ -14,7 +14,7 @@ namespace DevTerm.Web;
 public static class WebHost
 {
     /// <summary>The token in effect (generated when none was configured), so a caller can print the access URL.</summary>
-    public sealed record Built(WebApplication App, SessionHub Hub, string Token);
+    public sealed record Built(WebApplication App, SessionHub Hub, string Token, SessionHttpControlServer? ControlHttp = null);
 
     private static object[] ProjectConnections(string? path)
     {
@@ -180,6 +180,20 @@ public static class WebHost
         {
             app.MapGet("/api/panel", () => Results.NotFound());
         }
-        return new Built(app, hub, token);
+
+        // --controlhttp <port>: the same loopback command/event channel the console front ends offer, on the shared session.
+        SessionHttpControlServer? controlHttp = null;
+        if (cliOptions.ControlHttp > 0)
+        {
+            controlHttp = new SessionHttpControlServer(hub.Session, cliOptions.ControlHttp, text => TypedInput.TryEncode(hub.Catalog, cliOptions, text), cliOptions.ControlToken);
+            var registration = hub.Session.AddObserver(controlHttp);
+            app.Lifetime.ApplicationStopping.Register(() =>
+            {
+                registration.Dispose();
+                controlHttp.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            });
+        }
+
+        return new Built(app, hub, token, controlHttp);
     }
 }

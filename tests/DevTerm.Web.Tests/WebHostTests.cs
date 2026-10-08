@@ -32,6 +32,31 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ControlHttp_SendsToTheSharedSession_AndNeedsItsOwnToken()
+    {
+        var webPort = FreePort();
+        var controlPort = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, ControlHttp = controlPort, ControlToken = "ctl" },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            Assert.IsNotNull(built.ControlHttp);
+            using var client = new HttpClient();
+            var url = $"http://127.0.0.1:{controlPort}/";
+            Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync(url + "ping")).StatusCode);
+            using var request = new HttpRequestMessage(HttpMethod.Post, url + "command") { Content = new StringContent("ping") };
+            request.Headers.Authorization = new("Bearer", "ctl");
+            using var response = await client.SendAsync(request);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ApiProject_ListsTheProjectFilesConnections()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-project-{Guid.NewGuid():N}.json");
