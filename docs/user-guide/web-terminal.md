@@ -26,6 +26,38 @@ shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with
 It listens on loopback only unless you set `Web:AllowRemote`, `Web:Token`, `Web:CertificatePath` and an `https` URL.
 Every browser tab shares the one session. Field reference: [web terminal spec](../specs/web-terminal.md).
 
+## Opening project connections, devices and events
+
+With `--project <file>` the host can open the project's other connections as extra sessions. Real output from a run with a
+one-connection project (`Sim`, loopback), every call sent with `Authorization: Bearer demo-token`:
+
+```
+GET    /api/project                 -> [{"name":"Sim","description":"loopback://"}]
+POST   /api/connections?name=Sim    -> {"id":"5dea72d2","name":"Sim"}
+GET    /api/connections             -> [{"id":"5dea72d2","name":"Sim","state":"Open"}]
+DELETE /api/connections/5dea72d2    -> 204
+GET    /api/devices                 -> {"serial":[],"hid":[{"id":"046D:C08B","vendorId":1133,"productId":49291,"name":"G502 HERO Gaming Mouse",...}],...}
+```
+
+Each opened connection is its own session at `/ws/<id>`. `GET /api/events` stays open and pushes what happens, so a page
+does not have to poll (a read-only viewer can watch it but cannot open or close connections):
+
+```
+: connected
+
+event: connection-closed
+data: {"id":"5dea72d2"}
+```
+
+### Sending commands from a script
+
+`--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:
+
+```
+POST http://127.0.0.1:5090/command  (Bearer ctl)  body "ping"  -> ok
+GET  http://127.0.0.1:5090/ping     (no token)                  -> 401
+```
+
 ## The Blazor panel page
 
 With `--Web:Panel busylight` (or `k8055`), open `/panel` for a server-rendered control panel; it is the same panel the main page shows, using the same token. A read-only token shows it with the controls disabled.
