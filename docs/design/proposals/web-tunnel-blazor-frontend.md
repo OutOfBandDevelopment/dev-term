@@ -199,10 +199,11 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] `GET /api/devices` lists serial ports and USB HID/USBTMC devices on the host (2026-10-08, `WebHostTests.ApiDevices_...`); `--controlhttp` is honored too
 - [ ] Start with no connection arguments; project create/manage services (REST) (2026-10-03 direction)
 - [x] Blazor connections page `/connections` (open/close project connections, live via the events; `ConnectionManager`; 2026-10-08, `WebScreenshotTests.ConnectionsPage_*`)
+- [x] API docs: OpenAPI + Scalar for REST, hand-written AsyncAPI for the streams (2026-10-08, `WebHostTests.ApiDocs_...`)
 - [x] Host events stream `GET /api/events` (SSE): `connection-opened`, `connection-closed` and `line` events for the main and opened connections (2026-10-08, `WebHostTests.ApiEvents_...`, `HostEventsTests`)
 - [x] `/ws/{id}` tunnels, several connections open at once, all under the one shared token: `GET/POST /api/connections?name=`, `DELETE /api/connections/{id}` (POST/DELETE refused for a read-only viewer); built 2026-10-03, tested by `WebHostTests.ApiConnections_OpenFromTheProject_ThenTunnelAndClose`
 - [ ] Per-connection tokens (decided against)
-- [ ] OpenAPI + Scalar UI for the services; AsyncAPI document + UI for the WebSocket/event channels
+- [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; no AsyncAPI *UI* yet, the JSON is served at `/asyncapi.json`)
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
 - [ ] Blazor front end for those services
 

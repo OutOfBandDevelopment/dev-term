@@ -121,6 +121,34 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ApiDocs_OpenApiScalarAndAsyncApi_AreServedBehindTheToken()
+    {
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            var baseUrl = $"http://127.0.0.1:{port}";
+            Assert.AreEqual(System.Net.HttpStatusCode.Unauthorized, (await client.GetAsync(baseUrl + "/openapi/v1.json")).StatusCode);
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+
+            var openApi = await client.GetStringAsync(baseUrl + "/openapi/v1.json");
+            StringAssert.Contains(openApi, "/api/devices");
+            StringAssert.Contains(openApi, "/api/connections");
+            StringAssert.Contains(await client.GetStringAsync(baseUrl + "/scalar/v1"), "dev-term web host");
+            var asyncApi = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(baseUrl + "/asyncapi.json"));
+            Assert.AreEqual("3.0.0", asyncApi.RootElement.GetProperty("asyncapi").GetString());
+            Assert.IsTrue(asyncApi.RootElement.GetProperty("channels").TryGetProperty("events", out _));
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ApiDevices_RequiresTheTokenAndReturnsTheThreeLists()
     {
         var (built, baseUrl) = await StartAsync();

@@ -7,6 +7,7 @@ using DevTerm.Core.Transports;
 using DevTerm.UiDefinitions;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Scalar.AspNetCore;
 
 namespace DevTerm.Web;
 
@@ -41,6 +42,7 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddOpenApi();
         builder.Services.AddSingleton<HostEvents>();
         builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>()));
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
@@ -73,8 +75,12 @@ public static class WebHost
         app.MapStaticAssets(); // serves _framework/blazor.web.js, without which the Blazor panel never becomes interactive
         app.MapRazorComponents<Components.App>().AddInteractiveServerRenderMode();
         app.MapGet("/", () => Results.Content(TerminalPage.Html, "text/html; charset=utf-8"));
-        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) }));
+        app.MapGet("/api/status", (HttpContext context) => Results.Json(new { state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
 
+        // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
+        app.MapOpenApi("/openapi/v1.json");
+        app.MapScalarApiReference("/scalar", options => options.WithTitle("dev-term web host"));
+        app.MapGet("/asyncapi.json", () => Results.Content(AsyncApiDocument.Json, "application/json"));
         var events = app.Services.GetRequiredService<HostEvents>();
         var connections = app.Services.GetRequiredService<ConnectionManager>();
         hub.LineReceived += line => events.Publish("line", new { id = "main", text = line });
@@ -95,15 +101,17 @@ public static class WebHost
             catch (OperationCanceledException)
             {
             }
-        });
-        app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate()));
+        })
+            .WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(string), StatusCodes.Status200OK, "text/event-stream"))
+            .WithSummary("Server-Sent Events: connection-opened, connection-closed and line events");
+        app.MapGet("/api/devices", () => Results.Json(DeviceEnumeration.Enumerate())).WithSummary("Attached serial, HID and USBTMC devices");
 
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
-        app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description })));
+        app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description }))).WithSummary("The project file's connections (name and description only)");
 
         // Extra connections opened from the project file, each its own session behind /ws/{id}. They use the same
         // shared host token (decided 2026-10-03); a read-only viewer cannot open or close one.
-        app.MapGet("/api/connections", () => Results.Json(connections.Open().Select(c => new { id = c.Id, name = c.Name, state = c.State })));
+        app.MapGet("/api/connections", () => Results.Json(connections.Open().Select(c => new { id = c.Id, name = c.Name, state = c.State }))).WithSummary("The extra connections currently open");
         app.MapPost("/api/connections", async (HttpContext context, string name) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -114,7 +122,7 @@ public static class WebHost
             return await connections.OpenAsync(name, context.RequestAborted) is { } opened
                 ? Results.Json(new { id = opened.Id, name = opened.Name })
                 : Results.NotFound();
-        });
+        }).WithSummary("Open a project connection as its own session; 404 unknown name, 403 read-only");
         app.MapDelete("/api/connections/{id}", async (HttpContext context, string id) =>
         {
             if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
@@ -123,7 +131,7 @@ public static class WebHost
             }
 
             return await connections.CloseAsync(id) ? Results.NoContent() : Results.NotFound();
-        });
+        }).WithSummary("Close an opened connection; 404 unknown id, 403 read-only");
         app.Map("/ws/{id}", (HttpContext context, string id) => connections.TryGet(id, out var found) ? WebSocketTunnel.HandleAsync(context, found) : Task.FromResult(context.Response.StatusCode = StatusCodes.Status404NotFound));
         app.Lifetime.ApplicationStopping.Register(() => connections.CloseAllAsync().GetAwaiter().GetResult());
 
