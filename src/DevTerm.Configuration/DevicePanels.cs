@@ -6,10 +6,6 @@ public enum DevicePanel
     K8055,
     Busylight,
     Scpi,
-    RadexOne,
-    ZoomH4n,
-    De5000,
-    Nmea0183,
 
     /// <summary>A panel built from a loaded device manifest (Device > Device Manifest...) — any connection.</summary>
     Manifest,
@@ -33,14 +29,6 @@ public static class DevicePanels
     private const int _busylightMicrochipVendorId = 0x04D8;
     private const int _busylightMicrochipProductId = 0xF848;
     private const int _plenomVendorId = 0x27BB;
-
-    // The NMEA 0183 panel (NmeaGpsDecoder/NmeaGpsUiDefinition/NmeaGpsControlSurface) is generic
-    // protocol logic with nothing device-specific in it - this VID/PID gate is the one confirmed-
-    // compatible physical unit, the DeLorme Earthmate GPS BT-20 (a fixed VID/PID USB HID device;
-    // real-world facts confirmed via web search - the exact HID report framing was not, see
-    // NmeaGpsDecoder's remarks).
-    private const int _nmea0183VendorId = 0x1163;
-    private const int _nmea0183ProductId = 0x0200;
 
     /// <summary>Ids of panels the TUI and WPF menus have a built-in item for; a registered <see cref="Core.Control.IDevicePanelContribution"/> with one of these ids (the web host resolves them) is not listed a second time.</summary>
     public static IReadOnlySet<string> BuiltInPanelIds { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "k8055", "busylight" };
@@ -66,27 +54,6 @@ public static class DevicePanels
 
             // SCPI is text over a byte stream: any transport but HID (fixed-size binary reports).
             DevicePanel.Scpi => !isHid,
-
-            // Radex One is a plain virtual-COM-port device (2400 8N1, real-hardware confirmed
-            // 2026-09-25 on COM8 - it does not enumerate as HID at all, contradicting this module's
-            // original "confirmed directly" HID assumption) - gated on "any serial connection", like
-            // Zoom H4n's.
-            DevicePanel.RadexOne => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
-
-            // Zoom H4n's RC04/RC2 remote port is presented as plain serial (via the h4n2rs485
-            // adapter, see docs/design/features/zoom-h4n-remote-protocol.md) - no VID/PID to gate
-            // on, so any serial connection is offered, like SCPI's "any non-HID transport".
-            DevicePanel.ZoomH4n => string.Equals(options.Transport, "serial", StringComparison.OrdinalIgnoreCase),
-
-            // The DE-5000's optical-to-BLE adapter has no VID/PID (it's a GATT peripheral, not a
-            // USB device) - gated on "any BLE connection", like ZoomH4n's "any serial connection".
-            DevicePanel.De5000 => string.Equals(options.Transport, "ble", StringComparison.OrdinalIgnoreCase),
-
-            // The confirmed unit (DeLorme Earthmate GPS BT-20) is a fixed VID/PID USB HID device,
-            // like K8055/Busylight.
-            DevicePanel.Nmea0183 => isHid
-                && options.VendorId == _nmea0183VendorId
-                && options.ProductId == _nmea0183ProductId,
 
             // A manifest names its own transport and commands, so which manifests make sense is the
             // user's call (the picker) - the item is enabled whenever connected.
