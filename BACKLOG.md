@@ -18,7 +18,7 @@ the rest.
   2026-09-25 and is real-hardware verified (`docs/design/transports.md`'s BLE section,
   `docs/changes/2026-09-25.md`/`2026-09-29.md`). The adapter seam supports adding either platform
   independently; neither has been started.
-- RFC 2217 server (`Rfc2217ServerBridge`) — expose a local serial connection to the network for a
+- RFC 2217 server (`Rfc2217ServerBridge`) - **wanted as a TCP listener proxy, decided 2026-10-07**; — expose a local serial connection to the network for a
   remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
   default per the security note in that doc.
 - UDP transport (target + listener modes). Real target hardware once built:
@@ -58,6 +58,9 @@ the rest.
   constraints list for why that one matters). Deliberately not built yet: no such rule has actually
   been declared that a generic analyzer can't already cover — build it once one is.
 
+- **Named profiles (`--profile <name>`)** (decided 2026-10-07): several saved device profiles selectable by name, alongside the single `appsettings.Local.json`; see docs/design/platform.md.
+- **Read-write control channel and out-of-process plugins over both a named pipe and a localhost web service** (decided 2026-10-07): see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md) and [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md).
+
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md) (the host, `/ws` tunnel and `/panel` page are already built and in `TODO.md` item 1; this line is the rest).
@@ -83,7 +86,7 @@ the rest.
   onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
   library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
 - **Cross-process session channel, remaining work:** the read-write channel and the localhost web-service variant. The read-only pipe, `--pipe <name>` (all three front ends) and the `--attach <name>` tail client are built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
-- **Project state, remaining:** the file format and `--project`/`--saveproject` are built ([project-state](docs/design/proposals/project-state.md), decided connection-only and on request). The TUI/WPF File menu items are built too. Left: send history, log settings and window layout in the file.
+- **Project state, remaining:** the file format and `--project`/`--saveproject` are built ([project-state](docs/design/proposals/project-state.md), decided connection-only and on request). The TUI/WPF File menu items are built too. Left (all three wanted, decided 2026-10-07): send history, log settings and window layout in the file.
 - **PCX (and PCL raster) preview in the Stream Monitor (rejected).** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
