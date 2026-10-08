@@ -149,7 +149,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] Unit tests against synthetic packets
 - [ ] Confirm the adapter's GATT profile (Nordic UART assumed) with the adapter on the bench
 - [ ] Run `RealHardwareDe5000Tests` and write the `docs/test/` report
-- [ ] Decide whether other ES51919-based meters are supported or left as "probably works"
+- [x] Other ES51919-based meters: left as "probably works" (decided 2026-10-08); no code or claims beyond the DE-5000
 
 ## Status
 

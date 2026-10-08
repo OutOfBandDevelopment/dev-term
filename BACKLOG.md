@@ -68,7 +68,14 @@ the rest.
 ## Proposals and bugs tracker
 
 Every open bug and every unchecked item in a proposal's "Completion checklist" is listed here, so nothing sits only in a
-proposal file. Last swept 2026-10-08. Keep it current: add a row when a proposal gains an unchecked item, delete the row
+proposal file. Last swept 2026-10-08.
+
+**Decided 2026-10-08, to build (in this order of ask, none started):**
+1. Network discovery: shared `INetworkDeviceProbe`, mDNS and SSDP probes, Connection Editor "Detect network devices..." (WPF, TUI), `--listnetworkdevices`; fake-response unit tests only, marked not hardware-verified.
+2. Plugin-contributed panels: move the built-in decoders out of core, in stages, until core references no `DevTerm.Devices.*` project.
+3. Web: a Blazor profile editor over the project PUT/DELETE endpoints (form layout still to be shown to you), and `--controlhttp` per opened connection (one port each).
+4. Multi-session tab shortcuts: Ctrl+Shift+T new, Ctrl+Shift+W close (TUI and WPF).
+Decided against: the web host using the project file as its whole connection set (connections stay an extra list); supporting other ES51919 meters beyond "probably works". Keep it current: add a row when a proposal gains an unchecked item, delete the row
 when the item is checked off in the proposal (the `work-docs-audit` skill re-sweeps this section).
 
 **Open bugs:** none (`docs/bugs/` holds only closed reports under `resolved/`). A new open bug gets a line here when filed.
@@ -81,9 +88,8 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 | [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md) | TUI, WPF and web resolve contributions instead of naming device projects; remaining decoders moved out so core references no `DevTerm.Devices.*` project; specs and user guide for the menu | Buildable now (large refactor) |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
-| [project-state](docs/design/proposals/project-state.md) | Web host uses the project file as its whole connection set | Your decision |
-| [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers; Blazor front end for the remaining services (project editing); per-connection tokens (decided against, to be struck) | Your setup; form layout decisions |
-| [de5000-lcr-meter-protocol](docs/design/proposals/de5000-lcr-meter-protocol.md) | Confirm the adapter's GATT profile; run `RealHardwareDe5000Tests` and write the `docs/test/` report; decide on other ES51919 meters | The meter on the bench |
+| [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers; Blazor front end for the remaining services (project editing) | Your setup; form layout decisions |
+| [de5000-lcr-meter-protocol](docs/design/proposals/de5000-lcr-meter-protocol.md) | Confirm the adapter's GATT profile; run `RealHardwareDe5000Tests` and write the `docs/test/` report | The meter on the bench |
 | [ebyte-e810-dtu-config-protocol](docs/design/proposals/ebyte-e810-dtu-config-protocol.md) | Five checklist items (capture and layout confirmation, read-only support first) | A fresh capture of the real unit |
 | [bytecc-bt-up01-usb-network-bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) | Five checklist items | The hardware |
 | [z-wave-support](docs/design/proposals/z-wave-support.md) | Five checklist items | The hardware |

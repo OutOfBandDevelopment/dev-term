@@ -20,14 +20,7 @@ How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-d
 Choices only the project owner can make (scope, direction, priorities).
 
 - **Next interview round (added 2026-10-08):**
-  - Build the network-discovery probes (mDNS, SSDP, the shared probe interface, the Connection Editor button) now, with unit tests against fake responses only and no hardware check? Which first? — [network-device-discovery](docs/design/proposals/network-device-discovery.md)
-  - Start the plugin-contributed-panels refactor (moving the built-in decoders out of core), given it is large and touches every front end? — [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)
-  - Web host: should it use the `--project` file as its whole connection set, and should the Blazor `/connections` page also edit profiles (and with what form)? — [project-state](docs/design/proposals/project-state.md), [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md)
-  - Web host: is `--controlhttp` for each opened connection wanted (one port per connection), given `/ws/{id}` already covers sending and receiving? — [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md)
   - Which hardware can be put on the bench next (DE-5000, an MQTT broker or device, the E810, the BT-UP01), and in what order? — [TODO.md](TODO.md) "Manual review"
-  - Are other ES51919-based LCR meters in scope or left as "probably works"? — [de5000](docs/design/proposals/de5000-lcr-meter-protocol.md)
-- **Multi-session tabs:** keyboard shortcuts for New/Close tab only (history, last tab, logging and next/prev keys decided
-  2026-10-03). — [multi-session-ui](docs/design/multi-session-ui.md)
 
 ## Needs hardware or a capture
 

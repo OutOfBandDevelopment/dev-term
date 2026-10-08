@@ -202,7 +202,7 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 - [x] API docs: OpenAPI + Scalar for REST, hand-written AsyncAPI for the streams (2026-10-08, `WebHostTests.ApiDocs_...`)
 - [x] Host events stream `GET /api/events` (SSE): `connection-opened`, `connection-closed` and `line` events for the main and opened connections (2026-10-08, `WebHostTests.ApiEvents_...`, `HostEventsTests`)
 - [x] `/ws/{id}` tunnels, several connections open at once, all under the one shared token: `GET/POST /api/connections?name=`, `DELETE /api/connections/{id}` (POST/DELETE refused for a read-only viewer); built 2026-10-03, tested by `WebHostTests.ApiConnections_OpenFromTheProject_ThenTunnelAndClose`
-- [ ] Per-connection tokens (decided against)
+- [x] ~~Per-connection tokens~~ (decided against)
 - [x] OpenAPI + Scalar UI for the services; AsyncAPI document for the WebSocket/event channels (2026-10-08; the JSON is at `/asyncapi.json`, a small built-in page at `/asyncapi`)
 - [x] Blazor Server page `/panel` rendering the `UiDefinition` generically (prerendered then interactive; the read-only flag is carried from the request into the circuit; same command ids as the script page; indicators update live from the structured presenter via `PanelHostHolder.Publish`; charts/vectors not shown)
 - [ ] Blazor front end for those services
