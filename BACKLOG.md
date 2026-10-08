@@ -18,9 +18,7 @@ the rest.
   2026-09-25 and is real-hardware verified (`docs/design/transports.md`'s BLE section,
   `docs/changes/2026-09-25.md`/`2026-09-29.md`). The adapter seam supports adding either platform
   independently; neither has been started.
-- RFC 2217 server (`Rfc2217ServerBridge`) - **wanted as a TCP listener proxy, decided 2026-10-07**; — expose a local serial connection to the network for a
-  remote RFC 2217 client to control. See `docs/design/rfc2217.md`. Note: binds loopback-only by
-  default per the security note in that doc.
+- RFC 2217 server (`Rfc2217ServerBridge`): the transparent TCP listener proxy is built (`--sharetcp`); what's left is the real RFC 2217 option negotiation on top of it (remote baud/DTR/RTS), verified against pyserial's `rfc2217://` client. See `docs/design/rfc2217.md`.
 - UDP transport (target + listener modes). Real target hardware once built:
   [EByte E810-DTU(RS485)](docs/design/proposals/ebyte-e810-dtu-config-protocol.md)'s broadcast
   discovery/config protocol (port 1901) — note the proposal's own byte-count discrepancy needs

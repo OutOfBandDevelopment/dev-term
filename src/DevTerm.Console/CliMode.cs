@@ -67,6 +67,15 @@ public static class CliMode
             stderr.WriteLine($"Publishing this session read-only; attach with: --attach {cliOptions.Pipe}");
         }
 
+        await using var shareServer = cliOptions.ShareTcp > 0 && System.Net.IPAddress.TryParse(cliOptions.ShareBind, out var shareAddress)
+            ? new SessionTcpShareServer(session, shareAddress, cliOptions.ShareTcp)
+            : null;
+        using var shareRegistration = shareServer is null ? null : session.AddObserver(shareServer);
+        if (shareServer is not null)
+        {
+            stderr.WriteLine($"Sharing this session on {cliOptions.ShareBind}:{shareServer.Port} (no authentication; one client at a time).");
+        }
+
         try
         {
             await session.OpenAsync();

@@ -324,6 +324,14 @@ public sealed class CliOptions
     [Category("Session")]
     public string? Pipe { get; set; }
 
+    /// <summary>Share this session on a TCP port as a transparent byte proxy (one client at a time); 0 is off. Binds <see cref="ShareBind"/>.</summary>
+    [Category("Session")]
+    public int ShareTcp { get; set; }
+
+    /// <summary>The address <see cref="ShareTcp"/> binds; loopback by default because the share has no authentication or encryption.</summary>
+    [Category("Session")]
+    public string ShareBind { get; set; } = "127.0.0.1";
+
     /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
     [Category("Mode")]
     public string? Attach { get; set; }

@@ -159,3 +159,11 @@ The session closes, the reason is reported once, and:
 A serial timeout adds a hint about hardware flow control (CTS / `--handshake`); other transports
 don't, since CTS has nothing to do with them. See `Session.Disconnected`, `TypedInput` and
 `ConnectionErrorMessages` in [`docs/design/architecture.md`](../design/architecture.md).
+
+## Sharing a connection over TCP
+
+`dev-term --transport serial --port COM3 --cli true --sharetcp 2323` also listens on `127.0.0.1:2323`.
+Whatever the device sends is copied to the connected TCP client, and whatever that client sends is written to the
+device (try `telnet 127.0.0.1 2323`). One client at a time; a second connection is closed at once. There is no
+authentication or encryption, so it binds loopback unless you pass `--sharebind 0.0.0.0` (or another address).
+This is a plain byte proxy: it does not negotiate RFC 2217 baud/DTR/RTS changes.
