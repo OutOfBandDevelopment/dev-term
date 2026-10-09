@@ -20,13 +20,10 @@ Done from that round: the ser2net RFC 2217 container (`containers/`, see `docs/c
 
 Re-ranked 2026-10-09 after a docs audit. Do these in order; each is buildable now unless noted.
 
-1. **DS1ET raw-presenter bench pass.** The unit is on the USB bench; closes the one device the 2026-10-09 pass left open (`docs/test/2026-10-09-09-12-00.md`). Short.
-2. **Web picker hint wording.** The Manifest editor still says "Double-click a value" on the web, where a click picks. One line plus a screenshot refresh.
-3. **Browser tests for Use recording and Import .ksy** on the web Manifest page (the view model side is covered by `WebManifestEditorTests`).
-4. **Web pages against live hardware** (`/panel`, `/monitor`, `/routing` on the DG1062Z over TCP). Most likely to find a real bug; also covers the web proposal's "real device through the page" item in part.
-5. **Observability leftover:** confirm the metric instruments show on the Aspire Metrics page (needs the container up).
-6. **Configure device on the web.** Needs your design call first: an inline connection editor on `/profiles`, or reuse of the profile picker. The `IDeviceConfigEditor` seam is built; the EByte and USR editors themselves wait on captures.
-7. **Blocked, not worth starting:** the Manual review items below, the MQTT home-automation broker check, multi-browser, the 16-color conhost look.
+1. **Web pages against live hardware** (`/panel`, `/monitor`, `/routing` on the DG1062Z over TCP). Most likely to find a real bug; also covers the web proposal's "real device through the page" item in part.
+2. **Observability leftover:** confirm the metric instruments show on the Aspire Metrics page (needs the container up).
+3. **Configure device on the web.** Needs your design call first: an inline connection editor on `/profiles`, or reuse of the profile picker. The `IDeviceConfigEditor` seam is built; the EByte and USR editors themselves wait on captures.
+4. **Blocked, not worth starting:** the Manual review items below, the MQTT home-automation broker check, multi-browser, the 16-color conhost look.
 
 ## Manual review
 

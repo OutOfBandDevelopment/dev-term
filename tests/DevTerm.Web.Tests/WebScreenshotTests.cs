@@ -280,6 +280,34 @@ public class WebScreenshotTests
     }
 
     [TestMethod]
+    public async Task ManifestPage_ImportsAKsyUpload_AndOffersTheRecordings()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/manifest?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-ksy]").SetInputFilesAsync(new FilePayload
+            {
+                Name = "bench.ksy",
+                MimeType = "text/plain",
+                Buffer = System.Text.Encoding.UTF8.GetBytes(string.Join((char)10, "meta:", "  id: bench_frame", "  endian: be", "seq:", "  - id: header", "    type: u1", "  - id: reading", "    type: u2", string.Empty)),
+            });
+            await Assertions.Expect(page.Locator("[data-dirty]")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Frame" }).First).ToBeVisibleAsync();
+
+            // The Playback folder's logs are the sample-data choices; Use recording stays off until one is chosen.
+            await Assertions.Expect(page.Locator("[data-userecording]")).ToBeDisabledAsync();
+            await page.Locator("[data-recording]").SelectOptionAsync("20261008-120000_Scope.jsonl");
+            await Assertions.Expect(page.Locator("[data-userecording]")).ToBeEnabledAsync();
+            await page.Locator("[data-userecording]").ClickAsync();
+            await Task.Delay(500);
+            await Assertions.Expect(page.Locator("[data-status]")).Not.ToBeEmptyAsync();
+        }, logsDirectory: SampleLogs(), manifestsDirectory: folder);
+    }
+
+    [TestMethod]
     public async Task ManifestPage_PreviewsThePanel_PicksValues_AndSavesACopy()
     {
         var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
