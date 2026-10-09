@@ -5,8 +5,8 @@ public sealed class NetworkDiscovery(IEnumerable<INetworkDeviceProbe> probes)
 {
     private readonly IReadOnlyList<INetworkDeviceProbe> _probes = [.. probes];
 
-    /// <summary>The probes dev-term ships: LXI, mDNS and SSDP.</summary>
-    public static NetworkDiscovery CreateDefault() => new([new LxiProbe(), new MdnsProbe(), new SsdpProbe()]);
+    /// <summary>The probes dev-term ships: LXI, mDNS, SSDP and the USR-TCP232 bridge sweep.</summary>
+    public static NetworkDiscovery CreateDefault() => new([new LxiProbe(), new MdnsProbe(), new SsdpProbe(), new UsrBridgeProbe()]);
 
     public async Task<IReadOnlyList<NetworkDeviceHit>> DiscoverAsync(TimeSpan listenFor, CancellationToken cancellationToken = default)
     {

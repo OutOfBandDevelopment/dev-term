@@ -468,7 +468,7 @@ public sealed class UiLayoutReviewTests
         StaTestRunner.Run(async () =>
         {
             var ui = new UiReview(theme);
-            var window = new ScpiInstrumentPickerWindow();
+            var window = new InstrumentPickerWindow(new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider());
             ui.Review(window, "scpi-picker");
             window.Close();
             ui.AssertClean();

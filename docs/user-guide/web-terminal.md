@@ -23,6 +23,12 @@ shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with
 
 ![The terminal page with the Busylight panel above the output](images/web-terminal-page.png)
 
+The toolbar under the connection line mirrors the desktop menus: **Send as** picks the format typed lines are encoded with,
+**Device** lists every plugin panel that suits the active tab's connection (choose one and it opens above the output, with
+live indicator values, driving that tab's own session), **Echo sent commands** and **Clear output** act on the output
+pane, **Start logging** writes the session to `~/.dev-term/logs` (and offers the file for download), and **Theme** is Light,
+Dark or System (remembered in the browser). Up/Down in the send box recalls earlier lines.
+
 It listens on loopback only unless you set `Web:AllowRemote`, `Web:Token`, `Web:CertificatePath` and an `https` URL.
 Every browser tab shares the one session. Field reference: [web terminal spec](../specs/web-terminal.md).
 
@@ -74,12 +80,38 @@ document for tooling, and `/asyncapi.json` describes the WebSocket and event-str
  They need
 the same token as everything else, so open them after `?token=` has set the cookie.
 
+### Several sessions in tabs
+
+The main page works like the desktop apps: the host's own session is the **dev-term** tab, and picking a saved profile and pressing **Open** adds a tab for it. Tabs keep their own output, so you can switch between a scope and a supply without losing either; **x** closes one. Opening or closing one elsewhere (another browser tab, `/connections`, the REST calls) shows up here too.
+
+![Three sessions as tabs](images/web-terminal-tabs.png)
+
+The status line of the dev-term tab has a **Disconnect** button (and **Connect** once closed), like the desktop apps' Connect/Disconnect menu item:
+
+![Main session disconnected](images/web-terminal-disconnected.png)
+
+The dropdown beside Disconnect switches the main tab to another saved profile in place, like the desktop apps' profile switch; output stays, the session behind it changes:
+
+![Main tab switched to another profile](images/web-terminal-switched.png)
+
 ### The /connections page
 
 Open `/connections` for the same thing as buttons: **Open** starts a project connection as its own session, **Close** ends it.
 Opening one over the REST call or in another tab updates the list live. A read-only token sees the page with the buttons disabled.
 
 ![The /connections page with Scope open](images/web-blazor-connections.png)
+
+### The /profiles page
+
+Open `/profiles` to add, change and remove the project's connections without writing JSON. **New connection...** opens the same
+form the desktop Connection Editor uses (pick a Transport and only its fields appear); **Detect network devices...** lists
+instruments and services found on the LAN and fills in the address when you pick one. **Save** checks the profile and writes it
+into the project file, or shows what is wrong (for example a missing port). **Delete** asks once more on the row before removing.
+**Open** starts the connection, as on `/connections`. A read-only token sees the list but cannot change anything. Without `--project` the list is your saved profiles, the same ones the TUI and WPF show, so a profile made in any of them appears in all.
+
+![The /profiles page](images/web-blazor-profiles.png)
+
+![Adding a TCP connection](images/web-blazor-profile-editor.png)
 
 ### Sending commands from a script
 

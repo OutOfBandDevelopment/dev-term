@@ -2,5 +2,6 @@
   "name": "RadexOne",
   "version": "1.0.0",
   "contract": 1,
+  "order": 4,
   "assembly": "DevTerm.Devices.RadexOne.dll"
 }

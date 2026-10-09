@@ -14,7 +14,8 @@ session is connected. Four menu items use it today:
   `BusylightControlSurface`, opens immediately (no picker).
 - **SCPI Instrument...** — opens an instrument picker first (see below), then builds the panel from
   whichever `DevTerm.Devices.Scpi.ScpiInstrumentProfile` was chosen
-  (`ScpiUiDefinitionBuilder.Build`/`ScpiControlSurface`).
+  (`ScpiUiDefinitionBuilder.Build`/`ScpiControlSurface`). The item comes from the SCPI plugin's
+  `IInstrumentPanelProvider` (`plugins/scpi`), not from the front ends, which only know the interface.
 - **Device Manifest...** — opens a manifest picker first (see "Picking a device manifest" below),
   then builds the panel from the loaded `DevTerm.DeviceManifests.DeviceManifest`
   (`ManifestPanel`: `ManifestUiBuilder.Build`/`ManifestControlSurface`/`ManifestReplyPresenter`).
@@ -221,7 +222,7 @@ Opening **SCPI Instrument...** first resolves a choice, in this order:
 2. Otherwise, a picker lists every `ScpiProfileCatalog.All` profile name plus the two synthetic
    choices, "Auto-detect (*IDN?)" and "Generic (manual)" (TUI: a `PickFromList` modal `Dialog`
    wrapping a `ListView`, mirroring `ConfigureMode`'s own list-picker pattern; WPF:
-   `ScpiInstrumentPickerWindow`, a small `ListBox` + Select button, or double-click a row). Cancelling
+   `InstrumentPickerWindow`, a small `ListBox` + Select button, or double-click a row). Cancelling
    either does nothing — no panel opens.
 
 Choosing a named profile opens the panel immediately. Choosing **Generic (manual)** opens the panel
@@ -349,7 +350,7 @@ any command not in the curated list.
   `Application.Run`, which blocks the parent screen (same trade-off `ConfigureMode` already makes for
   Device Profiles).
 - **The SCPI picker is two separate small UIs** (`TuiMode.PickFromList`,
-  `DevTerm.Wpf.ScpiInstrumentPickerWindow`) rather than one shared component, mirroring this
+  `DevTerm.Wpf.InstrumentPickerWindow`) rather than one shared component, mirroring this
   codebase's general pattern of front-end-specific screens over the same shared
   catalog/profile/builder logic.
 

@@ -1,0 +1,257 @@
+@page "/playback"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Configuration
+@using DevTerm.Logging
+@using DevTerm.Logging.Playback
+@inject PlaybackLibrary Library
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Playback</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: notes and trimmed copies cannot be saved.</p> }
+@if (_error is not null) { <p class="error" data-error>@_error</p> }
+
+<fieldset>
+    <legend>Log</legend>
+    @if (_files.Count == 0)
+    {
+        <p class="note">No session logs in @Library.Directory. Start logging on the terminal page first.</p>
+    }
+    else
+    {
+        <div class="row">
+            <select data-file @bind="_selected" aria-label="Session log">
+                @foreach (var f in _files) { <option value="@f">@f</option> }
+            </select>
+            <button data-open @onclick="OpenAsync">Open</button>
+        </div>
+    }
+    @if (_controller is not null) { <p class="note" data-description>@_controller.Description</p> }
+</fieldset>
+
+@if (_controller is not null)
+{
+    <fieldset>
+        <legend>Controls</legend>
+        <div class="row">
+            <button data-play @onclick="PlayPause">@(_controller.Engine.IsPlaying ? "Pause" : "Play")</button>
+            <button data-step @onclick="Step">Step</button>
+            <button data-rewind @onclick="Rewind">Rewind</button>
+            <button data-ff @onclick="FastForward">Fast-forward</button>
+            <button data-end @onclick="SkipToEnd">To end</button>
+            <label>Speed
+                <select data-speed @onchange="e => SetSpeed(e.Value?.ToString())">
+                    @foreach (var s in PlaybackController.Speeds) { <option value="@s.Label" selected="@(s.Label == _controller.Speed.Label)">@s.Label</option> }
+                </select>
+            </label>
+        </div>
+        <div class="row">
+            <label>Jump to <input data-jump type="text" @bind="_jump" placeholder="record or m:ss.f" /></label>
+            <button data-go @onclick="Jump">Go</button>
+            <label>Presenters <input data-presenters type="text" @bind="_presenters" /></label>
+            <button data-apply @onclick="ApplyPresenters">Apply</button>
+        </div>
+        <p class="note">Available: @string.Join(", ", _controller.AvailablePresenters)</p>
+        <p data-position>@_controller.PositionText</p>
+    </fieldset>
+
+    <fieldset>
+        <legend>Trim and notes</legend>
+        <div class="row">
+            <button data-markin disabled="@_readOnly" @onclick="() => _controller.MarkIn()">Mark in</button>
+            <button data-markout disabled="@_readOnly" @onclick="() => _controller.MarkOut()">Mark out</button>
+            <button data-savetrim disabled="@(_readOnly || !_controller.HasSelection)" @onclick="SaveTrim">Save trimmed copy</button>
+            <label>Note <input data-note type="text" @bind="_note" /></label>
+            <button data-addnote disabled="@_readOnly" @onclick="AddNote">Add note</button>
+        </div>
+    </fieldset>
+
+    <pre data-output class="out">@string.Join('\n', _lines.Select(l => l.Text))</pre>
+}
+
+@code {
+    private const int _maxLines = 2000;
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _error;
+    private IReadOnlyList<string> _files = [];
+    private string? _selected;
+    private PlaybackController? _controller;
+    private readonly List<PlaybackLine> _lines = [];
+    private string _jump = string.Empty;
+    private string _presenters = string.Empty;
+    private string _note = string.Empty;
+    private Timer? _timer;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        _files = Library.List();
+        _selected = _files.FirstOrDefault();
+    }
+
+    private void OpenAsync()
+    {
+        _error = null;
+        _timer?.Dispose();
+        _timer = null;
+        _lines.Clear();
+        try
+        {
+            var path = _selected is null ? null : Library.Resolve(_selected);
+            if (path is null)
+            {
+                _error = "No such log.";
+                return;
+            }
+
+            _controller = new PlaybackPresenters().Open(path);
+            _presenters = string.Join(", ", _controller.Presenters);
+            foreach (var warning in _controller.Log.Warnings)
+            {
+                _lines.Add(new PlaybackLine(warning, PlaybackLineKind.Error));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SessionLogFormatException)
+        {
+            _controller = null;
+            _error = $"Could not open '{_selected}': {ex.Message}";
+        }
+    }
+
+    private void Show(PlaybackBatch batch)
+    {
+        if (batch.Reset)
+        {
+            _lines.Clear();
+        }
+
+        _lines.AddRange(PlaybackText.Lines(batch));
+        if (_lines.Count > _maxLines)
+        {
+            _lines.RemoveRange(0, _lines.Count - _maxLines);
+        }
+    }
+
+    private void Run(Func<PlaybackController, PlaybackBatch> action)
+    {
+        if (_controller is null)
+        {
+            return;
+        }
+
+        _error = null;
+        try
+        {
+            Show(action(_controller));
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            _error = ex.Message;
+        }
+
+        UpdateTimer();
+    }
+
+    private void PlayPause() => Run(c => c.TogglePlayPause());
+
+    private void Step() => Run(c => c.Step());
+
+    private void Rewind() => Run(c => c.Rewind());
+
+    private void FastForward() => Run(c => c.FastForward());
+
+    private void SkipToEnd() => Run(c => c.SkipToEnd());
+
+    private void Jump() => Run(c => c.JumpTo(_jump));
+
+    private void ApplyPresenters() => Run(c => c.SetPresenters(_presenters.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries)));
+
+    private void SetSpeed(string? label)
+    {
+        if (_controller is not null && PlaybackController.Speeds.FirstOrDefault(s => s.Label == label) is { } speed)
+        {
+            _controller.SetSpeed(speed);
+        }
+    }
+
+    private void AddNote()
+    {
+        if (_readOnly || string.IsNullOrWhiteSpace(_note))
+        {
+            return;
+        }
+
+        var text = _note;
+        Run(c => c.AddNote(text));
+        _note = string.Empty;
+    }
+
+    private void SaveTrim()
+    {
+        if (_readOnly || _controller is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = _controller.DefaultTrimPath();
+            _controller.SaveSelection(path);
+            _files = Library.List();
+            _error = $"Saved {Path.GetFileName(path)}.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    // While playing, tick a few times a second; the timer stops itself at the end.
+    private void UpdateTimer()
+    {
+        if (_controller?.Engine.IsPlaying == true)
+        {
+            _timer ??= new Timer(_ => _ = InvokeAsync(() =>
+            {
+                if (_controller is { } c)
+                {
+                    Show(c.Tick());
+                    if (!c.Engine.IsPlaying)
+                    {
+                        _timer?.Dispose();
+                        _timer = null;
+                    }
+
+                    StateHasChanged();
+                }
+            }), null, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+        }
+        else
+        {
+            _timer?.Dispose();
+            _timer = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _timer?.Dispose();
+    }
+}

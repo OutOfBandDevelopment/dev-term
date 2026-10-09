@@ -69,3 +69,9 @@ TUI:
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## On the web
+
+Open **Routing** in the web page's menu. It has the same broker fields, rule list, sample test, Apply / Start / Stop / Save to profile and history as the desktop windows; confirm-flagged broker messages show a Send once / Always this session / Drop prompt on the page.
+
+![Routing on the web](images/web-blazor-routing.png)

@@ -374,6 +374,8 @@ if (bindError is not null)
         return 1;
     }
 
+    // The editor lists each instrument plugin's profiles but runs before the host exists, so load the plugins once here to publish them.
+    _ = new ServiceCollection().AddPlugins(cliOptions);
     var configured = ConfigureMode.Run(cliOptions, bindError);
     if (configured is null)
     {
@@ -427,6 +429,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()])
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()], instruments: [.. host.Services.GetServices<IInstrumentPanelProvider>()])
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

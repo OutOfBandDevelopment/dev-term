@@ -133,3 +133,9 @@ It works like the TUI's, with these differences:
 - You can't add a note to a log that this same dev-term is still recording. Stop logging first.
 - Logs made by a newer dev-term with a different format version are refused with a message rather
   than misread.
+
+## On the web
+
+**Start logging** on the terminal page records the active tab to the default `~/.dev-term/logs` name; **Stop logging** closes it, and **Download log** fetches the file. The **Playback** page (`/playback`, linked from the nav row) lists the session logs in `~/.dev-term/logs` (or `Web:LogsDirectory`); pick one and Open it, then Play/Pause, Step, Rewind, Fast-forward, To end, change the speed, Jump to a record number or `m:ss.f`, change the presenters, Mark in/out and Save a trimmed copy, or Add note. A read-only viewer can watch but not save notes or trims. Only files inside that folder can be opened over the web.
+
+![Playback page](images/web-blazor-playback.png) Covered by `WebScreenshotTests.TerminalPage_Toolbar_LoggingRecordsTheSession`.

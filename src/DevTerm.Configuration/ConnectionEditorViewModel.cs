@@ -5,8 +5,8 @@ using System.IO;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
-using DevTerm.Devices.Scpi;
 using DevTerm.Transports.Ble;
 using DevTerm.Transports.Hid;
 using DevTerm.Transports.Serial;
@@ -479,13 +479,11 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     public IReadOnlyList<string> HandshakeOptions { get; } = Enum.GetNames<Handshake>();
 
     /// <summary>
-    /// The saved-profile SCPI-instrument choice — <see cref="ScpiProfileCatalog.AutoDetectChoiceName"/>,
-    /// <see cref="ScpiProfileCatalog.Generic"/>'s own name, or a real <see cref="ScpiProfileCatalog.All"/>
-    /// entry's name — preselected so the "SCPI Instrument..." menu item doesn't need its picker
+    /// The saved-profile SCPI-instrument choice — the auto-detect choice, the generic one, or a real profile's
+    /// name, all offered by the loaded <see cref="IInstrumentPanelProvider"/>s — preselected so the "SCPI Instrument..." menu item doesn't need its picker
     /// re-run every connection. Empty means "always ask" (today's behavior, unchanged).
     /// </summary>
-    public IReadOnlyList<string> ScpiProfileOptions { get; } =
-        [ScpiProfileCatalog.AutoDetectChoiceName, ScpiProfileCatalog.Generic.Name, .. ScpiProfileCatalog.All.Select(p => p.Name)];
+    public IReadOnlyList<string> ScpiProfileOptions { get; } = InstrumentPanelProviders.ProfileChoices();
 
     /// <summary>
     /// Serial ports actually attached to this machine right now (<see cref="ISerialPortDiscovery.GetPortNames"/>,
@@ -991,8 +989,8 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// <see cref="TcpPort"/>. A front end must call <see cref="SetLxiDeviceOptions"/> first, since the scan takes seconds.
     /// </summary>
     [Category("TCP")]
-    [DisplayName("Detected LXI instruments")]
-    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpTransport))]
+    [DisplayName("Detected network devices")]
+    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpLikeTransport))]
     public LxiDeviceOption? SelectedLxiDevice
     {
         get => _selectedLxiDevice;
@@ -1001,8 +999,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             SetField(ref _selectedLxiDevice, value);
             if (value is not null)
             {
+                // The hit's kind decides the transport (a VXI-11 instrument, an MQTT broker, or plain tcp), so one pick fills the lot.
+                if (TransportOptions.Contains(value.Transport))
+                {
+                    Transport = value.Transport;
+                }
+
                 Host = value.Host;
-                TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (value.Port > 0)
+                {
+                    TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
             }
         }
     }

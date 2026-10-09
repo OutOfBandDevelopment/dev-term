@@ -1,8 +1,10 @@
+using System.Net.Http.Json;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core.Transports;
 using DevTerm.Test.Utilities;
 
 namespace DevTerm.Web.Tests;
@@ -12,6 +14,8 @@ namespace DevTerm.Web.Tests;
 [TestCategory(TestCategories.Web)]
 public class WebHostTests
 {
+    public required TestContext TestContext { get; set; }
+
     private static int FreePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -29,6 +33,22 @@ public class WebHostTests
         await built.Hub.StartAsync();
         await built.App.StartAsync();
         return (built, $"http://127.0.0.1:{port}");
+    }
+
+    [TestMethod]
+    public async Task UnconfiguredStart_ComesUpWithoutAPortAndServesPing()
+    {
+        var port = FreePort();
+        var built = WebHost.Build(new CliOptions(), new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" }, []);
+        await using (built.Hub)
+        {
+            await built.Hub.StartAsync();
+            await built.App.StartAsync();
+            using var client = new HttpClient();
+            using var response = await client.GetAsync($"http://127.0.0.1:{port}/", TestContext.CancellationToken);
+            Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
     }
 
     [TestMethod]
@@ -53,6 +73,157 @@ public class WebHostTests
             using var response = await client.SendAsync(request);
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task SessionSettings_XonXoff_AppliesToTcpOnly()
+    {
+        var tcpPort = FreePort();
+        var webPort = FreePort();
+        var tcp = WebHost.Build(
+            new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = tcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture), Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await tcp.App.StartAsync();
+        await using (tcp.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.IsFalse((await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").GetBoolean());
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync("api/sessions/main/xonxoff?enabled=true", null)).StatusCode);
+            Assert.IsTrue(tcp.Hub.SoftwareFlowControl);
+            Assert.IsTrue((await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").GetBoolean());
+            await tcp.App.StopAsync();
+        }
+
+        var loopPort = FreePort();
+        var loop = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{loopPort}", Token = "secret" },
+            []);
+        await loop.App.StartAsync();
+        await using (loop.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{loopPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.AreEqual(System.Text.Json.JsonValueKind.Null, (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").ValueKind);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PostAsync("api/sessions/main/xonxoff?enabled=true", null)).StatusCode);
+            await loop.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task SessionSettings_SendFormatAndLogging_WorkPerSession()
+    {
+        var webPort = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+
+            var info = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main");
+            Assert.IsTrue(info.GetProperty("parsers").GetArrayLength() > 1);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/nope")).StatusCode);
+
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync("api/sessions/main/parser?name=hex", null)).StatusCode);
+            Assert.AreEqual("hex", built.Hub.Parser);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PostAsync("api/sessions/main/parser?name=bogus", null)).StatusCode);
+
+            var started = await client.PostAsync("api/sessions/main/logging?enabled=true", null);
+            Assert.AreEqual(HttpStatusCode.OK, started.StatusCode);
+            var path = built.Hub.LogPath;
+            Assert.IsNotNull(path);
+            Assert.AreEqual(HttpStatusCode.OK, (await client.GetAsync("api/sessions/main/log")).StatusCode);
+            await client.PostAsync("api/sessions/main/logging?enabled=false", null);
+            Assert.IsNull(built.Hub.LogPath);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/main/log")).StatusCode);
+            File.Delete(path);
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task DevicePanels_AreListedPerConnection_AndOpenedOnDemand()
+    {
+        var webPort = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "hid", VendorId = 0x04D8, ProductId = 0xF848, Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var list = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main/panels");
+            Assert.IsTrue(list.EnumerateArray().Any(p => p.GetProperty("id").GetString() == "busylight"));
+            var panel = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main/panels/busylight");
+            Assert.IsTrue(panel.GetProperty("definition").GetProperty("Sections").GetArrayLength() > 0);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/main/panels/nope")).StatusCode);
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task ControlHttp_FollowsAProfileSwitchToTheNewSession()
+    {
+        var webPort = FreePort();
+        var controlPort = FreePort();
+        var options = new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, ControlHttp = controlPort, ControlToken = "ctl" };
+        var built = WebHost.Build(options, new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" }, []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            await built.Hub.SwitchAsync(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true }, "Other");
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{controlPort}/command") { Content = new StringContent("send hello") };
+            request.Headers.Authorization = new("Bearer", "ctl");
+            using var response = await client.SendAsync(request);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, "The command reaches the switched-to session, not the disposed one.");
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task OpenedConnection_WithControlHttp_GetsItsOwnControlServerClosedWithIt()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"devterm-web-ctl-{Guid.NewGuid():N}.json");
+        var controlPort = FreePort();
+        var project = new ProjectFile { Name = "Bench" };
+        project.Connections.Add(new ProjectConnection("Sim", $$"""{"Transport":"loopback","Presenter":["ascii"],"ControlHttp":{{controlPort}},"ControlToken":"ctl"}"""));
+        project.Save(file);
+        var port = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = file },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var baseUrl = $"http://127.0.0.1:{port}";
+            using var opened = await client.PostAsync(baseUrl + "/api/connections?name=Sim", null, TestContext.CancellationToken);
+            var json = System.Text.Json.JsonDocument.Parse(await opened.Content.ReadAsStringAsync(TestContext.CancellationToken)).RootElement;
+            Assert.AreEqual(controlPort, json.GetProperty("controlPort").GetInt32());
+
+            using var control = new HttpClient();
+            control.DefaultRequestHeaders.Authorization = new("Bearer", "ctl");
+            using var ping = await control.GetAsync($"http://127.0.0.1:{controlPort}/ping", TestContext.CancellationToken);
+            Assert.AreEqual(HttpStatusCode.OK, ping.StatusCode);
+
+            await client.DeleteAsync($"{baseUrl}/api/connections/{json.GetProperty("id").GetString()}", TestContext.CancellationToken);
+            await Assert.ThrowsAsync<HttpRequestException>(() => control.GetAsync($"http://127.0.0.1:{controlPort}/ping", TestContext.CancellationToken));
+            await built.App.StopAsync(TestContext.CancellationToken);
         }
     }
 
@@ -166,6 +337,46 @@ public class WebHostTests
             }
 
             await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task ApiSession_DisconnectsAndReconnectsTheMainSession_NotForReadOnlyViewers()
+    {
+        var (built, baseUrl) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.IsTrue((await client.GetStringAsync(baseUrl + "/api/status", TestContext.CancellationToken)).Contains("\"state\":\"Open\"", StringComparison.Ordinal));
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync(baseUrl + "/api/session/disconnect", null, TestContext.CancellationToken)).StatusCode);
+            Assert.AreEqual(ConnectionState.Closed, built.Hub.State);
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync(baseUrl + "/api/session/connect", null, TestContext.CancellationToken)).StatusCode);
+            Assert.AreEqual(ConnectionState.Open, built.Hub.State);
+            await built.App.StopAsync(TestContext.CancellationToken);
+        }
+    }
+
+    [TestMethod]
+    public void IsConfigured_IsFalseOnlyForTheBareDefault()
+    {
+        Assert.IsFalse(WebHost.IsConfigured(new CliOptions()));
+        Assert.IsTrue(WebHost.IsConfigured(new CliOptions { Transport = "loopback" }));
+        Assert.IsTrue(WebHost.IsConfigured(new CliOptions { Port = "COM3" }));
+    }
+
+    [TestMethod]
+    public async Task ApiDiscover_RequiresTheTokenAndReturnsAJsonArray()
+    {
+        var (built, baseUrl) = await StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient();
+            Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync(baseUrl + "/api/discover", TestContext.CancellationToken)).StatusCode);
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            using var document = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(baseUrl + "/api/discover?seconds=1", TestContext.CancellationToken));
+            Assert.AreEqual(System.Text.Json.JsonValueKind.Array, document.RootElement.ValueKind);
+            await built.App.StopAsync(TestContext.CancellationToken);
         }
     }
 

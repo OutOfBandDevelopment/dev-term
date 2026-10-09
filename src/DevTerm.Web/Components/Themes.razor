@@ -1,0 +1,150 @@
+@page "/themes"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Configuration
+@inject ThemeLibrary Library
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Theme builder</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: themes cannot be saved.</p> }
+@if (_message is not null) { <p class="note" data-message>@_message</p> }
+
+@if (_state is null)
+{
+    <fieldset>
+        <legend>Seed</legend>
+        <div class="row">
+            <label>Start from
+                <select data-seed @bind="_seed">
+                    @foreach (var s in Library.Catalog().SelectionNames) { <option value="@s">@s</option> }
+                </select>
+            </label>
+            <label>New theme's name <input data-newname type="text" @bind="_name" placeholder="@(_seed + " copy")" /></label>
+            <button data-create @onclick="Create">Create</button>
+        </div>
+        <p class="note">Themes are saved in @Library.Directory and appear in the desktop apps' View &gt; Theme list.</p>
+    </fieldset>
+}
+else
+{
+    var theme = _state.Build();
+    <fieldset>
+        <legend>Theme</legend>
+        <div class="row">
+            <label>Name <input data-name type="text" @bind="_state.Name" @bind:event="oninput" /></label>
+            <label>Chart palette
+                <select data-palette @bind="_state.ChartPalette">
+                    @foreach (var p in Enum.GetValues<ChartPaletteVariant>()) { <option value="@p">@p</option> }
+                </select>
+            </label>
+            <label><input data-overwrite type="checkbox" @bind="_overwrite" /> Overwrite if it exists</label>
+        </div>
+        <div class="row">
+            <button data-save disabled="@_readOnly" @onclick="Save">Save</button>
+            <button data-cancel @onclick="Cancel">Cancel</button>
+        </div>
+        @foreach (var w in _state.ContrastWarnings().Take(3)) { <p class="error" data-warning>@w</p> }
+        @if (!_state.ContrastWarnings().Any()) { <p class="note" data-warning>No contrast problems.</p> }
+    </fieldset>
+
+    <fieldset>
+        <legend>Preview</legend>
+        <div data-preview style="@PreviewStyle(theme)">
+            <p style="color:@theme[ThemeRole.Foreground].ToHex()">Ordinary text on the background</p>
+            <p style="color:@theme[ThemeRole.MutedForeground].ToHex()">Secondary text, notes and hints</p>
+            <p style="background:@theme[ThemeRole.MenuBackground].ToHex();color:@theme[ThemeRole.MenuForeground].ToHex();padding:4px 8px">Menu and status bar</p>
+            <p style="background:@theme[ThemeRole.SelectionBackground].ToHex();color:@theme[ThemeRole.SelectionForeground].ToHex();padding:4px 8px">Selected item</p>
+            <p style="background:@theme[ThemeRole.ControlBackground].ToHex();color:@theme[ThemeRole.ControlForeground].ToHex();border:1px solid @theme[ThemeRole.ControlBorder].ToHex();padding:4px 8px">A text box or button</p>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Colors</legend>
+        @foreach (var role in Enum.GetValues<ThemeRole>())
+        {
+            var r = role;
+            <div class="row" data-role="@r">
+                <span>@(_state.IsOverridden(r) ? "● " : "  ")@r</span>
+                <input data-color type="color" aria-label="@r color" value="@HexOf(r)" @onchange="e => SetColor(r, e.Value?.ToString())" />
+                <code data-hex>@HexOf(r)</code>
+                <button data-reset disabled="@(!_state.IsOverridden(r))" @onclick="() => _state.ResetToSeed(r)">Reset to seed</button>
+            </div>
+        }
+    </fieldset>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _message;
+    private string _seed = BuiltInThemes.LightName;
+    private string _name = string.Empty;
+    private bool _overwrite;
+    private ThemeBuilderState? _state;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+    }
+
+    private string HexOf(ThemeRole role) => _state![role].ToHex().ToLowerInvariant();
+
+    private static string PreviewStyle(DevTermTheme theme) =>
+        $"background:{theme[ThemeRole.Background].ToHex()};padding:8px;border:1px solid {theme[ThemeRole.ControlBorder].ToHex()}";
+
+    private void Create()
+    {
+        _message = null;
+        var name = string.IsNullOrWhiteSpace(_name) ? _seed + " copy" : _name.Trim();
+        _state = Library.Start(_seed, name);
+    }
+
+    private void SetColor(ThemeRole role, string? hex)
+    {
+        if (ThemeColor.TryParse(hex, out var color))
+        {
+            _state!.Set(role, color);
+        }
+    }
+
+    private void Save()
+    {
+        if (_readOnly || _state is null)
+        {
+            return;
+        }
+
+        var problem = Library.Save(_state, _overwrite);
+        if (problem is null)
+        {
+            _message = $"Saved '{_state.Name}'. It now appears in View > Theme in the desktop apps.";
+            _state = null;
+        }
+        else
+        {
+            _message = problem;
+        }
+    }
+
+    private void Cancel()
+    {
+        _state = null;
+        _message = null;
+    }
+
+    public void Dispose() => _subscription.Dispose();
+}

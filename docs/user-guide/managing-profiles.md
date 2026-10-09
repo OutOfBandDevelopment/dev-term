@@ -82,3 +82,7 @@ detected serial ports on Linux and macOS, landed 2026-09-25. See
 same profiles the Connection Editor lists), layered above the default `appsettings.Local.json`
 profile. Any other flag still wins, e.g. `--profile bench-scope --port 24`. An unknown name is an
 error ("No saved connection profile named ...") rather than a silent fallback.
+
+## On the web
+
+`/profiles` lists the saved connections (Edit, Open, Delete) and has a New connection form generated from the same form model as the desktop Connection Editor. The main tab can also switch to a saved profile in place. Covered by the `ProfilesPage_*` screenshot tests and `TerminalPage_MainSession_SwitchesProfileInPlace`.

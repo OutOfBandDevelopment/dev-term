@@ -13,6 +13,7 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/DevTerm.Devices.De5000.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/DevTerm.Devices.Nmea.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/DevTerm.Devices.Demo.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Scpi/DevTerm.Devices.Scpi.csproj" ReferenceOutputAssembly="false" Condition="!$(MSBuildProjectName.StartsWith('DevTerm.Console.Tests')) And !$(MSBuildProjectName.StartsWith('DevTerm.Wpf.Tests'))" />
   </ItemGroup>
 
   <Target Name="BundleDevicePlugins" AfterTargets="Build" Condition="'$(BundleDevicePlugins)' == 'true'">
@@ -24,6 +25,8 @@
       <_De5000Plugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/bin/$(Configuration)/net10.0/DevTerm.Devices.De5000.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.De5000/bin/$(Configuration)/net10.0/plugin.json" />
       <_NmeaPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/bin/$(Configuration)/net10.0/DevTerm.Devices.Nmea.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Nmea/bin/$(Configuration)/net10.0/plugin.json" />
       <_DemoPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/bin/$(Configuration)/net10.0/DevTerm.Devices.Demo.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Demo/bin/$(Configuration)/net10.0/plugin.json" />
+      <_ScpiPlugin Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Scpi/bin/$(Configuration)/net10.0/DevTerm.Devices.Scpi.dll;$(MSBuildThisFileDirectory)src/DevTerm.Devices.Scpi/bin/$(Configuration)/net10.0/plugin.json" />
+      <_ScpiProfiles Include="$(MSBuildThisFileDirectory)src/DevTerm.Devices.Scpi/bin/$(Configuration)/net10.0/Profiles/*.json" />
     </ItemGroup>
     <Copy SourceFiles="@(_K8055Plugin)" DestinationFolder="$(OutDir)plugins/k8055" />
     <Copy SourceFiles="@(_BusylightPlugin)" DestinationFolder="$(OutDir)plugins/busylight" />
@@ -32,6 +35,8 @@
     <Copy SourceFiles="@(_De5000Plugin)" DestinationFolder="$(OutDir)plugins/de5000" />
     <Copy SourceFiles="@(_NmeaPlugin)" DestinationFolder="$(OutDir)plugins/nmea" />
     <Copy SourceFiles="@(_DemoPlugin)" DestinationFolder="$(OutDir)plugins/demo" />
+    <Copy SourceFiles="@(_ScpiPlugin)" DestinationFolder="$(OutDir)plugins/scpi" />
+    <Copy SourceFiles="@(_ScpiProfiles)" DestinationFolder="$(OutDir)plugins/scpi/Profiles" />
   </Target>
 
 </Project>

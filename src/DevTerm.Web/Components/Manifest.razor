@@ -1,0 +1,185 @@
+@page "/manifest"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.DeviceManifests.Editing
+@using DevTerm.UiDefinitions
+@using DevTerm.UiDefinitions.Forms
+@inject WebManifestEditor Web
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Manifest editor</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: the manifest cannot be changed.</p> }
+<p class="note" data-status>@Editor.StatusMessage</p>
+<p data-title>@Editor.Title</p>
+
+<fieldset>
+    <legend>Manifest</legend>
+    <div class="row">
+        <button data-new disabled="@(_readOnly || (Editor.IsDirty && !_confirmNew))" @onclick="NewManifest">New</button>
+        <label>Open
+            <select data-open disabled="@_readOnly" @onchange="e => _openPath = e.Value?.ToString() ?? string.Empty">
+                <option value="">(choose a manifest)</option>
+                @foreach (var m in _available) { <option value="@m.Path" selected="@(m.Path == _openPath)">@m.DisplayName</option> }
+            </select>
+        </label>
+        <button data-openbtn disabled="@(_readOnly || string.IsNullOrEmpty(_openPath) || (Editor.IsDirty && !_confirmNew))" @onclick="OpenSelected">Open</button>
+        <button data-save disabled="@_readOnly" @onclick="Save">Save</button>
+        <button data-check @onclick="Check">Check</button>
+        <button data-undo disabled="@(_readOnly || !Editor.CanUndo)" @onclick="Editor.Undo">Undo</button>
+        <button data-redo disabled="@(_readOnly || !Editor.CanRedo)" @onclick="Editor.Redo">Redo</button>
+    </div>
+    @if (Editor.IsDirty && !_readOnly) { <p class="note" data-dirty>Unsaved edits. <label><input data-confirmdiscard type="checkbox" @bind="_confirmNew" /> Allow New or Open to discard them</label></p> }
+</fieldset>
+
+<div class="manifest-panes">
+    <fieldset>
+        <legend>Outline</legend>
+        <ul class="captures" data-outline>
+            @for (var i = 0; i < Editor.Nodes.Count; i++)
+            {
+                var index = i;
+                var node = Editor.Nodes[i];
+                <li><button data-node="@index" aria-pressed="@ReferenceEquals(node, Editor.SelectedNode)" @onclick="() => Editor.Select(index)">@node.Display</button></li>
+            }
+        </ul>
+        <div class="row">
+            @if (Editor.AddLabel is { } add) { <button data-add disabled="@_readOnly" @onclick="Editor.AddChild">@add</button> }
+            <button data-remove disabled="@(_readOnly || !Editor.CanRemove)" @onclick="Editor.Remove">Remove</button>
+            <button data-up disabled="@(_readOnly || !Editor.CanMove)" @onclick="Editor.MoveUp">Up</button>
+            <button data-down disabled="@(_readOnly || !Editor.CanMove)" @onclick="Editor.MoveDown">Down</button>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@(Editor.SelectedNode?.Display.Trim() ?? "Form")</legend>
+        @if (Editor.SelectedNode is { Form: { } form })
+        {
+            Bind(form);
+            <FormFields Definition="_definition!" Binding="_binding!" ReadOnly="_readOnly" />
+        }
+        else if (Editor.SelectedNode?.Hint is { } hint)
+        {
+            <p class="note" data-hint>@hint</p>
+            @if (Editor.SelectedNode.Kind == ManifestNodeKind.Panel)
+            {
+                <button data-createpanel disabled="@_readOnly" @onclick="Editor.CreatePanelFromCommands">Create panel from commands</button>
+            }
+        }
+    </fieldset>
+
+    <fieldset>
+        <legend>Preview (sends nothing)</legend>
+        <div data-preview>
+            @foreach (var section in Preview().Sections)
+            {
+                <p><strong>@(string.IsNullOrEmpty(section.Label) ? "(section)" : section.Label)</strong></p>
+                <ul>
+                    @foreach (var c in section.Controls) { <li data-previewcontrol>@c.GetType().Name.Replace("Control", string.Empty): @c.Label</li> }
+                </ul>
+            }
+        </div>
+    </fieldset>
+</div>
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private bool _confirmNew;
+    private string _openPath = string.Empty;
+    private IReadOnlyList<DevTerm.DeviceManifests.ManifestEntry> _available = [];
+    private FormBinding? _binding;
+    private UiDefinition? _definition;
+    private EditorForm? _boundForm;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    private ManifestEditorViewModel Editor => Web.Editor;
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        _available = Web.Available();
+        Editor.Edited += OnChanged;
+        Editor.StructureChanged += OnChanged;
+        Editor.SelectionChanged += OnChanged;
+        Editor.StatusChanged += OnChanged;
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private void Bind(EditorForm form)
+    {
+        if (ReferenceEquals(_boundForm, form))
+        {
+            return;
+        }
+
+        _binding?.Dispose();
+        _binding = new FormBinding(form);
+        _definition = FormDefinitionGenerator.Generate(form.GetType(), form);
+        _boundForm = form;
+    }
+
+    private UiDefinition Preview()
+    {
+        try
+        {
+            return Editor.BuildPreviewDefinition();
+        }
+        catch (Exception)
+        {
+            return new UiDefinition { Name = "Preview unavailable" };
+        }
+    }
+
+    private void NewManifest()
+    {
+        if (!_readOnly)
+        {
+            Editor.New();
+            _confirmNew = false;
+        }
+    }
+
+    private void OpenSelected()
+    {
+        if (!_readOnly && Web.OpenAvailable(_openPath))
+        {
+            _confirmNew = false;
+        }
+    }
+
+    private void Save()
+    {
+        if (!_readOnly)
+        {
+            Editor.Save();
+            _available = Web.Available();
+        }
+    }
+
+    private void Check() => Editor.Validate();
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _binding?.Dispose();
+        Editor.Edited -= OnChanged;
+        Editor.StructureChanged -= OnChanged;
+        Editor.SelectionChanged -= OnChanged;
+        Editor.StatusChanged -= OnChanged;
+    }
+}

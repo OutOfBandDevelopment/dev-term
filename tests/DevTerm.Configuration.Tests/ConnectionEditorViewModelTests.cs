@@ -1901,6 +1901,32 @@ public sealed class ConnectionEditorViewModelTests
     }
 
     [TestMethod]
+    public void SelectedLxiDevice_FromAVxi11OrMqttHit_AlsoSwitchesTheTransport()
+    {
+        var directory = CreateTempDirectory();
+        try
+        {
+            var vm = new ConnectionEditorViewModel(new ConnectionProfileStore(directory), new CliOptions());
+            var vxi = LxiDeviceOption.FromHit(new Discovery.NetworkDeviceHit("10.0.0.7", 111, "vxi11", "lxi", "Scope", "lxi"));
+            var mqtt = LxiDeviceOption.FromHit(new Discovery.NetworkDeviceHit("10.0.0.9", 1883, "mqtt", "mqtt", "Broker", "mdns"));
+            vm.SetLxiDeviceOptions([vxi, mqtt]);
+
+            vm.SelectedLxiDevice = vxi;
+            Assert.AreEqual("vxi11", vm.Transport);
+            Assert.AreEqual("10.0.0.7", vm.Host);
+
+            vm.SelectedLxiDevice = mqtt;
+            Assert.AreEqual("mqtt", vm.Transport);
+            Assert.AreEqual("10.0.0.9", vm.Host);
+            Assert.AreEqual("1883", vm.TcpPort);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public void BleDeviceOptions_StartsEmpty_AndSetBleDeviceOptionsReplacesIt()
     {
         var directory = CreateTempDirectory();

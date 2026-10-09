@@ -72,9 +72,7 @@ proposal file. Last swept 2026-10-08.
 
 **Decided 2026-10-08, to build (in this order of ask, none started):**
 1. Network discovery: shared `INetworkDeviceProbe`, mDNS and SSDP probes, Connection Editor "Detect network devices..." (WPF, TUI), `--listnetworkdevices`; fake-response unit tests only, marked not hardware-verified.
-2. Plugin-contributed panels: move the built-in decoders out of core, in stages, until core references no `DevTerm.Devices.*` project.
-3. Web: a Blazor profile editor over the project PUT/DELETE endpoints (form layout still to be shown to you), and `--controlhttp` per opened connection (one port each).
-4. Multi-session tab shortcuts: Ctrl+Shift+T new, Ctrl+Shift+W close (TUI and WPF).
+2. Plugin-contributed panels: finish the checklist (front ends resolving only contributions, specs and user guide for the menu); the decoder move itself is done.
 Decided against: the web host using the project file as its whole connection set (connections stay an extra list); supporting other ES51919 meters beyond "probably works". Keep it current: add a row when a proposal gains an unchecked item, delete the row
 when the item is checked off in the proposal (the `work-docs-audit` skill re-sweeps this section).
 
@@ -82,13 +80,11 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 
 | Proposal | Unchecked items | Blocked on |
 |---|---|---|
-| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | Connection Editor "Detect network devices..." (WPF, TUI) with prefill; spec and guide with real captures | Buildable now |
-| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR search probe | A fresh capture of each device |
-| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | `IDeviceConfigEditor` seam and menu; EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
-| [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md) | TUI, WPF and web resolve contributions instead of naming device projects; remaining decoders moved out so core references no `DevTerm.Devices.*` project; specs and user guide for the menu | Buildable now (large refactor) |
+| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR UDP search packet (the web-login USR probe is built) | A fresh capture of each device |
+| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | Configure device menu (lists registered editors); EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
-| [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers; Blazor front end for the remaining services (project editing) | Your setup; form layout decisions |
+| [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers | Your setup |
 | [de5000-lcr-meter-protocol](docs/design/proposals/de5000-lcr-meter-protocol.md) | Confirm the adapter's GATT profile; run `RealHardwareDe5000Tests` and write the `docs/test/` report | The meter on the bench |
 | [ebyte-e810-dtu-config-protocol](docs/design/proposals/ebyte-e810-dtu-config-protocol.md) | Five checklist items (capture and layout confirmation, read-only support first) | A fresh capture of the real unit |
 | [bytecc-bt-up01-usb-network-bridge](docs/design/proposals/bytecc-bt-up01-usb-network-bridge.md) | Five checklist items | The hardware |
@@ -117,5 +113,5 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
   **Decision 2026-10-03: the PCX decoder and the PCL raster preview are both rejected for now** (BMP and TIFF hardcopy already preview); a captured PCX or PCL job stays saved, and PCL still converts through GhostPCL. Revisit only if asked.
-- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above. Decided 2026-10-03: one shared token, no per-connection tokens. Built: `/api/project`, `/api/connections` (open/list/close) and `/ws/{id}`. `/api/devices` lists attached serial/HID/USBTMC devices. `/api/events` streams connection and line events (SSE). The Blazor `/connections` page opens and closes project connections. `/scalar/v1`, `/openapi/v1.json` and `/asyncapi.json` document the API. `PUT`/`DELETE /api/project/connections/{name}` edit the project file.
+- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above. Decided 2026-10-03: one shared token, no per-connection tokens. Built: `/api/project`, `/api/connections` (open/list/close) and `/ws/{id}`. `/api/devices` lists attached serial/HID/USBTMC devices. `/api/events` streams connection and line events (SSE). The Blazor `/connections` page opens and closes project connections. `/scalar/v1`, `/openapi/v1.json` and `/asyncapi.json` document the API. `PUT`/`DELETE /api/project/connections/{name}` edit the project file, and the `/profiles` page edits it from a generated form (with `GET /api/discover` behind its detect button).
 

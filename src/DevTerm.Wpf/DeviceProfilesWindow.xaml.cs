@@ -128,7 +128,7 @@ public partial class DeviceProfilesWindow : Window
         DetectedLxiDevicesBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(ConnectionEditorViewModel.LxiDeviceOptions)));
         DetectedLxiDevicesBox.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(ConnectionEditorViewModel.SelectedLxiDevice)));
         MakeFilterable(DetectedLxiDevicesBox, nameof(LxiDeviceOption.Display));
-        DetectLxiButton = new Button { Content = "Detect LXI...", Margin = new Thickness(4, 0, 0, 0) };
+        DetectLxiButton = new Button { Content = "Detect network devices...", Margin = new Thickness(4, 0, 0, 0) };
         DetectLxiButton.Click += DetectLxi_Click;
         var lxiRow = new DockPanel();
         DockPanel.SetDock(DetectLxiButton, Dock.Right);
@@ -316,7 +316,7 @@ public partial class DeviceProfilesWindow : Window
         DetectLxiButton.IsEnabled = false;
         try
         {
-            var devices = await Task.Run(LxiDeviceScanner.Scan);
+            var devices = await Task.Run(LxiDeviceScanner.ScanNetwork);
             ViewModel.SetLxiDeviceOptions(devices);
         }
         finally

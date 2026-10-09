@@ -37,7 +37,7 @@ is active, the same way.
 
 ## Keyboard shortcuts
 
-Both front ends bind the same four shortcuts: **Ctrl+T** opens New Session, **Ctrl+W** closes the
+Both front ends bind the same four shortcuts: **Ctrl+T** (or **Ctrl+Shift+T**) opens New Session, **Ctrl+W** (or **Ctrl+Shift+W**) closes the
 active tab (File > Close Session), and **Ctrl+Tab** / **Ctrl+Shift+Tab** switch to the next/previous
 tab, wrapping around at either end (a no-op with fewer than two tabs open).
 
@@ -73,3 +73,7 @@ The TUI's **Send as** parser choice is set on whichever tab is active at the tim
 the menu itself isn't rebuilt per tab — switching tabs in the TUI doesn't show you the newly active
 tab's own parser selection. (The WPF front end doesn't have this gap — its parser picker already
 updates per tab.)
+
+## On the web
+
+The terminal page has a tab bar: the host's own session plus one tab per saved profile opened from the dropdown, each with its own output, status and Connect/Disconnect. Closing a tab disposes its session. Covered by `WebScreenshotTests.TerminalPage_MultipleSessions_OpenSwitchAndClose`.

@@ -48,7 +48,6 @@
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />
             </MenuItem>
             <MenuItem Header="_Device">
-                <MenuItem x:Name="ScpiMenuItem" Header="_SCPI Instrument..." Click="ScpiInstrument_Click" />
                 <MenuItem x:Name="ManifestMenuItem" Header="Device _Manifest..." Click="DeviceManifest_Click" />
                 <MenuItem Header="_Edit Device Manifest..." Click="EditDeviceManifest_Click" />
                 <Separator />

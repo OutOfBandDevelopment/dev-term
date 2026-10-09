@@ -26,7 +26,7 @@ public sealed class MainWindowConnectionStateTests
         var window = new MainWindow(new Session(transport, new Pipeline([ascii])), new PresenterCatalog([ascii]), options, IsolatedProfiles.Empty())
         {
             ShowInTaskbar = false,
-            PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
+            InstrumentProviders = [new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()], PluginPanels = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()],
         };
         return (window, transport);
     }
@@ -44,7 +44,7 @@ public sealed class MainWindowConnectionStateTests
             Assert.AreEqual("Connected — tcp://127.0.0.1:23", window.ConnectionStatusText.Text);
             Assert.AreEqual(WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.StatusConnected]), ((SolidColorBrush)window.ConnectionStatusDot.Fill).Color, "The dot is the theme's statusConnected.");
             Assert.DoesNotContain("disconnected", window.Title);
-            Assert.IsTrue(window.ScpiMenuItem.IsEnabled, "SCPI makes sense over TCP.");
+            Assert.IsTrue(window.ScpiMenuItem!.IsEnabled, "SCPI makes sense over TCP.");
             Assert.IsFalse(window.K8055MenuItem!.IsEnabled, "The K8055 is a HID device.");
             Assert.IsFalse(window.BusylightMenuItem!.IsEnabled);
         });
@@ -63,7 +63,7 @@ public sealed class MainWindowConnectionStateTests
             Assert.AreEqual("Disconnected — tcp://127.0.0.1:23", window.ConnectionStatusText.Text);
             Assert.AreEqual(WpfTheme.ToColor(ActiveTheme.Current[ThemeRole.StatusDisconnected]), ((SolidColorBrush)window.ConnectionStatusDot.Fill).Color, "The dot is the theme's statusDisconnected.");
             Assert.EndsWith(" — disconnected", window.Title);
-            Assert.IsFalse(window.ScpiMenuItem.IsEnabled, "No panel makes sense while disconnected.");
+            Assert.IsFalse(window.ScpiMenuItem!.IsEnabled, "No panel makes sense while disconnected.");
         });
     }
 
@@ -92,7 +92,7 @@ public sealed class MainWindowConnectionStateTests
 
             Assert.IsTrue(window.K8055MenuItem!.IsEnabled);
             Assert.IsFalse(window.BusylightMenuItem!.IsEnabled);
-            Assert.IsFalse(window.ScpiMenuItem.IsEnabled, "SCPI is text; HID is fixed-size binary reports.");
+            Assert.IsFalse(window.ScpiMenuItem!.IsEnabled, "SCPI is text; HID is fixed-size binary reports.");
         });
     }
 

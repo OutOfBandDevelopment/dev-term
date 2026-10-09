@@ -112,3 +112,7 @@ already enumerates from — so a theme built here immediately appears in View > 
 - The TUI's role list has no scrollbar indicator distinct from any other `ListView` in this codebase
   — with enough `ThemeRole` members to scroll, there's no visual hint beyond the usual Terminal.Gui
   list behavior that more rows exist above/below.
+
+## Web
+
+`/themes` in `DevTerm.Web` has the same fields and actions over `ThemeBuilderState` (seed + name, per-role color with Reset to seed, chart palette, contrast warnings, Save with an explicit Overwrite checkbox in place of the confirm dialog). The live preview is a pane on the page: it does not re-skin the web app itself. Themes are written to `Web:ThemesDirectory` (default `~/.dev-term/themes`). Read-only viewers cannot Save.

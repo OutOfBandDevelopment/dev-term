@@ -1,5 +1,5 @@
+using DevTerm.Core.Control;
 using DevTerm.Core.Hosting;
-using DevTerm.Devices.Scpi;
 using DevTerm.Core.Plugins;
 using DevTerm.Observability;
 using DevTerm.Presenters.Text;
@@ -192,7 +192,17 @@ public static class ServiceCollectionExtensions
         var directory = string.IsNullOrWhiteSpace(cliOptions.Plugins) ? Path.Combine(AppContext.BaseDirectory, "plugins") : cliOptions.Plugins;
         var results = PluginLoader.LoadAll(directory, services);
         services.AddSingleton<IReadOnlyList<PluginLoadResult>>(results);
+        PublishInstrumentProviders(services);
         return services;
+    }
+
+    // The Connection Editor lists each instrument provider's profiles but runs outside a built host (and before one, on first
+    // run), so the providers the plugins registered are also published to a static. A throwaway container is enough: a provider
+    // is stateless and takes no dependencies.
+    private static void PublishInstrumentProviders(IServiceCollection services)
+    {
+        using var container = services.BuildServiceProvider();
+        InstrumentPanelProviders.Set(container.GetServices<IInstrumentPanelProvider>());
     }
 
     // Opt-in (--otlp). Started here rather than as a hosted service because the WPF and console front ends build their
@@ -218,7 +228,6 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(cliOptions);
         services.AddDevTermCore();
         services.AddTextPresenters();
-        services.AddScpiPresenter();
         services.AddPlugins(cliOptions);
         services.Configure<AsciiPresenterOptions>(o => o.MaxLineLength = cliOptions.AsciiMaxLineLength);
         services.AddStreamCaptureConverter(cliOptions);

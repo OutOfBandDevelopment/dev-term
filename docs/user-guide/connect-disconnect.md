@@ -48,3 +48,7 @@ In Device Profiles, editing only the serial line (baud rate, data bits, parity, 
 presenters, the send parser or the line ending updates the open connection in place: no prompt, no
 disconnect. Changing the port, host, transport or similar still switches to a new connection. A serial
 or RFC 2217 connection applies the line settings to the device immediately.
+
+## On the web
+
+The main tab's button reads Disconnect/Connect. After a disconnect (or a lost connection) nothing reconnects by itself; press Connect, exactly as File > Connect in the desktop apps.

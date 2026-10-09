@@ -284,18 +284,32 @@ How to press it:
 Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
 changes away.
 
-### Finding a LAN instrument (LXI)
+### Finding a LAN device (LXI, mDNS, SSDP)
 
-For an instrument on the network, choose the `tcp` transport and press **Detect LXI...** (a dropdown plus button in WPF, a
-button opening a list in the TUI). The scan takes about three seconds and lists each instrument that answered, with its
-`*IDN?` and raw SCPI port; picking one fills Host and Port. From a script:
+For a device on the network, choose the `tcp` transport and press **Detect network devices...** (a dropdown plus button in WPF, a
+button opening a list in the TUI). The scan takes about three seconds and runs three probes at once: the LXI instrument
+scan (with its `*IDN?` and raw SCPI port), mDNS service discovery and SSDP/UPnP. Each device appears once; picking one fills
+Host and Port and sets the transport to match (`vxi11` for a VXI-11-only LXI unit, `mqtt` for a broker). The mDNS and SSDP probes have only been tried against what happens to be on one home LAN (printers, a NAS);
+an LXI unit such as the DG1062Z answers the LXI probe only. From a script, `--listlxidevices true` lists just the LXI
+instruments and `--listnetworkdevices true` lists everything:
 
 ```
 > dotnet run --project src/DevTerm.Console -- --listlxidevices true
 192.168.0.87:5555  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (192.168.0.87:5555)
 ```
 
-(Real output from the bench Rigol DG1062Z.) An instrument that only speaks VXI-11, with no raw SCPI port on 5025 or 5555,
+```
+> dotnet run --project src/DevTerm.Console -- --listnetworkdevices true
+192.168.0.48:80  tcp  Brother HL-3170CDW series  (unknown, mdns)
+192.168.0.127:5555  tcp  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (lxi, lxi)
+```
+
+A USR-TCP232 serial-to-Ethernet bridge sends no announcement, so it is found by its web page instead: the scan asks port 80 on your local /24 and keeps hosts whose login prompt names a `USR-TCP232` model. A bridge shows up whether or not the instrument behind it is powered, e.g. `192.168.0.110:23  tcp  USR-TCP232-302 serial bridge  (usr-tcp232, usr)` (real output, 2026-10-09). It suggests port 23, the bridge default; if you changed the bridge's port, edit it.
+
+(Real output from the bench LAN; the DG1062Z moved from .87 to .127 between captures. mDNS answers are not guaranteed: a
+NAS that appeared in one run was absent from this one, so a missing device means "try again", not "not there".)
+
+(Real output from the bench Rigol DG1062Z for the first capture.) An instrument that only speaks VXI-11, with no raw SCPI port on 5025 or 5555,
 is listed as "VXI-11 only" and falls back to port 5025, which will not work for it; connect with `--transport vxi11 --host <ip>` instead (the portmapper finds the port, no `--port` needed). The same works for the DG1062Z: `--transport vxi11 --host 192.168.0.87 --presenter ascii --lineending Lf --cli true`, then `*IDN?`.
 
 ### Picking a detected serial port, HID device, or USBTMC device
@@ -344,3 +358,7 @@ Scrolling is skipped while the saved-profiles list has focus, so Page Up/Page Do
 still navigate that list normally instead of scrolling the form out from under it. (The list has
 focus when the editor opens, so Tab off it first.) **Tab also scrolls on its own**: moving focus to a
 field or button below the visible area brings it into view.
+
+## On the web
+
+On a TCP tab the toolbar shows an **XON/XOFF** checkbox (software flow control, as View > Software Flow Control in the desktop apps). Other transports don't show it.

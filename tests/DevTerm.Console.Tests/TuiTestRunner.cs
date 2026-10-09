@@ -96,6 +96,8 @@ internal static class TuiTestRunner
     /// developer's real <c>~/.dev-term/profiles</c> when its title asks "is this a saved profile?".
     /// </summary>
     /// <summary>The K8055 and Busylight contributions the app registers; the Device menu has no hand-written items for them.</summary>
+    internal static IReadOnlyList<DevTerm.Core.Control.IInstrumentPanelProvider> BuiltInInstruments { get; } = [new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()];
+
     internal static IReadOnlyList<DevTerm.Core.Control.IDevicePanelContribution> BuiltInPanels { get; } = [new DevTerm.Devices.K8055.K8055PanelContribution(), new DevTerm.Devices.Busylight.BusylightPanelContribution()];
 
     public static ConnectionProfileStore EmptyProfiles() =>
@@ -110,7 +112,7 @@ internal static class TuiTestRunner
         _currentApp = app;
         try
         {
-            var parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels);
+            var parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels, instruments: TuiTestRunner.BuiltInInstruments);
             parts.SendField.SetFocus();
             var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
             app.LayoutAndDraw(true);
@@ -188,7 +190,7 @@ internal static class TuiTestRunner
             {
                 app = Application.Create().Init("dotnet");
                 _currentApp = app;
-                parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels);
+                parts = TuiMode.BuildWindow(app, session, presenter, cliOptions, profileStore ?? EmptyProfiles(), panels: TuiTestRunner.BuiltInPanels, instruments: TuiTestRunner.BuiltInInstruments);
                 parts.SendField.SetFocus();
                 app.Invoke(() => ready.Set());
                 app.Run(parts.Window);

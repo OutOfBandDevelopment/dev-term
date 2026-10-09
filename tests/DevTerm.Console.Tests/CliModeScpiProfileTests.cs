@@ -1,5 +1,6 @@
 using System.Text;
 using DevTerm.Configuration;
+using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Devices.Scpi;
@@ -17,6 +18,13 @@ namespace DevTerm.Console.Tests;
 public sealed class CliModeScpiProfileTests
 {
     public required TestContext TestContext { get; set; }
+
+    // CliMode applies the profile through the loaded instrument plugins, which a unit test has to register itself.
+    [TestInitialize]
+    public void RegisterScpiPlugin() => InstrumentPanelProviders.Set([new ScpiInstrumentPanelProvider()]);
+
+    [TestCleanup]
+    public void ClearPlugins() => InstrumentPanelProviders.Set([]);
 
     /// <summary>A stdin that never produces a line, so the loop runs until cancelled.</summary>
     private sealed class BlockingStdin : TextReader

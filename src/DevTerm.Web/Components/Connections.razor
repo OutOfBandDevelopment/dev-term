@@ -1,4 +1,5 @@
 @page "/connections"
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @inject ConnectionManager Manager
 @inject PersistentComponentState PersistedState
@@ -10,7 +11,7 @@
 
 @if (_project.Count == 0)
 {
-    <p class="note">The host has no project connections (start it with --project &lt;file&gt;).</p>
+    <p class="note">No saved connections yet; add one on the Profiles page.</p>
 }
 else
 {
@@ -26,6 +27,32 @@ else
         }
     </fieldset>
 }
+
+<fieldset>
+    <legend>Project file</legend>
+    <p class="note">Save the open connections (or, with none open, the saved ones) as a dev-term project file, or add a project file's connections to this host's. The file includes credentials, so only a viewer with write access gets it.</p>
+    @if (_readOnly)
+    {
+        <p class="note" data-projectfile-readonly>Project files are not available with a read-only token.</p>
+    }
+    else
+    {
+        <div class="row">
+            <a data-exportproject href="api/project/export?name=project" download="project.json">Save project</a>
+        </div>
+        <div class="row">
+            <label>Open project file <InputFile data-importfile OnChange="LoadFileAsync" accept=".json" /></label>
+        </div>
+        <div class="row">
+            <textarea data-importtext rows="6" placeholder="Paste a project file here" @bind="_importText" @bind:event="oninput"></textarea>
+        </div>
+        <div class="row">
+            <label><input data-importopen type="checkbox" @bind="_importOpen" /> Open the connections after importing</label>
+            <button data-import disabled="@string.IsNullOrWhiteSpace(_importText)" @onclick="ImportAsync">Open project</button>
+        </div>
+    }
+    @if (_importMessage is not null) { <p class="@(_importFailed ? "error" : "note")" data-importresult>@_importMessage</p> }
+</fieldset>
 
 <fieldset>
     <legend>Open</legend>
@@ -44,6 +71,10 @@ else
     private PersistingComponentStateSubscription _subscription;
     private bool _readOnly;
     private string? _error;
+    private string _importText = string.Empty;
+    private bool _importOpen = true;
+    private bool _importFailed;
+    private string? _importMessage;
     private IReadOnlyList<(string Name, string Description)> _project = [];
     private IReadOnlyList<(string Id, string Name, string State)> _open = [];
     private CancellationTokenSource? _cts;
@@ -119,6 +150,59 @@ else
             _error = ex.Message;
         }
 
+        Refresh();
+    }
+
+    private async Task LoadFileAsync(InputFileChangeEventArgs e)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(1024 * 1024));
+            _importText = await reader.ReadToEndAsync();
+            _importMessage = null;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            _importFailed = true;
+            _importMessage = "The file could not be read: " + ex.Message;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        var (imported, errors) = Manager.ImportProject(_importText);
+        var opened = 0;
+        if (_importOpen)
+        {
+            foreach (var name in imported)
+            {
+                try
+                {
+                    if (await Manager.OpenAsync(name) is not null)
+                    {
+                        opened++;
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    errors = [.. errors, $"{name}: {ex.Message}"];
+                }
+            }
+        }
+
+        _importFailed = imported.Count == 0;
+        _importMessage = $"Imported {imported.Count} connection(s)" + (_importOpen ? $", opened {opened}" : string.Empty) + "."
+            + (errors.Count > 0 ? " Problems: " + string.Join("; ", errors) : string.Empty);
         Refresh();
     }
 

@@ -17,6 +17,9 @@ public sealed class WebOptions
     /// <summary>Which device control panel to serve at <c>/api/panel</c> and show in the page: <c>k8055</c> or <c>busylight</c>. Blank serves none.</summary>
     public string? Panel { get; set; }
 
+    /// <summary>A saved connection profile (the same store as the TUI and WPF) for the host's own session; blank uses the usual layered options. <c>--Web:Profile Bench</c>.</summary>
+    public string? Profile { get; set; }
+
     /// <summary>Permit a non-loopback bind. Also requires a token and a certificate.</summary>
     public bool AllowRemote { get; set; }
 
@@ -24,6 +27,18 @@ public sealed class WebOptions
     public string? CertificatePath { get; set; }
 
     public string? CertificatePassword { get; set; }
+
+    /// <summary>The folder the Playback page lists and opens logs from; blank uses <c>~/.dev-term/logs</c>. Only files in this folder can be opened over the web.</summary>
+    public string? LogsDirectory { get; set; }
+
+    /// <summary>The folder the Theme builder saves themes into; blank uses <c>~/.dev-term/themes</c> (where the desktop apps look too).</summary>
+    public string? ThemesDirectory { get; set; }
+
+    /// <summary>The folder the Manifest Editor saves into and lists as user manifests; blank uses <c>~/.dev-term/manifests</c> (shared with the desktop apps).</summary>
+    public string? ManifestsDirectory { get; set; }
+
+    /// <summary>The converter tools file; blank uses <c>~/.dev-term/converter-tools.json</c> (shared with the desktop apps).</summary>
+    public string? ConverterToolsFile { get; set; }
 
     /// <summary>Lines of output kept and replayed to a viewer that connects later.</summary>
     public int BacklogLines { get; set; } = 500;

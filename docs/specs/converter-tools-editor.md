@@ -40,3 +40,7 @@ the next time one is opened.
 
 A profile's own `StreamConvertTools` (older profiles) still load and are added to the list, unless an app-wide tool has
 the same name, in which case the app-wide one wins. They have no editing screen any more; saving a profile keeps them.
+
+## Web
+
+`/converters` in `DevTerm.Web` edits the same shared list (`ConverterToolsEditor`, `converter-tools.json`, or `Web:ConverterToolsFile`). All tools show as editable cards; Save validates as OK does and writes at once, Revert reloads the file. Read-only viewers cannot change it. The web Stream Monitor's Convert uses this list.

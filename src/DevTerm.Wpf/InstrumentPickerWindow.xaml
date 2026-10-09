@@ -1,4 +1,4 @@
-<Window x:Class="DevTerm.Wpf.ScpiInstrumentPickerWindow"
+<Window x:Class="DevTerm.Wpf.InstrumentPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="dev-term — Select SCPI Instrument" Height="380" Width="560" MinHeight="240" MinWidth="280"

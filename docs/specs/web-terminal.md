@@ -31,14 +31,22 @@ with the reason.
 | `/api/status` | `{"state": "...", "connection": "...", "readOnly": false}` |
 | `/api/panel` | The configured panel's `UiDefinition` as JSON (404 when `Panel` is unset) |
 | `/api/project` | The `--project` file's connections as `[{"name", "description"}]` (no credentials); `[]` without a project |
+| `GET /api/discover?seconds=n` | Network devices found by the LXI, mDNS and SSDP probes (the `--listnetworkdevices` set), listening 1-10 s (default 3): `[{"address","port","transport","kind","name","source","hostname"}]`; `[]` when nothing answers or the network is unreachable. Not hardware-verified beyond the one real-LAN run of the probes |
 | `GET /api/connections` | The extra connections currently open: `[{"id", "name", "state"}]` |
-| `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name"}`; 404 for an unknown name, 403 for a read-only viewer |
+| `POST /api/connections?name=<n>` | Opens the named project connection as its own session behind `/ws/{id}`; returns `{"id", "name", "controlPort", "controlToken"}` (the last two null unless the profile sets `ControlHttp`, see "Per-connection control" below); 404 for an unknown name, 403 for a read-only viewer |
 | `DELETE /api/connections/{id}` | Closes it (204 whether or not it was open, so a repeat is harmless; 403 read-only) |
 | `/ws/{id}` | The same text WebSocket as `/ws`, for one opened connection |
 | `/api/devices` | Attached hardware: `{"serial": [...], "hid": [...], "usbtmc": [...]}`; a kind that cannot be enumerated returns `[]` |
 | `/api/events` | Server-Sent Events: `connection-opened` `{id, name}`, `connection-closed` `{id}` and `line` `{id, text}` (`id` is `main` for the shared session). Each subscriber has a 256-event queue that drops its oldest |
 | `PUT /api/project/connections/{name}` | Create or replace a connection in the `--project` file; the body is profile JSON (`{"Transport":"tcp","Host":"10.0.0.5","Port":23}`), validated like a CLI profile. 204 saved; 400 with `{"error"}` when invalid, when the file is unreadable, or when the host has no `--project`; 403 for a read-only viewer. Existing history and log settings are kept |
 | `DELETE /api/project/connections/{name}` | Remove a connection from the project file; 204 whether or not it existed; 403 read-only. Both publish a `project-changed` event |
+| `GET /api/sessions/{id}` | `{"parsers", "parser", "logging", "state"}` for `main` or an opened connection id; 404 unknown |
+| `POST /api/sessions/{id}/parser?name=` | Changes the session's "Send as" format; 400 unknown format, 403 read-only |
+| `POST /api/sessions/{id}/logging?enabled=` | Starts (default `~/.dev-term/logs` name) or stops logging; `GET /api/sessions/{id}/log` downloads the running log |
+| `POST /api/sessions/{id}/xonxoff?enabled=` | XON/XOFF software flow control (TCP only; 400 otherwise); `xonxoff` also in `GET /api/sessions/{id}` (null when not TCP) |
+| `GET /api/sessions/{id}/panels` | The Device menu: plugin panels that suit the session's connection (`[{id,title}]`) |
+| `GET /api/sessions/{id}/panels/{panel}` | The panel's `UiDefinition` and latest indicator values; the page polls it once a second |
+| `POST /api/sessions/{id}/panels/{panel}/invoke` | Runs a control on that panel (same body as `/api/invoke`); 403 read-only, 404 unknown |
 | `/openapi/v1.json` | OpenAPI 3.1 for the plain REST endpoints (the streaming ones, `/ws` and `/api/events`, are not in it) |
 | `/scalar/v1` | The Scalar viewer over that document |
 | `/asyncapi` | A dependency-free page (no CDN, works offline) that renders `/asyncapi.json`: channels, messages with payload schemas, operations |
@@ -52,13 +60,33 @@ redirects). Missing or wrong: 401. A browser `Origin` that differs from the host
 
 The same loopback channel as the console front ends (`POST /command`, `GET /events`, `GET /ping`) on the shared session,
 with its own bearer token (`--controltoken`, generated if omitted). It is separate from the host token, so a script can
-send commands without being able to open or close connections. The URL and token are printed at startup.
+send commands without being able to open or close connections. The URL and token are printed at startup. The port and token
+stay the same across a profile switch: the server is re-pointed at the new session, so a script keeps working.
+
+### Per-connection control
+
+A project connection whose profile sets `ControlHttp` (a port) and optionally `ControlToken` gets its own loopback control
+server on that port when it is opened with `POST /api/connections` or the Connections page, with the same
+`/command`, `/events` and `/ping` and its own token (random if `ControlToken` is empty). One port per connection, so give
+each profile a different one; the server stops when the connection is closed, and an open that cannot bind the port fails
+with the error instead of leaving a half-open connection. Only profiles written by hand or by `PUT /api/project/...` carry
+`ControlHttp`: a project saved from open tabs drops session-only options.
 
 ## Behaviour
 
 All viewers share one session. Output goes to everyone; sends are serialized. A failed startup connect is shown in the
-page and the next sent line retries, as in the TUI/WPF. Input that the parser cannot encode is reported to the sender
+page and Connect retries, as in the TUI/WPF; a line sent while the session is closed is refused ("Not connected"), never silently reconnected. Input that the parser cannot encode is reported to the sender
 only.
+
+## Sessions as tabs (main page `/`)
+
+The main page has one tab per session, like the desktop apps: **dev-term** (the host's own session, `/ws`) and one tab for each connection opened from a saved profile (`/ws/{id}`). Each tab has its own WebSocket, output and status line (`<name> - connected|disconnected`); the send box goes to the active tab. The profile dropdown with **Open** (right of the tabs) starts a saved profile as a new tab (`POST /api/connections`); the **x** beside a tab closes it (`DELETE /api/connections/{id}`; the main tab has none). Tabs already open when the page loads are restored, and the `connection-opened`/`connection-closed` events keep every open browser tab in step with the `/connections` page and REST calls. The profile list follows `project-changed`. A read-only token can read every tab but cannot open or close one. The device panel, when configured, shows under the main tab only.
+
+The status line also has a profile dropdown with **Switch to** (`POST /api/session/profile?name=`, 404 unknown, 403 read-only): the host's own session is closed and disposed, a new one is built from that saved profile and connected, and every viewer stays attached with its output kept (a `Switched to <name>.` line marks the change). The status shows `dev-term (<profile>)`, `/api/status` has `profile`, and a configured device panel is rebound to the new session. A failed connect is shown and the profile stays selected (Connect retries). The `--controlhttp` server stays on the startup session.
+
+`--Web:Profile <name>` (or `DEVTERM_Web__Profile`) makes the host's own session use a saved profile from the shared store instead of the layered options; an unknown name exits 1 listing the saved ones.
+
+The main tab's status line carries a **Connect/Disconnect** button for the host's own session (`POST /api/session/connect|disconnect`, 403 for a read-only token; `session-state` events keep every viewer current). Disconnecting leaves the tab and its output; the status reads `session closed`, and sending a line reconnects, as after a lost connection. A host started with no connection at all (`/api/status` `configured: false`) starts closed with a hint instead of a serial `PortName` error, and Connect stays disabled until a connection is configured; open a saved profile from the picker instead.
 
 ## Blazor connections page (`/connections`)
 
@@ -67,6 +95,37 @@ open (name, state, `/ws/<id>`, **Close**). It shares `ConnectionManager` with th
 over `POST /api/connections` or in another tab appears here without a reload (it re-reads on the `connection-*` events).
 A read-only token sees both lists with every button disabled and a notice; with no `--project` the page says so.
 
+**Project file** (File > Save Project / Open Project in the desktop apps): a **Save project** link
+(`GET /api/project/export?name=`) downloads the open connections as a dev-term project file (or, with none open, the saved
+project's connections; 404 when there are none). **Open project file** takes a file (or pasted text) and **Open project**
+adds each of its connections to the host's (`POST /api/project/import`, the same validation and `ConnectionManager.Upsert` as
+the Profiles page), replacing same-named ones; "Open the connections after importing" (on by default) also opens each, like the
+desktop's Open Project. The result line says how many were imported and opened and lists any that were not. A file's window
+layout, active tab and send history mean nothing to a web host and are ignored. A project file holds credentials, so a
+read-only token gets neither the link nor the import (both endpoints answer 403).
+
+## Blazor profiles page (`/profiles`)
+
+Same token auth. Lists the `--project` file's connections (name, description, **Edit**, **Open**, **Delete**) and **New connection...**.
+**Delete** turns into **Really delete?** on the row and removes the connection only on the second click; navigating away or
+clicking another row's Delete moves the confirmation. **Edit**/**New** swap the list for a form:
+
+- **Name** (fixed once saved) and **Detect network devices...**, which runs the `/api/discover` probes (3 s) and lists the hits as buttons; picking one fills Transport, Host and Port (and the name when empty).
+- The connection fields are generated from `ConnectionEditorViewModel`'s form definition, the one the TUI and WPF Connection Editors render, through `FormBinding`: sections are fieldsets, a field shows only when its `VisibleWhen` holds (so choosing a transport shows that transport's fields), choices are dropdowns, presenters are checkboxes, toggles are checkboxes, everything else a text box. A value that fails its constraint shows the message beside the field. The rich device pickers (`Selected*`: serial, HID, USBTMC, BLE, network) and command buttons are not on the web form.
+- **Save** builds the profile JSON from the form and calls `ConnectionManager.Upsert` (the same validation as `PUT /api/project/connections/{name}`); an error such as a missing port or name is shown at the top and the form stays open. **Cancel** discards.
+
+A read-only token sees the list with every button disabled and a notice.
+
+**Which connections**: the `--project` file when the host has one; otherwise the saved profiles the TUI and WPF use (`ConnectionProfileStore`, the `profiles` folder under the dev-term home), so a profile saved in either desktop app is listed, editable and openable here with no setup. `/connections` and `POST /api/connections` use the same set.
+
 ## Blazor panel page (`/panel`)
 
 Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator (showing the latest value the device's structured presenter published, e.g. the K8055 analog inputs, when that presenter is selected; otherwise its default); other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.
+
+## Automated coverage
+
+The web is held to the same automation as the TUI and WPF: the shared user flows (`UserFlowTestsBase`, driven by `WebUserFlowTests` through Playwright and headless Edge, none skipped), real captured screenshots under `docs/user-guide/images`, and a layout review (`WebLayoutReviewTests`) that opens the terminal page (with a device panel, light and dark) and each Blazor page at 1280x800 and 400x800 and fails on sideways page scroll, overlapping siblings, clipped text, controls under 14px and text contrast under 4.5:1. Review captures land in `artifacts/ui-review/web`. Each new web feature adds a flow, a layout-review case and its screenshots.
+
+## Blazor playback page (`/playback`)
+
+Replays a session log through `PlaybackController` (the same one the TUI and WPF windows draw, so behaviour is identical; see [`playback-window.md`](playback-window.md)). Logs come from `PlaybackLibrary`: the `.jsonl` files directly inside `Web:LogsDirectory` (default `~/.dev-term/logs`), newest first; a name containing a path is never resolved. Controls: Open, Play/Pause (a 100 ms timer ticks while playing and stops at the end), Step, Rewind, Fast-forward (10 s), To end, Speed (0.25x to Max), Jump to (record or `m:ss.f`; bad text shows the controller's message), Presenters (comma list, replays from the start), Mark in, Mark out, Save trimmed copy (to the controller's default `.trim-a-b` name beside the log), Add note (saved into the log). A read-only token disables the notes and trim buttons. Output shows the last 2000 lines in the shared `PlaybackText` format. Not on the web: choosing a log from outside the folder, uploading one.

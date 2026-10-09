@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using DevTerm.Configuration;
+using DevTerm.Core.Sessions;
 
 namespace DevTerm.Web;
 
@@ -7,16 +8,22 @@ namespace DevTerm.Web;
 /// The extra connections the host opens from its <c>--project</c> file, each its own <see cref="SessionHub"/>.
 /// Shared by the REST endpoints and the Blazor <c>/connections</c> page so both see the same set.
 /// </summary>
+/// <summary>An opened project connection; <see cref="ControlPort"/> and <see cref="ControlToken"/> are set only when its profile asked for <c>ControlHttp</c>.</summary>
+public sealed record OpenedConnection(string Id, string Name, int? ControlPort = null, string? ControlToken = null);
+
 public sealed class ConnectionManager
 {
     private readonly string? _projectPath;
+    private readonly ConnectionProfileStore? _store;
     private readonly int _backlogLines;
-    private readonly ConcurrentDictionary<string, (string Name, SessionHub Hub)> _open = new();
+    private readonly ConcurrentDictionary<string, (string Name, SessionHub Hub, SessionHttpControlServer? Control, IDisposable? Registration)> _open = new();
     private readonly object _projectLock = new();
 
-    public ConnectionManager(string? projectPath, int backlogLines, HostEvents events)
+    /// <param name="store">The saved-profile store the TUI and WPF use; the connection set when there is no <paramref name="projectPath"/>.</param>
+    public ConnectionManager(string? projectPath, int backlogLines, HostEvents events, ConnectionProfileStore? store = null)
     {
         _projectPath = projectPath;
+        _store = store;
         _backlogLines = backlogLines;
         Events = events;
     }
@@ -29,9 +36,12 @@ public sealed class ConnectionManager
     {
         try
         {
-            return string.IsNullOrWhiteSpace(_projectPath)
-                ? []
-                : [.. ProjectFile.Load(_projectPath).Connections.Select(c => (c.Name, ConnectionDescription.Definition(c.ToOptions())))];
+            if (string.IsNullOrWhiteSpace(_projectPath))
+            {
+                return _store is null ? [] : [.. _store.List().Select(n => (n, StoreDescription(n)))];
+            }
+
+            return [.. ProjectFile.Load(_projectPath).Connections.Select(c => (c.Name, ConnectionDescription.Definition(c.ToOptions())))];
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
@@ -39,8 +49,38 @@ public sealed class ConnectionManager
         }
     }
 
+    /// <summary>The named project connection's settings (case-insensitive), or <see langword="null"/> when there is no such connection or no readable project.</summary>
+    public CliOptions? ProjectOptions(string name)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_projectPath))
+            {
+                return _store is not null && _store.List().Contains(name, StringComparer.OrdinalIgnoreCase) ? _store.Load(name) : null;
+            }
+
+            return !File.Exists(_projectPath) ? null : ProjectFile.Load(_projectPath).Find(name)?.ToOptions();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>True when the host was started with a <c>--project</c> file that edits can be saved to.</summary>
-    public bool HasProject => !string.IsNullOrWhiteSpace(_projectPath);
+    public bool HasProject => !string.IsNullOrWhiteSpace(_projectPath) || _store is not null;
+
+    private string StoreDescription(string name)
+    {
+        try
+        {
+            return ConnectionDescription.Definition(_store!.Load(name));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return "(unreadable profile)";
+        }
+    }
 
     /// <summary>
     /// Adds or replaces the named connection in the project file from <paramref name="profileJson"/> (the JSON a saved
@@ -51,7 +91,7 @@ public sealed class ConnectionManager
     {
         if (!HasProject)
         {
-            return "The host was started without --project, so there is no file to save to.";
+            return "The host has no project file or profile store to save to.";
         }
 
         if (string.IsNullOrWhiteSpace(name))
@@ -72,6 +112,21 @@ public sealed class ConnectionManager
         catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException or FormatException or InvalidDataException)
         {
             return "The profile is not valid: " + ex.Message;
+        }
+
+        if (string.IsNullOrWhiteSpace(_projectPath))
+        {
+            try
+            {
+                _store!.Save(name.Trim(), candidate.ToOptions());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                return "The profile could not be saved: " + ex.Message;
+            }
+
+            Events.Publish("project-changed", new { name });
+            return null;
         }
 
         lock (_projectLock)
@@ -111,6 +166,24 @@ public sealed class ConnectionManager
             return false;
         }
 
+        if (string.IsNullOrWhiteSpace(_projectPath))
+        {
+            try
+            {
+                if (!_store!.Delete(name))
+                {
+                    return false;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                return false;
+            }
+
+            Events.Publish("project-changed", new { name });
+            return true;
+        }
+
         lock (_projectLock)
         {
             ProjectFile project;
@@ -137,6 +210,63 @@ public sealed class ConnectionManager
 
     private ProjectFile LoadOrNew() => File.Exists(_projectPath!) ? ProjectFile.Load(_projectPath!) : new ProjectFile { Name = Path.GetFileNameWithoutExtension(_projectPath!) };
 
+    /// <summary>
+    /// The connections as a project file (File > Save Project in the desktop apps): the extra connections open now, with whether each was
+    /// logging, or the saved project's connections when none are open. Includes credentials, so callers must not offer it to a read-only viewer.
+    /// Null when there is nothing to save.
+    /// </summary>
+    public string? ExportProject(string name)
+    {
+        var tabs = _open.Values.Select(c => new ProjectTabState(c.Name, c.Hub.Options, [], c.Hub.LogPath is not null)).ToList();
+        if (tabs.Count == 0)
+        {
+            foreach (var (connectionName, _) in Project())
+            {
+                if (ProjectOptions(connectionName) is { } options)
+                {
+                    tabs.Add(new ProjectTabState(connectionName, options, [], false));
+                }
+            }
+        }
+
+        return tabs.Count == 0 ? null : ProjectFile.FromTabs(name, tabs, null).ToJson();
+    }
+
+    /// <summary>
+    /// Adds every connection of a project file (File > Open Project) to this host's connections, replacing same-named ones; the file's
+    /// window layout and per-tab history have no meaning for a web host and are ignored. Returns the names imported and an error per
+    /// connection (or one for an unreadable file) that was not.
+    /// </summary>
+    public (IReadOnlyList<string> Imported, IReadOnlyList<string> Errors) ImportProject(string json)
+    {
+        ProjectFile project;
+        try
+        {
+            project = ProjectFile.FromJson(json);
+        }
+        catch (InvalidDataException ex)
+        {
+            return ([], [ex.Message]);
+        }
+
+        var imported = new List<string>();
+        var errors = new List<string>();
+        foreach (var connection in project.Connections)
+        {
+            var error = Upsert(connection.Name, connection.ProfileJson);
+            if (error is null)
+            {
+                imported.Add(connection.Name);
+            }
+            else
+            {
+                errors.Add($"{connection.Name}: {error}");
+            }
+        }
+
+        return (imported, errors);
+    }
+
     public IReadOnlyList<(string Id, string Name, string State)> Open() =>
         [.. _open.Select(c => (c.Key, c.Value.Name, c.Value.Hub.State.ToString()))];
 
@@ -147,32 +277,51 @@ public sealed class ConnectionManager
         return found;
     }
 
-    /// <summary>Opens the named project connection; <see langword="null"/> when the project has no such connection.</summary>
-    public async Task<(string Id, string Name)?> OpenAsync(string name, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Opens the named project connection; <see langword="null"/> when the project has no such connection. A profile with
+    /// <c>ControlHttp</c> set also gets its own loopback control server on that port (one port per connection, token from
+    /// <c>ControlToken</c> or random), closed with the connection.
+    /// </summary>
+    public async Task<OpenedConnection?> OpenAsync(string name, CancellationToken cancellationToken = default)
     {
-        ProjectConnection? chosen = null;
-        try
-        {
-            chosen = string.IsNullOrWhiteSpace(_projectPath) ? null : ProjectFile.Load(_projectPath).Find(name);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-        }
-
-        if (chosen is null)
+        CliOptions? options = ProjectOptions(name);
+        if (options is null)
         {
             return null;
         }
 
-        var options = chosen.ToOptions();
+        var chosen = new { Name = name };
         var built = DevTermSessionBuilder.Build(options);
         var connection = new SessionHub(built.Session, built.Catalog, options, _backlogLines);
-        await connection.StartAsync(cancellationToken);
+        SessionHttpControlServer? control = null;
+        IDisposable? registration = null;
+        try
+        {
+            if (options.ControlHttp > 0)
+            {
+                control = new SessionHttpControlServer(connection.Session, options.ControlHttp, text => TypedInput.TryEncode(connection.Catalog, options, text), options.ControlToken);
+                registration = connection.Session.AddObserver(control);
+            }
+
+            await connection.StartAsync(cancellationToken);
+        }
+        catch
+        {
+            registration?.Dispose();
+            if (control is not null)
+            {
+                await control.DisposeAsync();
+            }
+
+            await connection.DisposeAsync();
+            throw;
+        }
+
         var id = Guid.NewGuid().ToString("N")[..8];
-        _open[id] = (chosen.Name, connection);
+        _open[id] = (chosen.Name, connection, control, registration);
         connection.LineReceived += line => Events.Publish("line", new { id, text = line });
         Events.Publish("connection-opened", new { id, name = chosen.Name });
-        return (id, chosen.Name);
+        return new OpenedConnection(id, chosen.Name, control?.Port, control?.Token);
     }
 
     public async Task<bool> CloseAsync(string id)
@@ -180,6 +329,12 @@ public sealed class ConnectionManager
         if (!_open.TryRemove(id, out var removed))
         {
             return false;
+        }
+
+        removed.Registration?.Dispose();
+        if (removed.Control is not null)
+        {
+            await removed.Control.DisposeAsync();
         }
 
         await removed.Hub.DisposeAsync();

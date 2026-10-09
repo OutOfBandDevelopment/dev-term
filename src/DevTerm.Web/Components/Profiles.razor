@@ -1,0 +1,296 @@
+@page "/profiles"
+@using DevTerm.Configuration
+@using DevTerm.Configuration.Discovery
+@using DevTerm.UiDefinitions
+@using DevTerm.UiDefinitions.Forms
+@using Microsoft.AspNetCore.Components.Web
+@inject ConnectionManager Manager
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Profiles</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: profiles cannot be changed.</p> }
+@if (!Manager.HasProject) { <p class="note">Nothing to edit.</p> }
+@if (_error is not null) { <p class="error" data-error="page">@_error</p> }
+
+@if (_vm is null)
+{
+    <fieldset>
+        <legend>Project connections</legend>
+        @foreach (var c in _project)
+        {
+            <div class="row" data-project="@c.Name">
+                <label>@c.Name</label>
+                <span class="note">@c.Description</span>
+                <button disabled="@_readOnly" @onclick="() => Edit(c.Name)">Edit</button>
+                <button disabled="@_readOnly" @onclick="() => OpenAsync(c.Name)">Open</button>
+                @if (_confirmDelete == c.Name)
+                {
+                    <button disabled="@_readOnly" @onclick="() => Delete(c.Name)">Really delete?</button>
+                }
+                else
+                {
+                    <button disabled="@_readOnly" @onclick="() => _confirmDelete = c.Name">Delete</button>
+                }
+            </div>
+        }
+        @if (_project.Count == 0) { <p class="note">No connections yet.</p> }
+        <div class="row"><button id="new" disabled="@(_readOnly || !Manager.HasProject)" @onclick="New">New connection...</button></div>
+    </fieldset>
+}
+else
+{
+    <fieldset>
+        <legend>@(_isNew ? "New connection" : "Edit " + _name)</legend>
+        <div class="row">
+            <label>Name</label>
+            <input type="text" data-field="Name" value="@_name" disabled="@(!_isNew)" @onchange="e => _name = e.Value?.ToString() ?? string.Empty" />
+        </div>
+        <div class="row">
+            <button id="detect" @onclick="DetectAsync" disabled="@_detecting">@(_detecting ? "Detecting..." : "Detect network devices...")</button>
+            @foreach (var hit in _hits)
+            {
+                <button data-hit="@hit.Address" @onclick="() => Prefill(hit)">@hit.Display</button>
+            }
+            @if (_detected && _hits.Count == 0) { <span class="note">No network devices answered.</span> }
+        </div>
+        @foreach (var section in _form!.Sections)
+        {
+            if (!_binding!.IsVisible(section.VisibleWhen) || !section.Controls.Any(Shown)) { continue; }
+            <fieldset>
+                @if (!string.IsNullOrEmpty(section.Label)) { <legend>@section.Label</legend> }
+                @foreach (var c in section.Controls.Where(Shown))
+                {
+                    <div class="row" data-field="@c.Id" title="@c.Description">
+                        <label>@c.Label</label>
+                        @switch (c)
+                        {
+                            case ChoiceControl { Style: ChoiceStyle.CheckList } list:
+                                @foreach (var option in list.Options)
+                                {
+                                    <label><input type="checkbox" checked="@_binding.GetSelection(list.Id).Contains(option)" @onchange="e => Toggle(list, option, e.Value)" /> @option</label>
+                                }
+                                break;
+                            case ChoiceControl choice:
+                                <select @onchange="e => Set(choice, e.Value?.ToString())">
+                                    @foreach (var option in choice.Options)
+                                    {
+                                        <option value="@option" selected="@(option == _binding.GetText(choice.Id))">@option</option>
+                                    }
+                                </select>
+                                break;
+                            case ToggleControl toggle:
+                                <input type="checkbox" checked="@_binding.GetBool(toggle.Id)" @onchange="e => SetBool(toggle, e.Value)" />
+                                break;
+                            default:
+                                <input type="text" value="@_binding.GetText(c.Id)" @onchange="e => Set(c, e.Value?.ToString())" />
+                                break;
+                        }
+                        @if (_fieldErrors.TryGetValue(c.Id, out var fieldError)) { <span class="error">@fieldError</span> }
+                    </div>
+                }
+            </fieldset>
+        }
+        <div class="row">
+            <button id="save" disabled="@_readOnly" @onclick="Save">Save</button>
+            <button id="cancel" @onclick="Cancel">Cancel</button>
+        </div>
+    </fieldset>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _error;
+    private IReadOnlyList<(string Name, string Description)> _project = [];
+    private string? _confirmDelete;
+    private ConnectionEditorViewModel? _vm;
+    private FormBinding? _binding;
+    private UiDefinition? _form;
+    private string _name = string.Empty;
+    private bool _isNew;
+    private bool _detecting;
+    private bool _detected;
+    private IReadOnlyList<NetworkDeviceHit> _hits = [];
+    private readonly Dictionary<string, string> _fieldErrors = [];
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted; // unknown means no controls
+        }
+
+        _project = Manager.Project();
+    }
+
+    // Buttons and the rich device pickers (Selected*) are not plain values; the form shows the editable settings only.
+    private bool Shown(UiControl c) => c is not ButtonControl && !c.Id.StartsWith("Selected", StringComparison.Ordinal) && _binding!.Has(c.Id) && _binding.IsVisible(c.VisibleWhen);
+
+    private void Begin(CliOptions options, string name, bool isNew)
+    {
+        _binding?.Dispose();
+        _vm = new ConnectionEditorViewModel(new ConnectionProfileStore(), options);
+        _binding = new FormBinding(_vm);
+        _form = _vm.FormDefinition;
+        _name = name;
+        _isNew = isNew;
+        _hits = [];
+        _detected = false;
+        _fieldErrors.Clear();
+        _error = null;
+    }
+
+    private void New()
+    {
+        if (!_readOnly)
+        {
+            Begin(new CliOptions(), string.Empty, isNew: true);
+        }
+    }
+
+    private void Edit(string name)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        if (Manager.ProjectOptions(name) is { } options)
+        {
+            Begin(options, name, isNew: false);
+        }
+        else
+        {
+            _error = $"No project connection named '{name}'.";
+        }
+    }
+
+    private void Cancel() => End();
+
+    private void End()
+    {
+        _binding?.Dispose();
+        _binding = null;
+        _vm = null;
+        _form = null;
+        _project = Manager.Project();
+    }
+
+    private void Set(UiControl c, string? text)
+    {
+        var result = _binding!.SetText(c, text ?? string.Empty);
+        if (result.IsValid)
+        {
+            _fieldErrors.Remove(c.Id);
+        }
+        else
+        {
+            _fieldErrors[c.Id] = result.Error ?? "Not valid.";
+        }
+    }
+
+    private void SetBool(UiControl c, object? value) => _binding!.SetBool(c.Id, value is true);
+
+    private void Toggle(ChoiceControl list, string option, object? value)
+    {
+        var selected = _binding!.GetSelection(list.Id).Where(s => s != option).ToList();
+        if (value is true)
+        {
+            selected.Add(option);
+        }
+
+        _binding.SetSelection(list.Id, list.Options.Where(selected.Contains));
+    }
+
+    private async Task DetectAsync()
+    {
+        _detecting = true;
+        try
+        {
+            _hits = await NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _hits = [];
+        }
+
+        _detecting = false;
+        _detected = true;
+    }
+
+    private void Prefill(NetworkDeviceHit hit)
+    {
+        _vm!.Transport = hit.Transport;
+        _vm.Host = hit.Address;
+        _vm.Port = hit.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (_isNew && string.IsNullOrWhiteSpace(_name))
+        {
+            _name = hit.Hostname ?? hit.DisplayName;
+        }
+    }
+
+    private void Save()
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        var message = Manager.Upsert(_name.Trim(), DevTermConfiguration.ToProfileJson(_vm!.BuildOptions()));
+        if (message is null)
+        {
+            _error = null;
+            End();
+        }
+        else
+        {
+            _error = message;
+        }
+    }
+
+    private void Delete(string name)
+    {
+        _confirmDelete = null;
+        if (!_readOnly && !Manager.Remove(name))
+        {
+            _error = $"No project connection named '{name}'.";
+        }
+
+        _project = Manager.Project();
+    }
+
+    private async Task OpenAsync(string name)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            _error = await Manager.OpenAsync(name) is null ? $"No project connection named '{name}'." : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _binding?.Dispose();
+    }
+}
