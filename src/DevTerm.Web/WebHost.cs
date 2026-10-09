@@ -48,6 +48,7 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>()));
         builder.Services.AddSingleton(new PlaybackLibrary(webOptions.LogsDirectory ?? DevTermUserDataPaths.LogsDirectory));
         builder.Services.AddSingleton(sp => new SessionPanels(sp.GetServices<IDevicePanelContribution>()));
         builder.Services.AddOpenApi();
@@ -205,6 +206,15 @@ public static class WebHost
         app.MapGet("/api/sessions/{id}/log", (string id) => SessionFor(id)?.LogPath is { } path && File.Exists(path)
             ? Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), "application/x-ndjson", Path.GetFileName(path))
             : Results.NotFound()).WithSummary("Download the session's current log file; 404 when not logging");
+
+        var streamMonitor = app.Services.GetRequiredService<WebStreamMonitor>();
+        app.MapGet("/api/monitor/captures/{n:int}", (int n) =>
+        {
+            var all = streamMonitor.Monitor.Captures;
+            return n >= 0 && n < all.Count
+                ? Results.File(all[n].Capture.Data, all[n].Capture.Kind.MediaType, $"capture-{n + 1}.{all[n].Capture.Kind.Extension}")
+                : Results.NotFound();
+        }).WithSummary("A Stream Monitor capture's bytes (index into the oldest-first list); 404 unknown");
 
         // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
         app.MapOpenApi("/openapi/v1.json");

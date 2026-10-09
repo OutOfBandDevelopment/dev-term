@@ -139,3 +139,9 @@ text; in WPF, in the detail text (success) or a message box (failure).
 - Drawing a converted file in the TUI (the converted file is listed there, but only WPF draws SVG).
 - Stream Monitor in the plain CLI (`--cli true`) mode.
 - Automatic cleanup of old files in the export folder.
+
+## On the web
+
+Open **Monitor** from the nav row (`/monitor`). It starts watching the shared session and saves each capture to the connection's export folder, exactly as the desktop window does; filter and sort the list, pick a capture to see its detail and a preview of image formats, and use **Download** to save a copy through the browser.
+
+![Monitor page](images/web-blazor-monitor.png)

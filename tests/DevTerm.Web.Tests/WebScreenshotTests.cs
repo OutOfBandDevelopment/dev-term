@@ -36,11 +36,11 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
-            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
+            options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
             new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory },
             []);
         await built.Hub.StartAsync();
@@ -106,6 +106,83 @@ public class WebScreenshotTests
         ]).Save(Path.Combine(dir, "20261008-120000_Scope.jsonl"));
         return dir;
     }
+
+    /// <summary>A 24-bit BMP gradient: what a scope's screen dump looks like to the Stream Monitor.</summary>
+    internal static byte[] SampleBitmap()
+    {
+        const int w = 96, h = 48;
+        var bytes = new byte[54 + (w * 3 * h)];
+        bytes[0] = (byte)'B';
+        bytes[1] = (byte)'M';
+        BitConverter.GetBytes(bytes.Length).CopyTo(bytes, 2);
+        BitConverter.GetBytes(54).CopyTo(bytes, 10);
+        BitConverter.GetBytes(40).CopyTo(bytes, 14);
+        BitConverter.GetBytes(w).CopyTo(bytes, 18);
+        BitConverter.GetBytes(h).CopyTo(bytes, 22);
+        BitConverter.GetBytes((short)1).CopyTo(bytes, 26);
+        BitConverter.GetBytes((short)24).CopyTo(bytes, 28);
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var o = 54 + (((y * w) + x) * 3);
+                bytes[o] = (byte)(x * 255 / w);
+                bytes[o + 1] = (byte)(y * 255 / h);
+                bytes[o + 2] = 160;
+            }
+        }
+
+        return bytes;
+    }
+
+    [TestMethod]
+    public async Task MonitorPage_ShowsACapturedImage_AndSavesIt()
+    {
+        var exports = Path.Combine(Path.GetTempPath(), $"devterm-web-exports-{Guid.NewGuid():N}");
+        var bitmap = SampleBitmap();
+        using var device = new TcpListener(IPAddress.Loopback, 0);
+        device.Start();
+        var gate = new TaskCompletionSource();
+        _ = Task.Run(async () =>
+        {
+            using var client = await device.AcceptTcpClientAsync();
+            await gate.Task;
+            await client.GetStream().WriteAsync(bitmap);
+            await Task.Delay(5000);
+        });
+        var options = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = ((IPEndPoint)device.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture), Presenter = ["hex"], Tui = false, Cli = true, ExportDirectory = exports };
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/monitor?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await Assertions.Expect(page.Locator("[data-state]")).ToContainTextAsync("Monitoring");
+            await Assertions.Expect(page.Locator("[data-empty]")).ToContainTextAsync("Nothing captured yet");
+            gate.SetResult();
+            await Assertions.Expect(page.Locator("[data-detail]")).ToContainTextAsync("BMP image");
+            await Assertions.Expect(page.Locator("[data-saved]")).ToContainTextAsync("Saved to");
+            await Assertions.Expect(page.Locator("[data-preview]")).ToBeVisibleAsync();
+            Assert.IsTrue(await page.EvaluateAsync<bool>("() => document.querySelector('[data-preview]').complete && document.querySelector('[data-preview]').naturalWidth === 96"));
+            await page.Locator("[data-search]").FillAsync("zzz");
+            await Assertions.Expect(page.Locator("[data-empty]")).ToContainTextAsync("No capture matches");
+            await page.Locator("[data-search]").FillAsync("bmp");
+            await Assertions.Expect(page.Locator("[data-capture]")).ToHaveCountAsync(1);
+            await SaveAsync(page, "web-blazor-monitor.png");
+            await page.Locator("[data-toggle]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-state]")).ToContainTextAsync("Stopped");
+        }, options: options);
+        Assert.AreEqual(1, Directory.GetFiles(exports, "*.bmp").Length);
+    }
+
+    [TestMethod]
+    public Task MonitorPage_ReadOnlyViewer_CannotStartOrStop() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/monitor?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await Assertions.Expect(page.Locator("[data-toggle]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-state]")).ToContainTextAsync("Stopped");
+    });
 
     [TestMethod]
     public Task PlaybackPage_OpensALog_StepsAndPlaysToTheEnd() => RunAsync(async (page, baseUrl) =>

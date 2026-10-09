@@ -1,0 +1,166 @@
+@page "/monitor"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Configuration
+@inject WebStreamMonitor Web
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Stream Monitor</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: monitoring cannot be started or stopped.</p> }
+
+<fieldset>
+    <legend>Monitoring</legend>
+    <p data-state>@(Web.Monitor.IsRunning ? "Monitoring " : "Stopped - ")@Web.Monitor.DeviceName</p>
+    <p class="note" data-folder>Saving to @StreamMonitor.DisplayPath(Web.Monitor.ExportDirectory)</p>
+    <p class="note">Watches the incoming bytes for images, HP-GL plots, PostScript and PCL print jobs, and saves each one whole. Text output is unaffected.</p>
+    <div class="row">
+        <button data-toggle disabled="@_readOnly" @onclick="Toggle">@(Web.Monitor.IsRunning ? "Stop monitoring" : "Start monitoring")</button>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Captures</legend>
+    <div class="row">
+        <label>Search <input data-search type="text" @bind="_search" @bind:event="oninput" /></label>
+        <label>Type
+            <select data-kind @bind="_kind">
+                <option value="">All</option>
+                @foreach (var k in StreamCaptureView.Kinds(Web.Monitor.Captures)) { <option value="@k">@k</option> }
+            </select>
+        </label>
+        <label>Device
+            <select data-device @bind="_device">
+                <option value="">All</option>
+                @foreach (var d in StreamCaptureView.Devices(Web.Monitor.Captures)) { <option value="@d">@d</option> }
+            </select>
+        </label>
+        <label>Sort
+            <select data-sort @bind="_sort">
+                @foreach (var s in Enum.GetValues<StreamCaptureSort>()) { <option value="@s">@s</option> }
+            </select>
+        </label>
+    </div>
+    @{ var shown = StreamCaptureView.Apply(Web.Monitor.Captures, _search, _kind, _device, _sort); }
+    @if (shown.Count == 0)
+    {
+        <p class="note" data-empty>@(Web.Monitor.Captures.Count == 0 ? "Nothing captured yet. Send a command that returns an image or plot, or wait for the device to send one." : "No capture matches the search.")</p>
+    }
+    else
+    {
+        <ul class="captures" data-list>
+            @foreach (var c in shown)
+            {
+                var index = IndexOf(c);
+                <li><button data-capture="@index" aria-pressed="@(index == _selected)" @onclick="() => _selected = index">@c.LocalStartedAt.ToString("HH:mm:ss") - @c.Capture.Kind.DisplayName - @c.Capture.Data.Length.ToString("N0") bytes - @c.EndLabel</button></li>
+            }
+        </ul>
+    }
+</fieldset>
+
+@if (Selected is { } sel)
+{
+    <fieldset>
+        <legend>Selected</legend>
+        <p data-detail>@sel.Summary</p>
+        <p class="note" data-saved>@(sel.SavedPath is not null ? "Saved to " + sel.SavedPath : "Not saved: " + sel.SaveError)</p>
+        <div class="row"><a data-download href="api/monitor/captures/@_selected" download>Download</a></div>
+        @if (sel.Capture.Kind.MediaType is "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml")
+        {
+            <img data-preview class="preview" alt="@sel.Capture.Kind.DisplayName" src="api/monitor/captures/@_selected" />
+        }
+        else
+        {
+            <p class="note" data-nopreview>Preview not available for @sel.Capture.Kind.DisplayName - download it to view.</p>
+        }
+    </fieldset>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string _search = string.Empty;
+    private string _kind = string.Empty;
+    private string _device = string.Empty;
+    private StreamCaptureSort _sort = StreamCaptureSort.Newest;
+    private int _selected = -1;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    private StreamMonitorCapture? Selected => _selected >= 0 && _selected < Web.Monitor.Captures.Count ? Web.Monitor.Captures[_selected] : null;
+
+    private int IndexOf(StreamMonitorCapture capture)
+    {
+        var all = Web.Monitor.Captures;
+        for (var i = 0; i < all.Count; i++)
+        {
+            if (ReferenceEquals(all[i], capture))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+            if (!_readOnly)
+            {
+                Web.Start();
+            }
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        Web.Monitor.CaptureAdded += OnChanged;
+        Web.Monitor.StateChanged += OnChanged;
+        if (Web.Monitor.Captures.Count > 0 && _selected < 0)
+        {
+            _selected = Web.Monitor.Captures.Count - 1;
+        }
+    }
+
+    private void OnChanged(object? sender, object? e) => _ = InvokeAsync(() =>
+    {
+        if (e is StreamMonitorCapture)
+        {
+            _selected = Web.Monitor.Captures.Count - 1;
+        }
+
+        StateHasChanged();
+    });
+
+    private void Toggle()
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        if (Web.Monitor.IsRunning)
+        {
+            Web.Stop();
+        }
+        else
+        {
+            Web.Start();
+        }
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        Web.Monitor.CaptureAdded -= OnChanged;
+        Web.Monitor.StateChanged -= OnChanged;
+    }
+}

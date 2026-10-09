@@ -95,6 +95,8 @@ public sealed class WebLayoutReviewTests
     [DataRow("/profiles", 400, 800)]
     [DataRow("/panel", 1280, 800)]
     [DataRow("/panel", 400, 800)]
+    [DataRow("/monitor", 1280, 800)]
+    [DataRow("/monitor", 400, 800)]
     public async Task BlazorPage_HasNoLayoutProblems(string path, int width, int height)
     {
         var problems = await ReviewAsync("light", width, height, async (page, baseUrl) =>
@@ -123,7 +125,34 @@ public sealed class WebLayoutReviewTests
         Assert.IsEmpty(problems, string.Join(Environment.NewLine, problems));
     }
 
-    private static async Task<IReadOnlyList<string>> ReviewAsync(string theme, int width, int height, Func<IPage, string, Task> open, string pageName, string? logsDirectory = null)
+    [TestMethod]
+    [DataRow(1280, 800)]
+    [DataRow(400, 800)]
+    public async Task MonitorPage_WithACapture_HasNoLayoutProblems(int width, int height)
+    {
+        using var device = new TcpListener(IPAddress.Loopback, 0);
+        device.Start();
+        var gate = new TaskCompletionSource();
+        _ = Task.Run(async () =>
+        {
+            using var client = await device.AcceptTcpClientAsync();
+            await gate.Task;
+            await client.GetStream().WriteAsync(WebScreenshotTests.SampleBitmap());
+            await Task.Delay(5000);
+        });
+        var options = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = ((IPEndPoint)device.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture), Presenter = ["hex"], Tui = false, Cli = true, ExportDirectory = Path.Combine(Path.GetTempPath(), $"devterm-web-exports-{Guid.NewGuid():N}") };
+        var problems = await ReviewAsync("light", width, height, async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/monitor?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            gate.SetResult();
+            await Assertions.Expect(page.Locator("[data-preview]")).ToBeVisibleAsync();
+        }, "monitor-capture", options: options);
+        Assert.IsEmpty(problems, string.Join(Environment.NewLine, problems));
+    }
+
+    private static async Task<IReadOnlyList<string>> ReviewAsync(string theme, int width, int height, Func<IPage, string, Task> open, string pageName, string? logsDirectory = null, CliOptions? options = null)
     {
         int port;
         using (var listener = new TcpListener(IPAddress.Loopback, 0))
@@ -135,7 +164,7 @@ public sealed class WebLayoutReviewTests
         var project = Path.Combine(Path.GetTempPath(), $"devterm-web-review-{Guid.NewGuid():N}.json");
         ProjectFile.From("Review", [("Scope", new CliOptions { Transport = "loopback", Presenter = ["ascii"] })]).Save(project);
         var built = WebHost.Build(
-            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
+            options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
             new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", Panel = pageName == "panel" ? "demo" : null, LogsDirectory = logsDirectory },
             []);
         await built.Hub.StartAsync();
