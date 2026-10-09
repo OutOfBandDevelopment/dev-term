@@ -23,7 +23,8 @@
         .captures { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
         .captures button[aria-pressed=true] { outline: 2px solid #8fb4d8; }
         .preview { max-width: 100%; height: auto; border: 1px solid #38424f; background: #fff; }
-        select, input[type=text], input[type=number] { background: #1c232b; color: inherit; border: 1px solid #38424f; padding: 2px 4px; }
+        select, input[type=text], input[type=number], textarea { background: #1c232b; color: inherit; border: 1px solid #38424f; padding: 2px 4px; }
+        textarea { width: 100%; box-sizing: border-box; font-family: monospace; }
     </style>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>

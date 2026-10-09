@@ -95,6 +95,15 @@ open (name, state, `/ws/<id>`, **Close**). It shares `ConnectionManager` with th
 over `POST /api/connections` or in another tab appears here without a reload (it re-reads on the `connection-*` events).
 A read-only token sees both lists with every button disabled and a notice; with no `--project` the page says so.
 
+**Project file** (File > Save Project / Open Project in the desktop apps): a **Save project** link
+(`GET /api/project/export?name=`) downloads the open connections as a dev-term project file (or, with none open, the saved
+project's connections; 404 when there are none). **Open project file** takes a file (or pasted text) and **Open project**
+adds each of its connections to the host's (`POST /api/project/import`, the same validation and `ConnectionManager.Upsert` as
+the Profiles page), replacing same-named ones; "Open the connections after importing" (on by default) also opens each, like the
+desktop's Open Project. The result line says how many were imported and opened and lists any that were not. A file's window
+layout, active tab and send history mean nothing to a web host and are ignored. A project file holds credentials, so a
+read-only token gets neither the link nor the import (both endpoints answer 403).
+
 ## Blazor profiles page (`/profiles`)
 
 Same token auth. Lists the `--project` file's connections (name, description, **Edit**, **Open**, **Delete**) and **New connection...**.

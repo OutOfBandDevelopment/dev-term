@@ -210,6 +210,63 @@ public sealed class ConnectionManager
 
     private ProjectFile LoadOrNew() => File.Exists(_projectPath!) ? ProjectFile.Load(_projectPath!) : new ProjectFile { Name = Path.GetFileNameWithoutExtension(_projectPath!) };
 
+    /// <summary>
+    /// The connections as a project file (File > Save Project in the desktop apps): the extra connections open now, with whether each was
+    /// logging, or the saved project's connections when none are open. Includes credentials, so callers must not offer it to a read-only viewer.
+    /// Null when there is nothing to save.
+    /// </summary>
+    public string? ExportProject(string name)
+    {
+        var tabs = _open.Values.Select(c => new ProjectTabState(c.Name, c.Hub.Options, [], c.Hub.LogPath is not null)).ToList();
+        if (tabs.Count == 0)
+        {
+            foreach (var (connectionName, _) in Project())
+            {
+                if (ProjectOptions(connectionName) is { } options)
+                {
+                    tabs.Add(new ProjectTabState(connectionName, options, [], false));
+                }
+            }
+        }
+
+        return tabs.Count == 0 ? null : ProjectFile.FromTabs(name, tabs, null).ToJson();
+    }
+
+    /// <summary>
+    /// Adds every connection of a project file (File > Open Project) to this host's connections, replacing same-named ones; the file's
+    /// window layout and per-tab history have no meaning for a web host and are ignored. Returns the names imported and an error per
+    /// connection (or one for an unreadable file) that was not.
+    /// </summary>
+    public (IReadOnlyList<string> Imported, IReadOnlyList<string> Errors) ImportProject(string json)
+    {
+        ProjectFile project;
+        try
+        {
+            project = ProjectFile.FromJson(json);
+        }
+        catch (InvalidDataException ex)
+        {
+            return ([], [ex.Message]);
+        }
+
+        var imported = new List<string>();
+        var errors = new List<string>();
+        foreach (var connection in project.Connections)
+        {
+            var error = Upsert(connection.Name, connection.ProfileJson);
+            if (error is null)
+            {
+                imported.Add(connection.Name);
+            }
+            else
+            {
+                errors.Add($"{connection.Name}: {error}");
+            }
+        }
+
+        return (imported, errors);
+    }
+
     public IReadOnlyList<(string Id, string Name, string State)> Open() =>
         [.. _open.Select(c => (c.Key, c.Value.Name, c.Value.Hub.State.ToString()))];
 

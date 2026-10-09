@@ -260,6 +260,30 @@ public static class WebHost
         // The connections of the --project file (name + description only; no credentials leave the host), or [] without one.
         app.MapGet("/api/project", () => Results.Json(connections.Project().Select(c => new { name = c.Name, description = c.Description }))).WithSummary("The project file's connections (name and description only)");
 
+        // Save and open a whole project (File > Save Project / Open Project). Both carry credentials, so a read-only viewer gets neither.
+        app.MapGet("/api/project/export", (HttpContext context, string? name) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return connections.ExportProject(string.IsNullOrWhiteSpace(name) ? "project" : name) is { } json
+                ? Results.Text(json, "application/json")
+                : Results.NotFound(new { error = "No connections are open and the host has no saved project." });
+        }).WithSummary("The open connections (or the saved project) as a dev-term project file; 404 when there are none, 403 read-only");
+        app.MapPost("/api/project/import", async (HttpContext context) =>
+        {
+            if (context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var (imported, errors) = connections.ImportProject(await reader.ReadToEndAsync(context.RequestAborted));
+            return errors.Count > 0 && imported.Count == 0 ? Results.BadRequest(new { imported, errors }) : Results.Json(new { imported, errors });
+        }).WithSummary("Add a project file's connections to the host's; 400 when none could be imported, 403 read-only");
+
         // Create, replace and remove a project connection. The body is the profile JSON (what a saved profile holds).
         app.MapPut("/api/project/connections/{name}", async (HttpContext context, string name) =>
         {

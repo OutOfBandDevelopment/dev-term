@@ -469,6 +469,47 @@ public class WebScreenshotTests
     }, BenchProject());
 
     [TestMethod]
+    public Task ConnectionsPage_SavesTheOpenConnectionsAndOpensAProjectFile() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/connections?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000); // the circuit must be interactive before a click on the prerendered button counts
+        await page.Locator("[data-project=Scope] button").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-open]")).ToHaveCountAsync(1);
+
+        // Save project: the open connection, as a project file.
+        var saved = await page.EvaluateAsync<string>("fetch('/api/project/export?token=demo-token').then(r => r.text())");
+        var project = ProjectFile.FromJson(saved);
+        Assert.HasCount(1, project.Connections);
+        Assert.AreEqual("Scope", project.Connections[0].Name);
+
+        // Open project: a file with one good and one invalid connection.
+        var incoming = ProjectFile.From("Incoming", [("Pasted", new CliOptions { Transport = "loopback", Presenter = ["hex"] })]).ToJson();
+        await page.Locator("[data-importtext]").FillAsync(incoming);
+        await page.Locator("[data-import]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-importresult]")).ToContainTextAsync("Imported 1 connection(s), opened 1");
+        await Assertions.Expect(page.Locator("[data-project=Pasted]")).ToHaveCountAsync(1);
+        await Assertions.Expect(page.Locator("[data-open]")).ToHaveCountAsync(2);
+        await SaveAsync(page, "web-blazor-connections-project.png");
+
+        await page.Locator("[data-importtext]").FillAsync("not a project");
+        await page.Locator("[data-import]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-importresult]")).ToContainTextAsync("Imported 0");
+    }, BenchProject());
+
+    [TestMethod]
+    public Task ConnectionsPage_ReadOnly_CannotSaveOrOpenAProject() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/connections?token=watch-token");
+        await Assertions.Expect(page.Locator("[data-projectfile-readonly]")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("[data-import]")).ToHaveCountAsync(0);
+        var status = await page.EvaluateAsync<int>("fetch('/api/project/export?token=watch-token').then(r => r.status)");
+        Assert.AreEqual(403, status);
+        var post = await page.EvaluateAsync<int>("fetch('/api/project/import?token=watch-token', { method: 'POST', body: '{}' }).then(r => r.status)");
+        Assert.AreEqual(403, post);
+    }, BenchProject());
+
+    [TestMethod]
     public Task ProfilesPage_AddEditAndDelete_Screenshot() => RunAsync(async (page, baseUrl) =>
     {
         await page.GotoAsync($"{baseUrl}/profiles?token=demo-token");
