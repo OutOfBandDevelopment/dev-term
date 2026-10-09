@@ -71,6 +71,8 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [x] `plugin.json` discovery of out-of-process plugins in `PluginLoader` (a `process` entry instead of an `assembly`; 2026-10-03)
 - [x] Attach-to-a-running-session variant: any program can use the control pipe or loopback HTTP channel (`examples/python/control-channel-client/`, 2026-10-07)
 - [ ] Transport and device-module variants
+- [ ] TUI in-app approval prompt (it uses the console prompt at startup today)
+- [ ] A screen to review or revoke remembered approvals (`plugin-approvals.json`)
 - [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)
 
 ## Status
