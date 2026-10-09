@@ -990,7 +990,7 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
     /// </summary>
     [Category("TCP")]
     [DisplayName("Detected network devices")]
-    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpTransport))]
+    [FormField(Order = 1, Kind = FormFieldKind.Choice, VisibleWhen = nameof(IsTcpLikeTransport))]
     public LxiDeviceOption? SelectedLxiDevice
     {
         get => _selectedLxiDevice;
@@ -999,8 +999,17 @@ public sealed class ConnectionEditorViewModel : INotifyPropertyChanged, IDisposa
             SetField(ref _selectedLxiDevice, value);
             if (value is not null)
             {
+                // The hit's kind decides the transport (a VXI-11 instrument, an MQTT broker, or plain tcp), so one pick fills the lot.
+                if (TransportOptions.Contains(value.Transport))
+                {
+                    Transport = value.Transport;
+                }
+
                 Host = value.Host;
-                TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (value.Port > 0)
+                {
+                    TcpPort = value.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
             }
         }
     }

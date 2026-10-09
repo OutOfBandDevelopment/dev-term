@@ -80,7 +80,6 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 
 | Proposal | Unchecked items | Blocked on |
 |---|---|---|
-| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | Connection Editor "Detect network devices..." (WPF, TUI) with prefill; spec and guide with real captures | Buildable now |
 | [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR search probe | A fresh capture of each device |
 | [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | `IDeviceConfigEditor` seam and menu; EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
 | [plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md) | TUI, WPF and web resolve contributions instead of the hand-written built-in items; specs and user guide for the menu | Buildable now (large refactor) |
