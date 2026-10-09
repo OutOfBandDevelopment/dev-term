@@ -44,6 +44,7 @@ internal static class TerminalPage
         <header id="status">connecting...</header>
         <nav id="tools">
           <label>Send as <select id="parser"></select></label>
+          <label>Device <select id="device"></select></label>
           <label><input type="checkbox" id="echo"> Echo sent commands</label>
           <button type="button" id="clear">Clear output</button>
           <button type="button" id="log">Start logging</button><a id="download" hidden>Download log</a>
@@ -55,7 +56,7 @@ internal static class TerminalPage
         <script>
           const out = document.getElementById('out'), status = document.getElementById('status'), input = document.getElementById('line');
           const tabsEl = document.getElementById('tabs'), panelEl = document.getElementById('panel');
-          const tabs = []; let active = null; let panelShown = false;
+          const tabs = []; let active = null; let panelTimer = null, shownPanel = null;
           let readOnly = false, profiles = [], pickedProfile = null, sessionOpen = false, configured = true, currentProfile = null, switchTo = null;
 
           // One tab per session: the host's own session (/ws) and every connection opened from a saved profile (/ws/{id}).
@@ -107,7 +108,7 @@ internal static class TerminalPage
                 };
                 status.append(' ', sw, ' ', go);
               }
-              panelEl.hidden = !(panelShown && active.key === 'main');
+              showTabPanel();
               refreshTools();
             }
           }
@@ -167,6 +168,7 @@ internal static class TerminalPage
           const parserEl = document.getElementById('parser'), echoEl = document.getElementById('echo'), logEl = document.getElementById('log'), dlEl = document.getElementById('download'), themeEl = document.getElementById('theme');
           async function refreshTools() {
             if (!active) return;
+            refreshDevices();
             const key = active.key; const info = await fetch('/api/sessions/' + key).then(r => r.ok ? r.json() : null).catch(() => null);
             if (!info || key !== active.key) return;
             parserEl.textContent = '';
@@ -185,7 +187,7 @@ internal static class TerminalPage
 
           // Device control panel: rendered generically from the UiDefinition served at /api/panel (404 = none configured).
           async function invoke(commandId, value) {
-            const res = await fetch('/api/invoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commandId, value }) });
+            const res = await fetch(active && active.panel ? active.panel.invokePath : '/api/invoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commandId, value }) });
             if (!res.ok) { const e = await res.json().catch(() => ({})); line('! ' + (e.error || res.status)); }
           }
           function line(text) { const d = document.createElement('div'); d.textContent = text; d.className = text.startsWith('!') ? 'err' : ''; out.appendChild(d); out.scrollTop = out.scrollHeight; }
@@ -212,10 +214,58 @@ internal static class TerminalPage
               case 'textField': {
                 const t = el('input', { type: 'text', value: c.DefaultValue || '', maxLength: c.MaxLength || 524288, disabled: readOnly });
                 t.onchange = () => invoke(id, t.value); row.append(label, t); break; }
+              case 'indicator': {
+                const v = el('span', { className: 'note', textContent: '-' }); v.dataset.indicator = c.Id; row.append(label, v, el('span', { className: 'note', textContent: c.Unit || '' })); break; }
               default:
                 row.append(label, el('span', { className: 'note', textContent: '(' + c.kind + ' is not shown on the web yet)' }));
             }
             return row;
+          }
+          // Device menu: the panels that suit the active tab's connection; the chosen one shows above the output, its indicators polled.
+          const deviceEl = document.getElementById('device');
+          function buildPanel(def) {
+            panelEl.textContent = '';
+            panelEl.append(el('h2', { textContent: def.Name + (readOnly ? ' (read-only)' : '') }));
+            for (const section of def.Sections) {
+              if (section.Label) panelEl.append(el('h2', { textContent: section.Label }));
+              for (const c of section.Controls) panelEl.append(renderControl(c));
+            }
+          }
+          function applyValues(values) {
+            for (const n of panelEl.querySelectorAll('[data-indicator]')) if (values[n.dataset.indicator] !== undefined) n.textContent = values[n.dataset.indicator];
+          }
+          function showTabPanel() {
+            const p = active && active.panel;
+            panelEl.hidden = !p;
+            if (p && p === shownPanel) return; // re-rendering the page must not rebuild the controls under the user's hand
+            clearInterval(panelTimer); panelTimer = null; shownPanel = p || null;
+            if (!p) return;
+            buildPanel(p.def); applyValues(p.values || {});
+            if (p.pollPath) {
+              panelTimer = setInterval(async () => {
+                const r = await fetch(p.pollPath).then(x => x.ok ? x.json() : null).catch(() => null);
+                if (r && active && active.panel === p) applyValues(r.values);
+              }, 1000);
+            }
+          }
+          async function chooseDevice(id) {
+            if (!active) return;
+            if (!id) { active.panel = null; showTabPanel(); return; }
+            const path = '/api/sessions/' + active.key + '/panels/' + encodeURIComponent(id);
+            const r = await fetch(path).then(x => x.ok ? x.json() : null).catch(() => null);
+            if (!r) return;
+            active.panel = { id, def: r.definition, values: r.values, invokePath: path + '/invoke', pollPath: path };
+            showTabPanel();
+          }
+          deviceEl.onchange = () => chooseDevice(deviceEl.value);
+          async function refreshDevices() {
+            if (!active) return;
+            const key = active.key; const list = await fetch('/api/sessions/' + key + '/panels').then(r => r.ok ? r.json() : []).catch(() => []);
+            if (key !== active.key) return;
+            deviceEl.textContent = '';
+            deviceEl.append(Object.assign(document.createElement('option'), { textContent: list.length ? '(none)' : 'no panels for this connection', value: '' }));
+            for (const p of list) deviceEl.append(Object.assign(document.createElement('option'), { textContent: p.title, value: p.id }));
+            deviceEl.value = active.panel && active.panel.id || ''; deviceEl.disabled = list.length === 0;
           }
           (async () => {
             const st = await fetch('/api/status').then(r => r.json()).catch(() => ({}));
@@ -232,14 +282,8 @@ internal static class TerminalPage
             es.addEventListener('project-changed', async () => { profiles = await fetch('/api/project').then(r => r.json()).catch(() => profiles); render(); });
             const res = await fetch('/api/panel');
             if (!res.ok) return;
-            const def = await res.json();
-            const panel = document.getElementById('panel');
-            panel.append(el('h2', { textContent: def.Name + (readOnly ? ' (read-only)' : '') }));
-            for (const section of def.Sections) {
-              if (section.Label) panel.append(el('h2', { textContent: section.Label }));
-              for (const c of section.Controls) panel.append(renderControl(c));
-            }
-            panelShown = true; render();
+            // A panel pinned with Web:Panel is the main tab's panel from the start.
+            tabs[0].panel = { id: '', def: await res.json(), values: {}, invokePath: '/api/invoke', pollPath: null }; render();
           })();
         </script>
         </body>

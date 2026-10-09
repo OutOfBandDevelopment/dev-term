@@ -113,6 +113,28 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task DevicePanels_AreListedPerConnection_AndOpenedOnDemand()
+    {
+        var webPort = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "hid", VendorId = 0x04D8, ProductId = 0xF848, Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            var list = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main/panels");
+            Assert.IsTrue(list.EnumerateArray().Any(p => p.GetProperty("id").GetString() == "busylight"));
+            var panel = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main/panels/busylight");
+            Assert.IsTrue(panel.GetProperty("definition").GetProperty("Sections").GetArrayLength() > 0);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/main/panels/nope")).StatusCode);
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ControlHttp_FollowsAProfileSwitchToTheNewSession()
     {
         var webPort = FreePort();

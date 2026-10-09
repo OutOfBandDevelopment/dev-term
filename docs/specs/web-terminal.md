@@ -43,6 +43,9 @@ with the reason.
 | `GET /api/sessions/{id}` | `{"parsers", "parser", "logging", "state"}` for `main` or an opened connection id; 404 unknown |
 | `POST /api/sessions/{id}/parser?name=` | Changes the session's "Send as" format; 400 unknown format, 403 read-only |
 | `POST /api/sessions/{id}/logging?enabled=` | Starts (default `~/.dev-term/logs` name) or stops logging; `GET /api/sessions/{id}/log` downloads the running log |
+| `GET /api/sessions/{id}/panels` | The Device menu: plugin panels that suit the session's connection (`[{id,title}]`) |
+| `GET /api/sessions/{id}/panels/{panel}` | The panel's `UiDefinition` and latest indicator values; the page polls it once a second |
+| `POST /api/sessions/{id}/panels/{panel}/invoke` | Runs a control on that panel (same body as `/api/invoke`); 403 read-only, 404 unknown |
 | `/openapi/v1.json` | OpenAPI 3.1 for the plain REST endpoints (the streaming ones, `/ws` and `/api/events`, are not in it) |
 | `/scalar/v1` | The Scalar viewer over that document |
 | `/asyncapi` | A dependency-free page (no CDN, works offline) that renders `/asyncapi.json`: channels, messages with payload schemas, operations |
