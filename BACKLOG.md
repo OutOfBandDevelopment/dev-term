@@ -81,7 +81,7 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 | Proposal | Unchecked items | Blocked on |
 |---|---|---|
 | [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR search probe | A fresh capture of each device |
-| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | `IDeviceConfigEditor` seam and menu; EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
+| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | Configure device menu (lists registered editors); EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
 | [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers | Your setup |
