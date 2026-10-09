@@ -1329,7 +1329,7 @@ public static class TuiMode
             tabsView.Value = tabs[nextIndex].Output;
         }
 
-        // Ctrl+T/Ctrl+W/Ctrl+Tab/Ctrl+Shift+Tab (Step 4) - same Application.KeyDown pattern as
+        // Ctrl+Shift+T/Ctrl+Shift+W/Ctrl+Tab/Ctrl+Shift+Tab (Step 4) - same Application.KeyDown pattern as
         // quitOnCtrlQ above (a per-view KeyDown handler on the window doesn't reliably see a key
         // already routed to the focused sendField first), gated the same way on this being the
         // topmost run loop so a nested device panel/dialog isn't hijacked by these shortcuts.
@@ -1340,14 +1340,14 @@ public static class TuiMode
                 return;
             }
 
-            if (key == Key.T.WithCtrl || key == Key.T.WithCtrl.WithShift)
+            if (key == Key.T.WithCtrl.WithShift)
             {
                 key.Handled = true;
                 newSessionMenuItem!.Action!.Invoke();
                 return;
             }
 
-            if (key == Key.W.WithCtrl || key == Key.W.WithCtrl.WithShift)
+            if (key == Key.W.WithCtrl.WithShift)
             {
                 if (ActiveTabOrNull() is { } activeTab)
                 {

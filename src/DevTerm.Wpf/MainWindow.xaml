@@ -36,8 +36,8 @@
                 <MenuItem x:Name="ConnectMenuItem" Header="_Disconnect" Click="ConnectMenuItem_Click" />
                 <MenuItem x:Name="DeviceProfilesMenuItem" Header="_Device Profiles..." Click="DeviceProfiles_Click" />
                 <Separator />
-                <MenuItem Header="_New Session..." InputGestureText="Ctrl+T" Click="NewSession_Click" />
-                <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" InputGestureText="Ctrl+W" Click="CloseSession_Click" />
+                <MenuItem Header="_New Session..." InputGestureText="Ctrl+Shift+T" Click="NewSession_Click" />
+                <MenuItem x:Name="CloseSessionMenuItem" Header="_Close Session" InputGestureText="Ctrl+Shift+W" Click="CloseSession_Click" />
                 <MenuItem Header="_Save Project..." Click="SaveProject_Click" />
                 <MenuItem Header="Open _Project..." Click="OpenProject_Click" />
                 <Separator />

@@ -132,7 +132,7 @@ output list, and the window stays usable:
 - **Ctrl+Q needs an explicit `PreviewKeyDown` handler** — `MenuItem.InputGestureText` only labels
   the shortcut in the menu, the same "display-only" gap as Terminal.Gui's `MenuItem.Key` (see
   `CLAUDE.md`). The same handler (`HandleGlobalKeyDown`, split out for direct testing) also covers
-  Ctrl+T or Ctrl+Shift+T (File > New Session...), Ctrl+W or Ctrl+Shift+W (File > Close Session, the active tab), and Ctrl+Tab /
+  Ctrl+Shift+T (File > New Session...), Ctrl+Shift+W (File > Close Session, the active tab), and Ctrl+Tab /
   Ctrl+Shift+Tab, or Alt+Right / Alt+Left (next/previous tab, wrapping; a no-op below two tabs) — the same four bindings the
   TUI uses.
 - **`Closing` cancels the first close, awaits the session's cleanup, `await Dispatcher.Yield()`s, then

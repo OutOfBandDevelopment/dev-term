@@ -138,7 +138,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The window-wide keyboard shortcuts (Ctrl+Q exit, Ctrl+T new session, Ctrl+W close session,
+    /// The window-wide keyboard shortcuts (Ctrl+Q exit, Ctrl+Shift+T new session, Ctrl+Shift+W close session,
     /// Ctrl+Tab/Ctrl+Shift+Tab next/previous tab) - split out from the <c>PreviewKeyDown</c> handler
     /// so tests can drive it directly, the same reasoning as <see cref="HandleSendBoxKey"/>. Returns
     /// whether the key was handled.
@@ -153,27 +153,24 @@ public partial class MainWindow : Window
                     Close();
                     return true;
 
-                case Key.T:
-                    NewSession_Click(this, new RoutedEventArgs());
-                    return true;
-
-                case Key.W:
-                    if (ActiveWindowTabOrNull is { } tab)
-                    {
-                        Observe(CloseTabAsync(tab));
-                    }
-
-                    return true;
-
                 case Key.Tab:
                     SelectAdjacentTab(1);
                     return true;
             }
         }
-        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key is Key.T or Key.W)
+        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.T)
         {
-            // Ctrl+Shift+T / Ctrl+Shift+W: the same new/close pair, for muscle memory from browser and terminal tabs.
-            return HandleGlobalKeyDown(key, ModifierKeys.Control);
+            NewSession_Click(this, new RoutedEventArgs());
+            return true;
+        }
+        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.W)
+        {
+            if (ActiveWindowTabOrNull is { } tab)
+            {
+                Observe(CloseTabAsync(tab));
+            }
+
+            return true;
         }
         else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.Tab)
         {

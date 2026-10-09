@@ -40,10 +40,10 @@ baseline is 0 warnings across the whole solution, enforced rather than aspiratio
 `severity = warning` `.editorconfig` line (or an analyzer's own out-of-the-box default) now fails
 `dotnet build`, not just an IDE squiggle. A handful of specific diagnostics are bumped further, all
 the way to an explicit `error` severity in `.editorconfig`'s "My Rules" section anyway (`CS0618`,
-`CS8604`, `CA2016`, `MA0040`, `IDE1006`, `IDE0007`, `CA1854`, and the collection-expression/object-initializer `IDE0xxx`
+`CS8604`, `CA2016`, `IDE1006`, `IDE0007`, `CA1854`, and the collection-expression/object-initializer `IDE0xxx`
 rules) — with `TreatWarningsAsErrors` already blocking the build on any of them, the explicit `error`
 is documentation ("this one is load-bearing, not just provisional") rather than a functional
-difference from `warning`. Note: `MA0032`/`MA0040` are Meziantou.Analyzer rule IDs, but no Meziantou package is referenced in `Directory.Build.props` or any project (checked 2026-10-09), so those two lines are currently inert; `CA2016` is what actually enforces CancellationToken forwarding. Genuinely-still-a-suggestion style preferences (most `csharp_style_*`/
+difference from `warning`. The Meziantou `MA0032`/`MA0040` lines were removed 2026-10-09: no Meziantou package is referenced, so they were inert; `CA2016` is what enforces CancellationToken forwarding. Genuinely-still-a-suggestion style preferences (most `csharp_style_*`/
 `dotnet_style_*` keys) stay at `suggestion` deliberately — `EnforceCodeStyleInBuild` doesn't turn
 those into build warnings at all, so they remain IDE-only nudges, never a red build.
 
