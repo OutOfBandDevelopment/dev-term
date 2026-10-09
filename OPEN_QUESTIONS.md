@@ -1,7 +1,7 @@
 # Open questions
 
 Every genuinely undecided question across `docs/design/`, `docs/specs/`, `TODO.md`, `BACKLOG.md` and `docs/bugs/`,
-collected in one place so none gets lost in a doc nobody is reading. **Last swept: 2026-10-03** (all design docs,
+collected in one place so none gets lost in a doc nobody is reading. **Last swept: 2026-10-09** (a partial pass: the plugin-loading line removed, since its collision rules were decided 2026-10-07 and the decoders moved 2026-10-08; every other line unchanged since the 2026-10-03 full sweep) (all design docs,
 proposals, features, specs, TODO, BACKLOG; `docs/bugs/` has no open reports).
 
 How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-docs-audit` skills):
@@ -95,8 +95,6 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
 - **Theming:** color the TUI Connection Editor's "(not found)" hints. — [theming](docs/design/theming.md)
-- **Plugin loading:** options-section collision rules (see Needs your decision), moving built-in decoders into plugin
-  folders. — [platform](docs/design/platform.md), TODO item 5
 
 ## Known gaps in shipped screens
 
