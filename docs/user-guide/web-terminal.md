@@ -151,5 +151,6 @@ The tools the desktop apps keep in menus are pages here, all behind the same tok
 - `/monitor` and `/converters`: [Capturing screen dumps, plots and print jobs](stream-monitor.md)
 - `/routing`: [Routing device messages to a broker](routing.md)
 - `/playback`: [Logging and playing back a session](logging-and-playback.md)
+- `/plugins`: [Plugins](plugins.md)
 - `/themes`: [Choosing a theme](themes.md)
 - `/manifest`: [Editing a device manifest](manifest-editor.md)

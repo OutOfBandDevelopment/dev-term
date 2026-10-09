@@ -151,6 +151,7 @@ the linked spec), and for a read-only token shows the page with every editing co
 | `/monitor` | Stream Monitor over the shared session and every opened connection: Start/Stop, search, Type, Device and Sort, capture list, Download, Convert as, image preview | [stream-monitor.md](stream-monitor.md) |
 | `/converters` | The converter tools list the Stream Monitor converts with: Add tool, Up/Down/Remove, Save, Revert | [converter-tools-editor.md](converter-tools-editor.md) |
 | `/routing` | Broker, rules, Test, Apply/Start/Stop/Save to profile, history, inline Send once / Always / Drop prompts | [routing-window.md](routing-window.md) |
+| `/plugins` | Out-of-process plugins waiting for approval (Run once / Always, live, no restart) and remembered approvals (Forget); read-only tokens see both but cannot act | [plugins user guide](../user-guide/plugins.md) |
 | `/themes` | Theme builder: seed, per-role colors with Reset to seed, chart palette, contrast warnings, Overwrite checkbox, Save | [theme-builder.md](theme-builder.md) |
 | `/manifest` | Manifest editor: toolbar, Import .ksy, sample data, outline, generated form, expression picker, preview | [manifest-editor.md](manifest-editor.md) |
 | `/playback` | Session log replay (section above) | [playback-window.md](playback-window.md) |
