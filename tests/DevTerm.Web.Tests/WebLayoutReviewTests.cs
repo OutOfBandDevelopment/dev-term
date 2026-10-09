@@ -106,7 +106,24 @@ public sealed class WebLayoutReviewTests
         Assert.IsEmpty(problems, string.Join(Environment.NewLine, problems));
     }
 
-    private static async Task<IReadOnlyList<string>> ReviewAsync(string theme, int width, int height, Func<IPage, string, Task> open, string pageName)
+    [TestMethod]
+    [DataRow(1280, 800)]
+    [DataRow(400, 800)]
+    public async Task PlaybackPage_WithALogOpen_HasNoLayoutProblems(int width, int height)
+    {
+        var problems = await ReviewAsync("light", width, height, async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/playback?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-open]").ClickAsync();
+            await page.Locator("[data-end]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-output]")).ToContainTextAsync("ACME,Scope,1");
+        }, "playback", WebScreenshotTests.SampleLogs());
+        Assert.IsEmpty(problems, string.Join(Environment.NewLine, problems));
+    }
+
+    private static async Task<IReadOnlyList<string>> ReviewAsync(string theme, int width, int height, Func<IPage, string, Task> open, string pageName, string? logsDirectory = null)
     {
         int port;
         using (var listener = new TcpListener(IPAddress.Loopback, 0))
@@ -119,7 +136,7 @@ public sealed class WebLayoutReviewTests
         ProjectFile.From("Review", [("Scope", new CliOptions { Transport = "loopback", Presenter = ["ascii"] })]).Save(project);
         var built = WebHost.Build(
             new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", Panel = pageName == "panel" ? "demo" : null },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", Panel = pageName == "panel" ? "demo" : null, LogsDirectory = logsDirectory },
             []);
         await built.Hub.StartAsync();
         await built.App.StartAsync();

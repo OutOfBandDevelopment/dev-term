@@ -36,12 +36,12 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight" },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory },
             []);
         await built.Hub.StartAsync();
         await built.App.StartAsync();
@@ -86,6 +86,77 @@ public class WebScreenshotTests
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-shot-{Guid.NewGuid():N}.json");
         ProjectFile.From("Bench", [("Scope", new CliOptions { Transport = "loopback", Presenter = ["ascii"] }), ("Supply", new CliOptions { Transport = "loopback", Presenter = ["hex"] })]).Save(file);
         return file;
+    }
+
+    /// <summary>A small session log in a temp folder: connect, send "hello", a reply, then a note-free close.</summary>
+    internal static string SampleLogs()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"devterm-web-logs-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var t0 = new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero);
+        var header = new DevTerm.Logging.SessionLogHeader { Created = t0, Connection = "loopback", Profile = "Scope", Presenters = ["ascii"] };
+        DevTerm.Logging.SessionLogRecord Rec(DevTerm.Logging.SessionLogRecordKind kind, int ms, string? data = null) =>
+            new() { Kind = kind, Timestamp = t0.AddMilliseconds(ms), Data = data is null ? default : System.Text.Encoding.ASCII.GetBytes(data) };
+        new DevTerm.Logging.SessionLog(header,
+        [
+            Rec(DevTerm.Logging.SessionLogRecordKind.Open, 0),
+            Rec(DevTerm.Logging.SessionLogRecordKind.Tx, 100, "*IDN?\n"),
+            Rec(DevTerm.Logging.SessionLogRecordKind.Rx, 200, "ACME,Scope,1\n"),
+            Rec(DevTerm.Logging.SessionLogRecordKind.Close, 300),
+        ]).Save(Path.Combine(dir, "20261008-120000_Scope.jsonl"));
+        return dir;
+    }
+
+    [TestMethod]
+    public Task PlaybackPage_OpensALog_StepsAndPlaysToTheEnd() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/playback?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await page.Locator("[data-open]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-description]")).ToContainTextAsync("Scope (loopback)");
+        await page.Locator("[data-step]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-output]")).ToContainTextAsync("[dev-term] Connected.");
+        await page.Locator("[data-end]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-output]")).ToContainTextAsync("[ascii] ACME,Scope,1");
+        await Assertions.Expect(page.Locator("[data-output]")).ToContainTextAsync("[tx] *IDN?");
+        await Assertions.Expect(page.Locator("[data-position]")).ToContainTextAsync("End");
+        await page.Locator("[data-rewind]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-output]")).Not.ToContainTextAsync("ACME");
+        await page.Locator("[data-speed]").SelectOptionAsync("Max");
+        await page.Locator("[data-play]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-output]")).ToContainTextAsync("ACME,Scope,1");
+        await page.Locator("[data-jump]").FillAsync("nonsense");
+        await page.Locator("[data-go]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-error]")).ToContainTextAsync("isn't a record number");
+        await page.Locator("[data-jump]").FillAsync("2");
+        await page.Locator("[data-go]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-position]")).ToContainTextAsync("2/4");
+        await SaveAsync(page, "web-blazor-playback.png");
+    }, logsDirectory: SampleLogs());
+
+    [TestMethod]
+    public Task PlaybackPage_AddsANote_ButNotForAReadOnlyViewer() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/playback?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await page.Locator("[data-open]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-addnote]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-savetrim]")).ToBeDisabledAsync();
+    }, logsDirectory: SampleLogs());
+
+    [TestMethod]
+    public async Task PlaybackLibrary_OnlyResolvesFilesInsideItsFolder()
+    {
+        var dir = SampleLogs();
+        var library = new PlaybackLibrary(dir);
+        Assert.AreEqual(1, library.List().Count);
+        Assert.IsNotNull(library.Resolve("20261008-120000_Scope.jsonl"));
+        Assert.IsNull(library.Resolve("..\\secret.jsonl"));
+        Assert.IsNull(library.Resolve(Path.Combine(dir, "20261008-120000_Scope.jsonl")));
+        Assert.IsNull(library.Resolve("missing.jsonl"));
+        await Task.CompletedTask;
     }
 
     [TestMethod]
@@ -197,6 +268,7 @@ public class WebScreenshotTests
         await WaitConnectedAsync(page);
         await Task.Delay(500);
 
+        await Assertions.Expect(page.Locator("#xonlabel")).ToBeHiddenAsync();
         await page.Locator("#parser").SelectOptionAsync("hex");
         await page.Locator("#echo").CheckAsync();
         await page.Locator("#line").FillAsync("68 65 6c 6c 6f");

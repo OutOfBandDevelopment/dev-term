@@ -77,6 +77,43 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task SessionSettings_XonXoff_AppliesToTcpOnly()
+    {
+        var tcpPort = FreePort();
+        var webPort = FreePort();
+        var tcp = WebHost.Build(
+            new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = tcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture), Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await tcp.App.StartAsync();
+        await using (tcp.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.IsFalse((await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").GetBoolean());
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync("api/sessions/main/xonxoff?enabled=true", null)).StatusCode);
+            Assert.IsTrue(tcp.Hub.SoftwareFlowControl);
+            Assert.IsTrue((await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").GetBoolean());
+            await tcp.App.StopAsync();
+        }
+
+        var loopPort = FreePort();
+        var loop = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{loopPort}", Token = "secret" },
+            []);
+        await loop.App.StartAsync();
+        await using (loop.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{loopPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+            Assert.AreEqual(System.Text.Json.JsonValueKind.Null, (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main")).GetProperty("xonxoff").ValueKind);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PostAsync("api/sessions/main/xonxoff?enabled=true", null)).StatusCode);
+            await loop.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task SessionSettings_SendFormatAndLogging_WorkPerSession()
     {
         var webPort = FreePort();

@@ -28,6 +28,9 @@ public sealed class WebOptions
 
     public string? CertificatePassword { get; set; }
 
+    /// <summary>The folder the Playback page lists and opens logs from; blank uses <c>~/.dev-term/logs</c>. Only files in this folder can be opened over the web.</summary>
+    public string? LogsDirectory { get; set; }
+
     /// <summary>Lines of output kept and replayed to a viewer that connects later.</summary>
     public int BacklogLines { get; set; } = 500;
 }

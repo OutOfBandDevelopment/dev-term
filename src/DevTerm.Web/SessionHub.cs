@@ -112,6 +112,21 @@ public sealed class SessionHub : IAsyncDisposable
         return true;
     }
 
+    /// <summary>XON/XOFF software flow control on a TCP transport (View > Software Flow Control); <see langword="null"/> when the transport has none.</summary>
+    public bool? SoftwareFlowControl => _session.Transport is DevTerm.Transports.Tcp.TcpTransport tcp ? tcp.SoftwareFlowControl : null;
+
+    /// <summary>Turns XON/XOFF on or off; false when the transport is not TCP.</summary>
+    public bool SetSoftwareFlowControl(bool enabled)
+    {
+        if (_session.Transport is not DevTerm.Transports.Tcp.TcpTransport tcp)
+        {
+            return false;
+        }
+
+        tcp.SoftwareFlowControl = enabled;
+        return true;
+    }
+
     private SessionLogger? _logger;
 
     /// <summary>The file the session is being logged to, or <see langword="null"/> when not logging.</summary>

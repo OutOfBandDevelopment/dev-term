@@ -48,6 +48,7 @@ internal static class TerminalPage
           <label>Send as <select id="parser"></select></label>
           <label>Device <select id="device"></select></label>
           <label><input type="checkbox" id="echo"> Echo sent commands</label>
+          <label id="xonlabel" hidden><input type="checkbox" id="xon"> XON/XOFF</label>
           <button type="button" id="clear">Clear output</button>
           <button type="button" id="log">Start logging</button><a id="download" hidden>Download log</a>
           <label>Theme <select id="theme"><option value="">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
@@ -176,9 +177,11 @@ internal static class TerminalPage
             parserEl.textContent = '';
             for (const p of info.parsers) parserEl.append(Object.assign(document.createElement('option'), { textContent: p, value: p }));
             parserEl.value = info.parser; parserEl.disabled = readOnly;
+            const xon = document.getElementById('xon'); document.getElementById('xonlabel').hidden = info.xonxoff == null; xon.checked = !!info.xonxoff; xon.disabled = readOnly;
             logEl.textContent = info.logging ? 'Stop logging' : 'Start logging'; logEl.disabled = readOnly; logEl.title = info.logging || '';
             dlEl.hidden = !info.logging; dlEl.href = '/api/sessions/' + key + '/log'; dlEl.download = '';
           }
+          document.getElementById('xon').onchange = async e => { if (active) { await fetch('/api/sessions/' + active.key + '/xonxoff?enabled=' + e.target.checked, { method: 'POST' }); refreshTools(); } };
           parserEl.onchange = async () => { if (active) { await fetch('/api/sessions/' + active.key + '/parser?name=' + encodeURIComponent(parserEl.value), { method: 'POST' }); refreshTools(); } };
           logEl.onclick = async () => { if (active) { await fetch('/api/sessions/' + active.key + '/logging?enabled=' + (logEl.textContent === 'Start logging'), { method: 'POST' }); refreshTools(); } };
           document.getElementById('clear').onclick = () => { if (active) { active.lines = []; out.textContent = ''; } };

@@ -43,6 +43,7 @@ with the reason.
 | `GET /api/sessions/{id}` | `{"parsers", "parser", "logging", "state"}` for `main` or an opened connection id; 404 unknown |
 | `POST /api/sessions/{id}/parser?name=` | Changes the session's "Send as" format; 400 unknown format, 403 read-only |
 | `POST /api/sessions/{id}/logging?enabled=` | Starts (default `~/.dev-term/logs` name) or stops logging; `GET /api/sessions/{id}/log` downloads the running log |
+| `POST /api/sessions/{id}/xonxoff?enabled=` | XON/XOFF software flow control (TCP only; 400 otherwise); `xonxoff` also in `GET /api/sessions/{id}` (null when not TCP) |
 | `GET /api/sessions/{id}/panels` | The Device menu: plugin panels that suit the session's connection (`[{id,title}]`) |
 | `GET /api/sessions/{id}/panels/{panel}` | The panel's `UiDefinition` and latest indicator values; the page polls it once a second |
 | `POST /api/sessions/{id}/panels/{panel}/invoke` | Runs a control on that panel (same body as `/api/invoke`); 403 read-only, 404 unknown |
@@ -115,3 +116,7 @@ Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` ge
 ## Automated coverage
 
 The web is held to the same automation as the TUI and WPF: the shared user flows (`UserFlowTestsBase`, driven by `WebUserFlowTests` through Playwright and headless Edge, none skipped), real captured screenshots under `docs/user-guide/images`, and a layout review (`WebLayoutReviewTests`) that opens the terminal page (with a device panel, light and dark) and each Blazor page at 1280x800 and 400x800 and fails on sideways page scroll, overlapping siblings, clipped text, controls under 14px and text contrast under 4.5:1. Review captures land in `artifacts/ui-review/web`. Each new web feature adds a flow, a layout-review case and its screenshots.
+
+## Blazor playback page (`/playback`)
+
+Replays a session log through `PlaybackController` (the same one the TUI and WPF windows draw, so behaviour is identical; see [`playback-window.md`](playback-window.md)). Logs come from `PlaybackLibrary`: the `.jsonl` files directly inside `Web:LogsDirectory` (default `~/.dev-term/logs`), newest first; a name containing a path is never resolved. Controls: Open, Play/Pause (a 100 ms timer ticks while playing and stops at the end), Step, Rewind, Fast-forward (10 s), To end, Speed (0.25x to Max), Jump to (record or `m:ss.f`; bad text shows the controller's message), Presenters (comma list, replays from the start), Mark in, Mark out, Save trimmed copy (to the controller's default `.trim-a-b` name beside the log), Add note (saved into the log). A read-only token disables the notes and trim buttons. Output shows the last 2000 lines in the shared `PlaybackText` format. Not on the web: choosing a log from outside the folder, uploading one.

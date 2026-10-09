@@ -48,6 +48,7 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
+        builder.Services.AddSingleton(new PlaybackLibrary(webOptions.LogsDirectory ?? DevTermUserDataPaths.LogsDirectory));
         builder.Services.AddSingleton(sp => new SessionPanels(sp.GetServices<IDevicePanelContribution>()));
         builder.Services.AddOpenApi();
         builder.Services.AddSingleton<HostEvents>();
@@ -133,7 +134,7 @@ public static class WebHost
         SessionHub? SessionFor(string id) => id == "main" ? hub : connections.TryGet(id, out var found) ? found : null;
         static bool IsReadOnly(HttpContext context) => context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
         app.MapGet("/api/sessions/{id}", (string id) => SessionFor(id) is { } h
-            ? Results.Json(new { parsers = h.ParserNames, parser = h.Parser, logging = h.LogPath, state = h.State.ToString() })
+            ? Results.Json(new { parsers = h.ParserNames, parser = h.Parser, xonxoff = h.SoftwareFlowControl, logging = h.LogPath, state = h.State.ToString() })
             : Results.NotFound()).WithSummary("A session's send formats, current format and log file; 404 unknown id");
         app.MapPost("/api/sessions/{id}/parser", (HttpContext context, string id, string name) =>
         {
@@ -144,6 +145,15 @@ public static class WebHost
 
             return SessionFor(id) is not { } h ? Results.NotFound() : h.SetParser(name) ? Results.Json(new { parser = h.Parser }) : Results.BadRequest();
         }).WithSummary("Change a session's send format; 400 unknown format, 404 unknown id, 403 read-only");
+        app.MapPost("/api/sessions/{id}/xonxoff", (HttpContext context, string id, bool enabled) =>
+        {
+            if (IsReadOnly(context))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return SessionFor(id) is not { } h ? Results.NotFound() : h.SetSoftwareFlowControl(enabled) ? Results.Json(new { xonxoff = h.SoftwareFlowControl }) : Results.BadRequest();
+        }).WithSummary("Turn XON/XOFF software flow control on or off (TCP only); 400 for other transports, 404 unknown id, 403 read-only");
         app.MapPost("/api/sessions/{id}/logging", (HttpContext context, string id, bool enabled) =>
         {
             if (IsReadOnly(context))
