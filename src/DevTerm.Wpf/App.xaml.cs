@@ -171,7 +171,7 @@ public partial class App : Application
             }
         }
 
-        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()], InstrumentProviders = [.. host.Services.GetServices<DevTerm.Core.Control.IInstrumentPanelProvider>()] };
+        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()], InstrumentProviders = [.. host.Services.GetServices<DevTerm.Core.Control.IInstrumentPanelProvider>()], ConfigEditors = [.. host.Services.GetServices<DevTerm.Core.Control.IDeviceConfigEditor>()] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();

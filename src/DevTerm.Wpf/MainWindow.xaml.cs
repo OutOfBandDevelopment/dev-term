@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using DevTerm.Configuration;
+using DevTerm.Core.Control;
 using DevTerm.Core.Plugins;
 using DevTerm.Core.StreamContent;
 using DevTerm.Core.Presenters;
@@ -913,6 +914,15 @@ public partial class MainWindow : Window
 
     private void Plugins_Click(object sender, RoutedEventArgs e) =>
         MessageBox.Show(this, PluginReport.Text(Plugins), "dev-term — plugins", MessageBoxButton.OK, MessageBoxImage.Information);
+
+    /// <summary>Set by <c>App</c> from the container: the registered device configuration editors (none ship yet).</summary>
+    public IReadOnlyList<IDeviceConfigEditor> ConfigEditors { get; set; } = [];
+
+    private void ConfigureDevice_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new ConfigureDeviceWindow(new DeviceConfigViewModel(ConfigEditors, ActiveWindowTabOrNull?.Tab.CliOptions.Host ?? _lastCliOptions.Host ?? string.Empty, string.Empty)) { Owner = IsLoaded ? this : null };
+        window.ShowDialog();
+    }
 
     private void PluginApprovals_Click(object sender, RoutedEventArgs e)
     {

@@ -72,7 +72,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null, IReadOnlyList<IDeviceConfigEditor>? configEditors = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -108,7 +108,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels, instruments);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels, instruments, configEditors);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -164,7 +164,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null, IReadOnlyList<IDeviceConfigEditor>? configEditors = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -737,6 +737,11 @@ public static class TuiMode
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
                 new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
                 new MenuItem("Plugin appro_vals...", string.Empty, Guarded(() => ReviewPluginApprovals(app))),
+                new MenuItem("Confi_gure device...", string.Empty, Guarded(() =>
+                {
+                    var options = ActiveTab().Tab.CliOptions;
+                    ConfigureDeviceMode.Run(app, new DeviceConfigViewModel(configEditors ?? [], options.Host ?? string.Empty, string.Empty));
+                })),
             ]),
             new MenuBarItem("_View",
             [

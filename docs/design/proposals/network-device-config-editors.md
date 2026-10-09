@@ -66,11 +66,11 @@ Win --> User : confirmed / differences
 ## Completion checklist
 
 - [x] `IDeviceConfigEditor` seam and the shared read/review/write/read-back flow (`DeviceConfigSession`, `DevTerm.Core.Control`, 2026-10-08, unit-tested with a fake editor)
-- [ ] Device > Configure device... menu (WPF + TUI); it lists registered editors, so it lands with the first real editor
+- [x] Device > Configure device... menu (WPF + TUI); it lists registered editors (built 2026-10-09, tested with a fake editor, no real editor yet)
 - [ ] EByte E810-DTU editor
 - [ ] USR-TCP232-302 editor
 - [ ] Spec + user guide with real captures; bench report under `docs/test/`
 
 ## Status
 
-Proposed 2026-10-03. 2026-10-08: the seam is built (`IDeviceConfigEditor`, `DeviceConfigSession`: values as id-keyed strings, change list shown before any write, IP/port-change connection-drop warning, validation, read-back comparison); no editor yet, blocked on a fresh capture of each device. 2026-10-09: the web Profiles page has the Configure device section (read, review changes, write, read-back check) driven by any registered editor, tested with a fake one; TUI and WPF menus not built.
+Proposed 2026-10-03. 2026-10-08: the seam is built (`IDeviceConfigEditor`, `DeviceConfigSession`: values as id-keyed strings, change list shown before any write, IP/port-change connection-drop warning, validation, read-back comparison); no editor yet, blocked on a fresh capture of each device. 2026-10-09: the web Profiles page has the Configure device section (read, review changes, write, read-back check) driven by any registered editor, tested with a fake one; the TUI and WPF Device > Configure device... screens are built too, over a shared `DeviceConfigViewModel`, tested with the fake editor.

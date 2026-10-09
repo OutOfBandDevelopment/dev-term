@@ -117,6 +117,8 @@ When the host has a device configuration editor, the connection form also has a 
 
 ![Configure device](images/web-blazor-configure-device.png)
 
+The TUI and WPF have the same flow under **Device > Configure device...** (Host and Port start from the active connection). No real editor ships yet, so today the editor list is empty outside tests; the first device editor fills it in for all three front ends.
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:
