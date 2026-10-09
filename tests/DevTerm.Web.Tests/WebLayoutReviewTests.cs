@@ -103,6 +103,8 @@ public sealed class WebLayoutReviewTests
     [DataRow("/manifest", 1280, 800)]
     [DataRow("/manifest", 400, 800)]
     [DataRow("/themes", 400, 800)]
+    [DataRow("/plugins", 1280, 800)]
+    [DataRow("/plugins", 400, 800)]
     [DataRow("/routing", 400, 800)]
     public async Task BlazorPage_HasNoLayoutProblems(string path, int width, int height)
     {
