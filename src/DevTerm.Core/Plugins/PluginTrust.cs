@@ -17,6 +17,9 @@ public enum PluginApprovalChoice
     Always,
 }
 
+/// <summary>One remembered approval (<see cref="PluginTrust.Approvals"/>).</summary>
+public sealed record PluginApproval(string Name, string Hash, DateTimeOffset ApprovedAt);
+
 /// <summary>What the user is asked to approve: a program that will run with their rights.</summary>
 public sealed record PluginApprovalRequest(string Name, string Version, string Folder, string CommandLine, string Hash);
 
@@ -60,6 +63,15 @@ public static class PluginTrust
             entries.Add(new Entry { Name = name, Hash = hash, ApprovedAt = DateTimeOffset.UtcNow });
             Directory.CreateDirectory(Path.GetDirectoryName(StorePath)!);
             File.WriteAllText(StorePath, JsonSerializer.Serialize(new Store { Approved = entries }, new JsonSerializerOptions { WriteIndented = true }));
+        }
+    }
+
+    /// <summary>Every remembered approval, oldest first: the plugin name, the approved content hash and when it was approved.</summary>
+    public static IReadOnlyList<PluginApproval> Approvals()
+    {
+        lock (_gate)
+        {
+            return [.. Read().OrderBy(e => e.ApprovedAt).Select(e => new PluginApproval(e.Name, e.Hash, e.ApprovedAt))];
         }
     }
 

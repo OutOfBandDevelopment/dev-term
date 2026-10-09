@@ -392,6 +392,14 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListPlugins { get; set; }
 
+    /// <summary>List the remembered out-of-process plugin approvals and exit.</summary>
+    [Category("Mode")]
+    public bool ListApprovals { get; set; }
+
+    /// <summary>Forget the remembered approval of this plugin (by name) and exit; it is asked about again next start.</summary>
+    [Category("Mode")]
+    public string? ForgetPlugin { get; set; }
+
     /// <summary>List paired BLE devices and exit, skipping normal validation/connection entirely.</summary>
     [Category("Mode")]
     public bool ListBleDevices { get; set; }

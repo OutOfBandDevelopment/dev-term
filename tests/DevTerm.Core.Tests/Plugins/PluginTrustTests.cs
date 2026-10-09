@@ -241,6 +241,19 @@ public sealed class PluginTrustProcessTests
         }
     }
 
+    [TestMethod]
+    public void Approvals_ListsWhatWasRemembered_AndForgetRemovesIt()
+    {
+        Assert.AreEqual(0, PluginTrust.Approvals().Count);
+
+        PluginTrust.Remember("shout", "AB12");
+        PluginTrust.Remember("whisper", "CD34");
+
+        CollectionAssert.AreEqual(new[] { "shout", "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+        PluginTrust.Forget("shout");
+        CollectionAssert.AreEqual(new[] { "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+    }
+
     private sealed class AlwaysApprover : IPluginApprover
     {
         public PluginApprovalChoice Ask(PluginApprovalRequest request) => PluginApprovalChoice.Once;

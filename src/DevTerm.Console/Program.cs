@@ -232,6 +232,30 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
     return 0;
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListApprovals)))
+{
+    var approvals = DevTerm.Core.Plugins.PluginTrust.Approvals();
+    if (approvals.Count == 0)
+    {
+        Console.WriteLine("No plugin approvals are remembered.");
+    }
+
+    foreach (var approval in approvals)
+    {
+        Console.WriteLine($"{approval.Name}  {approval.Hash[..12]}  approved {approval.ApprovedAt.LocalDateTime:yyyy-MM-dd HH:mm}");
+    }
+
+    return 0;
+}
+
+if (earlyConfig[nameof(CliOptions.ForgetPlugin)] is { Length: > 0 } forgetPlugin)
+{
+    var known = DevTerm.Core.Plugins.PluginTrust.Approvals().Any(a => string.Equals(a.Name, forgetPlugin, StringComparison.OrdinalIgnoreCase));
+    DevTerm.Core.Plugins.PluginTrust.Forget(forgetPlugin);
+    Console.WriteLine(known ? $"Forgot the approval of '{forgetPlugin}'; it asks again next start." : $"No approval is remembered for '{forgetPlugin}'.");
+    return known ? 0 : 1;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
 {
     // Same reflection-based platform-adapter loading AddDevTermFrontEnd uses for a real connection

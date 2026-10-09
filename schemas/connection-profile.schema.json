@@ -382,6 +382,15 @@
     "ListPlugins": {
       "type": "boolean"
     },
+    "ListApprovals": {
+      "type": "boolean"
+    },
+    "ForgetPlugin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ListBleDevices": {
       "type": "boolean"
     },

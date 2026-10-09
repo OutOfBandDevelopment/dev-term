@@ -68,6 +68,45 @@ public sealed class ConsoleAppCliTests
     }
 
     [TestMethod]
+    public async Task ListApprovals_ThenForgetPlugin_ShowsAndRemovesARememberedApproval()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "devterm-approvals-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(home);
+        File.WriteAllText(
+            Path.Combine(home, "plugin-approvals.json"),
+            """{"Approved":[{"Name":"shout","Hash":"0123456789ABCDEF0123","ApprovedAt":"2026-10-01T10:00:00+00:00"}]}""");
+        try
+        {
+            async Task<(int Code, string Output)> RunAsync(string arguments)
+            {
+                var info = BuildStartInfo(arguments);
+                info.Environment["DEVTERM_HOME"] = home;
+                using var job = new ChildProcessJob();
+                using var process = Process.Start(info)!;
+                job.Add(process);
+                var output = await process.StandardOutput.ReadToEndAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+                await process.WaitForExitAsync(TestContext.CancellationToken).WaitAsync(_timeout, TestContext.CancellationToken);
+                return (process.ExitCode, output);
+            }
+
+            var listed = await RunAsync("--listapprovals true");
+            Assert.AreEqual(0, listed.Code);
+            StringAssert.Contains(listed.Output, "shout  0123456789AB");
+
+            var forgotten = await RunAsync("--forgetplugin shout");
+            Assert.AreEqual(0, forgotten.Code);
+
+            var again = await RunAsync("--forgetplugin shout");
+            Assert.AreEqual(1, again.Code);
+            StringAssert.Contains((await RunAsync("--listapprovals true")).Output, "No plugin approvals");
+        }
+        finally
+        {
+            Directory.Delete(home, true);
+        }
+    }
+
+    [TestMethod]
     public async Task ListHidDevices_ExitsZeroWithoutCrashing()
     {
         using var job = new ChildProcessJob();
