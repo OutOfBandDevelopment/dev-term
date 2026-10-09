@@ -77,6 +77,7 @@ public static class SessionLogging
             Transport = cliOptions.Transport,
             Presenters = cliOptions.EffectivePresenters,
             Parser = parser,
+            ScpiProfile = cliOptions.ScpiProfile is { Length: > 0 } scpiProfile ? scpiProfile : null,
         };
     }
 

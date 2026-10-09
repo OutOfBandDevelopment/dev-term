@@ -49,6 +49,7 @@ public static class SessionLogFormat
 
             writer.WriteEndArray();
             WriteOptional(writer, "parser", header.Parser);
+            WriteOptional(writer, "scpiProfile", header.ScpiProfile);
             WriteOptional(writer, "trimmedFrom", header.TrimmedFrom);
         });
     }
@@ -138,6 +139,7 @@ public static class SessionLogFormat
                 Transport = GetString(root, "transport"),
                 Presenters = presenters,
                 Parser = GetString(root, "parser"),
+                ScpiProfile = GetString(root, "scpiProfile"),
                 TrimmedFrom = GetString(root, "trimmedFrom"),
             };
         }

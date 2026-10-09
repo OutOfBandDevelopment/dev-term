@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Text;
 using DevTerm.Core.Transports;
+using DevTerm.Logging;
 using DevTerm.Test.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -101,5 +102,37 @@ public sealed class SessionLoggingTests
 
         Assert.AreEqual("line", rendered.Single().Text, "The second pipeline's ASCII presenter didn't inherit the first one's buffered text.");
         Assert.AreNotSame(first.Presenters[0], second.Presenters[0]);
+    }
+
+    [TestMethod]
+    public void HeaderFor_RecordsTheScpiProfile_AndItSurvivesTheFileFormat()
+    {
+        var header = SessionLogging.HeaderFor(new CliOptions { Transport = "serial", ScpiProfile = "Korad KA3005P Power Supply" }, "ascii", null, "cli", DateTimeOffset.UnixEpoch);
+
+        Assert.AreEqual("Korad KA3005P Power Supply", header.ScpiProfile);
+        Assert.AreEqual("Korad KA3005P Power Supply", SessionLogFormat.ReadHeader(SessionLogFormat.WriteHeader(header)).ScpiProfile);
+        Assert.IsNull(SessionLogging.HeaderFor(new CliOptions(), "ascii", null, "cli", DateTimeOffset.UnixEpoch).ScpiProfile);
+    }
+
+    [TestMethod]
+    [DoNotParallelize] // InstrumentPanelProviders is process-wide state that other tests' host builds also set.
+    public void PlaybackPresenters_WithAScpiProfile_FlushesATerminatorlessReply()
+    {
+        // The plugin loader normally fills this registry; a test registers the SCPI provider itself.
+        DevTerm.Core.Control.InstrumentPanelProviders.Set([new DevTerm.Devices.Scpi.ScpiInstrumentPanelProvider()]);
+        try
+        {
+            var presenters = new PlaybackPresenters();
+            var reply = new ReadOnlySequence<byte>(Encoding.ASCII.GetBytes("KORAD KA3005P V5.8 SN:03396447"));
+
+            Assert.IsEmpty(presenters.CreatePipeline(["scpi"]).Render(reply), "Without the profile the scpi presenter waits for a terminator.");
+            var withProfile = presenters.CreatePipeline(["scpi"], "Korad KA3005P Power Supply").Render(reply);
+
+            Assert.AreEqual("KORAD KA3005P V5.8 SN:03396447", withProfile.Single().Text);
+        }
+        finally
+        {
+            DevTerm.Core.Control.InstrumentPanelProviders.Set([]);
+        }
     }
 }

@@ -65,6 +65,7 @@ header, and every line after it is one record.
 | `transport` | no | `tcp`, `serial`, `hid`, `usbtmc` or `loopback`. |
 | `presenters` | no | The presenters displaying the traffic. Playback uses these by default. |
 | `parser` | no | The send format when logging started. |
+| `scpiProfile` | no | The `--scpiprofile` in use when logging started (added 2026-10-09); playback gives the scpi presenter that profile's terminator, so a terminatorless instrument's replies show. Older logs lack it. |
 | `trimmedFrom` | no | Set on a trimmed log: the file name it was cut from. |
 
 ### Records
