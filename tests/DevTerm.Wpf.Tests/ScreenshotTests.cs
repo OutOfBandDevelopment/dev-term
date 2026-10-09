@@ -144,6 +144,29 @@ public sealed class ScreenshotTests
         }
     }
 
+    /// <summary>An example only: no real editor ships yet, so this shows the window over the test-only fake editor after a read and one edit.</summary>
+    [TestMethod]
+    public void ConfigureDeviceWindow_AfterReadAndEdit_IsCaptured()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var window = new ConfigureDeviceWindow(new DeviceConfigViewModel([new FakeDeviceConfigEditor()], "192.168.0.50", "8899"));
+            WpfScreenshot.ShowOffScreen(window, 640, 520);
+
+            await window.ReadNowAsync();
+            window.Form.Children.OfType<System.Windows.Controls.TextBox>().First().Text = "192.168.0.77";
+            StaTestRunner.DoEvents();
+            window.UpdateLayout();
+
+            var path = Path.Combine(_imagesDirectory, "wpf-configure-device.png");
+            WpfScreenshot.Save(window, path);
+
+            AssertRealImage(path);
+            Assert.IsTrue(window.CanWrite);
+            window.Close();
+        });
+    }
+
     [TestMethod]
     public void PlaybackWindow_PartWayThroughWithANote_IsCaptured()
     {

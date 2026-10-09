@@ -1,0 +1,25 @@
+                                                                                
+    ┏┥Configure device┝━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓     
+    ┃Editor:                 ◉ Fake bridge                                ┃     
+    ┃Host:                   192.168.0.50                    Port: 8899   ┃     
+    ┃                                                                     ┃     
+    ┃IP address              192.168.0.77                                 ┃     
+    ┃Baud                    9600                                         ┃     
+    ┃Work mode               ◉ tcp-server  ○ tcp-client  ○ udp            ┃     
+    ┃DHCP                    ☐                                            ┃     
+    ┃                                                                     ┃     
+    ┃                                                                     ┃     
+    ┃                                                                     ┃     
+    ┃                                                                     ┃     
+    ┃                                                                     ┃     
+    ┃                                                                     ┃     
+    ┃  change  ip: 192.168.0.201 to 192.168.0.77                          ┃     
+    ┃Writing these values changes the address, so the connection will     ┃     
+    ┃drop.                                                                ┃     
+    ┃Read the device's current settings.                                  ┃     
+    ┃⟦ Read from device ⟧ ⟦ Write to device ⟧ ⟦ Close ⟧                   ┃     
+    ┃                                                                     ┃     
+    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛     
+                                                                                
+                                                                                
+                                                                                

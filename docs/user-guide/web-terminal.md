@@ -119,6 +119,12 @@ When the host has a device configuration editor, the connection form also has a 
 
 The TUI and WPF have the same flow under **Device > Configure device...** (Host and Port start from the active connection). No real editor ships yet, so today the editor list is empty outside tests; the first device editor fills it in for all three front ends.
 
+Both dialogs, shown over the test-only fake editor (an example, not a real device), after Read and one edit to the IP address:
+
+![Configure device in the TUI](images/tui-configure-device.png)
+
+![Configure device in WPF](images/wpf-configure-device.png)
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:
