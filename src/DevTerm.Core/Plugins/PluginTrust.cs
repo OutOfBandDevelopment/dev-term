@@ -20,6 +20,19 @@ public enum PluginApprovalChoice
 /// <summary>One remembered approval (<see cref="PluginTrust.Approvals"/>).</summary>
 public sealed record PluginApproval(string Name, string Hash, DateTimeOffset ApprovedAt);
 
+/// <summary>What the user decided about one remembered approval while reviewing them (<see cref="PluginTrust.Review"/>).</summary>
+public enum ApprovalReviewChoice
+{
+    /// <summary>Keep the approval.</summary>
+    Keep,
+
+    /// <summary>Forget it: the plugin asks again next start.</summary>
+    Forget,
+
+    /// <summary>Stop reviewing; the rest stay as they are.</summary>
+    Stop,
+}
+
 /// <summary>What the user is asked to approve: a program that will run with their rights.</summary>
 public sealed record PluginApprovalRequest(string Name, string Version, string Folder, string CommandLine, string Hash);
 
@@ -73,6 +86,29 @@ public static class PluginTrust
         {
             return [.. Read().OrderBy(e => e.ApprovedAt).Select(e => new PluginApproval(e.Name, e.Hash, e.ApprovedAt))];
         }
+    }
+
+    /// <summary>Walks the remembered approvals one at a time, forgetting those <paramref name="ask"/> says to; returns how many were forgotten.</summary>
+    public static int Review(Func<PluginApproval, ApprovalReviewChoice> ask)
+    {
+        ArgumentNullException.ThrowIfNull(ask);
+        var forgotten = 0;
+        foreach (var approval in Approvals())
+        {
+            var choice = ask(approval);
+            if (choice == ApprovalReviewChoice.Stop)
+            {
+                break;
+            }
+
+            if (choice == ApprovalReviewChoice.Forget)
+            {
+                Forget(approval.Name);
+                forgotten++;
+            }
+        }
+
+        return forgotten;
     }
 
     /// <summary>Forgets a plugin's remembered approval.</summary>

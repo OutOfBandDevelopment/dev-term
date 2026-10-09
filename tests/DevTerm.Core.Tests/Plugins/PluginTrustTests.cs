@@ -113,6 +113,42 @@ public sealed class PluginTrustTests
     }
 
     [TestMethod]
+    public void ReviewPending_AsksAboutEachWaitingPlugin_AndApprovesOnlyTheOnesAnsweredYes()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+        var asked = new List<string>();
+
+        var live = LivePlugins.ReviewPending(p =>
+        {
+            asked.Add(p.Request.Name);
+            return PluginApprovalChoice.Once;
+        });
+
+        Assert.AreEqual(1, live);
+        CollectionAssert.AreEqual(new[] { "py-shout" }, asked);
+        Assert.AreEqual(0, LivePlugins.ReviewPending(_ => PluginApprovalChoice.Once), "Nothing is left to ask about.");
+    }
+
+    [TestMethod]
+    public void Review_ForgetsTheApprovalsSaidForget_KeepsTheRest_AndStopsOnStop()
+    {
+        PluginTrust.Remember("a", "1");
+        PluginTrust.Remember("b", "2");
+        PluginTrust.Remember("c", "3");
+
+        var forgotten = PluginTrust.Review(approval => approval.Name switch
+        {
+            "a" => ApprovalReviewChoice.Forget,
+            "b" => ApprovalReviewChoice.Keep,
+            _ => ApprovalReviewChoice.Stop,
+        });
+
+        Assert.AreEqual(1, forgotten);
+        CollectionAssert.AreEqual(new[] { "b", "c" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+    }
+
+    [TestMethod]
     public void Deny_DoesNotLoad_AndIsNotRemembered()
     {
         WriteProcessPlugin();

@@ -112,7 +112,7 @@ public partial class App : Application
             cliOptions = editor.Result;
         }
 
-        PluginTrust.Approver = new MessageBoxPluginApprover();
+        // No startup prompt: plugins still waiting for approval are asked about once the window is up, and go live at once (LivePlugins).
 
         var hostBuilder = Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))

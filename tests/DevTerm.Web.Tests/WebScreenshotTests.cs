@@ -247,6 +247,76 @@ public class WebScreenshotTests
     }, converterToolsFile: Path.Combine(Path.GetTempPath(), "devterm-web-conv-none.json"));
 
     [TestMethod]
+    public async Task PluginsPage_ApprovesAWaitingPluginLive_ThenForgetsIt()
+    {
+        var home = Path.Combine(Path.GetTempPath(), $"devterm-web-plugins-{Guid.NewGuid():N}");
+        var folder = Path.Combine(home, "plugins", "shout");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "shout.py"), "print('x')");
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """{ "name": "py-shout", "version": "1.2.0", "contract": 1, "process": { "command": "python", "arguments": ["{folder}/shout.py"] } }""");
+        var previous = Environment.GetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable);
+        Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, home);
+        DevTerm.Core.Plugins.LivePlugins.Reset();
+        DevTerm.Core.Plugins.PluginLoader.LoadAll(Path.Combine(home, "plugins"), new Microsoft.Extensions.DependencyInjection.ServiceCollection());
+        try
+        {
+            await RunAsync(async (page, baseUrl) =>
+            {
+                await page.GotoAsync($"{baseUrl}/plugins?token=demo-token");
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                await Task.Delay(1000);
+                await Assertions.Expect(page.Locator("[data-pending=py-shout]")).ToBeVisibleAsync();
+                await SaveAsync(page, "web-blazor-plugins.png");
+
+                await page.Locator("[data-always]").ClickAsync();
+                await Assertions.Expect(page.Locator("[data-none-pending]")).ToBeVisibleAsync();
+                await Assertions.Expect(page.Locator("[data-approved=py-shout]")).ToBeVisibleAsync();
+                Assert.IsTrue(DevTerm.Core.Plugins.LivePlugins.ActiveNames.Contains("py-shout"));
+
+                await page.Locator("[data-approved=py-shout] [data-forget]").ClickAsync();
+                await Assertions.Expect(page.Locator("[data-none-approved]")).ToBeVisibleAsync();
+            });
+        }
+        finally
+        {
+            DevTerm.Core.Plugins.LivePlugins.Reset();
+            Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, previous);
+            Directory.Delete(home, true);
+        }
+    }
+
+    [TestMethod]
+    public async Task PluginsPage_ReadOnlyViewer_CannotApprove()
+    {
+        var home = Path.Combine(Path.GetTempPath(), $"devterm-web-plugins-{Guid.NewGuid():N}");
+        var folder = Path.Combine(home, "plugins", "shout");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "shout.py"), "print('x')");
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """{ "name": "py-shout", "version": "1.2.0", "contract": 1, "process": { "command": "python", "arguments": ["{folder}/shout.py"] } }""");
+        var previous = Environment.GetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable);
+        Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, home);
+        DevTerm.Core.Plugins.LivePlugins.Reset();
+        DevTerm.Core.Plugins.PluginLoader.LoadAll(Path.Combine(home, "plugins"), new Microsoft.Extensions.DependencyInjection.ServiceCollection());
+        try
+        {
+            await RunAsync(async (page, baseUrl) =>
+            {
+                await page.GotoAsync($"{baseUrl}/plugins?token=watch-token");
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                await Task.Delay(1000);
+                await Assertions.Expect(page.Locator("[data-always]")).ToBeDisabledAsync();
+
+            });
+        }
+        finally
+        {
+            DevTerm.Core.Plugins.LivePlugins.Reset();
+            Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, previous);
+            Directory.Delete(home, true);
+        }
+    }
+
+    [TestMethod]
     public async Task ManifestPage_BuildsAManifest_ChecksAndSavesIt()
     {
         var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");

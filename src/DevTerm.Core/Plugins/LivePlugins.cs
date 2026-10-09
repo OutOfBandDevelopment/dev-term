@@ -89,6 +89,13 @@ public static class LivePlugins
         return true;
     }
 
+    /// <summary>Asks <paramref name="ask"/> about each waiting plugin and applies the answer; returns how many went live. A front end's dialog supplies <paramref name="ask"/>.</summary>
+    public static int ReviewPending(Func<PendingPlugin, PluginApprovalChoice> ask)
+    {
+        ArgumentNullException.ThrowIfNull(ask);
+        return Pending.Count(plugin => Approve(plugin.Request.Name, ask(plugin)));
+    }
+
     /// <summary>A fresh presenter for every live plugin (presenters are stateful, so each catalog gets its own).</summary>
     internal static IReadOnlyList<IPresenter> CreatePresenters()
     {

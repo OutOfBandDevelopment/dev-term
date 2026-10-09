@@ -1551,30 +1551,30 @@ public static class TuiMode
             return;
         }
 
-        if (MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText(approvals), ["Forget all", "Close"]) == 0)
+        // One approval at a time: Forget it (it asks again next start), Keep it, or Stop reviewing.
+        PluginTrust.Review(approval => MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText([approval]), ["Forget", "Keep", "Stop"]) switch
         {
-            foreach (var approval in approvals)
-            {
-                PluginTrust.Forget(approval.Name);
-            }
-        }
+            0 => ApprovalReviewChoice.Forget,
+            1 => ApprovalReviewChoice.Keep,
+            _ => ApprovalReviewChoice.Stop,
+        });
     }
 
     /// <summary>Asks about each out-of-process plugin still waiting for approval; an approved one goes live at once (<see cref="LivePlugins"/>).</summary>
     private static void PromptPendingPlugins(IApplication app)
     {
-        foreach (var plugin in LivePlugins.Pending)
+        LivePlugins.ReviewPending(plugin =>
         {
             var request = plugin.Request;
             var text = string.Join(Environment.NewLine, $"Plugin '{request.Name}' {request.Version} wants to run a program with your rights:", string.Empty, $"  {request.CommandLine}", $"  from {request.Folder}", $"  (content hash {request.Hash[..12]})");
             var choice = MessageBox.Query(app, "dev-term — plugin approval", text, ["Run this time", "Always for this version", "No"]);
-            LivePlugins.Approve(request.Name, choice switch
+            return choice switch
             {
                 0 => PluginApprovalChoice.Once,
                 1 => PluginApprovalChoice.Always,
                 _ => PluginApprovalChoice.Deny,
-            });
-        }
+            };
+        });
     }
 
     internal static string StatusLine(string text) => $"[dev-term] {text}";

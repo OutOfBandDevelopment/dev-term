@@ -36,8 +36,16 @@ next start; it exits 1 when nothing was remembered under that name. Both exit wi
 
 ## TUI and WPF
 
-**Device > Plugin approvals...** lists the remembered approvals (the same lines as `--listapprovals true`) and offers to forget all of
-them; each plugin then asks again next start. To forget just one, use `--forgetplugin <name>`.
+**Device > Plugin approvals...** first asks about any plugin still waiting (Run this time / Always for this version / No; an approved
+plugin works at once, no restart), then walks the remembered approvals one at a time: forget it, keep it, or stop. A forgotten plugin
+asks again next start. The TUI asks right after it opens, WPF right after its window loads.
+
+## Web
+
+The **Plugins** page (`/plugins`) lists plugins waiting for approval with Run once and Always buttons, and the remembered approvals
+with a Forget button. A read-only viewer sees both lists but cannot act.
+
+![The web Plugins page](images/web-blazor-plugins.png)
 
 **Device > Plugins...** shows the same lines in a message box. It is always enabled (no connection needed) and does not
 rescan: restart dev-term after adding or removing a plugin folder.

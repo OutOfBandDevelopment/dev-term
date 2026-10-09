@@ -548,7 +548,14 @@ public partial class MainWindow : Window
         RefreshLoggingUiForActiveTab();
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e) => await ConnectAsync();
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await ConnectAsync();
+        if (LivePlugins.Pending.Count > 0)
+        {
+            PromptPendingPlugins();
+        }
+    }
 
     /// <summary>
     /// The connect logic <see cref="OnLoaded"/> triggers for the active tab, exposed as an awaitable
@@ -926,6 +933,7 @@ public partial class MainWindow : Window
 
     private void PluginApprovals_Click(object sender, RoutedEventArgs e)
     {
+        PromptPendingPlugins();
         var approvals = PluginTrust.Approvals();
         if (approvals.Count == 0)
         {
@@ -933,20 +941,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        var answer = MessageBox.Show(
+        // One approval at a time: Yes forgets it (it asks again next start), No keeps it, Cancel stops reviewing.
+        PluginTrust.Review(approval => MessageBox.Show(
             this,
-            PluginReport.ApprovalText(approvals) + Environment.NewLine + Environment.NewLine + "Yes forgets all of these (each asks again next start); No closes.",
+            PluginReport.ApprovalText([approval]) + Environment.NewLine + Environment.NewLine + "Yes forgets this approval (it asks again next start); No keeps it; Cancel stops reviewing.",
             "dev-term — plugin approvals",
-            MessageBoxButton.YesNo,
+            MessageBoxButton.YesNoCancel,
             MessageBoxImage.Question,
-            MessageBoxResult.No);
-        if (answer == MessageBoxResult.Yes)
+            MessageBoxResult.No) switch
         {
-            foreach (var approval in approvals)
-            {
-                PluginTrust.Forget(approval.Name);
-            }
-        }
+            MessageBoxResult.Yes => ApprovalReviewChoice.Forget,
+            MessageBoxResult.No => ApprovalReviewChoice.Keep,
+            _ => ApprovalReviewChoice.Stop,
+        });
+    }
+
+    /// <summary>Asks about each out-of-process plugin still waiting for approval; an approved one goes live at once (<see cref="LivePlugins"/>).</summary>
+    internal void PromptPendingPlugins()
+    {
+        LivePlugins.ReviewPending(plugin => new MessageBoxPluginApprover().Ask(plugin.Request));
     }
 
     // The window's one Stream Monitor, watching every tab's session (keyed by the tab) so captures from all
