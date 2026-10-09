@@ -312,11 +312,11 @@ How to press it:
 Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
 changes away.
 
-### Finding a LAN device (LXI, mDNS, SSDP)
+### Finding a LAN device (LXI, mDNS, SSDP, USR bridges)
 
 For a device on the network, choose the `tcp` transport and press **Detect network devices...** (a dropdown plus button in WPF, a
 button opening a list in the TUI). The scan takes about three seconds and runs three probes at once: the LXI instrument
-scan (with its `*IDN?` and raw SCPI port), mDNS service discovery and SSDP/UPnP. Each device appears once; picking one fills
+scan (with its `*IDN?` and raw SCPI port), mDNS service discovery, SSDP/UPnP and a USR-TCP232 serial-to-Ethernet bridge sweep (port 80 web-login realm; suggests port 23). Each device appears once; picking one fills
 Host and Port and sets the transport to match (`vxi11` for a VXI-11-only LXI unit, `mqtt` for a broker). The mDNS and SSDP probes have only been tried against what happens to be on one home LAN (printers, a NAS);
 an LXI unit such as the DG1062Z answers the LXI probe only. From a script, `--listlxidevices true` lists just the LXI
 instruments and `--listnetworkdevices true` lists everything:

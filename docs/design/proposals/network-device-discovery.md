@@ -88,7 +88,7 @@ UI -> UI : prefill Transport/Host/Port/baud/profile
 - [ ] USR UDP search packet (the vendor tool's broadcast; the bridge ignored the plain `www.usr.cn` text on UDP 1500 and 48899, so it needs a capture of the vendor tool)
 - [x] `--listnetworkdevices true` in the CLI (2026-10-08)
 - [x] Connection Editor: "Detect network devices..." in WPF and TUI (2026-10-08); it fills Host and Port and, for a `vxi11` or `mqtt` hit, the transport too (2026-10-08, `LxiDeviceOption.Transport`); USR/EByte settings prefill waits on those probes
-- [ ] Spec (`docs/specs/connection-editor.md`) and user guide updated with real captures
+- [x] Spec (`docs/specs/connection-editor.md`) and user guide updated (USR probe added 2026-10-09)
 
 ## Status
 
