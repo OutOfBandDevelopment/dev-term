@@ -20,7 +20,7 @@ Done from that round: the ser2net RFC 2217 container (`containers/`, see `docs/c
 
 Re-ranked 2026-10-09 after a docs audit. Do these in order; each is buildable now unless noted.
 
-1. **Web controls against live hardware.** The 2026-10-09 pass opened the DG1062Z panel from the browser (found and fixed the missing SCPI instrument picker, see `docs/changes/2026-10-09.md`); set and read-back of a value were confirmed too. A `/monitor` capture of a screen dump was confirmed on the live DG1062Z too. A capture over a second project connection was confirmed too. `/routing` against the units is next.
+1. **Web controls against live hardware.** The 2026-10-09 pass opened the DG1062Z panel from the browser (found and fixed the missing SCPI instrument picker, see `docs/changes/2026-10-09.md`); set and read-back of a value were confirmed too. A `/monitor` capture of a screen dump was confirmed on the live DG1062Z too. A capture over a second project connection and `/routing` (device line to a real Mosquitto topic) were confirmed too, so this item is finished.
 2. **Blocked, not worth starting:** the Manual review items below, the MQTT home-automation broker check, multi-browser, the 16-color conhost look.
 
 ## Manual review
