@@ -23,3 +23,7 @@ presenter prints nothing; use `hex` and decode by hand (`raw` is not a presenter
 panel, and `:KEY:FORC` (no reply) hands it back. Rapid-fire commands timed out the session once. `:TRIG:SWE SING` left
 the trigger in AUTO. Used on the bench as a 2-channel handshake-line monitor (CH1 CTS, CH2 RTS) on the 34401A's RS-232.
 Earlier source: `docs/test/2026-09-24-07-16-34.md` (not attempted there).
+
+Current state (2026-10-09): still reachable, now with text replies. `--lineending None --presenter scpi --scpiprofile "Rigol DS1102E Oscilloscope"`
+answered `*IDN?`, `:ACQuire:TYPE?` (`NORMAL`), `:TIMebase:SCALe?` (`5.000e-05`), `:CHANnel1:SCALe?` (`2.000e+00`) and
+`:TRIGger:MODE?` (`EDGE`) first try. Report: `docs/test/2026-10-09-09-12-00.md`.
