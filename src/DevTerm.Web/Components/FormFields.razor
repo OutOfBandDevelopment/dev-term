@@ -32,6 +32,10 @@
                         break;
                     default:
                         <input type="text" disabled="@readOnly" value="@Binding.GetText(c.Id)" @onchange="e => Set(c, e.Value?.ToString())" />
+                        @if (Pickable?.Invoke(c.Id) is true)
+                        {
+                            <button data-pick="@c.Id" disabled="@readOnly" @onclick="() => OnPick.InvokeAsync(c.Id)">Pick...</button>
+                        }
                         break;
                 }
                 @if (_errors.TryGetValue(c.Id, out var error)) { <span class="error">@error</span> }
@@ -48,6 +52,12 @@
     [Parameter, EditorRequired] public FormBinding Binding { get; set; } = default!;
 
     [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Says whether a control offers a Pick... button (an expression or value-id picker, as in the desktop editors).</summary>
+    [Parameter] public Func<string, bool>? Pickable { get; set; }
+
+    /// <summary>Raised with a control's id when its Pick... button is pressed.</summary>
+    [Parameter] public EventCallback<string> OnPick { get; set; }
 
     private bool Shown(UiControl c) => c is not ButtonControl && Binding.Has(c.Id) && Binding.IsVisible(c.VisibleWhen);
 

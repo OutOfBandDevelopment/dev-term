@@ -133,7 +133,7 @@ public sealed class ManifestEditorViewModel
     public string StatusMessage
     {
         get => _statusMessage;
-        private set
+        set
         {
             _statusMessage = value;
             StatusChanged?.Invoke(this, EventArgs.Empty);

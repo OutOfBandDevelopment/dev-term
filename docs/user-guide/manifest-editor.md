@@ -118,6 +118,10 @@ Press **Use recording...** (WPF) or **Log** (TUI, next to **Ksy**) and pick a se
 
 ## On the web
 
-Open `/manifest` (the Manifest link) for the same editor in a browser: choose a manifest under Open or press New, pick a part in the Outline, edit its form, then Check and Save. See the [spec](../specs/manifest-editor.md#web) for what differs from the desktop apps.
+Open `/manifest` (the Manifest link) for the same editor in a browser: choose a manifest under Open or press New, pick a part in the Outline, edit its form, then Check and Save. A control's expression, channel and value-id fields have a **Pick...** button that opens the same picker inline; **Save As** writes a copy under a name you type; **Import .ksy** uploads a Kaitai file; **Use recording** takes sample values from a saved log; and the Preview draws the real panel, with a "Would send" line for each button you press. See the [spec](../specs/manifest-editor.md#web) for what differs from the desktop apps.
 
 ![Manifest editor on the web](images/web-blazor-manifest.png)
+
+The inline picker:
+
+![Manifest editor picker on the web](images/web-blazor-manifest-picker.png)

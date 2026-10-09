@@ -280,6 +280,40 @@ public class WebScreenshotTests
     }
 
     [TestMethod]
+    public async Task ManifestPage_PreviewsThePanel_PicksValues_AndSavesACopy()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/manifest?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-open]").SelectOptionAsync(await page.Locator("[data-open] option", new PageLocatorOptions { HasTextString = "Loopback Sensor Demo" }).First.GetAttributeAsync("value") ?? string.Empty);
+            await page.Locator("[data-openbtn]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-title]")).ToContainTextAsync("Loopback Sensor Demo");
+
+            // The preview is the real panel: its button reports what it would send, and sends nothing.
+            await page.Locator("[data-preview] [data-control=measure] button").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-previewsent]")).ToContainTextAsync("Would send: MEAS?");
+
+            // A channel list picks from the manifest's value paths without typing them.
+            await page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Channels" }).First.ClickAsync();
+            await page.Locator("[data-pick=Channels]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-picker]")).ToBeVisibleAsync();
+            await page.Locator("[data-pickerpath=chA]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-pickertext]")).ToHaveValueAsync(new System.Text.RegularExpressions.Regex("chA"));
+            await SaveAsync(page, "web-blazor-manifest-picker.png");
+            await page.Locator("[data-pickerapply]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-picker]")).ToHaveCountAsync(0);
+
+            await page.Locator("[data-saveasname]").FillAsync("Bench Copy");
+            await page.Locator("[data-saveas]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("bench-copy");
+        }, manifestsDirectory: folder);
+        Assert.IsTrue(Directory.Exists(Path.Combine(folder, "bench-copy")));
+    }
+
+    [TestMethod]
     public Task ManifestPage_ReadOnlyViewer_CannotEdit() => RunAsync(async (page, baseUrl) =>
     {
         await page.GotoAsync($"{baseUrl}/manifest?token=watch-token");
@@ -288,6 +322,8 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("[data-new]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-field=Name] input")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-saveas]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-userecording]")).ToBeDisabledAsync();
     }, manifestsDirectory: Path.Combine(Path.GetTempPath(), "devterm-web-manifests-none"));
 
     [TestMethod]
