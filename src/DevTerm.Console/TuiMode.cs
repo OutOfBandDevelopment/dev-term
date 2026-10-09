@@ -552,11 +552,11 @@ public static class TuiMode
                     // The detect query is a real send/await over the live transport, so it cannot finish before the menu action
                     // returns: fire-and-forget with the eventual window open marshaled back via Application.Invoke, the same
                     // pattern ToggleConnectionAsync/SwitchProfileAsync use (real async I/O resumes off the UI thread).
-                    Observe(DetectAndOpenInstrumentAsync(app, captured, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab)), line => AppendOutput(windowTab, line));
+                    Observe(DetectAndOpenInstrumentAsync(app, captured, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab), name => windowTab.Logger?.RecordInstrument(name)), line => AppendOutput(windowTab, line));
                     return;
                 }
 
-                OpenInstrumentWindow(app, captured, picked, windowTab.Tab.Session, structuredSource, PanelEcho(windowTab));
+                OpenInstrumentWindow(app, captured, picked, windowTab.Tab.Session, structuredSource, PanelEcho(windowTab), name => windowTab.Logger?.RecordInstrument(name));
             }))));
         }
 
@@ -1586,7 +1586,7 @@ public static class TuiMode
     /// Runs the provider's auto-detect with the connection's configured timeout, reporting progress in the output pane while it
     /// waits and what it found afterward, then opens the matched instrument's panel (or the generic one).
     /// </summary>
-    private static async Task DetectAndOpenInstrumentAsync(IApplication app, IInstrumentPanelProvider provider, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null)
+    private static async Task DetectAndOpenInstrumentAsync(IApplication app, IInstrumentPanelProvider provider, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null, Action<string>? chosen = null)
     {
         var timeout = TimeSpan.FromMilliseconds(timeoutMs);
         appendStatus(provider.DetectProgressMessage(timeout));
@@ -1609,7 +1609,7 @@ public static class TuiMode
         {
             try
             {
-                OpenInstrumentWindow(app, provider, detection.Choice, session, structuredSource, echoSent);
+                OpenInstrumentWindow(app, provider, detection.Choice, session, structuredSource, echoSent, chosen);
             }
             catch (Exception ex)
             {
@@ -1618,9 +1618,10 @@ public static class TuiMode
         });
     }
 
-    private static void OpenInstrumentWindow(IApplication app, IInstrumentPanelProvider provider, string choice, Session session, IPresenter? structuredSource, Action<string>? echoSent = null)
+    private static void OpenInstrumentWindow(IApplication app, IInstrumentPanelProvider provider, string choice, Session session, IPresenter? structuredSource, Action<string>? echoSent = null, Action<string>? chosen = null)
     {
         var panel = provider.Open(choice, session, structuredSource);
+        chosen?.Invoke(choice);
         var panelParts = ControlPanelMode.BuildWindow(app, panel.Definition, panel.Surface, structuredSource, panel.Title, echoSent);
         try
         {

@@ -34,6 +34,7 @@ public sealed class SessionLogFormatTests
             new() { Kind = SessionLogRecordKind.Disconnect, Sequence = 5, Timestamp = _t0.AddSeconds(2), Text = "Connection reset by peer" },
             new() { Kind = SessionLogRecordKind.Disconnect, Sequence = 6, Timestamp = _t0.AddSeconds(3) },
             new() { Kind = SessionLogRecordKind.Close, Sequence = 7, Timestamp = _t0.AddSeconds(4) },
+            new() { Kind = SessionLogRecordKind.Instrument, Sequence = 8, Timestamp = _t0.AddSeconds(5), Profile = "Korad KA3005P" },
         ]);
     }
 
@@ -90,11 +91,12 @@ public sealed class SessionLogFormatTests
         SampleLog().Write(stream);
         var lines = Encoding.UTF8.GetString(stream.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        Assert.HasCount(9, lines);
+        Assert.HasCount(10, lines);
         Assert.StartsWith("{\"type\":\"header\",\"format\":\"dev-term-session-log\",\"version\":1,\"created\":\"2026-09-25T12:00:00.0000000Z\"", lines[0]);
         Assert.AreEqual("{\"type\":\"tx\",\"seq\":3,\"t\":\"2026-09-25T12:00:01.0000000Z\",\"data\":\"SUQ/DQ==\"}", lines[3]);
         Assert.AreEqual("{\"type\":\"note\",\"t\":\"2026-09-25T12:00:01.5000000Z\",\"text\":\"reply looks right — \\\"quoted\\\", ünïcode\"}", lines[5]);
         Assert.AreEqual("{\"type\":\"disconnect\",\"seq\":6,\"t\":\"2026-09-25T12:00:03.0000000Z\"}", lines[7]);
+        Assert.AreEqual("{\"type\":\"instrument\",\"seq\":8,\"t\":\"2026-09-25T12:00:05.0000000Z\",\"profile\":\"Korad KA3005P\"}", lines[9]);
     }
 
     [TestMethod]

@@ -54,10 +54,17 @@ public sealed class PlaybackPresenters
         return new Pipeline(names.Select(catalog.Get));
     }
 
+    /// <summary>The SCPI profile a log was captured with: the header's, else the first one picked from a Device panel mid-session (an <c>instrument</c> record).</summary>
+    public static string? InstrumentProfileOf(SessionLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        return log.Header.ScpiProfile ?? log.Records.FirstOrDefault(r => r.Kind == SessionLogRecordKind.Instrument)?.Profile;
+    }
+
     /// <summary>Loads <paramref name="path"/> for playback through these presenters, applying the log's recorded SCPI profile.</summary>
     public PlaybackController Open(string path, TimeProvider? clock = null)
     {
         var log = SessionLog.OpenIndexed(path);
-        return new PlaybackController(path, log, names => CreatePipeline(names, log.Header.ScpiProfile), Names, clock);
+        return new PlaybackController(path, log, names => CreatePipeline(names, InstrumentProfileOf(log)), Names, clock);
     }
 }

@@ -195,6 +195,9 @@ public sealed class SessionHub : IAsyncDisposable
 
     private SessionLogger? _logger;
 
+    /// <summary>Records a SCPI profile picked from a panel after logging started (a no-op when not logging).</summary>
+    public void RecordInstrument(string profileName) => _logger?.RecordInstrument(profileName);
+
     /// <summary>The file the session is being logged to, or <see langword="null"/> when not logging.</summary>
     public string? LogPath => _logger?.Path;
 

@@ -115,6 +115,18 @@ public sealed class SessionLoggingTests
     }
 
     [TestMethod]
+    public void InstrumentProfileOf_PrefersTheHeader_ThenAProfilePickedMidSession()
+    {
+        var picked = new SessionLogRecord { Kind = SessionLogRecordKind.Instrument, Sequence = 1, Timestamp = DateTimeOffset.UnixEpoch, Profile = "Korad KA3005P Power Supply" };
+        var bare = SessionLogging.HeaderFor(new CliOptions(), "ascii", null, "cli", DateTimeOffset.UnixEpoch);
+        var withHeader = SessionLogging.HeaderFor(new CliOptions { ScpiProfile = "Rigol DS1102E" }, "ascii", null, "cli", DateTimeOffset.UnixEpoch);
+
+        Assert.AreEqual("Korad KA3005P Power Supply", PlaybackPresenters.InstrumentProfileOf(new SessionLog(bare, [picked])));
+        Assert.AreEqual("Rigol DS1102E", PlaybackPresenters.InstrumentProfileOf(new SessionLog(withHeader, [picked])));
+        Assert.IsNull(PlaybackPresenters.InstrumentProfileOf(new SessionLog(bare, [])));
+    }
+
+    [TestMethod]
     [DoNotParallelize] // InstrumentPanelProviders is process-wide state that other tests' host builds also set.
     public void PlaybackPresenters_WithAScpiProfile_FlushesATerminatorlessReply()
     {

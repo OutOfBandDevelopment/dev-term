@@ -81,6 +81,7 @@ Captured records also have `seq`, which starts at 1 and goes up by 1 per record 
 | `disconnect` | `error` (absent for a clean hang-up) | The session closed itself: a read or send failure, or the device closing the connection. This mirrors `Session.Disconnected`. |
 | `tx` | `data` | Bytes handed to the transport. |
 | `rx` | `data` | One chunk from the device, exactly as the presenters were given it: one `PipeReader.ReadAsync` result, one record. |
+| `instrument` | `profile` | A SCPI instrument profile was picked from the Device panel after logging started (added 2026-10-09). Playback uses the first one when the header has no `scpiProfile`. |
 | `note` | `text` | A playback annotation. It has no `seq`, since it isn't a captured event. Its `t` is the previous record's time. |
 
 `data` is the raw bytes, **base64** (RFC 4648, with padding).

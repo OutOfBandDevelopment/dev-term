@@ -21,6 +21,9 @@ public enum SessionLogRecordKind
     /// <summary><c>"rx"</c> — one chunk received from the device, exactly as the presenters were handed it.</summary>
     Rx,
 
+    /// <summary><c>"instrument"</c> — a SCPI instrument profile picked after logging started (Device panel); <see cref="SessionLogRecord.Profile"/> is its name. Playback applies it when the header names none.</summary>
+    Instrument,
+
     /// <summary><c>"note"</c> — a text annotation added during playback (markup). Not a captured event, so it has no sequence number.</summary>
     Note,
 
@@ -52,7 +55,7 @@ public sealed record SessionLogRecord
     /// <summary>A <see cref="SessionLogRecordKind.Session"/> record's connection definition (<c>tcp://192.168.0.107:23</c>).</summary>
     public string? Connection { get; init; }
 
-    /// <summary>A <see cref="SessionLogRecordKind.Session"/> record's saved-profile name, when the connection is one.</summary>
+    /// <summary>A <see cref="SessionLogRecordKind.Session"/> record's saved-profile name, when the connection is one; an <see cref="SessionLogRecordKind.Instrument"/> record's SCPI profile name.</summary>
     public string? Profile { get; init; }
 
     /// <summary>A <see cref="SessionLogRecordKind.Session"/> record's connection state when the logger attached (<c>open</c>/<c>closed</c>).</summary>

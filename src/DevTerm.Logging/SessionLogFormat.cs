@@ -83,6 +83,9 @@ public static class SessionLogFormat
                 case SessionLogRecordKind.Note:
                     writer.WriteString("text", record.Text ?? string.Empty);
                     break;
+                case SessionLogRecordKind.Instrument:
+                    writer.WriteString("profile", record.Profile ?? string.Empty);
+                    break;
                 case SessionLogRecordKind.Session:
                     WriteOptional(writer, "connection", record.Connection);
                     WriteOptional(writer, "profile", record.Profile);
@@ -214,6 +217,7 @@ public static class SessionLogFormat
         SessionLogRecordKind.Disconnect => "disconnect",
         SessionLogRecordKind.Tx => "tx",
         SessionLogRecordKind.Rx => "rx",
+        SessionLogRecordKind.Instrument => "instrument",
         SessionLogRecordKind.Note => "note",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "An unknown record keeps its own raw type."),
     };
@@ -226,6 +230,7 @@ public static class SessionLogFormat
         "disconnect" => SessionLogRecordKind.Disconnect,
         "tx" => SessionLogRecordKind.Tx,
         "rx" => SessionLogRecordKind.Rx,
+        "instrument" => SessionLogRecordKind.Instrument,
         "note" => SessionLogRecordKind.Note,
         _ => SessionLogRecordKind.Unknown,
     };

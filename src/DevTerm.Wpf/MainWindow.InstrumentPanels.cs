@@ -141,6 +141,7 @@ public partial class MainWindow
     private void OpenInstrumentWindow(WindowTab tab, IInstrumentPanelProvider provider, string choice, IPresenter? structuredSource)
     {
         var panel = provider.Open(choice, tab.Tab.Session, structuredSource);
+        tab.Logger?.RecordInstrument(choice);
         var window = new ControlPanelWindow(panel.Definition, panel.Surface, structuredSource)
         {
             Owner = this,
