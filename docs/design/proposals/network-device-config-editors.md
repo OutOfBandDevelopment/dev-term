@@ -73,4 +73,4 @@ Win --> User : confirmed / differences
 
 ## Status
 
-Proposed 2026-10-03. 2026-10-08: the seam is built (`IDeviceConfigEditor`, `DeviceConfigSession`: values as id-keyed strings, change list shown before any write, IP/port-change connection-drop warning, validation, read-back comparison); no editor and no menu yet, both blocked on a fresh capture of each device.
+Proposed 2026-10-03. 2026-10-08: the seam is built (`IDeviceConfigEditor`, `DeviceConfigSession`: values as id-keyed strings, change list shown before any write, IP/port-change connection-drop warning, validation, read-back comparison); no editor yet, blocked on a fresh capture of each device. 2026-10-09: the web Profiles page has the Configure device section (read, review changes, write, read-back check) driven by any registered editor, tested with a fake one; TUI and WPF menus not built.

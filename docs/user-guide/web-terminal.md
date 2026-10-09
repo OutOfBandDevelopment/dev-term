@@ -113,6 +113,10 @@ into the project file, or shows what is wrong (for example a missing port). **De
 
 ![Adding a TCP connection](images/web-blazor-profile-editor.png)
 
+When the host has a device configuration editor, the connection form also has a **Configure device** section: choose the editor, **Read from device**, change values (each change is listed before anything is sent), then **Write to device**. No real editor ships yet, so this capture uses a test double.
+
+![Configure device](images/web-blazor-configure-device.png)
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:

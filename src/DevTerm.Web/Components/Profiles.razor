@@ -4,7 +4,9 @@
 @using DevTerm.UiDefinitions
 @using DevTerm.UiDefinitions.Forms
 @using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Core.Control
 @inject ConnectionManager Manager
+@inject IEnumerable<IDeviceConfigEditor> ConfigEditors
 @inject PersistentComponentState PersistedState
 @implements IDisposable
 
@@ -91,6 +93,61 @@ else
                 }
             </fieldset>
         }
+        @if (ConfigEditors.Any())
+        {
+            <fieldset id="configure">
+                <legend>Configure device</legend>
+                <div class="row">
+                    <label>Editor</label>
+                    <select id="cfg-editor" @onchange="e => PickEditor(e.Value?.ToString())">
+                        <option value="">(choose)</option>
+                        @foreach (var editor in ConfigEditors)
+                        {
+                            <option value="@editor.Id" selected="@(editor.Id == _cfgEditor?.Id)">@editor.Title</option>
+                        }
+                    </select>
+                    <button id="cfg-read" disabled="@(_cfgEditor is null || _cfgBusy)" @onclick="ReadConfigAsync">Read from device</button>
+                    <span class="note">Talks to @_vm.Host : @_vm.Port</span>
+                </div>
+                @if (_cfgMessage is not null) { <p class="note" data-cfg-message>@_cfgMessage</p> }
+                @if (_cfgSession is { HasRead: true } cfg)
+                {
+                    @foreach (var c in _cfgEditor!.BuildDefinition().Sections.SelectMany(sec => sec.Controls).Where(c => c is not ButtonControl))
+                    {
+                        <div class="row" data-cfg="@c.Id" title="@c.Description">
+                            <label>@c.Label</label>
+                            @switch (c)
+                            {
+                                case ChoiceControl choice:
+                                    <select @onchange="e => cfg.Set(choice.Id, e.Value?.ToString() ?? string.Empty)">
+                                        @foreach (var option in choice.Options)
+                                        {
+                                            <option value="@option" selected="@(option == cfg.Values.GetValueOrDefault(choice.Id))">@option</option>
+                                        }
+                                    </select>
+                                    break;
+                                case ToggleControl:
+                                    <input type="checkbox" checked="@CfgOn(cfg, c.Id)" @onchange="e => CfgSetBool(cfg, c.Id, e.Value)" />
+                                    break;
+                                default:
+                                    <input type="text" value="@cfg.Values.GetValueOrDefault(c.Id)" @onchange="e => cfg.Set(c.Id, e.Value?.ToString() ?? string.Empty)" />
+                                    break;
+                            }
+                        </div>
+                    }
+                    @foreach (var change in cfg.Changes())
+                    {
+                        <div class="note" data-cfg-change="@change.FieldId">@change.FieldId: @change.From to @change.To</div>
+                    }
+                    @foreach (var issue in cfg.Validate())
+                    {
+                        <div class="error" data-cfg-issue="@issue.FieldId">@issue.FieldId: @issue.Message</div>
+                    }
+                    @if (cfg.WillDropConnection()) { <p class="error" data-cfg-drop>Writing these values changes the address this page is talking to, so the connection will drop.</p> }
+                    <div class="row"><button id="cfg-write" disabled="@(_readOnly || _cfgBusy || cfg.Changes().Count == 0 || cfg.Validate().Count > 0)" @onclick="WriteConfigAsync">Write to device</button></div>
+                }
+            </fieldset>
+        }
         <div class="row">
             <button id="save" disabled="@_readOnly" @onclick="Save">Save</button>
             <button id="cancel" @onclick="Cancel">Cancel</button>
@@ -113,6 +170,66 @@ else
     private bool _detected;
     private IReadOnlyList<NetworkDeviceHit> _hits = [];
     private readonly Dictionary<string, string> _fieldErrors = [];
+
+    private IDeviceConfigEditor? _cfgEditor;
+    private DeviceConfigSession? _cfgSession;
+    private string? _cfgMessage;
+    private bool _cfgBusy;
+
+    private static bool CfgOn(DeviceConfigSession cfg, string id) => cfg.Values.GetValueOrDefault(id) is "true" or "True" or "1";
+
+    private static void CfgSetBool(DeviceConfigSession cfg, string id, object? value) => cfg.Set(id, value is true ? "true" : "false");
+
+    private void PickEditor(string? id)
+    {
+        _cfgEditor = ConfigEditors.FirstOrDefault(e => e.Id == id);
+        _cfgSession = null;
+        _cfgMessage = null;
+    }
+
+    private DeviceConfigTarget CfgTarget() => new(_vm!.Host ?? string.Empty, int.TryParse(_vm.Port, out var port) ? port : 0);
+
+    private async Task ReadConfigAsync()
+    {
+        _cfgBusy = true;
+        try
+        {
+            var session = new DeviceConfigSession(_cfgEditor!, CfgTarget());
+            await session.ReadAsync();
+            _cfgSession = session;
+            _cfgMessage = "Read the device's current settings.";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _cfgSession = null;
+            _cfgMessage = "Could not read the device: " + ex.Message;
+        }
+
+        _cfgBusy = false;
+    }
+
+    private async Task WriteConfigAsync()
+    {
+        if (_readOnly || _cfgSession is null)
+        {
+            return;
+        }
+
+        _cfgBusy = true;
+        try
+        {
+            var mismatches = await _cfgSession.WriteAsync();
+            _cfgMessage = mismatches.Count == 0
+                ? "Written; the device confirmed every value." + (_cfgSession.RebootRequired ? " Restart the device for the change to apply." : string.Empty)
+                : "Written, but the device read back different values for: " + string.Join(", ", mismatches.Select(m => m.FieldId));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _cfgMessage = "Could not write the device: " + ex.Message;
+        }
+
+        _cfgBusy = false;
+    }
 
     [CascadingParameter] private HttpContext? Http { get; set; }
 
@@ -150,6 +267,9 @@ else
         _detected = false;
         _fieldErrors.Clear();
         _error = null;
+        _cfgEditor = null;
+        _cfgSession = null;
+        _cfgMessage = null;
     }
 
     private void New()
