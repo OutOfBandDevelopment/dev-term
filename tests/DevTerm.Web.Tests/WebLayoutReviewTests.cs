@@ -97,6 +97,8 @@ public sealed class WebLayoutReviewTests
     [DataRow("/panel", 400, 800)]
     [DataRow("/monitor", 1280, 800)]
     [DataRow("/monitor", 400, 800)]
+    [DataRow("/routing", 1280, 800)]
+    [DataRow("/routing", 400, 800)]
     public async Task BlazorPage_HasNoLayoutProblems(string path, int width, int height)
     {
         var problems = await ReviewAsync("light", width, height, async (page, baseUrl) =>

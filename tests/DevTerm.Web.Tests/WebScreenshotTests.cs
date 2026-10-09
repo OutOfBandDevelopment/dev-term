@@ -36,13 +36,14 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
             new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory },
             []);
+        configure?.Invoke(built);
         await built.Hub.StartAsync();
         await built.App.StartAsync();
         await using (built.Hub)
@@ -133,6 +134,81 @@ public class WebScreenshotTests
         }
 
         return bytes;
+    }
+
+    private sealed class FakeRoutingLinkFactory : DevTerm.Configuration.IRoutingLinkFactory
+    {
+        public DevTerm.Configuration.IRoutingLink Create(DevTerm.Configuration.RoutingOptions options) => new FakeRoutingLink();
+    }
+
+    private sealed class FakeRoutingLink : DevTerm.Configuration.IRoutingLink
+    {
+        public event Action<Exception?>? Lost
+        {
+            add { }
+            remove { }
+        }
+
+        public Task StartAsync(DevTerm.Core.Routing.MessageRouter router, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task PublishAsync(string topic, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    [TestMethod]
+    public Task RoutingPage_AddsARule_TestsItAndConnects() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/routing?token=demo-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("Stopped");
+        await page.Locator("[data-host]").FillAsync("broker.test");
+        await page.Locator("[data-addrule]").ClickAsync();
+        await page.Locator("[data-match]").FillAsync("^T=(?<t>.+)$");
+        await page.Locator("[data-topic]").FillAsync("bench/temp");
+        await page.Locator("[data-payload]").FillAsync("${t}");
+        await page.Locator("[data-sample]").FillAsync("T=21");
+        await page.Locator("[data-test]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-testline]")).ToContainTextAsync("topic bench/temp, payload 21");
+        await page.Locator("[data-apply]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-message]")).ToContainTextAsync("Applied.");
+        await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("Broker: Connected");
+        await page.Locator("[data-direction]").SelectOptionAsync("BrokerToDevice");
+        await Assertions.Expect(page.Locator("[data-confirm]")).ToBeVisibleAsync();
+        await page.Locator("[data-direction]").SelectOptionAsync("DeviceToBroker");
+        await SaveAsync(page, "web-blazor-routing.png");
+        await page.Locator("[data-stop]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("Stopped");
+    }, configure: built => built.Hub.Tab.RoutingLinkFactory = new FakeRoutingLinkFactory());
+
+    [TestMethod]
+    public Task RoutingPage_ReadOnlyViewer_CannotEdit() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/routing?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await Assertions.Expect(page.Locator("[data-host]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-apply]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-addrule]")).ToBeDisabledAsync();
+    });
+
+    [TestMethod]
+    public async Task RoutingConfirm_WaitsForTheViewersDecision()
+    {
+        var (built, _) = (WebHost.Build(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true }, new WebOptions { Urls = $"http://127.0.0.1:{FreePort()}", Token = "t" }, []), 0);
+        await using (built.Hub)
+        {
+            var rule = new DevTerm.Core.Routing.RoutingRule { Direction = DevTerm.Core.Routing.RoutingDirection.BrokerToDevice, Topic = "cmd", Send = "x", Confirm = true };
+            var decision = built.Hub.Tab.RoutingConfirm!(rule, "x");
+            Assert.IsFalse(decision.IsCompleted);
+            var pending = built.Hub.PendingConfirms.Single();
+            Assert.AreEqual("cmd", pending.Topic);
+            Assert.IsTrue(built.Hub.ResolveConfirm(pending.Id, DevTerm.Core.Routing.RoutingConfirmChoice.Always));
+            Assert.AreEqual(DevTerm.Core.Routing.RoutingConfirmChoice.Always, await decision);
+            Assert.IsEmpty(built.Hub.PendingConfirms);
+            Assert.IsFalse(built.Hub.ResolveConfirm(pending.Id, DevTerm.Core.Routing.RoutingConfirmChoice.Drop));
+        }
     }
 
     [TestMethod]

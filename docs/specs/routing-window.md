@@ -111,6 +111,10 @@ Failed --> Connecting : Start
 - The confirm prompt is a modal (WPF dialog, TUI message box) with Send once / Always this session / Drop.
 - TUI: the sample-test result is one line, so with several rules its tail is cut off; WPF shows one line per rule.
 
+## Web
+
+`/routing` in `DevTerm.Web` has the same fields and actions over the same `RoutingViewModel` (data attributes `data-host`, `data-addrule`, `data-test`, `data-apply`, `data-start`, `data-stop`, `data-save`). The confirm prompt appears inline under Run for every browser; the first answer wins. Read-only viewers cannot edit or answer.
+
 ## Open items
 
 - ~~Passwords in the profile~~ Decided 2026-10-03: the password is saved in the profile as plain text (this is a development tool; dev passwords such as `DevPass1` are fine to commit), and an environment variable overrides it when set (`DEVTERM_ROUTING__PASSWORD`, via the normal `DEVTERM_` layering).

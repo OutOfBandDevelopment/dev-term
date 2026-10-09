@@ -1,0 +1,164 @@
+@page "/routing"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Configuration
+@using DevTerm.Core.Routing
+@inject SessionHub Hub
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Routing</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: routing cannot be changed.</p> }
+@if (_message is not null) { <p class="note" data-message>@_message</p> }
+
+@if (_vm is not null)
+{
+    <fieldset>
+        <legend>Broker</legend>
+        <p data-status>@_vm.StatusText</p>
+        <div class="row">
+            <label>Protocol
+                <select data-protocol @bind="_vm.Draft.Protocol" disabled="@_readOnly">
+                    @foreach (var p in RoutingViewModel.Protocols) { <option value="@p">@p.ToUpperInvariant()</option> }
+                </select>
+            </label>
+            <label>Host <input data-host type="text" @bind="_vm.Draft.Host" disabled="@_readOnly" /></label>
+            <label>Port <input data-port type="number" @bind="_vm.Draft.Port" disabled="@_readOnly" /></label>
+            <label><input data-tls type="checkbox" @bind="_vm.Draft.Tls" disabled="@_readOnly" /> TLS</label>
+        </div>
+        <div class="row">
+            <label>Username <input data-username type="text" @bind="_vm.Draft.Username" disabled="@_readOnly" /></label>
+            <label>Password <input data-password type="password" @bind="_vm.Draft.Password" disabled="@_readOnly" autocomplete="off" /></label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Rules</legend>
+        @for (var i = 0; i < _vm.Draft.Rules.Count; i++)
+        {
+            var index = i;
+            var rule = _vm.Draft.Rules[i];
+            <div class="row" data-rule="@index">
+                <span>@(index + 1)</span>
+                <select data-direction @bind="rule.Direction" disabled="@_readOnly" aria-label="Direction">
+                    <option value="@RoutingDirection.DeviceToBroker">Device to broker</option>
+                    <option value="@RoutingDirection.BrokerToDevice">Broker to device</option>
+                </select>
+                <label>Match <input data-match type="text" @bind="rule.Match" disabled="@_readOnly" /></label>
+                <label>Topic <input data-topic type="text" @bind="rule.Topic" disabled="@_readOnly" /></label>
+                @if (rule.Direction == RoutingDirection.DeviceToBroker)
+                {
+                    <label>Payload <input data-payload type="text" @bind="rule.Payload" disabled="@_readOnly" /></label>
+                }
+                else
+                {
+                    <label>Send <input data-send type="text" @bind="rule.Send" disabled="@_readOnly" /></label>
+                    <label><input data-confirm type="checkbox" @bind="rule.Confirm" disabled="@_readOnly" /> Confirm</label>
+                }
+                <span class="note" data-hits>Hits: @_vm.Hits(index)</span>
+                <button data-up disabled="@_readOnly" @onclick="() => _vm.MoveRule(index, -1)">Up</button>
+                <button data-down disabled="@_readOnly" @onclick="() => _vm.MoveRule(index, 1)">Down</button>
+                <button data-remove disabled="@_readOnly" @onclick="() => _vm.RemoveRule(index)">Remove</button>
+            </div>
+        }
+        <div class="row"><button data-addrule disabled="@_readOnly" @onclick="() => _vm.AddRule()">Add rule</button></div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Test</legend>
+        <div class="row">
+            <label>Sample line <input data-sample type="text" @bind="_sample" /></label>
+            <button data-test @onclick="RunTest">Test</button>
+        </div>
+        @foreach (var line in _testLines) { <p data-testline>@line</p> }
+    </fieldset>
+
+    <fieldset>
+        <legend>Run</legend>
+        <div class="row">
+            <button data-apply disabled="@_readOnly" @onclick="ApplyAsync">Apply</button>
+            <button data-start disabled="@_readOnly" @onclick="Start">Start</button>
+            <button data-stop disabled="@_readOnly" @onclick="StopAsync">Stop</button>
+            <button data-save disabled="@_readOnly" @onclick="Save">Save to profile</button>
+        </div>
+        <p class="note" data-counts>Unmatched: @_vm.Unmatched - Dropped: @_vm.Dropped</p>
+        @foreach (var c in Hub.PendingConfirms)
+        {
+            var id = c.Id;
+            <div class="row" data-confirm-prompt="@id">
+                <span>Send "@c.Text" to the device (from @c.Topic)?</span>
+                <button data-once disabled="@_readOnly" @onclick="() => Decide(id, RoutingConfirmChoice.SendOnce)">Send once</button>
+                <button data-always disabled="@_readOnly" @onclick="() => Decide(id, RoutingConfirmChoice.Always)">Always this session</button>
+                <button data-drop disabled="@_readOnly" @onclick="() => Decide(id, RoutingConfirmChoice.Drop)">Drop</button>
+            </div>
+        }
+    </fieldset>
+
+    <fieldset>
+        <legend>History</legend>
+        @if (_vm.History.Count == 0) { <p class="note" data-nohistory>No messages yet.</p> }
+        <pre class="out" data-history>@string.Join('\n', _vm.History.TakeLast(100).Select(m => $"{m.Timestamp:HH:mm:ss.fff} {(m.Direction == RoutingDirection.DeviceToBroker ? "->" : "<-")} {m.Topic} {m.Payload}"))</pre>
+    </fieldset>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private string? _message;
+    private RoutingViewModel? _vm;
+    private string _sample = string.Empty;
+    private IReadOnlyList<string> _testLines = [];
+    private Timer? _timer;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        _vm = new RoutingViewModel(Hub.Tab, new ConnectionProfileStore());
+        _timer = new Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void RunTest() => _testLines = _vm!.Test(_sample);
+
+    private async Task ApplyAsync()
+    {
+        _message = await _vm!.ApplyAsync() ?? "Applied.";
+    }
+
+    private void Start() => _message = _vm!.Start() ?? "Routing started.";
+
+    private async Task StopAsync()
+    {
+        await _vm!.StopAsync();
+        _message = "Routing stopped.";
+    }
+
+    private void Save() => _message = _vm!.SaveToProfile();
+
+    private void Decide(int id, RoutingConfirmChoice choice)
+    {
+        if (!_readOnly)
+        {
+            Hub.ResolveConfirm(id, choice);
+        }
+    }
+
+    public void Dispose()
+    {
+        _subscription.Dispose();
+        _timer?.Dispose();
+    }
+}

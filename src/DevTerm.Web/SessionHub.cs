@@ -1,10 +1,23 @@
 using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
+using DevTerm.Core.Routing;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
 using DevTerm.Logging;
 
 namespace DevTerm.Web;
+
+/// <summary>A broker-to-device message awaiting the viewer's decision.</summary>
+public sealed class PendingConfirm(int id, string topic, string text)
+{
+    public int Id { get; } = id;
+
+    public string Topic { get; } = topic;
+
+    public string Text { get; } = text;
+
+    internal TaskCompletionSource<RoutingConfirmChoice> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
 
 /// <summary>
 /// The one live <see cref="Session"/> every browser viewer shares. Output is broadcast to all viewers (with a short replayed
@@ -32,7 +45,57 @@ public sealed class SessionHub : IAsyncDisposable
         Catalog = catalog;
         (_parser, _input) = ResolveInput(catalog, options);
         Attach(session, options);
+        Tab = NewTab(session, catalog, options);
     }
+
+    /// <summary>The session as the desktop apps' tab: it owns the broker routing (Device > Routing) and starts it when the session opens.</summary>
+    public SessionTab Tab { get; private set; }
+
+    private readonly List<PendingConfirm> _confirms = [];
+    private int _confirmId;
+
+    /// <summary>Broker-to-device messages waiting for a Send once / Always / Drop decision (a rule's Confirm flag).</summary>
+    public IReadOnlyList<PendingConfirm> PendingConfirms
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _confirms];
+            }
+        }
+    }
+
+    /// <summary>Answers a pending confirmation; false when it is gone.</summary>
+    public bool ResolveConfirm(int id, RoutingConfirmChoice choice)
+    {
+        PendingConfirm? found;
+        lock (_gate)
+        {
+            found = _confirms.Find(c => c.Id == id);
+            if (found is not null)
+            {
+                _confirms.Remove(found);
+            }
+        }
+
+        found?.Completion.TrySetResult(choice);
+        return found is not null;
+    }
+
+    private SessionTab NewTab(Session session, PresenterCatalog catalog, CliOptions options) => new(session, catalog, options)
+    {
+        RoutingConfirm = async (rule, text) =>
+        {
+            var pending = new PendingConfirm(Interlocked.Increment(ref _confirmId), rule.Topic, text);
+            lock (_gate)
+            {
+                _confirms.Add(pending);
+            }
+
+            return await pending.Completion.Task.ConfigureAwait(false);
+        },
+    };
 
     private static (string Parser, IPresenterInput Input) ResolveInput(PresenterCatalog catalog, CliOptions options)
     {
@@ -84,6 +147,9 @@ public sealed class SessionHub : IAsyncDisposable
         }
 
         StopLogging();
+        var oldTab = Tab;
+        Tab = NewTab(built.Session, built.Catalog, options);
+        await oldTab.Routing.StopAsync();
         await old.DisposeAsync();
         Publish($"Switched to {name}.");
         SessionChanged?.Invoke();
