@@ -203,3 +203,12 @@ part itself — the condition a live control panel and the preview evaluate — 
   as XML, but edited like any other.
 - The editor edits the text-protocol schema; a binary manifest's `.ksy` layout is referenced, not
   edited.
+
+## Web
+
+`DevTerm.Web` `/manifest` (nav: Manifest) is the same editor over `ManifestEditorViewModel`: a toolbar (New, Open, Save, Check, Undo, Redo), the Outline with Add/Remove/Up/Down, the selected part's generated form (`FormDefinitionGenerator` drawn by the `FormFields` component, the web's `FormRenderer`) and a Preview of the panel's sections and controls (a list, sends nothing). One editor is shared by the host. Differences from the desktop apps:
+
+- Open lists the manifests found in the user folder (`Web:ManifestsDirectory`, default `~/.dev-term/manifests`) and the installed folder; arbitrary host paths, Save As, Use recording and Import .ksy are not offered.
+- A page cannot show a modal, so New and Open are disabled while there are unsaved edits until the viewer ticks "Allow New or Open to discard them".
+- Expression pickers and the live-renderer preview are not on the web yet; expressions are typed as text.
+- Read-only viewers can look and Check, but not change, save, undo or open.

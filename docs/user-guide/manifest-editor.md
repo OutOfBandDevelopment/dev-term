@@ -115,3 +115,9 @@ a manifest file, folder, or `.zip`. It opens a manifest even if it has errors, s
 ## Previewing with a recorded session
 
 Press **Use recording...** (WPF) or **Log** (TUI, next to **Ksy**) and pick a session log you captured earlier. The preview panel and the expression pickers then show the values the device really sent, in order, instead of generated ones; **Next sample** steps through them. Press the button again to go back to generated data.
+
+## On the web
+
+Open `/manifest` (the Manifest link) for the same editor in a browser: choose a manifest under Open or press New, pick a part in the Outline, edit its form, then Check and Save. See the [spec](../specs/manifest-editor.md#web) for what differs from the desktop apps.
+
+![Manifest editor on the web](images/web-blazor-manifest.png)

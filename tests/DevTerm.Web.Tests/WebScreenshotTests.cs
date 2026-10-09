@@ -36,12 +36,12 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null, string? converterToolsFile = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null, string? converterToolsFile = null, string? manifestsDirectory = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory, ConverterToolsFile = converterToolsFile },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory, ConverterToolsFile = converterToolsFile, ManifestsDirectory = manifestsDirectory },
             []);
         configure?.Invoke(built);
         await built.Hub.StartAsync();
@@ -244,6 +244,51 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("[data-add]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
     }, converterToolsFile: Path.Combine(Path.GetTempPath(), "devterm-web-conv-none.json"));
+
+    [TestMethod]
+    public async Task ManifestPage_BuildsAManifest_ChecksAndSavesIt()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/manifest?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await Assertions.Expect(page.Locator("[data-title]")).ToContainTextAsync("Manifest Editor");
+            var name = page.Locator("[data-field=Name] input");
+            await name.FillAsync("Bench Meter");
+            await name.BlurAsync();
+            await Assertions.Expect(page.Locator("[data-title]")).ToContainTextAsync("Bench Meter");
+            await Assertions.Expect(page.Locator("[data-dirty]")).ToBeVisibleAsync();
+            await page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Commands" }).First.ClickAsync();
+            await page.Locator("[data-add]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-field=Template]")).ToBeVisibleAsync();
+            await page.Locator("[data-check]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("Not valid");
+            await page.Locator("[data-field=Name] input").FillAsync("Read");
+            await page.Locator("[data-field=Name] input").BlurAsync();
+            await page.Locator("[data-field=Template] input").FillAsync("MEAS?");
+            await page.Locator("[data-field=Template] input").BlurAsync();
+            await page.Locator("[data-check]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("Valid");
+            await page.Locator("[data-save]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-dirty]")).ToHaveCountAsync(0);
+            await SaveAsync(page, "web-blazor-manifest.png");
+            await page.Locator("[data-undo]").ClickAsync();
+        }, manifestsDirectory: folder);
+        Assert.IsTrue(File.Exists(Path.Combine(folder, "Bench Meter", "device.json")) || Directory.GetFiles(folder, "*.json", SearchOption.AllDirectories).Length == 1);
+    }
+
+    [TestMethod]
+    public Task ManifestPage_ReadOnlyViewer_CannotEdit() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/manifest?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await Assertions.Expect(page.Locator("[data-new]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-field=Name] input")).ToBeDisabledAsync();
+    }, manifestsDirectory: Path.Combine(Path.GetTempPath(), "devterm-web-manifests-none"));
 
     [TestMethod]
     public Task RoutingPage_AddsARule_TestsItAndConnects() => RunAsync(async (page, baseUrl) =>
