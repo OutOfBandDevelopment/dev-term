@@ -45,3 +45,5 @@ default) and
 `TRIM10.5\n`). Both pass with the fix; the existing round/clamp assertions in
 `InvokeAsync_SendsTheFormattedTemplatePlusTheTerminator` are unaffected by the reordering. Full
 `TestCategory=Unit` run green across the whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

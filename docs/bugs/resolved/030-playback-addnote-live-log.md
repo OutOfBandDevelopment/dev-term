@@ -46,3 +46,5 @@ removes the memory/disk desync regardless of *why* the save failed. Confirmed wi
 `BugRegression`), which holds `_path` open with `FileShare.Read` (mirroring `SessionLogWriter`'s own share mode) and
 confirms `AddNote` throws (`UnauthorizedAccessException` on Windows, confirmed directly against the pre-fix code)
 while leaving `Log.Records.Count`, `Engine.Position` and `SelectionEnd` all unchanged.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

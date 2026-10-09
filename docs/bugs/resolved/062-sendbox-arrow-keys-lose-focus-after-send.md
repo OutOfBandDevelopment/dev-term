@@ -70,3 +70,5 @@ Fixed on 2026-09-30 on `dev/hardware-review`: wrapped `MainWindow.SendCurrentInp
 regardless of which path it takes. Regression tests:
 `MainWindowSendBoxFocusTests.SendCurrentInputAsync_RestoresFocusToSendBox_SoArrowKeysKeepRecallingHistory` and
 `...WithEmptyInput_StillRestoresFocusToSendBox`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

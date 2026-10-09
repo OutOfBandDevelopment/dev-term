@@ -43,3 +43,4 @@ available in this environment to verify a real negotiated-MTU path against. Conf
 tests (`BleWriteChunkerTests`, one tagged `BugRegression`) that exercise the chunking boundary directly — the
 larger-than-MTU-truncation failure mode itself still needs real hardware to confirm, as the report says.
 
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

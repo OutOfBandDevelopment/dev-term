@@ -38,3 +38,5 @@ a unit test, and there's no BLE hardware/profile currently configured in this en
 or `launchSettings.json` to verify the real-world effect (the peripheral re-advertising) against. The fix itself —
 storing and disposing the one resource the report identifies, in the same places `_device` already is — is a
 direct, low-risk read of the existing code, not something narrowly dependent on the hardware-only claim.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -87,3 +87,5 @@ correctness instead rests on the same code-level reasoning that confirmed the bu
 equivalence to bug 017's WPF fix, independently verified there against a deterministic test in a
 codebase where the old/new sessions are two genuinely distinct objects with no shared lock), plus the
 full `TestCategory=Unit` suite (1291 tests) passing unchanged with the fix applied.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

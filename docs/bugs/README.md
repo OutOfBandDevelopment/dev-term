@@ -18,8 +18,10 @@ fix, and the tests that should come with the fix.
   durable part.
 
 Bugs 001-059 came from a static, read-only review of `main` @ `42758db` on 2026-09-26 (five parallel reviewers:
-Core/Logging/presenters, transports, devices/manifests/UI model, Configuration, TUI/WPF front ends). None has been
-reproduced by running it yet. Six were found independently by two reviewers (001, 006, 007, 008, 009, 020).
+Core/Logging/presenters, transports, devices/manifests/UI model, Configuration, TUI/WPF front ends). All of them are now closed (see the tables below); none had been
+reproduced by running it when filed. Six were found independently by two reviewers (001, 006, 007, 008, 009, 020).
+
+As of 2026-10-09 there are no open or in-progress bugs: every report is under `resolved/` and every row below links there.
 
 ## High
 

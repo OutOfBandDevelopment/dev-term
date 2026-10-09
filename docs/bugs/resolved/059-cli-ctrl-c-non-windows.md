@@ -55,3 +55,5 @@ new `UncancellableStdin` fake `TextReader` whose `ReadLineAsync(CancellationToke
 defect (never observes the token once called). Confirmed failing (5s timeout) against the pre-fix direct-await
 code, passing (in ~30ms) after the fix. Full `TestCategory=Unit` run green across the whole solution (no
 regressions); full solution `dotnet build` clean (0 warnings, 0 errors).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

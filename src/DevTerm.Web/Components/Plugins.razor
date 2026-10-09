@@ -1,0 +1,97 @@
+@page "/plugins"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Core.Plugins
+@implements IDisposable
+@inject PersistentComponentState PersistedState
+
+<h2>Plugins</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: approvals cannot be changed.</p> }
+<p class="note">Out-of-process plugins run a program with your rights, so each needs your approval. An approved plugin is available at once, with no restart.</p>
+
+<h3>Waiting for approval</h3>
+@if (_pending.Count == 0)
+{
+    <p class="note" data-none-pending>No plugin is waiting for approval.</p>
+}
+@foreach (var plugin in _pending)
+{
+    var request = plugin.Request;
+    <fieldset data-pending="@request.Name">
+        <legend>@request.Name @request.Version</legend>
+        <p><code>@request.CommandLine</code></p>
+        <p class="note">from @request.Folder (content hash @request.Hash[..12])</p>
+        <div class="row">
+            <button data-once disabled="@_readOnly" @onclick="() => Approve(request.Name, PluginApprovalChoice.Once)">Run this time</button>
+            <button data-always disabled="@_readOnly" @onclick="() => Approve(request.Name, PluginApprovalChoice.Always)">Always for this version</button>
+        </div>
+    </fieldset>
+}
+
+<h3>Remembered approvals</h3>
+@if (_approvals.Count == 0)
+{
+    <p class="note" data-none-approved>No plugin approval is remembered.</p>
+}
+@foreach (var approval in _approvals)
+{
+    var name = approval.Name;
+    <div class="row" data-approved="@name">
+        <span>@name</span>
+        <span class="note">@approval.Hash[..Math.Min(12, approval.Hash.Length)] · @approval.ApprovedAt.ToString("yyyy-MM-dd HH:mm")</span>
+        <button data-forget disabled="@_readOnly" @onclick="() => Forget(name)">Forget</button>
+    </div>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private IReadOnlyList<PendingPlugin> _pending = [];
+    private IReadOnlyList<PluginApproval> _approvals = [];
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        Reload();
+    }
+
+    private void Reload()
+    {
+        _pending = LivePlugins.Pending;
+        _approvals = PluginTrust.Approvals();
+    }
+
+    private void Approve(string name, PluginApprovalChoice choice)
+    {
+        if (!_readOnly)
+        {
+            LivePlugins.Approve(name, choice);
+            Reload();
+        }
+    }
+
+    private void Forget(string name)
+    {
+        if (!_readOnly)
+        {
+            PluginTrust.Forget(name);
+            Reload();
+        }
+    }
+
+    public void Dispose() => _subscription.Dispose();
+}

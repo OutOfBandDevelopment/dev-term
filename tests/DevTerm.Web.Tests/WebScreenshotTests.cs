@@ -36,13 +36,14 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null, string? converterToolsFile = null, string? manifestsDirectory = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null, string? converterToolsFile = null, string? manifestsDirectory = null, IEnumerable<DevTerm.Core.Control.IDeviceConfigEditor>? configEditors = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
             new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory, ConverterToolsFile = converterToolsFile, ManifestsDirectory = manifestsDirectory },
-            []);
+            [],
+            configEditors);
         configure?.Invoke(built);
         await built.Hub.StartAsync();
         await built.App.StartAsync();
@@ -244,6 +245,76 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("[data-add]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
     }, converterToolsFile: Path.Combine(Path.GetTempPath(), "devterm-web-conv-none.json"));
+
+    [TestMethod]
+    public async Task PluginsPage_ApprovesAWaitingPluginLive_ThenForgetsIt()
+    {
+        var home = Path.Combine(Path.GetTempPath(), $"devterm-web-plugins-{Guid.NewGuid():N}");
+        var folder = Path.Combine(home, "plugins", "shout");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "shout.py"), "print('x')");
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """{ "name": "py-shout", "version": "1.2.0", "contract": 1, "process": { "command": "python", "arguments": ["{folder}/shout.py"] } }""");
+        var previous = Environment.GetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable);
+        Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, home);
+        DevTerm.Core.Plugins.LivePlugins.Reset();
+        DevTerm.Core.Plugins.PluginLoader.LoadAll(Path.Combine(home, "plugins"), new Microsoft.Extensions.DependencyInjection.ServiceCollection());
+        try
+        {
+            await RunAsync(async (page, baseUrl) =>
+            {
+                await page.GotoAsync($"{baseUrl}/plugins?token=demo-token");
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                await Task.Delay(1000);
+                await Assertions.Expect(page.Locator("[data-pending=py-shout]")).ToBeVisibleAsync();
+                await SaveAsync(page, "web-blazor-plugins.png");
+
+                await page.Locator("[data-always]").ClickAsync();
+                await Assertions.Expect(page.Locator("[data-none-pending]")).ToBeVisibleAsync();
+                await Assertions.Expect(page.Locator("[data-approved=py-shout]")).ToBeVisibleAsync();
+                Assert.IsTrue(DevTerm.Core.Plugins.LivePlugins.ActiveNames.Contains("py-shout"));
+
+                await page.Locator("[data-approved=py-shout] [data-forget]").ClickAsync();
+                await Assertions.Expect(page.Locator("[data-none-approved]")).ToBeVisibleAsync();
+            });
+        }
+        finally
+        {
+            DevTerm.Core.Plugins.LivePlugins.Reset();
+            Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, previous);
+            Directory.Delete(home, true);
+        }
+    }
+
+    [TestMethod]
+    public async Task PluginsPage_ReadOnlyViewer_CannotApprove()
+    {
+        var home = Path.Combine(Path.GetTempPath(), $"devterm-web-plugins-{Guid.NewGuid():N}");
+        var folder = Path.Combine(home, "plugins", "shout");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "shout.py"), "print('x')");
+        File.WriteAllText(Path.Combine(folder, "plugin.json"), """{ "name": "py-shout", "version": "1.2.0", "contract": 1, "process": { "command": "python", "arguments": ["{folder}/shout.py"] } }""");
+        var previous = Environment.GetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable);
+        Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, home);
+        DevTerm.Core.Plugins.LivePlugins.Reset();
+        DevTerm.Core.Plugins.PluginLoader.LoadAll(Path.Combine(home, "plugins"), new Microsoft.Extensions.DependencyInjection.ServiceCollection());
+        try
+        {
+            await RunAsync(async (page, baseUrl) =>
+            {
+                await page.GotoAsync($"{baseUrl}/plugins?token=watch-token");
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                await Task.Delay(1000);
+                await Assertions.Expect(page.Locator("[data-always]")).ToBeDisabledAsync();
+
+            });
+        }
+        finally
+        {
+            DevTerm.Core.Plugins.LivePlugins.Reset();
+            Environment.SetEnvironmentVariable(DevTerm.Core.DevTermHome.EnvironmentVariable, previous);
+            Directory.Delete(home, true);
+        }
+    }
 
     [TestMethod]
     public async Task ManifestPage_BuildsAManifest_ChecksAndSavesIt()
@@ -597,6 +668,57 @@ public class WebScreenshotTests
         await page.Locator("[data-project=\"Bench TCP\"] button", new PageLocatorOptions { HasText = "Really delete?" }).ClickAsync();
         await Assertions.Expect(page.Locator("[data-project]")).ToHaveCountAsync(2);
     }, BenchProject());
+
+    private sealed class FakeConfigEditor : DevTerm.Core.Control.IDeviceConfigEditor
+    {
+        public Dictionary<string, string> Device { get; } = new() { ["ip"] = "192.168.0.201", ["baud"] = "9600" };
+        public string Id => "fake";
+        public string Title => "Fake bridge";
+        public DevTerm.UiDefinitions.UiDefinition BuildDefinition() => new()
+        {
+            Name = "Fake",
+            Sections = [new DevTerm.UiDefinitions.UiSection { Controls = [new DevTerm.UiDefinitions.TextFieldControl { Id = "ip", Label = "IP address" }, new DevTerm.UiDefinitions.TextFieldControl { Id = "baud", Label = "Baud" }] }],
+        };
+        public Task<IReadOnlyDictionary<string, string>> ReadAsync(DevTerm.Core.Control.DeviceConfigTarget target, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>(Device));
+        public IReadOnlyList<DevTerm.Core.Control.DeviceConfigIssue> Validate(IReadOnlyDictionary<string, string> values) =>
+            values["baud"] == "0" ? [new DevTerm.Core.Control.DeviceConfigIssue("baud", "must be positive")] : [];
+        public bool WillDropConnection(DevTerm.Core.Control.DeviceConfigTarget target, IReadOnlyDictionary<string, string> current, IReadOnlyDictionary<string, string> values) => current["ip"] != values["ip"];
+        public Task<DevTerm.Core.Control.DeviceConfigWriteResult> WriteAsync(DevTerm.Core.Control.DeviceConfigTarget target, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+        {
+            foreach (var (k, v) in values) { Device[k] = v; }
+            return Task.FromResult(new DevTerm.Core.Control.DeviceConfigWriteResult(new Dictionary<string, string>(Device), RebootRequired: true));
+        }
+    }
+
+    [TestMethod]
+    public async Task ProfilesPage_ConfigureDevice_ReadsReviewsAndWritesThroughAnEditor()
+    {
+        var editor = new FakeConfigEditor();
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/profiles?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-project=Scope] button", new PageLocatorOptions { HasText = "Edit" }).ClickAsync();
+            await page.Locator("#cfg-editor").SelectOptionAsync("fake");
+            await page.Locator("#cfg-read").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-cfg=ip] input")).ToHaveValueAsync("192.168.0.201");
+
+            await page.Locator("[data-cfg=baud] input").FillAsync("19200");
+            await page.Locator("[data-cfg=baud] input").BlurAsync();
+            await Assertions.Expect(page.Locator("[data-cfg-change=baud]")).ToContainTextAsync("9600 to 19200");
+            await page.Locator("#configure").ScreenshotAsync(new LocatorScreenshotOptions { Path = Path.Combine(RepoRoot(), "docs", "user-guide", "images", "web-blazor-configure-device.png") });
+            await page.Locator("#cfg-write").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-cfg-message]")).ToContainTextAsync("Restart the device");
+            Assert.AreEqual("19200", editor.Device["baud"]);
+
+            await page.Locator("[data-cfg=baud] input").FillAsync("0");
+            await page.Locator("[data-cfg=baud] input").BlurAsync();
+            await Assertions.Expect(page.Locator("[data-cfg-issue=baud]")).ToContainTextAsync("must be positive");
+            await Assertions.Expect(page.Locator("#cfg-write")).ToBeDisabledAsync();
+        }, BenchProject(), configEditors: [editor]);
+    }
 
     [TestMethod]
     public Task ProfilesPage_AnUnnamedConnection_ShowsTheValidationError() => RunAsync(async (page, baseUrl) =>

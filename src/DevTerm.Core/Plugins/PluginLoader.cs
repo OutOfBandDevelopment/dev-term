@@ -103,6 +103,7 @@ public static class PluginLoader
         var request = new PluginApprovalRequest(manifest.Name, manifest.Version, root, string.Join(' ', new[] { command }.Concat(arguments)), PluginHash.Compute(root));
         if (!PluginTrust.Authorise(request))
         {
+            LivePlugins.AddPending(new PendingPlugin(request, command, arguments, TimeSpan.FromMilliseconds(Math.Clamp(process.ReplyTimeoutMs, 100, 60000))));
             return new(folder, manifest.Name, false, $"needs your approval to run: {request.CommandLine}");
         }
 

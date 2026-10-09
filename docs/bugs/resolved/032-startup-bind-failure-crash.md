@@ -63,3 +63,5 @@ suites pass except one pre-existing, unrelated failure
 (`TuiToolWindowLayoutTests.Playback_PartWayThroughWithANote`, a `PlaybackMode` layout/rendering test untouched by
 this change, confirmed present both with and without this fix via a targeted `git stash`); full solution build is
 0 warnings/0 errors.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

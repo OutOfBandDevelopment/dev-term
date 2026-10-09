@@ -49,3 +49,5 @@ reached. Regression tests: `DeviceManifestTests.Load_UiFileIsARootedPath_ThrowsI
 `Save_UiFileIsARootedPath_ThrowsInsteadOfWritingOutsideTheManifestFolder`,
 `Save_KaitaiFileEscapesTheManifestFolderWithDotDot_Throws`,
 `Validate_UiFileOrKaitaiFileEscapesTheManifestFolder_ReportsAnError`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

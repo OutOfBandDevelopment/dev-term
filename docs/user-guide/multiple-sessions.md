@@ -37,7 +37,7 @@ is active, the same way.
 
 ## Keyboard shortcuts
 
-Both front ends bind the same four shortcuts: **Ctrl+T** (or **Ctrl+Shift+T**) opens New Session, **Ctrl+W** (or **Ctrl+Shift+W**) closes the
+Both front ends bind the same four shortcuts: **Ctrl+Shift+T** opens New Session, **Ctrl+Shift+W** closes the
 active tab (File > Close Session), and **Ctrl+Tab** / **Ctrl+Shift+Tab** switch to the next/previous
 tab, wrapping around at either end (a no-op with fewer than two tabs open).
 

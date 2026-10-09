@@ -27,12 +27,14 @@ public sealed class PluginTrustTests
         Directory.CreateDirectory(_plugins);
         Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, _home);
         PluginTrust.Approver = null;
+        LivePlugins.Reset();
     }
 
     [TestCleanup]
     public void Cleanup()
     {
         PluginTrust.Approver = null;
+        LivePlugins.Reset();
         Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, _previousHome);
         Directory.Delete(_home, true);
     }
@@ -76,6 +78,74 @@ public sealed class PluginTrustTests
         Assert.Contains("needs your approval", result.Message);
         Assert.Contains("shout.py", result.Message);
         Assert.IsEmpty(services);
+    }
+
+    [TestMethod]
+    public void AnUnapprovedPlugin_Waits_AndApprovingItMakesItsPresenterResolvableAtOnce()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+        var catalog = new PresenterCatalog([]);
+        Assert.IsFalse(catalog.TryGet("py-shout", out _));
+        Assert.AreEqual("py-shout", LivePlugins.Pending.Single().Request.Name);
+
+        Assert.IsTrue(LivePlugins.Approve("py-shout", PluginApprovalChoice.Once));
+
+        Assert.IsEmpty(LivePlugins.Pending);
+        Assert.IsTrue(catalog.TryGet("py-shout", out var presenter));
+        Assert.AreEqual("py-shout", presenter.Name);
+        CollectionAssert.Contains(catalog.Names.ToList(), "py-shout");
+        Assert.IsFalse(PluginTrust.IsApproved("py-shout", PluginHash.Compute(Path.Combine(_plugins, "shout"))), "Once is not remembered.");
+    }
+
+    [TestMethod]
+    public void ApprovingAlways_RemembersIt_AndDenyChangesNothing()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+
+        Assert.IsFalse(LivePlugins.Approve("py-shout", PluginApprovalChoice.Deny));
+        Assert.HasCount(1, LivePlugins.Pending);
+        Assert.IsTrue(LivePlugins.Approve("py-shout", PluginApprovalChoice.Always));
+
+        Assert.IsTrue(PluginTrust.IsApproved("py-shout", PluginHash.Compute(Path.Combine(_plugins, "shout"))));
+        Assert.IsFalse(LivePlugins.Approve("nope", PluginApprovalChoice.Once));
+    }
+
+    [TestMethod]
+    public void ReviewPending_AsksAboutEachWaitingPlugin_AndApprovesOnlyTheOnesAnsweredYes()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+        var asked = new List<string>();
+
+        var live = LivePlugins.ReviewPending(p =>
+        {
+            asked.Add(p.Request.Name);
+            return PluginApprovalChoice.Once;
+        });
+
+        Assert.AreEqual(1, live);
+        CollectionAssert.AreEqual(new[] { "py-shout" }, asked);
+        Assert.AreEqual(0, LivePlugins.ReviewPending(_ => PluginApprovalChoice.Once), "Nothing is left to ask about.");
+    }
+
+    [TestMethod]
+    public void Review_ForgetsTheApprovalsSaidForget_KeepsTheRest_AndStopsOnStop()
+    {
+        PluginTrust.Remember("a", "1");
+        PluginTrust.Remember("b", "2");
+        PluginTrust.Remember("c", "3");
+
+        var forgotten = PluginTrust.Review(approval => approval.Name switch
+        {
+            "a" => ApprovalReviewChoice.Forget,
+            "b" => ApprovalReviewChoice.Keep,
+            _ => ApprovalReviewChoice.Stop,
+        });
+
+        Assert.AreEqual(1, forgotten);
+        CollectionAssert.AreEqual(new[] { "b", "c" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
     }
 
     [TestMethod]
@@ -230,6 +300,36 @@ public sealed class PluginTrustProcessTests
         finally
         {
             PluginTrust.Approver = null;
+            Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, previous);
+            try
+            {
+                Directory.Delete(home, true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    [TestMethod]
+    public void Approvals_ListsWhatWasRemembered_AndForgetRemovesIt()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "devterm-trust-" + Guid.NewGuid().ToString("N"));
+        var previous = Environment.GetEnvironmentVariable(DevTermHome.EnvironmentVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, home);
+            Assert.AreEqual(0, PluginTrust.Approvals().Count);
+
+            PluginTrust.Remember("shout", "AB12");
+            PluginTrust.Remember("whisper", "CD34");
+
+            CollectionAssert.AreEqual(new[] { "shout", "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+            PluginTrust.Forget("shout");
+            CollectionAssert.AreEqual(new[] { "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+        }
+        finally
+        {
             Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, previous);
             try
             {

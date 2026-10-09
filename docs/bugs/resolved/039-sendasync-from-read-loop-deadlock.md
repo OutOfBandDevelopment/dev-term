@@ -37,3 +37,5 @@ which never matched: `Task.Run(Func<Task>)` returns an unwrapped proxy task with
 async state machine executing `PumpAsync`'s body) and throws `InvalidOperationException` instead of awaiting the
 read loop, which would otherwise deadlock on itself. Regression test:
 `SessionTests.SendAsync_CalledSynchronouslyFromTheReadLoopsOutputHandler_FailsFastInsteadOfDeadlockingWhenTheSendFails`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

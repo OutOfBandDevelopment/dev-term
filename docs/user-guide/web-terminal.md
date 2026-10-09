@@ -113,6 +113,18 @@ into the project file, or shows what is wrong (for example a missing port). **De
 
 ![Adding a TCP connection](images/web-blazor-profile-editor.png)
 
+When the host has a device configuration editor, the connection form also has a **Configure device** section: choose the editor, **Read from device**, change values (each change is listed before anything is sent), then **Write to device**. No real editor ships yet, so this capture uses a test double.
+
+![Configure device](images/web-blazor-configure-device.png)
+
+The TUI and WPF have the same flow under **Device > Configure device...** (Host and Port start from the active connection). No real editor ships yet, so today the editor list is empty outside tests; the first device editor fills it in for all three front ends.
+
+Both dialogs, shown over the test-only fake editor (an example, not a real device), after Read and one edit to the IP address:
+
+![Configure device in the TUI](images/tui-configure-device.png)
+
+![Configure device in WPF](images/wpf-configure-device.png)
+
 ### Sending commands from a script
 
 `--controlhttp 5090 --controltoken ctl` adds a second, command-only door on the shared session, with a token of its own:
@@ -131,3 +143,14 @@ With `--Web:Panel busylight` (or `k8055`), open `/panel` for a server-rendered c
 ![The /panel page for a read-only viewer](images/web-blazor-panel-readonly.png)
 
 These are real browser captures taken by `WebScreenshotTests`, which drives the installed Microsoft Edge through Playwright (Integration; Inconclusive without Edge), so re-run that class when the page changes.
+
+## The other web pages
+
+The tools the desktop apps keep in menus are pages here, all behind the same token. Each has its own guide:
+
+- `/monitor` and `/converters`: [Capturing screen dumps, plots and print jobs](stream-monitor.md)
+- `/routing`: [Routing device messages to a broker](routing.md)
+- `/playback`: [Logging and playing back a session](logging-and-playback.md)
+- `/plugins`: [Plugins](plugins.md)
+- `/themes`: [Choosing a theme](themes.md)
+- `/manifest`: [Editing a device manifest](manifest-editor.md)

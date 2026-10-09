@@ -55,3 +55,5 @@ compile failure (`CS0246: The type or namespace name 'BatchedOutputQueue' could 
 build (0 warnings/0 errors) pass after the fix; one unrelated pre-existing failure
 (`TuiToolWindowLayoutTests.Playback_PartWayThroughWithANote`, a `PlaybackMode` layout/rendering test untouched by this
 fix) was confirmed present both before and after via the same stash technique.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

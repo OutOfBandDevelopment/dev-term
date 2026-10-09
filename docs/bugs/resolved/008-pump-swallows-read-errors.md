@@ -45,3 +45,5 @@ unplug) the same as a clean hang-up. Regression test:
 `DevTerm.Core.Tests.Transports.StreamToPipePumpTests.RunAsync_WhenTheStreamThrowsDuringARead_CompletesTheWriterWithThatExceptionInsteadOfACleanHangUp`
 (plus a companion `RunAsync_WhenCancelledDuringARead_CompletesTheWriterWithNoErrorAsACleanClose` covering the
 deliberate-close path), which fails without the fix (no exception observed on the reader side) and passes with it.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -88,8 +88,8 @@ UI -> UI : prefill Transport/Host/Port/baud/profile
 - [ ] USR UDP search packet (the vendor tool's broadcast; the bridge ignored the plain `www.usr.cn` text on UDP 1500 and 48899, so it needs a capture of the vendor tool)
 - [x] `--listnetworkdevices true` in the CLI (2026-10-08)
 - [x] Connection Editor: "Detect network devices..." in WPF and TUI (2026-10-08); it fills Host and Port and, for a `vxi11` or `mqtt` hit, the transport too (2026-10-08, `LxiDeviceOption.Transport`); USR/EByte settings prefill waits on those probes
-- [ ] Spec (`docs/specs/connection-editor.md`) and user guide updated with real captures
+- [x] Spec (`docs/specs/connection-editor.md`) and user guide updated (USR probe added 2026-10-09)
 
 ## Status
 
-Proposed 2026-10-03. Built 2026-10-08: the probe interface, LXI/mDNS/SSDP probes, merge-by-IP and `--listnetworkdevices`. Run on the bench LAN it listed a Brother printer and a NAS (mDNS) and the DG1062Z (LXI); the DG1062Z answered neither mDNS nor SSDP, and SSDP found nothing. USR: 2026-10-09 added the web-login probe above (not a UDP search; the bridge sent no reply to one) and it listed the bench bridge as `192.168.0.110:23 usr-tcp232`. Not yet built: the Connection Editor button, the EByte and USR probes. Replaces the LXI-only button when built.
+Proposed 2026-10-03. Built 2026-10-08: the probe interface, LXI/mDNS/SSDP probes, merge-by-IP and `--listnetworkdevices`. Run on the bench LAN it listed a Brother printer and a NAS (mDNS) and the DG1062Z (LXI); the DG1062Z answered neither mDNS nor SSDP, and SSDP found nothing. USR: 2026-10-09 added the web-login probe above (not a UDP search; the bridge sent no reply to one) and it listed the bench bridge as `192.168.0.110:23 usr-tcp232`. The Connection Editor "Detect network devices..." button replaced the LXI-only one in WPF and TUI (2026-10-08) and the web Profiles page has it too (2026-10-09). Not yet built: the EByte UDP probe and the USR UDP search packet. Still to do: `docs/specs/connection-editor.md` and `docs/user-guide/connecting.md` describe three probes (LXI, mDNS, SSDP) and do not yet mention the USR web-login probe.

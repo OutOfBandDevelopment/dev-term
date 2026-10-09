@@ -49,6 +49,7 @@ public static class SessionLogFormat
 
             writer.WriteEndArray();
             WriteOptional(writer, "parser", header.Parser);
+            WriteOptional(writer, "scpiProfile", header.ScpiProfile);
             WriteOptional(writer, "trimmedFrom", header.TrimmedFrom);
         });
     }
@@ -81,6 +82,9 @@ public static class SessionLogFormat
                     break;
                 case SessionLogRecordKind.Note:
                     writer.WriteString("text", record.Text ?? string.Empty);
+                    break;
+                case SessionLogRecordKind.Instrument:
+                    writer.WriteString("profile", record.Profile ?? string.Empty);
                     break;
                 case SessionLogRecordKind.Session:
                     WriteOptional(writer, "connection", record.Connection);
@@ -138,6 +142,7 @@ public static class SessionLogFormat
                 Transport = GetString(root, "transport"),
                 Presenters = presenters,
                 Parser = GetString(root, "parser"),
+                ScpiProfile = GetString(root, "scpiProfile"),
                 TrimmedFrom = GetString(root, "trimmedFrom"),
             };
         }
@@ -212,6 +217,7 @@ public static class SessionLogFormat
         SessionLogRecordKind.Disconnect => "disconnect",
         SessionLogRecordKind.Tx => "tx",
         SessionLogRecordKind.Rx => "rx",
+        SessionLogRecordKind.Instrument => "instrument",
         SessionLogRecordKind.Note => "note",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "An unknown record keeps its own raw type."),
     };
@@ -224,6 +230,7 @@ public static class SessionLogFormat
         "disconnect" => SessionLogRecordKind.Disconnect,
         "tx" => SessionLogRecordKind.Tx,
         "rx" => SessionLogRecordKind.Rx,
+        "instrument" => SessionLogRecordKind.Instrument,
         "note" => SessionLogRecordKind.Note,
         _ => SessionLogRecordKind.Unknown,
     };

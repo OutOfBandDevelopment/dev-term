@@ -38,3 +38,5 @@ up front. An unrecognizable indefinite-length payload still falls back to the id
 today's undeclared/unrecognized-bytes case. Regression tests:
 `StreamContentSnifferTests.Find_IndefiniteLengthBlockWrappingAnImage_ReportsTheHeaderWithNoPayloadLength`,
 `StreamContentWatcherTests.DeclaredImage_InAnIndefiniteLengthBlock_IsCapturedByItsOwnStructuralEndWithNoHeaderBytes`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

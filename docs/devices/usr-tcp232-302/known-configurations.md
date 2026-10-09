@@ -23,7 +23,7 @@ Read with the script above, not typed from memory.
 
 Common to .107/.108/.109/.110: remote (target) address 192.168.0.201 and remote port 8234 (unused in TCP Server mode).
 "UART Set Parameter" (Expand Function page) is on for .109 only. The "Similar RFC2217" box on the Serial Port page is
-on for all three; what that does on the wire is unverified here (see `RFC2217-like Function Example.md` and
+on for all four; what that does on the wire is unverified here (see `RFC2217-like Function Example.md` and
 `docs/design/rfc2217.md`).
 
 The .108 and .110 units show "DHCP" in the IP page while answering on .108/.110, so those addresses come from a
@@ -34,10 +34,10 @@ router reservation, not the module. If the router lease changes, the profiles in
 
 | Behind the bridge | dev-term arguments | Bridge UART must equal the instrument's | Source |
 | --- | --- | --- | --- |
-| Tektronix 2230 (.108) | `--transport tcp --host 192.168.0.108 --port 23 --presenter ascii --lineending Cr` | its PARAMETERS baud setting. Runs at 4800; bug 068 asks whether 9600 works with write pacing | [068](../../bugs/resolved/068-tek2230-bridge-runs-at-4800-baud.md) |
+| Tektronix 2230 (.108) | `--transport tcp --host 192.168.0.108 --port 23 --presenter ascii --lineending Cr` | its PARAMETERS baud setting. Runs at 4800 (.108); bug 068 (fixed) found 9600 works with `--writebytedelayms 175` and a 512-char read buffer, set on .107 | [068](../../bugs/resolved/068-tek2230-bridge-runs-at-4800-baud.md) |
 | Tektronix TDS2024 (.110) | `--transport tcp --host 192.168.0.110 --port 23 --presenter ascii --lineending Lf --writebytedelayms 50` | the scope's RS-232 baud (19200 as read) | [2026-09-25](../../changes/2026-09-25.md) |
 
-The TDS2024 hangs on `TRIGger...?` queries; use `CH1?`/`CH2?`. Earlier reports ran it with `Cr`; the profile and the
+The TDS2024 gave no reply to `TRIGger...?` queries when written unpaced (2026-09-25); with `--writebytedelayms 50` they answer (see [tektronix-tds2024](../tektronix-tds2024/known-configuration.md)). Earlier reports ran it with `Cr`; the profile and the
 2026-09-25 notes use `Lf`. Both are recorded here because they differ.
 
 The older `launchSettings.json` TCP profiles for .107-.110 all use `--lineending Cr --asciimaxlinelength 512`.

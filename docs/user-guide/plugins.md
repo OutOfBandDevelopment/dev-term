@@ -19,7 +19,33 @@ beta  skipped: no plugin.json  (C:\apps\devterm\plugins\beta)
 
 With no plugins it prints `No plugins found.`
 
+## Reviewing and revoking approvals
+
+A plugin that runs a program of its own (a `process` entry) runs only after you approve it; choosing "always" remembers the
+approval for that exact content in `plugin-approvals.json` under the dev-term home (`DEVTERM_HOME`, default `~/.dev-term`).
+
+```bash
+dotnet run --project src/DevTerm.Console -- --listapprovals true
+dotnet run --project src/DevTerm.Console -- --forgetplugin shout
+```
+
+`--listapprovals true` prints one line per remembered approval (name, the first 12 characters of the content hash, when it was
+approved), or `No plugin approvals are remembered.` `--forgetplugin <name>` removes that plugin's approval so it asks again
+next start; it exits 1 when nothing was remembered under that name. Both exit without opening a UI. Covered by
+`ConsoleAppCliTests.ListApprovals_ThenForgetPlugin_...`.
+
 ## TUI and WPF
+
+**Device > Plugin approvals...** first asks about any plugin still waiting (Run this time / Always for this version / No; an approved
+plugin works at once, no restart), then walks the remembered approvals one at a time: forget it, keep it, or stop. A forgotten plugin
+asks again next start. The TUI asks right after it opens, WPF right after its window loads.
+
+## Web
+
+The **Plugins** page (`/plugins`) lists plugins waiting for approval with Run once and Always buttons, and the remembered approvals
+with a Forget button. A read-only viewer sees both lists but cannot act.
+
+![The web Plugins page](images/web-blazor-plugins.png)
 
 **Device > Plugins...** shows the same lines in a message box. It is always enabled (no connection needed) and does not
 rescan: restart dev-term after adding or removing a plugin folder.

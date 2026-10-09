@@ -49,3 +49,5 @@ Regression tests: `SystemTcpConnectionSourceTests.AcceptAsync_WithAHostname_Reso
 `SystemTcpConnectionSourceTests.AcceptAsync_WithNoHost_AcceptsAnIPv6LoopbackPeer` (plus
 `AcceptAsync_WithNoHost_StillAcceptsAnIPv4LoopbackPeer` and `AcceptAsync_WithAnIpLiteralHost_StillBindsToThatAddress`
 confirming no regression for the two paths that already worked).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

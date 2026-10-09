@@ -40,3 +40,5 @@ for it once: `ControlPanelMode.BuildWindow` (`src/DevTerm.Console/ControlPanelMo
 `ZoomH4nControlSurfaceTests.OpeningAndClosingThePanelTwice_LeavesNoWatcherInThePipeline`,
 `ControlPanelModeTests.WindowDispose_DisposesADisposableSurface`,
 `ControlPanelWindowTests.Closed_DisposesADisposableSurface`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

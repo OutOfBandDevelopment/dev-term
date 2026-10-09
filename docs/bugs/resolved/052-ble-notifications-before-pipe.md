@@ -37,3 +37,5 @@ Regression test: `BleTransportTests.NotificationArrivingDuringConnectAsync_IsNot
 adapter raises `NotificationReceived` from inside its `ConnectAsync` mock before completing; fails
 against the pre-fix code — the read from `transport.Input` times out because the notification was
 dropped). Full `TestCategory=Unit` run green across the whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

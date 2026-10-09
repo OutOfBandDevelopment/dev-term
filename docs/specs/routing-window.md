@@ -1,7 +1,7 @@
 # Routing Window
 
 **Status: built 2026-10-03 in WPF (`RoutingWindow`, Device menu > Routing...) and the TUI (`RoutingMode`, Device > Routing...), both over the
-shared `RoutingViewModel`.** Verified with unit tests, real screenshots and a fake broker link, and `RoutingService` (the engine both windows drive) round-trips through the real Mosquitto (MQTT) and RabbitMQ (AMQP, STOMP) containers (`RoutingBrokerIntegrationTests`); the windows themselves have not been driven by hand against a broker. The engine is `MessageRouter`, `MqttRouterBridge` and `BrokerRouterBridge` (see
+shared `RoutingViewModel`.** Verified with unit tests, real screenshots and a fake broker link, and `RoutingService` (the engine both windows drive) round-trips through the real Mosquitto (MQTT) and RabbitMQ (AMQP, STOMP) containers (`RoutingBrokerIntegrationTests`); the web `/routing` page was driven in a browser against the live DG1062Z and the Mosquitto container on 2026-10-09 (`docs/changes/2026-10-09.md`); the desktop windows have not been driven by hand against a broker. The engine is `MessageRouter`, `MqttRouterBridge` and `BrokerRouterBridge` (see
 [message-broker-protocols](../design/proposals/message-broker-protocols.md)); walkthrough: [routing](../user-guide/routing.md).
 
 ## Purpose

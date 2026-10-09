@@ -27,3 +27,5 @@ placeholder timestamp, using that one's timestamp; it falls back to `Header.Crea
 every record is such a placeholder. Regression tests:
 `SessionLogTests.Start_FirstRecordIsUnknownWithNoTimestamp_SkipsItInsteadOfUsingMinValue`,
 `SessionLogTests.Start_AllRecordsAreUnknownWithNoTimestamp_FallsBackToHeaderCreated`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

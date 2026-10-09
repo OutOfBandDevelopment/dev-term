@@ -243,13 +243,15 @@ public sealed class MainWindowTests
     }
 
     [TestMethod]
-    public void HandleGlobalKeyDown_CtrlShiftW_ClosesLikeCtrlW_AndOtherCtrlShiftKeysAreIgnored()
+    public void HandleGlobalKeyDown_CtrlShiftW_Closes_AndPlainCtrlTAndWAndOtherCtrlShiftKeysAreIgnored()
     {
         StaTestRunner.Run(async () =>
         {
             var (window, _) = CreateWindow();
 
             Assert.IsFalse(window.HandleGlobalKeyDown(Key.A, ModifierKeys.Control | ModifierKeys.Shift));
+            Assert.IsFalse(window.HandleGlobalKeyDown(Key.T, ModifierKeys.Control));
+            Assert.IsFalse(window.HandleGlobalKeyDown(Key.W, ModifierKeys.Control));
             Assert.IsTrue(window.HandleGlobalKeyDown(Key.W, ModifierKeys.Control | ModifierKeys.Shift));
             await Task.CompletedTask;
         });

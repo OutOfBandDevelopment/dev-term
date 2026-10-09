@@ -14,7 +14,7 @@ public sealed class WebOptions
     /// <summary>A second token that may watch but not send: its viewers get output and the control panel's layout, and every send or invoke is refused.</summary>
     public string? ReadOnlyToken { get; set; }
 
-    /// <summary>Which device control panel to serve at <c>/api/panel</c> and show in the page: <c>k8055</c> or <c>busylight</c>. Blank serves none.</summary>
+    /// <summary>Which device control panel to serve at <c>/api/panel</c> and show in the page: <c>k8055</c>, <c>busylight</c> or the id of a plugin-contributed panel. Blank serves none.</summary>
     public string? Panel { get; set; }
 
     /// <summary>A saved connection profile (the same store as the TUI and WPF) for the host's own session; blank uses the usual layered options. <c>--Web:Profile Bench</c>.</summary>

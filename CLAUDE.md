@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `dev-term` is a modular, extensible development terminal for talking to devices over serial, TCP,
-and (eventually) other transports — decoding/presenting whatever comes back and sending commands.
+USB HID, USBTMC, BLE, RFC 2217, VXI-11, MQTT/AMQP/STOMP brokers and other transports — decoding/presenting
+whatever comes back and sending commands.
 Built on .NET 10. Full design intent lives in [`docs/design/`](docs/design/README.md); this file
 covers only what's actually built and the conventions that matter for working in this codebase.
 
@@ -25,6 +26,7 @@ dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true    # list U
 dotnet run --project src/DevTerm.Console -- --transport serial --port COM3 --presenter ascii --lineending Cr --cli true
 dotnet run --project src/DevTerm.Console -- --transport hid --vendorid 6421 --productid 45018 --cli true
 dotnet run --project src/DevTerm.Console -- --transport loopback --cli true    # no hardware needed; try "hello"
+dotnet run --project src/DevTerm.Web    # the loopback-only web host (settings under Web:, e.g. --Web:Token x)
 ```
 
 **The full-screen TUI is the console app's default mode** — omitting `--cli true` above opens the
@@ -55,10 +57,20 @@ flattens their outputs into `PresenterOutput`s). Everything is resolved through 
 each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 
 **Project layout**:
-- `DevTerm.Core` — the abstractions above, plus `AddDevTermCore()`.
+- `DevTerm.Core` — the abstractions above, plus `AddDevTermCore()`. Also home to the plugin loader
+  (`DevTerm.Core.Plugins`: `PluginLoader`, `IPluginModule`, `ExternalProcessPresenter`, `PluginTrust`), the control
+  contracts (`DevTerm.Core.Control`: `IControlSurface`, `IDevicePanelContribution`, `IInstrumentPanelProvider`,
+  `IDeviceConfigEditor`), message routing (`DevTerm.Core.Routing`), stream-content detection
+  (`DevTerm.Core.StreamContent`) and the session pipe/TCP-share/HTTP control servers (`DevTerm.Core.Sessions`).
 - `DevTerm.Transports.Serial` / `DevTerm.Transports.Tcp` / `DevTerm.Transports.Hid` — `ITransport`
   implementations. Each is independently testable via a fake stream (see "Testing" below), never
   real hardware/sockets.
+- `DevTerm.Transports.Usbtmc` — raw-USB USBTMC (LibUsbDotNet + libusb), `--transport usbtmc`; see
+  docs/design/usbtmc-transport.md. `DevTerm.Transports.Ble` is the BLE transport and its adapter seam;
+  `DevTerm.Transports.Ble.Windows` (`net10.0-windows`, a side build, picked up by `BlePlatformAdapterLoader`) is the
+  Windows backend. `DevTerm.Transports.Rfc2217` is the RFC 2217 client (`--transport rfc2217`).
+  `DevTerm.Transports.Mqtt` (MQTTnet) and `DevTerm.Transports.Brokers` (AMQP 0-9-1 via RabbitMQ.Client, and STOMP 1.2)
+  are the message-broker transports (`--transport mqtt|amqp|stomp`).
 - `DevTerm.Transports.Vxi11` — VXI-11 (ONC-RPC over TCP) for LXI instruments, `--transport vxi11 --host <ip>`;
   see docs/design/vxi11-transport.md. Verified against the Rigol DG1062Z.
 - `DevTerm.Transports.Loopback` — a zero-configuration, in-process fake-device `ITransport`
@@ -68,6 +80,19 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
   `LoopbackTransport` in `tests/DevTerm.Console.Tests/` (see "Testing" below) — same idea, separate
   code, different purpose.
 - `DevTerm.Presenters.Text` — ASCII (line-buffered), UTF-8, hex, decimal, octal, binary.
+- `DevTerm.Devices.*` — device modules (K8055, Busylight, DE-5000, RadexOne, ZoomH4n, Nmea, Scpi, and a Demo), each a
+  plugin: a `plugin.json` plus an `IPluginModule` that registers its presenter, control surface and
+  `IDevicePanelContribution` (SCPI also an `IInstrumentPanelProvider` and JSON instrument profiles). The core and the
+  front ends reference none of them: `Directory.Build.targets` copies each into `plugins/<name>/` of the output of any
+  project that sets `BundleDevicePlugins` (console, WPF, web, and the tests that build a real session). `--plugins <dir>`
+  overrides the folder (default `plugins` next to the app) and `--listplugins true` reports what loaded.
+  `DevTerm.Plugins.Sample` and `DevTerm.Plugins.KeyValue` are example plugins. A plugin whose `plugin.json` has a
+  `process` entry runs as a child process over stdin/stdout JSON lines and needs one-time user approval (`PluginTrust`,
+  remembered per content hash).
+- `DevTerm.Logging` — the versioned JSON Lines session log (`SessionLogger`, `SessionLogWriter`) and the playback
+  engine; see docs/design/session-logging.md. `DevTerm.Observability` — the opt-in (`--otlp`) OpenTelemetry/OTLP exporter
+  (`TelemetryExporter`); see docs/design/observability.md. `DevTerm.Schemas` — a small exe that exports the JSON Schemas
+  for the hand-authored formats into `schemas/`.
 - `DevTerm.UiDefinitions` — a framework-agnostic, JSON/XML-serializable model for declaring a
   device control panel once (`UiDefinition` → `UiSection`s → `UiControl`s: button/toggle/slider/
   numeric/choice/textField/indicator) so every front end can render it generically instead of
@@ -84,8 +109,9 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
   and `KsyImporter` builds one from a Kaitai `.ksy` file.
 - `DevTerm.Configuration` — shared front-end bootstrapping: `CliOptions`/`CliOptionsValidator`,
   `DevTermConfiguration` (config layering), `LineEnding`, `ConnectionErrorMessages`,
-  `ConnectionDescription`, and `AddDevTermFrontEnd` (the one place that wires core + text
-  presenters + the selected transport from `CliOptions`) — every front end below calls this instead
+  `ConnectionDescription`, `ConnectionEditorViewModel`, the profile/project stores (`ConnectionProfileStore`,
+  `ProjectFile`), `SessionTab`/`DevTermSessionBuilder`, themes, and `AddDevTermFrontEnd` (the one place that wires
+  core + text presenters + plugins + the selected transport from `CliOptions`) — every front end below calls this instead
   of duplicating the wiring, which is what makes one saved `appsettings.Local.json` profile work
   from any of them.
 - `DevTerm.Console` — the console front end: `Program.cs` builds the DI host (`Host.CreateDefaultBuilder`)
@@ -94,6 +120,9 @@ each plugin-ish project exposes an `AddXyz(IServiceCollection)` extension.
 - `DevTerm.Wpf` — the GUI front end (WPF, `net10.0-windows`, Windows-only). `App.xaml.cs` builds the
   same kind of DI host itself (a WPF app has no `Main`/host-builder entry point), then hands the
   resolved `Session` to `MainWindow`.
+- `DevTerm.Web` — the web front end (ASP.NET Core + Blazor): loopback-only by default, a shared access token, one
+  session tunneled over a `/ws` WebSocket plus `/api/*` endpoints (panels, connections, project, monitor, events).
+  It reads the same layered configuration, with its own settings under `Web:` (`WebOptions`).
 
 **Read path**: transports read via `System.IO.Pipelines` (`ITransport.Input` is a `PipeReader`) —
 a shared `StreamToPipePump` (`DevTerm.Core.Transports`) pumps a `Stream` into a `PipeWriter`'s
@@ -109,15 +138,14 @@ boundary arrived in one read. `Pipeline.Render` flattens this into zero or more 
 (`Microsoft.Extensions.Options`) — a component takes `IOptions<TOptions>` directly in its
 constructor (not a primitive parameter + factory lambda), so a plain
 `services.AddSingleton<TInterface, TImpl>()` resolves it correctly. `DevTermConfiguration`
-(currently in `DevTerm.Console`, moving to `DevTerm.Configuration`) layers config sources:
+(in `DevTerm.Configuration`) layers config sources:
 `appsettings.json` → `appsettings.<environment>.json` → `appsettings.Local.json` (untracked,
 per-machine profile) → environment variables (`DEVTERM_` prefix) → command-line args (highest
 precedence) — via the standard `Microsoft.Extensions.Configuration` extensions, not a hand-rolled
 parser. `CliOptions` property names double as CLI flag names (case-insensitive).
 
-Full architecture/rationale, including what's designed but not yet built (dynamic plugin loading,
-protocol decoders, rendering presenters, device control modules, RFC 2217, UDP/HID/BLE transports,
-TUI, WPF): see [`docs/design/`](docs/design/README.md) — see "Documentation" below for the rest of
+Full architecture/rationale, including what's designed but not yet built (a UDP transport, an
+RFC 2217 server, BLE off Windows, general protocol decoders and rendering presenters): see [`docs/design/`](docs/design/README.md) — see "Documentation" below for the rest of
 the doc tree and how to keep it in sync.
 
 ## Documentation
@@ -380,16 +408,11 @@ file only points there, it doesn't restate them.**
   handler doesn't reliably see a key already routed to a focused child first — the send field
   normally has focus). `MainWindow`'s WPF menu needed the equivalent: an explicit `PreviewKeyDown`
   check, not just `MenuItem.InputGestureText`.
-- **Terminal.Gui v2.5.0's `OptionSelector<T>.Values` cannot be set directly** — it throws
-  `InvalidOperationException` ("Setting Values directly is not allowed"); the selector derives its
-  values from `Enum.GetValues<T>()` automatically, and `T` must be `struct, Enum` (a plain `string`
-  choice list needs a purpose-built local enum, converted to/from the real option string at the
-  call site — see `ConfigureMode.TransportChoice`/`PresenterChoice`).
-- **A `private enum` nested in one class is invisible to a different class in the same file/assembly
-  — `InternalsVisibleTo` does not help, since it only affects `internal` members, never `private`
-  ones.** `ConfigureMode.TransportChoice`/`PresenterChoice` needed to be `internal enum`, not
-  `private enum`, purely so `ConfigureWindowParts` (a separate class) and the test assembly could
-  reference `OptionSelector<TransportChoice>` as a property type at all.
+- **Terminal.Gui v2.5.0's generic `OptionSelector<T>.Values` cannot be set directly** — it throws
+  `InvalidOperationException` ("Setting Values directly is not allowed"); that selector derives its
+  values from `Enum.GetValues<T>()`, and `T` must be `struct, Enum`. dev-term's forms instead use the
+  non-generic `OptionSelector` with its `Labels` list (`FormRenderer`), wrapped in a `TuiChoice` so a host or test
+  reads and sets a choice by option text.
 - **Terminal.Gui's headless "dotnet" driver reports `fg=(255,255,255) bg=(255,255,255)`
   (white-on-white, invisible) for any cell still on the default, unstyled color scheme** — there's
   no real terminal behind headless mode to resolve an actual theme's colors. Confirmed by reflecting

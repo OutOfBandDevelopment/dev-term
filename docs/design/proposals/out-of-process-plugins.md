@@ -71,6 +71,9 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [x] `plugin.json` discovery of out-of-process plugins in `PluginLoader` (a `process` entry instead of an `assembly`; 2026-10-03)
 - [x] Attach-to-a-running-session variant: any program can use the control pipe or loopback HTTP channel (`examples/python/control-channel-client/`, 2026-10-07)
 - [ ] Transport and device-module variants
+- [x] TUI in-app approval prompt: the TUI starts first, asks in a dialog, and an approved plugin goes live at once through `LivePlugins` (2026-10-09; WPF asks after its window loads, and the web host has a /plugins page)
+- [x] Review or revoke remembered approvals from the CLI: `--listapprovals true`, `--forgetplugin <name>` (2026-10-09)
+- [x] TUI/WPF Device > Plugin approvals...: lists them and walks them one at a time: forget, keep, stop (2026-10-09)
 - [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)
 
 ## Status
@@ -82,5 +85,5 @@ registers a presenter that starts its program lazily on first use (`LazyExternal
 `y`/`a`/`N` before the UI starts (never when input is redirected), WPF asks in a dialog (Yes = always, No = this time, Cancel = don't run). "Always" stores a SHA-256
 of every file in the plugin folder in `plugin-approvals.json` under the dev-term home, so an unchanged plugin isn't asked about again and any edit asks again.
 With no approver (a script) only remembered approvals run, and `--listplugins` shows "needs your approval". Covered by `PluginTrustTests` (unit) and a real
-Python run through the loader (`PluginTrustProcessTests`, Integration). Example: `examples/python/out-of-process-plugin/plugin.json`. Not built: the TUI has no
-in-app prompt (it uses the console one at startup), a screen to review or revoke approvals, and transport/device-module variants.
+Python run through the loader (`PluginTrustProcessTests`, Integration). Example: `examples/python/out-of-process-plugin/plugin.json`. Not built: (the TUI, WPF and web now have in-app approval; remaining:)
+(a real-console check of choosing a button in the TUI dialog), and transport/device-module variants.

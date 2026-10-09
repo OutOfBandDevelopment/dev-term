@@ -47,3 +47,5 @@ manually rather than left to run) before the fix, and to fail fast with `Timeout
 depends only on the mockable `IBleAdapter` interface, unlike `WindowsBleAdapter` (see [025](025-ble-service-not-disposed.md),
 [026](026-ble-writes-not-mtu-chunked.md)), so this fix is directly and fully unit-tested with no hardware-dependent
 gap.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

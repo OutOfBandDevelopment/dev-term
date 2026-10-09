@@ -72,7 +72,7 @@ public static class TuiMode
 
     }
 
-    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
+    public static async Task<int> RunAsync(Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null, IReadOnlyList<IDeviceConfigEditor>? configEditors = null)
     {
         // A failed first connect doesn't end the TUI: it opens disconnected with the error shown,
         // so the user can retry (File > Connect) or pick a different connection (File > Device
@@ -108,7 +108,7 @@ public static class TuiMode
         TuiWindowParts parts;
         try
         {
-            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels, instruments);
+            parts = BuildWindow(app, session, catalog, cliOptions, profileStore, startupError, plugins, panels, instruments, configEditors);
             parts.SendField.SetFocus();
 
             // Application.Run's errorHandler is what WPF's DispatcherUnhandledException does for the
@@ -117,6 +117,15 @@ public static class TuiMode
             // loop rather than letting the whole TUI die. Per Terminal.Gui's own doc comment on this
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
+            if (LivePlugins.Pending.Count > 0)
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(200), () =>
+                {
+                    PromptPendingPlugins(app);
+                    return false;
+                });
+            }
+
             app.Run(parts.Window, OnUnhandledException);
 
             // window.Disposing never fires once Run returns (the window is never disposed here -
@@ -164,7 +173,7 @@ public static class TuiMode
     /// same production controls headlessly (see <c>DevTerm.Console.Tests.TuiModeTests</c>), the same
     /// seam <c>MainWindow.xaml.cs</c> exposes for WPF (<c>ConnectAsync</c>/<c>SendCurrentInputAsync</c>).
     /// </summary>
-    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null)
+    internal static TuiWindowParts BuildWindow(IApplication app, Session session, PresenterCatalog catalog, CliOptions cliOptions, ConnectionProfileStore? profileStore = null, string? initialMessage = null, IReadOnlyList<PluginLoadResult>? plugins = null, IReadOnlyList<IDevicePanelContribution>? panels = null, IReadOnlyList<IInstrumentPanelProvider>? instruments = null, IReadOnlyList<IDeviceConfigEditor>? configEditors = null)
     {
         // Also what "is this connection a saved profile?" (titles/tab headers) is answered against,
         // and what the Device Profiles screen edits - a test passes an isolated one rather than the
@@ -552,11 +561,11 @@ public static class TuiMode
                     // The detect query is a real send/await over the live transport, so it cannot finish before the menu action
                     // returns: fire-and-forget with the eventual window open marshaled back via Application.Invoke, the same
                     // pattern ToggleConnectionAsync/SwitchProfileAsync use (real async I/O resumes off the UI thread).
-                    Observe(DetectAndOpenInstrumentAsync(app, captured, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab)), line => AppendOutput(windowTab, line));
+                    Observe(DetectAndOpenInstrumentAsync(app, captured, windowTab.Tab.Session, structuredSource, windowTab.Tab.CliOptions.ScpiAutoDetectTimeoutMs, text => AppendStatus(windowTab, text), text => AppendError(windowTab, text), PanelEcho(windowTab), name => windowTab.Logger?.RecordInstrument(name)), line => AppendOutput(windowTab, line));
                     return;
                 }
 
-                OpenInstrumentWindow(app, captured, picked, windowTab.Tab.Session, structuredSource, PanelEcho(windowTab));
+                OpenInstrumentWindow(app, captured, picked, windowTab.Tab.Session, structuredSource, PanelEcho(windowTab), name => windowTab.Logger?.RecordInstrument(name));
             }))));
         }
 
@@ -736,6 +745,12 @@ public static class TuiMode
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
                 new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
+                new MenuItem("Plugin appro_vals...", string.Empty, Guarded(() => ReviewPluginApprovals(app))),
+                new MenuItem("Confi_gure device...", string.Empty, Guarded(() =>
+                {
+                    var options = ActiveTab().Tab.CliOptions;
+                    ConfigureDeviceMode.Run(app, new DeviceConfigViewModel(configEditors ?? [], options.Host ?? string.Empty, string.Empty));
+                })),
             ]),
             new MenuBarItem("_View",
             [
@@ -1329,7 +1344,7 @@ public static class TuiMode
             tabsView.Value = tabs[nextIndex].Output;
         }
 
-        // Ctrl+T/Ctrl+W/Ctrl+Tab/Ctrl+Shift+Tab (Step 4) - same Application.KeyDown pattern as
+        // Ctrl+Shift+T/Ctrl+Shift+W/Ctrl+Tab/Ctrl+Shift+Tab (Step 4) - same Application.KeyDown pattern as
         // quitOnCtrlQ above (a per-view KeyDown handler on the window doesn't reliably see a key
         // already routed to the focused sendField first), gated the same way on this being the
         // topmost run loop so a nested device panel/dialog isn't hijacked by these shortcuts.
@@ -1340,14 +1355,14 @@ public static class TuiMode
                 return;
             }
 
-            if (key == Key.T.WithCtrl || key == Key.T.WithCtrl.WithShift)
+            if (key == Key.T.WithCtrl.WithShift)
             {
                 key.Handled = true;
                 newSessionMenuItem!.Action!.Invoke();
                 return;
             }
 
-            if (key == Key.W.WithCtrl || key == Key.W.WithCtrl.WithShift)
+            if (key == Key.W.WithCtrl.WithShift)
             {
                 if (ActiveTabOrNull() is { } activeTab)
                 {
@@ -1525,6 +1540,43 @@ public static class TuiMode
     /// exception.
     /// </summary>
     /// <summary>An app status line in the output pane - tagged so it can't be mistaken for device output.</summary>
+    /// <summary>Device &gt; Plugin approvals: lists the remembered out-of-process plugin approvals and offers to forget them all.</summary>
+    private static void ReviewPluginApprovals(IApplication app)
+    {
+        PromptPendingPlugins(app);
+        var approvals = PluginTrust.Approvals();
+        if (approvals.Count == 0)
+        {
+            MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText(approvals), "Ok");
+            return;
+        }
+
+        // One approval at a time: Forget it (it asks again next start), Keep it, or Stop reviewing.
+        PluginTrust.Review(approval => MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText([approval]), ["Forget", "Keep", "Stop"]) switch
+        {
+            0 => ApprovalReviewChoice.Forget,
+            1 => ApprovalReviewChoice.Keep,
+            _ => ApprovalReviewChoice.Stop,
+        });
+    }
+
+    /// <summary>Asks about each out-of-process plugin still waiting for approval; an approved one goes live at once (<see cref="LivePlugins"/>).</summary>
+    private static void PromptPendingPlugins(IApplication app)
+    {
+        LivePlugins.ReviewPending(plugin =>
+        {
+            var request = plugin.Request;
+            var text = string.Join(Environment.NewLine, $"Plugin '{request.Name}' {request.Version} wants to run a program with your rights:", string.Empty, $"  {request.CommandLine}", $"  from {request.Folder}", $"  (content hash {request.Hash[..12]})");
+            var choice = MessageBox.Query(app, "dev-term — plugin approval", text, ["Run this time", "Always for this version", "No"]);
+            return choice switch
+            {
+                0 => PluginApprovalChoice.Once,
+                1 => PluginApprovalChoice.Always,
+                _ => PluginApprovalChoice.Deny,
+            };
+        });
+    }
+
     internal static string StatusLine(string text) => $"[dev-term] {text}";
 
     /// <summary>An error line in the output pane - see <see cref="StatusLine"/>.</summary>
@@ -1561,7 +1613,7 @@ public static class TuiMode
     /// Runs the provider's auto-detect with the connection's configured timeout, reporting progress in the output pane while it
     /// waits and what it found afterward, then opens the matched instrument's panel (or the generic one).
     /// </summary>
-    private static async Task DetectAndOpenInstrumentAsync(IApplication app, IInstrumentPanelProvider provider, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null)
+    private static async Task DetectAndOpenInstrumentAsync(IApplication app, IInstrumentPanelProvider provider, Session session, IPresenter? structuredSource, int timeoutMs, Action<string> appendStatus, Action<string> appendError, Action<string>? echoSent = null, Action<string>? chosen = null)
     {
         var timeout = TimeSpan.FromMilliseconds(timeoutMs);
         appendStatus(provider.DetectProgressMessage(timeout));
@@ -1584,7 +1636,7 @@ public static class TuiMode
         {
             try
             {
-                OpenInstrumentWindow(app, provider, detection.Choice, session, structuredSource, echoSent);
+                OpenInstrumentWindow(app, provider, detection.Choice, session, structuredSource, echoSent, chosen);
             }
             catch (Exception ex)
             {
@@ -1593,9 +1645,10 @@ public static class TuiMode
         });
     }
 
-    private static void OpenInstrumentWindow(IApplication app, IInstrumentPanelProvider provider, string choice, Session session, IPresenter? structuredSource, Action<string>? echoSent = null)
+    private static void OpenInstrumentWindow(IApplication app, IInstrumentPanelProvider provider, string choice, Session session, IPresenter? structuredSource, Action<string>? echoSent = null, Action<string>? chosen = null)
     {
         var panel = provider.Open(choice, session, structuredSource);
+        chosen?.Invoke(choice);
         var panelParts = ControlPanelMode.BuildWindow(app, panel.Definition, panel.Surface, structuredSource, panel.Title, echoSent);
         try
         {

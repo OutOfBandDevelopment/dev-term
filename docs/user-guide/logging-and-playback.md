@@ -130,6 +130,9 @@ It works like the TUI's, with these differences:
   read-only folder) never disconnects the device. Starting one that can't be created just reports why.
 - A capture cut short (the app killed mid-session) still opens. Its last, incomplete line is
   skipped with a warning.
+- A SCPI instrument picked from **Device** while logging is recorded too, so playback of a terminatorless
+  instrument (a bench power supply, say) still shows its replies. Logs from before this lack it, and then
+  only `--scpiprofile` at logging time helps.
 - You can't add a note to a log that this same dev-term is still recording. Stop logging first.
 - Logs made by a newer dev-term with a different format version are refused with a message rather
   than misread.

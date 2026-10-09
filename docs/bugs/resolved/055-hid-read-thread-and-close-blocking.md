@@ -59,3 +59,5 @@ Fixed on 2026-09-29 on `dev/fix-bugs`:
   same class of constraint as [054](054-ble-cancelled-connect-handler-leak.md)'s WinRT types.
 
 Regression test: `HidTransportTests.OpenAsync_DoesNotBlockTheCallingThreadOnTheDevicesSynchronousOpen`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

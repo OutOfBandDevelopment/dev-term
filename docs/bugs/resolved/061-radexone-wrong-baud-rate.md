@@ -69,3 +69,5 @@ unverified "2400" to the actual, confirmed 9600 across `RealHardwareRadexOneTest
 `RealHardwareRadexOneTests.RealDevice_ReadData_ReceivesADecodedReply`, run against the real device on
 COM8 — failed at 2400 baud (no reply), passes at 9600 baud (`RADEX-ONE: CPM=15 Ambient=10 Accum=259`).
 See `docs/test/2026-09-26-15-57-38.md` for the full session transcript.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

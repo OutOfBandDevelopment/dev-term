@@ -17,8 +17,7 @@ public sealed record Rfc2217PortSettings(int BaudRate = 9600, int DataBits = 8, 
 /// Shares one live session on a TCP port as an RFC 2217 (Telnet COM-PORT-OPTION) server, so a client such as pyserial's
 /// <c>rfc2217://host:port</c> can connect to it like a remote serial port. Data is Telnet-escaped both ways; the
 /// client's SET-BAUDRATE/DATASIZE/PARITY/STOPSIZE/CONTROL requests are acknowledged and recorded in
-/// <see cref="Settings"/> (raising <see cref="SettingsChanged"/>), but they are NOT applied to the underlying device:
-/// the session's transport has no line-control hook yet, so the device keeps the settings dev-term opened it with.
+/// <see cref="Settings"/> (raising <see cref="SettingsChanged"/>) and applied to the underlying device when its transport is an <see cref="IComPortControl"/>.
 /// One client at a time (a second connection is closed at once); loopback unless told otherwise, with no authentication
 /// or encryption. Register with <see cref="Session.AddObserver"/>. See docs/design/rfc2217.md ("Server mode").
 /// </summary>

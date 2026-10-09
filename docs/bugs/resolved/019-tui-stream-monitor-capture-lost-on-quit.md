@@ -37,3 +37,5 @@ capture still in progress the same way `StreamMonitor.Stop()`/`Dispose()` alread
 Stop.
 
 Regression test: `TuiModeTests.Quitting_WithACaptureStillInProgress_FlushesAndSavesIt`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

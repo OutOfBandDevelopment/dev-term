@@ -39,3 +39,5 @@ Fixed on 2026-09-26 (branch `dev/fix-bugs`): the secondary 16-bit value is now s
 sign-extends for those two secondary units. Regression tests:
 `DevTerm.Devices.De5000.Tests.De5000FramerTests.TryParse_NegativeSecondaryDegrees_DecodesAsANegativeValue`
 and `TryParse_NegativeSecondaryPercent_DecodesAsANegativeValue`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

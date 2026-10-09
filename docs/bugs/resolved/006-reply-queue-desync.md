@@ -76,3 +76,5 @@ Regression tests: `ScpiReplyPresenterTests.QuerySent_ThenCancel_TheNextLineIsUns
 `SessionTests.OpenAsync_ResetsAnyResettablePresenterBeforeStartingTheReadLoop`,
 `OpenAsync_AfterClose_ResetsTheResettablePresenterAgain`. All confirmed to fail (mostly by not compiling, since
 each depends directly on a new member) against the pre-fix code, and pass with it.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -73,6 +73,13 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
         }
     }
 
+    /// <summary>Records that a SCPI instrument profile was picked mid-session, so playback can treat terminatorless replies as they were live.</summary>
+    public void RecordInstrument(string profileName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(profileName);
+        Record(SessionLogRecordKind.Instrument, default, profile: profileName);
+    }
+
     /// <summary>Stops following the current session without ending the log.</summary>
     public void Detach()
     {

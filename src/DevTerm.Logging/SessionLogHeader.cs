@@ -39,6 +39,9 @@ public sealed record SessionLogHeader
     /// <summary>The send format (parser) in use when logging started.</summary>
     public string? Parser { get; init; }
 
+    /// <summary>The SCPI instrument profile (<c>--scpiprofile</c>) in use when logging started, so playback can give the scpi presenter the same terminator and reply handling; absent on older logs.</summary>
+    public string? ScpiProfile { get; init; }
+
     /// <summary>Set on a trimmed log: the file name it was cut from.</summary>
     public string? TrimmedFrom { get; init; }
 }

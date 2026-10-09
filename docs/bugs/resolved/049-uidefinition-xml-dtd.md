@@ -38,3 +38,5 @@ Regression tests:
 `DeviceManifestTests.FromXml_DocumentWithAnInternalDtdEntity_DoesNotExpandIt` (both fail against the
 pre-fix code — no exception was thrown and the entity reference was accepted). Full
 `TestCategory=Unit` run green across the whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

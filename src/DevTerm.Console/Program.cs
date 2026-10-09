@@ -35,7 +35,7 @@ const string Usage =
     + "\n   or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport vxi11 --host <host> [--port <core-port>] [--presenter <name[,name...]>] [--lineending <None|Cr|Lf|CrLf>] [--cli <bool>]"
     + "\n   or: dev-term --transport amqp|stomp --host <host> --port <port> [--subscribe <key[,key...]>] [--publish <key>] [--username <name>] [--password <pw>]"
-    + "\n   or: dev-term --transport mqtt--host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
+    + "\n   or: dev-term --transport mqtt --host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
     + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"
@@ -232,6 +232,21 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
     return 0;
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListApprovals)))
+{
+    Console.WriteLine(PluginReport.ApprovalText(DevTerm.Core.Plugins.PluginTrust.Approvals()));
+
+    return 0;
+}
+
+if (earlyConfig[nameof(CliOptions.ForgetPlugin)] is { Length: > 0 } forgetPlugin)
+{
+    var known = DevTerm.Core.Plugins.PluginTrust.Approvals().Any(a => string.Equals(a.Name, forgetPlugin, StringComparison.OrdinalIgnoreCase));
+    DevTerm.Core.Plugins.PluginTrust.Forget(forgetPlugin);
+    Console.WriteLine(known ? $"Forgot the approval of '{forgetPlugin}'; it asks again next start." : $"No approval is remembered for '{forgetPlugin}'.");
+    return known ? 0 : 1;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListBleDevices)))
 {
     // Same reflection-based platform-adapter loading AddDevTermFrontEnd uses for a real connection
@@ -386,8 +401,9 @@ if (bindError is not null)
 }
 
 // Out-of-process plugins run only once approved; prompt for them here, before the UI takes over the terminal
-// (a script with redirected input is never prompted: only remembered approvals run there).
-if (!System.Console.IsInputRedirected)
+// (a script with redirected input is never prompted: only remembered approvals run there). The TUI doesn't ask here:
+// it starts first and asks in a dialog, and an approved plugin goes live at once (LivePlugins).
+if (!useTui && !System.Console.IsInputRedirected)
 {
     DevTerm.Core.Plugins.PluginTrust.Approver = new ConsolePluginApprover();
 }
@@ -429,6 +445,6 @@ using (host)
     // reuses the same useTui computed above (before any ConfigureMode run), since ConfigureMode's
     // output only carries connection fields, not the original Tui/Cli mode flags.
     return useTui
-        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()], instruments: [.. host.Services.GetServices<IInstrumentPanelProvider>()])
+        ? await TuiMode.RunAsync(session, catalog, cliOptions, plugins: host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), panels: [.. host.Services.GetServices<IDevicePanelContribution>()], instruments: [.. host.Services.GetServices<IInstrumentPanelProvider>()], configEditors: [.. host.Services.GetServices<IDeviceConfigEditor>()])
         : await CliMode.RunAsync(session, catalog, cliOptions);
 }

@@ -40,7 +40,7 @@ matching rule gets a visible `? Unrecognized: ...` reply rather than silence, so
 incomplete script fails on a wrong/missing line instead of hanging on a reply that never comes. Each
 response line is pushed back as its own write, so a line-buffering presenter (`AsciiPresenter`) sees
 separate lines/events rather than one blob — this is what makes an "N discrete events" style reply
-possible at all. `LoopbackScript.Default()` provides three example rules (an exact-match greeting, a
+possible at all. `LoopbackScript.Default()` provides example rules (an exact-match greeting, `help`, simulated sensor `MEAS?`/`STATUS?`/`Samples: N`, a
 parameterized "send me a stream of N bytes" command via `LoopbackGenerators.AsciiStream`, and a
 parameterized "send me N events" command via `LoopbackGenerators.Events`); a test can pass its own
 rule list instead when it needs different behavior. See `LoopbackTransportTests` for usage through a

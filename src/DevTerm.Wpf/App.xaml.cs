@@ -112,7 +112,7 @@ public partial class App : Application
             cliOptions = editor.Result;
         }
 
-        PluginTrust.Approver = new MessageBoxPluginApprover();
+        // No startup prompt: plugins still waiting for approval are asked about once the window is up, and go live at once (LivePlugins).
 
         var hostBuilder = Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((context, config) => DevTermConfiguration.Configure(context, config, args))
@@ -171,7 +171,7 @@ public partial class App : Application
             }
         }
 
-        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()], InstrumentProviders = [.. host.Services.GetServices<DevTerm.Core.Control.IInstrumentPanelProvider>()] };
+        var window = new MainWindow(session, catalog, cliOptions) { Plugins = host.Services.GetService<IReadOnlyList<PluginLoadResult>>(), PluginPanels = [.. host.Services.GetServices<DevTerm.Core.Control.IDevicePanelContribution>()], InstrumentProviders = [.. host.Services.GetServices<DevTerm.Core.Control.IInstrumentPanelProvider>()], ConfigEditors = [.. host.Services.GetServices<DevTerm.Core.Control.IDeviceConfigEditor>()] };
         MainWindow = window;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();

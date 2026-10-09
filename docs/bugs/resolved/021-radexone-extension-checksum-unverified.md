@@ -41,3 +41,5 @@ updated the proposal's Status/Open questions sections. Regression tests:
 `RadexOneDecoderTests.Render_WithReadDataReply_AndCorruptedExtensionChecksum_IsNotShownAsAValidReading`,
 `RadexOneDecoderTests.Render_WithSettingsReply_AndCorruptedExtensionChecksum_IsNotShownAsAValidReading`,
 `RadexOneDecoderTests.Render_WithWriteSettingsAckReply_AndCorruptedExtensionChecksum_IsNotShownAsAcknowledged`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

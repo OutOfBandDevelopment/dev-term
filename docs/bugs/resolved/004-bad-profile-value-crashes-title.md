@@ -48,3 +48,5 @@ reproduce as described: a duplicate key (verified with `{ "Port": 1, "port": 2 }
 version — and `InvalidDataException` was already in the filter, so that path was never actually
 broken. Regression test:
 `DevTerm.Configuration.Tests.ConnectionProfileStoreTests.FindName_SkipsAProfileWithAValueThatFailsToConvert_AndKeepsLooking`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

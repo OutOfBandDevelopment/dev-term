@@ -36,3 +36,5 @@ Regression test: `ScpiReplyPresenterTests.Render_LfThenCr_CountsAsOneLine_NotAnE
 against the pre-fix code — the second query's reply id was consumed by the spurious empty line,
 shifting "TWO" onto a nonexistent third query). Full `TestCategory=Unit` run green across the whole
 solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -32,3 +32,5 @@ same folder, then `File.Move(temp, path, overwrite: true)`) and replaced every b
 rewrite), `AppPreferencesStore.Save`, and `DevTermConfiguration.SaveLocalProfile` with it. Regression
 tests: `AtomicFileTests.WriteAllText_OnSuccess_WritesContentsAndLeavesNoTemporaryFile`,
 `AtomicFileTests.WriteAllText_WhenTheTemporaryFileCannotBeWritten_LeavesTheExistingFileUntouched`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

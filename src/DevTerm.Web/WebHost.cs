@@ -24,7 +24,7 @@ public static class WebHost
           && string.IsNullOrEmpty(options.Port) && string.IsNullOrEmpty(options.Host));
 
     /// <exception cref="InvalidOperationException">The options would expose the session unsafely (see <see cref="AccessPolicy.Validate"/>).</exception>
-    public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args)
+    public static Built Build(CliOptions cliOptions, WebOptions webOptions, string[] args, IEnumerable<IDeviceConfigEditor>? configEditors = null)
     {
         ArgumentNullException.ThrowIfNull(cliOptions);
         ArgumentNullException.ThrowIfNull(webOptions);
@@ -46,6 +46,11 @@ public static class WebHost
             var session = sp.GetRequiredService<ISessionFactory>().Create(sp.GetRequiredService<ITransport>(), new Pipeline(presenters));
             return new SessionHub(session, catalog, cliOptions, webOptions.BacklogLines).WithConfigured(IsConfigured(cliOptions));
         });
+
+        foreach (var editor in configEditors ?? [])
+        {
+            builder.Services.AddSingleton(editor);
+        }
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
         builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>(), sp.GetRequiredService<ConverterToolsStore>(), sp.GetRequiredService<ConnectionManager>()));

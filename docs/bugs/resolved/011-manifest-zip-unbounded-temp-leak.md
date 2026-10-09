@@ -42,3 +42,5 @@ the folder right after load because `ManifestEditorViewModel.Open` keeps the ext
 original location), so an immediate delete would break that path. Regression tests:
 `DeviceManifestTests.Load_ZipWithTooManyEntries_ThrowsAndDoesNotExtract`,
 `DeviceManifestTests.Load_SameZipTwice_ReusesOneExtractionFolderInsteadOfLeakingANewOneEachTime`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

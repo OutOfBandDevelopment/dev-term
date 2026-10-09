@@ -518,6 +518,38 @@ public sealed class ScreenshotTests
         Assert.Contains("Send:", dump);
     }
 
+    /// <summary>An example only: no real editor ships yet, so this shows the dialog over the test-only fake editor after a read and one edit.</summary>
+    [TestMethod]
+    public void ConfigureDeviceMode_AfterReadAndEdit_IsCaptured()
+    {
+        var dump = "";
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var viewModel = new DeviceConfigViewModel([new FakeDeviceConfigEditor()], "192.168.0.50", "8899");
+            var parts = ConfigureDeviceMode.BuildWindow(app, viewModel);
+            var token = app.Begin(parts.Dialog) ?? throw new NotSupportedException();
+            try
+            {
+                parts.Read();
+                parts.Form.SubViews.OfType<Terminal.Gui.Views.TextField>().First().Text = "192.168.0.77";
+                app.LayoutAndDraw(true);
+
+                dump = TuiTestRunner.DumpBuffer();
+                Directory.CreateDirectory(_imagesDirectory);
+                TuiScreenshot.Save(Path.Combine(_imagesDirectory, "tui-configure-device.png"));
+            }
+            finally
+            {
+                app.End(token);
+            }
+        });
+
+        File.WriteAllText(Path.Combine(_imagesDirectory, "tui-configure-device.txt"), dump);
+
+        Assert.Contains("192.168.0.77", dump);
+        Assert.Contains("Write to device", dump);
+    }
+
     [TestMethod]
     public void PlaybackMode_PartWayThroughWithANote_IsCaptured()
     {

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Profile | none bundled |
-| Transport | USBTMC, VID 0x1AB1, PID 0x0642 ("DG1000Z Serials") |
+| Profile | `rigol-dg1062z.json` (bundled; matches the `DG1062Z` in the `*IDN?` reply) |
+| Transport | USBTMC, VID 0x1AB1, PID 0x0642 ("DG1000Z Serials"); also LAN/LXI over `--transport vxi11 --host <ip>` (confirmed 2026-10-03 and 2026-10-08, `docs/test/2026-10-03-14-33-07.md`, `docs/test/2026-10-08-12-39-27.md`) |
 
 ```bash
 dotnet run --project src/DevTerm.Console -- --listusbtmcdevices true

@@ -36,3 +36,5 @@ chunk being decoded independently (and the incomplete lead byte turning into U+F
 CLAUDE.md's presenter-lifetime note (resolved fresh per session). Confirmed with a new regression test that fails
 without the fix (the first, one-byte call decoded a replacement character instead of returning nothing) and passes
 with it: `Utf8PresenterTests.Render_MultiByteCharacterSplitAcrossTwoReads_DecodesCorrectlyOnceComplete`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

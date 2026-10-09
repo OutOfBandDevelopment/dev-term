@@ -125,6 +125,27 @@ validate is refused. `containers/make-test-certs.sh` makes a throwaway CA for th
 The Connection Editor offers both under Transport, with the same MQTT group of fields; `Tls` and `CaCertificate` are
 kept in a saved profile and preserved when the editor saves it, but are not editor fields yet.
 
+### Timing and pacing flags
+
+None of these is needed for an ordinary device; they are for slow or flaky ones. All are CLI flags, environment
+variables or saved-profile keys like every other option. The Connection Editor shows only **Write byte delay**
+(see the [spec](../specs/connection-editor.md)); the rest are carried through a saved profile untouched.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--writetimeoutms` | `5000` | Serial: bounds a blocked write (flow control on, device never asserts CTS); `-1` waits forever |
+| `--readtimeoutms` | `1000` | Serial: how long a read blocks before timing out, which is how Close/Ctrl+C notice they should stop |
+| `--writebytedelayms` | `-1` | Serial, TCP, RFC 2217: pause between written bytes for a device that drops a burst; `-1` off, `0` one byte at a time |
+| `--sendintervalms` | `0` | Minimum time between two sends, any transport; `0` off |
+| `--readintervalms` | `0` | Minimum time between handling two received chunks; nothing is dropped, the backlog waits; `0` off |
+| `--connecttimeoutms` | `0` | How long one connect attempt may take; `0` leaves it to the transport |
+| `--connectretries` | `0` | Extra connect attempts after the first fails |
+| `--connectretrydelayms` | `1000` | Pause between connect attempts |
+
+`--manifestname <name>` loads a device manifest by name (from `~/.dev-term/manifests` or the app's own `manifests`
+folder) alongside the connection; `--scpiprofile <name>` preselects the SCPI profile the **SCPI Instrument...** panel
+opens with; `--exportdirectory <folder>` moves where Stream Monitor captures are saved.
+
 ### Errors
 
 An unrecognized transport, or missing required arguments, print usage text to stderr and exit 1
@@ -132,22 +153,29 @@ rather than hanging:
 
 ```
 $ dotnet DevTerm.Console.dll --transport carrier-pigeon --cli true
-Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', or 'loopback'.
+Unknown transport 'carrier-pigeon'. Expected 'serial', 'tcp', 'hid', 'usbtmc', 'ble', 'rfc2217', 'vxi11', 'mqtt', 'amqp', 'stomp', or 'loopback'.
 Usage: dev-term --transport serial --port <name> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--handshake <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport tcp (--host <host> | --listen true) --port <port> [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport hid --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport usbtmc --vendorid <n> --productid <n> [--serialnumber <sn>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport ble --bledeviceid <id> [--bleserviceuuid <uuid>] [--blewritecharacteristicuuid <uuid>] [--blenotifycharacteristicuuid <uuid>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
    or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]
+   or: dev-term --transport vxi11 --host <host> [--port <core-port>] [--presenter <name[,name...]>] [--lineending <None|Cr|Lf|CrLf>] [--cli <bool>]
+   or: dev-term --transport amqp|stomp --host <host> --port <port> [--subscribe <key[,key...]>] [--publish <key>] [--username <name>] [--password <pw>]
+   or: dev-term --transport mqtt --host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]
    or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]
    or: dev-term --listports true
    or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]
    or: dev-term --listusbtmcdevices true [--vendorid <n>] [--productid <n>]
    or: dev-term --listbledevices true
+   or: dev-term --listblecharacteristics <deviceid>
 The full-screen TUI is the default mode; pass --cli true for the plain scriptable loop instead
 (e.g. for automation/CI), or --tui false, equivalently.
 Add --log <file.jsonl> (or --log true for a timestamped file under ~/.dev-term/logs) to any
 connection to record everything sent and received.
+Add --otlp <http://host:4317> (or --otlp true for localhost) to export dev-term's own traces and metrics over OTLP.
+Add --theme <light|dark|system|name> to pick the TUI's colors for this run (View > Theme saves a choice;
+custom themes are JSON files under ~/.dev-term/themes).
 ...
 ```
 
@@ -284,11 +312,11 @@ How to press it:
 Either way, if you've changed a field without saving or connecting, Quit/Close asks before throwing the
 changes away.
 
-### Finding a LAN device (LXI, mDNS, SSDP)
+### Finding a LAN device (LXI, mDNS, SSDP, USR bridges)
 
 For a device on the network, choose the `tcp` transport and press **Detect network devices...** (a dropdown plus button in WPF, a
 button opening a list in the TUI). The scan takes about three seconds and runs three probes at once: the LXI instrument
-scan (with its `*IDN?` and raw SCPI port), mDNS service discovery and SSDP/UPnP. Each device appears once; picking one fills
+scan (with its `*IDN?` and raw SCPI port), mDNS service discovery, SSDP/UPnP and a USR-TCP232 serial-to-Ethernet bridge sweep (port 80 web-login realm; suggests port 23). Each device appears once; picking one fills
 Host and Port and sets the transport to match (`vxi11` for a VXI-11-only LXI unit, `mqtt` for a broker). The mDNS and SSDP probes have only been tried against what happens to be on one home LAN (printers, a NAS);
 an LXI unit such as the DG1062Z answers the LXI probe only. From a script, `--listlxidevices true` lists just the LXI
 instruments and `--listnetworkdevices true` lists everything:

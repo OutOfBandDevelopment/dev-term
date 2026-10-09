@@ -73,12 +73,12 @@ proposal file. Last swept 2026-10-09.
 Decided against: the web host using the project file as its whole connection set (connections stay an extra list); supporting other ES51919 meters beyond "probably works". Keep it current: add a row when a proposal gains an unchecked item, delete the row
 when the item is checked off in the proposal (the `work-docs-audit` skill re-sweeps this section).
 
-**Open bugs:** none (`docs/bugs/` holds only closed reports under `resolved/`). A new open bug gets a line here when filed.
+**Open bugs:** none (`docs/bugs/` holds only closed reports under `resolved/`, 71 in all). A new open bug gets a line here when filed.
 
 | Proposal | Unchecked items | Blocked on |
 |---|---|---|
-| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR UDP search packet (the web-login USR probe is built) | A fresh capture of each device |
-| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | Configure device menu (lists registered editors); EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is buildable; the editors need captures and bench time |
+| [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR UDP search packet (the web-login USR probe is built) |  A fresh capture of each device |
+| [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is built; the editors need captures and bench time |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
 | [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers | Your setup |
@@ -104,11 +104,8 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 - **Dockable MDI layout (WPF).** Sessions and Stream Monitor windows that can be snapped/docked around and
   onto the main window, Visual Studio style, instead of fixed tabs plus floating windows. Needs a docking
   library choice (e.g. AvalonDock) and a layout-persistence story; the dark theme templates would need covering.
-- **Cross-process session channel, remaining work:** (`--control` is in all three front ends; `--controlclient <name>` is the client; `--controlhttp <port>` is the localhost web-service variant, also in the `DevTerm.Web` host). The read-only pipe, the read-write `--control <name>` pipe (current user only), `--pipe <name>` (all three front ends) and the `--attach <name>` tail client are built; see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md).
-- **Project state, remaining:** the file format and `--project`/`--saveproject` are built ([project-state](docs/design/proposals/project-state.md), decided connection-only and on request). The TUI/WPF File menu items are built too. Send history, log settings and the active tab are saved and restored too (2026-10-07). The WPF window position and size are saved too. Left: the Web host using the file as its connection set.
 - **PCX (and PCL raster) preview in the Stream Monitor (rejected).** WPF has no PCX decoder, so a captured PCX is saved but not
   shown. Options: a small built-in PCX decoder (the format is simple RLE; no dependency) or Magick.NET (large native
   package, but also covers other formats). A PCL raster job needs its `ESC*b<n>W` rows decoded to a bitmap.
   **Decision 2026-10-03: the PCX decoder and the PCL raster preview are both rejected for now** (BMP and TIFF hardcopy already preview); a captured PCX or PCL job stays saved, and PCL still converts through GhostPCL. Revisit only if asked.
-- **Web host: service-driven connections.** `DevTerm.Web` should need no connection arguments: device enumeration, project create/manage and open-connection services, per-connection tokens and `/ws/{id}` tunnels, a host events stream, a Blazor front end, Scalar (OpenAPI) for the services and AsyncAPI UI for the WebSocket/event channels. Design and open questions: [web-tunnel-blazor-frontend.md](docs/design/proposals/web-tunnel-blazor-frontend.md). Shares a project model with the project-state item above. Decided 2026-10-03: one shared token, no per-connection tokens. Built: `/api/project`, `/api/connections` (open/list/close) and `/ws/{id}`. `/api/devices` lists attached serial/HID/USBTMC devices. `/api/events` streams connection and line events (SSE). The Blazor `/connections` page opens and closes project connections. `/scalar/v1`, `/openapi/v1.json` and `/asyncapi.json` document the API. `PUT`/`DELETE /api/project/connections/{name}` edit the project file, and the `/profiles` page edits it from a generated form (with `GET /api/discover` behind its detect button).
 

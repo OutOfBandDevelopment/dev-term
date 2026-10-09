@@ -123,6 +123,21 @@ public sealed class SessionLoggerTests
     }
 
     [TestMethod]
+    public async Task RecordInstrument_WritesAnInstrumentRecordWithTheProfileName()
+    {
+        await using var session = new Session(new FakeTransport(), new Pipeline([]));
+        using (var logger = SessionLogger.Start(_path, Header()))
+        {
+            logger.Attach(session, "loopback://");
+            logger.RecordInstrument("Korad KA3005P");
+        }
+
+        var log = SessionLog.Load(_path);
+        Assert.AreEqual("session,instrument", Shape(log));
+        Assert.AreEqual("Korad KA3005P", log.Records[1].Profile);
+    }
+
+    [TestMethod]
     public async Task AFailedSend_IsRecordedAsTheAttemptedTxThenADisconnect()
     {
         var transport = new FakeTransport();

@@ -42,3 +42,5 @@ new regression test in `TcpTransportTests`
 mocked `ITcpConnection.WriteAsync` that never completes; the interface signature change alone made the test project
 fail to compile against the pre-fix code (`ITcpConnection` had no `WriteAsync`), confirmed directly before applying
 the fix.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

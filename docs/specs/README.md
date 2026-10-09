@@ -31,6 +31,7 @@ Each spec follows the same shape:
 - [Converter tools editor](converter-tools-editor.md) — the dialog (WPF `ConverterToolsWindow`, TUI `ConverterToolsDialog`)
   that adds, edits, removes and reorders the Stream Monitor's registered converter tools.
 
+- [Theme builder](theme-builder.md) — the dialog (TUI, WPF) and `/themes` page that build and save a custom JSON theme from a seed theme.
 - [Routing Window](routing-window.md) — built (WPF and TUI): edits and runs the profile's broker routing rules, with a live rule test and history.
 - [Connection Editor](connection-editor.md) — the shared connection-editing screen
   (`DevTerm.Configuration.ConnectionEditorViewModel`), rendered as the TUI's `ConfigureMode` and

@@ -30,3 +30,5 @@ match against the dictionary, so a substituted value's own `{name}`-shaped text 
 Regression tests:
 `ScpiControlSurfaceTests.InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted`,
 `ManifestControlSurfaceTests.InvokeAsync_MultiParameterCommand_EarlierValueContainingALaterPlaceholder_IsNotItselfSubstituted`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

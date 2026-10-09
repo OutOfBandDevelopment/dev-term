@@ -30,3 +30,5 @@ notes it is "not a USB HID device" and needed no change.
 Regression test: `RadexOneUiDefinitionTests.Build_DescriptionDoesNotClaimUsbHid` (fails against the
 pre-fix code — the description contained "USB HID"). Full `TestCategory=Unit` run green across the
 whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

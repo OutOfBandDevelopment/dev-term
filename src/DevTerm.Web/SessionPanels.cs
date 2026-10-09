@@ -99,6 +99,7 @@ internal sealed class SessionPanels(IEnumerable<IDevicePanelContribution> contri
         }
 
         var instrument = provider.Open(choice, hub.Session, structured);
+        hub.RecordInstrument(choice);
         var panel = new OpenPanel(instrument.Definition, instrument.Surface);
         if (structured is IStructuredPresenter source)
         {

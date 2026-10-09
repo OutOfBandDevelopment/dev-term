@@ -4,7 +4,7 @@
 
 Lets a user create or edit a `ThemeFile` from inside the app — pick a seed (a built-in theme or an
 existing user theme), name it, override any `ThemeRole`'s color, see the whole app re-skin live
-while editing, and save — instead of hand-writing JSON. Reached from **View > Theme > Build/Edit
+while editing, and save — instead of hand-writing JSON. Reached from **View > Build/Edit
 Theme...** in either front end, alongside the existing theme picker. Shared logic (seed tracking,
 per-role overrides, live-preview building, contrast checking, save/validation) lives in
 `DevTerm.Configuration.ThemeBuilderState`, used by both front ends:
