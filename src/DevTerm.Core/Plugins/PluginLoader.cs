@@ -26,12 +26,13 @@ public static class PluginLoader
             return results;
         }
 
-        foreach (var folder in Directory.GetDirectories(directory).Order(StringComparer.OrdinalIgnoreCase))
+        var folders = Directory.GetDirectories(directory)
+            .Where(f => File.Exists(Path.Combine(f, PluginManifest.FileName)))
+            .OrderBy(f => PluginManifest.TryRead(Path.Combine(f, PluginManifest.FileName), out _)?.Order ?? 0)
+            .ThenBy(f => f, StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in folders)
         {
-            if (File.Exists(Path.Combine(folder, PluginManifest.FileName)))
-            {
-                results.Add(Load(folder, services));
-            }
+            results.Add(Load(folder, services));
         }
 
         return results;

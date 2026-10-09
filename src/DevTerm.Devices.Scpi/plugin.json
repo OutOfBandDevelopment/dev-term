@@ -2,5 +2,6 @@
   "name": "Scpi",
   "version": "1.0.0",
   "contract": 1,
+  "order": 3,
   "assembly": "DevTerm.Devices.Scpi.dll"
 }

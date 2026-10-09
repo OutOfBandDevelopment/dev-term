@@ -18,6 +18,9 @@ public sealed class PluginManifest
 
     public int Contract { get; set; }
 
+    /// <summary>Optional load order (lower first, then by folder name); decides the order presenters and menu entries are listed in.</summary>
+    public int Order { get; set; }
+
     /// <summary>The .NET assembly of an in-process plugin. Empty for an out-of-process one (see <see cref="Process"/>).</summary>
     public string Assembly { get; set; } = string.Empty;
 
