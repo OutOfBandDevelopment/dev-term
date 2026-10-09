@@ -36,12 +36,12 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory },
             []);
         configure?.Invoke(built);
         await built.Hub.StartAsync();
@@ -155,6 +155,52 @@ public class WebScreenshotTests
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
+
+    [TestMethod]
+    public async Task ThemesPage_BuildsAndSavesATheme()
+    {
+        var themes = Path.Combine(Path.GetTempPath(), "devterm-web-themes-" + Guid.NewGuid().ToString("N"));
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/themes?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-seed]").SelectOptionAsync("dark");
+            await page.Locator("[data-newname]").FillAsync("Bench Night");
+            await page.Locator("[data-create]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-name]")).ToHaveValueAsync("Bench Night");
+            await page.Locator("[data-role=Background] [data-color]").FillAsync("#102030");
+            await Assertions.Expect(page.Locator("[data-role=Background] [data-hex]")).ToHaveTextAsync("#102030");
+            await Assertions.Expect(page.Locator("[data-role=Background] [data-reset]")).ToBeEnabledAsync();
+            await SaveAsync(page, "web-blazor-themes.png");
+            await page.Locator("[data-name]").FillAsync("dark");
+            await page.Locator("[data-save]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-message]")).ToContainTextAsync("reserved");
+            await page.Locator("[data-name]").FillAsync("Bench Night");
+            await page.Locator("[data-save]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-message]")).ToContainTextAsync("Saved 'Bench Night'");
+        }, themesDirectory: themes);
+        try
+        {
+            var loaded = DevTerm.Configuration.ThemeFile.Load(Path.Combine(themes, "Bench Night.json"));
+            Assert.IsNotNull(loaded.Theme);
+            Assert.AreEqual(DevTerm.Configuration.ThemeColor.Parse("#102030"), loaded.Theme[DevTerm.Configuration.ThemeRole.Background]);
+        }
+        finally
+        {
+            Directory.Delete(themes, true);
+        }
+    }
+
+    [TestMethod]
+    public Task ThemesPage_ReadOnlyViewer_CannotSave() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/themes?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await page.Locator("[data-create]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
+    }, themesDirectory: Path.Combine(Path.GetTempPath(), "devterm-web-themes-none"));
 
     [TestMethod]
     public Task RoutingPage_AddsARule_TestsItAndConnects() => RunAsync(async (page, baseUrl) =>

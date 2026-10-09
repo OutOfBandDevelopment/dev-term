@@ -49,6 +49,7 @@ public static class WebHost
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
         builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>()));
+        builder.Services.AddSingleton(new ThemeLibrary(webOptions.ThemesDirectory ?? DevTermUserDataPaths.ThemesDirectory));
         builder.Services.AddSingleton(new PlaybackLibrary(webOptions.LogsDirectory ?? DevTermUserDataPaths.LogsDirectory));
         builder.Services.AddSingleton(sp => new SessionPanels(sp.GetServices<IDevicePanelContribution>()));
         builder.Services.AddOpenApi();
