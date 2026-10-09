@@ -146,6 +146,6 @@ Open **Monitor** from the nav row (`/monitor`). It starts watching the shared se
 
 ![Monitor page](images/web-blazor-monitor.png)
 
-The web's **Converters** page edits the shared converter tools list (name, path, arguments, formats, output extension, DPI; add, remove, reorder, Save). Running a converter from the web Stream Monitor is not available yet.
+The web's **Converters** page edits the shared converter tools list (name, path, arguments, formats, output extension, DPI; add, remove, reorder, Save). The Stream Monitor page has a **Convert as** list and a **Convert** button that run the chosen mechanism on the selected capture, listing the result as a new capture (read-only viewers cannot convert).
 
 ![Converter tools on the web](images/web-blazor-converters.png)

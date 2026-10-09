@@ -316,6 +316,9 @@ public class WebScreenshotTests
             await Task.Delay(5000);
         });
         var options = new CliOptions { Transport = "tcp", Host = "127.0.0.1", Port = ((IPEndPoint)device.LocalEndpoint).Port.ToString(System.Globalization.CultureInfo.InvariantCulture), Presenter = ["hex"], Tui = false, Cli = true, ExportDirectory = exports };
+        var toolsFile = Path.Combine(exports, "tools.json");
+        Directory.CreateDirectory(exports);
+        new DevTerm.Configuration.ConverterToolsStore(toolsFile).Save([new DevTerm.Configuration.StreamConvertToolOptions { Name = "copyit", Path = "cmd.exe", Arguments = "/c copy /Y {input} {output}", OutputExtension = "png" }]);
         await RunAsync(async (page, baseUrl) =>
         {
             await page.GotoAsync($"{baseUrl}/monitor?token=demo-token");
@@ -333,10 +336,16 @@ public class WebScreenshotTests
             await page.Locator("[data-search]").FillAsync("bmp");
             await Assertions.Expect(page.Locator("[data-capture]")).ToHaveCountAsync(1);
             await SaveAsync(page, "web-blazor-monitor.png");
+            await page.Locator("[data-search]").FillAsync(string.Empty);
+            await page.Locator("[data-convertmode]").SelectOptionAsync(new SelectOptionValue { Label = "copyit" });
+            await page.Locator("[data-convert]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-convertresult]")).ToContainTextAsync("Converted to");
+            await Assertions.Expect(page.Locator("[data-capture]")).ToHaveCountAsync(2);
             await page.Locator("[data-toggle]").ClickAsync();
             await Assertions.Expect(page.Locator("[data-state]")).ToContainTextAsync("Stopped");
-        }, options: options);
+        }, options: options, converterToolsFile: toolsFile);
         Assert.AreEqual(1, Directory.GetFiles(exports, "*.bmp").Length);
+        Assert.AreEqual(1, Directory.GetFiles(exports, "*.png").Length);
     }
 
     [TestMethod]

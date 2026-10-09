@@ -63,7 +63,16 @@
         <legend>Selected</legend>
         <p data-detail>@sel.Summary</p>
         <p class="note" data-saved>@(sel.SavedPath is not null ? "Saved to " + sel.SavedPath : "Not saved: " + sel.SaveError)</p>
-        <div class="row"><a data-download href="api/monitor/captures/@_selected" download>Download</a></div>
+        <div class="row">
+            <a data-download href="api/monitor/captures/@_selected" download>Download</a>
+            <label>Convert as
+                <select data-convertmode @bind="_choice" disabled="@_readOnly">
+                    @for (var i = 0; i < _choices.Count; i++) { <option value="@i">@_choices[i].DisplayName</option> }
+                </select>
+            </label>
+            <button data-convert disabled="@(_readOnly || _converting)" @onclick="ConvertAsync">Convert</button>
+        </div>
+        @if (_convertMessage is not null) { <p class="note" data-convertresult>@_convertMessage</p> }
         @if (sel.Capture.Kind.MediaType is "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/svg+xml")
         {
             <img data-preview class="preview" alt="@sel.Capture.Kind.DisplayName" src="api/monitor/captures/@_selected" />
@@ -83,6 +92,10 @@
     private string _device = string.Empty;
     private StreamCaptureSort _sort = StreamCaptureSort.Newest;
     private int _selected = -1;
+    private int _choice;
+    private bool _converting;
+    private string? _convertMessage;
+    private IReadOnlyList<StreamConversionChoice> _choices = [];
 
     [CascadingParameter] private HttpContext? Http { get; set; }
 
@@ -122,6 +135,8 @@
             _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
         }
 
+        _choices = Web.ConversionChoices();
+        _choice = Web.DefaultChoice();
         Web.Monitor.CaptureAdded += OnChanged;
         Web.Monitor.StateChanged += OnChanged;
         if (Web.Monitor.Captures.Count > 0 && _selected < 0)
@@ -139,6 +154,30 @@
 
         StateHasChanged();
     });
+
+    private async Task ConvertAsync()
+    {
+        if (_readOnly || Selected is not { } capture || _choice < 0 || _choice >= _choices.Count)
+        {
+            return;
+        }
+
+        _converting = true;
+        _convertMessage = null;
+        try
+        {
+            var result = await Web.ConvertAsync(capture, _choices[_choice]);
+            _convertMessage = result.Success ? $"Converted to {Path.GetFileName(result.OutputPath)}." : $"Convert failed: {result.Error}";
+        }
+        catch (Exception ex)
+        {
+            _convertMessage = $"Convert failed: {ex.Message}";
+        }
+        finally
+        {
+            _converting = false;
+        }
+    }
 
     private void Toggle()
     {

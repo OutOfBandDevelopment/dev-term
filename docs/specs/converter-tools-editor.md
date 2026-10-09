@@ -43,4 +43,4 @@ the same name, in which case the app-wide one wins. They have no editing screen 
 
 ## Web
 
-`/converters` in `DevTerm.Web` edits the same shared list (`ConverterToolsEditor`, `converter-tools.json`, or `Web:ConverterToolsFile`). All tools show as editable cards; Save validates as OK does and writes at once, Revert reloads the file. Read-only viewers cannot change it. Nothing on the web runs a converter yet (Stream Monitor Convert is not built), so a saved tool is only used by the desktop apps.
+`/converters` in `DevTerm.Web` edits the same shared list (`ConverterToolsEditor`, `converter-tools.json`, or `Web:ConverterToolsFile`). All tools show as editable cards; Save validates as OK does and writes at once, Revert reloads the file. Read-only viewers cannot change it. The web Stream Monitor's Convert uses this list.
