@@ -170,3 +170,7 @@ An unknown `--theme` name is reported the same way, and dev-term uses System ins
 
 In WPF, a theme based on `light` recolors the window, text, lists and menus, but buttons and combo
 boxes keep Windows' standard light look. A theme based on `dark` recolors those too.
+
+## On the web
+
+The terminal page's **Theme** dropdown offers Light, Dark and System and remembers the choice in the browser. The custom Theme builder is not on the web yet.

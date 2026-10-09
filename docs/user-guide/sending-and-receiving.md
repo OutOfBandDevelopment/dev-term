@@ -181,3 +181,7 @@ From a second terminal, `dev-term --controlclient bench1` does this for you: eac
 `--controlhttp 8080` serves the same commands on `http://127.0.0.1:8080/` (loopback only). dev-term prints a per-run bearer token at startup (or set your own with `--controltoken`); send it as `Authorization: Bearer <token>` or `?token=`. `POST /command` takes the command line as its body and answers `ok` or `error <why>`; `GET /events` is a Server-Sent Events stream of the `open`/`rx`/`tx`/`closed` lines; `GET /ping` checks it is up. Without the token every request gets 401. A Python example that tails events and replies is in `examples/python/control-channel-client/`.
 
 `--control`, `--controlhttp`, `--sharetcp` and `--sharerfc2217` work in the console CLI, the TUI and WPF.
+
+## On the web
+
+The terminal page's send box does the same job. **Send as** picks the format typed lines are encoded with (ascii, hex, ...), **Echo sent commands** adds an `Out>` line for each send, **Clear output** empties the active tab, and Up/Down in the send box recall earlier lines. A send while the session is closed is refused with "Not connected" until you press Connect, as in the TUI and WPF. Covered by `WebScreenshotTests.TerminalPage_Toolbar_SendAsEchoClearHistoryAndTheme` and the shared flows in `WebUserFlowTests`.

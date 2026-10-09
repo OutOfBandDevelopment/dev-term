@@ -133,3 +133,7 @@ It works like the TUI's, with these differences:
 - You can't add a note to a log that this same dev-term is still recording. Stop logging first.
 - Logs made by a newer dev-term with a different format version are refused with a message rather
   than misread.
+
+## On the web
+
+**Start logging** on the terminal page records the active tab to the default `~/.dev-term/logs` name; **Stop logging** closes it, and **Download log** fetches the file. Playback of a log is not on the web yet. Covered by `WebScreenshotTests.TerminalPage_Toolbar_LoggingRecordsTheSession`.

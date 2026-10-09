@@ -74,14 +74,14 @@ with the error instead of leaving a half-open connection. Only profiles written 
 ## Behaviour
 
 All viewers share one session. Output goes to everyone; sends are serialized. A failed startup connect is shown in the
-page and the next sent line retries, as in the TUI/WPF. Input that the parser cannot encode is reported to the sender
+page and Connect retries, as in the TUI/WPF; a line sent while the session is closed is refused ("Not connected"), never silently reconnected. Input that the parser cannot encode is reported to the sender
 only.
 
 ## Sessions as tabs (main page `/`)
 
 The main page has one tab per session, like the desktop apps: **dev-term** (the host's own session, `/ws`) and one tab for each connection opened from a saved profile (`/ws/{id}`). Each tab has its own WebSocket, output and status line (`<name> - connected|disconnected`); the send box goes to the active tab. The profile dropdown with **Open** (right of the tabs) starts a saved profile as a new tab (`POST /api/connections`); the **x** beside a tab closes it (`DELETE /api/connections/{id}`; the main tab has none). Tabs already open when the page loads are restored, and the `connection-opened`/`connection-closed` events keep every open browser tab in step with the `/connections` page and REST calls. The profile list follows `project-changed`. A read-only token can read every tab but cannot open or close one. The device panel, when configured, shows under the main tab only.
 
-The status line also has a profile dropdown with **Switch to** (`POST /api/session/profile?name=`, 404 unknown, 403 read-only): the host's own session is closed and disposed, a new one is built from that saved profile and connected, and every viewer stays attached with its output kept (a `Switched to <name>.` line marks the change). The status shows `dev-term (<profile>)`, `/api/status` has `profile`, and a configured device panel is rebound to the new session. A failed connect is shown and the profile stays selected (the next sent line retries). The `--controlhttp` server stays on the startup session.
+The status line also has a profile dropdown with **Switch to** (`POST /api/session/profile?name=`, 404 unknown, 403 read-only): the host's own session is closed and disposed, a new one is built from that saved profile and connected, and every viewer stays attached with its output kept (a `Switched to <name>.` line marks the change). The status shows `dev-term (<profile>)`, `/api/status` has `profile`, and a configured device panel is rebound to the new session. A failed connect is shown and the profile stays selected (Connect retries). The `--controlhttp` server stays on the startup session.
 
 `--Web:Profile <name>` (or `DEVTERM_Web__Profile`) makes the host's own session use a saved profile from the shared store instead of the layered options; an unknown name exits 1 listing the saved ones.
 
@@ -111,3 +111,7 @@ A read-only token sees the list with every button disabled and a notice.
 ## Blazor panel page (`/panel`)
 
 Same token auth as every route. Renders the host's `Web:Panel` `UiDefinition` generically (sections as fieldsets; button, toggle, slider, numeric, choice, text field, indicator (showing the latest value the device's structured presenter published, e.g. the K8055 analog inputs, when that presenter is selected; otherwise its default); other kinds show a placeholder) and sends each change through the same `IControlSurface` as `/api/invoke`. A read-only token sees the page with every control disabled and a notice. With no `Web:Panel`, the page says none is configured.
+
+## Automated coverage
+
+The web is held to the same automation as the TUI and WPF: the shared user flows (`UserFlowTestsBase`, driven by `WebUserFlowTests` through Playwright and headless Edge, none skipped), real captured screenshots under `docs/user-guide/images`, and a layout review (`WebLayoutReviewTests`) that opens the terminal page (with a device panel, light and dark) and each Blazor page at 1280x800 and 400x800 and fails on sideways page scroll, overlapping siblings, clipped text, controls under 14px and text contrast under 4.5:1. Review captures land in `artifacts/ui-review/web`. Each new web feature adds a flow, a layout-review case and its screenshots.

@@ -50,7 +50,7 @@ public sealed class SessionHub : IAsyncDisposable
             if (ReferenceEquals(session, _session))
             {
                 StateChanged?.Invoke();
-                Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} The next line sent will reconnect.");
+                Publish($"! {ConnectionErrorMessages.ForDisconnect(options.Transport, e.Error)} Press Connect to reconnect.");
             }
         };
     }
@@ -58,7 +58,7 @@ public sealed class SessionHub : IAsyncDisposable
     /// <summary>
     /// Replaces the host's own connection with <paramref name="options"/> (a saved profile): the old session is closed and
     /// disposed, a new one is built and connected, and viewers stay attached with their output kept. A failed connect is
-    /// reported to viewers, and the new profile stays selected (the next sent line retries), as at startup.
+    /// reported to viewers, and the new profile stays selected (press Connect to retry), as at startup.
     /// </summary>
     public async Task SwitchAsync(CliOptions options, string name, CancellationToken cancellationToken = default)
     {
@@ -184,7 +184,7 @@ public sealed class SessionHub : IAsyncDisposable
         }
     }
 
-    /// <summary>Closes the session on request (the next sent line reconnects, as after a lost connection).</summary>
+    /// <summary>Closes the session on request (press Connect to reopen it, as File > Connect in the TUI/WPF; a send while closed is refused, not reconnected).</summary>
     public async Task DisconnectAsync()
     {
         if (_session.State == ConnectionState.Open)
@@ -252,16 +252,7 @@ public sealed class SessionHub : IAsyncDisposable
         {
             if (_session.State != ConnectionState.Open)
             {
-                try
-                {
-                    await _session.OpenAsync(cancellationToken);
-                    Publish($"Reconnected to {Description}.");
-                    StateChanged?.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    return $"{ConnectionErrorMessages.For(_options.Transport, ex)} Not sent.";
-                }
+                return "Not connected. Press Connect to reconnect. Not sent.";
             }
 
             try

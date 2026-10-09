@@ -126,7 +126,7 @@ public static class WebHost
 
             await hub.DisconnectAsync();
             return Results.Json(new { state = hub.State.ToString() });
-        }).WithSummary("Disconnect the host's own session; the next sent line reconnects. 403 read-only");
+        }).WithSummary("Disconnect the host's own session; a send while closed is refused until Connect. 403 read-only");
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { configured = hub.Configured, profile = hub.ProfileName, state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
 
         // Per-session settings the desktop apps keep in menus: the "Send as" format and logging. {id} is "main" or an opened connection's id.

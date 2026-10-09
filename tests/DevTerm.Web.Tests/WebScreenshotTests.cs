@@ -189,6 +189,67 @@ public class WebScreenshotTests
         await SaveAsync(page, "web-terminal-reply.png");
     });
 
+    /// <summary>The toolbar's menu equivalents: Send as, Echo sent commands, Clear output, history and Theme all work in the page.</summary>
+    [TestMethod]
+    public Task TerminalPage_Toolbar_SendAsEchoClearHistoryAndTheme() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Task.Delay(500);
+
+        await page.Locator("#parser").SelectOptionAsync("hex");
+        await page.Locator("#echo").CheckAsync();
+        await page.Locator("#line").FillAsync("68 65 6c 6c 6f");
+        await page.Locator("#line").PressAsync("Enter");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("Out> 68 65 6c 6c 6f");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("From Loopback test");
+
+        await page.Locator("#line").PressAsync("ArrowUp");
+        await Assertions.Expect(page.Locator("#line")).ToHaveValueAsync("68 65 6c 6c 6f");
+
+        await page.Locator("#clear").ClickAsync();
+        await Assertions.Expect(page.Locator("#out")).Not.ToContainTextAsync("From Loopback test");
+
+        await page.Locator("#theme").SelectOptionAsync("dark");
+        await Assertions.Expect(page.Locator("html")).ToHaveAttributeAsync("data-theme", "dark");
+        await page.Locator("#theme").SelectOptionAsync("light");
+        await Assertions.Expect(page.Locator("html")).ToHaveAttributeAsync("data-theme", "light");
+    });
+
+    /// <summary>Start logging, send a line, stop: the log file exists and holds the reply; the download link serves it.</summary>
+    [TestMethod]
+    public Task TerminalPage_Toolbar_LoggingRecordsTheSession() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Task.Delay(500);
+        await page.Locator("#log").ClickAsync();
+        await Assertions.Expect(page.Locator("#log")).ToHaveTextAsync("Stop logging");
+        await page.Locator("#line").FillAsync("hello");
+        await page.Locator("#line").PressAsync("Enter");
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("From Loopback test");
+        var response = await page.APIRequest.GetAsync($"{baseUrl}/api/sessions/main/log?token=demo-token");
+        Assert.IsTrue(response.Ok);
+        StringAssert.Contains(await response.TextAsync(), Convert.ToBase64String("From Loopback test"u8.ToArray())[..20]);
+        await page.Locator("#log").ClickAsync();
+        await Assertions.Expect(page.Locator("#log")).ToHaveTextAsync("Start logging");
+    });
+
+    /// <summary>The Device menu opens a plugin panel and a control on it reaches the device.</summary>
+    [TestMethod]
+    public Task TerminalPage_DeviceMenu_OpensAPanelAndItsControlsReachTheDevice() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Assertions.Expect(page.Locator("#device option[value=demo]")).ToHaveCountAsync(1);
+        await page.Locator("#device").SelectOptionAsync("demo");
+        await page.Locator("[data-control=led] input").CheckAsync();
+        await page.Locator("[data-control=apply] button").ClickAsync();
+        await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("Unrecognized: SET LED=1");
+        await page.Locator("#device").SelectOptionAsync("");
+        await Assertions.Expect(page.Locator("#panel")).ToBeHiddenAsync();
+    });
+
     /// <summary>The host's own tab can be disconnected and connected again from the page.</summary>
     [TestMethod]
     public Task TerminalPage_MainSession_DisconnectsAndReconnects() => RunAsync(async (page, baseUrl) =>

@@ -11,13 +11,15 @@ internal static class TerminalPage
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>dev-term</title>
         <style>
-          :root { color-scheme: light dark; --bg: #fff; --fg: #1b1f23; --dim: #6a737d; --bar: #f1f3f5; }
+          :root { color-scheme: light dark; --bg: #fff; --fg: #1b1f23; --dim: #59636e; --bar: #f1f3f5; }
           @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; } }
           :root[data-theme="dark"] { color-scheme: dark; --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; }
-          :root[data-theme="light"] { color-scheme: light; --bg: #fff; --fg: #1b1f23; --dim: #6a737d; --bar: #f1f3f5; }
+          :root[data-theme="light"] { color-scheme: light; --bg: #fff; --fg: #1b1f23; --dim: #59636e; --bar: #f1f3f5; }
           #tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 4px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); }
           #tools select, #tools button { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); padding: 2px 6px; }
           #tools label { color: var(--dim); }
+          input[type=checkbox] { width: 16px; height: 16px; flex: none; }
+          input[type=range] { height: 20px; }
           .sent { color: var(--dim); }
           html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 ui-monospace, Consolas, monospace; }
           body { display: flex; flex-direction: column; }
@@ -193,7 +195,7 @@ internal static class TerminalPage
           function line(text) { const d = document.createElement('div'); d.textContent = text; d.className = text.startsWith('!') ? 'err' : ''; out.appendChild(d); out.scrollTop = out.scrollHeight; }
           function el(tag, props, ...kids) { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; }
           function renderControl(c) {
-            const row = el('div', { className: 'row' });
+            const row = el('div', { className: 'row' }); row.dataset.control = c.Id;
             const label = el('label', { textContent: c.Label, title: c.Description || '' });
             const id = c.CommandId || c.Id;
             switch (c.kind) {

@@ -220,3 +220,7 @@ instead of editing the JSON by hand: see [Editing a device manifest](manifest-ed
   Struct (`.ksy`) layout loads, but nothing decodes that layout yet.
 - A saved connection profile's manifest name doesn't open that manifest's panel by itself yet —
   pick it from **Device > Device Manifest...**.
+
+## On the web
+
+The terminal page's **Device** dropdown lists every plugin panel that suits the active tab's connection (the same filter as the desktop Device menu). Choosing one opens it above the output with live indicator values; its controls send through that tab's own session. `Web:Panel` still pins a panel on the main tab. Covered by `WebScreenshotTests.TerminalPage_DeviceMenu_OpensAPanelAndItsControlsReachTheDevice` and the shared panel flow.
