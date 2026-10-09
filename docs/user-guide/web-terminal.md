@@ -23,6 +23,12 @@ shown yet). Give a colleague `Web:ReadOnlyToken` and they see the same page with
 
 ![The terminal page with the Busylight panel above the output](images/web-terminal-page.png)
 
+The toolbar under the connection line mirrors the desktop menus: **Send as** picks the format typed lines are encoded with,
+**Device** lists every plugin panel that suits the active tab's connection (choose one and it opens above the output, with
+live indicator values, driving that tab's own session), **Echo sent commands** and **Clear output** act on the output
+pane, **Start logging** writes the session to `~/.dev-term/logs` (and offers the file for download), and **Theme** is Light,
+Dark or System (remembered in the browser). Up/Down in the send box recalls earlier lines.
+
 It listens on loopback only unless you set `Web:AllowRemote`, `Web:Token`, `Web:CertificatePath` and an `https` URL.
 Every browser tab shares the one session. Field reference: [web terminal spec](../specs/web-terminal.md).
 
