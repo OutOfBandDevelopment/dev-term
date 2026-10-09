@@ -80,7 +80,6 @@ when the item is checked off in the proposal (the `work-docs-audit` skill re-swe
 | [network-device-discovery](docs/design/proposals/network-device-discovery.md) | EByte UDP probe; USR UDP search packet (the web-login USR probe is built) |  A fresh capture of each device |
 | [network-device-config-editors](docs/design/proposals/network-device-config-editors.md) | EByte E810-DTU editor; USR-TCP232-302 editor; spec, guide and a `docs/test/` bench report | The seam is built; the editors need captures and bench time |
 | [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | Transport and device-module variants | Design work |
-| [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md) | TUI in-app approval prompt that loads the plugin at once | Your call: needs live plugin loading (plugins load while DI is built, before the TUI exists), so it is a design item |
 | [message-broker-protocols](docs/design/proposals/message-broker-protocols.md) | A real device or home-automation broker check for MQTT | A real broker |
 | [web-tunnel-blazor-frontend](docs/design/proposals/web-tunnel-blazor-frontend.md) | A real device through the page with several browsers | Your setup |
 | [de5000-lcr-meter-protocol](docs/design/proposals/de5000-lcr-meter-protocol.md) | Confirm the adapter's GATT profile; run `RealHardwareDe5000Tests` and write the `docs/test/` report | The meter on the bench |

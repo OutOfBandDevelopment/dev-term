@@ -117,6 +117,15 @@ public static class TuiMode
             // loop rather than letting the whole TUI die. Per Terminal.Gui's own doc comment on this
             // overload, this only takes effect in RELEASE builds - a DEBUG build still rethrows so a
             // debugger can break on the original exception.
+            if (LivePlugins.Pending.Count > 0)
+            {
+                app.AddTimeout(TimeSpan.FromMilliseconds(200), () =>
+                {
+                    PromptPendingPlugins(app);
+                    return false;
+                });
+            }
+
             app.Run(parts.Window, OnUnhandledException);
 
             // window.Disposing never fires once Run returns (the window is never disposed here -
@@ -1534,6 +1543,7 @@ public static class TuiMode
     /// <summary>Device &gt; Plugin approvals: lists the remembered out-of-process plugin approvals and offers to forget them all.</summary>
     private static void ReviewPluginApprovals(IApplication app)
     {
+        PromptPendingPlugins(app);
         var approvals = PluginTrust.Approvals();
         if (approvals.Count == 0)
         {
@@ -1547,6 +1557,23 @@ public static class TuiMode
             {
                 PluginTrust.Forget(approval.Name);
             }
+        }
+    }
+
+    /// <summary>Asks about each out-of-process plugin still waiting for approval; an approved one goes live at once (<see cref="LivePlugins"/>).</summary>
+    private static void PromptPendingPlugins(IApplication app)
+    {
+        foreach (var plugin in LivePlugins.Pending)
+        {
+            var request = plugin.Request;
+            var text = string.Join(Environment.NewLine, $"Plugin '{request.Name}' {request.Version} wants to run a program with your rights:", string.Empty, $"  {request.CommandLine}", $"  from {request.Folder}", $"  (content hash {request.Hash[..12]})");
+            var choice = MessageBox.Query(app, "dev-term — plugin approval", text, ["Run this time", "Always for this version", "No"]);
+            LivePlugins.Approve(request.Name, choice switch
+            {
+                0 => PluginApprovalChoice.Once,
+                1 => PluginApprovalChoice.Always,
+                _ => PluginApprovalChoice.Deny,
+            });
         }
     }
 

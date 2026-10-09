@@ -401,8 +401,9 @@ if (bindError is not null)
 }
 
 // Out-of-process plugins run only once approved; prompt for them here, before the UI takes over the terminal
-// (a script with redirected input is never prompted: only remembered approvals run there).
-if (!System.Console.IsInputRedirected)
+// (a script with redirected input is never prompted: only remembered approvals run there). The TUI doesn't ask here:
+// it starts first and asks in a dialog, and an approved plugin goes live at once (LivePlugins).
+if (!useTui && !System.Console.IsInputRedirected)
 {
     DevTerm.Core.Plugins.PluginTrust.Approver = new ConsolePluginApprover();
 }

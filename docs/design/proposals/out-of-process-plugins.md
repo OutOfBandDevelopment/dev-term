@@ -71,7 +71,7 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [x] `plugin.json` discovery of out-of-process plugins in `PluginLoader` (a `process` entry instead of an `assembly`; 2026-10-03)
 - [x] Attach-to-a-running-session variant: any program can use the control pipe or loopback HTTP channel (`examples/python/control-channel-client/`, 2026-10-07)
 - [ ] Transport and device-module variants
-- [ ] TUI in-app approval prompt (it uses the console prompt at startup today). A dialog shown after the TUI starts could only remember the approval, because plugins load while the DI container is built; loading one at once needs live registration of presenters, panels and instrument providers, so this waits on a design decision (2026-10-09)
+- [x] TUI in-app approval prompt: the TUI starts first, asks in a dialog, and an approved plugin goes live at once through `LivePlugins` (2026-10-09; WPF and the web host still ask at startup)
 - [x] Review or revoke remembered approvals from the CLI: `--listapprovals true`, `--forgetplugin <name>` (2026-10-09)
 - [x] TUI/WPF Device > Plugin approvals...: lists them and forgets all (2026-10-09; a per-plugin picker is not built)
 - [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)

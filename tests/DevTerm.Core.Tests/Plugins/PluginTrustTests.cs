@@ -27,12 +27,14 @@ public sealed class PluginTrustTests
         Directory.CreateDirectory(_plugins);
         Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, _home);
         PluginTrust.Approver = null;
+        LivePlugins.Reset();
     }
 
     [TestCleanup]
     public void Cleanup()
     {
         PluginTrust.Approver = null;
+        LivePlugins.Reset();
         Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, _previousHome);
         Directory.Delete(_home, true);
     }
@@ -76,6 +78,38 @@ public sealed class PluginTrustTests
         Assert.Contains("needs your approval", result.Message);
         Assert.Contains("shout.py", result.Message);
         Assert.IsEmpty(services);
+    }
+
+    [TestMethod]
+    public void AnUnapprovedPlugin_Waits_AndApprovingItMakesItsPresenterResolvableAtOnce()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+        var catalog = new PresenterCatalog([]);
+        Assert.IsFalse(catalog.TryGet("py-shout", out _));
+        Assert.AreEqual("py-shout", LivePlugins.Pending.Single().Request.Name);
+
+        Assert.IsTrue(LivePlugins.Approve("py-shout", PluginApprovalChoice.Once));
+
+        Assert.IsEmpty(LivePlugins.Pending);
+        Assert.IsTrue(catalog.TryGet("py-shout", out var presenter));
+        Assert.AreEqual("py-shout", presenter.Name);
+        CollectionAssert.Contains(catalog.Names.ToList(), "py-shout");
+        Assert.IsFalse(PluginTrust.IsApproved("py-shout", PluginHash.Compute(Path.Combine(_plugins, "shout"))), "Once is not remembered.");
+    }
+
+    [TestMethod]
+    public void ApprovingAlways_RemembersIt_AndDenyChangesNothing()
+    {
+        WriteProcessPlugin();
+        Load(out _);
+
+        Assert.IsFalse(LivePlugins.Approve("py-shout", PluginApprovalChoice.Deny));
+        Assert.HasCount(1, LivePlugins.Pending);
+        Assert.IsTrue(LivePlugins.Approve("py-shout", PluginApprovalChoice.Always));
+
+        Assert.IsTrue(PluginTrust.IsApproved("py-shout", PluginHash.Compute(Path.Combine(_plugins, "shout"))));
+        Assert.IsFalse(LivePlugins.Approve("nope", PluginApprovalChoice.Once));
     }
 
     [TestMethod]
