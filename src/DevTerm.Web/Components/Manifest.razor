@@ -1,5 +1,7 @@
 @page "/manifest"
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
+@using DevTerm.DeviceManifests
 @using DevTerm.DeviceManifests.Editing
 @using DevTerm.UiDefinitions
 @using DevTerm.UiDefinitions.Forms
@@ -24,9 +26,26 @@
         </label>
         <button data-openbtn disabled="@(_readOnly || string.IsNullOrEmpty(_openPath) || (Editor.IsDirty && !_confirmNew))" @onclick="OpenSelected">Open</button>
         <button data-save disabled="@_readOnly" @onclick="Save">Save</button>
+        <input data-saveasname type="text" placeholder="Save as..." disabled="@_readOnly" @bind="_saveAsName" @bind:event="oninput" />
+        <button data-saveas disabled="@(_readOnly || string.IsNullOrWhiteSpace(_saveAsName))" @onclick="SaveAs">Save As</button>
         <button data-check @onclick="Check">Check</button>
         <button data-undo disabled="@(_readOnly || !Editor.CanUndo)" @onclick="Editor.Undo">Undo</button>
         <button data-redo disabled="@(_readOnly || !Editor.CanRedo)" @onclick="Editor.Redo">Redo</button>
+    </div>
+    <div class="row">
+        <label>Import .ksy
+            @if (_readOnly) { <input type="file" disabled /> }
+            else { <InputFile data-ksy OnChange="ImportKsy" accept=".ksy" /> }
+        </label>
+        <label>Sample data
+            <select data-recording disabled="@_readOnly" @onchange="e => _recording = e.Value?.ToString() ?? string.Empty">
+                <option value="">(choose a log)</option>
+                @foreach (var r in _recordings) { <option value="@r" selected="@(r == _recording)">@r</option> }
+            </select>
+        </label>
+        <button data-userecording disabled="@(_readOnly || string.IsNullOrEmpty(_recording))" @onclick="UseRecording">Use recording</button>
+        <button data-clearrecording disabled="@(_readOnly || Editor.Recording is null)" @onclick="ClearRecording">Generated</button>
+        @if (Editor.Recording is not null) { <span class="note" data-recordingactive>Sample data from a recording</span> }
     </div>
     @if (Editor.IsDirty && !_readOnly) { <p class="note" data-dirty>Unsaved edits. <label><input data-confirmdiscard type="checkbox" @bind="_confirmNew" /> Allow New or Open to discard them</label></p> }
 </fieldset>
@@ -55,7 +74,48 @@
         @if (Editor.SelectedNode is { Form: { } form })
         {
             Bind(form);
-            <FormFields Definition="_definition!" Binding="_binding!" ReadOnly="_readOnly" />
+            <FormFields Definition="_definition!" Binding="_binding!" ReadOnly="_readOnly" Pickable="IsPickable" OnPick="OpenPicker" />
+            @if (_picker is { } picker)
+            {
+                <fieldset data-picker>
+                    <legend>@picker.Title</legend>
+                    <p class="note">@picker.Prompt</p>
+                    <input data-pickertext type="text" disabled="@_readOnly" value="@picker.Text" @oninput="e => picker.Text = e.Value?.ToString() ?? string.Empty" />
+                    <input data-pickerfilter type="text" placeholder="Filter values" value="@picker.Filter" @oninput="e => picker.Filter = e.Value?.ToString() ?? string.Empty" />
+                    <p class="note" data-pickerhint>@picker.ChooseHint.Replace("Double-click", "Click")</p>
+                    <ul class="captures" data-pickerpaths>
+                        @foreach (var path in picker.Paths)
+                        {
+                            <li><button data-pickerpath="@path.Path.Path" disabled="@_readOnly" @onclick="() => Insert(picker, path)">@path.ToString()</button></li>
+                        }
+                    </ul>
+                    @if (picker.ShowsFunctions)
+                    {
+                        <div class="row">
+                            @foreach (var f in ExpressionPickerViewModel.ButtonFunctions)
+                            {
+                                <button data-pickerfunction="@f.Name" title="@f.Description" disabled="@_readOnly" @onclick="() => picker.InsertFunction(f)">@f.Name</button>
+                            }
+                        </div>
+                        <div class="row">
+                            @foreach (var op in _operators)
+                            {
+                                <button data-pickeroperator="@op" disabled="@_readOnly" @onclick="() => picker.InsertOperator(op)">@op</button>
+                            }
+                        </div>
+                    }
+                    @if (picker.ShowsResult)
+                    {
+                        <p data-pickerresult>@(picker.IsEmpty ? "(empty)" : picker.IsValid ? "= " + picker.ResultText : picker.Error)</p>
+                        <button data-pickernext @onclick="picker.NextSample">Next sample</button>
+                    }
+                    @if (!string.IsNullOrEmpty(picker.Diagnostics)) { <p class="note" data-pickerdiagnostics>@picker.Diagnostics</p> }
+                    <div class="row">
+                        <button data-pickerapply disabled="@(_readOnly || (picker.ShowsResult && !picker.IsEmpty && !picker.IsValid))" @onclick="ApplyPicker">Apply</button>
+                        <button data-pickercancel @onclick="ClosePicker">Cancel</button>
+                    </div>
+                </fieldset>
+            }
         }
         else if (Editor.SelectedNode?.Hint is { } hint)
         {
@@ -70,30 +130,47 @@
     <fieldset>
         <legend>Preview (sends nothing)</legend>
         <div data-preview>
-            @foreach (var section in Preview().Sections)
-            {
-                <p><strong>@(string.IsNullOrEmpty(section.Label) ? "(section)" : section.Label)</strong></p>
-                <ul>
-                    @foreach (var c in section.Controls) { <li data-previewcontrol>@c.GetType().Name.Replace("Control", string.Empty): @c.Label</li> }
-                </ul>
-            }
+            <PanelControls Definition="_previewDefinition" Values="_previewValues" ReadOnly="false" Invoke="PreviewInvokeAsync" />
         </div>
+        <p class="note" data-previewsent>@_previewSent</p>
     </fieldset>
 </div>
 
 @code {
+    private static readonly string[] _operators = ["+", "-", "*", "/", "(", ")", "<", ">", "==", "&&", "||"];
+
     private PersistingComponentStateSubscription _subscription;
     private bool _readOnly;
     private bool _confirmNew;
     private string _openPath = string.Empty;
-    private IReadOnlyList<DevTerm.DeviceManifests.ManifestEntry> _available = [];
+    private string _saveAsName = string.Empty;
+    private string _recording = string.Empty;
+    private IReadOnlyList<ManifestEntry> _available = [];
+    private IReadOnlyList<string> _recordings = [];
     private FormBinding? _binding;
     private UiDefinition? _definition;
     private EditorForm? _boundForm;
+    private ExpressionPickerViewModel? _picker;
+    private string? _pickerFieldId;
+    private UiDefinition _previewDefinition = new() { Name = "Preview" };
+    private IReadOnlyDictionary<string, string> _previewValues = new Dictionary<string, string>();
+    private ManifestControlSurface? _previewSurface;
+    private string _previewSent = string.Empty;
 
     [CascadingParameter] private HttpContext? Http { get; set; }
 
     private ManifestEditorViewModel Editor => Web.Editor;
+
+    private bool IsPickable(string id) => Editor.SelectedNode?.Form is ControlForm && PickerModeFor(id) is not null;
+
+    private static PickerMode? PickerModeFor(string id) => id switch
+    {
+        "IndicatorExpression" => PickerMode.Expression,
+        "Channels" => PickerMode.Channels,
+        "ParameterExpressions" => PickerMode.ExpressionList,
+        "XId" or "YId" or "ZId" or "RadiusId" or "AngleId" or "HueId" or "SaturationId" or "BrightnessId" or "VisibleWhenId" => PickerMode.ValueId,
+        _ => null,
+    };
 
     protected override void OnInitialized()
     {
@@ -112,13 +189,28 @@
         }
 
         _available = Web.Available();
-        Editor.Edited += OnChanged;
-        Editor.StructureChanged += OnChanged;
-        Editor.SelectionChanged += OnChanged;
+        _recordings = Web.Recordings();
+        RefreshPreview();
+        Editor.Edited += OnEdited;
+        Editor.StructureChanged += OnEdited;
+        Editor.SelectionChanged += OnSelection;
         Editor.StatusChanged += OnChanged;
     }
 
     private void OnChanged(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnEdited(object? sender, EventArgs e) => _ = InvokeAsync(() =>
+    {
+        RefreshPreview();
+        StateHasChanged();
+    });
+
+    private void OnSelection(object? sender, EventArgs e)
+    {
+        _picker = null;
+        _pickerFieldId = null;
+        OnChanged(sender, e);
+    }
 
     private void Bind(EditorForm form)
     {
@@ -133,16 +225,92 @@
         _boundForm = form;
     }
 
-    private UiDefinition Preview()
+    private void RefreshPreview()
     {
+        if (_previewSurface is not null)
+        {
+            _previewSurface.PreviewInvoked -= OnPreviewInvoked;
+            _previewSurface = null;
+        }
+
         try
         {
-            return Editor.BuildPreviewDefinition();
+            _previewDefinition = Editor.BuildPreviewDefinition();
+            _previewSurface = Editor.CreatePreviewSurface(_previewDefinition);
+            _previewSurface.PreviewInvoked += OnPreviewInvoked;
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (Editor.CreatePreviewPresenter() is { } presenter)
+            {
+                presenter.ValuesChanged += (_, v) =>
+                {
+                    foreach (var pair in v)
+                    {
+                        values[pair.Key] = pair.Value;
+                    }
+                };
+                Editor.PublishSampleData(presenter);
+            }
+
+            _previewValues = values;
         }
         catch (Exception)
         {
-            return new UiDefinition { Name = "Preview unavailable" };
+            _previewDefinition = new UiDefinition { Name = "Preview unavailable" };
+            _previewValues = new Dictionary<string, string>();
         }
+    }
+
+    private void OnPreviewInvoked(object? sender, string wire)
+    {
+        _previewSent = $"Would send: {wire}";
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PreviewInvokeAsync(string id, string? value)
+    {
+        if (_previewSurface is not null)
+        {
+            await _previewSurface.InvokeAsync(id, value);
+        }
+    }
+
+    private void OpenPicker(string fieldId)
+    {
+        if (PickerModeFor(fieldId) is not { } mode || _binding is null || FindControl(fieldId) is not { } control)
+        {
+            return;
+        }
+
+        _pickerFieldId = fieldId;
+        _picker = Editor.CreatePicker(_binding.GetText(control.Id), mode);
+        _picker.Changed += (_, _) => _ = InvokeAsync(StateHasChanged);
+    }
+
+    private UiControl? FindControl(string id) => _definition?.Sections.SelectMany(sec => sec.Controls).FirstOrDefault(c => c.Id == id);
+
+    private static void Insert(ExpressionPickerViewModel picker, PickerPath path)
+    {
+        picker.CaretIndex = picker.Text.Length;
+        picker.InsertPath(path);
+    }
+
+    private void ApplyPicker()
+    {
+        if (_readOnly || _picker is null || _binding is null || FindControl(_pickerFieldId ?? string.Empty) is not { } control)
+        {
+            return;
+        }
+
+        if (_binding.SetText(control, _picker.Text).IsValid)
+        {
+            ClosePicker();
+        }
+    }
+
+    private void ClosePicker()
+    {
+        _picker = null;
+        _pickerFieldId = null;
     }
 
     private void NewManifest()
@@ -171,15 +339,64 @@
         }
     }
 
+    private void SaveAs()
+    {
+        if (!_readOnly && Web.SaveAs(_saveAsName))
+        {
+            _available = Web.Available();
+            _saveAsName = string.Empty;
+        }
+    }
+
+    private async Task ImportKsy(InputFileChangeEventArgs e)
+    {
+        if (_readOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream(1024 * 1024));
+            Web.ImportKsy(e.File.Name, await reader.ReadToEndAsync());
+        }
+        catch (Exception ex)
+        {
+            Editor.StatusMessage = $"Couldn't import '{e.File.Name}': {ex.Message}";
+        }
+    }
+
+    private void UseRecording()
+    {
+        if (!_readOnly && Web.UseRecording(_recording))
+        {
+            RefreshPreview();
+        }
+    }
+
+    private void ClearRecording()
+    {
+        if (!_readOnly)
+        {
+            Editor.ClearRecording();
+            RefreshPreview();
+        }
+    }
+
     private void Check() => Editor.Validate();
 
     public void Dispose()
     {
         _subscription.Dispose();
         _binding?.Dispose();
-        Editor.Edited -= OnChanged;
-        Editor.StructureChanged -= OnChanged;
-        Editor.SelectionChanged -= OnChanged;
+        if (_previewSurface is not null)
+        {
+            _previewSurface.PreviewInvoked -= OnPreviewInvoked;
+        }
+
+        Editor.Edited -= OnEdited;
+        Editor.StructureChanged -= OnEdited;
+        Editor.SelectionChanged -= OnSelection;
         Editor.StatusChanged -= OnChanged;
     }
 }

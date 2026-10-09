@@ -1,0 +1,73 @@
+@using DevTerm.UiDefinitions
+
+@* A UiDefinition's sections and controls drawn as HTML: the web's control-panel renderer, shared by /panel and the Manifest editor's preview. *@
+@foreach (var section in Definition.Sections)
+{
+    <fieldset>
+        @if (!string.IsNullOrEmpty(section.Label)) { <legend>@section.Label</legend> }
+        @foreach (var c in section.Controls)
+        {
+            <div class="row" data-control="@c.Id">
+                @switch (c)
+                {
+                    case ButtonControl b:
+                        <button disabled="@ReadOnly" @onclick="() => Invoke(b.CommandId ?? b.Id, null)">@b.Label</button>
+                        break;
+                    case ToggleControl t:
+                        <label>@t.Label</label>
+                        <input type="checkbox" checked="@t.DefaultValue" disabled="@ReadOnly"
+                               @onchange="e => Invoke(t.Id, Flag(e.Value))" />
+                        break;
+                    case SliderControl s:
+                        <label>@s.Label</label>
+                        <input type="range" min="@s.Minimum" max="@s.Maximum" step="@s.Step" value="@s.DefaultValue" disabled="@ReadOnly"
+                               @onchange="e => Invoke(s.Id, e.Value?.ToString())" />
+                        <span class="note">@s.Unit</span>
+                        break;
+                    case NumericControl n:
+                        <label>@n.Label</label>
+                        <input type="number" min="@n.Minimum" max="@n.Maximum" step="any" value="@n.DefaultValue" disabled="@ReadOnly"
+                               @onchange="e => Invoke(n.Id, e.Value?.ToString())" />
+                        <span class="note">@n.Unit</span>
+                        break;
+                    case ChoiceControl ch:
+                        <label>@ch.Label</label>
+                        <select disabled="@ReadOnly" @onchange="e => Invoke(ch.Id, e.Value?.ToString())">
+                            @foreach (var option in ch.Options)
+                            {
+                                <option value="@option" selected="@(option == ch.DefaultValue)">@option</option>
+                            }
+                        </select>
+                        break;
+                    case TextFieldControl tf:
+                        <label>@tf.Label</label>
+                        <input type="text" value="@tf.DefaultValue" maxlength="@tf.MaxLength" disabled="@ReadOnly"
+                               @onchange="e => Invoke(tf.Id, e.Value?.ToString())" />
+                        break;
+                    case IndicatorControl i:
+                        <label>@i.Label</label>
+                        <span data-indicator="@i.Id">@(Values.TryGetValue(i.Id, out var live) ? live : i.DefaultValue)</span>
+                        break;
+                    default:
+                        <label>@c.Label</label>
+                        <span class="note">(@c.GetType().Name is not shown on the web yet)</span>
+                        break;
+                }
+            </div>
+        }
+    </fieldset>
+}
+
+@code {
+    [Parameter, EditorRequired] public UiDefinition Definition { get; set; } = default!;
+
+    /// <summary>The latest value per indicator id.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string> Values { get; set; } = new Dictionary<string, string>();
+
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Called with a control's command id (or id) and its new value when the viewer uses it.</summary>
+    [Parameter, EditorRequired] public Func<string, string?, Task> Invoke { get; set; } = default!;
+
+    private static string Flag(object? value) => value is true ? "1" : "0";
+}

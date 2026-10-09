@@ -28,6 +28,15 @@ public sealed class ConnectionManager
         Events = events;
     }
 
+    /// <summary>Raised after a connection opens (its id and hub), so a host-wide tool such as the Stream Monitor can follow it.</summary>
+    public event Action<string, SessionHub>? ConnectionOpened;
+
+    /// <summary>Raised after a connection closes (its id).</summary>
+    public event Action<string>? ConnectionClosed;
+
+    /// <summary>The extra connections open now (id and hub).</summary>
+    public IReadOnlyList<(string Id, SessionHub Hub)> OpenHubs() => [.. _open.Select(c => (c.Key, c.Value.Hub))];
+
     /// <summary>The host's event stream; a page watches it to re-read <see cref="Open"/> when a connection opens or closes.</summary>
     public HostEvents Events { get; }
 
@@ -320,6 +329,7 @@ public sealed class ConnectionManager
         var id = Guid.NewGuid().ToString("N")[..8];
         _open[id] = (chosen.Name, connection, control, registration);
         connection.LineReceived += line => Events.Publish("line", new { id, text = line });
+        ConnectionOpened?.Invoke(id, connection);
         Events.Publish("connection-opened", new { id, name = chosen.Name });
         return new OpenedConnection(id, chosen.Name, control?.Port, control?.Token);
     }
@@ -337,6 +347,7 @@ public sealed class ConnectionManager
             await removed.Control.DisposeAsync();
         }
 
+        ConnectionClosed?.Invoke(id);
         await removed.Hub.DisposeAsync();
         Events.Publish("connection-closed", new { id });
         return true;

@@ -13,14 +13,38 @@ public sealed class WebStreamMonitor : IDisposable
     private readonly ConverterToolsStore _tools;
     private readonly ConnectionProfileStore _store = new();
     private readonly object _key = new();
+    private readonly ConnectionManager? _connections;
 
-    public WebStreamMonitor(SessionHub hub, ConverterToolsStore tools)
+    public WebStreamMonitor(SessionHub hub, ConverterToolsStore tools, ConnectionManager? connections = null)
     {
         _hub = hub;
         _tools = tools;
+        _connections = connections;
         Monitor = new StreamMonitor(watcherOptions: new StreamContentWatcherOptions { IdleTimeout = TimeSpan.FromMilliseconds(hub.Options.StreamIdleTimeoutMs) }) { AutoConvertHpgl = hub.Options.StreamAutoConvertHpgl };
         hub.SessionChanged += Retrack;
         Retrack();
+        if (connections is not null)
+        {
+            connections.ConnectionOpened += TrackExtra;
+            connections.ConnectionClosed += UntrackExtra;
+            foreach (var (id, extra) in connections.OpenHubs())
+            {
+                TrackExtra(id, extra);
+            }
+        }
+    }
+
+    /// <summary>An extra connection opened from a project is watched too, under its own key, so its captures list its device name.</summary>
+    private void TrackExtra(string id, SessionHub extra)
+    {
+        void Retrack() => Monitor.Track(id, extra.Session, StreamMonitor.DeviceNameFor(extra.Options, _store), extra.Options.EffectiveExportDirectory);
+        extra.SessionChanged += Retrack;
+        Retrack();
+    }
+
+    private void UntrackExtra(string id)
+    {
+        Monitor.Untrack(id);
     }
 
     public StreamMonitor Monitor { get; }
@@ -63,6 +87,12 @@ public sealed class WebStreamMonitor : IDisposable
     public void Dispose()
     {
         _hub.SessionChanged -= Retrack;
+        if (_connections is not null)
+        {
+            _connections.ConnectionOpened -= TrackExtra;
+            _connections.ConnectionClosed -= UntrackExtra;
+        }
+
         Monitor.Dispose();
     }
 }

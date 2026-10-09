@@ -206,9 +206,12 @@ part itself — the condition a live control panel and the preview evaluate — 
 
 ## Web
 
-`DevTerm.Web` `/manifest` (nav: Manifest) is the same editor over `ManifestEditorViewModel`: a toolbar (New, Open, Save, Check, Undo, Redo), the Outline with Add/Remove/Up/Down, the selected part's generated form (`FormDefinitionGenerator` drawn by the `FormFields` component, the web's `FormRenderer`) and a Preview of the panel's sections and controls (a list, sends nothing). One editor is shared by the host. Differences from the desktop apps:
+`DevTerm.Web` `/manifest` (nav: Manifest) is the same editor over `ManifestEditorViewModel`: a toolbar (New, Open, Save, Save As, Check, Undo, Redo), an Import .ksy upload and a Sample data row (Use recording / Generated), the Outline with Add/Remove/Up/Down, the selected part's generated form (`FormDefinitionGenerator` drawn by the `FormFields` component, the web's `FormRenderer`) and a live Preview of the panel drawn by the same `PanelControls` component `/panel` uses, filled with sample data (generated, or from a chosen log). One editor is shared by the host. Differences from the desktop apps:
 
-- Open lists the manifests found in the user folder (`Web:ManifestsDirectory`, default `~/.dev-term/manifests`) and the installed folder; arbitrary host paths, Save As, Use recording and Import .ksy are not offered.
+- Open lists the manifests found in the user folder (`Web:ManifestsDirectory`, default `~/.dev-term/manifests`) and the installed folder; arbitrary host paths are not offered.
+- Save As takes a name, not a path: the copy is written to a folder named from it under the user manifests folder (`ManifestEditorViewModel.FolderNameFor`, so `../x` stays inside it).
+- Use recording picks a log from the Playback folder (`Web:LogsDirectory`); Import .ksy uploads the file (up to 1 MB) and sets it as the frame.
+- A control form's expression, channel list, value-id and parameter-expression fields get a Pick... button that opens the picker inline under the form (text, filter, value paths, functions, operators, Next sample, the result or error, Apply / Cancel). Apply is refused while the expression is invalid. It closes when the selection changes.
+- Preview buttons send nothing; a pressed one shows `Would send: ...` under the panel. Controls the web panel cannot draw (gauges, charts) show a "not shown on the web yet" note.
 - A page cannot show a modal, so New and Open are disabled while there are unsaved edits until the viewer ticks "Allow New or Open to discard them".
-- Expression pickers and the live-renderer preview are not on the web yet; expressions are typed as text.
-- Read-only viewers can look and Check, but not change, save, undo or open.
+- Read-only viewers can look, Check and press preview buttons, but not change, save, import, pick a recording, undo or open.

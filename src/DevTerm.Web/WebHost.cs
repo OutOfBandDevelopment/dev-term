@@ -48,12 +48,12 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
-        builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>(), sp.GetRequiredService<ConverterToolsStore>()));
+        builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>(), sp.GetRequiredService<ConverterToolsStore>(), sp.GetRequiredService<ConnectionManager>()));
         builder.Services.AddSingleton(new ConverterToolsStore(webOptions.ConverterToolsFile));
-        builder.Services.AddSingleton(new WebManifestEditor(webOptions.ManifestsDirectory ?? DevTermUserDataPaths.UserManifestsDirectory, DevTermUserDataPaths.AppManifestsDirectory));
+        builder.Services.AddSingleton(sp => new WebManifestEditor(webOptions.ManifestsDirectory ?? DevTermUserDataPaths.UserManifestsDirectory, DevTermUserDataPaths.AppManifestsDirectory, sp.GetRequiredService<PlaybackLibrary>()));
         builder.Services.AddSingleton(new ThemeLibrary(webOptions.ThemesDirectory ?? DevTermUserDataPaths.ThemesDirectory));
         builder.Services.AddSingleton(new PlaybackLibrary(webOptions.LogsDirectory ?? DevTermUserDataPaths.LogsDirectory));
-        builder.Services.AddSingleton(sp => new SessionPanels(sp.GetServices<IDevicePanelContribution>()));
+        builder.Services.AddSingleton(sp => new SessionPanels(sp.GetServices<IDevicePanelContribution>(), sp.GetServices<IInstrumentPanelProvider>()));
         builder.Services.AddOpenApi();
         builder.Services.AddSingleton<HostEvents>();
         builder.Services.AddSingleton(sp => new ConnectionManager(cliOptions.Project, webOptions.BacklogLines, sp.GetRequiredService<HostEvents>(), new ConnectionProfileStore()));
@@ -193,19 +193,34 @@ public static class WebHost
         app.MapGet("/api/sessions/{id}/panels", (string id) => SessionFor(id) is { } h
             ? Results.Json(sessionPanels.For(h).Select(p => new { id = p.Id, title = p.Title }))
             : Results.NotFound()).WithSummary("The device panels available for a session's connection (the Device menu); 404 unknown id");
-        app.MapGet("/api/sessions/{id}/panels/{panel}", (string id, string panel) =>
+        app.MapGet("/api/sessions/{id}/panels/{panel}", async (string id, string panel) =>
         {
-            if (SessionFor(id) is not { } h || sessionPanels.Open(h, panel) is not { } open)
+            if (SessionFor(id) is not { } h)
+            {
+                return Results.NotFound();
+            }
+
+            SessionPanels.OpenPanel? open;
+            try
+            {
+                open = panel.StartsWith("i~", StringComparison.Ordinal) ? await sessionPanels.OpenInstrumentAsync(h, panel) : sessionPanels.Open(h, panel);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status502BadGateway);
+            }
+
+            if (open is null)
             {
                 return Results.NotFound();
             }
 
             return Results.Content($"{{\"definition\":{UiDefinitionSerializer.ToJson(open.Definition)},\"values\":{System.Text.Json.JsonSerializer.Serialize(open.Values)}}}", "application/json");
         }).WithSummary("A device panel's form and its latest indicator values; 404 unknown session or panel");
-        app.MapPost("/api/sessions/{id}/panels/{panel}/invoke", (HttpContext context, string id, string panel, InvokeRequest request) =>
-            SessionFor(id) is { } h && sessionPanels.Open(h, panel) is { } open
-                ? PanelApi.InvokeAsync(context, open.Surface, request)
-                : Task.FromResult(Results.NotFound())).WithSummary("Run a control on a device panel; 403 read-only, 404 unknown session or panel");
+        app.MapPost("/api/sessions/{id}/panels/{panel}/invoke", async (HttpContext context, string id, string panel, InvokeRequest request) =>
+            SessionFor(id) is { } h && (panel.StartsWith("i~", StringComparison.Ordinal) ? await sessionPanels.OpenInstrumentAsync(h, panel) : sessionPanels.Open(h, panel)) is { } open
+                ? await PanelApi.InvokeAsync(context, open.Surface, request)
+                : Results.NotFound()).WithSummary("Run a control on a device panel; 403 read-only, 404 unknown session or panel");
         app.MapGet("/api/sessions/{id}/log", (string id) => SessionFor(id)?.LogPath is { } path && File.Exists(path)
             ? Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), "application/x-ndjson", Path.GetFileName(path))
             : Results.NotFound()).WithSummary("Download the session's current log file; 404 when not logging");

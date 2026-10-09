@@ -280,6 +280,69 @@ public class WebScreenshotTests
     }
 
     [TestMethod]
+    public async Task ManifestPage_ImportsAKsyUpload_AndOffersTheRecordings()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/manifest?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-ksy]").SetInputFilesAsync(new FilePayload
+            {
+                Name = "bench.ksy",
+                MimeType = "text/plain",
+                Buffer = System.Text.Encoding.UTF8.GetBytes(string.Join((char)10, "meta:", "  id: bench_frame", "  endian: be", "seq:", "  - id: header", "    type: u1", "  - id: reading", "    type: u2", string.Empty)),
+            });
+            await Assertions.Expect(page.Locator("[data-dirty]")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Frame" }).First).ToBeVisibleAsync();
+
+            // The Playback folder's logs are the sample-data choices; Use recording stays off until one is chosen.
+            await Assertions.Expect(page.Locator("[data-userecording]")).ToBeDisabledAsync();
+            await page.Locator("[data-recording]").SelectOptionAsync("20261008-120000_Scope.jsonl");
+            await Assertions.Expect(page.Locator("[data-userecording]")).ToBeEnabledAsync();
+            await page.Locator("[data-userecording]").ClickAsync();
+            await Task.Delay(500);
+            await Assertions.Expect(page.Locator("[data-status]")).Not.ToBeEmptyAsync();
+        }, logsDirectory: SampleLogs(), manifestsDirectory: folder);
+    }
+
+    [TestMethod]
+    public async Task ManifestPage_PreviewsThePanel_PicksValues_AndSavesACopy()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"devterm-web-manifests-{Guid.NewGuid():N}");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/manifest?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await page.Locator("[data-open]").SelectOptionAsync(await page.Locator("[data-open] option", new PageLocatorOptions { HasTextString = "Loopback Sensor Demo" }).First.GetAttributeAsync("value") ?? string.Empty);
+            await page.Locator("[data-openbtn]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-title]")).ToContainTextAsync("Loopback Sensor Demo");
+
+            // The preview is the real panel: its button reports what it would send, and sends nothing.
+            await page.Locator("[data-preview] [data-control=measure] button").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-previewsent]")).ToContainTextAsync("Would send: MEAS?");
+
+            // A channel list picks from the manifest's value paths without typing them.
+            await page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Channels" }).First.ClickAsync();
+            await page.Locator("[data-pick=Channels]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-picker]")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("[data-pickerhint]")).ToContainTextAsync("Click a value");
+            await page.Locator("[data-pickerpath=chA]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-pickertext]")).ToHaveValueAsync(new System.Text.RegularExpressions.Regex("chA"));
+            await SaveAsync(page, "web-blazor-manifest-picker.png");
+            await page.Locator("[data-pickerapply]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-picker]")).ToHaveCountAsync(0);
+
+            await page.Locator("[data-saveasname]").FillAsync("Bench Copy");
+            await page.Locator("[data-saveas]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-status]")).ToContainTextAsync("bench-copy");
+        }, manifestsDirectory: folder);
+        Assert.IsTrue(Directory.Exists(Path.Combine(folder, "bench-copy")));
+    }
+
+    [TestMethod]
     public Task ManifestPage_ReadOnlyViewer_CannotEdit() => RunAsync(async (page, baseUrl) =>
     {
         await page.GotoAsync($"{baseUrl}/manifest?token=watch-token");
@@ -288,6 +351,8 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("[data-new]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
         await Assertions.Expect(page.Locator("[data-field=Name] input")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-saveas]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-userecording]")).ToBeDisabledAsync();
     }, manifestsDirectory: Path.Combine(Path.GetTempPath(), "devterm-web-manifests-none"));
 
     [TestMethod]
@@ -655,6 +720,20 @@ public class WebScreenshotTests
         await page.Locator("[data-control=led] input").CheckAsync();
         await page.Locator("[data-control=apply] button").ClickAsync();
         await Assertions.Expect(page.Locator("#out")).ToContainTextAsync("Unrecognized: SET LED=1");
+        await page.Locator("#device").SelectOptionAsync("");
+        await Assertions.Expect(page.Locator("#panel")).ToBeHiddenAsync();
+    });
+
+    /// <summary>The Device menu also offers the SCPI instrument choices (found on the bench: the web had no way to open an instrument panel).</summary>
+    [TestMethod]
+    public Task TerminalPage_DeviceMenu_OffersTheScpiInstruments_AndOpensTheGenericPanel() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Assertions.Expect(page.Locator("#device option", new PageLocatorOptions { HasTextString = "SCPI Instrument: Auto-detect" })).ToHaveCountAsync(1);
+        await page.Locator("#device").SelectOptionAsync(new SelectOptionValue { Label = "SCPI Instrument: Generic (manual)" });
+        await Assertions.Expect(page.Locator("#panel [data-control]").First).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("#panel")).ToContainTextAsync("Identify");
         await page.Locator("#device").SelectOptionAsync("");
         await Assertions.Expect(page.Locator("#panel")).ToBeHiddenAsync();
     });
