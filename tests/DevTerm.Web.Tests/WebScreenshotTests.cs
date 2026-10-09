@@ -724,6 +724,20 @@ public class WebScreenshotTests
         await Assertions.Expect(page.Locator("#panel")).ToBeHiddenAsync();
     });
 
+    /// <summary>The Device menu also offers the SCPI instrument choices (found on the bench: the web had no way to open an instrument panel).</summary>
+    [TestMethod]
+    public Task TerminalPage_DeviceMenu_OffersTheScpiInstruments_AndOpensTheGenericPanel() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/?token=demo-token");
+        await WaitConnectedAsync(page);
+        await Assertions.Expect(page.Locator("#device option", new PageLocatorOptions { HasTextString = "SCPI Instrument: Auto-detect" })).ToHaveCountAsync(1);
+        await page.Locator("#device").SelectOptionAsync(new SelectOptionValue { Label = "SCPI Instrument: Generic (manual)" });
+        await Assertions.Expect(page.Locator("#panel [data-control]").First).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("#panel")).ToContainTextAsync("Identify");
+        await page.Locator("#device").SelectOptionAsync("");
+        await Assertions.Expect(page.Locator("#panel")).ToBeHiddenAsync();
+    });
+
     /// <summary>The host's own tab can be disconnected and connected again from the page.</summary>
     [TestMethod]
     public Task TerminalPage_MainSession_DisconnectsAndReconnects() => RunAsync(async (page, baseUrl) =>

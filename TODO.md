@@ -20,7 +20,7 @@ Done from that round: the ser2net RFC 2217 container (`containers/`, see `docs/c
 
 Re-ranked 2026-10-09 after a docs audit. Do these in order; each is buildable now unless noted.
 
-1. **Web pages against live hardware** (`/panel`, `/monitor`, `/routing` on the DG1062Z over TCP). Most likely to find a real bug; also covers the web proposal's "real device through the page" item in part.
+1. **Web controls against live hardware.** The 2026-10-09 pass opened the DG1062Z panel from the browser (found and fixed the missing SCPI instrument picker, see `docs/changes/2026-10-09.md`); driving its controls, `/monitor` captures and `/routing` against the unit is next.
 2. **Observability leftover:** confirm the metric instruments show on the Aspire Metrics page (needs the container up).
 3. **Configure device on the web.** Needs your design call first: an inline connection editor on `/profiles`, or reuse of the profile picker. The `IDeviceConfigEditor` seam is built; the EByte and USR editors themselves wait on captures.
 4. **Blocked, not worth starting:** the Manual review items below, the MQTT home-automation broker check, multi-browser, the 16-color conhost look.
