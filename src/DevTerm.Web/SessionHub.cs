@@ -20,6 +20,9 @@ public sealed class SessionHub : IAsyncDisposable
     private readonly object _gate = new();
     private readonly Queue<string> _backlog = new();
 
+    /// <summary>The options the current session was built from (they change on a profile switch).</summary>
+    public CliOptions Options => _options;
+
     public SessionHub(Session session, PresenterCatalog catalog, CliOptions options, int backlogLines)
     {
         _backlogLimit = Math.Max(1, backlogLines);

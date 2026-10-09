@@ -17,8 +17,8 @@ namespace DevTerm.Core.Sessions;
 /// </summary>
 public sealed class SessionHttpControlServer : ISessionObserver, IAsyncDisposable
 {
-    private readonly Session _session;
-    private readonly Func<string, (byte[]? Payload, string? Error)> _encodeText;
+    private volatile Session _session;
+    private volatile Func<string, (byte[]? Payload, string? Error)> _encodeText;
     private readonly HttpListener _listener = new();
     private readonly CancellationTokenSource _stop = new();
     private readonly List<Channel<string>> _clients = [];
@@ -40,6 +40,19 @@ public sealed class SessionHttpControlServer : ISessionObserver, IAsyncDisposabl
     }
 
     public int Port { get; }
+
+    /// <summary>
+    /// Points the server at a different session (a front end swapped its connection in place): commands now go to it. The caller
+    /// moves the observer registration itself (<see cref="Session.AddObserver"/>); connected event clients are told <c>closed</c>-free,
+    /// so they just see the new session's <c>open</c>/<c>rx</c> lines.
+    /// </summary>
+    public void Rebind(Session session, Func<string, (byte[]? Payload, string? Error)> encodeText)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(encodeText);
+        _session = session;
+        _encodeText = encodeText;
+    }
 
     /// <summary>The bearer token every request must present; random per run unless one was supplied.</summary>
     public string Token { get; }

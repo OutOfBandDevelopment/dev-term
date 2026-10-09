@@ -53,7 +53,8 @@ redirects). Missing or wrong: 401. A browser `Origin` that differs from the host
 
 The same loopback channel as the console front ends (`POST /command`, `GET /events`, `GET /ping`) on the shared session,
 with its own bearer token (`--controltoken`, generated if omitted). It is separate from the host token, so a script can
-send commands without being able to open or close connections. The URL and token are printed at startup.
+send commands without being able to open or close connections. The URL and token are printed at startup. The port and token
+stay the same across a profile switch: the server is re-pointed at the new session, so a script keeps working.
 
 ### Per-connection control
 

@@ -76,6 +76,27 @@ public class WebHostTests
     }
 
     [TestMethod]
+    public async Task ControlHttp_FollowsAProfileSwitchToTheNewSession()
+    {
+        var webPort = FreePort();
+        var controlPort = FreePort();
+        var options = new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, ControlHttp = controlPort, ControlToken = "ctl" };
+        var built = WebHost.Build(options, new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" }, []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            await built.Hub.SwitchAsync(new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true }, "Other");
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{controlPort}/command") { Content = new StringContent("send hello") };
+            request.Headers.Authorization = new("Bearer", "ctl");
+            using var response = await client.SendAsync(request);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, "The command reaches the switched-to session, not the disposed one.");
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task OpenedConnection_WithControlHttp_GetsItsOwnControlServerClosedWithIt()
     {
         var file = Path.Combine(Path.GetTempPath(), $"devterm-web-ctl-{Guid.NewGuid():N}.json");

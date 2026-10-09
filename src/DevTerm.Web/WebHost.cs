@@ -273,6 +273,13 @@ public static class WebHost
         {
             controlHttp = new SessionHttpControlServer(hub.Session, cliOptions.ControlHttp, text => TypedInput.TryEncode(hub.Catalog, cliOptions, text), cliOptions.ControlToken);
             var registration = hub.Session.AddObserver(controlHttp);
+            // A profile switch swaps the hub's session: move the observer and the command target with it.
+            hub.SessionChanged += () =>
+            {
+                registration.Dispose();
+                controlHttp.Rebind(hub.Session, text => TypedInput.TryEncode(hub.Catalog, hub.Options, text));
+                registration = hub.Session.AddObserver(controlHttp);
+            };
             app.Lifetime.ApplicationStopping.Register(() =>
             {
                 registration.Dispose();
