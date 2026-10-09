@@ -128,6 +128,55 @@ public static class WebHost
         }).WithSummary("Disconnect the host's own session; the next sent line reconnects. 403 read-only");
         app.MapGet("/api/status", (HttpContext context) => Results.Json(new { configured = hub.Configured, profile = hub.ProfileName, state = hub.State.ToString(), connection = hub.Description, readOnly = context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem) })).WithSummary("State and description of the shared session");
 
+        // Per-session settings the desktop apps keep in menus: the "Send as" format and logging. {id} is "main" or an opened connection's id.
+        SessionHub? SessionFor(string id) => id == "main" ? hub : connections.TryGet(id, out var found) ? found : null;
+        static bool IsReadOnly(HttpContext context) => context.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+        app.MapGet("/api/sessions/{id}", (string id) => SessionFor(id) is { } h
+            ? Results.Json(new { parsers = h.ParserNames, parser = h.Parser, logging = h.LogPath, state = h.State.ToString() })
+            : Results.NotFound()).WithSummary("A session's send formats, current format and log file; 404 unknown id");
+        app.MapPost("/api/sessions/{id}/parser", (HttpContext context, string id, string name) =>
+        {
+            if (IsReadOnly(context))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return SessionFor(id) is not { } h ? Results.NotFound() : h.SetParser(name) ? Results.Json(new { parser = h.Parser }) : Results.BadRequest();
+        }).WithSummary("Change a session's send format; 400 unknown format, 404 unknown id, 403 read-only");
+        app.MapPost("/api/sessions/{id}/logging", (HttpContext context, string id, bool enabled) =>
+        {
+            if (IsReadOnly(context))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            if (SessionFor(id) is not { } h)
+            {
+                return Results.NotFound();
+            }
+
+            try
+            {
+                if (enabled)
+                {
+                    h.StartLogging();
+                }
+                else
+                {
+                    h.StopLogging();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                return Results.Problem(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            return Results.Json(new { logging = h.LogPath });
+        }).WithSummary("Start (enabled=true) or stop logging a session to ~/.dev-term/logs; 404 unknown id, 403 read-only");
+        app.MapGet("/api/sessions/{id}/log", (string id) => SessionFor(id)?.LogPath is { } path && File.Exists(path)
+            ? Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), "application/x-ndjson", Path.GetFileName(path))
+            : Results.NotFound()).WithSummary("Download the session's current log file; 404 when not logging");
+
         // The REST surface as OpenAPI with a Scalar viewer, and the two streaming channels as AsyncAPI. All behind the same token.
         app.MapOpenApi("/openapi/v1.json");
         app.MapScalarApiReference("/scalar", options => options.WithTitle("dev-term web host"));

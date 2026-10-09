@@ -2,6 +2,7 @@ using DevTerm.Configuration;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
 using DevTerm.Core.Transports;
+using DevTerm.Logging;
 
 namespace DevTerm.Web;
 
@@ -82,6 +83,7 @@ public sealed class SessionHub : IAsyncDisposable
             _sendLock.Release();
         }
 
+        StopLogging();
         await old.DisposeAsync();
         Publish($"Switched to {name}.");
         SessionChanged?.Invoke();
@@ -91,6 +93,55 @@ public sealed class SessionHub : IAsyncDisposable
 
     /// <summary>The saved profile the host's own session was switched to; <see langword="null"/> until a switch.</summary>
     public string? ProfileName { get; private set; }
+
+    /// <summary>The send formats (parsers) a typed line can be encoded with, as the desktop apps' "Send as" list.</summary>
+    public IReadOnlyList<string> ParserNames => [.. Catalog.InputNames];
+
+    /// <summary>The send format currently used for typed lines.</summary>
+    public string Parser => _parser;
+
+    /// <summary>Changes the send format; false when no such format exists.</summary>
+    public bool SetParser(string name)
+    {
+        if (!Catalog.TryGetInput(name, out var input))
+        {
+            return false;
+        }
+
+        (_parser, _input) = (name, input);
+        return true;
+    }
+
+    private SessionLogger? _logger;
+
+    /// <summary>The file the session is being logged to, or <see langword="null"/> when not logging.</summary>
+    public string? LogPath => _logger?.Path;
+
+    /// <summary>Starts logging this session to <paramref name="path"/> (or the default <c>~/.dev-term/logs</c> name), replacing a running log. Returns the path.</summary>
+    public string StartLogging(string? path = null)
+    {
+        StopLogging();
+        var target = path ?? SessionLogging.DefaultLogPath(_options, ProfileName, DateTimeOffset.Now);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        _logger = SessionLogging.Start(target, _session, _options, _parser, ProfileName, "web");
+        Publish($"Logging to {SessionLogging.DisplayPath(_logger.Path!)}.");
+        return _logger.Path!;
+    }
+
+    /// <summary>Stops logging; false when it was not running.</summary>
+    public bool StopLogging()
+    {
+        if (_logger is null)
+        {
+            return false;
+        }
+
+        var path = _logger.Path;
+        _logger.Dispose();
+        _logger = null;
+        Publish($"Stopped logging to {SessionLogging.DisplayPath(path!)}.");
+        return true;
+    }
 
     /// <summary>Raised after <see cref="SwitchAsync"/> replaced the session (anything holding the old one must rebind).</summary>
     public event Action? SessionChanged;
@@ -237,6 +288,7 @@ public sealed class SessionHub : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _logger?.Dispose();
         await _session.DisposeAsync();
         _sendLock.Dispose();
     }

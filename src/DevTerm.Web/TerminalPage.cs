@@ -12,7 +12,13 @@ internal static class TerminalPage
         <title>dev-term</title>
         <style>
           :root { color-scheme: light dark; --bg: #fff; --fg: #1b1f23; --dim: #6a737d; --bar: #f1f3f5; }
-          @media (prefers-color-scheme: dark) { :root { --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; } }
+          @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; } }
+          :root[data-theme="dark"] { color-scheme: dark; --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; }
+          :root[data-theme="light"] { color-scheme: light; --bg: #fff; --fg: #1b1f23; --dim: #6a737d; --bar: #f1f3f5; }
+          #tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 4px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); }
+          #tools select, #tools button { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); padding: 2px 6px; }
+          #tools label { color: var(--dim); }
+          .sent { color: var(--dim); }
           html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 ui-monospace, Consolas, monospace; }
           body { display: flex; flex-direction: column; }
           header { padding: 6px 12px; background: var(--bar); color: var(--dim); }
@@ -36,6 +42,13 @@ internal static class TerminalPage
         <body>
         <nav id="tabs"></nav>
         <header id="status">connecting...</header>
+        <nav id="tools">
+          <label>Send as <select id="parser"></select></label>
+          <label><input type="checkbox" id="echo"> Echo sent commands</label>
+          <button type="button" id="clear">Clear output</button>
+          <button type="button" id="log">Start logging</button><a id="download" hidden>Download log</a>
+          <label>Theme <select id="theme"><option value="">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        </nav>
         <div id="panel" hidden></div>
         <pre id="out"></pre>
         <form id="f"><input id="line" autocomplete="off" autofocus placeholder="type a line and press Enter"><button>Send</button></form>
@@ -49,7 +62,7 @@ internal static class TerminalPage
           // Each keeps its own WebSocket and output, so switching tabs loses nothing.
           function appendLine(text) {
             const d = document.createElement('div'); d.textContent = text;
-            if (text.startsWith('!')) d.className = 'err';
+            if (text.startsWith('!')) d.className = 'err'; else if (text.startsWith('Out> ')) d.className = 'sent';
             out.appendChild(d); out.scrollTop = out.scrollHeight;
           }
           function render() {
@@ -95,6 +108,7 @@ internal static class TerminalPage
                 status.append(' ', sw, ' ', go);
               }
               panelEl.hidden = !(panelShown && active.key === 'main');
+              refreshTools();
             }
           }
           async function refreshSession() {
@@ -133,8 +147,41 @@ internal static class TerminalPage
           }
           document.getElementById('f').onsubmit = e => {
             e.preventDefault();
-            if (active && input.value && active.ws.readyState === WebSocket.OPEN) { active.ws.send(input.value); input.value = ''; }
+            if (active && input.value && active.ws.readyState === WebSocket.OPEN) {
+              const sent = input.value;
+              (active.history = active.history || []).push(sent); active.recall = active.history.length;
+              if (echoEl.checked) { const m = 'Out> ' + sent; active.lines.push(m); appendLine(m); }
+              active.ws.send(sent); input.value = '';
+            }
           };
+          // Up / Down recall this tab's earlier lines, as in the desktop apps' send box.
+          input.addEventListener('keydown', e => {
+            if (!active || !active.history || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+            e.preventDefault();
+            const h = active.history; let i = active.recall ?? h.length;
+            i = e.key === 'ArrowUp' ? Math.max(0, i - 1) : Math.min(h.length, i + 1);
+            active.recall = i; input.value = i < h.length ? h[i] : '';
+          });
+
+          // Menu-equivalents: send format, echo, clear, logging, theme.
+          const parserEl = document.getElementById('parser'), echoEl = document.getElementById('echo'), logEl = document.getElementById('log'), dlEl = document.getElementById('download'), themeEl = document.getElementById('theme');
+          async function refreshTools() {
+            if (!active) return;
+            const key = active.key; const info = await fetch('/api/sessions/' + key).then(r => r.ok ? r.json() : null).catch(() => null);
+            if (!info || key !== active.key) return;
+            parserEl.textContent = '';
+            for (const p of info.parsers) parserEl.append(Object.assign(document.createElement('option'), { textContent: p, value: p }));
+            parserEl.value = info.parser; parserEl.disabled = readOnly;
+            logEl.textContent = info.logging ? 'Stop logging' : 'Start logging'; logEl.disabled = readOnly; logEl.title = info.logging || '';
+            dlEl.hidden = !info.logging; dlEl.href = '/api/sessions/' + key + '/log'; dlEl.download = '';
+          }
+          parserEl.onchange = async () => { if (active) { await fetch('/api/sessions/' + active.key + '/parser?name=' + encodeURIComponent(parserEl.value), { method: 'POST' }); refreshTools(); } };
+          logEl.onclick = async () => { if (active) { await fetch('/api/sessions/' + active.key + '/logging?enabled=' + (logEl.textContent === 'Start logging'), { method: 'POST' }); refreshTools(); } };
+          document.getElementById('clear').onclick = () => { if (active) { active.lines = []; out.textContent = ''; } };
+          try { themeEl.value = localStorage.getItem('devterm.theme') || ''; } catch { }
+          function applyTheme() { if (themeEl.value) document.documentElement.dataset.theme = themeEl.value; else delete document.documentElement.dataset.theme; }
+          themeEl.onchange = () => { applyTheme(); try { localStorage.setItem('devterm.theme', themeEl.value); } catch { } };
+          applyTheme();
 
           // Device control panel: rendered generically from the UiDefinition served at /api/panel (404 = none configured).
           async function invoke(commandId, value) {

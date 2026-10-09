@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -71,6 +72,42 @@ public class WebHostTests
             request.Headers.Authorization = new("Bearer", "ctl");
             using var response = await client.SendAsync(request);
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            await built.App.StopAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task SessionSettings_SendFormatAndLogging_WorkPerSession()
+    {
+        var webPort = FreePort();
+        var built = WebHost.Build(
+            new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true },
+            new WebOptions { Urls = $"http://127.0.0.1:{webPort}", Token = "secret" },
+            []);
+        await built.Hub.StartAsync();
+        await built.App.StartAsync();
+        await using (built.Hub)
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{webPort}/") };
+            client.DefaultRequestHeaders.Authorization = new("Bearer", "secret");
+
+            var info = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("api/sessions/main");
+            Assert.IsTrue(info.GetProperty("parsers").GetArrayLength() > 1);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/nope")).StatusCode);
+
+            Assert.AreEqual(HttpStatusCode.OK, (await client.PostAsync("api/sessions/main/parser?name=hex", null)).StatusCode);
+            Assert.AreEqual("hex", built.Hub.Parser);
+            Assert.AreEqual(HttpStatusCode.BadRequest, (await client.PostAsync("api/sessions/main/parser?name=bogus", null)).StatusCode);
+
+            var started = await client.PostAsync("api/sessions/main/logging?enabled=true", null);
+            Assert.AreEqual(HttpStatusCode.OK, started.StatusCode);
+            var path = built.Hub.LogPath;
+            Assert.IsNotNull(path);
+            Assert.AreEqual(HttpStatusCode.OK, (await client.GetAsync("api/sessions/main/log")).StatusCode);
+            await client.PostAsync("api/sessions/main/logging?enabled=false", null);
+            Assert.IsNull(built.Hub.LogPath);
+            Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("api/sessions/main/log")).StatusCode);
+            File.Delete(path);
             await built.App.StopAsync();
         }
     }
