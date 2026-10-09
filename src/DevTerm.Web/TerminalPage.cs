@@ -16,6 +16,7 @@ internal static class TerminalPage
           :root[data-theme="dark"] { color-scheme: dark; --bg: #111418; --fg: #d7dde3; --dim: #8b949e; --bar: #1c2128; }
           :root[data-theme="light"] { color-scheme: light; --bg: #fff; --fg: #1b1f23; --dim: #59636e; --bar: #f1f3f5; }
           #tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 4px 12px; background: var(--bar); border-bottom: 1px solid var(--dim); }
+          #tools select { max-width: calc(100vw - 110px); text-overflow: ellipsis; }
           #tools select, #tools button { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--dim); padding: 2px 6px; }
           #tools label { color: var(--dim); }
           input[type=checkbox] { width: 16px; height: 16px; flex: none; }
