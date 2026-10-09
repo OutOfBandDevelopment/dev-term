@@ -244,14 +244,31 @@ public sealed class PluginTrustProcessTests
     [TestMethod]
     public void Approvals_ListsWhatWasRemembered_AndForgetRemovesIt()
     {
-        Assert.AreEqual(0, PluginTrust.Approvals().Count);
+        var home = Path.Combine(Path.GetTempPath(), "devterm-trust-" + Guid.NewGuid().ToString("N"));
+        var previous = Environment.GetEnvironmentVariable(DevTermHome.EnvironmentVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, home);
+            Assert.AreEqual(0, PluginTrust.Approvals().Count);
 
-        PluginTrust.Remember("shout", "AB12");
-        PluginTrust.Remember("whisper", "CD34");
+            PluginTrust.Remember("shout", "AB12");
+            PluginTrust.Remember("whisper", "CD34");
 
-        CollectionAssert.AreEqual(new[] { "shout", "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
-        PluginTrust.Forget("shout");
-        CollectionAssert.AreEqual(new[] { "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+            CollectionAssert.AreEqual(new[] { "shout", "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+            PluginTrust.Forget("shout");
+            CollectionAssert.AreEqual(new[] { "whisper" }, PluginTrust.Approvals().Select(a => a.Name).ToArray());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(DevTermHome.EnvironmentVariable, previous);
+            try
+            {
+                Directory.Delete(home, true);
+            }
+            catch (IOException)
+            {
+            }
+        }
     }
 
     private sealed class AlwaysApprover : IPluginApprover
