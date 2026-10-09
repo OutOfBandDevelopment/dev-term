@@ -41,3 +41,5 @@ bails out without opening a panel if `_session` no longer matches by the time th
 completes, instead of pairing the new `_session` with the old catalog's `structuredSource`.
 Regression tests: `MainWindowSwitchProfileTests.SwitchProfileAsync_WithAnOpenControlPanel_ClosesItInsteadOfLeavingItBoundToTheOldSession`,
 `SwitchProfileAsync_DuringAnInFlightScpiAutoDetect_PreventsOpeningAPanelAgainstTheNewSession`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

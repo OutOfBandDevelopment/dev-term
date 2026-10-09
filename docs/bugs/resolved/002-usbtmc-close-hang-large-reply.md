@@ -37,3 +37,5 @@ before waiting on `_ioLock`, unblocking a `WriteAsync` stuck flushing a reply ov
 pending flush (not the pipe itself), so `WriteAsync` still completes normally rather than throwing.
 Regression test:
 `DevTerm.Transports.Usbtmc.Tests.UsbtmcTransportTests.CloseAsync_DuringAWriteFlushingAReplyOverThePauseThreshold_CompletesWithoutHanging`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

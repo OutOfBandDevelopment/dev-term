@@ -48,3 +48,5 @@ Regression tests:
 `ScpiControlSurfaceTests.InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact`,
 `ScpiControlSurfaceTests.InvokeAsync_MultiParameterCommand_EmptySecondValue_FallsBackToDefault`,
 `ManifestControlSurfaceTests.InvokeAsync_MultiParameterCommand_TextValueContainingAComma_SurvivesIntact`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

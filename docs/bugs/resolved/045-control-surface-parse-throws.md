@@ -51,3 +51,5 @@ new, non-throwing behavior).
 Regression tests: `K8055ControlSurfaceTests.InvokeAsync_AnalogOutWithNonNumericValue_DoesNotThrow_AndFallsBackToZero`,
 `BusylightControlSurfaceTests.InvokeAsync_OnMsWithNonNumericValue_DoesNotThrow_AndFallsBackToZero`,
 `RadexOneControlSurfaceTests.InvokeAsync_ThresholdWithNonNumericValue_DoesNotThrow_AndFallsBackToZero`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

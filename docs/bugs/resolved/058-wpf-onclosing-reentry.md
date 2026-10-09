@@ -51,3 +51,5 @@ neutralizing the `_closing` guard in place, since the fix and its supporting
 `ClosingCleanupRunCount` test hook live in the same file and couldn't be cleanly separated via
 `git stash`). Full `TestCategory=Unit` run green across the whole solution (no regressions); full
 solution `dotnet build` clean (0 warnings, 0 errors).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

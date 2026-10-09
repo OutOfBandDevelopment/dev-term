@@ -25,3 +25,5 @@ the hour part from `(int)offset.TotalHours` explicitly instead of relying on `Ti
 specifier (which is the hour-of-day component, 0-23, not total hours), while `mm:ss.fff` still comes from
 `TimeSpan.ToString` for the minute/second/millisecond components. Regression test:
 `PlaybackTextTests.FormatOffset_PastTwentyFourHours_DoesNotWrap`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

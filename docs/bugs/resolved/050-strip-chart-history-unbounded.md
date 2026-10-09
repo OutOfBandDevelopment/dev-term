@@ -34,3 +34,5 @@ and `DeviceManifestTests.Validate_StripChartHistoryLengthAboveTheHardMaximum_War
 the pre-fix code, confirmed via a temporary revert of just the clamp/warning behavior — the
 `MaxCapacity` constant itself was kept in place since the tests reference it directly). Full
 `TestCategory=Unit` run green across the whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

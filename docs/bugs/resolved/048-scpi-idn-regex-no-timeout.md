@@ -38,3 +38,5 @@ Regression test:
 (an MSTest `[Timeout(1000)]` test — fails as "timed out" against the pre-fix code, confirmed via a
 temporary revert of just the timeout/catch behavior). Full `TestCategory=Unit` run green across the
 whole solution (no regressions).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

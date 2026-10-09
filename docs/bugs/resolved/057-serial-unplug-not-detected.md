@@ -64,3 +64,5 @@ Fixed on 2026-09-29 on `dev/fix-bugs`:
   no regressions.
 
 Regression test: `RealHardwareSerialPortReadStreamTests.RealDevice_PortGoesAwayWhileWaitingForData_ReadAsyncNoticesInsteadOfHangingForever`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -35,3 +35,5 @@ file) any loaded profile with a Numeric parameter whose `Minimum` and `Maximum` 
 combination at all now. Regression tests:
 `ScpiControlSurfaceTests.InvokeAsync_NumericParameterWithNoLimitsSet_IsNotForcedToZero`,
 `ScpiProfileCatalogTests.Load_WithANumericParameterWhereMinimumExceedsMaximum_SkipsThatProfileAndReportsIt`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

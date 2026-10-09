@@ -31,3 +31,5 @@ A test that sets `SaveName` and `ImportExportPath` on a freshly constructed view
 Fixed on 2026-09-26 on `dev/fix-bugs`: added `nameof(SaveName)` and `nameof(ImportExportPath)` to
 `_nonDirtyProperties`. Regression test:
 `ConnectionEditorViewModelTests.SettingSaveNameOrImportExportPath_DoesNotMarkTheEditorDirty`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

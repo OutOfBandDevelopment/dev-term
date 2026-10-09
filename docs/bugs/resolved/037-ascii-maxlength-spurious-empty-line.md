@@ -33,3 +33,5 @@ suppresses the one terminator immediately following the flush). Regression tests
 `AsciiPresenterTests.Render_LineExactlyAtMaxLengthWithCrLf_IsNotFollowedByASpuriousEmptyLine`,
 `..._WithLf_...`, `..._WithCr_...`, and
 `Render_LengthTriggeredFlushFollowedByAnIntentionalBlankLine_StillReturnsThatBlankLine`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

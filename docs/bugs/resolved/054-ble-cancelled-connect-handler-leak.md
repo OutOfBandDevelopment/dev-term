@@ -35,3 +35,5 @@ doesn't depend on these types directly - see `DevTerm.Transports.Ble.Tests`, whi
 `WriteClientCharacteristicConfigurationDescriptorAsync` throws, so this path can only be verified
 against real Bluetooth hardware. Confidence was already `Confirmed` by full code-path reading, and
 the fix is small and directly addresses the described mechanism.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

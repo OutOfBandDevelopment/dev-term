@@ -48,3 +48,5 @@ variable for the old-session close, and reassigns `session = mySession` with no 
 here since this report was WPF-only; see [060](060-tui-profile-switch-session-race.md).
 
 Regression test: `MainWindowSwitchProfileTests.SwitchProfileAsync_SupersededByAnotherSwitchBeforeItResolves_DoesNotStompTheNewerOne`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

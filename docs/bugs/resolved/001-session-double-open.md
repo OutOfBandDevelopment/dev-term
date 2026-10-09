@@ -47,3 +47,5 @@ the defect at its source regardless of front-end state, so the front-end hardeni
 Connect while `Opening`) from the suggested fix's second bullet is no longer required for
 correctness and was left as-is. Regression test:
 `DevTerm.Core.Tests.Sessions.SessionTests.OpenAsync_CalledAgainWhileAlreadyOpen_DoesNotStartASecondReadLoop`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

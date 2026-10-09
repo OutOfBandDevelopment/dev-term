@@ -39,3 +39,5 @@ already closed/disposed by the switch as the *old* session - so whichever sessio
 current after a switch was never closed or disposed on exit.
 
 Regression test: `TuiModeSwitchProfileTests.CurrentSession_AfterASwitch_IsTheSwitchedToSessionNotTheOriginal`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

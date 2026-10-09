@@ -30,3 +30,5 @@ Fixed on 2026-09-26 on `dev/fix-bugs`: `ExportZip` now validates every name exis
 the archive at `<zipPath>.tmp` and only `File.Move`s it over `zipPath` once every entry was written
 successfully — the existing zip is never deleted/truncated unless the new one fully succeeded.
 Regression test: `ConnectionProfileStoreTests.ExportZip_WhenOneOfTheNamesIsMissing_LeavesAnExistingZipAtThatPathUntouched`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

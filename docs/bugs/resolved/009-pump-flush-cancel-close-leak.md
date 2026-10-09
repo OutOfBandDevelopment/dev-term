@@ -53,3 +53,5 @@ Fixed in `dev/fix-bugs` on 2026-09-26, all three suggested layers:
 
 Regression test: `DevTerm.Core.Tests.Transports.StreamToPipePumpTests.RunAsync_WhenTheTokenIsCancelledBeforeTheFlushThatFollowsARead_CompletesWithoutThrowing`,
 which fails without the pump fix (`TaskCanceledException` escapes `RunAsync`) and passes with it.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

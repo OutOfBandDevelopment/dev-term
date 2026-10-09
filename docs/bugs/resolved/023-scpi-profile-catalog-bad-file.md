@@ -37,3 +37,5 @@ now a thin wrapper (`=> Load(baseDirectory, out _)`) so its four existing caller
 real, static-initializer-backed errors are exposed via a new `ScpiProfileCatalog.LoadErrors` property
 (nothing surfaces it in the UI yet). Regression test:
 `ScpiProfileCatalogTests.Load_WithOneMalformedProfileFile_StillLoadsTheRestAndReportsTheBadOne`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

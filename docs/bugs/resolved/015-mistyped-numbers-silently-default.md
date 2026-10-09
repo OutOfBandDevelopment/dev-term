@@ -36,3 +36,5 @@ text fields entirely). Regression tests: `ConnectionEditorViewModelTests.SaveCom
 `CliOptionsValidatorTests.Validate_SerialWithNonPositiveBaud_Fails`,
 `Validate_SerialWithDataBitsOutOfRange_Fails`, `Validate_ReadTimeoutBelowNegativeOne_Fails`,
 `Validate_WriteTimeoutBelowNegativeOne_Fails`, `Validate_NegativePlaybackSpeed_Fails`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

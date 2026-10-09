@@ -46,3 +46,5 @@ surfacing (an in-progress capture indicator flipping the moment a fault happens,
 menu/status is refreshed) was left out of scope - both front ends' logging-status text is only refreshed on
 explicit Start/Stop today, and wiring a live update is a larger change than this report's core defect (an
 unloadable log file) needed.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

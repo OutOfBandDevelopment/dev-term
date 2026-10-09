@@ -64,3 +64,5 @@ Resolved 2026-10-02 on the bench, no dev-term code change. Through bridge 192.16
 not byte timing. Caveat: the delay was on for every working run, so whether 50 ms is *required* (versus merely
 sufficient) was not isolated. Recorded in `docs/devices/hp-34401a/known-configuration.md`. No regression test: it is a
 wiring and bench-setting fix.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

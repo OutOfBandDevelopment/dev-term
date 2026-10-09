@@ -35,3 +35,5 @@ letting the exception escape the command (crashing the TUI's `app.Run` loop, or 
 stack-trace dialog in WPF). Regression tests:
 `ConnectionEditorViewModelTests.SaveCommand_WithAnInvalidName_SetsStatusMessageInsteadOfThrowing`,
 `ConnectionEditorViewModelTests.ExportCommand_ToAPathInAMissingFolder_SetsStatusMessageInsteadOfThrowing`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

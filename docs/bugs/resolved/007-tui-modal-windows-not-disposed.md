@@ -47,3 +47,5 @@ though they weren't separately cited. Regression test:
 `DevTerm.Console.Tests.TuiModeTests.K8055MenuItem_AfterThePanelCloses_UnsubscribesFromValuesChanged`, which drives
 the real "_K8055 Control Panel..." menu item's `Action` and confirms `structuredPresenter.ValuesChanged` has zero
 subscribers once the panel closes (it fails without the fix, at one subscriber leaked).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

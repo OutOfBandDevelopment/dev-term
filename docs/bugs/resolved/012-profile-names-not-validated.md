@@ -50,3 +50,5 @@ nothing. Regression tests:
 `ConnectionProfileStoreTests.ImportZip_WithAnInvalidEntryName_SkipsItInsteadOfWritingIt`,
 `ConnectionProfileStoreTests.ReadZip_WithAnEntryNameInvalidOnWindows_ThrowsSoReplaceAllRefusesBeforeDeletingAnything`,
 `DevTermUserDataPathsTests.ResolveManifestDirectory_WithARootedNamePointingAtARealDirectory_ReturnsNullInsteadOfThatDirectory`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

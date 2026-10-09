@@ -35,3 +35,5 @@ reusing one `Pipe` for the transport's whole lifetime. `CloseAsync` still comple
 a later `OpenAsync` now gets a new, writable one rather than reopening over an already-completed writer.
 Regression test:
 `DevTerm.Transports.Loopback.Tests.LoopbackTransportTests.OpenAsync_AfterClose_CanReconnectAndExchangeData`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

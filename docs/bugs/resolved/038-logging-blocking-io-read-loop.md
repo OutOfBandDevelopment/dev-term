@@ -55,3 +55,5 @@ were updated to wait for the new async persistence the same way
 `AWriteFailure_MarksTheLoggerInactive_AndStopsAdvancingTheRecordCount`). New regression test:
 `SessionLoggerTests.Write_WithASlowUnderlyingStream_ReturnsWithoutWaitingForTheDiskWrite` (confirmed to fail against
 the pre-fix code: 216ms observed vs. a 50ms bound, against a stream with a 100ms per-write delay).
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

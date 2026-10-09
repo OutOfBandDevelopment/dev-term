@@ -28,3 +28,5 @@ Won't fix, cannot reproduce (2026-10-02). Three bench sessions on a real DS1102E
 sizes the scope produces cannot land on a boundary (`docs/test/2026-10-02-07-08-35.md`). The report's other claim
 (TransferSize 10 bytes short) did not match this unit either. Reopen with a captured reply that does end on a
 boundary; research it then.
+
+Resolution recorded in commit `f0fb6ff` (backfilled 2026-10-09 from git history).

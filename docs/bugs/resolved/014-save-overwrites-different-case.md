@@ -33,3 +33,5 @@ Fixed in `dev/fix-bugs` on 2026-09-26: `ConnectionEditorViewModel.SaveAsProfile`
 case-insensitivity, so saving "bench" over an existing "Bench" asks `ConfirmOverwrite` instead of silently
 overwriting it. Regression test:
 `ConnectionEditorViewModelTests.SaveCommand_WhenNameAlreadyExistsUnderADifferentCase_AsksForConfirmationFirst`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

@@ -37,3 +37,5 @@ buffering the header, instead of unconditionally waiting for `HeaderLength + Ext
 rejected and resynchronized one byte at a time right away, rather than stalling until a bogus
 declared length's worth of bytes accumulates. Regression test:
 `RadexOneDecoderTests.Render_WithAFalseHeaderWithAHugeDeclaredLength_StillDecodesTheFollowingValidPacketPromptly`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).

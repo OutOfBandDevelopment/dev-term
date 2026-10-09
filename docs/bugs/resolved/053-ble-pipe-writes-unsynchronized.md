@@ -49,3 +49,5 @@ receipt order: a second notification's write now waits for the first's full `Wri
 its flush) to finish, rather than racing it.
 
 Regression test: `BleTransportTests.NotificationArrivingWhileAPriorWriteIsStillFlushing_DoesNotLoseData`.
+
+Resolution recorded in commit `babdf36` (backfilled 2026-10-09 from git history).
