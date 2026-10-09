@@ -135,3 +135,13 @@ With `--Web:Panel busylight` (or `k8055`), open `/panel` for a server-rendered c
 ![The /panel page for a read-only viewer](images/web-blazor-panel-readonly.png)
 
 These are real browser captures taken by `WebScreenshotTests`, which drives the installed Microsoft Edge through Playwright (Integration; Inconclusive without Edge), so re-run that class when the page changes.
+
+## The other web pages
+
+The tools the desktop apps keep in menus are pages here, all behind the same token. Each has its own guide:
+
+- `/monitor` and `/converters`: [Capturing screen dumps, plots and print jobs](stream-monitor.md)
+- `/routing`: [Routing device messages to a broker](routing.md)
+- `/playback`: [Logging and playing back a session](logging-and-playback.md)
+- `/themes`: [Choosing a theme](themes.md)
+- `/manifest`: [Editing a device manifest](manifest-editor.md)

@@ -52,7 +52,7 @@ pipe <- B
 
 - Naming: is the session name the profile name, a tab title, or generated? Discovery of live sessions
   (list the pipes) is not designed.
-- Web service versus pipe for browsers and non-.NET clients.
+- ~~Web service versus pipe for browsers and non-.NET clients.~~ Both built: `--controlhttp <port>` is the localhost web-service variant (see the checklist).
 
 ## Completion checklist
 

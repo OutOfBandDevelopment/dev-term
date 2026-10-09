@@ -40,10 +40,10 @@ baseline is 0 warnings across the whole solution, enforced rather than aspiratio
 `severity = warning` `.editorconfig` line (or an analyzer's own out-of-the-box default) now fails
 `dotnet build`, not just an IDE squiggle. A handful of specific diagnostics are bumped further, all
 the way to an explicit `error` severity in `.editorconfig`'s "My Rules" section anyway (`CS0618`,
-`CS8604`, `CA2016`, `MA0040`, `IDE1006`, and the collection-expression/object-initializer `IDE0xxx`
+`CS8604`, `CA2016`, `MA0040`, `IDE1006`, `IDE0007`, `CA1854`, and the collection-expression/object-initializer `IDE0xxx`
 rules) — with `TreatWarningsAsErrors` already blocking the build on any of them, the explicit `error`
 is documentation ("this one is load-bearing, not just provisional") rather than a functional
-difference from `warning`. Genuinely-still-a-suggestion style preferences (most `csharp_style_*`/
+difference from `warning`. Note: `MA0032`/`MA0040` are Meziantou.Analyzer rule IDs, but no Meziantou package is referenced in `Directory.Build.props` or any project (checked 2026-10-09), so those two lines are currently inert; `CA2016` is what actually enforces CancellationToken forwarding. Genuinely-still-a-suggestion style preferences (most `csharp_style_*`/
 `dotnet_style_*` keys) stay at `suggestion` deliberately — `EnforceCodeStyleInBuild` doesn't turn
 those into build warnings at all, so they remain IDE-only nudges, never a red build.
 
@@ -81,14 +81,16 @@ standard below gets declared that StyleCop already knows how to check.
   this rule down).
 - **4-space indentation for C#, 2-space for XAML/XML/project files/YAML/JSON.**
 - **Allman braces** (opening brace on its own line) — `csharp_new_line_before_open_brace = all`.
-- **Braces required on every `if`/`for`/`while`/etc. body, even a single statement** —
-  `csharp_prefer_braces = true:warning`. No `if (x) return;` single-line style.
+- **Braces on every `if`/`for`/`while`/etc. body are the preferred style, but not enforced** —
+  `.editorconfig` has `csharp_prefer_braces = true:silent` (IDE0011 is deliberately left to the
+  author's judgment per call site), so a braceless single-statement body does not warn or fail the build.
 
 ### Language style
 
 - **File-scoped namespaces everywhere** (`namespace Foo.Bar;`, no braces) —
-  `csharp_style_namespace_declarations = file_scoped:warning`. The one rule in this baseline set to
-  `warning` rather than `suggestion`, since it's the most mechanically obvious to fix.
+  `csharp_style_namespace_declarations = file_scoped:warning`. One of two style keys set to
+  `warning` rather than `suggestion` (the other is `csharp_using_directive_placement =
+  outside_namespace:warning`), since they are the most mechanically obvious to fix.
 - **`var` wherever the type is obvious or built-in** — matches existing usage throughout
   (`csharp_style_var_*` keys, all `:suggestion`).
 - **Expression-bodied members for simple one-line properties/accessors** — matches e.g.
@@ -115,10 +117,13 @@ standard below gets declared that StyleCop already knows how to check.
 ### Testing
 
 - **Every `[TestClass]` carries a `[TestCategory]`** whose value is one of the two declared in
-  `DevTerm.Test.Utilities.TestCategories`: `Unit` (fast, hardware-free) or `Integration` (crosses a
+  `DevTerm.Test.Utilities.TestCategories`: the primary tier is `Unit` (fast, hardware-free) or `Integration` (crosses a
   real process/socket boundary, or drives real physical hardware — see `docs/design/testing.md`'s
-  "Two categories" section for the full breakdown) — always at the class level in this codebase,
-  never per-method, so every test in a class shares one category. Enforced by
+  "Two categories" section for the full breakdown), always at the class level. A class may also carry
+  secondary categories (`Hardware`, transports such as `Serial`/`Tcp`/`Hid`/`Usbtmc`, `Scpi`,
+  `Logging`, `Mqtt`, per-device names); the recognized list is
+  `TestCategoryStandardsTests._knownCategories`, and a new value is added there and in `TestCategories`
+  in the same change. Every test must resolve to at least one recognized category. Enforced by
   `tests/DevTerm.CodingStandards.Tests.TestCategoryStandardsTests`, which reflects over every test
   assembly and fails if a class is missing one, uses an unrecognized value, or (checking what MSTest
   actually resolves per test, class-level plus method-level combined) a method ends up with no

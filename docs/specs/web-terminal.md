@@ -18,6 +18,11 @@ saved profile are the same as the console app's. On start it prints `dev-term we
 | `BacklogLines` | `500` | Lines replayed to a viewer that joins later |
 | `ReadOnlyToken` | none | A second token for watch-only viewers; must differ from `Token`. Output and the panel layout are shown, every send over `/ws` and every `POST /api/invoke` is refused (`! read-only viewer`, HTTP 403) |
 | `Panel` | none | `k8055` or `busylight`: serves that device's `UiDefinition` at `/api/panel` and renders it in the page above the output |
+| `Profile` | none | A saved profile (the shared store the TUI and WPF use) for the host's own session instead of the layered options; an unknown name exits 1 listing the saved ones |
+| `LogsDirectory` | `~/.dev-term/logs` | The folder `/playback` lists and opens logs from (and `/manifest` offers as sample data) |
+| `ThemesDirectory` | `~/.dev-term/themes` | Where `/themes` saves themes (shared with the desktop apps) |
+| `ManifestsDirectory` | `~/.dev-term/manifests` | Where `/manifest` saves and lists user manifests (shared with the desktop apps) |
+| `ConverterToolsFile` | `~/.dev-term/converter-tools.json` | The converter tools list `/converters` edits and `/monitor` converts with (shared with the desktop apps) |
 
 A non-loopback URL needs `AllowRemote`, an explicit `Token`, a `CertificatePath` and `https`; otherwise startup fails
 with the reason.
@@ -29,6 +34,11 @@ with the reason.
 | `/` | The terminal page: status bar, output pane, send box |
 | `/ws` | Text WebSocket. A frame received = one typed line to send; a frame sent = one output or status line (`!`-prefixed = error) |
 | `/api/status` | `{"state": "...", "connection": "...", "readOnly": false}` |
+| `POST /api/session/connect` / `POST /api/session/disconnect` | Connects or closes the host's own session; `{"state"}`; 403 read-only |
+| `POST /api/session/profile?name=` | Switches the host's own session to a saved profile; `{"state","profile"}`; 404 unknown, 400 when it will not build, 403 read-only |
+| `GET /api/project/export?name=` | Downloads a project file of the open connections (or the saved project's); 404 when there are none |
+| `POST /api/project/import` | Adds a project file's connections to the host's (same validation as the PUT below); 403 read-only |
+| `GET /api/monitor/captures/{n}` | The bytes of Stream Monitor capture `n` (index into the oldest-first list) with its media type; 404 unknown |
 | `/api/panel` | The configured panel's `UiDefinition` as JSON (404 when `Panel` is unset) |
 | `/api/project` | The `--project` file's connections as `[{"name", "description"}]` (no credentials); `[]` without a project |
 | `GET /api/discover?seconds=n` | Network devices found by the LXI, mDNS and SSDP probes (the `--listnetworkdevices` set), listening 1-10 s (default 3): `[{"address","port","transport","kind","name","source","hostname"}]`; `[]` when nothing answers or the network is unreachable. Not hardware-verified beyond the one real-LAN run of the probes |
@@ -130,3 +140,17 @@ The web is held to the same automation as the TUI and WPF: the shared user flows
 ## Blazor playback page (`/playback`)
 
 Replays a session log through `PlaybackController` (the same one the TUI and WPF windows draw, so behaviour is identical; see [`playback-window.md`](playback-window.md)). Logs come from `PlaybackLibrary`: the `.jsonl` files directly inside `Web:LogsDirectory` (default `~/.dev-term/logs`), newest first; a name containing a path is never resolved. Controls: Open, Play/Pause (a 100 ms timer ticks while playing and stops at the end), Step, Rewind, Fast-forward (10 s), To end, Speed (0.25x to Max), Jump to (record or `m:ss.f`; bad text shows the controller's message), Presenters (comma list, replays from the start), Mark in, Mark out, Save trimmed copy (to the controller's default `.trim-a-b` name beside the log), Add note (saved into the log). A read-only token disables the notes and trim buttons. Output shows the last 2000 lines in the shared `PlaybackText` format. Not on the web: choosing a log from outside the folder, uploading one.
+
+## Blazor pages for the other tools
+
+Each uses the same token auth, the same shared view models as the desktop windows (so field-by-field behaviour is in
+the linked spec), and for a read-only token shows the page with every editing control disabled and a notice.
+
+| Page | What it is | Spec |
+|---|---|---|
+| `/monitor` | Stream Monitor over the shared session and every opened connection: Start/Stop, search, Type, Device and Sort, capture list, Download, Convert as, image preview | [stream-monitor.md](stream-monitor.md) |
+| `/converters` | The converter tools list the Stream Monitor converts with: Add tool, Up/Down/Remove, Save, Revert | [converter-tools-editor.md](converter-tools-editor.md) |
+| `/routing` | Broker, rules, Test, Apply/Start/Stop/Save to profile, history, inline Send once / Always / Drop prompts | [routing-window.md](routing-window.md) |
+| `/themes` | Theme builder: seed, per-role colors with Reset to seed, chart palette, contrast warnings, Overwrite checkbox, Save | [theme-builder.md](theme-builder.md) |
+| `/manifest` | Manifest editor: toolbar, Import .ksy, sample data, outline, generated form, expression picker, preview | [manifest-editor.md](manifest-editor.md) |
+| `/playback` | Session log replay (section above) | [playback-window.md](playback-window.md) |

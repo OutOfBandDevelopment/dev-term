@@ -68,8 +68,8 @@ controls gained an optional visibility condition (`VisibleWhen`), `UiControl` an
 
 A `UiDefinition` is a named panel made of `UiSection`s (a label plus a flat list of controls — no
 deeper nesting for now, matching every mockup written so far, all of which are one level of
-grouping). Each `UiControl` carries an `Id` (what it reads/writes — a parameter or command name a
-future `IControlSurface` would recognize) and a `Label` (what a human sees), plus kind-specific
+grouping). Each `UiControl` carries an `Id` (what it reads/writes — a parameter or command name the
+`IControlSurface` recognizes) and a `Label` (what a human sees), plus kind-specific
 fields:
 
 - `ButtonControl` — invokes a command, no value of its own (e.g. "Apply", "Reboot", "Reset Counter").

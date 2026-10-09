@@ -3,7 +3,7 @@
 The in-process plugin loader ([plugin-model.md](../plugin-model.md)) lets a plugin register presenters and transports, but
 nothing else. The device projects (K8055, Busylight, SCPI, De5000, ZoomH4n, RadexOne, NMEA) stay compiled into the core
 because `TuiMode`, `MainWindow` and `WebHost` reference them directly for their control-panel menu items. Until a plugin
-can contribute a panel, those decoders cannot move into plugin folders (`TODO.md` item 5).
+can contribute a panel, those decoders cannot move into plugin folders (done 2026-10-08, see Status).
 
 ## Shape
 
@@ -65,7 +65,7 @@ F --> IDevicePanelContribution : menu + panel
 
 - [x] `IDevicePanelContribution` in `DevTerm.Core` with unit tests for the menu build (`TuiPluginPanelsTests`, `MainWindowPluginPanelsTests`).
 - [x] TUI, WPF and web resolve contributions instead of naming device projects (verified 2026-10-08: no hand-written K8055/Busylight items remain; the TUI and WPF list every registered contribution). Web `Web:Panel` also accepts a contribution id (resolved in `WebHost.Build`).
-- [x] K8055 and Busylight moved to plugin folders as the first two cases. Half done: each device project now registers an `IDevicePanelContribution` (`K8055PanelContribution`, `BusylightPanelContribution`) and the web host resolves them by id instead of naming the device projects; the TUI and WPF hand-written K8055/Busylight items are gone and both front ends list every contribution, so the remaining step is only moving the projects into plugin folders.
+- [x] K8055 and Busylight moved to plugin folders as the first two cases. Half done: each device project now registers an `IDevicePanelContribution` (`K8055PanelContribution`, `BusylightPanelContribution`) and the web host resolves them by id instead of naming the device projects; the TUI and WPF hand-written K8055/Busylight items are gone and both front ends list every contribution; the projects are bundled into `plugins/<name>` by `Directory.Build.targets` and loaded from there.
 - [x] Remaining decoders moved; core, Configuration and the front ends no longer reference any `DevTerm.Devices.*` project (SCPI was last, 2026-10-08, as `IInstrumentPanelProvider` in `plugins/scpi`).
 - [x] Specs and user guide updated for the menu (`tui-main-screen.md`, `wpf-main-window.md`, `device-control-panels.md`).
 
@@ -73,4 +73,4 @@ F --> IDevicePanelContribution : menu + panel
 
 Update 2026-10-08: SCPI is now a plugin (`plugins/scpi`) behind `IInstrumentPanelProvider`; the TUI, WPF and CLI reach it through `InstrumentPanelProviders`/DI, and core, Configuration and the front ends reference no `DevTerm.Devices.*` project. Unit-tested (`ScpiInstrumentPanelProviderTests`, TUI and WPF menu tests); not re-run against the real instruments.
 
-Contract built; TUI and WPF add one Device-menu entry per registered contribution, enabled when connected and `IsAvailable(transport, vendorId, productId)` is true. Verified by unit tests only (a sample contribution wrapping the K8055 panel); no real plugin folder ships a contribution yet, and the web path is untested with a real contribution (no plugin DLL in the test setup). Built-in panels are untouched.
+Contract built; TUI and WPF add one Device-menu entry per registered contribution, enabled when connected and `IsAvailable(transport, vendorId, productId)` is true. Every built-in device (K8055, Busylight, RadexOne, ZoomH4n, De5000, Nmea, Demo, SCPI) now ships as a bundled plugin folder (`plugins/<name>` in the app output) and registers its own contribution. Verified by unit tests and live runs of the apps; no third-party plugin folder has been tried.

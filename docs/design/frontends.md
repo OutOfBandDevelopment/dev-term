@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Describes the three user-facing modes over the shared core engine — CLI and TUI (both in the console app) and GUI (WPF) — and how responsibilities split between them.
+Describes the user-facing modes over the shared core engine — CLI and TUI (both in the console app), GUI (WPF) and the web host — and how responsibilities split between them.
 
 ## Shared foundation
 
@@ -16,21 +16,20 @@ Profiles" menu** (available at any time, not just at startup) for picking a name
 — see [connection-profiles.md](connection-profiles.md) for the full shape, including how a profile
 can reference a [device manifest](device-manifests.md) so picking one also loads what that specific
 device can do. **Implemented** (2026-09-15 through 2026-09-18) in both front ends — see
-connection-profiles.md's own Status for the full detail. Not yet wired to a device manifest's
-`IControlSurface`, though (see that doc's own "not yet" notes and `BACKLOG.md`).
+connection-profiles.md's own Status for the full detail. A profile's device manifest is
+loaded as a live control panel (`ManifestControlSurface`); see [device-manifests.md](device-manifests.md).
 
 ## Executables
 
-There are two deployable front-end applications, not three — TUI and CLI are two *modes* of the same console executable, since both are text-only and share the same terminal-hosting concerns:
+There are three deployable front-end applications. TUI and CLI are two *modes* of the same console executable, since both are text-only and share the same terminal-hosting concerns:
 
 - **Console app** — a single console executable providing both the CLI (scriptable/non-interactive) and TUI (full-screen interactive) modes described below. Mode selection is a startup concern (an explicit flag, or auto-detecting an interactive terminal vs. redirected/piped input/output) — see open questions. Built on .NET's Generic Host like every other part of the app (see [platform.md](platform.md)), so it composes the same core services as the WPF app.
 - **WPF app** — the GUI front end, built with WPF. This makes the GUI Windows-only by choice, while the console app (CLI + TUI) has no such constraint and can run cross-platform — a deliberate scoping trade-off: full graphical rendering (HPGL/PostScript/PCL drawings, telemetry plots) is a Windows-first feature, and non-Windows users still get the full core functionality through the console app's text views and export commands.
 
-**A fourth deployment shape, low priority** (noted 2026-09-15, given three front ends already
-exist): a web server exposing the core engine over WebSockets, proxying configured connections to
-a separate .NET MAUI front end — the same core (session/transport/presenter) behind a network
-boundary instead of an in-process DI graph, for cross-platform mobile/desktop reach beyond what
-WPF (Windows-only) and the console app (text-only) cover. Not designed further than this note.
+- **Web host** (`DevTerm.Web`) — an ASP.NET Core app exposing the core engine over a `/ws` WebSocket tunnel and `/api/*`
+  endpoints, with a Blazor UI: loopback-only by default, a shared access token (https required off loopback). It reads the
+  same layered configuration as the console app (its own settings under `Web:`). Rationale and status:
+  [the web proposal](proposals/web-tunnel-blazor-frontend.md). The MAUI idea in the original note was not built.
 
 ## TUI (full-screen terminal UI)
 
@@ -76,11 +75,11 @@ File > Start Logging... and File > Open Log for Playback.... See
 
 ## GUI (graphical desktop app, WPF)
 
-A richer visual front end for cases where a graphical view adds real value beyond what a terminal can show: live rendering-presenter output (HPGL/PostScript/PCL drawings, telemetry plots), device control module control panels (see [device-control-modules.md](device-control-modules.md), rendered from the declarative model in [ui-definitions.md](ui-definitions.md) once that's wired up), a hex-grid editor for composing binary sends, and drag-and-drop plugin/session management. Built with WPF, so it ships as a separate Windows desktop application from the console app, both consuming the same core engine via DI (see [platform.md](platform.md)).
+A richer visual front end for cases where a graphical view adds real value beyond what a terminal can show: live rendering-presenter output (HPGL/PostScript/PCL drawings, telemetry plots), device control module control panels (see [device-control-modules.md](device-control-modules.md), rendered from the declarative model in [ui-definitions.md](ui-definitions.md)), a hex-grid editor for composing binary sends, and drag-and-drop plugin/session management. Built with WPF, so it ships as a separate Windows desktop application from the console app, both consuming the same core engine via DI (see [platform.md](platform.md)).
 
 ## Open questions
 
-- ~~How much session state is shareable between front ends~~ **Decided 2026-10-03:** sharing across processes is wanted, over a **named pipe or a localhost-only web service** (the owner's preferred IPC). Ties to the named-pipe session monitoring item in BACKLOG. Not built.
+- ~~How much session state is shareable between front ends~~ **Decided 2026-10-03:** sharing across processes is wanted, over a **named pipe or a localhost-only web service** (the owner's preferred IPC). Ties to the named-pipe session monitoring item in BACKLOG. Built: see the [cross-process session channel](proposals/cross-process-control-channel.md) (`SessionPipeServer`, `--controlhttp`).
 - ~~Whether the console app selects CLI vs. TUI mode via an explicit flag, auto-detection of an interactive terminal (isatty-style), or both.~~ **Decided**: an explicit flag, and TUI is the default — `dev-term` with no mode flag opens the TUI; `--cli true` forces the plain scriptable loop instead (e.g. for automation/CI). No terminal auto-detection.
 - Whether GUI (WPF) ships in the same initial milestone as the console app (CLI/TUI) or follows later, given it's a separate, Windows-only executable.
 - ~~How much of a rendering presenter's drawing the TUI should approximate~~ **Decided 2026-10-03:** the TUI does its best; graphic rendering will never be possible there, and that is an accepted limit.

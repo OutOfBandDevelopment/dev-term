@@ -1,8 +1,7 @@
 # Open questions
 
 Every genuinely undecided question across `docs/design/`, `docs/specs/`, `TODO.md`, `BACKLOG.md` and `docs/bugs/`,
-collected in one place so none gets lost in a doc nobody is reading. **Last swept: 2026-10-09** (a partial pass: the plugin-loading line removed, since its collision rules were decided 2026-10-07 and the decoders moved 2026-10-08; every other line unchanged since the 2026-10-03 full sweep) (all design docs,
-proposals, features, specs, TODO, BACKLOG; `docs/bugs/` has no open reports).
+collected in one place so none gets lost in a doc nobody is reading. **Last swept: 2026-10-09** (proposals, TODO and BACKLOG re-checked against the code and `docs/changes/`; two lines added for open questions that had no pointer here, and the ES51919 and web-versus-pipe questions struck in their proposals as decided; the design-doc, feature and spec sections are unchanged since the 2026-10-03 full sweep; `docs/bugs/` has no open reports).
 
 How this file works (see CLAUDE.md "Documentation" and the `docs-sync` / `work-docs-audit` skills):
 
@@ -70,6 +69,8 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 
 - **Plugin panels:** whether panel entries filter by selected presenter ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
+- **Cross-process channel:** is a session's pipe name the profile name, a tab title or generated, and how are live sessions discovered? — [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)
+- **Out-of-process plugins:** the default reply timeout and an async render path (a slow plugin delays the read loop); packaging beyond `plugin.json`; JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
 
 - **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live; whether raster export is a core service. —

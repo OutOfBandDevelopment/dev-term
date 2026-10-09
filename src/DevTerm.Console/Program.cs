@@ -35,7 +35,7 @@ const string Usage =
     + "\n   or: dev-term --transport rfc2217 --host <host> --port <port> [--baud <rate>] [--databits <5-8>] [--parity <name>] [--stopbits <name>] [--dtr <bool>] [--rts <bool>] [--presenter <name[,name...]>] [--parser <name>] [--lineending <None|Cr|Lf|CrLf>] [--asciimaxlinelength <n>] [--cli <bool>]"
     + "\n   or: dev-term --transport vxi11 --host <host> [--port <core-port>] [--presenter <name[,name...]>] [--lineending <None|Cr|Lf|CrLf>] [--cli <bool>]"
     + "\n   or: dev-term --transport amqp|stomp --host <host> --port <port> [--subscribe <key[,key...]>] [--publish <key>] [--username <name>] [--password <pw>]"
-    + "\n   or: dev-term --transport mqtt--host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
+    + "\n   or: dev-term --transport mqtt --host <host> --port <port> [--subscribe <topic[,topic...]>] [--publish <topic>] [--username <name>] [--password <pw>] [--presenter <name[,name...]>] [--cli <bool>]"
     + "\n   or: dev-term --playback <log.jsonl> [--presenter <name[,name...]>] [--playbackspeed <rate, 0 = as fast as possible>]"
     + "\n   or: dev-term --listports true"
     + "\n   or: dev-term --listhiddevices true [--vendorid <n>] [--productid <n>]"

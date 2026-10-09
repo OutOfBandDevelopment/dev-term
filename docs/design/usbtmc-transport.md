@@ -4,7 +4,7 @@
 
 Describes what's needed to add a `DevTerm.Transports.Usbtmc` transport for USB Test & Measurement
 Class devices — the USB class most local-USB bench equipment (Rigol, Keysight, and others) actually
-uses. Not yet built; this doc replaces the placeholder paragraph in
+uses. Built (`--transport usbtmc`, `--listusbtmcdevices true`); this doc began as the design that replaced the placeholder paragraph in
 [transports.md](transports.md)'s Extensibility section with an actual design. Real target hardware:
 the plain **Rigol DG1022** (no LAN option, unlike the DG1022Z/DG1062Z) and the **Rigol DS1102E**
 oscilloscope (confirmed to have USB, likely USBTMC for this era of Rigol scope but not yet confirmed

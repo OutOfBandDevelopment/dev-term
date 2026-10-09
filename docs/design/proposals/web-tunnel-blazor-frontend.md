@@ -241,7 +241,7 @@ P --> Viewer : list refreshed | inline error
 
 Decisions this layout makes (change them in review): one page with the list above the form, not a modal; Save is disabled for a
 read-only viewer (the service answers 403 anyway); "Detect network devices..." calls a new `GET /api/discover` that runs the
-same probes as `--listnetworkdevices` (not built yet); Delete asks for a second click inline because the browser dialogs are
+same probes as `--listnetworkdevices` (built 2026-10-08); Delete asks for a second click inline because the browser dialogs are
 unavailable to the page host.
 
 ## Completion checklist
@@ -274,7 +274,6 @@ What is needed before this proposal can be closed. Tick items as they land, in t
 **Implemented (2026-10-02): `DevTerm.Web`** with the decisions above. `AccessPolicyTests` and `WebHostTests`
 (13 unit tests, including a real WebSocket round trip against the loopback transport) pass, and a live
 run confirmed 401 without a token, a 302 with `?token=`, and a refused non-loopback `http` bind. Not verified:
-a real device through the page, more than one simultaneous browser. Not built:
-Blazor, user accounts, read-only viewers.
+more than one simultaneous browser. Not built: user accounts.
 
-**Direction change 2026-10-03:** the design above (service-driven connections, Scalar, AsyncAPI, Blazor) is agreed but not started; the implemented host still takes its connection from startup arguments or a profile.
+**Direction change 2026-10-03, since built (2026-10-03 to 2026-10-09):** service-driven connections, Scalar, AsyncAPI and the Blazor pages (`/connections`, `/panel`, `/profiles`, `/monitor`, `/routing`, `/playback`, Configure device on the profile editor) are all built; see the checklist and `docs/changes/`. Against the live DG1062Z (2026-10-09) the terminal, SCPI panel set and read-back, `/monitor` captures (also over a second project connection) and `/routing` to a real Mosquitto broker were confirmed. Still not verified: several simultaneous browsers.

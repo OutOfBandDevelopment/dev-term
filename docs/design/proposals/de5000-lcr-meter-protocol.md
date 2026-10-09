@@ -171,5 +171,5 @@ synthetic packets; **not yet verified against the real meter/adapter** — see t
   is worth a small shared sub-parser used twice, or whether that's over-engineering a 5-byte field
   group that's simple enough to just parse twice inline. Implemented as the latter (parsed twice
   inline in `De5000Framer.TryParse`) since both call sites are only a few lines each.
-- Whether other ES51919-based meters (rebadged under other brands) are worth explicitly supporting
-  via the same decoder, or left as "probably works, not verified" until one shows up.
+- ~~Whether other ES51919-based meters (rebadged under other brands) are worth explicitly supporting
+  via the same decoder, or left as "probably works, not verified" until one shows up.~~ Decided (recorded in `BACKLOG.md`): no explicit support beyond "probably works".

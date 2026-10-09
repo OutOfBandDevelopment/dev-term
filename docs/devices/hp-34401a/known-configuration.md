@@ -50,7 +50,6 @@ Direct on a PC (COM10, Prolific USB-UART, 9600 8N2, `--stopbits Two`) it answers
 with DTR and RTS asserted and all tester lines connected; with only RXD/TXD/GND it beeps (receives) and never
 answers. See [usr-tcp232-302](../usr-tcp232-302/known-configurations.md).
 
-Quirk: a terminatorless `raw` presenter surfaces only the first fragment of a reply (`H` instead of the `*IDN?`
+Quirk: the test-local terminatorless `RawPresenter` (not a console `--presenter` name) surfaces only the first fragment of a reply (`H` instead of the `*IDN?`
 string); use `ascii`. Send `SYST:REM` first to enter remote mode. Source: `docs/test/2026-09-24-07-16-34.md`,
-`docs/test/2026-09-25-18-57-22.md`. Verify the stop-bits argument spelling with `--help` before relying on the command
-above; the matrix records "2 stop bits" but not the literal flag.
+`docs/test/2026-09-25-18-57-22.md`. The `--stopbits Two` spelling matches `CliOptions.StopBits` (an enum; the editor lists `Enum.GetNames<StopBits>()`, so `Two`, checked in code 2026-10-09, not re-run on the meter).

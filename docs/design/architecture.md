@@ -56,7 +56,7 @@ Transports and presenters are discovered and loaded as plugins against versioned
 
 ### Front ends
 
-Two deployable applications sharing the same core engine and DI composition: a console app (offering both CLI and TUI modes) and a WPF app (GUI). They share sessions, transports, and presenter plugins, differing only in how they render and how the user interacts. See [frontends.md](frontends.md) and [platform.md](platform.md).
+Three deployable applications sharing the same core engine and DI composition: a console app (offering both CLI and TUI modes), a WPF app (GUI) and a loopback-only web host (`DevTerm.Web`). They share sessions, transports, and presenter plugins, differing only in how they render and how the user interacts. See [frontends.md](frontends.md) and [platform.md](platform.md).
 
 ## Architecture diagrams (C4)
 
@@ -152,6 +152,6 @@ SHOW_LEGEND()
 
 ## Open questions
 
-- Plugin isolation mechanism: in-process (`AssemblyLoadContext`) vs. out-of-process (IPC) plugin hosting.
+- ~~Plugin isolation mechanism: in-process vs. out-of-process~~ Both are built: in-process modules load into an `AssemblyLoadContext`, out-of-process presenters run as a child process (see [plugin-model.md](plugin-model.md)).
 - ~~Whether presenters/decoders can also *originate* traffic~~ **Decided 2026-10-03: yes.** A presenter may generate data to feed back in as a simulation, or act as a virtual device of its own (it pairs with the loopback transport and the broker routing idea). Built 2026-10-03 as `IOriginatingPresenter`; see `Session.AddPresenter`.
 - Cross-session scripting/automation model for the CLI front end.

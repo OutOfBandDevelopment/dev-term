@@ -69,7 +69,7 @@ neither of those has: per-message **topic addressing**, not just message boundar
 - **Device to broker:** `match` is a regex over each device line; named groups fill `${name}` in `topic` and `payload` (default payload: the whole line). The first matching rule publishes through an `IMessageSink`.
 - **Broker to device:** `topic` is an exact topic or a trailing-`#` prefix; `match` runs over the payload text; `send` (plus the terminator) goes to the device via `Originated`.
 - **Timecode:** every routed message lands in `MessageRouter.History` stamped from one `TimeProvider`, so channels share a clock.
-- **Tested** over the loopback transport with an in-memory broker (`MessageRouterTests`): a broker `MEAS` becomes a device `MEAS?`, and the sample reply is published back. Wired to a real MQTT broker by `MqttRouterBridge` (verified against Mosquitto); AMQP and STOMP by `BrokerRouterBridge` (verified against RabbitMQ); a front-end UI is not yet.
+- **Tested** over the loopback transport with an in-memory broker (`MessageRouterTests`): a broker `MEAS` becomes a device `MEAS?`, and the sample reply is published back. Wired to a real MQTT broker by `MqttRouterBridge` (verified against Mosquitto); AMQP and STOMP by `BrokerRouterBridge` (verified against RabbitMQ); a Routing window (WPF, TUI and web) is the front-end UI, see the checklist.
 
 ```plantuml
 @startuml

@@ -79,6 +79,10 @@ enabled only when the active tab's transport is `TcpTransport` — see
 
 A client for LXI instruments with no raw SCPI socket (ONC-RPC over TCP, built on the TCP connection source). Selected with `--transport vxi11 --host <ip>`; see [VXI-11 transport](vxi11-transport.md).
 
+### Message brokers (MQTT, AMQP, STOMP)
+
+`--transport mqtt` (`DevTerm.Transports.Mqtt`, MQTTnet) and `--transport amqp` / `--transport stomp` (`DevTerm.Transports.Brokers`, an `IBrokerConnection` per protocol) present a broker topic/queue pair as a byte stream: what is typed is published, what arrives on the subscription is read. `MqttRouterBridge` and `BrokerRouterBridge` additionally bridge a live session to a broker (the web `/routing` page). Broker credentials and TLS come from the transport options (`BrokerTls`).
+
 ### UDP
 
 Datagram-oriented; no connection lifecycle in the traditional sense, but still modeled as open/close for consistency with other transports. Also supports both directions:
@@ -191,9 +195,9 @@ as every other transport and is selectable by an actual end user.
 
 ## Extensibility
 
-New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes, etc.) implement the same `ITransport` contract and are picked up via the plugin host — no core changes required. RFC 2217 (a remote-controllable serial port over Telnet) is a concrete planned one — see [rfc2217.md](rfc2217.md), including a real-world caveat about vendor-specific variants that don't actually match the IETF standard despite the name.
+New transports (CAN bus, SPI/I2C bridge adapters, raw sockets, SSH, named pipes, etc.) implement the same `ITransport` contract and are picked up via the plugin host — no core changes required. RFC 2217 (a remote-controllable serial port over Telnet) is built as a client (`DevTerm.Transports.Rfc2217`), with a share-server option — see [rfc2217.md](rfc2217.md), including a real-world caveat about vendor-specific variants that don't actually match the IETF standard despite the name.
 
-**USBTMC** (the USB device class most bench test equipment actually uses for local USB control, e.g. Rigol/Keysight instruments) is deliberately *not* in the initial transport list — it's neither HID nor a virtual COM port, but its own USB class with dedicated bulk endpoints and message framing, so it needs its own transport built against raw USB (WinUSB/LibUsbDotNet) rather than reusing HID or Serial, or an IVI/VISA driver (ruled out — Windows/.NET-Framework-oriented and a separate proprietary runtime install). See [usbtmc-transport.md](usbtmc-transport.md) for the design (protocol framing, library choice, why IVI.NET/VISA was rejected) and the [SCPI proposal](features/scpi-instrument-control.md) for target hardware; not yet built.
+**USBTMC** (the USB device class most bench test equipment actually uses for local USB control, e.g. Rigol/Keysight instruments) is its own transport (`DevTerm.Transports.Usbtmc`) rather than part of HID or Serial — it is neither HID nor a virtual COM port, but its own USB class with dedicated bulk endpoints and message framing, so it needs its own transport built against raw USB (WinUSB/LibUsbDotNet) rather than reusing HID or Serial, or an IVI/VISA driver (ruled out — Windows/.NET-Framework-oriented and a separate proprietary runtime install). See [usbtmc-transport.md](usbtmc-transport.md) for the design (protocol framing, library choice, why IVI.NET/VISA was rejected) and the [SCPI proposal](features/scpi-instrument-control.md) for target hardware; built and verified on bench instruments.
 
 **GPIB** is out of scope (decided 2026-10-03): no GPIB hardware is on hand, so the Prologix-style adapter notes that used to be here were removed. It can be added back if it ever comes up; the existing serial and TCP transports would carry a Prologix adapter without a new `ITransport`.
 

@@ -16,7 +16,7 @@ Extension points, each a small interface package with no dependency on the core 
 ## Packaging & discovery
 
 - Each plugin ships as one or more .NET assemblies plus a small manifest (name, version, contract version(s) implemented, declared capabilities — e.g., "renders", "exports: svg,png,jpg") so the host can validate compatibility before loading.
-- Plugins are discovered from a known plugins directory (and, later, potentially a plugin registry/feed) at startup, before the DI container is built — see [platform.md](platform.md) for the DI/hosting model this plugs into.
+- Plugins are discovered from a known plugins directory (a plugin registry/feed is not built) at startup, before the DI container is built — see [platform.md](platform.md) for the DI/hosting model this plugs into.
 - Rather than the host manually instantiating plugin types, each plugin exposes a small entry point (e.g., an `IPluginModule` implementation) whose job is to register its own services — transport/presenter implementations, and their options types — into the host's `IServiceCollection`. Discovery therefore ends with the plugin contributing to the container, not with the host holding a bag of loose instances; from then on, everything (core and plugin services alike) is resolved through DI like any other service.
 
 ```plantuml
@@ -37,7 +37,7 @@ Host -> Host: check contract version compatibility
 alt compatible
   Host -> ALC: create isolated load context
   ALC -> Plugin: load assembly
-  Host -> Plugin: ConfigureServices(services, configuration)
+  Host -> Plugin: ConfigureServices(services)
   Plugin -> Services: register transport/presenter\n+ options types
   Host -> User: plugin available once container is built
 else incompatible
@@ -55,13 +55,13 @@ Host -> Services: BuildServiceProvider()
 
 ## Built-in vs. plugin
 
-The initial text-encoding and numeric-base presenters, and the initial transports (serial, TCP, and eventually UDP/USB HID/BLE), ship in-box but are implemented against the exact same contracts as third-party plugins — the core makes no distinction between "built-in" and "external" beyond how they're distributed. This is descriptive of intent, not current fact: dynamic plugin loading itself isn't built yet (see open questions below and `BACKLOG.md`) — today's built-in transports/presenters are wired by hand in each front end's `Program.cs`, against the same `ITransport`/`IPresenter` contracts a real plugin would use, but not actually loaded as plugins. An HPGL-style rendering presenter is expected to be an ordinary plugin, not a special case, once loading exists.
+The initial text-encoding and numeric-base presenters and the core transports (serial, TCP, USB HID, USBTMC, BLE, RFC 2217, VXI-11, MQTT/AMQP/STOMP, loopback) ship in-box, referenced directly by the front ends and wired by `AddDevTermFrontEnd`, but are implemented against the same `ITransport`/`IPresenter` contracts as third-party plugins. The device modules (`DevTerm.Devices.*`: K8055, Busylight, DE-5000, RadexOne, ZoomH4n, NMEA, SCPI, Demo) are real plugins: each has a `plugin.json` and an `IPluginModule`, and is copied into `plugins/<name>/` next to the app by the build (`BundleDevicePlugins`), so the core and front ends reference none of them. An HPGL-style rendering presenter is expected to be an ordinary plugin, not a special case.
 
-A separate, no-code path exists alongside this one for simple devices: see [device-manifests.md](device-manifests.md) — a declarative JSON manifest (or folder/zip of one) rather than a compiled plugin. The two aren't competing mechanisms; a device manifest is for gear simple enough not to need real code at all, and still needs *this* plugin model (once built) to actually load/discover the manifest files themselves.
+A separate, no-code path exists alongside this one for simple devices: see [device-manifests.md](device-manifests.md) — a declarative JSON manifest (or folder/zip of one) rather than a compiled plugin. The two aren't competing mechanisms; a device manifest is for gear simple enough not to need real code at all, and is loaded by dev-term's own manifest loader rather than this plugin loader.
 
 ## Status
 
-Built 2026-10-03 (the loading mechanism; built-in devices still register by hand and have not moved out):
+Built 2026-10-03 (the loading mechanism), since used by the device modules and by out-of-process plugins:
 
 - `DevTerm.Core.Plugins`: `IPluginModule`, `PluginManifest` (`plugin.json`: `name`, `version`, `contract`, `assembly`),
   `PluginLoader.LoadAll(dir, services)`. Contract version is `PluginLoader.ContractVersion` (1).
@@ -75,8 +75,8 @@ Built 2026-10-03 (the loading mechanism; built-in devices still register by hand
   `AddDevTermPresenters`, so playback sees presenters from plugins too.
 - Second example, `src/DevTerm.Plugins.KeyValue`: a "keyvalue" presenter that decodes `name=value [unit]` lines into a `StructuredMessage` (try it on the loopback `STATUS?`). Template and test fixture: `src/DevTerm.Plugins.Sample` (a "sample" presenter). Checked end to end through the console
   with `--plugins <folder> --presenter sample`.
-- Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing/trust, a plugin
-  registry, moving the built-in decoders (NMEA, RadexOne, ...) into plugin folders, a Plugins menu or list in the TUI/WPF.
+- Not built: unloading (the context isn't collectible, so a loaded DLL stays locked until exit), signing, a plugin
+  registry. (The built-in decoders now ship as plugin folders, and the TUI and WPF have a Plugins... item under their menus.)
 - `--listplugins true` (optionally with `--plugins <folder>`) prints each plugin folder as loaded or skipped with the reason, then exits (2026-10-03). A folder with no `plugin.json` isn't a plugin and is not listed.
 
 ```plantuml
@@ -97,6 +97,6 @@ end
 
 ## Open questions
 
-- In-process vs. out-of-process plugin hosting (isolation/crash-resilience vs. complexity/perf).
+- ~~In-process vs. out-of-process plugin hosting~~ Both exist: in-process via an AssemblyLoadContext (IPluginModule), out-of-process via a process entry in plugin.json (ExternalProcessPresenter, stdin/stdout JSON lines).
 - ~~Signing/trust model for third-party plugins, if any.~~ **Decided 2026-10-03:** third-party plugins run **out of process** and only after the user approves them; the user may optionally approve once per hash so an unchanged plugin isn't asked about again. No signing infrastructure. **Built 2026-10-03** for out-of-process plugins (`PluginTrust`; see the proposal). In-process plugins stay as they are.
-- Whether plugins can be authored in languages other than C#/.NET (e.g., via a process/IPC boundary) for teams that want to write a decoder in Python/Rust.
+- ~~Whether plugins can be authored in languages other than C#/.NET~~ Yes, through the out-of-process path; Python, Java and Go examples live under examples/

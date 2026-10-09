@@ -70,11 +70,11 @@ And the WPF Device Profiles window, Light and Dark:
 ## Building a theme in the app
 
 You don't have to hand-write JSON (see "Making your own theme" below) to create a theme — **View >
-Theme > Build/Edit Theme...** opens an in-app builder in both front ends, with live preview as you
+Build/Edit Theme...** opens an in-app builder in both front ends, with live preview as you
 go: the whole app re-skins immediately with every edit, so what you see while building is exactly
 what the saved theme will look like.
 
-1. Pick **View > Theme > Build/Edit Theme...**. A small picker opens first: choose a starting point
+1. Pick **View > Build/Edit Theme...**. A small picker opens first: choose a starting point
    (Light, Dark, System, or one of your own existing themes) and a name for the new theme — it
    defaults to `"{starting point} copy"`, e.g. `"Light copy"`.
 2. Click **Create**. The builder window opens, already previewing the new theme everywhere — the
