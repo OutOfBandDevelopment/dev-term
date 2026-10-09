@@ -82,7 +82,7 @@
                     <p class="note">@picker.Prompt</p>
                     <input data-pickertext type="text" disabled="@_readOnly" value="@picker.Text" @oninput="e => picker.Text = e.Value?.ToString() ?? string.Empty" />
                     <input data-pickerfilter type="text" placeholder="Filter values" value="@picker.Filter" @oninput="e => picker.Filter = e.Value?.ToString() ?? string.Empty" />
-                    <p class="note">@picker.ChooseHint</p>
+                    <p class="note" data-pickerhint>@picker.ChooseHint.Replace("Double-click", "Click")</p>
                     <ul class="captures" data-pickerpaths>
                         @foreach (var path in picker.Paths)
                         {

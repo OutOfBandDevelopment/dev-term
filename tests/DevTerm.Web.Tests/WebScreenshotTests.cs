@@ -300,6 +300,7 @@ public class WebScreenshotTests
             await page.Locator("[data-node]", new PageLocatorOptions { HasTextString = "Channels" }).First.ClickAsync();
             await page.Locator("[data-pick=Channels]").ClickAsync();
             await Assertions.Expect(page.Locator("[data-picker]")).ToBeVisibleAsync();
+            await Assertions.Expect(page.Locator("[data-pickerhint]")).ToContainTextAsync("Click a value");
             await page.Locator("[data-pickerpath=chA]").ClickAsync();
             await Assertions.Expect(page.Locator("[data-pickertext]")).ToHaveValueAsync(new System.Text.RegularExpressions.Regex("chA"));
             await SaveAsync(page, "web-blazor-manifest-picker.png");
