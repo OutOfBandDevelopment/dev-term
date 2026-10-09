@@ -145,3 +145,7 @@ text; in WPF, in the detail text (success) or a message box (failure).
 Open **Monitor** from the nav row (`/monitor`). It starts watching the shared session and saves each capture to the connection's export folder, exactly as the desktop window does; filter and sort the list, pick a capture to see its detail and a preview of image formats, and use **Download** to save a copy through the browser.
 
 ![Monitor page](images/web-blazor-monitor.png)
+
+The web's **Converters** page edits the shared converter tools list (name, path, arguments, formats, output extension, DPI; add, remove, reorder, Save). Running a converter from the web Stream Monitor is not available yet.
+
+![Converter tools on the web](images/web-blazor-converters.png)

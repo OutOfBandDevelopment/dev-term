@@ -1,0 +1,101 @@
+@page "/converters"
+@using Microsoft.AspNetCore.Components.Web
+@using DevTerm.Configuration
+@inject ConverterToolsStore Store
+@inject PersistentComponentState PersistedState
+@implements IDisposable
+
+<h2>Converter tools</h2>
+@if (_readOnly) { <p class="note">Read-only viewer: the list cannot be changed.</p> }
+@if (_message is not null) { <p class="@(_isError ? "error" : "note")" data-message>@_message</p> }
+<p class="note">Programs the Stream Monitor can run on a captured file. The list is shared with the desktop apps. Arguments may use {input}, {output} and {dpi}.</p>
+
+@if (_editor is not null)
+{
+    @for (var i = 0; i < _editor.Tools.Count; i++)
+    {
+        var index = i;
+        var tool = _editor.Tools[i];
+        <fieldset data-tool="@index">
+            <legend>@(string.IsNullOrWhiteSpace(tool.Name) ? "(unnamed)" : tool.Name)</legend>
+            <div class="row">
+                <label>Name <input data-name type="text" @bind="tool.Name" disabled="@_readOnly" /></label>
+                <label>Path <input data-path type="text" @bind="tool.Path" disabled="@_readOnly" /></label>
+                <label>Arguments <input data-args type="text" @bind="tool.Arguments" disabled="@_readOnly" /></label>
+            </div>
+            <div class="row">
+                <label>Formats <input data-formats type="text" @bind="tool.Formats" disabled="@_readOnly" placeholder="ps, pcl, hpgl, image (blank = any)" /></label>
+                <label>Output extension <input data-ext type="text" @bind="tool.OutputExtension" disabled="@_readOnly" /></label>
+                <label>DPI <input data-dpi type="number" @bind="tool.Dpi" disabled="@_readOnly" /></label>
+            </div>
+            <div class="row">
+                <button data-up disabled="@_readOnly" @onclick="() => _editor.MoveUp(index)">Up</button>
+                <button data-down disabled="@_readOnly" @onclick="() => _editor.MoveDown(index)">Down</button>
+                <button data-remove disabled="@_readOnly" @onclick="() => _editor.Remove(index)">Remove</button>
+            </div>
+        </fieldset>
+    }
+
+    @if (_editor.Tools.Count == 0) { <p class="note" data-empty>No converter tools yet.</p> }
+    <div class="row">
+        <button data-add disabled="@_readOnly" @onclick="() => _editor.Add()">Add tool</button>
+        <button data-save disabled="@_readOnly" @onclick="Save">Save</button>
+        <button data-revert @onclick="Load">Revert</button>
+    </div>
+}
+
+@code {
+    private PersistingComponentStateSubscription _subscription;
+    private bool _readOnly;
+    private bool _isError;
+    private string? _message;
+    private ConverterToolsEditor? _editor;
+
+    [CascadingParameter] private HttpContext? Http { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Http is not null)
+        {
+            _readOnly = Http.Items.ContainsKey(AccessTokenMiddleware.ReadOnlyItem);
+            _subscription = PersistedState.RegisterOnPersisting(() =>
+            {
+                PersistedState.PersistAsJson("readOnly", _readOnly);
+                return Task.CompletedTask;
+            });
+        }
+        else
+        {
+            _readOnly = !PersistedState.TryTakeFromJson<bool>("readOnly", out var persisted) || persisted;
+        }
+
+        Load();
+    }
+
+    private void Load()
+    {
+        _editor = new ConverterToolsEditor(Store.Load());
+        _message = null;
+    }
+
+    private void Save()
+    {
+        if (_readOnly || _editor is null)
+        {
+            return;
+        }
+
+        if (_editor.Validate() is { } problem)
+        {
+            _message = problem;
+            _isError = true;
+            return;
+        }
+
+        Store.Save(_editor.ToList());
+        _message = "Saved.";
+        _isError = false;
+    }
+
+    public void Dispose() => _subscription.Dispose();
+}

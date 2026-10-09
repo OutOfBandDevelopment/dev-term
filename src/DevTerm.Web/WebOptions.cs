@@ -34,6 +34,9 @@ public sealed class WebOptions
     /// <summary>The folder the Theme builder saves themes into; blank uses <c>~/.dev-term/themes</c> (where the desktop apps look too).</summary>
     public string? ThemesDirectory { get; set; }
 
+    /// <summary>The converter tools file; blank uses <c>~/.dev-term/converter-tools.json</c> (shared with the desktop apps).</summary>
+    public string? ConverterToolsFile { get; set; }
+
     /// <summary>Lines of output kept and replayed to a viewer that connects later.</summary>
     public int BacklogLines { get; set; } = 500;
 }

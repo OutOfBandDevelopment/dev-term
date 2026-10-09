@@ -36,12 +36,12 @@ public class WebScreenshotTests
     }
 
     /// <summary>Starts a loopback web host and a headless Edge page, runs <paramref name="scenario"/>, then tears both down.</summary>
-    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null)
+    private async Task RunAsync(Func<IPage, string, Task> scenario, string? project = null, string? logsDirectory = null, CliOptions? options = null, Action<WebHost.Built>? configure = null, string? themesDirectory = null, string? converterToolsFile = null)
     {
         var port = FreePort();
         var built = WebHost.Build(
             options ?? new CliOptions { Transport = "loopback", Presenter = ["ascii"], Tui = false, Cli = true, Project = project },
-            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory },
+            new WebOptions { Urls = $"http://127.0.0.1:{port}", Token = "demo-token", ReadOnlyToken = "watch-token", Panel = "busylight", LogsDirectory = logsDirectory, ThemesDirectory = themesDirectory, ConverterToolsFile = converterToolsFile },
             []);
         configure?.Invoke(built);
         await built.Hub.StartAsync();
@@ -201,6 +201,49 @@ public class WebScreenshotTests
         await page.Locator("[data-create]").ClickAsync();
         await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
     }, themesDirectory: Path.Combine(Path.GetTempPath(), "devterm-web-themes-none"));
+
+    [TestMethod]
+    public async Task ConvertersPage_AddsATool_ValidatesAndSaves()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "devterm-web-conv-" + Guid.NewGuid().ToString("N") + ".json");
+        await RunAsync(async (page, baseUrl) =>
+        {
+            await page.GotoAsync($"{baseUrl}/converters?token=demo-token");
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await Task.Delay(1000);
+            await Assertions.Expect(page.Locator("[data-empty]")).ToBeVisibleAsync();
+            await page.Locator("[data-add]").ClickAsync();
+            await page.Locator("[data-save]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-message]")).ToContainTextAsync("path");
+            await page.Locator("[data-name]").FillAsync("gs");
+            await page.Locator("[data-path]").FillAsync("gswin64c.exe");
+            await page.Locator("[data-args]").FillAsync("-r{dpi} -o {output} {input}");
+            await page.Locator("[data-formats]").FillAsync("ps");
+            await SaveAsync(page, "web-blazor-converters.png");
+            await page.Locator("[data-save]").ClickAsync();
+            await Assertions.Expect(page.Locator("[data-message]")).ToHaveTextAsync("Saved.");
+        }, converterToolsFile: file);
+        try
+        {
+            var tools = new DevTerm.Configuration.ConverterToolsStore(file).Load();
+            Assert.AreEqual("gs", tools.Single().Name);
+            Assert.AreEqual("ps", tools.Single().Formats);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    [TestMethod]
+    public Task ConvertersPage_ReadOnlyViewer_CannotEdit() => RunAsync(async (page, baseUrl) =>
+    {
+        await page.GotoAsync($"{baseUrl}/converters?token=watch-token");
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Task.Delay(1000);
+        await Assertions.Expect(page.Locator("[data-add]")).ToBeDisabledAsync();
+        await Assertions.Expect(page.Locator("[data-save]")).ToBeDisabledAsync();
+    }, converterToolsFile: Path.Combine(Path.GetTempPath(), "devterm-web-conv-none.json"));
 
     [TestMethod]
     public Task RoutingPage_AddsARule_TestsItAndConnects() => RunAsync(async (page, baseUrl) =>
