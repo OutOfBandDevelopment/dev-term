@@ -304,6 +304,8 @@ instruments and `--listnetworkdevices true` lists everything:
 192.168.0.127:5555  tcp  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (lxi, lxi)
 ```
 
+A USR-TCP232 serial-to-Ethernet bridge sends no announcement, so it is found by its web page instead: the scan asks port 80 on your local /24 and keeps hosts whose login prompt names a `USR-TCP232` model. A bridge shows up whether or not the instrument behind it is powered, e.g. `192.168.0.110:23  tcp  USR-TCP232-302 serial bridge  (usr-tcp232, usr)` (real output, 2026-10-09). It suggests port 23, the bridge default; if you changed the bridge's port, edit it.
+
 (Real output from the bench LAN; the DG1062Z moved from .87 to .127 between captures. mDNS answers are not guaranteed: a
 NAS that appeared in one run was absent from this one, so a missing device means "try again", not "not there".)
 

@@ -13,6 +13,27 @@ public sealed class NetworkDiscoveryTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
+    public async Task UsrBridgeProbe_KeepsOnlyHostsWhoseLoginRealmIsAUsrBridge()
+    {
+        var headers = new Dictionary<string, string?>
+        {
+            ["10.0.0.110"] = "HTTP/1.0 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"USR-TCP232-302\"\r\nServer: lwIP/1.4.1\r\n\r\n",
+            ["10.0.0.48"] = "HTTP/1.1 301 Moved Permanently\r\n\r\n",
+            ["10.0.0.67"] = "HTTP/1.0 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"NAS\"\r\n\r\n",
+        };
+        var probe = new UsrBridgeProbe(() => [.. headers.Keys, "10.0.0.99"], (host, _, _) => Task.FromResult(headers.GetValueOrDefault(host)));
+
+        var hits = await probe.ProbeAsync(TimeSpan.FromSeconds(1), TestContext.CancellationToken);
+
+        Assert.HasCount(1, hits);
+        Assert.AreEqual("10.0.0.110", hits[0].Address);
+        Assert.AreEqual(23, hits[0].Port);
+        Assert.AreEqual("tcp", hits[0].Transport);
+        Assert.AreEqual("usr-tcp232", hits[0].Kind);
+        Assert.AreEqual("USR-TCP232-302 serial bridge", hits[0].DisplayName);
+    }
+
+    [TestMethod]
     public void BuildPtrQuery_EncodesLabelsAndTheUnicastBit()
     {
         var query = DnsMessage.BuildPtrQuery(["_mqtt._tcp.local"]);
