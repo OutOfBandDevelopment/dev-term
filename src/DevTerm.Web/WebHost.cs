@@ -48,7 +48,7 @@ public static class WebHost
         });
 
         builder.Services.AddSingleton<Components.PanelHostHolder>();
-        builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>(), sp.GetRequiredService<ConverterToolsStore>()));
+        builder.Services.AddSingleton(sp => new WebStreamMonitor(sp.GetRequiredService<SessionHub>(), sp.GetRequiredService<ConverterToolsStore>(), sp.GetRequiredService<ConnectionManager>()));
         builder.Services.AddSingleton(new ConverterToolsStore(webOptions.ConverterToolsFile));
         builder.Services.AddSingleton(new WebManifestEditor(webOptions.ManifestsDirectory ?? DevTermUserDataPaths.UserManifestsDirectory, DevTermUserDataPaths.AppManifestsDirectory));
         builder.Services.AddSingleton(new ThemeLibrary(webOptions.ThemesDirectory ?? DevTermUserDataPaths.ThemesDirectory));
