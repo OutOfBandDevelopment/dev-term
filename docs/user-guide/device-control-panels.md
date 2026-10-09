@@ -6,6 +6,14 @@ fields generated from that device's own declared layout. Once connected (see
 what's available. Full field-by-field/action-by-action reference:
 [`docs/specs/device-control-panel.md`](../specs/device-control-panel.md).
 
+## Where the Device menu entries come from
+
+Each panel entry in the **Device** menu is contributed by a plugin (K8055, Busylight, Radex One, Zoom H4n, DE-5000,
+NMEA 0183, SCPI instruments), not built into dev-term. A plugin's entry is enabled only while connected to a transport and
+device it supports (the K8055 needs its USB HID board, for example); otherwise it stays greyed out. **Device > Plugins...**
+(or `--listplugins true`) lists what was loaded, so a missing entry usually means the plugin folder was not found.
+The web host offers the same panels through `Web:Panel` (a contribution id such as `k8055`).
+
 ## Finding your way around a panel
 
 Every panel works the same way, whichever device it's for:
