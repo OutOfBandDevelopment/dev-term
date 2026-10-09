@@ -914,6 +914,31 @@ public partial class MainWindow : Window
     private void Plugins_Click(object sender, RoutedEventArgs e) =>
         MessageBox.Show(this, PluginReport.Text(Plugins), "dev-term — plugins", MessageBoxButton.OK, MessageBoxImage.Information);
 
+    private void PluginApprovals_Click(object sender, RoutedEventArgs e)
+    {
+        var approvals = PluginTrust.Approvals();
+        if (approvals.Count == 0)
+        {
+            MessageBox.Show(this, PluginReport.ApprovalText(approvals), "dev-term — plugin approvals", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var answer = MessageBox.Show(
+            this,
+            PluginReport.ApprovalText(approvals) + Environment.NewLine + Environment.NewLine + "Yes forgets all of these (each asks again next start); No closes.",
+            "dev-term — plugin approvals",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (answer == MessageBoxResult.Yes)
+        {
+            foreach (var approval in approvals)
+            {
+                PluginTrust.Forget(approval.Name);
+            }
+        }
+    }
+
     // The window's one Stream Monitor, watching every tab's session (keyed by the tab) so captures from all
     // open sessions land in one list. Created on first use; tabs opened or closed while it exists are
     // tracked/untracked (AddTab, CloseTabAsync) and a profile switch re-points that tab (SwitchProfileAsync).

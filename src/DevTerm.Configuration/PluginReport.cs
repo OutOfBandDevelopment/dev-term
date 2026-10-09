@@ -18,5 +18,18 @@ public static class PluginReport
             : $"{plugin.Name}  skipped: {plugin.Message}  ({plugin.Folder})")];
     }
 
+    /// <summary>One line per remembered out-of-process plugin approval (name, short content hash, when), or a single "none remembered" line.</summary>
+    public static IReadOnlyList<string> ApprovalLines(IReadOnlyList<PluginApproval> approvals)
+    {
+        if (approvals.Count == 0)
+        {
+            return ["No plugin approvals are remembered."];
+        }
+
+        return [.. approvals.Select(a => $"{a.Name}  {a.Hash[..Math.Min(12, a.Hash.Length)]}  approved {a.ApprovedAt.LocalDateTime:yyyy-MM-dd HH:mm}")];
+    }
+
+    public static string ApprovalText(IReadOnlyList<PluginApproval> approvals) => string.Join(Environment.NewLine, ApprovalLines(approvals));
+
     public static string Text(IReadOnlyList<PluginLoadResult>? results) => string.Join(Environment.NewLine, Lines(results));
 }

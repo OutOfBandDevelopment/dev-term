@@ -234,16 +234,7 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
 
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListApprovals)))
 {
-    var approvals = DevTerm.Core.Plugins.PluginTrust.Approvals();
-    if (approvals.Count == 0)
-    {
-        Console.WriteLine("No plugin approvals are remembered.");
-    }
-
-    foreach (var approval in approvals)
-    {
-        Console.WriteLine($"{approval.Name}  {approval.Hash[..12]}  approved {approval.ApprovedAt.LocalDateTime:yyyy-MM-dd HH:mm}");
-    }
+    Console.WriteLine(PluginReport.ApprovalText(DevTerm.Core.Plugins.PluginTrust.Approvals()));
 
     return 0;
 }

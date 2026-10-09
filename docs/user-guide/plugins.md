@@ -36,6 +36,9 @@ next start; it exits 1 when nothing was remembered under that name. Both exit wi
 
 ## TUI and WPF
 
+**Device > Plugin approvals...** lists the remembered approvals (the same lines as `--listapprovals true`) and offers to forget all of
+them; each plugin then asks again next start. To forget just one, use `--forgetplugin <name>`.
+
 **Device > Plugins...** shows the same lines in a message box. It is always enabled (no connection needed) and does not
 rescan: restart dev-term after adding or removing a plugin folder.
 

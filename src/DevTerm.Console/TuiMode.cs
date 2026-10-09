@@ -736,6 +736,7 @@ public static class TuiMode
                 // Always available, and app-wide: the registered tools serve every device and profile.
                 new MenuItem("Converter _Tools...", string.Empty, Guarded(EditConverterTools)),
                 new MenuItem("_Plugins...", string.Empty, Guarded(() => MessageBox.Query(app, "dev-term — plugins", PluginReport.Text(plugins), "Ok"))),
+                new MenuItem("Plugin appro_vals...", string.Empty, Guarded(() => ReviewPluginApprovals(app))),
             ]),
             new MenuBarItem("_View",
             [
@@ -1525,6 +1526,25 @@ public static class TuiMode
     /// exception.
     /// </summary>
     /// <summary>An app status line in the output pane - tagged so it can't be mistaken for device output.</summary>
+    /// <summary>Device &gt; Plugin approvals: lists the remembered out-of-process plugin approvals and offers to forget them all.</summary>
+    private static void ReviewPluginApprovals(IApplication app)
+    {
+        var approvals = PluginTrust.Approvals();
+        if (approvals.Count == 0)
+        {
+            MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText(approvals), "Ok");
+            return;
+        }
+
+        if (MessageBox.Query(app, "dev-term — plugin approvals", PluginReport.ApprovalText(approvals), ["Forget all", "Close"]) == 0)
+        {
+            foreach (var approval in approvals)
+            {
+                PluginTrust.Forget(approval.Name);
+            }
+        }
+    }
+
     internal static string StatusLine(string text) => $"[dev-term] {text}";
 
     /// <summary>An error line in the output pane - see <see cref="StatusLine"/>.</summary>

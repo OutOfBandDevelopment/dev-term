@@ -55,6 +55,7 @@
                 <MenuItem x:Name="RoutingMenuItem" Header="_Routing..." Click="Routing_Click" />
                 <MenuItem x:Name="ConverterToolsMenuItem" Header="Converter _Tools..." Click="ConverterTools_Click" />
                 <MenuItem x:Name="PluginsMenuItem" Header="_Plugins..." Click="Plugins_Click" />
+                <MenuItem x:Name="PluginApprovalsMenuItem" Header="Plugin appro_vals..." Click="PluginApprovals_Click" />
             </MenuItem>
             <!-- View > Theme: one checkable item per theme, built in MainWindow.Theme.cs. -->
             <MenuItem Header="_View">

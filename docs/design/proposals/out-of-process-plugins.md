@@ -73,7 +73,7 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
 - [ ] Transport and device-module variants
 - [ ] TUI in-app approval prompt (it uses the console prompt at startup today)
 - [x] Review or revoke remembered approvals from the CLI: `--listapprovals true`, `--forgetplugin <name>` (2026-10-09)
-- [ ] A TUI/WPF screen to review or revoke remembered approvals
+- [x] TUI/WPF Device > Plugin approvals...: lists them and forgets all (2026-10-09; a per-plugin picker is not built)
 - [x] Trust model: user approval before a plugin program runs, optionally remembered per content hash (no signing; 2026-10-03)
 
 ## Status
@@ -86,4 +86,4 @@ registers a presenter that starts its program lazily on first use (`LazyExternal
 of every file in the plugin folder in `plugin-approvals.json` under the dev-term home, so an unchanged plugin isn't asked about again and any edit asks again.
 With no approver (a script) only remembered approvals run, and `--listplugins` shows "needs your approval". Covered by `PluginTrustTests` (unit) and a real
 Python run through the loader (`PluginTrustProcessTests`, Integration). Example: `examples/python/out-of-process-plugin/plugin.json`. Not built: the TUI has no
-in-app prompt (it uses the console one at startup), a TUI/WPF screen to review or revoke approvals (the CLI has `--listapprovals`/`--forgetplugin`), and transport/device-module variants.
+in-app prompt (it uses the console one at startup), a per-plugin revoke picker in the TUI/WPF (Device > Plugin approvals... forgets all; the CLI has `--forgetplugin <name>`), and transport/device-module variants.
