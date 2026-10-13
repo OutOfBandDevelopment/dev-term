@@ -1541,7 +1541,7 @@ public static class TuiMode
     /// </summary>
     /// <summary>An app status line in the output pane - tagged so it can't be mistaken for device output.</summary>
     /// <summary>Device &gt; Plugin approvals: lists the remembered out-of-process plugin approvals and offers to forget them all.</summary>
-    private static void ReviewPluginApprovals(IApplication app)
+    internal static void ReviewPluginApprovals(IApplication app)
     {
         PromptPendingPlugins(app);
         var approvals = PluginTrust.Approvals();
@@ -1561,7 +1561,7 @@ public static class TuiMode
     }
 
     /// <summary>Asks about each out-of-process plugin still waiting for approval; an approved one goes live at once (<see cref="LivePlugins"/>).</summary>
-    private static void PromptPendingPlugins(IApplication app)
+    internal static void PromptPendingPlugins(IApplication app)
     {
         LivePlugins.ReviewPending(plugin =>
         {
