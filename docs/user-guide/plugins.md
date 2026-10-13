@@ -44,6 +44,12 @@ asks again next start. The TUI asks right after it opens, WPF right after its wi
 
 ![The TUI approvals picker](images/tui-plugin-approvals.png)
 
+In WPF the same two questions are message boxes:
+
+![The WPF plugin approval prompt](images/wpf-plugin-approval.png)
+
+![The WPF approvals picker](images/wpf-plugin-approvals.png)
+
 ## Web
 
 The **Plugins** page (`/plugins`) lists plugins waiting for approval with Run once and Always buttons, and the remembered approvals
