@@ -665,6 +665,53 @@ public sealed class ControlPanelWindowTests
         });
     }
 
+    /// <summary>An interlocked control (EnabledWhen) stays visible but disabled, with its reason as a tooltip, until its condition holds.</summary>
+    [TestMethod]
+    public void Control_EnabledWhen_StaysVisibleButDisabledWithReason_UntilConditionMet()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var definition = new UiDefinition
+            {
+                Name = "Interlocked Device",
+                Sections =
+                [
+                    new UiSection
+                    {
+                        Label = "Section",
+                        Controls =
+                        [
+                            new ToggleControl { Id = "arm", Label = "Arm", DefaultValue = false },
+                            new TextFieldControl
+                            {
+                                Id = "fire",
+                                Label = "Fire",
+                                DefaultValue = "x",
+                                EnabledWhen = new UiCondition { Id = "arm", Values = ["1"] },
+                                DisabledReason = "Arm the output first",
+                            },
+                        ],
+                    },
+                ],
+            };
+            var window = new ControlPanelWindow(definition, new FakeControlSurface(), null) { ShowInTaskbar = false };
+            StaTestRunner.DoEvents();
+
+            var view = window.ControlViews["fire"];
+            Assert.AreEqual(System.Windows.Visibility.Visible, view.Visibility);
+            Assert.IsFalse(view.IsEnabled, "Disabled while the interlock is unmet.");
+            Assert.IsTrue(
+                view.ToolTip is "Arm the output first" || (view.Parent as System.Windows.FrameworkElement)?.ToolTip is "Arm the output first",
+                "The reason shows as a tooltip.");
+
+            ((CheckBox)window.ControlViews["arm"]).IsChecked = true;
+            StaTestRunner.DoEvents();
+
+            Assert.IsTrue(view.IsEnabled, "Enabled once armed.");
+            await Task.CompletedTask;
+        });
+    }
+
     /// <summary>
     /// TODO.md's "Control panels ignore VisibleWhen" item, section-only half: a whole section's
     /// Expander collapses entirely while its own VisibleWhen is unmet, then reappears once its

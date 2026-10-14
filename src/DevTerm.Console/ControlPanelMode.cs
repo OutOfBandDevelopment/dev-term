@@ -216,6 +216,20 @@ internal static class ControlPanelMode
                             }
                         }
 
+                        if (row.Control.EnabledWhen is not null)
+                        {
+                            var enabled = IsConditionMet(panel, row.Control.EnabledWhen);
+                            foreach (var view in row.Views)
+                            {
+                                view.Enabled = enabled;
+                            }
+
+                            if (row.DisabledNote is { } note)
+                            {
+                                note.Visible = met && !enabled;
+                            }
+                        }
+
                         if (met)
                         {
                             if (row.Y != y)
@@ -227,6 +241,11 @@ internal static class ControlPanelMode
                             }
 
                             row.Y = y;
+                            if (row.DisabledNote is { } shown)
+                            {
+                                shown.Y = y;
+                            }
+
                             y += row.RowSpan;
                         }
                     }
@@ -525,7 +544,23 @@ internal static class ControlPanelMode
             var before = body.SubViews.Count();
             var rowSpan = AddControlRow(panel, body, y, columnX, control);
             var views = body.SubViews.Skip(before).ToList();
-            controlRows.Add(new ControlRow { Control = control, Views = views, RowSpan = rowSpan, Y = y });
+
+            // An interlock (EnabledWhen): the row stays, disabled, with its reason shown after it (the TUI has no hover).
+            Label? note = null;
+            if (control.EnabledWhen is not null && views.Count > 0)
+            {
+                note = new Label
+                {
+                    X = Pos.Right(views[^1]) + 2,
+                    Y = y,
+                    Text = string.IsNullOrWhiteSpace(control.DisabledReason) ? "(disabled)" : $"({control.DisabledReason})",
+                    HotKeySpecifier = (Rune)0xFFFF,
+                    Visible = false,
+                };
+                body.Add(note);
+            }
+
+            controlRows.Add(new ControlRow { Control = control, Views = views, RowSpan = rowSpan, Y = y, DisabledNote = note });
             y += rowSpan;
         }
 
@@ -1158,6 +1193,9 @@ internal static class ControlPanelMode
         public int Y { get; set; }
 
         public bool ConditionMet { get; set; } = true;
+
+        /// <summary>The "(reason)" label shown while <c>EnabledWhen</c> doesn't hold; null for a control with no interlock.</summary>
+        public Label? DisabledNote { get; init; }
     }
 
     /// <summary>

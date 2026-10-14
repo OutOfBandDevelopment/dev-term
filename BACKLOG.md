@@ -68,7 +68,6 @@ the rest.
 - Session pipe name is the profile name (numeric suffix on collision) and `--listsessions` lists live sessions
   ([cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)).
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
-- Interlocked controls render visible but disabled, with the reason on hover/focus ([ui-definitions](docs/design/ui-definitions.md)).
 - Notes can be added to a log while it is still being recorded, as a timestamped `note` record ([session-logging](docs/design/session-logging.md)).
 - Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).
 - RFC 2217 line/modem state changes go to the status line and session log, never the data stream ([rfc2217](docs/design/rfc2217.md)).

@@ -142,6 +142,29 @@
                       "required": [
                         "Id"
                       ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -184,6 +207,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -243,6 +289,29 @@
                       "required": [
                         "Id"
                       ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -297,6 +366,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -359,6 +451,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -442,6 +557,29 @@
                       "required": [
                         "Id"
                       ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -499,6 +637,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -587,6 +748,29 @@
                       "required": [
                         "Id"
                       ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -653,6 +837,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -760,6 +967,29 @@
                       },
                       "required": [
                         "Id"
+                      ]
+                    },
+                    "EnabledWhen": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "Id": {
+                          "type": "string"
+                        },
+                        "Values": {
+                          "$ref": "#/properties/Sections/items/properties/VisibleWhen/properties/Values"
+                        }
+                      },
+                      "required": [
+                        "Id"
+                      ]
+                    },
+                    "DisabledReason": {
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
