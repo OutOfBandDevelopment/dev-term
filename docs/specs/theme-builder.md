@@ -106,8 +106,8 @@ already enumerates from — so a theme built here immediately appears in View > 
 - No real-hardware/manual-use verification pass yet — this is a pure UI feature with no device
   dependency, so the usual bench-test verification this project does for device modules doesn't
   apply the same way; see the design doc's Status section.
-- No way to delete a saved user theme from this screen — deleting a theme file still means removing
-  it from `~/.dev-term/themes/` by hand (outside the app). Decided 2026-10-13: a Delete button in the theme list with a confirmation, the same in the TUI and WPF. Not built yet (BACKLOG).
+- Deleting a saved user theme: the seed picker's **Delete** button (TUI and WPF) asks for confirmation, removes the theme's file
+  (`ThemeCatalog.Delete`) and refreshes the list. Built-in themes can't be deleted. Not on the web `/themes` page yet.
 - Decided 2026-10-13: show a position marker on the role list (BACKLOG). The TUI's role list has no scrollbar indicator distinct from any other `ListView` in this codebase
   — with enough `ThemeRole` members to scroll, there's no visual hint beyond the usual Terminal.Gui
   list behavior that more rows exist above/below.

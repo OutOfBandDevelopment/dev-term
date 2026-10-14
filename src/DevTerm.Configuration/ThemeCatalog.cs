@@ -70,6 +70,36 @@ public sealed class ThemeCatalog
     }
 
     /// <summary>
+    /// Deletes the user theme file whose theme is named <paramref name="name"/> (case-insensitive) from
+    /// <paramref name="themesDirectory"/> (default <see cref="DevTermUserDataPaths.ThemesDirectory"/>). Built-in
+    /// themes have no file and are never touched. Returns null on success, otherwise why nothing was deleted.
+    /// </summary>
+    public static string? Delete(string name, string? themesDirectory = null)
+    {
+        var directory = themesDirectory ?? DevTermUserDataPaths.ThemesDirectory;
+        try
+        {
+            if (Directory.Exists(directory))
+            {
+                foreach (var file in Directory.EnumerateFiles(directory, "*.json"))
+                {
+                    if (ThemeFile.Load(file).Theme is { } theme && string.Equals(theme.Name, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Delete(file);
+                        return null;
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $"Could not delete theme \"{name}\": {ex.Message}";
+        }
+
+        return $"No saved theme named \"{name}\" was found.";
+    }
+
+    /// <summary>
     /// The theme <paramref name="selection"/> names: <c>light</c>, <c>dark</c>, <c>terminal</c> (TUI only; resolves to light or dark for dev-term's own colors), <c>system</c> (resolved
     /// by <paramref name="prefersDark"/>, default <see cref="SystemThemeDetector.PrefersDark"/>) or a
     /// user theme's name, case-insensitively. Empty means <c>system</c>. An unknown name falls back to

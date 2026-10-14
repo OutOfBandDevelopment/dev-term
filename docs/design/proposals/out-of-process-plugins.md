@@ -60,7 +60,7 @@ bytes), `examples/go/out-of-process-plugin/` (reverses text); each folder has a 
   protects the host's stability, not the machine.
 - Discovery and packaging: a `plugin.json` naming the command line, next to the existing in-process manifests. Decided 2026-10-13: a plugin is shared as a `.zip` with `plugin.json` at its root, installed from the Plugins screen, with the trust approval asked at install (BACKLOG).
 - Render is synchronous on the session's read loop, so a slow plugin delays reading up to the reply timeout; a
-  per-plugin timeout default and an async path are undecided. Decided 2026-10-13: the async path is wanted: show the raw bytes at once and the decoded output when the plugin answers (out-of-order output in the pane is accepted). The default reply timeout is 2 seconds, overridable per plugin by `replyTimeoutMs`. Not built yet (BACKLOG).
+  per-plugin timeout default and an async path are undecided. Decided 2026-10-13: the async path is wanted: show the raw bytes at once and the decoded output when the plugin answers (out-of-order output in the pane is accepted). The default reply timeout is 2 seconds, overridable per plugin by `replyTimeoutMs` (already so in `PluginManifest`). The async path is not built yet (BACKLOG).
 - Binary or high-rate plugins: JSON-with-hex is fine for text devices, wasteful for bulk streams.
 
 ## Completion checklist

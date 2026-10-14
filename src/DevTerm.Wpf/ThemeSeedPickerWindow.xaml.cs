@@ -12,7 +12,7 @@ namespace DevTerm.Wpf;
 /// </summary>
 public partial class ThemeSeedPickerWindow : Window
 {
-    private readonly IReadOnlyList<SeedOption> _options;
+    private IReadOnlyList<SeedOption> _options;
 
     public ThemeSeedPickerWindow()
     {
@@ -51,6 +51,46 @@ public partial class ThemeSeedPickerWindow : Window
         }
         catch (InvalidOperationException)
         {
+        }
+    }
+
+    /// <summary>Deletes the selected user theme after <paramref name="confirm"/> agrees; returns an error message or null.</summary>
+    internal string? DeleteSelected(Func<string, bool> confirm, string? themesDirectory = null)
+    {
+        if (SeedList.SelectedItem is not SeedOption option)
+        {
+            return null;
+        }
+
+        if (!ActiveTheme.Catalog.UserThemes.Any(theme => string.Equals(theme.Name, option.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return "Built-in themes can't be deleted.";
+        }
+
+        if (!confirm(option.Name))
+        {
+            return null;
+        }
+
+        if (ThemeCatalog.Delete(option.Name, themesDirectory) is { } problem)
+        {
+            return problem;
+        }
+
+        ActiveTheme.UseCatalog(ThemeCatalog.Load(themesDirectory));
+        _options = ActiveTheme.Catalog.SelectionNames.Select(name => new SeedOption(name, SeedLabel(name))).ToList();
+        SeedList.ItemsSource = _options;
+        SeedList.SelectedIndex = 0;
+        return null;
+    }
+
+    private void DeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        var problem = DeleteSelected(
+            name => MessageBox.Show(this, $"Delete the saved theme \"{name}\"? This can't be undone.", "Delete theme", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes);
+        if (problem is not null)
+        {
+            MessageBox.Show(this, problem, "Delete theme", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

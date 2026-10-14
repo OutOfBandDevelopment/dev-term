@@ -195,6 +195,21 @@ public sealed class ThemeTests
     }
 
     [TestMethod]
+    public void Delete_RemovesOnlyTheNamedUserThemeFile_AndReportsAnUnknownName()
+    {
+        WriteTheme("a-keep.json", """{ "name": "Keep" }""");
+        WriteTheme("b-drop.json", """{ "name": "Drop Me" }""");
+
+        Assert.IsNull(ThemeCatalog.Delete("drop me", _directory), "Names match case-insensitively.");
+
+        Assert.IsFalse(File.Exists(Path.Combine(_directory, "b-drop.json")));
+        Assert.IsTrue(File.Exists(Path.Combine(_directory, "a-keep.json")));
+        Assert.AreEqual("Keep", ThemeCatalog.Load(_directory).UserThemes.Single().Name);
+        StringAssert.Contains(ThemeCatalog.Delete("light", _directory), "No saved theme");
+        Assert.IsTrue(File.Exists(Path.Combine(_directory, "a-keep.json")), "A built-in name has no file and deletes nothing.");
+    }
+
+    [TestMethod]
     public void Catalog_ForAMissingDirectory_IsJustTheBuiltIns()
     {
         var catalog = ThemeCatalog.Load(Path.Combine(_directory, "does-not-exist"));

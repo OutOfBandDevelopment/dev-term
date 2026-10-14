@@ -65,7 +65,6 @@ the rest.
 - Control panel expand/collapse state is saved per device profile ([device-control-panel](docs/specs/device-control-panel.md)).
 - Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
   ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
-- Theme builder: a Delete button with confirmation in the saved-theme list, in the TUI and WPF ([theme-builder](docs/specs/theme-builder.md)).
 - Session pipe name is the profile name (numeric suffix on collision) and `--listsessions` lists live sessions
   ([cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)).
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
@@ -79,7 +78,7 @@ the rest.
 - Publish the JSON Schemas at a stable, versioned `$schema` URL ([format-schema-files](docs/design/features/format-schema-files.md)).
 - UDP listener: one session, each datagram shown with its sender ([transports](docs/design/transports.md)).
 - Raster export as a core service every front end calls ([presenters](docs/design/presenters.md)).
-- Plugin default reply timeout 2 s (per-plugin override), and `.zip` plugin packaging installed from the Plugins screen with approval at install ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
+- Plugin `.zip` packaging installed from the Plugins screen with approval at install ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
 - SCPI profiles stay separate from `DeviceManifest`, layered: a generic SCPI profile plus device-specific sub-types ([format-schema-files](docs/design/features/format-schema-files.md)).
 - TCP listener: one tab per accepted peer ([transports](docs/design/transports.md)).
 - Session log playback: periodic checkpoint markers (needs an `IPresenter` snapshot contract), a skip-silence gap cap (default 1 s), and note edit/delete recorded as revisions ([session-logging](docs/design/session-logging.md)).

@@ -52,9 +52,9 @@ internal static class ThemeBuilderMode
     /// plus a name for the new theme (defaulted from the seed, editable before creating). Returns null
     /// when cancelled.
     /// </summary>
-    internal static (DevTermTheme Theme, string Name)? PickSeed(IApplication app)
+    internal static (DevTermTheme Theme, string Name)? PickSeed(IApplication app, string? themesDirectory = null)
     {
-        var seedNames = ActiveTheme.Catalog.SelectionNames;
+        var seedNames = ActiveTheme.Catalog.SelectionNames.ToList();
         (DevTermTheme Theme, string Name)? picked = null;
 
         var dialog = new Dialog { Title = "Build/Edit Theme", Width = 56, Height = Math.Clamp(seedNames.Count + 9, 11, 20) };
@@ -110,7 +110,40 @@ internal static class ThemeBuilderMode
             app.RequestStop();
         };
 
-        dialog.Add(listLabel, listView, nameLabel, nameField, createButton, cancelButton);
+        var deleteButton = new Button { X = Pos.Right(cancelButton) + 1, Y = Pos.AnchorEnd(2), Text = "Delete" };
+        deleteButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            if (listView.SelectedItem is not int index || index < 0 || index >= seedNames.Count)
+            {
+                return;
+            }
+
+            var name = seedNames[index];
+            if (!ActiveTheme.Catalog.UserThemes.Any(theme => string.Equals(theme.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.ErrorQuery(app, "Delete theme", "Built-in themes can't be deleted.", "OK");
+                return;
+            }
+
+            if (MessageBox.Query(app, "Delete theme", $"Delete the saved theme \"{name}\"? This can't be undone.", "Delete", "Cancel") != 0)
+            {
+                return;
+            }
+
+            if (ThemeCatalog.Delete(name, themesDirectory) is { } problem)
+            {
+                MessageBox.ErrorQuery(app, "Delete theme", problem, "OK");
+                return;
+            }
+
+            ActiveTheme.UseCatalog(ThemeCatalog.Load(themesDirectory));
+            seedNames = ActiveTheme.Catalog.SelectionNames.ToList();
+            listView.SetSource(new ObservableCollection<string>(seedNames.Select(SeedLabel)));
+            listView.SelectedItem = 0;
+        };
+
+        dialog.Add(listLabel, listView, nameLabel, nameField, createButton, cancelButton, deleteButton);
         try
         {
             app.Run(dialog);
