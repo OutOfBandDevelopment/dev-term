@@ -84,6 +84,10 @@ the rest.
 - TCP listener: one tab per accepted peer ([transports](docs/design/transports.md)).
 - Session log playback: periodic checkpoint markers (needs an `IPresenter` snapshot contract), a skip-silence gap cap (default 1 s), and note edit/delete recorded as revisions ([session-logging](docs/design/session-logging.md)).
 - Device manifest commands declare `ExpectedResponseFormat` per command, same vocabulary as SCPI profiles ([stream-content-detection](docs/design/features/stream-content-detection.md)).
+- Stream Monitor CLI: `--capture <dir>` saves detected streams as files ([stream-monitor](docs/specs/stream-monitor.md)).
+- Expression picker: parameter fields first, then channel segments ([expression-picker](docs/specs/expression-picker.md)).
+- Manifest editor: JSON only, with a one-click convert from an `.xml` panel ([manifest-editor](docs/specs/manifest-editor.md)).
+- Theme builder TUI: a position marker on the role list ([theme-builder](docs/specs/theme-builder.md)).
 
 ### Proposed Ideas
 

@@ -200,7 +200,7 @@ part itself — the condition a live control panel and the preview evaluate — 
 ## Open items
 
 - A panel's XML file form isn't editable here — a manifest whose Panel file is `.xml` is written back
-  as XML, but edited like any other.
+  as XML, but edited like any other. Decided 2026-10-13: the editor stays JSON-only and offers a one-click convert from an `.xml` panel to JSON when it is edited (BACKLOG).
 - The editor edits the text-protocol schema; a binary manifest's `.ksy` layout is referenced, not
   edited.
 
