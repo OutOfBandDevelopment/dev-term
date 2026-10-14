@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using DevTerm.Core.StreamContent;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.DeviceManifests;
@@ -127,6 +128,14 @@ public sealed class OutboundCommand
 
     /// <summary>The indicator id a query's reply publishes to; <c>{EffectiveId}.reply</c> when unset (the SCPI module's convention).</summary>
     public string? ReplyId { get; set; }
+
+    /// <summary>
+    /// What this command's reply is expected to contain, same vocabulary as an SCPI profile command. Anything other than
+    /// <see cref="StreamContentFormat.Text"/> tells the Stream Monitor (via the session's hint sinks) to treat the next reply as that
+    /// format instead of sniffing it.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<StreamContentFormat>))]
+    public StreamContentFormat ExpectedResponseFormat { get; set; } = StreamContentFormat.Text;
 
     /// <summary><see cref="Id"/>, else <see cref="Name"/>.</summary>
     [JsonIgnore]

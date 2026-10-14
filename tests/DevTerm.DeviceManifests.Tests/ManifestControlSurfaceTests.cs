@@ -1,9 +1,11 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.StreamContent;
 using DevTerm.Test.Utilities;
 using DevTerm.Transports.Loopback;
 using DevTerm.UiDefinitions;
@@ -252,6 +254,46 @@ public sealed class ManifestControlSurfaceTests
         await Assert.ThrowsExactlyAsync<IOException>(() => surface.InvokeAsync("read", null, TestContext.CancellationToken));
 
         Assert.AreSequenceEqual(["read.reply"], [.. tracker.Cancelled]);
+    }
+
+    private sealed class HintRecordingPresenter : IPresenter, IStreamContentHintSink
+    {
+        public List<StreamContentFormat> Expected { get; } = [];
+
+        public string Name => "streamwatch";
+
+        public IReadOnlyList<string> Render(ReadOnlySequence<byte> data) => [];
+
+        public void ExpectResponse(StreamContentFormat format) => Expected.Add(format);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_CommandDeclaringAResponseFormat_TellsAHintSinkOnThePipelineToExpectIt()
+    {
+        var transport = new FakeTransport();
+        var watcher = new HintRecordingPresenter();
+        var session = new Session(transport, new Pipeline([watcher]));
+        var manifest = BuildPowerSupply();
+        manifest.OutboundCommands.Add(new OutboundCommand { Id = "dump", Name = "Screen Dump", Template = "HCOP:DATA?", IsQuery = true, ExpectedResponseFormat = StreamContentFormat.Image });
+        var surface = new ManifestControlSurface(session, manifest, tracker: null);
+
+        await surface.InvokeAsync("read", null, TestContext.CancellationToken);
+        Assert.IsEmpty(watcher.Expected, "A Text (default) command gives no hint.");
+
+        await surface.InvokeAsync("dump", null, TestContext.CancellationToken);
+        Assert.AreSequenceEqual([StreamContentFormat.Image], [.. watcher.Expected]);
+    }
+
+    [TestMethod]
+    public void ExpectedResponseFormat_IsWrittenByName_AndReadBack()
+    {
+        var command = new OutboundCommand { Name = "Dump", Template = "X", ExpectedResponseFormat = StreamContentFormat.Image };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(command);
+        var back = System.Text.Json.JsonSerializer.Deserialize<OutboundCommand>(json)!;
+
+        StringAssert.Contains(json, "\"Image\"");
+        Assert.AreEqual(StreamContentFormat.Image, back.ExpectedResponseFormat);
     }
 
     [TestMethod]

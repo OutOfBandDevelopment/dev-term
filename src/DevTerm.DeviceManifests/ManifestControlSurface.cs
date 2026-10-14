@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using DevTerm.Core.Control;
 using DevTerm.Core.Presenters;
 using DevTerm.Core.Sessions;
+using DevTerm.Core.StreamContent;
 using DevTerm.UiDefinitions;
 
 namespace DevTerm.DeviceManifests;
@@ -95,6 +96,14 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
             _tracker?.QuerySent(replyId);
         }
 
+        if (resolved.ResponseFormat != StreamContentFormat.Text)
+        {
+            foreach (var sink in _session.Presenters.OfType<IStreamContentHintSink>())
+            {
+                sink.ExpectResponse(resolved.ResponseFormat);
+            }
+        }
+
         return SendAsync(Encoding.ASCII.GetBytes(resolved.WireText), resolved.ReplyId, cancellationToken);
     }
 
@@ -131,7 +140,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
     }
 
     /// <summary>The one place a command id + value becomes wire text — shared by <see cref="InvokeAsync"/> and <see cref="PreviewCommand"/> so a preview can't drift from what's sent.</summary>
-    private (string WireText, string? ReplyId)? Resolve(string commandId, string? value)
+    private (string WireText, string? ReplyId, StreamContentFormat ResponseFormat)? Resolve(string commandId, string? value)
     {
         if (!_commandsById.TryGetValue(commandId, out var command))
         {
@@ -143,7 +152,7 @@ public sealed partial class ManifestControlSurface : IControlSurface, ICommandPr
             throw new ArgumentException($"Unknown manifest command '{commandId}'.", nameof(commandId));
         }
 
-        return (FormatTemplate(command, value) + _manifest.Terminator, command.EffectiveReplyId);
+        return (FormatTemplate(command, value) + _manifest.Terminator, command.EffectiveReplyId, command.ExpectedResponseFormat);
     }
 
     /// <summary>Substitutes <paramref name="value"/> (comma-joined, one per declared parameter, in order) into <paramref name="command"/>'s template.</summary>

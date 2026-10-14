@@ -311,6 +311,16 @@
               "string",
               "null"
             ]
+          },
+          "ExpectedResponseFormat": {
+            "enum": [
+              "Text",
+              "Hpgl",
+              "PostScript",
+              "Pcl",
+              "Image",
+              "Binary"
+            ]
           }
         },
         "required": [
