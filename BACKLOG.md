@@ -79,6 +79,9 @@ the rest.
 - Publish the JSON Schemas at a stable, versioned `$schema` URL ([format-schema-files](docs/design/features/format-schema-files.md)).
 - UDP listener: one session, each datagram shown with its sender ([transports](docs/design/transports.md)).
 - Raster export as a core service every front end calls ([presenters](docs/design/presenters.md)).
+- Plugin default reply timeout 2 s (per-plugin override), and `.zip` plugin packaging installed from the Plugins screen with approval at install ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
+- SCPI profiles stay separate from `DeviceManifest`, layered: a generic SCPI profile plus device-specific sub-types ([format-schema-files](docs/design/features/format-schema-files.md)).
+- TCP listener: one tab per accepted peer ([transports](docs/design/transports.md)).
 
 ### Proposed Ideas
 

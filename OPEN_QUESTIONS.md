@@ -67,7 +67,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 
-- **Out-of-process plugins:** the default reply timeout; packaging beyond `plugin.json`; JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
+- **Out-of-process plugins:** JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
 
 - **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live. —
@@ -79,9 +79,9 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **UI definitions:** nested `Sections`;
   `VisibleWhen` in the panel renderers. —
   [ui-definitions](docs/design/ui-definitions.md)
-- **Format schemas:** whether SCPI profiles fold into `DeviceManifest`; confirm the
+- **Format schemas:** confirm the
   polymorphic `UiControl` `oneOf` export. — [format-schema-files](docs/design/features/format-schema-files.md)
-- **Transports:** the BLE adapter contract before a second OS backend; one session per accepted TCP peer. — [transports](docs/design/transports.md)
+- **Transports:** the BLE adapter contract before a second OS backend. — [transports](docs/design/transports.md)
 - **Session logging:** backward seek
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
