@@ -30,6 +30,9 @@ public sealed class Pipeline
     /// <summary>Raised for every <see cref="StructuredMessage"/> a presenter in this pipeline decodes (presenters without one never raise it).</summary>
     public event EventHandler<StructuredMessage>? MessageDecoded;
 
+    /// <summary>Raised for output an <see cref="IAsyncOutputSource"/> presenter delivers after its <c>Render</c> returned.</summary>
+    public event EventHandler<PresenterOutput>? AsyncOutput;
+
     public IReadOnlyList<IPresenter> Presenters
     {
         get
@@ -87,6 +90,17 @@ public sealed class Pipeline
         if (presenter is IStructuredMessageSource source)
         {
             source.MessageDecoded += OnMessageDecoded;
+        }
+
+        if (presenter is IAsyncOutputSource asyncSource)
+        {
+            asyncSource.OutputReady += (_, lines) =>
+            {
+                foreach (var line in lines)
+                {
+                    AsyncOutput?.Invoke(this, new PresenterOutput(presenter.Name, line));
+                }
+            };
         }
     }
 

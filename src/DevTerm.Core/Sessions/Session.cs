@@ -52,6 +52,17 @@ public sealed class Session : IAsyncDisposable
 
         _transport = transport;
         _pipeline = pipeline;
+        _pipeline.AsyncOutput += (_, output) =>
+        {
+            try
+            {
+                Output?.Invoke(this, output);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Session.Output handler threw for asynchronous output: {ex}");
+            }
+        };
 
         if (transport is ILineStatusSource lineStatus)
         {
