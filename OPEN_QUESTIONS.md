@@ -70,7 +70,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **Out-of-process plugins:** the default reply timeout; packaging beyond `plugin.json`; JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
 
 - **Presenters:** shared drawing/canvas/plot models;
-  one mapping-file format; where mappings live; whether raster export is a core service. —
+  one mapping-file format; where mappings live. —
   [presenters](docs/design/presenters.md)
 - **Control modules:** a manifest command schema
   declaring `ExpectedResponseFormat`; a general Kaitai-backed binary response schema. —
@@ -79,12 +79,9 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **UI definitions:** nested `Sections`;
   `VisibleWhen` in the panel renderers. —
   [ui-definitions](docs/design/ui-definitions.md)
-- **Format schemas:** a stable hosted `$schema` URL; whether SCPI profiles fold into `DeviceManifest`; confirm the
+- **Format schemas:** whether SCPI profiles fold into `DeviceManifest`; confirm the
   polymorphic `UiControl` `oneOf` export. — [format-schema-files](docs/design/features/format-schema-files.md)
-- **Transports:** the BLE adapter contract before a second OS backend; how a UDP listener's first datagram maps onto
-  `Session`; one session per accepted TCP peer. — [transports](docs/design/transports.md)
-- **Network config editors:** `DevTerm.Devices.*` projects versus manifests with a config UI. —
-  [network-device-config-editors](docs/design/proposals/network-device-config-editors.md)
+- **Transports:** the BLE adapter contract before a second OS backend; one session per accepted TCP peer. — [transports](docs/design/transports.md)
 - **Session logging:** backward seek
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
