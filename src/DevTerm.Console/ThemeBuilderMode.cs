@@ -191,6 +191,10 @@ internal static class ThemeBuilderMode
         var rolesLabel = new Label { X = 0, Y = 2, Text = "Colors (Enter or Edit... to change; ● marks one overridden from the seed):" };
         var rolesList = new ListView { X = 0, Y = 3, Width = 48, Height = Dim.Fill(5) };
 
+        var positionLabel = new Label { X = Pos.Right(rolesList) + 1, Y = 3, Text = string.Empty };
+
+        void ShowPosition() => positionLabel.Text = rolesList.SelectedItem is int at && at >= 0 ? $"{at + 1} / {roles.Length}" : string.Empty;
+
         var warningsLabel = new Label { X = 0, Y = Pos.AnchorEnd(5), Width = Dim.Fill(), Height = 3, HotKeySpecifier = (Rune)0xFFFF };
 
         void Preview() => ActiveTheme.Preview(state.Build());
@@ -203,6 +207,8 @@ internal static class ThemeBuilderMode
             {
                 rolesList.SelectedItem = index;
             }
+
+            ShowPosition();
         }
 
         void RefreshWarnings()
@@ -213,6 +219,7 @@ internal static class ThemeBuilderMode
 
         RefreshRoles();
         RefreshWarnings();
+        rolesList.ValueChanged += (_, _) => ShowPosition();
 
         nameField.TextChanged += (_, _) =>
         {
@@ -312,7 +319,7 @@ internal static class ThemeBuilderMode
             app.RequestStop();
         };
 
-        window.Add(nameLabel, nameField, paletteLabel, paletteSelector, rolesLabel, rolesList, editButton, resetButton, warningsLabel, saveButton, cancelButton);
+        window.Add(nameLabel, nameField, paletteLabel, paletteSelector, rolesLabel, rolesList, positionLabel, editButton, resetButton, warningsLabel, saveButton, cancelButton);
 
         return new ThemeBuilderWindowParts
         {
@@ -322,6 +329,7 @@ internal static class ThemeBuilderMode
             PaletteSelector = paletteSelector,
             RolesList = rolesList,
             WarningsLabel = warningsLabel,
+            PositionLabel = positionLabel,
             EditButton = editButton,
             ResetButton = resetButton,
             SaveButton = saveButton,
@@ -408,6 +416,9 @@ internal sealed class ThemeBuilderWindowParts
     public required ListView RolesList { get; init; }
 
     public required Label WarningsLabel { get; init; }
+
+    /// <summary>"n / total" beside the role list.</summary>
+    public required Label PositionLabel { get; init; }
 
     public required Button EditButton { get; init; }
 

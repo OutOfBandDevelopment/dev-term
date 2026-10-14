@@ -108,9 +108,7 @@ already enumerates from — so a theme built here immediately appears in View > 
   apply the same way; see the design doc's Status section.
 - Deleting a saved user theme: the seed picker's **Delete** button (TUI and WPF) asks for confirmation, removes the theme's file
   (`ThemeCatalog.Delete`) and refreshes the list. Built-in themes can't be deleted. Not on the web `/themes` page yet.
-- Decided 2026-10-13: show a position marker on the role list (BACKLOG). The TUI's role list has no scrollbar indicator distinct from any other `ListView` in this codebase
-  — with enough `ThemeRole` members to scroll, there's no visual hint beyond the usual Terminal.Gui
-  list behavior that more rows exist above/below.
+- The TUI role list shows an "n / total" position marker beside it (2026-10-13), since it has no scrollbar.
 
 ## Web
 

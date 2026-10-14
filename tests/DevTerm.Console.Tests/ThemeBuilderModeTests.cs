@@ -66,6 +66,19 @@ public sealed class ThemeBuilderModeTests
     }
 
     [TestMethod]
+    public void RoleList_ShowsItsPositionAsTheSelectionMoves()
+    {
+        var state = new ThemeBuilderState(BuiltInThemes.Light, "My Theme");
+        var total = Enum.GetValues<ThemeRole>().Length;
+
+        RunHeadless(state, parts =>
+        {
+            parts.RolesList.SelectedItem = 2;
+            Assert.AreEqual($"3 / {total}", parts.PositionLabel.Text);
+        });
+    }
+
+    [TestMethod]
     public void NameField_TextChanged_RenamesTheStateAndPreviewsIt()
     {
         var state = new ThemeBuilderState(BuiltInThemes.Light, "My Theme");

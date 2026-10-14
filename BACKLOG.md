@@ -86,7 +86,6 @@ the rest.
 - Stream Monitor CLI: `--capture <dir>` saves detected streams as files ([stream-monitor](docs/specs/stream-monitor.md)).
 - Expression picker: parameter fields first, then channel segments ([expression-picker](docs/specs/expression-picker.md)).
 - Manifest editor: JSON only, with a one-click convert from an `.xml` panel ([manifest-editor](docs/specs/manifest-editor.md)).
-- Theme builder TUI: a position marker on the role list ([theme-builder](docs/specs/theme-builder.md)).
 
 ### Proposed Ideas
 
