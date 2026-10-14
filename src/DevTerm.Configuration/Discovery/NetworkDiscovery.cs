@@ -21,6 +21,14 @@ public sealed class NetworkDiscovery(IEnumerable<INetworkDeviceProbe> probes)
             .OrderBy(h => Version.TryParse(h.Address, out var v) ? v : new Version(0, 0))
             .ThenBy(h => h.Port)];
 
+    /// <summary>Groups hits by address into one row per device, its services as the badges (ordered by address).</summary>
+    public static IReadOnlyList<NetworkDevice> GroupByDevice(IEnumerable<NetworkDeviceHit> hits) =>
+        [.. Merge(hits).GroupBy(h => h.Address)
+            .Select(g => new NetworkDevice(
+                g.Key,
+                g.OrderByDescending(h => h.Kind != "unknown").ThenByDescending(h => h.DisplayName.Length).First().DisplayName,
+                [.. g.OrderBy(h => h.Port)]))];
+
     private static async Task<IReadOnlyList<NetworkDeviceHit>> RunAsync(INetworkDeviceProbe probe, TimeSpan listenFor, CancellationToken cancellationToken)
     {
         try

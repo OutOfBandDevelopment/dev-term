@@ -157,9 +157,10 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
 
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListNetworkDevices)))
 {
-    foreach (var hit in await DevTerm.Configuration.Discovery.NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3)))
+    var found = await DevTerm.Configuration.Discovery.NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3));
+    foreach (var device in DevTerm.Configuration.Discovery.NetworkDiscovery.GroupByDevice(found))
     {
-        Console.WriteLine($"{hit.Address}:{hit.Port}  {hit.Transport}  {hit.DisplayName}  ({hit.Kind}, {hit.Source})");
+        Console.WriteLine($"{device.Address}  {device.Name}  [{device.Badges}]");
     }
 
     return 0;

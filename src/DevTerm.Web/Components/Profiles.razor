@@ -50,9 +50,15 @@ else
         </div>
         <div class="row">
             <button id="detect" @onclick="DetectAsync" disabled="@_detecting">@(_detecting ? "Detecting..." : "Detect network devices...")</button>
-            @foreach (var hit in _hits)
+            @foreach (var device in NetworkDiscovery.GroupByDevice(_hits))
             {
-                <button data-hit="@hit.Address" @onclick="() => Prefill(hit)">@hit.Display</button>
+                <span class="device" data-device="@device.Address">
+                    <strong>@device.Address</strong> @device.Name
+                    @foreach (var hit in device.Services)
+                    {
+                        <button class="badge" data-hit="@hit.Address" data-transport="@hit.Transport" @onclick="() => Prefill(hit)">@(hit.Port > 0 ? $"{hit.Transport}:{hit.Port}" : hit.Transport)</button>
+                    }
+                </span>
             }
             @if (_detected && _hits.Count == 0) { <span class="note">No network devices answered.</span> }
         </div>

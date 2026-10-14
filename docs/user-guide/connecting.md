@@ -328,8 +328,8 @@ instruments and `--listnetworkdevices true` lists everything:
 
 ```
 > dotnet run --project src/DevTerm.Console -- --listnetworkdevices true
-192.168.0.48:80  tcp  Brother HL-3170CDW series  (unknown, mdns)
-192.168.0.127:5555  tcp  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  (lxi, lxi)
+192.168.0.48  Brother HL-3170CDW series  [tcp:80]
+192.168.0.127  Rigol Technologies,DG1062Z,DG1ZA232603118,03.01.12  [tcp:5555]
 ```
 
 A USR-TCP232 serial-to-Ethernet bridge sends no announcement, so it is found by its web page instead: the scan asks port 80 on your local /24 and keeps hosts whose login prompt names a `USR-TCP232` model. A bridge shows up whether or not the instrument behind it is powered, e.g. `192.168.0.110:23  tcp  USR-TCP232-302 serial bridge  (usr-tcp232, usr)` (real output, 2026-10-09). It suggests port 23, the bridge default; if you changed the bridge's port, edit it.

@@ -34,6 +34,25 @@ public sealed class NetworkDiscoveryTests
     }
 
     [TestMethod]
+    public void GroupByDevice_GivesOneRowPerAddressWithAServiceBadgePerPort()
+    {
+        var devices = NetworkDiscovery.GroupByDevice(
+        [
+            new NetworkDeviceHit("10.0.0.9", 1883, "mqtt", "mqtt", "broker", "mdns"),
+            new NetworkDeviceHit("10.0.0.5", 5025, "tcp", "lxi", "Rigol,DG1062Z", "lxi"),
+            new NetworkDeviceHit("10.0.0.5", 0, "vxi11", "lxi", "Rigol", "lxi"),
+            new NetworkDeviceHit("10.0.0.5", 80, "tcp", "unknown", "Rigol web", "ssdp", "dg1062z.local"),
+        ]);
+
+        Assert.HasCount(2, devices);
+        Assert.AreEqual("10.0.0.5", devices[0].Address);
+        Assert.AreEqual("Rigol,DG1062Z", devices[0].Name);
+        Assert.AreEqual("vxi11, tcp:80, tcp:5025", devices[0].Badges);
+        Assert.AreEqual("dg1062z.local", devices[0].Hostname);
+        Assert.AreEqual("mqtt:1883", devices[1].Badges);
+    }
+
+    [TestMethod]
     public void BuildPtrQuery_EncodesLabelsAndTheUnicastBit()
     {
         var query = DnsMessage.BuildPtrQuery(["_mqtt._tcp.local"]);
