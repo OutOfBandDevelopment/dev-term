@@ -65,6 +65,8 @@ public static class TuiMode
 
         public EventHandler<SessionDisconnectedEventArgs>? DisconnectedHandler { get; set; }
 
+        public EventHandler<string>? LineStatusHandler { get; set; }
+
         public CancellationTokenSource? SwitchCts { get; set; }
 
         /// <summary>This tab's own running log, if any (docs/design/multi-session-ui.md's Step 4) — not a single window-level logger.</summary>
@@ -363,8 +365,10 @@ public static class TuiMode
                 AppendError(windowTab, $"{ConnectionErrorMessages.ForDisconnect(windowTab.Tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.");
                 app.Invoke(() => RefreshConnectionUi(windowTab));
             };
+            windowTab.LineStatusHandler = (_, text) => AppendStatus(windowTab, text);
             sessionTab.Session.Output += windowTab.OutputHandler;
             sessionTab.Session.Disconnected += windowTab.DisconnectedHandler;
+            sessionTab.Session.LineStatusChanged += windowTab.LineStatusHandler;
 
             tabs.Add(windowTab);
             TrackInMonitor(windowTab);
@@ -1012,6 +1016,7 @@ public static class TuiMode
 
             oldSession.Output -= windowTab.OutputHandler;
             oldSession.Disconnected -= windowTab.DisconnectedHandler;
+            oldSession.LineStatusChanged -= windowTab.LineStatusHandler;
             await oldSession.CloseAsync();
             await oldSession.DisposeAsync();
 
@@ -1032,6 +1037,7 @@ public static class TuiMode
             TrackInMonitor(windowTab);
             mySession.Output += windowTab.OutputHandler;
             mySession.Disconnected += windowTab.DisconnectedHandler;
+            mySession.LineStatusChanged += windowTab.LineStatusHandler;
             SessionLogging.Follow(windowTab.Logger, mySession, newOptions, profileStore.FindName(newOptions));
 
             app.Invoke(() =>
@@ -1083,6 +1089,7 @@ public static class TuiMode
                 // stray connection as current.
                 mySession.Output -= windowTab.OutputHandler;
                 mySession.Disconnected -= windowTab.DisconnectedHandler;
+                mySession.LineStatusChanged -= windowTab.LineStatusHandler;
                 await mySession.CloseAsync();
                 await mySession.DisposeAsync();
                 return false;
@@ -1134,6 +1141,7 @@ public static class TuiMode
             mergedLog?.Untrack(windowTab);
             windowTab.Tab.Session.Output -= windowTab.OutputHandler;
             windowTab.Tab.Session.Disconnected -= windowTab.DisconnectedHandler;
+            windowTab.Tab.Session.LineStatusChanged -= windowTab.LineStatusHandler;
             try
             {
                 await windowTab.Tab.Session.CloseAsync();

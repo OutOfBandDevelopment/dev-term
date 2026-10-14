@@ -54,10 +54,53 @@ public sealed class Rfc2217TransportTests
             .. Rfc2217Codec.EncodeSetStopSize(ComPortStopSize.One),
             .. Rfc2217Codec.EncodeSetControl(Rfc2217ControlValue.SetDtrStateOn),
             .. Rfc2217Codec.EncodeSetControl(Rfc2217ControlValue.SetRtsStateOn),
+            .. Rfc2217Codec.EncodeSetModemStateMask((Rfc2217ModemState)0xFF),
+            .. Rfc2217Codec.EncodeSetLineStateMask(Rfc2217StatusText.ReportedLineErrors),
         ];
         Assert.AreSequenceEqual(expected, written);
 
         await transport.CloseAsync(TestContext.CancellationToken);
+    }
+
+    [TestMethod]
+    public async Task ModemStateNotification_RaisesLineStatusChanged_AndRepeatsAreSuppressed()
+    {
+        var server = new FakeRfc2217Server();
+        await server.SendWillDoComPortOptionAsync(TestContext.CancellationToken);
+        var transport = CreateTransport(server);
+        var notices = new List<string>();
+        transport.LineStatusChanged += (_, text) => notices.Add(text);
+        await transport.OpenAsync(TestContext.CancellationToken);
+
+        var cts = TestContext.CancellationToken;
+        await server.SendNotifyModemStateAsync(Rfc2217ModemState.ClearToSend, cts);
+        await server.SendNotifyModemStateAsync(Rfc2217ModemState.ClearToSend | Rfc2217ModemState.DeltaClearToSend, cts);
+        await server.SendNotifyModemStateAsync(Rfc2217ModemState.ClearToSend | Rfc2217ModemState.DataSetReady, cts);
+        await server.SendNotifyLineStateAsync(Rfc2217LineState.ParityError | Rfc2217LineState.DataReady, cts);
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (notices.Count < 3 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20, cts);
+        }
+
+        await transport.CloseAsync(cts);
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "Modem lines: CTS on, DSR off, RI off, DCD off",
+                "Modem lines: CTS on, DSR on, RI off, DCD off",
+                "Line error: parity",
+            },
+            notices);
+    }
+
+    [TestMethod]
+    public void StatusText_ReportsOnlyErrorBitsForTheLine()
+    {
+        Assert.IsNull(Rfc2217StatusText.Line(Rfc2217LineState.DataReady | Rfc2217LineState.TransmitHoldingRegisterEmpty));
+        Assert.AreEqual("Line error: overrun, framing, break", Rfc2217StatusText.Line(Rfc2217LineState.OverrunError | Rfc2217LineState.FramingError | Rfc2217LineState.BreakDetect));
     }
 
     [TestMethod]

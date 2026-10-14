@@ -66,7 +66,6 @@ the rest.
   ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
 - Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).
-- RFC 2217 line/modem state changes go to the status line and session log, never the data stream ([rfc2217](docs/design/rfc2217.md)).
 - CLI cross-session scripting: attach to a named session, then the ordinary REPL ([architecture](docs/design/architecture.md)).
 - Network device config editors are manifests with a config UI where possible; a `DevTerm.Devices.*` project only when custom protocol code is needed ([network-device-config-editors](docs/design/proposals/network-device-config-editors.md)).
 - Publish the JSON Schemas at a stable, versioned `$schema` URL ([format-schema-files](docs/design/features/format-schema-files.md)).

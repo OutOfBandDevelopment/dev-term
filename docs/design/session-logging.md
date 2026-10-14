@@ -82,7 +82,7 @@ Captured records also have `seq`, which starts at 1 and goes up by 1 per record 
 | `tx` | `data` | Bytes handed to the transport. |
 | `rx` | `data` | One chunk from the device, exactly as the presenters were given it: one `PipeReader.ReadAsync` result, one record. |
 | `instrument` | `profile` | A SCPI instrument profile was picked from the Device panel after logging started (added 2026-10-09). Playback uses the first one when the header has no `scpiProfile`. |
-| `note` | `text` | A playback annotation. It has no `seq`, since it isn't a captured event. Its `t` is the previous record's time. |
+| `note` | `text` | A playback annotation. It has no `seq`, since it isn't a captured event. Its `t` is the previous record's time. A live RFC 2217 line/modem state change is recorded as a note prefixed `[line] `. |
 
 `data` is the raw bytes, **base64** (RFC 4648, with padding).
 

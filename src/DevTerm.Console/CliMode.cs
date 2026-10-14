@@ -61,6 +61,7 @@ public static class CliMode
         }
 
         session.Output += (_, output) => stdout.WriteLine($"[{output.PresenterName}] {output.Text}");
+        session.LineStatusChanged += (_, text) => stderr.WriteLine(text);
         session.Disconnected += (_, e) =>
             stderr.WriteLine($"{ConnectionErrorMessages.ForDisconnect(cliOptions.Transport, e.Error)} The next line you send will reconnect.");
 

@@ -154,6 +154,24 @@ public sealed class SessionLoggerTests
     }
 
     [TestMethod]
+    public async Task ALineStatusNotice_IsRecordedAsALineNote_AndNotAfterDetach()
+    {
+        var transport = new FakeTransport();
+        await using var session = new Session(transport, new Pipeline([]));
+        using (var logger = SessionLogger.Start(_path, Header()))
+        {
+            logger.Attach(session, "loopback://");
+            transport.RaiseLineStatus("Modem lines: CTS on, DSR off, RI off, DCD off");
+            logger.Detach();
+            transport.RaiseLineStatus("ignored");
+        }
+
+        var log = SessionLog.Load(_path);
+        Assert.AreEqual("session,note", Shape(log));
+        Assert.AreEqual("[line] Modem lines: CTS on, DSR off, RI off, DCD off", log.Records[1].Text);
+    }
+
+    [TestMethod]
     public async Task AFailedSend_IsRecordedAsTheAttemptedTxThenADisconnect()
     {
         var transport = new FakeTransport();
