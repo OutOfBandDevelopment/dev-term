@@ -31,6 +31,48 @@ public sealed class SessionPipeServer : ISessionObserver, IAsyncDisposable
 
     public static string PipeNameFor(string sessionName) => "devterm-session-" + sessionName;
 
+    private const string _pipeRoot = @"\\.\pipe\";
+
+    /// <summary>The names (without the <c>devterm-session-</c> prefix) of the sessions currently publishing on this machine, sorted. Empty off Windows, where pipes are not listed this way.</summary>
+    public static IReadOnlyList<string> LiveSessions(string? pipeDirectory = null)
+    {
+        var directory = pipeDirectory ?? _pipeRoot;
+        var prefix = PipeNameFor(string.Empty);
+        try
+        {
+            return Directory.EnumerateFileSystemEntries(directory, prefix + "*")
+                .Select(path => Path.GetFileName(path)[prefix.Length..])
+                .Where(name => name.Length > 0)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="requested"/> when no live session uses it, else <c>name-2</c>, <c>name-3</c>, ... — so a second
+    /// process started from the same profile still gets its own pipe instead of failing to bind.
+    /// </summary>
+    public static string AvailableName(string requested, IReadOnlyCollection<string> live)
+    {
+        if (!live.Contains(requested, StringComparer.OrdinalIgnoreCase))
+        {
+            return requested;
+        }
+
+        for (var n = 2; ; n++)
+        {
+            var candidate = $"{requested}-{n}";
+            if (!live.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+    }
+
     public void OnOpened() => Broadcast("open");
 
     public void OnReceived(ReadOnlySequence<byte> data) => Broadcast("rx " + Convert.ToHexString(data.ToArray()));

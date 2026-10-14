@@ -51,7 +51,7 @@ pipe <- B
 ## Open questions
 
 - ~~Naming: is the session name the profile name, a tab title, or generated? Discovery of live sessions~~
-  Decided 2026-10-13: the pipe name is the profile name (a numeric suffix on a collision), and a `--listsessions` command lists the live ones. Not built yet (BACKLOG).
+  Decided 2026-10-13: the pipe name is the profile name (a numeric suffix on a collision), and a `--listsessions` command lists the live ones. Built 2026-10-14: `--listsessions true` and the numeric suffix on a collision (`SessionPipeServer.LiveSessions`/`AvailableName`, Windows only); defaulting the name to the profile name when `--pipe` is not given is not built (BACKLOG).
 - ~~Web service versus pipe for browsers and non-.NET clients.~~ Both built: `--controlhttp <port>` is the localhost web-service variant (see the checklist).
 
 ## Completion checklist

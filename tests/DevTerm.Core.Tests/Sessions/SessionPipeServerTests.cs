@@ -35,6 +35,27 @@ public sealed class SessionPipeServerTests
     }
 
     [TestMethod]
+    public async Task LiveSessions_ListsAPublishingServer_UntilItIsDisposed()
+    {
+        var name = "test-" + Guid.NewGuid().ToString("N");
+        var server = new SessionPipeServer(name);
+        await Task.Delay(100, TestContext.CancellationToken);
+
+        Assert.Contains(name, SessionPipeServer.LiveSessions());
+
+        await server.DisposeAsync();
+        Assert.DoesNotContain(name, SessionPipeServer.LiveSessions());
+    }
+
+    [TestMethod]
+    public void AvailableName_KeepsAFreeName_AndNumbersACollision()
+    {
+        Assert.AreEqual("bench", SessionPipeServer.AvailableName("bench", ["other"]));
+        Assert.AreEqual("bench-2", SessionPipeServer.AvailableName("bench", ["bench"]));
+        Assert.AreEqual("bench-3", SessionPipeServer.AvailableName("bench", ["bench", "Bench-2"]));
+    }
+
+    [TestMethod]
     public async Task NoClient_BroadcastIsHarmless()
     {
         await using var server = new SessionPipeServer("test-" + Guid.NewGuid().ToString("N"));

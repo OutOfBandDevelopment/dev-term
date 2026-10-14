@@ -64,7 +64,7 @@ the rest.
   ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
 - Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
   ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
-- Session pipe name is the profile name (numeric suffix on collision) and `--listsessions` lists live sessions
+- Session pipe name defaults to the profile name when `--pipe` is not given (`--listsessions` and the collision suffix are built)
   ([cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)).
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
 - Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).

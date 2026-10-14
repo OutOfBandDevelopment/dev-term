@@ -219,6 +219,13 @@ if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
     }
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListSessions)))
+{
+    var live = SessionPipeServer.LiveSessions();
+    Console.WriteLine(live.Count == 0 ? "No sessions are publishing. Start one with --pipe <name>." : string.Join(Environment.NewLine, live));
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
 {
     var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
