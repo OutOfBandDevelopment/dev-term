@@ -107,6 +107,7 @@ public partial class MainWindow
         var logger = ActiveWindowTabOrNull?.Logger;
         LoggingMenuItem.IsEnabled = ActiveWindowTabOrNull is not null;
         LoggingMenuItem.Header = logger is null ? StartLoggingHeader : StopLoggingHeader;
+        AddNoteMenuItem.IsEnabled = logger is not null;
         LoggingStatusText.Text = logger?.Path is { } path ? $"● REC {Path.GetFileName(path)}" : string.Empty;
 
         // The file name trims to the status bar's width; the tooltip has the whole path.
@@ -140,6 +141,47 @@ public partial class MainWindow
         if (dialog.ShowDialog(this) == true)
         {
             StartLogging(dialog.FileName);
+        }
+    }
+
+    /// <summary>Adds <paramref name="text"/> to the active tab's running log as a timestamped note; <see langword="false"/> when not logging or the text is blank.</summary>
+    internal bool AddNoteToLog(string text)
+    {
+        if (Logger is not { } logger || string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        logger.RecordNote(text);
+        return true;
+    }
+
+    private void AddNote_Click(object sender, RoutedEventArgs e)
+    {
+        var box = new System.Windows.Controls.TextBox { MinWidth = 320, Margin = new Thickness(0, 0, 0, 12) };
+        var ok = new System.Windows.Controls.Button { Content = "OK", IsDefault = true, MinWidth = 72, Margin = new Thickness(0, 0, 8, 0) };
+        var cancel = new System.Windows.Controls.Button { Content = "Cancel", IsCancel = true, MinWidth = 72 };
+        var buttons = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        buttons.Children.Add(ok);
+        buttons.Children.Add(cancel);
+        var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(12) };
+        panel.Children.Add(new System.Windows.Controls.TextBlock { Text = "Note:", Margin = new Thickness(0, 0, 0, 4) });
+        panel.Children.Add(box);
+        panel.Children.Add(buttons);
+        var dialog = new Window
+        {
+            Title = "Add Note to Log",
+            Content = panel,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this,
+        };
+        ok.Click += (_, _) => dialog.DialogResult = true;
+        dialog.Loaded += (_, _) => box.Focus();
+        if (dialog.ShowDialog() == true)
+        {
+            AddNoteToLog(box.Text);
         }
     }
 

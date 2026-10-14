@@ -77,6 +77,33 @@ public sealed class TuiLoggingTests
     }
 
     [TestMethod]
+    public async Task AddNoteMenuItem_IsEnabledOnlyWhileLogging_AndANoteLandsInTheLog()
+    {
+        var (session, _, presenter) = CreateSession();
+        await session.OpenAsync(TestContext.CancellationToken);
+        var path = Path.Combine(_directory, "note.jsonl");
+
+        TuiTestRunner.RunHeadless(session, presenter, new CliOptions { Transport = "loopback" }, parts =>
+        {
+            Assert.AreEqual(TuiLogging.AddNoteTitle, parts.Logging.AddNoteMenuItem!.Title);
+            Assert.IsFalse(parts.Logging.AddNoteMenuItem.Enabled);
+
+            Assert.IsTrue(parts.Logging.Start(path));
+            Assert.IsTrue(parts.Logging.AddNoteMenuItem.Enabled);
+            parts.Logging.Logger()!.RecordNote("probe moved to TP3");
+
+            parts.Logging.Stop();
+            Assert.IsFalse(parts.Logging.AddNoteMenuItem.Enabled);
+        });
+
+        await session.CloseAsync(TestContext.CancellationToken);
+
+        var log = SessionLog.Load(path);
+        Assert.AreEqual("session,note", Shape(log));
+        Assert.AreEqual("probe moved to TP3", log.Records[1].Text);
+    }
+
+    [TestMethod]
     public async Task StartLogging_ToAPathThatCannotBeCreated_StaysStopped()
     {
         var (session, _, presenter) = CreateSession();

@@ -223,6 +223,9 @@ public static class TuiMode
         // to two different files at once, and closing one tab's log never touches another's.
         var loggingMenuItem = new MenuItem(TuiLogging.StartTitle, string.Empty, () => { });
 
+        // File > Add Note to Log...: enabled only while the active tab is being logged.
+        var addNoteMenuItem = new MenuItem(TuiLogging.AddNoteTitle, string.Empty, () => { }) { Enabled = false };
+
         // Seeds File > New Session... with a starting point once the window has zero tabs open (no
         // active tab's CliOptions to read) - kept up to date in CloseTabAsync right before a tab is
         // removed. Mirrors MainWindow.xaml.cs's own _lastCliOptions.
@@ -490,6 +493,14 @@ public static class TuiMode
             }
         });
 
+        addNoteMenuItem.Action = Guarded(() =>
+        {
+            if (ActiveTab().Logger is { } logger && TuiLogging.PromptForNote(app) is { } note)
+            {
+                logger.RecordNote(note);
+            }
+        });
+
         // The "Send as" items follow the active tab: "●" marks its chosen parser, and a format its
         // presenters can't encode is greyed out. The item set itself is built once (Terminal.Gui has no
         // live item replacement for a MenuBarItem), from the window-build-time tab.
@@ -712,6 +723,7 @@ public static class TuiMode
                     }
                 })),
                 loggingMenuItem,
+                addNoteMenuItem,
                 new MenuItem("Open Log for _Playback...", string.Empty, Guarded(() => PlaybackMode.OpenAndRun(app, ActiveTab().Tab.CliOptions))),
                 new MenuItem("_Quit", string.Empty, Quit, Key.Q.WithCtrl),
             ]),
@@ -860,6 +872,7 @@ public static class TuiMode
             sendField.Enabled = connected;
             window.Title = windowTab.Tab.Title(profileStore);
             loggingMenuItem.Title = windowTab.Logger is null ? TuiLogging.StartTitle : TuiLogging.StopTitle;
+            addNoteMenuItem.Enabled = windowTab.Logger is not null;
 
             statusLabel.Text = $" ● {ConnectionDescription.StatusText(windowTab.Tab.CliOptions, state)}{TuiLogging.StatusSuffixFor(windowTab.Logger)}{RoutingSuffix(windowTab)}";
             statusLabel.SetScheme(TuiTheme.Solid(TuiTheme.StatusAttribute(ActiveTheme.Current, state)));
@@ -1172,6 +1185,7 @@ public static class TuiMode
             manifestMenuItem!.Enabled = false;
             sendAsMenuBarItem!.Enabled = false;
             loggingMenuItem.Title = TuiLogging.StartTitle;
+            addNoteMenuItem.Enabled = false;
             sendField.Text = string.Empty;
             sendField.Enabled = false;
             window.Title = "dev-term";
@@ -1425,7 +1439,7 @@ public static class TuiMode
             contributedPanelItems.FirstOrDefault(c => c.Panel.Id == "busylight").Item!,
             instrumentItems.FirstOrDefault(i => i.Provider.Id == "scpi").Item!,
             ToggleAndRefreshAsync,
-            new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger),
+            new TuiLoggingParts(loggingMenuItem, StartLogging, StopLogging, () => ActiveTabOrNull()?.Logger, addNoteMenuItem),
             themeMenu,
             () => ActiveTab().Tab.Session,
             streamMonitorMenuItem!,

@@ -206,6 +206,31 @@ public sealed class PlaybackWindowTests
     }
 
     [TestMethod]
+    public void MainWindow_AddNoteToLog_IsEnabledOnlyWhileLogging_AndWritesANoteRecord()
+    {
+        var path = Path.Combine(_directory, "wpf-note.jsonl");
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateMainWindow();
+            StaTestRunner.DoEvents();
+            Assert.IsFalse(window.AddNoteMenuItem.IsEnabled);
+            Assert.IsFalse(window.AddNoteToLog("not logging"));
+
+            Assert.IsTrue(window.StartLogging(path));
+            Assert.IsTrue(window.AddNoteMenuItem.IsEnabled);
+            Assert.IsFalse(window.AddNoteToLog("   "));
+            Assert.IsTrue(window.AddNoteToLog("probe moved to TP3"));
+
+            window.StopLogging();
+            Assert.IsFalse(window.AddNoteMenuItem.IsEnabled);
+            await Task.CompletedTask;
+        });
+
+        var log = SessionLog.Load(path);
+        Assert.AreEqual("probe moved to TP3", log.Records.Single(r => r.Kind == SessionLogRecordKind.Note).Text);
+    }
+
+    [TestMethod]
     public void MainWindow_TheLogOption_StartsLoggingAtConstruction()
     {
         var path = Path.Combine(_directory, "startup.jsonl");
