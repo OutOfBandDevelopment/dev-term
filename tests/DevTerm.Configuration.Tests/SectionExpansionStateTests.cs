@@ -37,6 +37,33 @@ public sealed class SectionExpansionStateTests
     }
 
     [TestMethod]
+    public void UsePersistence_SavesCollapsedSections_AndRestoresThemFromTheFile()
+    {
+        const string definition = "SectionExpansionStateTests.Persisted";
+        var path = Path.Combine(Path.GetTempPath(), "devterm-sections-" + Guid.NewGuid().ToString("N"), "section-state.json");
+        try
+        {
+            SectionExpansionState.UsePersistence(path);
+            SectionExpansionState.Set(definition, "Measure", expanded: false);
+            SectionExpansionState.Set(definition, "Source", expanded: true);
+            SectionExpansionState.StopPersistence();
+
+            SectionExpansionState.Forget(definition);
+            Assert.IsTrue(SectionExpansionState.IsExpanded(definition, "Measure"), "Forgotten in memory, as after a restart.");
+
+            SectionExpansionState.UsePersistence(path);
+            Assert.IsFalse(SectionExpansionState.IsExpanded(definition, "Measure"), "Loaded back from the file.");
+            Assert.IsTrue(SectionExpansionState.IsExpanded(definition, "Source"));
+        }
+        finally
+        {
+            SectionExpansionState.StopPersistence();
+            SectionExpansionState.Forget(definition);
+            Directory.Delete(Path.GetDirectoryName(path)!, true);
+        }
+    }
+
+    [TestMethod]
     public void Forget_RestoresTheDefaultForOnlyThatDefinition()
     {
         SectionExpansionState.Set("A.Forget", "S", expanded: false);

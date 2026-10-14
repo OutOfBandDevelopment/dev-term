@@ -62,7 +62,6 @@ the rest.
 
 - Plugin panel menu entries filter by the selected presenter; non-matching ones are shown disabled with a reason
   ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
-- Control panel expand/collapse state is saved per device profile ([device-control-panel](docs/specs/device-control-panel.md)).
 - Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
   ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
 - Session pipe name is the profile name (numeric suffix on collision) and `--listsessions` lists live sessions

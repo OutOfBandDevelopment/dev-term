@@ -78,6 +78,7 @@ public partial class App : Application
         // run, else the saved View > Theme choice, else "system" - applied before the first window
         // (even the startup Device Profiles editor below). Problems show in MainWindow's output.
         RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+        SectionExpansionState.UsePersistence(DevTermUserDataPaths.SectionStateFile);
         ActiveTheme.Initialize(layeredConfig);
         WpfTheme.AttachApplication(this);
 

@@ -45,6 +45,12 @@ public static class DevTermUserDataPaths
     public static string PreferencesFile => Path.Combine(DevTermHome.Root, "preferences.json");
 
     /// <summary>
+    /// <c>~/.dev-term/section-state.json</c> - which control-panel sections were left collapsed, per device panel.
+    /// See <see cref="SectionExpansionState.UsePersistence"/>.
+    /// </summary>
+    public static string SectionStateFile => Path.Combine(DevTermHome.Root, "section-state.json");
+
+    /// <summary>
     /// <c>~/.dev-term/converter-tools.json</c> - the Stream Monitor's registered converter tools, shared by every
     /// profile and front end (Device &gt; Converter Tools...). See <see cref="ConverterToolsStore"/> and
     /// docs/design/features/stream-converter-tools.md.

@@ -322,6 +322,7 @@ var useTui = (layeredConfig.GetValue<bool?>(nameof(CliOptions.Tui)) ?? true) && 
 // are process-wide and survive Application.Init. Problems are shown in the main window's output.
 // Housekeeping: drop old logs/exports per the saved retention rules (keeps everything unless a rule is set).
 RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+SectionExpansionState.UsePersistence(DevTermUserDataPaths.SectionStateFile);
 
 if (useTui)
 {
