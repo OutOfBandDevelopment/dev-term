@@ -191,6 +191,19 @@ if (earlyConfig[nameof(CliOptions.ControlClient)] is { Length: > 0 } controlName
     }
 }
 
+if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachReplName && (earlyConfig.GetValue<bool?>(nameof(CliOptions.Cli)) ?? false))
+{
+    // --attach <name> --cli true: the ordinary REPL against a session started with --control <name>.
+    using var attachReplStop = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        attachReplStop.Cancel();
+    };
+
+    return await DevTerm.Console.AttachCliMode.RunAsync(attachReplName, Console.In, Console.Out, Console.Error, attachReplStop.Token);
+}
+
 if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
 {
     using var attachStop = new CancellationTokenSource();

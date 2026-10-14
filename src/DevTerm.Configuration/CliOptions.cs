@@ -356,7 +356,7 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? ControlClient { get; set; }
 
-    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
+    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself. With <c>--cli true</c> it is the ordinary REPL instead: each typed line is sent through that session (which must have been started with <see cref="Control"/> of the same name), <c>:hex</c>, <c>:ping</c> and <c>:quit</c> are the only commands.</summary>
     [Category("Mode")]
     public string? Attach { get; set; }
 
