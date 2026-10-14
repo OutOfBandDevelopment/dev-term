@@ -1,5 +1,6 @@
 using DevTerm.Core.Transports;
 using DevTerm.Test.Utilities;
+using Moq;
 
 namespace DevTerm.Configuration.Tests;
 
@@ -41,6 +42,24 @@ public sealed class MainWindowStateTests
     {
         Assert.IsFalse(DevicePanels.IsAvailable(DevicePanel.K8055, Hid(0x10CF, 0x5500), connected: false));
         Assert.IsFalse(DevicePanels.IsAvailable(DevicePanel.Manifest, new CliOptions { Transport = "loopback" }, connected: false));
+    }
+
+    [TestMethod]
+    public void UnavailableReason_ExplainsAPanelWhoseFeedingPresenterIsNotSelected()
+    {
+        var panel = new Mock<DevTerm.Core.Control.IDevicePanelContribution>();
+        panel.SetupGet(p => p.PresenterName).Returns("k8055");
+        panel.Setup(p => p.IsAvailable(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(true);
+
+        var hex = new CliOptions { Transport = "hid", Presenter = ["hex"] };
+        var selected = new CliOptions { Transport = "hid", Presenter = ["hex", "K8055"] };
+
+        Assert.AreEqual("Connect first.", DevicePanels.UnavailableReason(panel.Object, selected, connected: false));
+        Assert.AreEqual("Select the 'k8055' presenter to use this panel.", DevicePanels.UnavailableReason(panel.Object, hex, connected: true));
+        Assert.IsNull(DevicePanels.UnavailableReason(panel.Object, selected, connected: true));
+
+        panel.Setup(p => p.IsAvailable(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(false);
+        Assert.AreEqual("This panel does not suit the current connection.", DevicePanels.UnavailableReason(panel.Object, selected, connected: true));
     }
 
     [TestMethod]

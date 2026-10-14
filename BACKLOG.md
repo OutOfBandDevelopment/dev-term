@@ -60,8 +60,6 @@ the rest.
 
 ### UX decisions awaiting implementation (decided 2026-10-13)
 
-- Plugin panel menu entries filter by the selected presenter; non-matching ones are shown disabled with a reason
-  ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
 - Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
   ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).

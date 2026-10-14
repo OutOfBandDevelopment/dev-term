@@ -32,6 +32,34 @@ public static class DevicePanels
     /// <summary>Ids of panels the TUI and WPF menus have a built-in item for; a registered <see cref="Core.Control.IDevicePanelContribution"/> with one of these ids (the web host resolves them) is not listed a second time.</summary>
     public static IReadOnlySet<string> BuiltInPanelIds { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "k8055", "busylight" };
 
+    /// <summary>
+    /// Why a plugin-contributed panel's menu item is disabled, or null when it is enabled. A panel whose indicators come
+    /// from a presenter is disabled (not hidden) until that presenter is among the connection's selected ones.
+    /// </summary>
+    public static string? UnavailableReason(Core.Control.IDevicePanelContribution panel, CliOptions options, bool connected)
+    {
+        ArgumentNullException.ThrowIfNull(panel);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (!connected)
+        {
+            return "Connect first.";
+        }
+
+        if (!panel.IsAvailable(options.Transport, options.VendorId, options.ProductId))
+        {
+            return "This panel does not suit the current connection.";
+        }
+
+        if (panel.PresenterName is { Length: > 0 } presenter
+            && !options.EffectivePresenters.Contains(presenter, StringComparer.OrdinalIgnoreCase))
+        {
+            return $"Select the '{presenter}' presenter to use this panel.";
+        }
+
+        return null;
+    }
+
     public static bool IsAvailable(DevicePanel panel, CliOptions options, bool connected)
     {
         ArgumentNullException.ThrowIfNull(options);

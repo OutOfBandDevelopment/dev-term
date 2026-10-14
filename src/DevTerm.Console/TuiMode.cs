@@ -890,7 +890,9 @@ public static class TuiMode
 
             foreach (var (panel, item) in contributedPanelItems)
             {
-                item.Enabled = connected && panel.IsAvailable(windowTab.Tab.CliOptions.Transport, windowTab.Tab.CliOptions.VendorId, windowTab.Tab.CliOptions.ProductId);
+                var reason = DevicePanels.UnavailableReason(panel, windowTab.Tab.CliOptions, connected);
+                item.Enabled = reason is null;
+                item.HelpText = reason ?? string.Empty;
             }
 
             foreach (var (provider, item) in instrumentItems)

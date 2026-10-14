@@ -58,7 +58,7 @@ F --> IDevicePanelContribution : menu + panel
 ## Open questions
 
 - ~~Does a contribution also carry its `ScpiInstrumentPicker`-style dialogs, or is that a second contract?~~ Decided 2026-10-08: a second contract, `IInstrumentPanelProvider` (a data-driven picker with auto-detect and generic choices), and SCPI moved to a plugin through it.
-- Plugin folders are loaded per profile or globally? Today it is global (`--plugins`). ~~Whether panel entries filter by the selected presenter.~~ Decided 2026-10-13: they do filter; an entry that does not match is shown disabled with the reason, not hidden. Not built yet (BACKLOG).
+- Plugin folders are loaded per profile or globally? Today it is global (`--plugins`). ~~Whether panel entries filter by the selected presenter.~~ Decided 2026-10-13: they do filter; an entry that does not match is shown disabled with the reason, not hidden. Built 2026-10-14: `DevicePanels.UnavailableReason` (TUI menu help text, WPF tooltip); the web host's panel list is unchanged.
 
 ## Completion checklist
 

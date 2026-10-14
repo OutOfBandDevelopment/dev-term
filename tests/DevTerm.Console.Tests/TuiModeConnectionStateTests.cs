@@ -64,7 +64,7 @@ public sealed class TuiModeConnectionStateTests
     {
         var (session, _, ascii) = CreateSession();
         await session.OpenAsync(TestContext.CancellationToken);
-        var options = new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5501, Presenter = ["ascii"] };
+        var options = new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5501, Presenter = ["k8055"] };
 
         TuiTestRunner.RunHeadless(session, ascii, options, parts =>
         {

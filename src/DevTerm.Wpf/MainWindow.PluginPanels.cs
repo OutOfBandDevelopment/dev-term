@@ -64,8 +64,9 @@ public partial class MainWindow
     {
         foreach (var (panel, item) in _pluginPanelItems)
         {
-            item.IsEnabled = tab is not null && connected
-                && panel.IsAvailable(tab.Tab.CliOptions.Transport, tab.Tab.CliOptions.VendorId, tab.Tab.CliOptions.ProductId);
+            var reason = tab is null ? "Connect first." : DevTerm.Configuration.DevicePanels.UnavailableReason(panel, tab.Tab.CliOptions, connected);
+            item.IsEnabled = reason is null;
+            item.ToolTip = reason;
         }
     }
 }
