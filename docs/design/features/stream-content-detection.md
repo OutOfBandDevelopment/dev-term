@@ -152,7 +152,7 @@ Configuration lives alongside the existing Stream Monitor settings (per-profile 
 
 ## Open questions
 
-- Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` specifically (fastest to ship,
+- Decided 2026-10-13: a device manifest's command schema also declares `ExpectedResponseFormat` per command, with the same vocabulary as SCPI profiles (BACKLOG). Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` specifically (fastest to ship,
   matches where the idea came from) or on a more general, not-yet-built per-command schema shared
   with `DeviceManifest` (see device-control-modules.md's declarative-schema section) — starting on
   the SCPI type is the pragmatic choice; folding it into a general schema later is a rename/move,

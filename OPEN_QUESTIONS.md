@@ -72,8 +72,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live. —
   [presenters](docs/design/presenters.md)
-- **Control modules:** a manifest command schema
-  declaring `ExpectedResponseFormat`; a general Kaitai-backed binary response schema. —
+- **Control modules:** a general Kaitai-backed binary response schema. —
   [device-control-modules](docs/design/device-control-modules.md),
   [stream-content-detection](docs/design/features/stream-content-detection.md)
 - **UI definitions:** nested `Sections`;
@@ -82,8 +81,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **Format schemas:** confirm the
   polymorphic `UiControl` `oneOf` export. — [format-schema-files](docs/design/features/format-schema-files.md)
 - **Transports:** the BLE adapter contract before a second OS backend. — [transports](docs/design/transports.md)
-- **Session logging:** backward seek
-  replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
+- **Session logging:** the `IPresenter` snapshot/restore contract the checkpoints need. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
 - **Theming:** color the TUI Connection Editor's "(not found)" hints. — [theming](docs/design/theming.md)
 

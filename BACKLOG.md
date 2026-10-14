@@ -82,6 +82,8 @@ the rest.
 - Plugin default reply timeout 2 s (per-plugin override), and `.zip` plugin packaging installed from the Plugins screen with approval at install ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
 - SCPI profiles stay separate from `DeviceManifest`, layered: a generic SCPI profile plus device-specific sub-types ([format-schema-files](docs/design/features/format-schema-files.md)).
 - TCP listener: one tab per accepted peer ([transports](docs/design/transports.md)).
+- Session log playback: periodic checkpoint markers (needs an `IPresenter` snapshot contract), a skip-silence gap cap (default 1 s), and note edit/delete recorded as revisions ([session-logging](docs/design/session-logging.md)).
+- Device manifest commands declare `ExpectedResponseFormat` per command, same vocabulary as SCPI profiles ([stream-content-detection](docs/design/features/stream-content-detection.md)).
 
 ### Proposed Ideas
 

@@ -83,7 +83,7 @@ warning is its first output line.
 
 ## Open items
 
-- Notes can be added but not edited or deleted here.
-- No "skip silence" (capping long idle gaps) yet.
+- Notes can be added but not edited or deleted here. Decided 2026-10-13: edit/delete with the change recorded (BACKLOG).
+- No "skip silence" (capping long idle gaps) yet. Decided 2026-10-13: a user-set cap, default 1 s (BACKLOG).
 - Backward seeks replay from the start, so they get slower as the log grows.
 - ~~The TUI has no seek control besides Rewind/+10s/End/Step.~~ Added 2026-10-03: the **Jump to** field.
