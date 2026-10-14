@@ -72,7 +72,7 @@ decodes itself (PNG, JPEG, GIF, BMP, TIFF):
 
 ![WPF Stream Monitor previewing a captured PNG screen dump](images/wpf-stream-monitor.png)
 
-In the TUI, type in **Search:** to narrow the list and press the **Sort:** button to cycle the order. In WPF the box above the list searches captures by device, type, file name or time; the two drop-downs below it filter by content type and device, and the last one sorts (oldest, newest, largest, by type or by device).
+In the TUI, type in **Search:** to narrow the list and press the **Sort:** button to cycle the order. In WPF the box above the list searches captures by device, type, file name or time; the first drop-down below it filters by content type and the second sorts (oldest, newest, largest, by type or by device). Captures from different devices get one pane each: a tab per device (with its capture count) above the list, after an "All devices" tab. In the TUI the **Device:** button cycles the same panes.
 
 HP-GL, PostScript and PCL are captured and saved, but can't be previewed directly:
 

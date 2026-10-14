@@ -133,7 +133,8 @@ public sealed class StreamMonitorWindowTests
             StaTestRunner.DoEvents();
             Assert.HasCount(2, window.Items);
             Assert.IsGreaterThanOrEqualTo(window.Items[1].Capture.Capture.Data.Length, window.Items[0].Capture.Capture.Data.Length);
-            Assert.AreEqual(1, device.Items.Count - 1, "One device, so one choice besides 'All devices'.");
+            Assert.AreEqual(2, device.Items.Count, "One device: its pane plus the all-devices pane.");
+            Assert.AreEqual("Bench scope (2)", ((StreamDevicePane)device.Items[1]!).Title);
             window.Close();
         });
     }

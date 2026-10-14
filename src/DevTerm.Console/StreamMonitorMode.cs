@@ -53,8 +53,9 @@ internal static class StreamMonitorMode
         var folderLabel = new Label { X = 0, Y = 1, Width = Dim.Fill(), Height = 1, HotKeySpecifier = noHotKey };
         var explanationLabel = new Label { X = 0, Y = 2, Width = Dim.Fill(), Height = 2, Text = ExplanationText };
         var capturesLabel = new Label { X = 0, Y = 5, Text = "Search:" };
-        var searchField = new TextField { X = Pos.Right(capturesLabel) + 1, Y = 5, Width = 24 };
+        var searchField = new TextField { X = Pos.Right(capturesLabel) + 1, Y = 5, Width = 16 };
         var sortButton = new Button { X = Pos.Right(searchField) + 2, Y = 5, Text = SortText(StreamCaptureSort.Oldest), ShadowStyle = ShadowStyles.None };
+        var deviceButton = new Button { X = Pos.Right(sortButton) + 1, Y = 5, Text = DeviceText(null, 0), ShadowStyle = ShadowStyles.None };
         var captureList = new ListView
         {
             X = 0,
@@ -74,6 +75,7 @@ internal static class StreamMonitorMode
         // The captures the list currently shows (StreamCaptureView over the monitor's own list), in the order shown.
         IReadOnlyList<StreamMonitorCapture> shown = [];
         var sort = StreamCaptureSort.Oldest;
+        string? deviceFilter = null;
 
         StreamMonitorCapture? Selected()
         {
@@ -115,7 +117,15 @@ internal static class StreamMonitorMode
             folderLabel.Text = $"Saving to: {TuiText.CompactPath(monitor.ExportDirectory, Math.Max((app.Screen.Width > 0 ? app.Screen.Width : 80) - 14 - more.Length, 20))}{more}";
             toggleButton.Text = running ? "Stop Monitoring" : "Start Monitoring";
 
-            shown = StreamCaptureView.Apply(monitor.Captures, searchField.Text, sort: sort);
+            var panes = StreamCaptureView.Panes(monitor.Captures);
+            if (!panes.Any(p => string.Equals(p.Device, deviceFilter, StringComparison.OrdinalIgnoreCase)))
+            {
+                deviceFilter = null;
+            }
+
+            var pane = panes.First(p => string.Equals(p.Device, deviceFilter, StringComparison.OrdinalIgnoreCase));
+            deviceButton.Text = DeviceText(pane.Device, pane.Count);
+            shown = StreamCaptureView.Apply(monitor.Captures, searchField.Text, device: deviceFilter, sort: sort);
             rows.Clear();
             foreach (var capture in shown)
             {
@@ -148,6 +158,15 @@ internal static class StreamMonitorMode
             var all = Enum.GetValues<StreamCaptureSort>();
             sort = all[(Array.IndexOf(all, sort) + 1) % all.Length];
             sortButton.Text = SortText(sort);
+            Refresh();
+        };
+
+        deviceButton.Accepting += (_, e) =>
+        {
+            e.Handled = true;
+            var panes = StreamCaptureView.Panes(monitor.Captures);
+            var at = panes.ToList().FindIndex(p => string.Equals(p.Device, deviceFilter, StringComparison.OrdinalIgnoreCase));
+            deviceFilter = panes[(at + 1) % panes.Count].Device;
             Refresh();
         };
 
@@ -215,10 +234,10 @@ internal static class StreamMonitorMode
             app.RequestStop();
         };
 
-        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, searchField, sortButton, captureList, detailLabel, toggleButton, modeButton, convertButton, closeButton);
+        window.Add(statusLabel, folderLabel, explanationLabel, capturesLabel, searchField, sortButton, deviceButton, captureList, detailLabel, toggleButton, modeButton, convertButton, closeButton);
         Refresh();
 
-        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, convertButton, closeButton, Refresh, modeButton, converterOptions, searchField, sortButton);
+        return new StreamMonitorWindowParts(window, statusLabel, captureList, detailLabel, toggleButton, convertButton, closeButton, Refresh, modeButton, converterOptions, searchField, sortButton, deviceButton);
     }
 
     /// <summary>
@@ -239,6 +258,9 @@ internal static class StreamMonitorMode
     /// <summary>The sort button's label; pressing it cycles to the next order.</summary>
     internal static string SortText(StreamCaptureSort sort) => $"Sort: {sort}";
 
+    /// <summary>The device pane button: the pane's title, e.g. <c>Device: All devices (3)</c>.</summary>
+    internal static string DeviceText(string? device, int count) => $"Device: {new StreamDevicePane(device, count).Title}";
+
     /// <summary>The two detail lines under the list for the selected capture: what it is, then where it went.</summary>
     internal static string Detail(StreamMonitorCapture capture)
     {
@@ -251,4 +273,4 @@ internal static class StreamMonitorMode
 }
 
 /// <summary>The Stream Monitor window's controls, for tests to drive/inspect headlessly — <see cref="Refresh"/> is what the window runs whenever the monitor changes.</summary>
-internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button ConvertButton, Button CloseButton, Action Refresh, Button ModeButton, StreamCaptureConverterOptions ConverterOptions, TextField SearchField, Button SortButton);
+internal sealed record StreamMonitorWindowParts(Window Window, Label StatusLabel, ListView CaptureList, Label DetailLabel, Button ToggleButton, Button ConvertButton, Button CloseButton, Action Refresh, Button ModeButton, StreamCaptureConverterOptions ConverterOptions, TextField SearchField, Button SortButton, Button DeviceButton);

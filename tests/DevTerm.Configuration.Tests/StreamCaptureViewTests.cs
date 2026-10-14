@@ -19,6 +19,16 @@ public sealed class StreamCaptureViewTests
     private static readonly StreamMonitorCapture[] _all = [_scopeBmp, _awgPng, _scopePng];
 
     [TestMethod]
+    public void Panes_AreAllDevicesThenOnePerDeviceWithItsCount()
+    {
+        var panes = StreamCaptureView.Panes(_all);
+
+        Assert.AreSequenceEqual(["All devices (3)", "dg1062z (1)", "tds2024 (2)"], panes.Select(p => p.Title));
+        Assert.IsNull(panes[0].Device);
+        Assert.AreEqual("tds2024", panes[2].Device);
+    }
+
+    [TestMethod]
     public void Apply_NoCriteria_SortsOldestFirst() =>
         Assert.AreSequenceEqual([_awgPng, _scopePng, _scopeBmp], StreamCaptureView.Apply(_all));
 

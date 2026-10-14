@@ -60,7 +60,6 @@ the rest.
 
 ### UX decisions awaiting implementation (decided 2026-10-13)
 
-- Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).
 - CLI cross-session scripting: attach to a named session, then the ordinary REPL ([architecture](docs/design/architecture.md)).
 - Network device config editors are manifests with a config UI where possible; a `DevTerm.Devices.*` project only when custom protocol code is needed ([network-device-config-editors](docs/design/proposals/network-device-config-editors.md)).
 - UDP listener: one session, each datagram shown with its sender ([transports](docs/design/transports.md)).

@@ -72,6 +72,13 @@ public sealed class StreamMonitorModeTests
                 parts.SortButton.InvokeCommand(Command.Accept);
                 Assert.AreEqual(StreamMonitorMode.SortText(StreamCaptureSort.Newest), parts.SortButton.Text);
                 Assert.AreEqual(2, parts.CaptureList.Source!.Count);
+
+                Assert.AreEqual(StreamMonitorMode.DeviceText(null, 2), parts.DeviceButton.Text);
+                parts.DeviceButton.InvokeCommand(Command.Accept);
+                Assert.AreEqual(StreamMonitorMode.DeviceText("Bench scope", 2), parts.DeviceButton.Text);
+                Assert.AreEqual(2, parts.CaptureList.Source!.Count);
+                parts.DeviceButton.InvokeCommand(Command.Accept);
+                Assert.AreEqual(StreamMonitorMode.DeviceText(null, 2), parts.DeviceButton.Text);
             }
             finally
             {
