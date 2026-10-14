@@ -101,7 +101,7 @@ Validator ..> [DeviceManifest] : loads and checks meaning
 ## Open questions
 
 - ~~Where do schemas get published for `$schema` URLs: a relative path into the repo is enough for now; a
-  stable hosted URL is only worth it if manifests are shared outside the repo.~~ Decided 2026-10-13: host them at a stable, versioned URL (GitHub Pages or raw) so editors validate as you type; the choice of host is still to be made (BACKLOG).
+  stable hosted URL is only worth it if manifests are shared outside the repo.~~ Decided 2026-10-13: host them at a stable, versioned URL (GitHub Pages or raw) so editors validate as you type. Host chosen 2026-10-14: the repo's `schemas/` folder on GitHub raw (`https://raw.githubusercontent.com/OutOfBandDevelopment/dev-term/main/schemas/<name>.schema.json`); each generated schema carries that as its `$id`. Pin a version by replacing `main` with a release tag in a `$schema` reference.
 - ~~Does the SCPI device profile format (`Profiles/*.json`) stay separate from `DeviceManifest`, or get
   folded in later?~~ Decided 2026-10-13: it stays separate and is layered: a generic SCPI profile serves every SCPI device, and a device that needs its own commands or panel gets a specific sub-type profile on top of it (BACKLOG for the layering).
 - Polymorphic `UiControl` (`kind`): confirm `JsonSchemaExporter` emits a usable `oneOf` with the

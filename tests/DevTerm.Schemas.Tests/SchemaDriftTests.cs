@@ -30,6 +30,17 @@ public class SchemaDriftTests
     }
 
     [TestMethod]
+    public void EverySchema_HasAnIdThatIsItsHostedUrl()
+    {
+        foreach (var (name, text) in SchemaGenerator.Generate())
+        {
+            StringAssert.Contains(text, $"\"$id\": \"{SchemaGenerator.BaseUrl}{name}\"");
+        }
+
+        Assert.StartsWith("https://raw.githubusercontent.com/OutOfBandDevelopment/dev-term/main/schemas/", SchemaGenerator.BaseUrl);
+    }
+
+    [TestMethod]
     public void UiDefinitionSchema_DescribesEveryControlKindWithADiscriminator()
     {
         var schema = JsonNode.Parse(SchemaGenerator.Generate()["ui-definition.schema.json"])!;

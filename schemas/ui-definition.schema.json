@@ -1020,5 +1020,6 @@
   "required": [
     "Name"
   ],
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/OutOfBandDevelopment/dev-term/main/schemas/ui-definition.schema.json"
 }
