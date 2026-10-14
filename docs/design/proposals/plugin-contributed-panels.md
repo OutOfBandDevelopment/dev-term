@@ -58,8 +58,7 @@ F --> IDevicePanelContribution : menu + panel
 ## Open questions
 
 - ~~Does a contribution also carry its `ScpiInstrumentPicker`-style dialogs, or is that a second contract?~~ Decided 2026-10-08: a second contract, `IInstrumentPanelProvider` (a data-driven picker with auto-detect and generic choices), and SCPI moved to a plugin through it.
-- Plugin folders are loaded per profile or globally? Today it is global (`--plugins`); a panel menu entry for a plugin
-  whose device is not selected would be noise, so likely filter by the selected presenter.
+- Plugin folders are loaded per profile or globally? Today it is global (`--plugins`). ~~Whether panel entries filter by the selected presenter.~~ Decided 2026-10-13: they do filter; an entry that does not match is shown disabled with the reason, not hidden. Not built yet (BACKLOG).
 
 ## Completion checklist
 

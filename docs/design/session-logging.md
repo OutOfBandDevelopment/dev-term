@@ -238,7 +238,7 @@ Decided 2026-10-03.
 ## Open questions
 
 - A note can't be added to a log that this same process is still recording. The recorder holds the
-  file open, so the atomic replace fails and the error is reported. Stop logging first.
+  file open, so the atomic replace fails and the error is reported. Stop logging first. Decided 2026-10-13: it should be possible, as a timestamped `note` record written into the live log through the recorder; not built yet (BACKLOG).
 - Seeking backward replays from record 0, so its cost grows with the log. Presenter snapshots at
   intervals would fix that, but `IPresenter` has no snapshot/restore contract today.
 - No "skip silence" option yet (capping long idle gaps during realtime playback).

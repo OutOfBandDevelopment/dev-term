@@ -33,8 +33,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 - **USR-TCP232-302 configuration channel** (setup protocol versus HTTP page) and the **USR UDP search packet**. —
   [network-device-config-editors](docs/design/proposals/network-device-config-editors.md),
   [network-device-discovery](docs/design/proposals/network-device-discovery.md)
-- **Which discovery probes answer on the bench:** mDNS, SSDP, EByte broadcast, USR search; one row or several for a
-  multi-service hit; subnet choice with several adapters. —
+- **Which discovery probes answer on the bench:** mDNS, SSDP, EByte broadcast, USR search; subnet choice with several adapters. —
   [network-device-discovery](docs/design/proposals/network-device-discovery.md)
 - **BYTECC BT-UP01:** does vendor software still run; does it speak standard `usbip`; what is on the wire; is a
   URB-tunnel USB transport a new kind of thing rather than an `ITransport`? —
@@ -68,9 +67,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
 Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 
-- **Plugin panels:** whether panel entries filter by selected presenter ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
-- **Cross-process channel:** is a session's pipe name the profile name, a tab title or generated, and how are live sessions discovered? — [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)
-- **Out-of-process plugins:** the default reply timeout and an async render path (a slow plugin delays the read loop); packaging beyond `plugin.json`; JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
+- **Out-of-process plugins:** the default reply timeout; packaging beyond `plugin.json`; JSON-with-hex for bulk streams. — [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)
 
 - **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live; whether raster export is a core service. —
@@ -82,7 +79,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   [device-control-modules](docs/design/device-control-modules.md),
   [stream-content-detection](docs/design/features/stream-content-detection.md)
 - **UI definitions:** an indicator format/unit hint versus a pre-formatted decoder value; nested `Sections`;
-  *disabled*/interlocked controls and `VisibleWhen` in the panel renderers. —
+  `VisibleWhen` in the panel renderers. —
   [ui-definitions](docs/design/ui-definitions.md)
 - **Format schemas:** a stable hosted `$schema` URL; whether SCPI profiles fold into `DeviceManifest`; confirm the
   polymorphic `UiControl` `oneOf` export. — [format-schema-files](docs/design/features/format-schema-files.md)
@@ -92,7 +89,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   [rfc2217](docs/design/rfc2217.md)
 - **Network config editors:** `DevTerm.Devices.*` projects versus manifests with a config UI. —
   [network-device-config-editors](docs/design/proposals/network-device-config-editors.md)
-- **Session logging:** adding a note to a log still being recorded; backward seek
+- **Session logging:** backward seek
   replays from record 0 (needs `IPresenter` snapshots); "skip silence"; edit/delete notes. —
   [session-logging](docs/design/session-logging.md), [playback-window spec](docs/specs/playback-window.md)
 - **Theming:** color the TUI Connection Editor's "(not found)" hints. — [theming](docs/design/theming.md)
@@ -101,7 +98,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 
 "Open items" from `docs/specs/`; each is a missing capability, not a contested decision.
 
-- **Control panel:** expand/collapse not persisted; chart sizes are fixed. —
+- **Control panel:** chart sizes are fixed. —
   [device-control-panel](docs/specs/device-control-panel.md)
 - **Expression picker:** no picking inside a channel segment or a button's parameter fields; no operators/regex
   helpers or CEL-style extension. — [expression-picker](docs/specs/expression-picker.md)
@@ -109,7 +106,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   [manifest-editor](docs/specs/manifest-editor.md)
 - **Stream Monitor:** no CLI mode or `--presenter`; one capture at a time; only SCPI commands can
   declare a format. — [stream-monitor](docs/specs/stream-monitor.md)
-- **Theme builder:** no delete for saved themes; the TUI role list has no scroll indicator; no manual-use verification
+- **Theme builder:** the TUI role list has no scroll indicator; no manual-use verification
   pass. — [theme-builder](docs/specs/theme-builder.md)
 
 ## Open bugs

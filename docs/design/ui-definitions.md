@@ -427,7 +427,7 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
   control's value — device-control-modules.md's open question) belong in this model at all~~ —
   **partly settled 2026-09-25**: *hidden* based on another value does, as `VisibleWhen`
   (`UiCondition`), evaluated by the form renderers (see [Forms from one definition](#forms-from-one-definition)).
-  Still open: evaluating it in the control-panel renderers too, and *disabled*/interlocked controls.
+  Still open: evaluating it in the control-panel renderers too. *Disabled*/interlocked controls: Decided 2026-10-13, they show visible but disabled, with the reason on hover/focus; not built yet (BACKLOG).
 - Whether `Sections` should ever nest — deferred per above until a real device actually needs it.
 
 See [device-manifests.md](device-manifests.md) for how a `UiDefinition` fits into a complete,

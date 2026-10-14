@@ -362,7 +362,7 @@ any command not in the curated list.
 ## Open items
 
 - **Expand/collapse state lasts only for the process** — it isn't saved across restarts (same as
-  the last picked colors).
+  the last picked colors). Decided 2026-10-13: it will be remembered per device profile; not built yet (BACKLOG).
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
   only way in. Since 2026-10-03 connecting with such a profile prints a status line pointing at
   Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.

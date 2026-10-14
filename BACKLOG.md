@@ -58,6 +58,20 @@ the rest.
 
 - **Read-write control channel and out-of-process plugins over both a named pipe and a localhost web service** (decided 2026-10-07): see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md) and [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md).
 
+### UX decisions awaiting implementation (decided 2026-10-13)
+
+- Plugin panel menu entries filter by the selected presenter; non-matching ones are shown disabled with a reason
+  ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
+- Control panel expand/collapse state is saved per device profile ([device-control-panel](docs/specs/device-control-panel.md)).
+- Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
+  ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
+- Theme builder: a Delete button with confirmation in the saved-theme list, in the TUI and WPF ([theme-builder](docs/specs/theme-builder.md)).
+- Session pipe name is the profile name (numeric suffix on collision) and `--listsessions` lists live sessions
+  ([cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md)).
+- Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
+- Interlocked controls render visible but disabled, with the reason on hover/focus ([ui-definitions](docs/design/ui-definitions.md)).
+- Notes can be added to a log while it is still being recorded, as a timestamped `note` record ([session-logging](docs/design/session-logging.md)).
+
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md) (the host, `/ws` tunnel and `/panel` page are already built and in `TODO.md` item 1; this line is the rest).
