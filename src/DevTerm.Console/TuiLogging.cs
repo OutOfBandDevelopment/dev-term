@@ -19,6 +19,7 @@ internal static class TuiLogging
 {
     public const string StartTitle = "Start _Logging...";
     public const string StopTitle = "Stop _Logging";
+    public const string AddNoteTitle = "Add _Note to Log...";
 
     /// <summary>The longest file name the status line shows; longer ones keep their end (the connection and extension), since a Terminal.Gui label word-wraps an over-long line and the second line is simply not shown.</summary>
     private const int _maxShownFileName = 28;
@@ -35,6 +36,12 @@ internal static class TuiLogging
         return $"   ● REC {(name.Length > _maxShownFileName ? "…" + name[^(_maxShownFileName - 1)..] : name)}";
     }
 
+    /// <summary>File &gt; Add Note to Log...'s prompt; <see langword="null"/> if cancelled or blank.</summary>
+    public static string? PromptForNote(IApplication app) =>
+        PlaybackMode.PromptForText(app, "Add Note to Log", "Note:", string.Empty) is { } text && text.Trim().Length > 0
+            ? text.Trim()
+            : null;
+
     /// <summary>File &gt; Start Logging...'s prompt, defaulting to a timestamped file under the logs directory; <see langword="null"/> if cancelled.</summary>
     public static string? PromptForPath(IApplication app, CliOptions cliOptions, string? profileName) =>
         PlaybackMode.PromptForText(app, "Start Logging", "Log file:", SessionLogging.DefaultLogPath(cliOptions, profileName, DateTimeOffset.Now)) is { } path
@@ -44,4 +51,4 @@ internal static class TuiLogging
 }
 
 /// <summary>The logging controls a test drives: <see cref="Start"/>/<see cref="Stop"/> are what File &gt; Start/Stop Logging do after the prompt, acting on whichever tab is active.</summary>
-internal sealed record TuiLoggingParts(MenuItem MenuItem, Func<string, bool> Start, Action Stop, Func<SessionLogger?> Logger);
+internal sealed record TuiLoggingParts(MenuItem MenuItem, Func<string, bool> Start, Action Stop, Func<SessionLogger?> Logger, MenuItem? AddNoteMenuItem = null);

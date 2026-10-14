@@ -219,6 +219,13 @@ if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)
     }
 }
 
+if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListSessions)))
+{
+    var live = SessionPipeServer.LiveSessions();
+    Console.WriteLine(live.Count == 0 ? "No sessions are publishing. Start one with --pipe <name>." : string.Join(Environment.NewLine, live));
+    return 0;
+}
+
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListPlugins)))
 {
     var pluginOptions = new CliOptions { Plugins = earlyConfig[nameof(CliOptions.Plugins)] };
@@ -322,6 +329,7 @@ var useTui = (layeredConfig.GetValue<bool?>(nameof(CliOptions.Tui)) ?? true) && 
 // are process-wide and survive Application.Init. Problems are shown in the main window's output.
 // Housekeeping: drop old logs/exports per the saved retention rules (keeps everything unless a rule is set).
 RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+SectionExpansionState.UsePersistence(DevTermUserDataPaths.SectionStateFile);
 
 if (useTui)
 {

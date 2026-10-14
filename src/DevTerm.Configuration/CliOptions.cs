@@ -392,6 +392,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public bool ListPlugins { get; set; }
 
+    /// <summary>List the dev-term sessions on this machine that are publishing on a <see cref="Pipe"/> and exit.</summary>
+    [Category("Mode")]
+    public bool ListSessions { get; set; }
+
     /// <summary>List the remembered out-of-process plugin approvals and exit.</summary>
     [Category("Mode")]
     public bool ListApprovals { get; set; }

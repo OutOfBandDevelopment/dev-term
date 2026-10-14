@@ -152,7 +152,7 @@ Configuration lives alongside the existing Stream Monitor settings (per-profile 
 
 ## Open questions
 
-- Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` specifically (fastest to ship,
+- Decided 2026-10-13: a device manifest's command schema also declares `ExpectedResponseFormat` per command, with the same vocabulary as SCPI profiles (BACKLOG). Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` specifically (fastest to ship,
   matches where the idea came from) or on a more general, not-yet-built per-command schema shared
   with `DeviceManifest` (see device-control-modules.md's declarative-schema section) — starting on
   the SCPI type is the pragmatic choice; folding it into a general schema later is a rename/move,
@@ -161,7 +161,7 @@ Configuration lives alongside the existing Stream Monitor settings (per-profile 
   unprompted) should still work — the sniffer path doesn't need a tracked query id to fire, only
   the declared-hint path does, so this should already fall out of the design as long as the watcher
   is wired into the pipeline unconditionally rather than only checking on `QuerySent`.
-- Whether multiple simultaneous "interesting" captures (e.g. two profiles' worth of image-returning
+- Decided 2026-10-13: simultaneous captures from different devices get one Stream Monitor pane per device; the correlation queue within one device is still open. Whether multiple simultaneous "interesting" captures (e.g. two profiles' worth of image-returning
   commands fired in quick succession) need their own correlation queue the way
   `ScpiReplyPresenter`'s FIFO already handles plain replies, or whether one-capture-at-a-time is
   good enough for how these commands are actually used in practice (a screen-dump command is

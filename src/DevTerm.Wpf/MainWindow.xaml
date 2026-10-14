@@ -43,6 +43,7 @@
                 <Separator />
                 <!-- Logger mode and playback: MainWindow.Logging.cs. -->
                 <MenuItem x:Name="LoggingMenuItem" Header="Start _Logging..." Click="LoggingMenuItem_Click" />
+                <MenuItem x:Name="AddNoteMenuItem" Header="Add _Note to Log..." IsEnabled="False" Click="AddNote_Click" />
                 <MenuItem Header="Open Log for _Playback..." Click="OpenLogForPlayback_Click" />
                 <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Ctrl+Q" Click="Exit_Click" />

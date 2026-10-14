@@ -161,13 +161,13 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
 - **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
-  proposal's Status for why it's bound in place instead).
+  proposal's Status for why it's bound in place instead). Decided 2026-10-13: a `--capture <dir>` option saves detected streams as files and prints one line per capture, for headless bench runs and CI (BACKLOG).
 - **Only the SCPI command schema can declare a format** today; a device manifest's own command schema
   can't yet.
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress
   is appended to the first, not captured separately (the proposal's open question on correlation).
   **Decided 2026-10-03:** keep one list view rather than parallel captures, with filter, search and sort. Built in both
-  front ends 2026-10-03 (see List criteria); the correlation question itself stays open.
+  front ends 2026-10-03 (see List criteria); the correlation question itself stays open. Decided 2026-10-13: simultaneous captures from different devices get one pane per device (BACKLOG).
 - **No retention/cleanup** of the export folder.
 - **Not verified against real hardware** yet — the DG1062Z screen capture (a real BMP in a
   definite-length block) and the TDS2024's `HARDCopy STARt` output (BMP/TIFF/EPS/PCL depending on

@@ -78,6 +78,7 @@ public partial class App : Application
         // run, else the saved View > Theme choice, else "system" - applied before the first window
         // (even the startup Device Profiles editor below). Problems show in MainWindow's output.
         RetentionSweeper.Sweep(new AppPreferencesStore().Load());
+        SectionExpansionState.UsePersistence(DevTermUserDataPaths.SectionStateFile);
         ActiveTheme.Initialize(layeredConfig);
         WpfTheme.AttachApplication(this);
 
@@ -141,7 +142,7 @@ public partial class App : Application
         // --pipe publishes the first tab's session read-only for `--attach` (the main window's other tabs are not published).
         if (!string.IsNullOrWhiteSpace(cliOptions.Pipe))
         {
-            _pipeServer = new SessionPipeServer(cliOptions.Pipe);
+            _pipeServer = new SessionPipeServer(SessionPipeServer.Resolve(cliOptions.Pipe, new ConnectionProfileStore().FindName(cliOptions) ?? cliOptions.Transport));
             _pipeRegistration = session.AddObserver(_pipeServer);
         }
 

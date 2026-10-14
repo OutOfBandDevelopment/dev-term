@@ -668,6 +668,53 @@ public sealed class ControlPanelModeTests
         });
     }
 
+    /// <summary>An interlocked control (EnabledWhen) stays visible but disabled, showing its reason, until its condition holds.</summary>
+    [TestMethod]
+    public void Control_EnabledWhen_StaysVisibleButDisabled_UntilConditionMet()
+    {
+        var definition = new UiDefinition
+        {
+            Name = "Interlocked Device",
+            Sections =
+            [
+                new UiSection
+                {
+                    Label = "Section",
+                    Controls =
+                    [
+                        new ToggleControl { Id = "arm", Label = "Arm", DefaultValue = false },
+                        new TextFieldControl
+                        {
+                            Id = "fire",
+                            Label = "Fire",
+                            DefaultValue = "x",
+                            EnabledWhen = new UiCondition { Id = "arm", Values = ["1"] },
+                            DisabledReason = "Arm the output first",
+                        },
+                    ],
+                },
+            ],
+        };
+
+        TuiTestRunner.RunHeadlessApp(app =>
+        {
+            var parts = ControlPanelMode.BuildWindow(app, definition, new FakeControlSurface(), null, "Interlocked");
+            var token = app.Begin(parts.Window) ?? throw new NotSupportedException();
+            app.LayoutAndDraw(true);
+
+            var fire = parts.ControlViews["fire"];
+            Assert.IsTrue(fire.Visible);
+            Assert.IsFalse(fire.Enabled, "Disabled while the interlock is unmet.");
+            Assert.IsTrue(TuiTestRunner.DumpBuffer().Contains("Arm the output first", StringComparison.Ordinal), "The reason is shown.");
+
+            ((CheckBox)parts.ControlViews["arm"]).Value = CheckState.Checked;
+            app.LayoutAndDraw(true);
+
+            Assert.IsTrue(fire.Enabled, "Enabled once armed.");
+            app.End(token);
+        });
+    }
+
     /// <summary>
     /// TODO.md's "Control panels ignore VisibleWhen" item, section-only half: a whole section
     /// (header + body) with its own VisibleWhen collapses to no rows at all while unmet — matching

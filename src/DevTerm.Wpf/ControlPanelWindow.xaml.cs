@@ -72,6 +72,9 @@ public partial class ControlPanelWindow : Window
     private readonly List<(UiCondition Condition, FrameworkElement[] Elements)> _controlVisibilityRules = [];
     private readonly List<(UiCondition Condition, FrameworkElement Element)> _sectionVisibilityRules = [];
 
+    // EnabledWhen (interlocks): the control stays visible but is disabled, with DisabledReason as its tooltip.
+    private readonly List<(UiControl Control, FrameworkElement Element)> _controlEnabledRules = [];
+
     /// <summary>Every interactive/display view, keyed by its <c>UiControl.Id</c> — for tests to drive/assert against, mirroring <c>ControlPanelWindowParts.ControlViews</c> in the TUI renderer.</summary>
     internal IReadOnlyDictionary<string, FrameworkElement> ControlViews => _controlViews;
 
@@ -250,6 +253,11 @@ public partial class ControlPanelWindow : Window
             Grid.SetColumn(content, 1);
             grid.Children.Add(content);
 
+            if (control.EnabledWhen is not null)
+            {
+                _controlEnabledRules.Add((control, content));
+            }
+
             if (control.VisibleWhen is { } visibleWhen)
             {
                 _controlVisibilityRules.Add((visibleWhen, label is null ? [content] : [label, content]));
@@ -359,6 +367,14 @@ public partial class ControlPanelWindow : Window
         foreach (var (condition, element) in _sectionVisibilityRules)
         {
             element.Visibility = IsConditionMet(condition) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        foreach (var (control, element) in _controlEnabledRules)
+        {
+            var enabled = IsConditionMet(control.EnabledWhen!);
+            element.IsEnabled = enabled;
+            element.ToolTip = enabled ? null : control.DisabledReason;
+            ToolTipService.SetShowOnDisabled(element, true);
         }
     }
 

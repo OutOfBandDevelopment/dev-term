@@ -80,6 +80,16 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
         Record(SessionLogRecordKind.Instrument, default, profile: profileName);
     }
 
+    /// <summary>Adds a timestamped <c>note</c> record while the log is still being recorded. Blank text is ignored; a disposed logger records nothing.</summary>
+    public void RecordNote(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (text.Trim() is { Length: > 0 } trimmed)
+        {
+            Record(SessionLogRecordKind.Note, default, text: trimmed);
+        }
+    }
+
     /// <summary>Stops following the current session without ending the log.</summary>
     public void Detach()
     {

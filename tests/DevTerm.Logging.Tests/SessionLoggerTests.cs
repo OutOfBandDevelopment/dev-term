@@ -138,6 +138,22 @@ public sealed class SessionLoggerTests
     }
 
     [TestMethod]
+    public async Task RecordNote_WritesATimestampedNoteInSequence_AndIgnoresBlankText()
+    {
+        await using var session = new Session(new FakeTransport(), new Pipeline([]));
+        using (var logger = SessionLogger.Start(_path, Header()))
+        {
+            logger.Attach(session, "loopback://");
+            logger.RecordNote("  probe moved to TP3  ");
+            logger.RecordNote("   ");
+        }
+
+        var log = SessionLog.Load(_path);
+        Assert.AreEqual("session,note", Shape(log));
+        Assert.AreEqual("probe moved to TP3", log.Records[1].Text);
+    }
+
+    [TestMethod]
     public async Task AFailedSend_IsRecordedAsTheAttemptedTxThenADisconnect()
     {
         var transport = new FakeTransport();

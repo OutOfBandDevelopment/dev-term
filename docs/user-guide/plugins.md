@@ -40,6 +40,16 @@ next start; it exits 1 when nothing was remembered under that name. Both exit wi
 plugin works at once, no restart), then walks the remembered approvals one at a time: forget it, keep it, or stop. A forgotten plugin
 asks again next start. The TUI asks right after it opens, WPF right after its window loads.
 
+![The TUI plugin approval dialog](images/tui-plugin-approval.png)
+
+![The TUI approvals picker](images/tui-plugin-approvals.png)
+
+In WPF the same two questions are message boxes:
+
+![The WPF plugin approval prompt](images/wpf-plugin-approval.png)
+
+![The WPF approvals picker](images/wpf-plugin-approvals.png)
+
 ## Web
 
 The **Plugins** page (`/plugins`) lists plugins waiting for approval with Run once and Always buttons, and the remembered approvals

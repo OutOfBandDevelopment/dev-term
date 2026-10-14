@@ -237,9 +237,8 @@ Decided 2026-10-03.
 
 ## Open questions
 
-- A note can't be added to a log that this same process is still recording. The recorder holds the
-  file open, so the atomic replace fails and the error is reported. Stop logging first.
+- ~~A note can't be added to a log that this same process is still recording.~~ Built 2026-10-13: File > Add Note to Log... (TUI and WPF, enabled while that tab logs) writes a timestamped `note` record through the recorder (`SessionLogger.RecordNote`), in sequence with the traffic. Playback's atomic replace still can't touch a log this process is recording; stop logging first for that.
 - Seeking backward replays from record 0, so its cost grows with the log. Presenter snapshots at
-  intervals would fix that, but `IPresenter` has no snapshot/restore contract today.
-- No "skip silence" option yet (capping long idle gaps during realtime playback).
-- Notes can only be added, not edited or deleted, from the Playback window.
+  intervals would fix that, but `IPresenter` has no snapshot/restore contract today. Decided 2026-10-13: the recorder writes periodic checkpoint markers into the log and playback seeks from the nearest one (BACKLOG).
+- No "skip silence" option yet (capping long idle gaps during realtime playback). Decided 2026-10-13: a user-set cap on gaps, default 1 s, in the playback bar; timestamps keep showing real time (BACKLOG).
+- Notes can only be added, not edited or deleted, from the Playback window. Decided 2026-10-13: edit and delete are wanted, with each change recorded as a revision so the log stays auditable (BACKLOG).

@@ -72,5 +72,5 @@ the picker opens until **Next sample** is pressed.
 
 ## Open items
 
-- Pick on a single channel's expression segment (typed after the third `:`), and on a button's Parameter fields (command parameter ids, not value paths).
+- Pick on a single channel's expression segment (typed after the third `:`), and on a button's Parameter fields (command parameter ids, not value paths). Decided 2026-10-13: parameter fields first, then channel segments (BACKLOG).
 - Operators/regex helpers and the CEL-style language extension (proposal's later steps).

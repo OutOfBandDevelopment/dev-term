@@ -58,6 +58,30 @@ the rest.
 
 - **Read-write control channel and out-of-process plugins over both a named pipe and a localhost web service** (decided 2026-10-07): see [cross-process-control-channel](docs/design/proposals/cross-process-control-channel.md) and [out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md).
 
+### UX decisions awaiting implementation (decided 2026-10-13)
+
+- Plugin panel menu entries filter by the selected presenter; non-matching ones are shown disabled with a reason
+  ([plugin-contributed-panels](docs/design/proposals/plugin-contributed-panels.md)).
+- Out-of-process plugins render asynchronously: raw bytes at once, decoded output when the plugin answers
+  ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
+- Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
+- Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).
+- RFC 2217 line/modem state changes go to the status line and session log, never the data stream ([rfc2217](docs/design/rfc2217.md)).
+- Indicator controls carry a format/unit hint; charts and thresholds keep the raw value ([ui-definitions](docs/design/ui-definitions.md)).
+- CLI cross-session scripting: attach to a named session, then the ordinary REPL ([architecture](docs/design/architecture.md)).
+- Network device config editors are manifests with a config UI where possible; a `DevTerm.Devices.*` project only when custom protocol code is needed ([network-device-config-editors](docs/design/proposals/network-device-config-editors.md)).
+- Publish the JSON Schemas at a stable, versioned `$schema` URL ([format-schema-files](docs/design/features/format-schema-files.md)).
+- UDP listener: one session, each datagram shown with its sender ([transports](docs/design/transports.md)).
+- Raster export as a core service every front end calls ([presenters](docs/design/presenters.md)).
+- Plugin `.zip` packaging installed from the Plugins screen with approval at install ([out-of-process-plugins](docs/design/proposals/out-of-process-plugins.md)).
+- SCPI profiles stay separate from `DeviceManifest`, layered: a generic SCPI profile plus device-specific sub-types ([format-schema-files](docs/design/features/format-schema-files.md)).
+- TCP listener: one tab per accepted peer ([transports](docs/design/transports.md)).
+- Session log playback: periodic checkpoint markers (needs an `IPresenter` snapshot contract), a skip-silence gap cap (default 1 s), and note edit/delete recorded as revisions ([session-logging](docs/design/session-logging.md)).
+- Device manifest commands declare `ExpectedResponseFormat` per command, same vocabulary as SCPI profiles ([stream-content-detection](docs/design/features/stream-content-detection.md)).
+- Stream Monitor CLI: `--capture <dir>` saves detected streams as files ([stream-monitor](docs/specs/stream-monitor.md)).
+- Expression picker: parameter fields first, then channel segments ([expression-picker](docs/specs/expression-picker.md)).
+- Manifest editor: JSON only, with a one-click convert from an `.xml` panel ([manifest-editor](docs/specs/manifest-editor.md)).
+
 ### Proposed Ideas
 
 - [Web-accessible host service (WebSocket tunnels + Blazor front end)](docs/design/proposals/web-tunnel-blazor-frontend.md) (the host, `/ws` tunnel and `/panel` page are already built and in `TODO.md` item 1; this line is the rest).

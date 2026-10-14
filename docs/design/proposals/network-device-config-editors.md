@@ -61,7 +61,7 @@ Win --> User : confirmed / differences
 
 - The USR-TCP232-302's configuration channel (its setup protocol versus the HTTP page) and which to use.
 - The E810's byte-count discrepancy noted in its proposal must be settled against a fresh capture before writing.
-- Whether editors live in `DevTerm.Devices.*` projects or as device manifests with a config UI.
+- ~~Whether editors live in `DevTerm.Devices.*` projects or as device manifests with a config UI.~~ Decided 2026-10-13: a manifest with a config UI wherever it can express the device; a `DevTerm.Devices.*` project only for a device that needs custom protocol code (BACKLOG).
 
 ## Completion checklist
 

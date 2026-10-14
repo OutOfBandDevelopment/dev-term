@@ -64,11 +64,11 @@ public static class CliMode
         session.Disconnected += (_, e) =>
             stderr.WriteLine($"{ConnectionErrorMessages.ForDisconnect(cliOptions.Transport, e.Error)} The next line you send will reconnect.");
 
-        await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(cliOptions.Pipe);
+        await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(SessionPipeServer.Resolve(cliOptions.Pipe, new ConnectionProfileStore().FindName(cliOptions) ?? cliOptions.Transport));
         using var pipeRegistration = pipeServer is null ? null : session.AddObserver(pipeServer);
         if (pipeServer is not null)
         {
-            stderr.WriteLine($"Publishing this session read-only; attach with: --attach {cliOptions.Pipe}");
+            stderr.WriteLine($"Publishing this session read-only; attach with: --attach {pipeServer.PipeName["devterm-session-".Length..]}");
         }
 
         await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control)

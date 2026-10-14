@@ -29,4 +29,13 @@ public abstract class UiControl
 
     /// <summary>When set, the control is shown only while this condition holds — honored by the form renderers (see docs/design/ui-definitions.md's "Forms from one definition").</summary>
     public UiCondition? VisibleWhen { get; set; }
+
+    /// <summary>
+    /// When set, the control stays visible but is disabled (an interlock) until this condition holds; the panel
+    /// renderers show <see cref="DisabledReason"/> while it is disabled.
+    /// </summary>
+    public UiCondition? EnabledWhen { get; set; }
+
+    /// <summary>Why the control is disabled while <see cref="EnabledWhen"/> doesn't hold (a tooltip in WPF).</summary>
+    public string? DisabledReason { get; set; }
 }

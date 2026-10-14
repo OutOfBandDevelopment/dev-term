@@ -79,8 +79,8 @@ if any field is invalid, nothing is sent.
   Apply button) has nothing to name a header with, so it has no header and is always shown. Every
   toggle is recorded in `DevTerm.Configuration.SectionExpansionState`, keyed by the definition's
   `Name` plus the section's label (Notes included), and a panel opens each section as last left —
-  expanded the first time. Shared by both front ends, kept for the life of the process, not
-  persisted (the same in-process pattern as `LastPickedColors`).
+  expanded the first time. Shared by both front ends; the console and WPF apps save the collapsed ones to
+  `~/.dev-term/section-state.json` (`SectionExpansionState.UsePersistence`) and reload them at startup.
 - **A section's or control's `VisibleWhen`** (see
   [ui-definitions.md](../design/ui-definitions.md#forms-from-one-definition)) is honored here too,
   not just by the form renderers: a hidden section has no header and takes no space (WPF: its
@@ -89,6 +89,9 @@ if any field is invalid, nothing is sent.
   after it moves up to fill the gap. Re-evaluated on every value change of the control the condition
   names, so ticking a checkbox or picking a choice option can reveal or hide a row/section live,
   with everything below it reflowing immediately.
+- **A control's `EnabledWhen`** (an interlock) keeps the row visible but disabled until its condition holds, re-evaluated like
+  `VisibleWhen`. `DisabledReason` explains why: a tooltip in WPF (shown on a disabled control), a `(reason)` note after the row in
+  the TUI (a disabled view can't take focus, so there is no footer line). Not honored by the web panel yet.
 - **Labels are aligned per section and never wrap.** WPF: a two-column `Grid` per section — an
   auto-sized, `NoWrap` label column, then the controls (a chart's label sits at its top). TUI: every
   control in a section starts at the section's longest `Label:` plus one space; a chart takes as many
@@ -361,8 +364,7 @@ any command not in the curated list.
 
 ## Open items
 
-- **Expand/collapse state lasts only for the process** — it isn't saved across restarts (same as
-  the last picked colors).
+- **Last picked colors last only for the process** (the expand/collapse state is saved since 2026-10-13).
 - **A connection profile's `ManifestName` doesn't open that manifest's panel** — the picker is the
   only way in. Since 2026-10-03 connecting with such a profile prints a status line pointing at
   Device > Device Manifest... (`ManifestPanelHint`, both front ends); it never opens the panel itself.

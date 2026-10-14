@@ -133,7 +133,7 @@ It works like the TUI's, with these differences:
 - A SCPI instrument picked from **Device** while logging is recorded too, so playback of a terminatorless
   instrument (a bench power supply, say) still shows its replies. Logs from before this lack it, and then
   only `--scpiprofile` at logging time helps.
-- You can't add a note to a log that this same dev-term is still recording. Stop logging first.
+- While a log is recording, **File > Add Note to Log...** writes a timestamped note into it (TUI and WPF). Playback's Add Note can't edit a log this same dev-term is still recording; stop logging first.
 - Logs made by a newer dev-term with a different format version are refused with a message rather
   than misread.
 

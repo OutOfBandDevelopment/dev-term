@@ -422,12 +422,12 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
   boundary" convention.
 - Whether `IndicatorControl` needs a format/unit hint (e.g. "show this raw byte as hex" vs. "show
   this as a percentage") or whether that's better left to the decoder producing the value in
-  already-formatted form.
+  already-formatted form. Decided 2026-10-13: a format/unit hint on the control, so charts and thresholds keep the raw number and each front end formats it (BACKLOG).
 - ~~Whether conditional/interlocked controls (a control that's disabled or hidden based on another
   control's value — device-control-modules.md's open question) belong in this model at all~~ —
   **partly settled 2026-09-25**: *hidden* based on another value does, as `VisibleWhen`
   (`UiCondition`), evaluated by the form renderers (see [Forms from one definition](#forms-from-one-definition)).
-  Still open: evaluating it in the control-panel renderers too, and *disabled*/interlocked controls.
+  Still open: evaluating it in the control-panel renderers too. *Disabled*/interlocked controls: built 2026-10-13 as `UiControl.EnabledWhen` (a `UiCondition`) plus `DisabledReason`: the control stays visible but disabled, the reason is a tooltip in WPF and a note after the row in the TUI. Not yet in the web panel.
 - Whether `Sections` should ever nest — deferred per above until a real device actually needs it.
 
 See [device-manifests.md](device-manifests.md) for how a `UiDefinition` fits into a complete,
