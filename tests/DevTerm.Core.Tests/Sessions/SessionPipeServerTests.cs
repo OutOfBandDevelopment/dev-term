@@ -56,6 +56,14 @@ public sealed class SessionPipeServerTests
     }
 
     [TestMethod]
+    public void Resolve_UsesTheFallbackForABarePipeFlag_AndTheNameOtherwise()
+    {
+        var unique = "bench-" + Guid.NewGuid().ToString("N");
+        Assert.AreEqual(unique, SessionPipeServer.Resolve("true", unique));
+        Assert.AreEqual("named", SessionPipeServer.Resolve("named", unique));
+    }
+
+    [TestMethod]
     public async Task NoClient_BroadcastIsHarmless()
     {
         await using var server = new SessionPipeServer("test-" + Guid.NewGuid().ToString("N"));

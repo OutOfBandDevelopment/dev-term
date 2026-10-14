@@ -88,7 +88,7 @@ public static class TuiMode
         }
 
         // --pipe publishes the first tab's session read-only for `--attach` (tabs added later are not published).
-        await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(SessionPipeServer.AvailableName(cliOptions.Pipe, SessionPipeServer.LiveSessions()));
+        await using var pipeServer = string.IsNullOrWhiteSpace(cliOptions.Pipe) ? null : new SessionPipeServer(SessionPipeServer.Resolve(cliOptions.Pipe, profileStore?.FindName(cliOptions) ?? cliOptions.Transport));
         using var pipeRegistration = pipeServer is null ? null : session.AddObserver(pipeServer);
         await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control) ? null : new SessionControlPipeServer(session, cliOptions.Control, text => TypedInput.TryEncode(catalog, cliOptions, text));
         using var controlRegistration = controlServer is null ? null : session.AddObserver(controlServer);

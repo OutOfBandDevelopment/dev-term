@@ -53,6 +53,16 @@ public sealed class SessionPipeServer : ISessionObserver, IAsyncDisposable
     }
 
     /// <summary>
+    /// The pipe name to publish: <paramref name="requested"/>, or <paramref name="fallback"/> (the profile name, else
+    /// the transport) when it is the bare <c>true</c> a flag with no name gives, made unique among live sessions.
+    /// </summary>
+    public static string Resolve(string requested, string fallback)
+    {
+        var name = string.Equals(requested, "true", StringComparison.OrdinalIgnoreCase) ? fallback : requested;
+        return AvailableName(name, LiveSessions());
+    }
+
+    /// <summary>
     /// <paramref name="requested"/> when no live session uses it, else <c>name-2</c>, <c>name-3</c>, ... — so a second
     /// process started from the same profile still gets its own pipe instead of failing to bind.
     /// </summary>

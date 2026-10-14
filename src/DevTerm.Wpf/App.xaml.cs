@@ -142,7 +142,7 @@ public partial class App : Application
         // --pipe publishes the first tab's session read-only for `--attach` (the main window's other tabs are not published).
         if (!string.IsNullOrWhiteSpace(cliOptions.Pipe))
         {
-            _pipeServer = new SessionPipeServer(SessionPipeServer.AvailableName(cliOptions.Pipe, SessionPipeServer.LiveSessions()));
+            _pipeServer = new SessionPipeServer(SessionPipeServer.Resolve(cliOptions.Pipe, new ConnectionProfileStore().FindName(cliOptions) ?? cliOptions.Transport));
             _pipeRegistration = session.AddObserver(_pipeServer);
         }
 
