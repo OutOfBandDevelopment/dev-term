@@ -422,7 +422,7 @@ breaking the JSON/XML shape of what exists today (an added optional property, no
   boundary" convention.
 - Whether `IndicatorControl` needs a format/unit hint (e.g. "show this raw byte as hex" vs. "show
   this as a percentage") or whether that's better left to the decoder producing the value in
-  already-formatted form.
+  already-formatted form. Decided 2026-10-13: a format/unit hint on the control, so charts and thresholds keep the raw number and each front end formats it (BACKLOG).
 - ~~Whether conditional/interlocked controls (a control that's disabled or hidden based on another
   control's value — device-control-modules.md's open question) belong in this model at all~~ —
   **partly settled 2026-09-25**: *hidden* based on another value does, as `VisibleWhen`

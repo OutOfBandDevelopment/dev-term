@@ -167,7 +167,7 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress
   is appended to the first, not captured separately (the proposal's open question on correlation).
   **Decided 2026-10-03:** keep one list view rather than parallel captures, with filter, search and sort. Built in both
-  front ends 2026-10-03 (see List criteria); the correlation question itself stays open.
+  front ends 2026-10-03 (see List criteria); the correlation question itself stays open. Decided 2026-10-13: simultaneous captures from different devices get one pane per device (BACKLOG).
 - **No retention/cleanup** of the export folder.
 - **Not verified against real hardware** yet — the DG1062Z screen capture (a real BMP in a
   definite-length block) and the TDS2024's `HARDCopy STARt` output (BMP/TIFF/EPS/PCL depending on

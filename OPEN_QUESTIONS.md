@@ -59,7 +59,7 @@ Blocked on a real device or a deliberate packet capture; the TODO "Manual review
   [usbtmc-transport](docs/design/usbtmc-transport.md)
 - **Stream Monitor against real hardware:** the DG1062Z BMP and the TDS2024 `HARDCopy` BMP both work in the Stream Monitor (user-reported 2026-10-03; the DG1062Z over LXI). The DG1062Z USB/USBTMC capture also works (Claude, 2026-10-03; Stream Monitor over USB not run). —
   [stream-monitor spec](docs/specs/stream-monitor.md)
-- **Capture correlation:** more than one simultaneous capture, and a detected-but-unsolicited stream. —
+- **Capture correlation:** a detected-but-unsolicited stream, and queueing within one device. —
   [stream-content-detection](docs/design/features/stream-content-detection.md)
 
 ## Design questions (architecture, schema, model)
@@ -72,21 +72,17 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
 - **Presenters:** shared drawing/canvas/plot models;
   one mapping-file format; where mappings live; whether raster export is a core service. —
   [presenters](docs/design/presenters.md)
-- **Cross-session scripting model for the CLI.** (Presenters may originate traffic: decided 2026-10-03.) —
-  [architecture](docs/design/architecture.md)
 - **Control modules:** a manifest command schema
   declaring `ExpectedResponseFormat`; a general Kaitai-backed binary response schema. —
   [device-control-modules](docs/design/device-control-modules.md),
   [stream-content-detection](docs/design/features/stream-content-detection.md)
-- **UI definitions:** an indicator format/unit hint versus a pre-formatted decoder value; nested `Sections`;
+- **UI definitions:** nested `Sections`;
   `VisibleWhen` in the panel renderers. —
   [ui-definitions](docs/design/ui-definitions.md)
 - **Format schemas:** a stable hosted `$schema` URL; whether SCPI profiles fold into `DeviceManifest`; confirm the
   polymorphic `UiControl` `oneOf` export. — [format-schema-files](docs/design/features/format-schema-files.md)
 - **Transports:** the BLE adapter contract before a second OS backend; how a UDP listener's first datagram maps onto
   `Session`; one session per accepted TCP peer. — [transports](docs/design/transports.md)
-- **RFC 2217 client:** whether `NOTIFY-LINESTATE`/`NOTIFY-MODEMSTATE` become presenter-visible. —
-  [rfc2217](docs/design/rfc2217.md)
 - **Network config editors:** `DevTerm.Devices.*` projects versus manifests with a config UI. —
   [network-device-config-editors](docs/design/proposals/network-device-config-editors.md)
 - **Session logging:** backward seek
@@ -104,7 +100,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   helpers or CEL-style extension. — [expression-picker](docs/specs/expression-picker.md)
 - **Manifest editor:** `.xml` panel forms and binary `.ksy` layouts are not editable. —
   [manifest-editor](docs/specs/manifest-editor.md)
-- **Stream Monitor:** no CLI mode or `--presenter`; one capture at a time; only SCPI commands can
+- **Stream Monitor:** no CLI mode or `--presenter`; only SCPI commands can
   declare a format. — [stream-monitor](docs/specs/stream-monitor.md)
 - **Theme builder:** the TUI role list has no scroll indicator; no manual-use verification
   pass. — [theme-builder](docs/specs/theme-builder.md)

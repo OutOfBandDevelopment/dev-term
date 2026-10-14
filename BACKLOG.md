@@ -71,6 +71,10 @@ the rest.
 - Discovery shows one row per device with its services as badges ([network-device-discovery](docs/design/proposals/network-device-discovery.md)).
 - Interlocked controls render visible but disabled, with the reason on hover/focus ([ui-definitions](docs/design/ui-definitions.md)).
 - Notes can be added to a log while it is still being recorded, as a timestamped `note` record ([session-logging](docs/design/session-logging.md)).
+- Stream Monitor: one pane per device for simultaneous captures ([stream-monitor](docs/specs/stream-monitor.md)).
+- RFC 2217 line/modem state changes go to the status line and session log, never the data stream ([rfc2217](docs/design/rfc2217.md)).
+- Indicator controls carry a format/unit hint; charts and thresholds keep the raw value ([ui-definitions](docs/design/ui-definitions.md)).
+- CLI cross-session scripting: attach to a named session, then the ordinary REPL ([architecture](docs/design/architecture.md)).
 
 ### Proposed Ideas
 
