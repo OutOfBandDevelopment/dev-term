@@ -46,7 +46,7 @@
                         break;
                     case IndicatorControl i:
                         <label>@i.Label</label>
-                        <span data-indicator="@i.Id">@(Values.TryGetValue(i.Id, out var live) ? live : i.DefaultValue)</span>
+                        <span data-indicator="@i.Id">@(Values.TryGetValue(i.Id, out var live) ? i.Display(live) : i.DefaultValue)</span>
                         break;
                     default:
                         <label>@c.Label</label>

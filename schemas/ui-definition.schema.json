@@ -610,6 +610,18 @@
                         "null"
                       ]
                     },
+                    "Format": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "Unit": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "Id": {
                       "type": "string"
                     },

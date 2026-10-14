@@ -497,7 +497,7 @@ public sealed class IndicatorState : LiveDisplayState
 
     /// <summary>The expression evaluated against every value received so far, or null before any referenced id has arrived (or the expression failed to parse).</summary>
     public string? Text => _expression is not null && ValueIds.Any(id => _values.ContainsKey(id) || Texts.ContainsKey(id))
-        ? _expression.EvaluateToText(_values, Texts)
+        ? Control.Display(_expression.EvaluateToText(_values, Texts))
         : null;
 
     protected override bool ApplyNumber(string id, double value)
