@@ -85,4 +85,34 @@ public sealed class IndicatorStateTests
 
         Assert.AreEqual("25", state.Text);
     }
+
+    [TestMethod]
+    public void Display_WithNoHint_ReturnsThePublishedText() =>
+        Assert.AreEqual("1.2345E+00", new IndicatorControl { Id = "i", Label = "I" }.Display("1.2345E+00"));
+
+    [TestMethod]
+    public void Display_FormatsTheNumber_ThenAppendsTheUnit() =>
+        Assert.AreEqual("1.23 V", new IndicatorControl { Id = "i", Label = "I", Format = "0.00", Unit = "V" }.Display("+1.2345E+00"));
+
+    [TestMethod]
+    public void Display_HexFormat_ShowsTheRawByteAsHex() =>
+        Assert.AreEqual("FF", new IndicatorControl { Id = "i", Label = "I", Format = "X2" }.Display("255"));
+
+    [TestMethod]
+    public void Display_TextWithNoNumber_IsUnchanged() =>
+        Assert.AreEqual("OVER", new IndicatorControl { Id = "i", Label = "I", Format = "0.00", Unit = "V" }.Display("OVER"));
+
+    [TestMethod]
+    public void Display_AnInvalidFormat_FallsBackToThePublishedText() =>
+        Assert.AreEqual("5", new IndicatorControl { Id = "i", Label = "I", Format = "Z9" }.Display("5"));
+
+    [TestMethod]
+    public void Text_AppliesTheIndicatorsFormatAndUnit()
+    {
+        var state = new IndicatorState(new IndicatorControl { Id = "i", Label = "I", Expression = "{raw_mv} / 1000", Format = "0.000", Unit = "V" });
+
+        state.Apply("raw_mv", "1234");
+
+        Assert.AreEqual("1.234 V", state.Text);
+    }
 }

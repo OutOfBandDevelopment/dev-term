@@ -324,7 +324,7 @@ internal static class ControlPanelMode
                         {
                             if (!panel.IndicatorStates.ContainsKey(id) && panel.IndicatorLabels.TryGetValue(id, out var label))
                             {
-                                label.Text = value;
+                                label.Text = panel.IndicatorControls.TryGetValue(id, out var shown) ? shown.Display(value) : value;
                             }
                         }
 
@@ -957,6 +957,7 @@ internal static class ControlPanelMode
                     var indicatorLabel = new Label { X = columnX, Y = row, Text = indicator.DefaultValue ?? string.Empty };
                     body.Add(indicatorLabel);
                     panel.IndicatorLabels[control.Id] = indicatorLabel;
+                    panel.IndicatorControls[control.Id] = indicator;
                     if (LiveDisplayState.For(indicator) is IndicatorState indicatorState)
                     {
                         panel.IndicatorStates[control.Id] = indicatorState;
@@ -1255,6 +1256,9 @@ internal static class ControlPanelMode
 
         /// <summary>Indicators whose <see cref="IndicatorControl.Expression"/> is set — keyed by control id, mutually exclusive with the bare direct-set path in <c>OnValuesChanged</c>.</summary>
         public Dictionary<string, IndicatorState> IndicatorStates { get; } = [];
+
+        /// <summary>Every indicator by id, so a directly published value goes through its <see cref="IndicatorControl.Display"/> hint.</summary>
+        public Dictionary<string, IndicatorControl> IndicatorControls { get; } = [];
 
         public Dictionary<string, CellCanvasView> DisplayViews { get; } = [];
 

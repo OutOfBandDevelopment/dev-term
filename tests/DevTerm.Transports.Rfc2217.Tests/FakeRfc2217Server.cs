@@ -37,6 +37,9 @@ internal sealed class FakeRfc2217Server
     public Task SendNotifyLineStateAsync(Rfc2217LineState lineState, CancellationToken cancellationToken) =>
         WriteIncomingAsync(Rfc2217Codec.EncodeSubnegotiation(Rfc2217Command.NotifyLineState, [(byte)lineState]), cancellationToken);
 
+    public Task SendNotifyModemStateAsync(Rfc2217ModemState state, CancellationToken cancellationToken) =>
+        WriteIncomingAsync(Rfc2217Codec.EncodeSubnegotiation(Rfc2217Command.NotifyModemState, [(byte)state]), cancellationToken);
+
     public Task SendDataAsync(byte[] data, CancellationToken cancellationToken) =>
         WriteIncomingAsync(Rfc2217Codec.Escape(data), cancellationToken);
 

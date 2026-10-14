@@ -13,6 +13,13 @@ public enum StreamCaptureSort
     Device,
 }
 
+/// <summary>One device's pane in the Stream Monitor: its name (null for the "all devices" pane) and how many captures it holds.</summary>
+public sealed record StreamDevicePane(string? Device, int Count)
+{
+    /// <summary>The tab or button text: <c>All devices (3)</c> or <c>Bench scope (2)</c>.</summary>
+    public string Title => $"{Device ?? "All devices"} ({Count})";
+}
+
 /// <summary>
 /// Filter, search and sort for the Stream Monitor's single capture list (docs/specs/stream-monitor.md),
 /// shared by both front ends so they show the same rows in the same order.
@@ -26,6 +33,20 @@ public static class StreamCaptureView
     /// <summary>The distinct device names present, sorted.</summary>
     public static IReadOnlyList<string> Devices(IEnumerable<StreamMonitorCapture> captures) =>
         [.. captures.Select(c => c.DeviceName).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase)];
+
+    /// <summary>
+    /// One pane per device (simultaneous captures from different devices each get their own, decided 2026-10-13),
+    /// preceded by the all-devices pane; devices sorted by name.
+    /// </summary>
+    public static IReadOnlyList<StreamDevicePane> Panes(IReadOnlyCollection<StreamMonitorCapture> captures)
+    {
+        ArgumentNullException.ThrowIfNull(captures);
+        return
+        [
+            new StreamDevicePane(null, captures.Count),
+            .. Devices(captures).Select(d => new StreamDevicePane(d, captures.Count(c => string.Equals(c.DeviceName, d, StringComparison.OrdinalIgnoreCase)))),
+        ];
+    }
 
     /// <summary>
     /// <paramref name="captures"/> narrowed to <paramref name="kind"/> and <paramref name="device"/> (null or

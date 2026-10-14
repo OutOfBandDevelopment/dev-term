@@ -61,6 +61,7 @@ public static class CliMode
         }
 
         session.Output += (_, output) => stdout.WriteLine($"[{output.PresenterName}] {output.Text}");
+        session.LineStatusChanged += (_, text) => stderr.WriteLine(text);
         session.Disconnected += (_, e) =>
             stderr.WriteLine($"{ConnectionErrorMessages.ForDisconnect(cliOptions.Transport, e.Error)} The next line you send will reconnect.");
 
@@ -69,6 +70,16 @@ public static class CliMode
         if (pipeServer is not null)
         {
             stderr.WriteLine($"Publishing this session read-only; attach with: --attach {pipeServer.PipeName["devterm-session-".Length..]}");
+        }
+
+        // --capture <dir>: the Stream Monitor's detection with no window, for headless bench runs and CI.
+        using var captureMonitor = string.IsNullOrWhiteSpace(cliOptions.Capture) ? null : new StreamMonitor();
+        if (captureMonitor is not null)
+        {
+            captureMonitor.CaptureAdded += (_, capture) => stdout.WriteLine(capture.Describe());
+            captureMonitor.SetSession(session, StreamMonitor.DeviceNameFor(cliOptions, new ConnectionProfileStore()), cliOptions.Capture!);
+            captureMonitor.Start();
+            stderr.WriteLine($"Saving detected streams to {cliOptions.Capture}.");
         }
 
         await using var controlServer = string.IsNullOrWhiteSpace(cliOptions.Control)

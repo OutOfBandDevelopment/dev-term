@@ -157,9 +157,10 @@ if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListLxiDevices)))
 
 if (earlyConfig.GetValue<bool>(nameof(CliOptions.ListNetworkDevices)))
 {
-    foreach (var hit in await DevTerm.Configuration.Discovery.NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3)))
+    var found = await DevTerm.Configuration.Discovery.NetworkDiscovery.CreateDefault().DiscoverAsync(TimeSpan.FromSeconds(3));
+    foreach (var device in DevTerm.Configuration.Discovery.NetworkDiscovery.GroupByDevice(found))
     {
-        Console.WriteLine($"{hit.Address}:{hit.Port}  {hit.Transport}  {hit.DisplayName}  ({hit.Kind}, {hit.Source})");
+        Console.WriteLine($"{device.Address}  {device.Name}  [{device.Badges}]");
     }
 
     return 0;
@@ -188,6 +189,19 @@ if (earlyConfig[nameof(CliOptions.ControlClient)] is { Length: > 0 } controlName
         Console.Error.WriteLine($"No session named '{controlName}' is accepting control. Start one with --control {controlName}.");
         return 1;
     }
+}
+
+if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachReplName && (earlyConfig.GetValue<bool?>(nameof(CliOptions.Cli)) ?? false))
+{
+    // --attach <name> --cli true: the ordinary REPL against a session started with --control <name>.
+    using var attachReplStop = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        attachReplStop.Cancel();
+    };
+
+    return await DevTerm.Console.AttachCliMode.RunAsync(attachReplName, Console.In, Console.Out, Console.Error, attachReplStop.Token);
 }
 
 if (earlyConfig[nameof(CliOptions.Attach)] is { Length: > 0 } attachName)

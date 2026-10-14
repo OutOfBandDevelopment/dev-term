@@ -87,12 +87,25 @@ public sealed class MainWindowConnectionStateTests
     {
         StaTestRunner.Run(async () =>
         {
-            var (window, _) = CreateWindow(new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5500, Presenter = ["ascii"] });
+            var (window, _) = CreateWindow(new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5500, Presenter = ["k8055"] });
             await window.ConnectAsync();
 
             Assert.IsTrue(window.K8055MenuItem!.IsEnabled);
             Assert.IsFalse(window.BusylightMenuItem!.IsEnabled);
             Assert.IsFalse(window.ScpiMenuItem!.IsEnabled, "SCPI is text; HID is fixed-size binary reports.");
+        });
+    }
+
+    [TestMethod]
+    public void AK8055Connection_WithoutTheK8055Presenter_ShowsThePanelDisabledWithAReason()
+    {
+        StaTestRunner.Run(async () =>
+        {
+            var (window, _) = CreateWindow(new CliOptions { Transport = "hid", VendorId = 0x10CF, ProductId = 0x5500, Presenter = ["ascii"] });
+            await window.ConnectAsync();
+
+            Assert.IsFalse(window.K8055MenuItem!.IsEnabled);
+            Assert.AreEqual("Select the 'k8055' presenter to use this panel.", window.K8055MenuItem.ToolTip);
         });
     }
 

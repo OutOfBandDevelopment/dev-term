@@ -40,10 +40,19 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ComboBox x:Name="KindFilterBox" Grid.Column="0" ToolTip="Show only this content type" SelectionChanged="ListCriteria_Changed" />
-                    <ComboBox x:Name="DeviceFilterBox" Grid.Column="2" ToolTip="Show only this device" SelectionChanged="ListCriteria_Changed" />
+                    <ComboBox x:Name="KindFilterBox" Grid.Column="0" Grid.ColumnSpan="3" ToolTip="Show only this content type" SelectionChanged="ListCriteria_Changed" />
                     <ComboBox x:Name="SortBox" Grid.Row="1" Grid.ColumnSpan="3" Margin="0,4,0,0" ToolTip="Sort order" SelectionChanged="ListCriteria_Changed" />
                 </Grid>
+                <!-- One pane per device (StreamCaptureView.Panes): the all-devices pane, then each device with its capture count. -->
+                <ListBox x:Name="DevicePanes" DockPanel.Dock="Top" Margin="0,0,0,4" ToolTip="Show one device's captures"
+                         SelectionChanged="ListCriteria_Changed" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto" DisplayMemberPath="Title">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                </ListBox>
                 <ListBox x:Name="CaptureList" SelectionChanged="CaptureList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type local:StreamMonitorCaptureItem}">

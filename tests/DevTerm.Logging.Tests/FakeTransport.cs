@@ -10,8 +10,12 @@ namespace DevTerm.Logging.Tests;
 /// the read side, or the next open), and reopens with a fresh pipe after a close, so error/reconnect
 /// paths can be tested.
 /// </summary>
-internal sealed class FakeTransport : ITransport
+internal sealed class FakeTransport : ITransport, ILineStatusSource
 {
+    public event EventHandler<string>? LineStatusChanged;
+
+    public void RaiseLineStatus(string text) => LineStatusChanged?.Invoke(this, text);
+
     private Pipe _pipe = new();
     private bool _pipeCompleted;
     private ConnectionState _state = ConnectionState.Closed;

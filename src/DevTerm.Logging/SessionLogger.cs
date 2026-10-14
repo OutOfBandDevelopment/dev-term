@@ -20,6 +20,7 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
     private readonly long _startTimestamp;
     private readonly Lock _gate = new();
     private IDisposable? _registration;
+    private Action? _unsubscribeLineStatus;
     private bool _disposed;
 
     public SessionLogger(SessionLogWriter writer, TimeProvider? clock = null)
@@ -67,9 +68,15 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             _registration?.Dispose();
+            _unsubscribeLineStatus?.Invoke();
             var state = session.State == ConnectionState.Open ? "open" : "closed";
             Record(SessionLogRecordKind.Session, default, connection: connection, profile: profile, state: state);
             _registration = session.AddObserver(this);
+
+            // Out-of-band line/modem notices (RFC 2217) go in as notes, marked so playback can tell them from a typed one.
+            void OnLineStatus(object? sender, string text) => RecordNote("[line] " + text);
+            session.LineStatusChanged += OnLineStatus;
+            _unsubscribeLineStatus = () => session.LineStatusChanged -= OnLineStatus;
         }
     }
 
@@ -97,6 +104,8 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
         {
             _registration?.Dispose();
             _registration = null;
+            _unsubscribeLineStatus?.Invoke();
+            _unsubscribeLineStatus = null;
         }
     }
 
@@ -130,6 +139,8 @@ public sealed class SessionLogger : ISessionObserver, IDisposable
 
             _registration?.Dispose();
             _registration = null;
+            _unsubscribeLineStatus?.Invoke();
+            _unsubscribeLineStatus = null;
             _disposed = true;
             _writer.Dispose();
         }

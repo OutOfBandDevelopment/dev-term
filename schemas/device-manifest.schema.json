@@ -311,6 +311,16 @@
               "string",
               "null"
             ]
+          },
+          "ExpectedResponseFormat": {
+            "enum": [
+              "Text",
+              "Hpgl",
+              "PostScript",
+              "Pcl",
+              "Image",
+              "Binary"
+            ]
           }
         },
         "required": [
@@ -934,6 +944,18 @@
                             "null"
                           ]
                         },
+                        "Format": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "Unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "Id": {
                           "type": "string"
                         },
@@ -1343,5 +1365,6 @@
   "required": [
     "Name"
   ],
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/OutOfBandDevelopment/dev-term/main/schemas/device-manifest.schema.json"
 }

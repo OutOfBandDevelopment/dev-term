@@ -26,6 +26,20 @@ public sealed class SessionTests
     }
 
     [TestMethod]
+    public async Task LineStatusChanged_ReRaisesATransportsLineStatusNotices()
+    {
+        var (transport, _) = CreateOpenableTransport();
+        var source = transport.As<ILineStatusSource>();
+        await using var session = new Session(transport.Object, new Pipeline([]));
+        var notices = new List<string>();
+        session.LineStatusChanged += (_, text) => notices.Add(text);
+
+        source.Raise(s => s.LineStatusChanged += null, transport.Object, "Line error: parity");
+
+        CollectionAssert.AreEqual(new[] { "Line error: parity" }, notices);
+    }
+
+    [TestMethod]
     public async Task OpenAsync_DelegatesToTransport()
     {
         var (transport, _) = CreateOpenableTransport();

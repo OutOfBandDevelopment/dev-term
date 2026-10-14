@@ -152,11 +152,7 @@ Configuration lives alongside the existing Stream Monitor settings (per-profile 
 
 ## Open questions
 
-- Decided 2026-10-13: a device manifest's command schema also declares `ExpectedResponseFormat` per command, with the same vocabulary as SCPI profiles (BACKLOG). Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` specifically (fastest to ship,
-  matches where the idea came from) or on a more general, not-yet-built per-command schema shared
-  with `DeviceManifest` (see device-control-modules.md's declarative-schema section) — starting on
-  the SCPI type is the pragmatic choice; folding it into a general schema later is a rename/move,
-  not a redesign.
+- ~~Whether `ExpectedResponseFormat` belongs on `ScpiCommandDefinition` or a shared per-command schema.~~ **Decided 2026-10-13, built 2026-10-14:** `OutboundCommand` (device manifests) declares `ExpectedResponseFormat` too, same vocabulary, written by name in JSON; `ManifestControlSurface.InvokeAsync` hints the session's `IStreamContentHintSink` presenters just before sending, exactly as `ScpiControlSurface` does. The SCPI type keeps its own field.
 - Whether a detected-but-unsolicited capture (no active query, e.g. a device that streams a bitmap
   unprompted) should still work — the sniffer path doesn't need a tracked query id to fire, only
   the declared-hint path does, so this should already fall out of the design as long as the watcher

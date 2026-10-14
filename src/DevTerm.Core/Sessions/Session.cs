@@ -52,7 +52,39 @@ public sealed class Session : IAsyncDisposable
 
         _transport = transport;
         _pipeline = pipeline;
+        _pipeline.AsyncOutput += (_, output) =>
+        {
+            try
+            {
+                Output?.Invoke(this, output);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Session.Output handler threw for asynchronous output: {ex}");
+            }
+        };
+
+        if (transport is ILineStatusSource lineStatus)
+        {
+            lineStatus.LineStatusChanged += (_, text) =>
+            {
+                try
+                {
+                    LineStatusChanged?.Invoke(this, text);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Session.LineStatusChanged handler threw: {ex}");
+                }
+            };
+        }
     }
+
+    /// <summary>
+    /// A line/modem status notice from a transport that reports them (<see cref="ILineStatusSource"/>), raised on a
+    /// background thread. For the status line and the session log; never part of the data stream.
+    /// </summary>
+    public event EventHandler<string>? LineStatusChanged;
 
     /// <summary>
     /// Pacing and connect-retry limits; <see cref="SessionLimits.None"/> by default. Set before <see cref="OpenAsync"/>;

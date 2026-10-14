@@ -52,6 +52,8 @@ public partial class MainWindow : Window
 
         public EventHandler<SessionDisconnectedEventArgs>? DisconnectedHandler { get; set; }
 
+        public EventHandler<string>? LineStatusHandler { get; set; }
+
         // Mirrors the window-level _switchCts this replaced: a slow-to-fail connect on THIS tab can
         // still be pending when the user switches THIS tab's profile again - without a per-tab token,
         // the earlier attempt's failure handler would stomp the newer one's UI once it finally
@@ -284,8 +286,10 @@ public partial class MainWindow : Window
             AppendOutput(windowTab, $"{ConnectionErrorMessages.ForDisconnect(windowTab.Tab.CliOptions.Transport, e.Error)} Use File > Connect to reconnect.", OutputKind.Error);
             RefreshConnectionUi(windowTab);
         });
+        windowTab.LineStatusHandler = (_, text) => Dispatcher.BeginInvoke(() => AppendOutput(windowTab, text, OutputKind.Status));
         tab.Session.Output += windowTab.OutputHandler;
         tab.Session.Disconnected += windowTab.DisconnectedHandler;
+        tab.Session.LineStatusChanged += windowTab.LineStatusHandler;
 
         _tabs.Add(windowTab);
         TrackInMonitor(windowTab);
@@ -492,6 +496,7 @@ public partial class MainWindow : Window
 
         tab.Tab.Session.Output -= tab.OutputHandler;
         tab.Tab.Session.Disconnected -= tab.DisconnectedHandler;
+        tab.Tab.Session.LineStatusChanged -= tab.LineStatusHandler;
         try
         {
             await tab.Tab.Session.CloseAsync();
@@ -1188,6 +1193,7 @@ public partial class MainWindow : Window
 
         oldSession.Output -= tab.OutputHandler;
         oldSession.Disconnected -= tab.DisconnectedHandler;
+        oldSession.LineStatusChanged -= tab.LineStatusHandler;
         await oldSession.CloseAsync();
         await oldSession.DisposeAsync();
 
@@ -1214,6 +1220,7 @@ public partial class MainWindow : Window
 
         mySession.Output += tab.OutputHandler;
         mySession.Disconnected += tab.DisconnectedHandler;
+        mySession.LineStatusChanged += tab.LineStatusHandler;
         FollowLogging(tab);
 
         // A different profile means a different device/connection - clearing prior output avoids
@@ -1259,6 +1266,7 @@ public partial class MainWindow : Window
             // connection as current.
             mySession.Output -= tab.OutputHandler;
             mySession.Disconnected -= tab.DisconnectedHandler;
+            mySession.LineStatusChanged -= tab.LineStatusHandler;
             await mySession.CloseAsync();
             await mySession.DisposeAsync();
             return false;
@@ -1302,6 +1310,7 @@ public partial class MainWindow : Window
             StopLogging(tab, report: false);
             tab.Tab.Session.Output -= tab.OutputHandler;
             tab.Tab.Session.Disconnected -= tab.DisconnectedHandler;
+            tab.Tab.Session.LineStatusChanged -= tab.LineStatusHandler;
             try
             {
                 await tab.Tab.Session.CloseAsync();

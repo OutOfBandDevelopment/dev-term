@@ -343,6 +343,12 @@
         "null"
       ]
     },
+    "Capture": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ListCaptures": {
       "type": "integer"
     },
@@ -523,5 +529,6 @@
       }
     }
   },
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/OutOfBandDevelopment/dev-term/main/schemas/connection-profile.schema.json"
 }

@@ -238,12 +238,44 @@ public sealed class PluginTrustTests
     }
 
     [TestMethod]
-    public void TheLazyPresenter_DoesNotStartAProgramUntilItRenders_AndAProgramThatWontStartRendersNothing()
+    public async Task TheLazyPresenter_RenderReturnsAtOnce_AndTheSessionStillGetsTheLinesWhenThePluginAnswers()
+    {
+        var script = Path.Combine(_home, "slow.py");
+        await File.WriteAllTextAsync(script, """
+            import sys, json, time
+            for line in sys.stdin:
+                m = json.loads(line)
+                if m["type"] == "hello":
+                    print(json.dumps({"type": "hello", "name": "slow", "protocol": 1}), flush=True)
+                else:
+                    time.sleep(0.5)
+                    print(json.dumps({"type": "output", "lines": ["decoded"]}), flush=True)
+            """);
+        await using var presenter = new LazyExternalPresenter("slow", "python", [script], TimeSpan.FromSeconds(10));
+        var pipeline = new Pipeline([presenter]);
+        var seen = new List<PresenterOutput>();
+        pipeline.AsyncOutput += (_, o) => seen.Add(o);
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var immediate = pipeline.Render(new ReadOnlySequence<byte>("abc"u8.ToArray()));
+        var renderMs = started.ElapsedMilliseconds;
+        await presenter.FlushAsync();
+
+        Assert.IsEmpty(immediate);
+        Assert.IsLessThan(400, renderMs);
+        Assert.HasCount(1, seen);
+        Assert.AreEqual("decoded", seen[0].Text);
+        Assert.AreEqual("slow", seen[0].PresenterName);
+    }
+
+    [TestMethod]
+    public async Task TheLazyPresenter_DoesNotStartAProgramUntilItRenders_AndAProgramThatWontStartRendersNothing()
     {
         var presenter = new LazyExternalPresenter("gone", Path.Combine(_home, "no-such-program.exe"), [], TimeSpan.FromSeconds(1));
 
         Assert.IsFalse(presenter.Faulted);
         Assert.IsEmpty(presenter.Render(new ReadOnlySequence<byte>("abc"u8.ToArray())));
+        await presenter.FlushAsync();
         Assert.IsTrue(presenter.Faulted);
         Assert.Contains("no-such-program", presenter.FaultReason!);
     }
@@ -295,7 +327,13 @@ public sealed class PluginTrustProcessTests
             await using var provider = services.BuildServiceProvider();
             var presenter = new PresenterCatalog(provider.GetServices<IPresenter>()).Get("py-shout");
 
-            CollectionAssert.AreEqual(new[] { "HELLO" }, presenter.Render(new ReadOnlySequence<byte>(Encoding.ASCII.GetBytes("hello"))).ToArray());
+            var lazy = (LazyExternalPresenter)presenter;
+            var lines = new List<string>();
+            lazy.OutputReady += (_, l) => lines.AddRange(l);
+            Assert.IsEmpty(presenter.Render(new ReadOnlySequence<byte>(Encoding.ASCII.GetBytes("hello"))));
+            await lazy.FlushAsync();
+
+            CollectionAssert.AreEqual(new[] { "HELLO" }, lines);
         }
         finally
         {

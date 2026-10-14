@@ -12,7 +12,7 @@ namespace DevTerm.Transports.Rfc2217;
 /// docs/design/rfc2217.md for the wire format and <see cref="Rfc2217TelnetReadStream"/> for the
 /// Telnet framing layered on top of it.
 /// </summary>
-public sealed class Rfc2217Transport : ITransport, IComPortControl
+public sealed class Rfc2217Transport : ITransport, IComPortControl, ILineStatusSource
 {
     private readonly ITcpConnectionSource _connectionSource;
     private readonly IOptions<Rfc2217TransportOptions> _options;
@@ -60,6 +60,39 @@ public sealed class Rfc2217Transport : ITransport, IComPortControl
     /// whatever the remote port already had configured, not what this session asked for.
     /// </summary>
     public bool ComPortControlNegotiated { get; private set; }
+
+    /// <inheritdoc />
+    public event EventHandler<string>? LineStatusChanged;
+
+    private string? _lastModemNotice;
+
+    private void OnComPortMessage(IRfc2217Message message)
+    {
+        var text = message switch
+        {
+            Rfc2217NotifyModemStateMessage modem => Rfc2217StatusText.Modem(modem.ModemState),
+            Rfc2217NotifyLineStateMessage line => Rfc2217StatusText.Line(line.LineState),
+            _ => null,
+        };
+
+        if (text is null)
+        {
+            return;
+        }
+
+        if (message is Rfc2217NotifyModemStateMessage)
+        {
+            // A delta-only change repeats the same levels; the status line only needs the levels.
+            if (text == _lastModemNotice)
+            {
+                return;
+            }
+
+            _lastModemNotice = text;
+        }
+
+        LineStatusChanged?.Invoke(this, text);
+    }
 
     public IComPortControl SetBaudRate(int baudRate)
     {
@@ -183,6 +216,8 @@ public sealed class Rfc2217Transport : ITransport, IComPortControl
         var negotiationTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         void OnNegotiation(bool accepted) => negotiationTcs.TrySetResult(accepted);
         telnetStream.ComPortOptionNegotiationReceived += OnNegotiation;
+        telnetStream.ComPortMessageReceived += OnComPortMessage;
+        _lastModemNotice = null;
 
         _pipe = new Pipe();
         _pumpCts = new CancellationTokenSource();
@@ -313,6 +348,10 @@ public sealed class Rfc2217Transport : ITransport, IComPortControl
         await telnetStream.SendRawFramedAsync(
             Rfc2217Codec.EncodeSetControl(options.RtsEnable ? Rfc2217ControlValue.SetRtsStateOn : Rfc2217ControlValue.SetRtsStateOff),
             cancellationToken).ConfigureAwait(false);
+
+        // Ask for the notifications that are reported to the user: every modem line, and the line errors.
+        await telnetStream.SendRawFramedAsync(Rfc2217Codec.EncodeSetModemStateMask((Rfc2217ModemState)0xFF), cancellationToken).ConfigureAwait(false);
+        await telnetStream.SendRawFramedAsync(Rfc2217Codec.EncodeSetLineStateMask(Rfc2217StatusText.ReportedLineErrors), cancellationToken).ConfigureAwait(false);
     }
 
     private static ComPortParity ToComPortParity(System.IO.Ports.Parity parity) => parity switch

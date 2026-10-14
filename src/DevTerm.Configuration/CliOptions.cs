@@ -356,9 +356,13 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? ControlClient { get; set; }
 
-    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself.</summary>
+    /// <summary>Tail another dev-term process's session (started with <see cref="Pipe"/>) and print its traffic; connects to nothing itself. With <c>--cli true</c> it is the ordinary REPL instead: each typed line is sent through that session (which must have been started with <see cref="Control"/> of the same name), <c>:hex</c>, <c>:ping</c> and <c>:quit</c> are the only commands.</summary>
     [Category("Mode")]
     public string? Attach { get; set; }
+
+    /// <summary>CLI mode: save each detected stream (BMP, TIFF, HP-GL, ...) of this session as a file in this folder, printing one line per capture.</summary>
+    [Category("Mode")]
+    public string? Capture { get; set; }
 
     /// <summary>Print the newest N saved Stream Monitor captures (the exports folder) and exit.</summary>
     [Category("Mode")]

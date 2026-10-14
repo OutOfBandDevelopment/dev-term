@@ -154,4 +154,4 @@ SHOW_LEGEND()
 
 - ~~Plugin isolation mechanism: in-process vs. out-of-process~~ Both are built: in-process modules load into an `AssemblyLoadContext`, out-of-process presenters run as a child process (see [plugin-model.md](plugin-model.md)).
 - ~~Whether presenters/decoders can also *originate* traffic~~ **Decided 2026-10-03: yes.** A presenter may generate data to feed back in as a simulation, or act as a virtual device of its own (it pairs with the loopback transport and the broker routing idea). Built 2026-10-03 as `IOriginatingPresenter`; see `Session.AddPresenter`.
-- ~~Cross-session scripting/automation model for the CLI front end.~~ Decided 2026-10-13: attach to a named session (the profile-name pipe, see the cross-process control channel proposal), then use the ordinary REPL commands (BACKLOG).
+- ~~Cross-session scripting/automation model for the CLI front end.~~ Decided 2026-10-13: attach to a named session (the profile-name pipe, see the cross-process control channel proposal), then use the ordinary REPL commands. Built 2026-10-14: `--attach <name> --cli true` (`AttachCliMode`).

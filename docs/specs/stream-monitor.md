@@ -26,7 +26,7 @@ The shared behavior lives outside both front ends: detection in `DevTerm.Core.St
 | Explanation | Two fixed lines | One wrapped line | What's detected, and (TUI) that there's no preview |
 | Capture list | `ListView`, one row per capture: `HH:mm:ss  TYPE  size  end  file` | `ListBox`, two lines per capture: `HH:mm:ss — {kind}` / `{size} bytes · {end} · {file}` | Oldest first; the newest is selected whenever one arrives. Keeps the last 100 (`StreamMonitor.MaxRetainedCaptures`) — saved files are never deleted |
 | Detail | Two lines under the list: `{kind}, {size} bytes, {end}[ (declared by the command)].` / `Saved as {file} in the folder above.` or `Not saved: {reason}` | Same first line; second line `Saved to {path}` or `Not saved: {reason}` | For the selected capture |
-| List criteria | A `Search:` field (same matching as WPF) and a `Sort: {order}` button that cycles Oldest, Newest, Largest, Kind, Device; no separate type/device filters (search matches them) | A search box (device, content type, file name or time, case-insensitive), a content-type filter, a device filter and a sort (Oldest, Newest, Largest, Kind, Device) above the list | One list, not parallel captures. `StreamCaptureView.Apply` (shared, in `DevTerm.Configuration`) does the work. The newest capture by time is selected after each change; nothing matching shows the empty message |
+| List criteria | A `Search:` field (same matching as WPF) a `Sort: {order}` button that cycles Oldest, Newest, Largest, Kind, Device, and a `Device: {pane} ({count})` button that cycles the device panes (All devices, then each device); no separate type filter (search matches it) | A search box (device, content type, file name or time, case-insensitive), a content-type filter, a row of device panes (an "All devices" tab, then one tab per device with its capture count; `StreamCaptureView.Panes`) and a sort (Oldest, Newest, Largest, Kind, Device) above the list | One list, not parallel captures. `StreamCaptureView.Apply` (shared, in `DevTerm.Configuration`) does the work. The newest capture by time is selected after each change; nothing matching shows the empty message |
 | Preview | — | `Image` for BMP/PNG/JPEG/GIF/TIFF (WPF's built-in decoders, scaled down to fit, never up) or a converted SVG (`SvgPreview`); otherwise a message | See States |
 
 "End" is how the capture finished (`StreamMonitorCapture.EndLabel`):
@@ -90,7 +90,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
-| **CLI** | `--listcaptures <n>` prints the newest n saved captures (oldest first); `--exportcaptures <n> --exportto <folder>` copies them out without overwriting (`CaptureExport`). Both read the same folders as the window and exit without connecting |
+| **CLI** | `--capture <dir>` (with `--cli true`) saves each stream detected on the live session into `<dir>` and prints one line per capture; `--listcaptures <n>` prints the newest n saved captures (oldest first); `--exportcaptures <n> --exportto <folder>` copies them out without overwriting (`CaptureExport`). Both read the same folders as the window and exit without connecting |
 | **Earlier exports** | When the window opens, files already in the export folders (the profile's folder and `~/.dev-term/exports`) that match `{device}_{yyyyMMdd-HHmmss}[-n].{ext}` are listed too, oldest first, so earlier captures survive a restart (`StreamMonitor.LoadFromDisk`) |
 | **Automatic HP-GL to SVG** | An HP-GL capture is also written as an `.svg` beside it and listed as a second capture, with dev-term's own converter. On by default; profile setting `StreamAutoConvertHpgl` (`false` turns it off) |
 | **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, Auto, each registered tool (`StreamConvertTools`), or External tool (`StreamConversionChoice.For`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool still reads its path from the profile |
@@ -160,14 +160,12 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   but still can't draw (an accepted limit, 2026-10-03: the TUI will not render graphics). The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
-- **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
-  proposal's Status for why it's bound in place instead). Decided 2026-10-13: a `--capture <dir>` option saves detected streams as files and prints one line per capture, for headless bench runs and CI (BACKLOG).
-- **Only the SCPI command schema can declare a format** today; a device manifest's own command schema
-  can't yet.
+- **No `--presenter`**: it isn't selectable that way (it emits no text; see the proposal's Status for why it's bound in place instead). The CLI's `--capture <dir>` (2026-10-14) runs the same detection and saves each detected stream into that folder, printing `Captured ... to <path>.` per capture, for headless bench runs and CI.
+- **Declaring a format**: an SCPI profile command and a device manifest `OutboundCommand` both take `ExpectedResponseFormat` (2026-10-14); a command typed by hand in the send box declares nothing and is sniffed.
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress
   is appended to the first, not captured separately (the proposal's open question on correlation).
   **Decided 2026-10-03:** keep one list view rather than parallel captures, with filter, search and sort. Built in both
-  front ends 2026-10-03 (see List criteria); the correlation question itself stays open. Decided 2026-10-13: simultaneous captures from different devices get one pane per device (BACKLOG).
+  front ends 2026-10-03 (see List criteria); the correlation question itself stays open. Decided 2026-10-13 and built 2026-10-14: simultaneous captures from different devices get one pane per device (device tabs in WPF, a cycling Device button in the TUI; the web front end has no Stream Monitor).
 - **No retention/cleanup** of the export folder.
 - **Not verified against real hardware** yet — the DG1062Z screen capture (a real BMP in a
   definite-length block) and the TDS2024's `HARDCopy STARt` output (BMP/TIFF/EPS/PCL depending on

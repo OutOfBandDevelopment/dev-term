@@ -4,7 +4,7 @@
 │Detects images (PNG, JPEG, GIF, BMP, TIFF), HP-GL, PostScript and PCL in the  │
 │incoming data and saves each automatically. No preview here - open the file.  │
 │                                                                              │
-│Search:                           ⟦ Sort: Oldest ⟧                            │
+│Search:                   ⟦ Sort: Oldest ⟧  ⟦ Device: All devices (3) ⟧       │
 │                                                                              │
 │14:35:12  PNG         65 B  complete    Rigol_DG1062Z_20260925-143512.png     │
 │14:35:53  HPGL        47 B  complete    Rigol_DG1062Z_20260925-143553.hpgl    │

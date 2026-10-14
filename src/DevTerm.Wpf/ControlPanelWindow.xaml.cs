@@ -50,6 +50,7 @@ public partial class ControlPanelWindow : Window
     private readonly Dictionary<string, FrameworkElement> _controlViews = [];
     private readonly Dictionary<string, TextBlock> _indicatorLabels = [];
     private readonly Dictionary<string, IndicatorState> _indicatorStates = [];
+    private readonly Dictionary<string, IndicatorControl> _indicatorControls = [];
     private readonly Dictionary<string, Border> _colorSwatches = [];
 
     // "Custom" choice options backed by a color button (CustomColorChoices), each radio group's
@@ -322,7 +323,7 @@ public partial class ControlPanelWindow : Window
             {
                 if (!_indicatorStates.ContainsKey(id) && _indicatorLabels.TryGetValue(id, out var label))
                 {
-                    label.Text = value;
+                    label.Text = _indicatorControls.TryGetValue(id, out var shown) ? shown.Display(value) : value;
                 }
             }
 
@@ -586,6 +587,7 @@ public partial class ControlPanelWindow : Window
                 {
                     var view = new TextBlock { Text = indicator.DefaultValue ?? string.Empty, VerticalAlignment = VerticalAlignment.Center, FontWeight = FontWeights.Bold };
                     _indicatorLabels[control.Id] = view;
+                    _indicatorControls[control.Id] = indicator;
                     if (LiveDisplayState.For(indicator) is IndicatorState indicatorState)
                     {
                         _indicatorStates[control.Id] = indicatorState;

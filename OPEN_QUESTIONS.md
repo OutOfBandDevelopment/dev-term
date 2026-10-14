@@ -95,8 +95,7 @@ Answerable by thinking and a prototype; no owner decision or hardware needed.
   helpers or CEL-style extension. — [expression-picker](docs/specs/expression-picker.md)
 - **Manifest editor:** `.xml` panel forms and binary `.ksy` layouts are not editable. —
   [manifest-editor](docs/specs/manifest-editor.md)
-- **Stream Monitor:** no CLI mode or `--presenter`; only SCPI commands can
-  declare a format. — [stream-monitor](docs/specs/stream-monitor.md)
+- **Stream Monitor:** no `--presenter` selection. — [stream-monitor](docs/specs/stream-monitor.md)
 - **Theme builder:** no manual-use verification pass. — [theme-builder](docs/specs/theme-builder.md)
 
 ## Open bugs

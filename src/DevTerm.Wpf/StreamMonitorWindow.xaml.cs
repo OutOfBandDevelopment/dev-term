@@ -103,7 +103,7 @@ public partial class StreamMonitorWindow : Window
     internal ObservableCollection<StreamMonitorCaptureItem> Items { get; } = [];
 
     /// <summary>The filter, search and sort choices, exposed for tests.</summary>
-    internal (TextBox Search, ComboBox Kind, ComboBox Device, ComboBox Sort) Criteria => (SearchBox, KindFilterBox, DeviceFilterBox, SortBox);
+    internal (TextBox Search, ComboBox Kind, ListBox Device, ComboBox Sort) Criteria => (SearchBox, KindFilterBox, DevicePanes, SortBox);
 
     private void ListCriteria_Changed(object sender, EventArgs e)
     {
@@ -120,12 +120,12 @@ public partial class StreamMonitorWindow : Window
         try
         {
             RefillChoices(KindFilterBox, "All types", StreamCaptureView.Kinds(_captures));
-            RefillChoices(DeviceFilterBox, "All devices", StreamCaptureView.Devices(_captures));
+            RefillPanes();
             var shown = StreamCaptureView.Apply(
                 _captures,
                 SearchBox.Text,
                 KindFilterBox.SelectedIndex > 0 ? (string)KindFilterBox.SelectedItem : null,
-                DeviceFilterBox.SelectedIndex > 0 ? (string)DeviceFilterBox.SelectedItem : null,
+                (DevicePanes.SelectedItem as StreamDevicePane)?.Device,
                 SortBox.SelectedItem is StreamCaptureSort sort ? sort : StreamCaptureSort.Oldest);
             Items.Clear();
             foreach (var capture in shown)
@@ -139,6 +139,20 @@ public partial class StreamMonitorWindow : Window
         }
 
         SelectNewest();
+    }
+
+    /// <summary>One pane per device with its capture count; the selected device stays selected while it still has captures.</summary>
+    private void RefillPanes()
+    {
+        var keep = (DevicePanes.SelectedItem as StreamDevicePane)?.Device;
+        var panes = StreamCaptureView.Panes(_captures);
+        DevicePanes.Items.Clear();
+        foreach (var pane in panes)
+        {
+            DevicePanes.Items.Add(pane);
+        }
+
+        DevicePanes.SelectedItem = panes.FirstOrDefault(p => keep is not null && string.Equals(p.Device, keep, StringComparison.OrdinalIgnoreCase)) ?? panes[0];
     }
 
     private static void RefillChoices(ComboBox box, string any, IReadOnlyList<string> choices)
