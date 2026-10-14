@@ -90,7 +90,7 @@ on the capture (`Not saved: {reason}`) and reported; it never interrupts the con
 | **Close** (TUI) / window close (WPF) | Closes the window only — **monitoring carries on** until stopped, so captures keep being saved while you're back in the main window sending commands |
 | **Open Folder** (WPF) | Opens the export folder in Explorer (created first if missing) |
 | **Export As...** (WPF) | Saves a copy of the selected capture's bytes wherever you choose; the automatic file is untouched. Enabled when a capture is selected |
-| **CLI** | `--listcaptures <n>` prints the newest n saved captures (oldest first); `--exportcaptures <n> --exportto <folder>` copies them out without overwriting (`CaptureExport`). Both read the same folders as the window and exit without connecting |
+| **CLI** | `--capture <dir>` (with `--cli true`) saves each stream detected on the live session into `<dir>` and prints one line per capture; `--listcaptures <n>` prints the newest n saved captures (oldest first); `--exportcaptures <n> --exportto <folder>` copies them out without overwriting (`CaptureExport`). Both read the same folders as the window and exit without connecting |
 | **Earlier exports** | When the window opens, files already in the export folders (the profile's folder and `~/.dev-term/exports`) that match `{device}_{yyyyMMdd-HHmmss}[-n].{ext}` are listed too, oldest first, so earlier captures survive a restart (`StreamMonitor.LoadFromDisk`) |
 | **Automatic HP-GL to SVG** | An HP-GL capture is also written as an `.svg` beside it and listed as a second capture, with dev-term's own converter. On by default; profile setting `StreamAutoConvertHpgl` (`false` turns it off) |
 | **Conversion** drop-down (WPF) / **Convert as:** button (TUI) | Picks the mechanism Convert... uses: None, HP-GL to SVG, Auto, each registered tool (`StreamConvertTools`), or External tool (`StreamConversionChoice.For`). Starts on the profile's `Stream Convert Mode`; changing it affects only this window and isn't saved. The TUI button opens a pick-one list. External tool still reads its path from the profile |
@@ -160,8 +160,7 @@ a converter tool covers it, and a profile still saying `webservice` now fails va
   but still can't draw (an accepted limit, 2026-10-03: the TUI will not render graphics). The list entry is for this session only (it isn't re-found after a restart). Live
   HP-GL/PostScript/PCL preview is still gated on the rendering presenter from
   [presenters.md](../design/presenters.md) §3.
-- **No CLI mode** support, and it isn't selectable as a `--presenter` (it emits no text; see the
-  proposal's Status for why it's bound in place instead). Decided 2026-10-13: a `--capture <dir>` option saves detected streams as files and prints one line per capture, for headless bench runs and CI (BACKLOG).
+- **No `--presenter`**: it isn't selectable that way (it emits no text; see the proposal's Status for why it's bound in place instead). The CLI's `--capture <dir>` (2026-10-14) runs the same detection and saves each detected stream into that folder, printing `Captured ... to <path>.` per capture, for headless bench runs and CI.
 - **Only the SCPI command schema can declare a format** today; a device manifest's own command schema
   can't yet.
 - **One capture at a time**: a second declared/sniffed stream starting while one is still in progress

@@ -360,6 +360,10 @@ public sealed class CliOptions
     [Category("Mode")]
     public string? Attach { get; set; }
 
+    /// <summary>CLI mode: save each detected stream (BMP, TIFF, HP-GL, ...) of this session as a file in this folder, printing one line per capture.</summary>
+    [Category("Mode")]
+    public string? Capture { get; set; }
+
     /// <summary>Print the newest N saved Stream Monitor captures (the exports folder) and exit.</summary>
     [Category("Mode")]
     public int ListCaptures { get; set; }

@@ -343,6 +343,12 @@
         "null"
       ]
     },
+    "Capture": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "ListCaptures": {
       "type": "integer"
     },
